@@ -24,7 +24,6 @@ export default function Dashboard() {
   const { therapist, signOut } = useAuth();
   const navigate = useNavigate();
 
-  // Load stats when component mounts
   useEffect(() => {
     if (therapist?.id) {
       loadStats();
@@ -47,8 +46,13 @@ export default function Dashboard() {
   }
 
   const handleLogout = async () => {
-    await signOut();
-    navigate('/login');
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Logout error:', err);
+    } finally {
+      navigate('/login');
+    }
   };
 
   return (
@@ -67,8 +71,16 @@ export default function Dashboard() {
         alignItems: 'center',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
       }}>
-        {/* Logo & Business Name */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        {/* Logo & Business Name - NOW CLICKABLE */}
+        <div 
+          onClick={() => navigate('/')}
+          style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px',
+            cursor: 'pointer'
+          }}
+        >
           <span style={{ fontSize: '32px' }}>🌿</span>
           <div>
             <h1 style={{ 
@@ -123,12 +135,12 @@ export default function Dashboard() {
               transition: 'all 0.2s'
             }}
             onMouseOver={(e) => {
-              e.target.style.background = C.lightBeige;
-              e.target.style.borderColor = C.sage;
+              e.currentTarget.style.background = C.lightBeige;
+              e.currentTarget.style.borderColor = C.sage;
             }}
             onMouseOut={(e) => {
-              e.target.style.background = C.white;
-              e.target.style.borderColor = C.lightGray;
+              e.currentTarget.style.background = C.white;
+              e.currentTarget.style.borderColor = C.lightGray;
             }}
           >
             Logout

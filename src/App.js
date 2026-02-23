@@ -29,7 +29,7 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* Marketing pages */}
+          {/* Marketing pages - MUST be before wildcard */}
           <Route path="/" element={<Home />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
@@ -37,11 +37,11 @@ function App() {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
 
-          {/* Auth pages */}
+          {/* Auth pages - MUST be before wildcard */}
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
 
-          {/* Protected pages (require login) */}
+          {/* Protected pages - MUST be before wildcard */}
           <Route 
             path="/dashboard" 
             element={
@@ -54,8 +54,11 @@ function App() {
           {/* Test route - NO AUTH REQUIRED */}
           <Route path="/test" element={<TestDashboard />} />
 
-          {/* Client intake (public) */}
+          {/* Static pages - MUST be before wildcard */}
           <Route path="/thank-you" element={<ThankYou />} />
+
+          {/* Client intake wildcard - MUST be LAST */}
+          <Route path="/intake/:customUrl" element={<ClientIntake />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
       </Router>
