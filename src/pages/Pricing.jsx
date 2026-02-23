@@ -90,7 +90,7 @@ export default function Pricing() {
           <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
             <Link to="/" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Home</Link>
             <a href="/#features" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Features</a>
-            <Link to="/why" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Why BodyMap</Link>
+            <Link to="/why-bodymap" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Why BodyMap</Link>
             <Link to="/signup" style={{ 
               background: C.sage, 
               color: 'white', 
@@ -511,7 +511,7 @@ export default function Pricing() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <a href="/#features" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Features</a>
                 <Link to="/pricing" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Pricing</Link>
-                <Link to="/why" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Why BodyMap</Link>
+                <Link to="/why-bodymap" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Why BodyMap</Link>
               </div>
             </div>
             

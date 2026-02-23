@@ -401,7 +401,7 @@ export default function WhyBodyMap() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <a href="/#features" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Features</a>
                 <Link to="/pricing" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Pricing</Link>
-                <Link to="/why" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Why BodyMap</Link>
+                <Link to="/why-bodymap" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Why BodyMap</Link>
               </div>
             </div>
             
