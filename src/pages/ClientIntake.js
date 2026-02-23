@@ -1,0 +1,145 @@
+// src/pages/ClientIntake.js
+// Custom URL page - loads therapist, shows BodyMap, saves to Supabase
+
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { db } from '../lib/supabase';
+import Demo from './Demo';
+
+export default function ClientIntake() {
+  const { customUrl } = useParams();
+  const navigate = useNavigate();
+  const [therapist, setTherapist] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    loadTherapist();
+  }, [customUrl]);
+
+  const loadTherapist = async () => {
+    try {
+      setLoading(true);
+      const data = await db.getTherapistByUrl(customUrl);
+      setTherapist(data);
+      setError(null);
+    } catch (err) {
+      console.error('Error loading therapist:', err);
+      setError('Therapist not found. Please check the URL.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (intakeData) => {
+    try {
+      // Step 1: Create or get client
+      const client = await db.upsertClient(therapist.id, {
+        name: intakeData.clientName,
+        phone: intakeData.clientPhone,
+        email: intakeData.clientEmail || null
+      });
+
+      // Step 2: Create session with all intake data
+      await db.createSession({
+        therapist_id: therapist.id,
+        client_id: client.id,
+        front_focus: intakeData.frontFocus || [],
+        front_avoid: intakeData.frontAvoid || [],
+        back_focus: intakeData.backFocus || [],
+        back_avoid: intakeData.backAvoid || [],
+        pressure: intakeData.pressure || 3,
+        goal: intakeData.goal || 'relax',
+        table_temp: intakeData.tableTemp || 'warm',
+        room_temp: intakeData.roomTemp || 'comfortable',
+        music: intakeData.music || 'soft',
+        lighting: intakeData.lighting || 'dim',
+        conversation: intakeData.conversation || 'quiet',
+        draping: intakeData.draping || 'standard',
+        oil_pref: intakeData.oilPref || 'none',
+        med_flag: intakeData.medFlag || 'none',
+        completed: false
+      });
+
+      // Step 3: Redirect to thank you page
+      navigate('/thank-you', { 
+        state: { 
+          therapistName: therapist.business_name,
+          clientName: intakeData.clientName 
+        } 
+      });
+    } catch (err) {
+      console.error('Error saving intake:', err);
+      alert('There was an error saving your preferences. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontFamily: 'system-ui, sans-serif',
+        background: '#F0EAD9'
+      }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
+          <div style={{ fontSize: '18px', color: '#6B7280' }}>Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        fontFamily: 'system-ui, sans-serif',
+        background: '#F0EAD9',
+        padding: '24px'
+      }}>
+        <div style={{ 
+          textAlign: 'center',
+          background: 'white',
+          padding: '40px',
+          borderRadius: '12px',
+          maxWidth: '400px'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <h2 style={{ fontSize: '24px', marginBottom: '16px', color: '#1F2937' }}>
+            Therapist Not Found
+          </h2>
+          <p style={{ fontSize: '16px', color: '#6B7280', marginBottom: '24px' }}>
+            {error}
+          </p>
+          <a 
+            href="https://mybodymap.app"
+            style={{
+              display: 'inline-block',
+              background: '#6B9E80',
+              color: 'white',
+              padding: '12px 24px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontWeight: '600'
+            }}
+          >
+            Go to BodyMap Home
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Demo 
+      therapistName={therapist.business_name}
+      onSubmit={handleSubmit}
+    />
+  );
+}
