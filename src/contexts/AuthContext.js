@@ -3,12 +3,7 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext({});
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within AuthProvider');
-  return context;
-};
+export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -16,21 +11,22 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        loadTherapistProfile(session.user.id).finally(() => setLoading(false));
+        supabase.from('therapists').select('*').eq('id', session.user.id).single()
+          .then(({ data }) => { if (data) setTherapist(data); })
+          .finally(() => setLoading(false));
       } else {
         setLoading(false);
       }
-    });
+    }).catch(() => setLoading(false));
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         setUser(session.user);
-        loadTherapistProfile(session.user.id);
+        supabase.from('therapists').select('*').eq('id', session.user.id).single()
+          .then(({ data }) => { if (data) setTherapist(data); });
       } else {
         setUser(null);
         setTherapist(null);
@@ -40,17 +36,24 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loadTherapistProfile = async (userId) => {
+  const signIn = async (email, password) => {
     try {
-      const { data, error } = await supabase
-        .from('therapists')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      if (!error) setTherapist(data);
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      setUser(data.user);
+      const { data: t } = await supabase.from('therapists').select('*').eq('id', data.user.id).single();
+      if (t) setTherapist(t);
+      return { success: true };
     } catch (error) {
-      console.error('Error loading therapist profile:', error);
+      return { success: false, error: error.message };
     }
+  };
+
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+    setTherapist(null);
+    window.location.href = '/login';
   };
 
   const signUp = async (email, password, metadata) => {
@@ -58,8 +61,7 @@ export const AuthProvider = ({ children }) => {
       const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
       if (authError) throw authError;
       const { error: dbError } = await supabase.from('therapists').insert([{
-        id: authData.user.id,
-        email,
+        id: authData.user.id, email,
         business_name: metadata.businessName,
         full_name: metadata.fullName,
         phone: metadata.phone,
@@ -68,29 +70,6 @@ export const AuthProvider = ({ children }) => {
         plan: 'free'
       }]);
       if (dbError) throw dbError;
-      return { success: true, user: authData.user };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const signIn = async (email, password) => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
-      setUser(data.user);
-      await loadTherapistProfile(data.user.id);
-      return { success: true, user: data.user };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setTherapist(null);
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
@@ -109,7 +88,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, therapist, loading, signUp, signIn, signOut, updateProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, therapist, loading, signIn, signOut, signUp, updateProfile, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
