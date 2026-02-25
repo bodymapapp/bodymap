@@ -20,10 +20,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for existing session
     checkUser();
 
-    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         setUser(session.user);
@@ -71,7 +69,6 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, metadata) => {
     try {
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
         password
@@ -79,7 +76,6 @@ export const AuthProvider = ({ children }) => {
 
       if (authError) throw authError;
 
-      // Create therapist profile in database
       const { error: dbError } = await supabase
         .from('therapists')
         .insert([{
@@ -110,6 +106,11 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) throw error;
+
+      // Set user immediately so ProtectedRoute doesn't redirect back to login
+      setUser(data.user);
+      await loadTherapistProfile(data.user.id);
+
       return { success: true, user: data.user };
     } catch (error) {
       console.error('Login error:', error);
