@@ -28,7 +28,7 @@ export default function Login() {
     const result = await signIn(email, password);
     
     if (result.success) {
-      navigate('/dashboard');
+      window.location.href = '/dashboard';
     } else {
       setError(result.error);
     }
