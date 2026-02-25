@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
 import ClientList from '../components/ClientList';
+import SessionList from '../components/SessionList';
 
 const C = {
   sage: '#6B9E80',
@@ -18,6 +19,8 @@ const C = {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('clients');
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [stats, setStats] = useState({ clients: 0, sessions: 0 });
   const { therapist, signOut } = useAuth();
   const navigate = useNavigate();
@@ -147,7 +150,8 @@ export default function Dashboard() {
           minHeight: '400px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
         }}>
-          {activeTab === 'clients' && <ClientList therapistId={therapist?.id} />}
+          {activeTab === 'clients' && !selectedClient && <ClientList therapistId={therapist?.id} onSelectClient={setSelectedClient} />}
+          {activeTab === 'clients' && selectedClient && !selectedSession && <SessionList client={selectedClient} therapistId={therapist?.id} onBack={() => setSelectedClient(null)} onSelectSession={setSelectedSession} />}
           {activeTab === 'settings' && (
             <div>
               <h2 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>Account Settings</h2>
