@@ -15,7 +15,7 @@ const C = {
   white: '#FFFFFF'
 };
 
-export default function ClientList({ therapistId }) {
+export default function ClientList({ therapistId, onSelectClient }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -193,8 +193,10 @@ async function loadClients() {
                 style={{
                   background: index % 2 === 0 ? C.white : C.lightBeige,
                   borderTop: `1px solid ${C.lightGray}`,
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  transition: 'background 0.15s'
                 }}
+                onClick={() => onSelectClient && onSelectClient(client)}
               >
                 <td style={{ 
                   padding: '16px',
