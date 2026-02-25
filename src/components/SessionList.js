@@ -25,7 +25,7 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
   async function loadSessions() {
     try {
       setLoading(true);
-      const data = await db.getClientSessions(client.id);
+      const data = await db.getClientHistory(client.id);
       setSessions(data || []);
     } catch (err) {
       setError(err.message);
