@@ -12,8 +12,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
-    flowType: 'pkce',
-    lock: false  // DISABLE auth lock to prevent timeout errors
+    flowType: 'implicit'  // DISABLE auth lock to prevent timeout errors
   }
 });
 
