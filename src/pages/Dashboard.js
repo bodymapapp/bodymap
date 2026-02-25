@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/supabase';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
+import SessionDetail from '../components/SessionDetail';
 
 const C = {
   sage: '#6B9E80',
@@ -152,6 +153,7 @@ export default function Dashboard() {
         }}>
           {activeTab === 'clients' && !selectedClient && <ClientList therapistId={therapist?.id} onSelectClient={setSelectedClient} />}
           {activeTab === 'clients' && selectedClient && !selectedSession && <SessionList client={selectedClient} therapistId={therapist?.id} onBack={() => setSelectedClient(null)} onSelectSession={setSelectedSession} />}
+          {activeTab === 'clients' && selectedClient && selectedSession && <SessionDetail session={selectedSession} client={selectedClient} onBack={() => setSelectedSession(null)} onUpdate={(updated) => setSelectedSession(updated)} />}
           {activeTab === 'settings' && (
             <div>
               <h2 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>Account Settings</h2>
