@@ -1,6 +1,4 @@
 // src/contexts/AuthContext.js
-// This manages user authentication and therapist profile
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -8,9 +6,7 @@ const AuthContext = createContext({});
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 };
 
@@ -20,37 +16,29 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUser();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
-        await loadTherapistProfile(session.user.id);
+        loadTherapistProfile(session.user.id).finally(() => setLoading(false));
+      } else {
+        setLoading(false);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user);
+        loadTherapistProfile(session.user.id);
       } else {
         setUser(null);
         setTherapist(null);
       }
-      setLoading(false);
     });
 
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
+    return () => subscription.unsubscribe();
   }, []);
-
-  const checkUser = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await loadTherapistProfile(session.user.id);
-      }
-    } catch (error) {
-      console.error('Error checking user:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadTherapistProfile = async (userId) => {
     try {
@@ -59,9 +47,7 @@ export const AuthProvider = ({ children }) => {
         .select('*')
         .eq('id', userId)
         .single();
-      
-      if (error) throw error;
-      setTherapist(data);
+      if (!error) setTherapist(data);
     } catch (error) {
       console.error('Error loading therapist profile:', error);
     }
@@ -69,100 +55,61 @@ export const AuthProvider = ({ children }) => {
 
   const signUp = async (email, password, metadata) => {
     try {
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password
-      });
-
+      const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
       if (authError) throw authError;
-
-      const { error: dbError } = await supabase
-        .from('therapists')
-        .insert([{
-          id: authData.user.id,
-          email: email,
-          business_name: metadata.businessName,
-          full_name: metadata.fullName,
-          phone: metadata.phone,
-          custom_url: metadata.customUrl,
-          password_hash: 'managed_by_supabase_auth',
-          plan: 'free'
-        }]);
-
+      const { error: dbError } = await supabase.from('therapists').insert([{
+        id: authData.user.id,
+        email,
+        business_name: metadata.businessName,
+        full_name: metadata.fullName,
+        phone: metadata.phone,
+        custom_url: metadata.customUrl,
+        password_hash: 'managed_by_supabase_auth',
+        plan: 'free'
+      }]);
       if (dbError) throw dbError;
-
       return { success: true, user: authData.user };
     } catch (error) {
-      console.error('Signup error:', error);
       return { success: false, error: error.message };
     }
   };
 
   const signIn = async (email, password) => {
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-
-      // Set user immediately so ProtectedRoute doesn't redirect back to login
       setUser(data.user);
       await loadTherapistProfile(data.user.id);
-
       return { success: true, user: data.user };
     } catch (error) {
-      console.error('Login error:', error);
       return { success: false, error: error.message };
     }
   };
 
   const signOut = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
+      await supabase.auth.signOut();
       setUser(null);
       setTherapist(null);
       return { success: true };
     } catch (error) {
-      console.error('Logout error:', error);
       return { success: false, error: error.message };
     }
   };
 
   const updateProfile = async (updates) => {
     try {
-      const { data, error } = await supabase
-        .from('therapists')
-        .update(updates)
-        .eq('id', user.id)
-        .select()
-        .single();
-
+      const { data, error } = await supabase.from('therapists').update(updates).eq('id', user.id).select().single();
       if (error) throw error;
       setTherapist(data);
       return { success: true, data };
     } catch (error) {
-      console.error('Update profile error:', error);
       return { success: false, error: error.message };
     }
   };
 
-  const value = {
-    user,
-    therapist,
-    loading,
-    signUp,
-    signIn,
-    signOut,
-    updateProfile,
-    isAuthenticated: !!user
-  };
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, therapist, loading, signUp, signIn, signOut, updateProfile, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
