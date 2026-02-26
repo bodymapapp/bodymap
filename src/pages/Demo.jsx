@@ -3862,33 +3862,6 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
         </p>
       </div>
       <div style={{ padding: "16px 20px 40px" }}>
-        {sessions.length > 0 && (
-          <PreFill sessions={sessions} onPreFill={onPreFill} />
-        )}
-        {sessions.length > 0 && <LoyaltyBar sessions={sessions} />}
-        <Card style={{ padding: "14px" }}>
-          <p
-            style={{
-              fontFamily: F.body,
-              fontSize: 13,
-              color: C.text,
-              lineHeight: 1.5,
-              marginBottom: 12,
-            }}
-          >
-            Set your preferences in 60 seconds — so your therapist knows exactly
-            what you need before you walk in. Your full 60 minutes, perfectly
-            customized.
-          </p>
-          <Btn
-            ghost
-            onClick={() =>
-              onStart({ name: "Demo User", contact: "demo@bodymap.app" })
-            }
-          >
-            👁 Try Demo
-          </Btn>
-        </Card>
         <Card style={{ padding: "13px" }}>
           <p
             style={{
@@ -3937,23 +3910,7 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
             🔒 Only shared with your therapist
           </p>
         </Card>
-        {sessions.length > 0 && (
-          <Card
-            style={{ background: C.sagePale, padding: 11 }}
-            onClick={onHistory}
-          >
-            <p
-              style={{
-                fontFamily: F.body,
-                fontSize: 12,
-                fontWeight: 700,
-                color: C.green,
-              }}
-            >
-              📋 {sessions.length} session{sessions.length > 1 ? "s" : ""} saved
-            </p>
-          </Card>
-        )}
+
       </div>
     </div>
   );
@@ -4354,14 +4311,17 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
 
   const onStart = (info) => {
     setCI(info);
-    setScreen("front");
     if (getLastSession) {
       getLastSession(info.contact).then(last => {
         if (last) {
           setLastSession(last);
           setScreen("prefill");
+        } else {
+          setScreen("front");
         }
-      }).catch(() => {});
+      }).catch(() => setScreen("front"));
+    } else {
+      setScreen("front");
     }
   };
 
