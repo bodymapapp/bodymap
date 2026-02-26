@@ -4437,8 +4437,20 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
       />
     ),
     back: (
-      <BMScreen
-        title="Back of Body"
+      <div>
+        {lastSession && (
+          <div style={{ background: "#FDF6E8", border: "1.5px solid #D4B070", padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <div>
+              <p style={{ fontFamily: "'Nunito', sans-serif", fontSize: 13, fontWeight: 800, color: "#B87840", margin: 0 }}>✦ Welcome back{clientInfo?.name ? `, ${clientInfo.name.split(" ")[0]}` : ""}!</p>
+              <p style={{ fontFamily: "'Nunito', sans-serif", fontSize: 11, color: "#7A9485", margin: "2px 0 0" }}>Last session: {lastSession.date ? Math.floor((Date.now() - new Date(lastSession.date)) / 86400000) + " days ago" : "previous visit"}</p>
+            </div>
+            <button onClick={() => applyPrefill(lastSession)} style={{ background: "#B87840", color: "#fff", border: "none", padding: "8px 14px", borderRadius: 50, fontFamily: "'Nunito', sans-serif", fontSize: 12, fontWeight: 800, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Use Last Session
+            </button>
+          </div>
+        )}
+        <BMScreen
+          title="Back of Body"
         subtitle="Continue marking focus and avoid areas"
         step={2}
         regions={BACK_REGIONS}
@@ -4446,11 +4458,12 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
         onToggle={toggle}
         mode={mode}
         setMode={setMode}
-        onNext={() => setScreen("prefs")}
-        onBack={() => setScreen("front")}
-        sessions={sessions}
-        onApply={handleApply}
-      />
+          onNext={() => setScreen("prefs")}
+          onBack={() => setScreen("front")}
+          sessions={sessions}
+          onApply={handleApply}
+        />
+      </div>
     ),
     prefs: (
       <PrefScreen
