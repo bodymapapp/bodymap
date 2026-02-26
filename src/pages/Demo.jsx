@@ -4325,7 +4325,6 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   const applyPrefill = (last) => {
     setBM(last.bodyMap || {});
     setPrefs(prev => ({ ...prev, ...(last.prefs || {}) }));
-    setLastSession(null);
   };
 
   const handleApply = () => {
