@@ -4352,6 +4352,27 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
     setScreen("front");
   };
 
+  const onStart = async (info) => {
+    setCI(info);
+    if (getLastSession) {
+      try {
+        const last = await getLastSession(info.contact);
+        if (last) {
+          setLastSession(last);
+          setScreen("prefill");
+          return;
+        }
+      } catch(e) {}
+    }
+    setScreen("front");
+  };
+
+  const applyPrefill = (last) => {
+    setBM(last.bodyMap || {});
+    setPrefs(prev => ({ ...prev, ...(last.prefs || {}) }));
+    setScreen("front");
+  };
+
   const handleApply = () => {
     const p = buildPattern(sessions);
     if (!p) return;
