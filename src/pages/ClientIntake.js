@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { db } from '../lib/supabase';
+import { db, supabase } from '../lib/supabase';
 import Demo from './Demo';
 
 export default function ClientIntake() {
@@ -138,7 +138,6 @@ export default function ClientIntake() {
 
   const getLastSession = async (contact) => {
     try {
-      const { supabase } = await import('../lib/supabase');
       const isEmail = contact.includes('@');
       const digits = contact.replace(/\D/g, '');
       
