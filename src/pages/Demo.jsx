@@ -4306,7 +4306,7 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
 };
 
 // Main App
-export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null }) {
+export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null }) {
   const [screen, setScreen] = useState("welcome");
   const [mode, setMode] = useState("focus");
   const [clientInfo, setCI] = useState({ name: "", contact: "" });
