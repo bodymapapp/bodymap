@@ -3932,7 +3932,7 @@ const BMScreen = ({
   onApply,
 }) => (
   <div
-    style={{ background: C.bg, padding: "18px 20px 40px", minHeight: "100vh" }}
+    style={{ background: C.bg, padding: "18px 20px 16px" }}
   >
     <Step step={step} />
     <h2
@@ -4325,7 +4325,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   const applyPrefill = (last) => {
     setBM(last.bodyMap || {});
     setPrefs(prev => ({ ...prev, ...(last.prefs || {}) }));
-    setScreen("front");
+    setLastSession(null);
   };
 
   const handleApply = () => {
