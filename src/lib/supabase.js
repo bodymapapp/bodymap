@@ -77,13 +77,20 @@ export const db = {
   },
 
   async getTherapistClients(therapistId) {
-    const { data, error } = await supabase
+    // Fetch clients with real session counts from the sessions table
+    const { data: clients, error } = await supabase
       .from('clients')
-      .select('*')
+      .select('*, sessions(id, completed)')
       .eq('therapist_id', therapistId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data;
+
+    // Map to attach derived counts so components can use total_sessions directly
+    return (clients || []).map(c => ({
+      ...c,
+      total_sessions: (c.sessions || []).length,
+      completed_sessions: (c.sessions || []).filter(s => s.completed).length,
+    }));
   },
 
   async getClientHistory(clientId) {
