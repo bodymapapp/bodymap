@@ -9,25 +9,59 @@ const C = {
 };
 
 const AREA_LABELS = {
-  "f-head": "Head", "f-neck": "Neck", "f-l-shoulder": "L Shoulder", "f-r-shoulder": "R Shoulder",
-  "f-chest": "Chest", "f-abdomen": "Abdomen", "f-l-arm": "L Arm", "f-r-arm": "R Arm",
-  "f-l-thigh": "L Thigh", "f-r-thigh": "R Thigh", "f-l-knee": "L Knee", "f-r-knee": "R Knee",
-  "f-l-foot": "L Foot", "f-r-foot": "R Foot", "f-hip": "Hips",
-  "b-head": "Back of Head", "b-neck": "Back of Neck", "b-upper-bk": "Upper Back",
-  "b-mid-bk": "Mid Back", "b-lower-bk": "Lower Back", "b-l-shoulder": "L Shoulder Blade",
-  "b-r-shoulder": "R Shoulder Blade", "b-glutes": "Glutes", "b-l-hamstr": "L Hamstring",
-  "b-r-hamstr": "R Hamstring", "b-l-calf": "L Calf", "b-r-calf": "R Calf"
+  // Front
+  "f-head": "Head", "f-neck": "Neck",
+  "f-l-shldr": "L Shoulder", "f-r-shldr": "R Shoulder",
+  "f-l-chest": "L Chest", "f-r-chest": "R Chest",
+  "f-abdomen": "Abdomen",
+  "f-l-arm-u": "L Upper Arm", "f-r-arm-u": "R Upper Arm",
+  "f-l-forearm": "L Forearm", "f-r-forearm": "R Forearm",
+  "f-l-hand": "L Hand", "f-r-hand": "R Hand",
+  "f-l-hip": "L Hip", "f-r-hip": "R Hip",
+  "f-l-thigh": "L Thigh", "f-r-thigh": "R Thigh",
+  "f-l-knee": "L Knee", "f-r-knee": "R Knee",
+  "f-l-calf": "L Calf", "f-r-calf": "R Calf",
+  "f-l-foot": "L Foot", "f-r-foot": "R Foot",
+  // Back
+  "b-head": "Back of Head", "b-neck": "Back of Neck",
+  "b-l-shldr": "L Shoulder Blade", "b-r-shldr": "R Shoulder Blade",
+  "b-upper-bk": "Upper Back", "b-mid-bk": "Mid Back", "b-lower-bk": "Lower Back",
+  "b-l-arm-u": "L Upper Arm", "b-r-arm-u": "R Upper Arm",
+  "b-l-forearm": "L Forearm", "b-r-forearm": "R Forearm",
+  "b-l-hand": "L Hand", "b-r-hand": "R Hand",
+  "b-l-glute": "L Glute", "b-r-glute": "R Glute",
+  "b-l-hamstr": "L Hamstring", "b-r-hamstr": "R Hamstring",
+  "b-l-knee": "L Knee", "b-r-knee": "R Knee",
+  "b-l-calf": "L Calf", "b-r-calf": "R Calf",
+  "b-l-foot": "L Foot", "b-r-foot": "R Foot"
 };
 
 const AREA_COORDS = {
-  "f-head": [85,28], "f-neck": [85,52], "f-l-shoulder": [58,72], "f-r-shoulder": [112,72],
-  "f-chest": [85,95], "f-abdomen": [85,125], "f-l-arm": [45,110], "f-r-arm": [125,110],
-  "f-l-thigh": [68,185], "f-r-thigh": [102,185], "f-l-knee": [68,225], "f-r-knee": [102,225],
-  "f-l-foot": [68,290], "f-r-foot": [102,290], "f-hip": [85,155],
-  "b-head": [85,28], "b-neck": [85,52], "b-upper-bk": [85,85], "b-mid-bk": [85,110],
-  "b-lower-bk": [85,135], "b-l-shoulder": [58,72], "b-r-shoulder": [112,72],
-  "b-glutes": [85,160], "b-l-hamstr": [68,195], "b-r-hamstr": [102,195],
-  "b-l-calf": [68,245], "b-r-calf": [102,245]
+  // Front
+  "f-head": [85,28], "f-neck": [85,52],
+  "f-l-shldr": [58,72], "f-r-shldr": [112,72],
+  "f-l-chest": [68,95], "f-r-chest": [102,95],
+  "f-abdomen": [85,125],
+  "f-l-arm-u": [45,100], "f-r-arm-u": [125,100],
+  "f-l-forearm": [42,130], "f-r-forearm": [128,130],
+  "f-l-hand": [40,155], "f-r-hand": [130,155],
+  "f-l-hip": [68,155], "f-r-hip": [102,155],
+  "f-l-thigh": [68,185], "f-r-thigh": [102,185],
+  "f-l-knee": [68,220], "f-r-knee": [102,220],
+  "f-l-calf": [68,248], "f-r-calf": [102,248],
+  "f-l-foot": [68,285], "f-r-foot": [102,285],
+  // Back
+  "b-head": [85,28], "b-neck": [85,52],
+  "b-l-shldr": [58,72], "b-r-shldr": [112,72],
+  "b-upper-bk": [85,88], "b-mid-bk": [85,112], "b-lower-bk": [85,136],
+  "b-l-arm-u": [45,100], "b-r-arm-u": [125,100],
+  "b-l-forearm": [42,130], "b-r-forearm": [128,130],
+  "b-l-hand": [40,155], "b-r-hand": [130,155],
+  "b-l-glute": [68,162], "b-r-glute": [102,162],
+  "b-l-hamstr": [68,192], "b-r-hamstr": [102,192],
+  "b-l-knee": [68,220], "b-r-knee": [102,220],
+  "b-l-calf": [68,248], "b-r-calf": [102,248],
+  "b-l-foot": [68,285], "b-r-foot": [102,285]
 };
 
 function BodySVG({ focusAreas = [], avoidAreas = [] }) {
@@ -278,9 +312,9 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       {/* Print styles */}
       <style>{`
         @media print {
-          body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          button { display: none !important; }
+          header, nav, [class*="tab"], button { display: none !important; }
+          body { background: white !important; }
+          * { box-shadow: none !important; }
         }
       `}</style>
     </div>

@@ -37,8 +37,8 @@ export default function Dashboard({ view }) {
     try {
       const clients = await db.getTherapistClients(therapist.id);
       const { data: sessions } = await supabase.from('sessions').select('id').eq('therapist_id', therapist.id);
-
-
+      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0 });
+    } catch (err) { console.error(err); }
   }
 
   async function loadClient() {
