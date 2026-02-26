@@ -313,8 +313,14 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       <style>{`
         @media print {
           header, nav, [class*="tab"], button, .no-print { display: none !important; }
-          body { background: white !important; }
+          body { background: white !important; font-size: 11px !important; }
           * { box-shadow: none !important; }
+          div { padding: 4px !important; margin: 2px !important; }
+          h2 { font-size: 16px !important; margin: 0 0 2px 0 !important; }
+          h3 { font-size: 13px !important; margin: 0 0 4px 0 !important; }
+          p, span { font-size: 11px !important; }
+          textarea { min-height: 40px !important; font-size: 11px !important; }
+          svg { width: 100px !important; height: 160px !important; }
         }
       `}</style>
     </div>
