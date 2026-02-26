@@ -13,6 +13,140 @@ const C = {
   lightGray: '#E5E7EB', white: '#FFFFFF'
 };
 
+
+function SettingsPanel({ therapist }) {
+  const { updateProfile } = require('../contexts/AuthContext').useAuth ? 
+    { updateProfile: null } : { updateProfile: null };
+  const { updateProfile: up } = (function() {
+    try { return require('../contexts/AuthContext').useAuth(); } catch(e) { return {}; }
+  })();
+
+  const [fullName, setFullName] = React.useState(therapist?.full_name || '');
+  const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const { updateProfile } = (window.__bm_auth || {});
+
+  const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(intakeUrl)}`;
+
+  const C2 = {
+    sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
+    darkGray: '#1A1A2E', gray: '#6B7280', lightGray: '#E8E4DC',
+    white: '#FFFFFF', gold: '#C9A84C'
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(intakeUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <div style={{ maxWidth: 680 }}>
+      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '700', color: C2.darkGray, margin: '0 0 28px 0' }}>
+        Account Settings
+      </h2>
+
+      {/* Intake Link */}
+      <div style={{ background: `linear-gradient(135deg, ${C2.forest}08, ${C2.sage}15)`, border: `1.5px solid ${C2.sage}40`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.sage, margin: '0 0 8px 0' }}>
+          🔗 Your Client Intake Link
+        </p>
+        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 14px 0' }}>
+          Share this with clients — they tap it, fill their body map, you get it instantly.
+        </p>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', padding: '10px 14px', fontSize: '14px', fontFamily: 'monospace', color: C2.darkGray, minWidth: 200 }}>
+            {intakeUrl}
+          </div>
+          <button onClick={copyLink} style={{ background: copied ? C2.forest : C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}>
+            {copied ? '✓ Copied!' : 'Copy Link'}
+          </button>
+        </div>
+      </div>
+
+      {/* QR Code */}
+      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+        <img src={qrUrl} alt="QR Code" style={{ width: 130, height: 130, borderRadius: '8px', border: `1px solid ${C2.lightGray}` }} />
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>
+            📱 QR Code
+          </p>
+          <p style={{ fontSize: '14px', fontWeight: '600', color: C2.darkGray, margin: '0 0 8px 0' }}>Print & place at your table</p>
+          <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
+            Clients scan before the session. No link needed. Works on any phone.
+          </p>
+          <a href={qrUrl} download="bodymap-qr.png" style={{ display: 'inline-block', background: C2.beige, border: `1.5px solid ${C2.lightGray}`, color: C2.darkGray, padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
+            ⬇️ Download QR Code
+          </a>
+        </div>
+      </div>
+
+      {/* Profile Edit */}
+      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 16px 0' }}>
+          ✏️ Profile
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: C2.gray, display: 'block', marginBottom: '6px' }}>Full Name</label>
+            <input value={fullName} onChange={e => setFullName(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'system-ui', background: C2.beige }} />
+          </div>
+          <div>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: C2.gray, display: 'block', marginBottom: '6px' }}>Business Name</label>
+            <input value={businessName} onChange={e => setBusinessName(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'system-ui', background: C2.beige }} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            onClick={async () => {
+              setSaving(true);
+              try {
+                const { supabase } = await import('../lib/supabase');
+                await supabase.from('therapists').update({ full_name: fullName, business_name: businessName }).eq('id', therapist.id);
+                setSaved(true); setTimeout(() => setSaved(false), 2500);
+              } catch(e) { console.error(e); }
+              finally { setSaving(false); }
+            }}
+            style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+            {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
+          </button>
+          <div>
+            <p style={{ fontSize: '12px', color: C2.gray, margin: 0 }}>Email: {therapist?.email}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Plan */}
+      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 12px 0' }}>
+          💳 Plan
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
+              {therapist?.plan === 'free' ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver — $24/mo' : 'Gold — $49/mo'}
+            </p>
+            <p style={{ fontSize: '13px', color: C2.gray, margin: 0 }}>
+              {therapist?.plan === 'free' ? 'Up to 5 clients. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
+            </p>
+          </div>
+          {therapist?.plan === 'free' && (
+            <button style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
+              Upgrade ↗
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ view }) {
   const { therapist, signOut } = useAuth();
   const navigate = useNavigate();
@@ -128,15 +262,7 @@ export default function Dashboard({ view }) {
             <div style={{ textAlign: 'center', padding: '40px', color: C.gray }}>Loading session...</div>
           )}
           {view === 'settings' && (
-            <div>
-              <h2 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>Account Settings</h2>
-              <div style={{ background: C.lightBeige, border: `1px solid ${C.lightGray}`, borderRadius: '8px', padding: '16px', marginBottom: '16px' }}>
-                <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}><strong>Custom URL:</strong> mybodymap.app/{therapist?.custom_url}</p>
-              </div>
-              <div style={{ background: C.lightBeige, border: `1px solid ${C.lightGray}`, borderRadius: '8px', padding: '16px' }}>
-                <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}><strong>Email:</strong> {therapist?.email}</p>
-              </div>
-            </div>
+            <SettingsPanel therapist={therapist} />
           )}
         </div>
 
