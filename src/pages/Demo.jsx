@@ -3889,29 +3889,6 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
             👁 Try Demo
           </Btn>
         </Card>
-        <div
-          style={{
-            background: `linear-gradient(135deg,${C.goldPale} 0%,#FFF9E6 100%)`,
-            border: `1.5px solid ${C.gold}60`,
-            borderRadius: 14,
-            padding: "11px 13px",
-            marginBottom: 12,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "flex-start", gap: 9 }}>
-            <span style={{ fontSize: 18, flexShrink: 0 }}>💳</span>
-            <div style={{ flex: 1 }}>
-              <p
-                style={{
-                  fontFamily: F.body,
-                  fontSize: 10,
-                  fontWeight: 800,
-                  color: C.text,
-                  marginBottom: 2,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
-                }}
-
         <Card style={{ padding: "13px" }}>
           <p
             style={{
