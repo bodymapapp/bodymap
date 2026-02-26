@@ -4355,6 +4355,14 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   const onStart = (info) => {
     setCI(info);
     setScreen("front");
+    if (getLastSession) {
+      getLastSession(info.contact).then(last => {
+        if (last) {
+          setLastSession(last);
+          setScreen("prefill");
+        }
+      }).catch(() => {});
+    }
   };
 
   const applyPrefill = (last) => {
