@@ -1,17 +1,12 @@
 // src/components/ProtectedRoute.js
-import React, { useRef } from 'react';
+import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
-  const hadUser = useRef(false);
-  
-  // Once we see a user, remember it forever in this session
-  if (user) hadUser.current = true;
 
-  // Only show loading on first load, not on re-renders
-  if (loading && !hadUser.current) {
+  if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#F9FAFB" }}>
         <div style={{ textAlign: "center" }}>
@@ -22,8 +17,6 @@ export default function ProtectedRoute({ children }) {
     );
   }
 
-  // Only redirect if we never had a user
-  if (!user && !hadUser.current) return <Navigate to="/login" replace />;
-  
+  if (!user) return <Navigate to="/login" replace />;
   return children;
 }

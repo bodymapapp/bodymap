@@ -12,7 +12,6 @@ import Terms from './pages/Terms';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import TestDashboard from './pages/TestDashboard';
 import ClientIntake from './pages/ClientIntake';
 import ThankYou from './pages/ThankYou';
 
@@ -29,8 +28,10 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/test" element={<TestDashboard />} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard view="clients" /></ProtectedRoute>} />
+          <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />
+          <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />
+          <Route path="/dashboard/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><Dashboard view="session-detail" /></ProtectedRoute>} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
