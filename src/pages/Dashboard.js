@@ -35,12 +35,10 @@ export default function Dashboard({ view }) {
 
   async function loadStats() {
     try {
-      const [clients, sessions] = await Promise.all([
-        db.getTherapistClients(therapist.id),
-        db.getTherapistSessions(therapist.id)
-      ]);
-      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0 });
-    } catch (err) { console.error(err); }
+      const clients = await db.getTherapistClients(therapist.id);
+      const { data: sessions } = await supabase.from('sessions').select('id').eq('therapist_id', therapist.id);
+
+
   }
 
   async function loadClient() {
