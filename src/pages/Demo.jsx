@@ -4362,7 +4362,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
           setScreen("prefill");
           return;
         }
-      } catch(e) {}
+      } catch(e) { console.error("onStart error:", e); }
     }
     setScreen("front");
   };
