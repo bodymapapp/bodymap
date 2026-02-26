@@ -3979,6 +3979,7 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
             onClick={() =>
               onStart({ name: name.trim(), contact: contact.trim() })
             }
+            
             disabled={!name.trim() || !contact.trim()}
             style={{ width: "100%" }}
           >
@@ -4374,6 +4375,8 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [sessions, setSessions] = useState([]);
+  const [lastSession, setLastSession] = useState(null);
+  const [checkingReturn, setCheckingReturn] = useState(false);
 
   useEffect(() => {
     const l = document.createElement("link");
@@ -4497,6 +4500,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
         }}
         sessions={sessions}
         onHistory={() => setScreen("history")}
+        checkingReturn={checkingReturn}
         onPreFill={handlePreFill}
       />
     ),

@@ -136,10 +136,64 @@ export default function ClientIntake() {
     );
   }
 
+  const getLastSession = async (contact) => {
+    try {
+      const { supabase } = await import('../lib/supabase');
+      const isEmail = contact.includes('@');
+      const digits = contact.replace(/\D/g, '');
+      
+      // Find client by phone or email
+      let client = null;
+      if (!isEmail && digits.length >= 7) {
+        const { data: all } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
+        client = (all || []).find(c => c.phone && c.phone.replace(/\D/g, '').slice(-10) === digits.slice(-10));
+      } else if (isEmail) {
+        const { data } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id).eq('email', contact).maybeSingle();
+        client = data;
+      }
+      
+      if (!client) return null;
+      
+      // Get their last session
+      const { data: sessions } = await supabase.from('sessions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(1);
+      
+      if (!sessions?.length) return null;
+      
+      const s = sessions[0];
+      // Convert arrays back to bodyMap object format Demo expects
+      const bodyMap = {};
+      (s.front_focus || []).forEach(id => bodyMap[id] = 'focus');
+      (s.front_avoid || []).forEach(id => bodyMap[id] = 'avoid');
+      (s.back_focus || []).forEach(id => bodyMap[id] = 'focus');
+      (s.back_avoid || []).forEach(id => bodyMap[id] = 'avoid');
+      
+      return {
+        bodyMap,
+        prefs: {
+          pressure: s.pressure || 3,
+          goal: s.goal || 'relax',
+          tableTemp: s.table_temp || 'warm',
+          roomTemp: s.room_temp || 'comfortable',
+          music: s.music || 'soft',
+          lighting: s.lighting || 'dim',
+          conversation: s.conversation || 'quiet',
+          draping: s.draping || 'standard',
+          oilPref: s.oil_pref || 'none',
+          medFlag: s.med_flag || 'none',
+        },
+        date: s.created_at,
+      };
+    } catch (err) {
+      console.error('Error fetching last session:', err);
+      return null;
+    }
+  };
+
   return (
     <Demo 
       therapistName={therapist.business_name}
       onSubmit={handleSubmit}
+      getLastSession={getLastSession}
     />
   );
 }
