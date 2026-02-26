@@ -118,6 +118,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const patterns = React.useMemo(() => {
     if (history.length < 2) return [];
     const result = [];
+    // Medical flags - highest priority
+    const medFlags = history.filter(s => s.med_flag && s.med_flag !== "none").map(s => s.med_flag);
+    if (medFlags.length > 0) {
+      const unique = [...new Set(medFlags)];
+      result.push({ icon: "🚨", text: `Medical flag: ${unique.join(", ")} — always check before session`, urgent: true });
+    }
+
     const pressures = history.filter(s => s.pressure).map(s => s.pressure);
     if (pressures.length >= 2) {
       const avg = Math.round(pressures.reduce((a,b) => a+b, 0) / pressures.length);
@@ -236,9 +243,9 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <p style={{ fontSize: "12px", color: C.gray, margin: "0 0 12px 0" }}>Based on {history.length} sessions</p>
               <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                 {patterns.map((p, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: C.white, borderRadius: "8px", border: `1px solid ${C.sage}25` }}>
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: p.urgent ? "#FEF2F2" : C.white, borderRadius: "8px", border: `1px solid ${p.urgent ? "#EF4444" : C.sage+"25"}`, fontWeight: p.urgent ? "700" : "500" }}>
                     <span style={{ fontSize: "16px" }}>{p.icon}</span>
-                    <span style={{ fontSize: "13px", color: C.darkGray, fontWeight: "500" }}>{p.text}</span>
+                    <span style={{ fontSize: "13px", color: p.urgent ? "#DC2626" : C.darkGray, fontWeight: p.urgent ? "700" : "500" }}>{p.text}</span>
                   </div>
                 ))}
               </div>
