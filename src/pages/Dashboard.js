@@ -15,18 +15,11 @@ const C = {
 
 
 function SettingsPanel({ therapist }) {
-  const { updateProfile } = require('../contexts/AuthContext').useAuth ? 
-    { updateProfile: null } : { updateProfile: null };
-  const { updateProfile: up } = (function() {
-    try { return require('../contexts/AuthContext').useAuth(); } catch(e) { return {}; }
-  })();
-
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
-  const { updateProfile } = (window.__bm_auth || {});
 
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(intakeUrl)}`;
