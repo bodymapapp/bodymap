@@ -3911,44 +3911,7 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
                 }}
-              >
-                BodyMap Subscription
-              </p>
-              <p
-                style={{
-                  fontFamily: F.body,
-                  fontSize: 12,
-                  color: C.textMid,
-                  lineHeight: 1.3,
-                }}
-              >
-                <strong>3 free sessions</strong>, then $5.99/month
-              </p>
-            </div>
-          </div>
-          <div
-            style={{ display: "flex", gap: 5, marginTop: 7, flexWrap: "wrap" }}
-          >
-            {["Session history", "Pattern tracking", "Any therapist"].map(
-              (f) => (
-                <span
-                  key={f}
-                  style={{
-                    background: "rgba(255,255,255,0.6)",
-                    color: C.text,
-                    padding: "2px 7px",
-                    borderRadius: 9,
-                    fontSize: 9,
-                    fontWeight: 700,
-                    fontFamily: F.body,
-                  }}
-                >
-                  ✓ {f}
-                </span>
-              )
-            )}
-          </div>
-        </div>
+
         <Card style={{ padding: "13px" }}>
           <p
             style={{
@@ -4494,10 +4457,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   const screens = {
     welcome: (
       <WelcomeScreen
-        onStart={(i) => {
-          setCI(i);
-          setScreen("front");
-        }}
+        onStart={onStart}
         sessions={sessions}
         onHistory={() => setScreen("history")}
         checkingReturn={checkingReturn}
