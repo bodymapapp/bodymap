@@ -312,7 +312,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       {/* Print styles */}
       <style>{`
         @media print {
-          header, nav, [class*="tab"], button { display: none !important; }
+          header, nav, [class*="tab"], button, .no-print { display: none !important; }
           body { background: white !important; }
           * { box-shadow: none !important; }
         }
