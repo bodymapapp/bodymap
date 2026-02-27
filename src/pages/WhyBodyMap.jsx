@@ -1,3 +1,5 @@
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -20,34 +22,7 @@ export default function WhyBodyMap() {
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       
       {/* Header */}
-      <nav style={{ 
-        background: 'white', 
-        borderBottom: '1px solid #e5e7eb', 
-        padding: '16px 0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '28px' }}>🌿</span>
-            <span style={{ fontSize: '24px', fontWeight: '700', color: C.forest }}>BodyMap</span>
-          </Link>
-          <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-            <Link to="/" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Home</Link>
-            <a href="/#features" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Features</a>
-            <Link to="/pricing" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Pricing</Link>
-            <Link to="/signup" style={{ 
-              background: C.sage, 
-              color: 'white', 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              textDecoration: 'none',
-              fontWeight: '600'
-            }}>Start Free Trial</Link>
-          </div>
-        </div>
-      </nav>
+      <Nav />
 
       {/* Hero */}
       <section style={{ background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`, padding: '80px 24px', textAlign: 'center', color: 'white' }}>
@@ -383,51 +358,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* Footer */}
-      <footer style={{ background: C.darkGray, color: 'white', padding: '60px 24px 40px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '40px', marginBottom: '40px' }}>
-            <div>
-              <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', textDecoration: 'none', color: 'white' }}>
-                <span style={{ fontSize: '24px' }}>🌿</span>
-                <span style={{ fontSize: '20px', fontWeight: '700' }}>BodyMap</span>
-              </Link>
-              <p style={{ fontSize: '14px', opacity: 0.8, lineHeight: '1.6' }}>
-                Professional intake for massage therapists. Elevate experience, boost retention.
-              </p>
-            </div>
-            
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '16px', opacity: 0.6 }}>PRODUCT</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <a href="/#features" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Features</a>
-                <Link to="/pricing" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Pricing</Link>
-                <Link to="/why-bodymap" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Why BodyMap</Link>
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '16px', opacity: 0.6 }}>COMPANY</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Link to="/contact" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Contact</Link>
-              </div>
-            </div>
-            
-            <div>
-              <div style={{ fontSize: '14px', fontWeight: '700', marginBottom: '16px', opacity: 0.6 }}>LEGAL</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <Link to="/privacy" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Privacy Policy</Link>
-                <Link to="/terms" style={{ color: 'white', textDecoration: 'none', opacity: 0.8, fontSize: '14px' }}>Terms of Service</Link>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '32px', textAlign: 'center' }}>
-            <div style={{ fontSize: '14px', opacity: 0.6 }}>
-              © 2026 BodyMap LLC. Made with 🌿 for massage therapists.
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -1,3 +1,5 @@
+import Nav from '../components/Nav';
+import Footer from '../components/Footer';
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -14,33 +16,7 @@ export default function Contact() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-      <nav style={{ 
-        background: 'white', 
-        borderBottom: '1px solid #e5e7eb', 
-        padding: '16px 0',
-        position: 'sticky',
-        top: 0,
-        zIndex: 1000
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '28px' }}>🌿</span>
-            <span style={{ fontSize: '24px', fontWeight: '700', color: C.forest }}>BodyMap</span>
-          </Link>
-          <div style={{ display: 'flex', gap: '32px', alignItems: 'center' }}>
-            <Link to="/" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Home</Link>
-            <Link to="/pricing" style={{ color: C.gray, textDecoration: 'none', fontWeight: '500' }}>Pricing</Link>
-            <Link to="/signup" style={{ 
-              background: C.sage, 
-              color: 'white', 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              textDecoration: 'none',
-              fontWeight: '600'
-            }}>Start Free Trial</Link>
-          </div>
-        </div>
-      </nav>
+      <Nav />
 
       <section style={{ padding: '80px 24px', background: C.lightGray, minHeight: '70vh' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
@@ -98,13 +74,7 @@ export default function Contact() {
         </div>
       </section>
 
-      <footer style={{ background: C.darkGray, color: 'white', padding: '40px 24px' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: '14px', opacity: 0.6 }}>
-            © 2026 BodyMap LLC. Made with 🌿 for massage therapists.
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }
