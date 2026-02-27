@@ -45,8 +45,8 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
         {[
           { label: "Total Sessions", value: sessions.length, color: C.forest },
-          { label: "Completed", value: sessions.filter(s => s.completed).length, color: C.sage },
-          { label: "Pending", value: sessions.filter(s => !s.completed).length, color: C.gold },
+          { label: "✅ Complete", value: sessions.filter(s => s.completed).length, color: C.sage },
+          { label: "🧭 Intake Done", value: sessions.filter(s => !s.completed).length, color: C.forest },
         ].map((stat, i) => (
           <div key={i} style={{ background: C.white, borderRadius: "12px", padding: "16px", border: `1px solid ${C.lightGray}`, textAlign: "center" }}>
             <p style={{ fontSize: "24px", fontWeight: "700", color: stat.color, margin: "0 0 4px 0" }}>{stat.value}</p>
@@ -107,11 +107,11 @@ function SessionRow({ session, onSelect }) {
         </div>
       </div>
       <span style={{
-        background: session.completed ? "#D1FAE5" : "#FEF3C7",
-        color: session.completed ? "#065F46" : "#92400E",
+        background: session.completed ? "#D1FAE5" : "#E8F5EE",
+        color: session.completed ? "#065F46" : "#2A5741",
         padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap"
       }}>
-        {session.completed ? "✓ Done" : "⏳ Pending"}
+        {session.completed ? "✅ Complete" : "🧭 Intake Done"}
       </span>
       <span style={{ color: hovered ? "#6B9E80" : "#E8E4DC", fontSize: "20px", transition: "color 0.15s" }}>›</span>
     </div>

@@ -12,11 +12,10 @@ const FREE_LIMIT = 5;
 
 function getStatus(client) {
   const days = client.days_since_visit;
-  if (days === null) return { label: "New", color: "#7C8DB5", bg: "#EEF0F8", icon: "🆕" };
-  if (days <= 30) return { label: "Active", color: "#2A5741", bg: "#E8F5EE", icon: "🟢" };
-  if (client.total_sessions >= 3 && days <= 60) return { label: "Regular", color: "#C9A84C", bg: "#FDF8EC", icon: "⭐" };
-  if (days > 90) return { label: "Inactive", color: "#9CA3AF", bg: "#F3F4F6", icon: "💤" };
-  return { label: "Active", color: "#2A5741", bg: "#E8F5EE", icon: "🟢" };
+  // 3 simple sticky categories
+  if (days === null || client.total_sessions === 0) return { label: "New", color: "#7C3AED", bg: "#F5F3FF", icon: "🌸" };
+  if (days > 60) return { label: "Lapsed", color: "#92400E", bg: "#FEF3C7", icon: "🍂" };
+  return { label: "Active", color: "#2A5741", bg: "#E8F5EE", icon: "🌱" };
 }
 
 export default function ClientList({ therapistId, onSelectClient, plan = "free" }) {
@@ -59,10 +58,9 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
 
   const filterFns = {
     all: () => true,
-    active: c => c.days_since_visit !== null && c.days_since_visit <= 30,
-    regular: c => c.total_sessions >= 3,
+    active: c => c.days_since_visit !== null && c.days_since_visit <= 60,
+    lapsed: c => c.days_since_visit !== null && c.days_since_visit > 60,
     new: c => c.days_since_visit === null || c.total_sessions === 0,
-    inactive: c => c.days_since_visit !== null && c.days_since_visit > 90,
   };
 
   const filtered = sortedClients.filter(c =>
@@ -102,7 +100,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
             <span style={{ fontSize: 18 }}>📋</span>
             <h3 style={{ fontFamily: "Georgia, serif", fontSize: "18px", fontWeight: "700", color: C.darkGray, margin: 0 }}>Today's Focus</h3>
-            <span style={{ background: C.forest, color: "#fff", fontSize: "11px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px" }}>{todayFocus.length} pending</span>
+            <span style={{ background: C.forest, color: "#fff", fontSize: "11px", fontWeight: "700", padding: "2px 8px", borderRadius: "20px" }}>🧭 {todayFocus.length} intake done</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
             {todayFocus.map(client => (
@@ -125,7 +123,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
 
         {/* Filter tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          {[["all","All"], ["active","🟢 Active"], ["regular","⭐ Regular"], ["new","🆕 New"], ["inactive","💤 Inactive"]].map(([key, label]) => (
+          {[["all","All"], ["active","🌱 Active"], ["lapsed","🍂 Lapsed"], ["new","🌸 New"]].map(([key, label]) => (
             <button key={key} onClick={() => setFilter(key)}
               style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${filter === key ? C.forest : C.lightGray}`,
                 background: filter === key ? C.forest : C.white, color: filter === key ? "#fff" : C.gray,
@@ -134,6 +132,31 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
             </button>
           ))}
         </div>
+
+        {/* Legend */}
+        <details style={{ marginBottom: 16, background: "#F5F0E8", borderRadius: 10, padding: "10px 14px", cursor: "pointer" }}>
+          <summary style={{ fontSize: 12, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
+            <span>❓</span> What do these categories mean?
+          </summary>
+          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 2px 0" }}>🌱 Active</p>
+              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Visited in the last 60 days</p>
+            </div>
+            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 2px 0" }}>🍂 Lapsed</p>
+              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No visit in 60+ days — reach out</p>
+            </div>
+            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#7C3AED", margin: "0 0 2px 0" }}>🌸 New</p>
+              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No completed sessions yet</p>
+            </div>
+            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 2px 0" }}>🧭 Intake Done</p>
+              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Client filled form in last 48hrs</p>
+            </div>
+          </div>
+        </details>
 
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px", color: C.gray }}>
@@ -202,8 +225,13 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight }) {
         </div>
       </div>
       {client.has_pending && (
-        <div style={{ marginTop: 10, background: "#FEF3C7", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#92400E" }}>
-          ⏳ Pending review — tap to view session
+        <div style={{ marginTop: 10, background: "#E8F5EE", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#2A5741" }}>
+          🧭 Intake done — tap to review session
+        </div>
+      )}
+      {client.has_old_pending && !client.has_pending && (
+        <div style={{ marginTop: 10, background: "#F3F4F6", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
+          ⚠️ Old incomplete session
         </div>
       )}
     </div>

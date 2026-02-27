@@ -91,13 +91,19 @@ export const db = {
       const lastSession = sorted[0];
       const daysSince = lastSession ? Math.floor((Date.now() - new Date(lastSession.created_at)) / 86400000) : null;
       const pending = sessions.filter(s => !s.completed);
+      // Only flag as "today's focus" if intake submitted within 48 hours
+      const recentPending = pending.filter(s => {
+        const hrs = (Date.now() - new Date(s.created_at)) / 3600000;
+        return hrs <= 48;
+      });
       return {
         ...c,
         total_sessions: sessions.length,
         completed_sessions: sessions.filter(s => s.completed).length,
         last_session_at: lastSession?.created_at || null,
         days_since_visit: daysSince,
-        has_pending: pending.length > 0,
+        has_pending: recentPending.length > 0,
+        has_old_pending: pending.length > recentPending.length,
       };
     });
   },
