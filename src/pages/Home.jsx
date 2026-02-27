@@ -217,6 +217,19 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Interactive Demo */}
+      <section style={{ background: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '12px' }}>
+            See It In Action
+          </h2>
+          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '40px' }}>
+            Click through both experiences — therapist and client.
+          </p>
+          <InteractiveDemo />
+        </div>
+      </section>
+
       {/* The Impact - BENEFITS FIRST */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
