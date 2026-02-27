@@ -4532,16 +4532,22 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   };
 
   return (
-    <div
-      style={{
-        maxWidth: 480,
-        margin: "0 auto",
-        minHeight: "100vh",
-        background: C.bg,
-        fontFamily: F.body,
-      }}
-    >
-      {screens[screen] || screens.welcome}
-    </div>
+    <>
+      <style>{`
+        .intake-desktop-bg { min-height:100vh; background:linear-gradient(155deg,#2A5741,#4A8B6B); display:flex; align-items:center; justify-content:center; padding:40px 20px; }
+        .intake-phone-frame { width:390px; min-height:780px; border-radius:48px; background:#F0EAD9; box-shadow:0 40px 80px rgba(0,0,0,0.4),0 0 0 12px #1A1A2E,0 0 0 14px #333; overflow:hidden; position:relative; }
+        .intake-notch { width:120px; height:28px; background:#1A1A2E; border-radius:0 0 20px 20px; position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:10; }
+        .intake-content { padding-top:28px; min-height:100%; background:#F0EAD9; }
+        @media(max-width:767px) { .intake-desktop-bg { background:#F0EAD9; padding:0; align-items:flex-start; } .intake-phone-frame { width:100%; min-height:100vh; border-radius:0; box-shadow:none; } .intake-notch { display:none; } .intake-content { padding-top:0; } }
+      `}</style>
+      <div className="intake-desktop-bg">
+        <div className="intake-phone-frame">
+          <div className="intake-notch" />
+          <div className="intake-content" style={{fontFamily:F.body}}>
+            {screens[screen] || screens.welcome}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
