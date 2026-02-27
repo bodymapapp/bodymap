@@ -337,6 +337,47 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
       </div>
 
+      {/* Client Feedback */}
+      <div style={{ background:C.white, borderRadius:"14px", padding:"24px", border:"1px solid #E8E4DC", boxShadow:"0 1px 4px rgba(0,0,0,0.05)", marginTop:"16px" }}>
+        <h3 style={{ fontFamily:"Georgia, serif", fontSize:"17px", fontWeight:"700", color:C.darkGray, marginBottom:"16px" }}>💬 Client Feedback</h3>
+        {feedback ? (
+          <div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px", marginBottom:"12px" }}>
+              {[
+                { label:"Pressure", value: feedback.pressure_rating ? feedback.pressure_rating.replace(/_/g," ") : null },
+                { label:"Focus Areas", value: feedback.focus_rating },
+                { label:"Overall", value: feedback.overall_rating ? feedback.overall_rating + "/5 ⭐" : null },
+                { label:"Communication", value: feedback.communication_rating },
+                { label:"Return", value: feedback.return_likelihood },
+              ].filter(f => f.value).map((f, i) => (
+                <div key={i} style={{ background:C.beige, borderRadius:"10px", padding:"10px 12px" }}>
+                  <p style={{ fontSize:"10px", fontWeight:"700", color:C.gray, textTransform:"uppercase", margin:"0 0 3px 0" }}>{f.label}</p>
+                  <p style={{ fontSize:"14px", fontWeight:"600", color:C.darkGray, margin:0, textTransform:"capitalize" }}>{f.value}</p>
+                </div>
+              ))}
+            </div>
+            {feedback.client_comment && (
+              <div style={{ background:"#FFFBEB", borderRadius:"10px", padding:"12px 14px", border:"1px solid #D97706" }}>
+                <p style={{ fontSize:"11px", fontWeight:"700", color:"#D97706", margin:"0 0 4px 0" }}>📝 CLIENT COMMENT</p>
+                <p style={{ fontSize:"13px", color:C.darkGray, margin:0, fontStyle:"italic" }}>"{feedback.client_comment}"</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            <p style={{ fontSize:"13px", color:C.gray, marginBottom:"14px" }}>No feedback yet. Send this link to your client after the session.</p>
+            {feedbackLink && (
+              <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                <div style={{ flex:1, background:C.beige, borderRadius:"8px", padding:"10px 12px", fontSize:"12px", color:C.gray, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{feedbackLink}</div>
+                <button onClick={copyLink} style={{ background:"#2A5741", color:"#fff", border:"none", padding:"10px 16px", borderRadius:"8px", fontSize:"12px", fontWeight:"700", cursor:"pointer", whiteSpace:"nowrap" }}>
+                  {linkCopied ? "✓ Copied!" : "Copy Link"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Print styles */}
       <style>{`
         @media print {
