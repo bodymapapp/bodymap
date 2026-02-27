@@ -4471,6 +4471,8 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
           setMode={setMode}
           onNext={() => setScreen("prefs")}
           onBack={() => setScreen("front")}
+          sessions={[]}
+          onApply={() => {}}
         />
       </div>
     ),
