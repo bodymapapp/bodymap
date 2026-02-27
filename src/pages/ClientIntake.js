@@ -58,6 +58,8 @@ export default function ClientIntake() {
         draping: intakeData.draping || 'standard',
         oil_pref: intakeData.oilPref || 'none',
         med_flag: intakeData.medFlag || 'none',
+        med_note: intakeData.medNote || null,
+        client_notes: intakeData.notes || null,
         completed: false
       });
 

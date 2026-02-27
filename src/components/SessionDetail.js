@@ -182,7 +182,9 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     { label: "Conversation", value: session.conversation, icon: "💬" },
     { label: "Draping", value: session.draping, icon: "🛏️" },
     { label: "Oil Preference", value: session.oil_pref !== "none" ? session.oil_pref : null, icon: "🌿" },
-    { label: "Medical Flag", value: session.med_flag !== "none" ? session.med_flag : null, icon: "⚕️" },
+    { label: "Medical Flag", value: session.med_flag !== "none" ? session.med_flag : null, icon: "⚕️", urgent: true },
+    { label: "Medical Details", value: session.med_note || null, icon: "🚨", urgent: true },
+    { label: "Client Notes", value: session.client_notes || null, icon: "📝", highlight: true },
   ].filter(p => p.value);
 
   return (
