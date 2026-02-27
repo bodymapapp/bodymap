@@ -4390,7 +4390,9 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
         conversation: prefs.conversation,
         draping: prefs.draping,
         oilPref: prefs.oilPref,
-        medFlag: prefs.medFlag
+        medFlag: prefs.medFlag,
+        medNote: prefs.medNote || null,
+        notes: notes || null
       });
     } else {
       // Default behavior - show summary screen
@@ -4469,8 +4471,6 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
           setMode={setMode}
           onNext={() => setScreen("prefs")}
           onBack={() => setScreen("front")}
-          sessions={sessions}
-          onApply={handleApply}
         />
       </div>
     ),
