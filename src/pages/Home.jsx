@@ -2,6 +2,7 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import InteractiveDemo from '../components/InteractiveDemo';
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
