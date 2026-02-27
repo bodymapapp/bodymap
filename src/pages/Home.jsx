@@ -2,7 +2,6 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import InteractiveDemo from '../components/InteractiveDemo';
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -218,16 +217,55 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Interactive Demo */}
+      {/* Try It Section */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '12px' }}>
-            See It In Action
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+            Try It Right Now
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '40px' }}>
-            Click through both experiences — therapist and client.
+          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
+            No signup needed. Experience BodyMap from both sides.
           </p>
-          <InteractiveDemo />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+            {/* Client card */}
+            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+                Client Experience
+              </h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
+                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
+                Works on your phone right now →
+              </p>
+              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
+                Try Client Intake →
+              </a>
+            </div>
+
+            {/* Therapist card */}
+            <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+                Therapist Dashboard
+              </h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
+                See exactly what you will see before each session — client body map, preferences, medical flags, session history, and feedback all in one place.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
+                Live demo dashboard, no login needed →
+              </p>
+              <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
+                See the Dashboard →
+              </a>
+            </div>
+
+          </div>
+          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '24px' }}>
+            🔒 Demo data only — nothing is saved
+          </p>
         </div>
       </section>
 
