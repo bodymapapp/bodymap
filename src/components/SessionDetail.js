@@ -143,10 +143,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     if (history.length < 2) return [];
     const result = [];
     // Medical flags - highest priority
-    const medFlags = history.filter(s => s.med_flag && s.med_flag !== "none").map(s => s.med_flag);
-    if (medFlags.length > 0) {
-      const unique = [...new Set(medFlags)];
-      result.push({ icon: "🚨", text: `Medical flag: ${unique.join(", ")} — always check before session`, urgent: true });
+    const medSessions = history.filter(s => s.med_flag && s.med_flag !== "none");
+    if (medSessions.length > 0) {
+      const notes = medSessions.map(s => s.med_note).filter(Boolean);
+      const uniqueNotes = [...new Set(notes)];
+      const noteText = uniqueNotes.length > 0 ? `: "${uniqueNotes[uniqueNotes.length-1]}"` : "";
+      result.push({ icon: "🚨", text: `Medical flag${noteText} — always check before session`, urgent: true });
     }
 
     const pressures = history.filter(s => s.pressure).map(s => s.pressure);
