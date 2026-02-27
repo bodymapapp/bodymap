@@ -81,6 +81,69 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
 
   return (
     <div>
+      {/* Legend - top of dashboard */}
+      <details open style={{ marginBottom: 20, background: "#F5F0E8", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}>
+        <summary style={{ fontSize: 13, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
+          ❓ Quick Reference — Session States &amp; Client Categories
+        </summary>
+        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Session States - Left */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 8px 0" }}>Session States</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🧭</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 1px 0" }}>Intake Done</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Client filled form in last 48hrs — review now</p>
+                </div>
+              </div>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>✅</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#065F46", margin: "0 0 1px 0" }}>Complete</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Session reviewed and marked done</p>
+                </div>
+              </div>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🔔</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 1px 0" }}>Pending Intake</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Link sent, client hasn't filled form yet</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Client Categories - Right */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 8px 0" }}>Client Categories</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🌱</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 1px 0" }}>Active</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Visited in the last 60 days</p>
+                </div>
+              </div>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🍂</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 1px 0" }}>Lapsed</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No visit in 60+ days — time to reach out</p>
+                </div>
+              </div>
+              <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <span style={{ fontSize: 16 }}>🌸</span>
+                <div>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: "#7C3AED", margin: "0 0 1px 0" }}>New</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No completed sessions yet</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </details>
+
       {/* Upgrade banner */}
       {!isPaid && clients.length > FREE_LIMIT && (
         <div style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 24px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
@@ -132,31 +195,6 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
             </button>
           ))}
         </div>
-
-        {/* Legend */}
-        <details style={{ marginBottom: 16, background: "#F5F0E8", borderRadius: 10, padding: "10px 14px", cursor: "pointer" }}>
-          <summary style={{ fontSize: 12, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6 }}>
-            <span>❓</span> What do these categories mean?
-          </summary>
-          <div style={{ marginTop: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 2px 0" }}>🌱 Active</p>
-              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Visited in the last 60 days</p>
-            </div>
-            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 2px 0" }}>🍂 Lapsed</p>
-              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No visit in 60+ days — reach out</p>
-            </div>
-            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#7C3AED", margin: "0 0 2px 0" }}>🌸 New</p>
-              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No completed sessions yet</p>
-            </div>
-            <div style={{ background: "white", borderRadius: 8, padding: "8px 10px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 2px 0" }}>🧭 Intake Done</p>
-              <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Client filled form in last 48hrs</p>
-            </div>
-          </div>
-        </details>
 
         {filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px", color: C.gray }}>
