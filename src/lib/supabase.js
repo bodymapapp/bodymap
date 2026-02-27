@@ -80,17 +80,26 @@ export const db = {
     // Fetch clients with real session counts from the sessions table
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('*, sessions(id, completed)')
+      .select('*, sessions(id, completed, created_at)')
       .eq('therapist_id', therapistId)
       .order('created_at', { ascending: false });
     if (error) throw error;
 
-    // Map to attach derived counts so components can use total_sessions directly
-    return (clients || []).map(c => ({
-      ...c,
-      total_sessions: (c.sessions || []).length,
-      completed_sessions: (c.sessions || []).filter(s => s.completed).length,
-    }));
+    return (clients || []).map(c => {
+      const sessions = c.sessions || [];
+      const sorted = [...sessions].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+      const lastSession = sorted[0];
+      const daysSince = lastSession ? Math.floor((Date.now() - new Date(lastSession.created_at)) / 86400000) : null;
+      const pending = sessions.filter(s => !s.completed);
+      return {
+        ...c,
+        total_sessions: sessions.length,
+        completed_sessions: sessions.filter(s => s.completed).length,
+        last_session_at: lastSession?.created_at || null,
+        days_since_visit: daysSince,
+        has_pending: pending.length > 0,
+      };
+    });
   },
 
   async getClientHistory(clientId) {
