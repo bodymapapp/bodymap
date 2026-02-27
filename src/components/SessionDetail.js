@@ -98,10 +98,29 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const [saved, setSaved] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [history, setHistory] = useState([]);
+  const [feedback, setFeedback] = useState(null);
+  const [feedbackLink, setFeedbackLink] = useState("");
+  const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
     loadHistory();
+    loadFeedback();
+    supabase.from("therapists").select("custom_url").eq("id", session.therapist_id).maybeSingle()
+      .then(({ data: t }) => { if (t) setFeedbackLink(window.location.origin + "/" + t.custom_url + "/feedback/" + session.id); });
   }, [client?.id]);
+
+  async function loadFeedback() {
+    try {
+      const { data } = await supabase.from("feedback").select("*").eq("session_id", session.id).maybeSingle();
+      setFeedback(data);
+    } catch(e) {}
+  }
+
+  function copyLink() {
+    navigator.clipboard.writeText(feedbackLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
+  }
 
   async function loadHistory() {
     try {

@@ -102,6 +102,12 @@ export const db = {
     });
   },
 
+  async getFeedback(sessionId) {
+    const { data, error } = await supabase.from("feedback").select("*").eq("session_id", sessionId).maybeSingle();
+    if (error) throw error;
+    return data;
+  },
+
   async getClientHistory(clientId) {
     const { data, error } = await supabase
       .from('sessions')

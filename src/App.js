@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ClientIntake from './pages/ClientIntake';
 import ThankYou from './pages/ThankYou';
+import Feedback from './pages/Feedback';
 
 function App() {
   return (
@@ -33,6 +34,7 @@ function App() {
           <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><Dashboard view="session-detail" /></ProtectedRoute>} />
           <Route path="/thank-you" element={<ThankYou />} />
+          <Route path="/:customUrl/feedback/:sessionId" element={<Feedback />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
       </Router>
