@@ -136,89 +136,6 @@ function SettingsPanel({ therapist }) {
           )}
         </div>
       </div>
-      {/* Floating Send Intake Button */}
-      {(view === 'clients' || view === 'sessions' || view === 'session-detail') && (
-        <button
-          onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
-          style={{
-            position: 'fixed', bottom: '32px', right: '32px',
-            background: '#2A5741', color: 'white',
-            border: 'none', borderRadius: '50px',
-            padding: '16px 28px',
-            fontSize: '16px', fontWeight: '700',
-            cursor: 'pointer',
-            boxShadow: '0 8px 24px rgba(42,87,65,0.4)',
-            display: 'flex', alignItems: 'center', gap: '10px',
-            zIndex: 1000,
-          }}
-        >
-          📤 Send Intake
-        </button>
-      )}
-
-      {showSendModal && (
-        <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 2000, padding: '24px'
-        }} onClick={() => setShowSendModal(false)}>
-          <div style={{
-            background: 'white', borderRadius: '20px',
-            padding: '32px', width: '100%', maxWidth: '440px',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.3)'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
-              <div>
-                <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', margin: '0 0 4px 0' }}>📤 Send Intake Form</h2>
-                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Client fills it on their phone in 60 seconds</p>
-              </div>
-              <button onClick={() => setShowSendModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}>✕</button>
-            </div>
-            <div style={{ background: '#F5F0E8', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your intake link</p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all' }}>
-                {window.location.origin}/{therapist?.custom_url}
-              </p>
-            </div>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#1A1A2E', display: 'block', marginBottom: '8px' }}>Client phone number (optional)</label>
-              <input
-                type="tel"
-                value={sendPhone}
-                onChange={e => setSendPhone(e.target.value)}
-                placeholder="(512) 555-1234"
-                autoFocus
-                style={{ width: '100%', padding: '12px 16px', border: '2px solid #E8E4DC', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              
-                href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Please fill out my quick intake form before your session: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined}
-                onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) e.preventDefault(); else setTimeout(() => setShowSendModal(false), 500); }}
-                style={{
-                  display: 'block', textAlign: 'center',
-                  background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0',
-                  color: 'white', padding: '14px',
-                  borderRadius: '50px', fontWeight: '700',
-                  fontSize: '15px', textDecoration: 'none',
-                  cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed'
-                }}
-              >
-                💬 Open in Messages →
-              </a>
-              <button
-                onClick={() => { navigator.clipboard.writeText(window.location.origin + '/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); }}
-                style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
-              >
-                {sendCopied ? '✓ Copied!' : '📋 Copy Link Only'}
-              </button>
-            </div>
-            <p style={{ fontSize: '12px', color: '#9CA3AF', textAlign: 'center', marginTop: '16px', marginBottom: 0 }}>🔒 Only shared with you</p>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -230,6 +147,9 @@ export default function Dashboard({ view }) {
   const [stats, setStats] = useState({ clients: 0, sessions: 0 });
   const [client, setClient] = useState(null);
   const [session, setSession] = useState(null);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [sendPhone, setSendPhone] = useState("");
+  const [sendCopied, setSendCopied] = useState(false);
 
   useEffect(() => {
     if (therapist?.id) loadStats();
