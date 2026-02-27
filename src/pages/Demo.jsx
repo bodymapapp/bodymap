@@ -4442,8 +4442,8 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
           setMode={setMode}
           onNext={() => setScreen("back")}
           onBack={null}
-          sessions={sessions}
-          onApply={handleApply}
+          sessions={[]}
+          onApply={null}
         />
       </div>
     ),
