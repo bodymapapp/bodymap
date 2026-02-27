@@ -8,10 +8,14 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function ClientList({ therapistId, onSelectClient }) {
+const FREE_LIMIT = 5;
+
+export default function ClientList({ therapistId, onSelectClient, plan = "free" }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const isPaid = plan === "pro" || plan === "clinic";
+  const clientLimit = isPaid ? Infinity : FREE_LIMIT;
 
   useEffect(() => {
     if (therapistId) loadClients();
@@ -71,12 +75,48 @@ export default function ClientList({ therapistId, onSelectClient }) {
           <p style={{ fontSize: "14px", color: C.gray }}>Share your intake link to get started</p>
         </div>
       ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
-          {filtered.map(client => (
-            <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} />
-          ))}
+        <div>
+          {!isPaid && clients.length > FREE_LIMIT && (
+            <div style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "20px 24px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+              <div>
+                <p style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: "#fff", margin: "0 0 4px 0" }}>🎉 Your practice is growing!</p>
+                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Pro to unlock all {clients.length - FREE_LIMIT} additional client{clients.length - FREE_LIMIT > 1 ? "s" : ""} and get unlimited access.</p>
+              </div>
+              <button style={{ background: "#C9A84C", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "50px", fontWeight: "700", fontSize: "14px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                Upgrade to Pro →
+              </button>
+            </div>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "16px" }}>
+            {filtered.map((client, idx) => {
+              const isLocked = !isPaid && idx >= FREE_LIMIT;
+              return isLocked
+                ? <LockedClientCard key={client.id} client={client} initials={initials} avatarColor={avatarColor} />
+                : <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} />;
+            })}
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LockedClientCard({ client, initials, avatarColor }) {
+  return (
+    <div style={{ background: "#F9F9F9", borderRadius: "14px", padding: "20px", border: "1.5px dashed #D4C9B0", opacity: 0.75, position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(245,240,232,0.6)", backdropFilter: "blur(1px)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, zIndex: 2 }}>
+        <span style={{ fontSize: 22 }}>🔒</span>
+        <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: 0 }}>Upgrade to Pro to unlock</p>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px", marginBottom: "14px", filter: "blur(3px)" }}>
+        <div style={{ width: "44px", height: "44px", borderRadius: "50%", background: avatarColor(client.name), color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", fontWeight: "700" }}>
+          {initials(client.name)}
+        </div>
+        <div>
+          <p style={{ fontSize: "16px", fontWeight: "700", margin: "0 0 2px 0" }}>{client.name}</p>
+          <p style={{ fontSize: "13px", margin: 0 }}>{client.phone || "—"}</p>
+        </div>
+      </div>
     </div>
   );
 }
