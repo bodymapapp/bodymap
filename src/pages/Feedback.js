@@ -36,9 +36,17 @@ export default function Feedback() {
       const { data: t } = await supabase.from("therapists").select("*").eq("custom_url", customUrl).maybeSingle();
       if (!t) { setLoading(false); return; }
       setTherapist(t);
-      const { data: s } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
-      setSession(s);
-      const { data: existing } = await supabase.from("feedback").select("id").eq("session_id", sessionId).maybeSingle();
+      // Try feedback_code first, fall back to id
+      let sessionData = null;
+      const { data: byCode } = await supabase.from("sessions").select("*").eq("feedback_code", sessionId).maybeSingle();
+      if (byCode) { sessionData = byCode; }
+      else {
+        const { data: byId } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
+        sessionData = byId;
+      }
+      setSession(sessionData);
+      const realSessionId = sessionData?.id || sessionId;
+      const { data: existing } = await supabase.from("feedback").select("id").eq("session_id", realSessionId).maybeSingle();
       if (existing) setAlreadySubmitted(true);
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
@@ -48,7 +56,7 @@ export default function Feedback() {
     if (Object.keys(ratings).length < DIMS.length) { alert("Please answer all questions."); return; }
     setSubmitting(true);
     try {
-      await supabase.from("feedback").insert([{ session_id: sessionId, therapist_id: therapist.id, ...ratings, client_comment: comment || null }]);
+      await supabase.from("feedback").insert([{ session_id: session.id, therapist_id: therapist.id, ...ratings, client_comment: comment || null }]);
       setSubmitted(true);
     } catch(e) { console.error(e); }
     finally { setSubmitting(false); }

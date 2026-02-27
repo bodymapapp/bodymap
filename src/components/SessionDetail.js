@@ -106,7 +106,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     loadHistory();
     loadFeedback();
     supabase.from("therapists").select("custom_url").eq("id", session.therapist_id).maybeSingle()
-      .then(({ data: t }) => { if (t) setFeedbackLink(window.location.origin + "/" + t.custom_url + "/feedback/" + session.id); });
+      .then(({ data: t }) => {
+        if (t) {
+          const code = session.feedback_code || session.id;
+          setFeedbackLink(window.location.origin + "/" + t.custom_url + "/feedback/" + code);
+        }
+      });
   }, [client?.id]);
 
   async function loadFeedback() {
