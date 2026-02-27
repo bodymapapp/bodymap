@@ -149,11 +149,22 @@ export default function Dashboard({ view }) {
   const [session, setSession] = useState(null);
   const [showSendModal, setShowSendModal] = useState(false);
   const [showBookmarkNudge, setShowBookmarkNudge] = useState(false);
+  const [showBookmarkNudge, setShowBookmarkNudge] = useState(false);
   const [sendPhone, setSendPhone] = useState('');
   const [sendCopied, setSendCopied] = useState(false);
 
   useEffect(() => {
     if (therapist?.id) loadStats();
+    // Auto-open Send Intake modal on first login of the day
+    if (localStorage.getItem('showSendOnLoad') === 'true') {
+      localStorage.removeItem('showSendOnLoad');
+      setTimeout(() => setShowSendModal(true), 800);
+    }
+    // Show bookmark nudge on first ever login
+    if (localStorage.getItem('showBookmarkNudge') === 'true') {
+      localStorage.removeItem('showBookmarkNudge');
+      setShowBookmarkNudge(true);
+    }
     // Auto-open Send Intake modal on first login of the day
     if (localStorage.getItem('showSendOnLoad') === 'true') {
       localStorage.removeItem('showSendOnLoad');
@@ -223,6 +234,15 @@ export default function Dashboard({ view }) {
         </div>
       </header>
 
+      {showBookmarkNudge && (
+        <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 20 }}>📲</span>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant 3-second access — bookmark this page or use Share → Add to Home Screen</p>
+          </div>
+          <button onClick={() => setShowBookmarkNudge(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>Got it ✓</button>
+        </div>
+      )}
       {showBookmarkNudge && (
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

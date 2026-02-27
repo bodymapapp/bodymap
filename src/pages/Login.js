@@ -36,6 +36,14 @@ export default function Login() {
       const isFirstEver = !localStorage.getItem('hasLoggedInBefore');
       if (isFirstEver) localStorage.setItem('showBookmarkNudge', 'true');
       localStorage.setItem('hasLoggedInBefore', 'true');
+      const isFirstLoginToday = localStorage.getItem('lastLoginDate') !== new Date().toDateString();
+      if (isFirstLoginToday) {
+        localStorage.setItem('showSendOnLoad', 'true');
+        localStorage.setItem('lastLoginDate', new Date().toDateString());
+      }
+      const isFirstEver = !localStorage.getItem('hasLoggedInBefore');
+      if (isFirstEver) localStorage.setItem('showBookmarkNudge', 'true');
+      localStorage.setItem('hasLoggedInBefore', 'true');
       window.location.href = '/dashboard';
     } else {
       setError(result.error);
