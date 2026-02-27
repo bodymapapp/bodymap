@@ -123,96 +123,96 @@ export default function Home() {
         </div>
       </section>
 
-      {/* How It Works - MOVED UP */}
+      {/* How It Works */}
       <section id="demo" style={{ background: C.lavenderPale, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             How BodyMap Works
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '60px' }}>
-            Three simple steps. Zero complexity. Immediate impact.
+          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '64px' }}>
+            Three simple steps. Immediate impact for you and your clients.
           </p>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px', marginBottom: '60px' }}>
-            {[
-              {
-                num: "1",
-                title: "Share Your Link",
-                desc: "Text or email your custom BodyMap link to clients",
-                detail: "mybodymap.app/yourbusiness",
-                image: "📱"
-              },
-              {
-                num: "2",
-                title: "Client Fills Visual Intake",
-                desc: "They tap their body map and set preferences in 60 seconds",
-                detail: "Works on any phone. No app needed.",
-                image: "🗺️"
-              },
-              {
-                num: "3",
-                title: "You See Their Needs",
-                desc: "Review their visual map and preferences on your dashboard",
-                detail: "Personalized session ready to go.",
-                image: "💻"
-              }
-            ].map((step) => (
-              <div key={step.num} style={{ textAlign: 'center' }}>
-                <div style={{ 
-                  width: '60px', 
-                  height: '60px', 
-                  borderRadius: '50%', 
-                  background: C.lavender,
-                  color: 'white',
-                  fontSize: '24px',
-                  fontWeight: '700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  margin: '0 auto 20px'
-                }}>
-                  {step.num}
-                </div>
-                <div style={{ fontSize: '56px', marginBottom: '16px' }}>{step.image}</div>
-                <h3 style={{ fontSize: '22px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                  {step.title}
-                </h3>
-                <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.5', marginBottom: '8px' }}>
-                  {step.desc}
-                </p>
-                <p style={{ fontSize: '14px', color: '#9CA3AF', fontStyle: 'italic' }}>
-                  {step.detail}
-                </p>
-              </div>
-            ))}
-          </div>
 
-          {/* Screenshot Demo Placeholder */}
-          <div style={{ 
-            background: 'white', 
-            borderRadius: '12px', 
-            padding: '40px',
-            border: '1px solid #E5E7EB',
-            marginBottom: '20px'
-          }}>
-            <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '24px' }}>
-              See BodyMap in Action
-            </h3>
-            <div style={{ 
-              background: C.lightGray,
-              borderRadius: '8px',
-              padding: '80px 40px',
-              border: '2px dashed #D1D5DB',
-              textAlign: 'center'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '16px' }}>📸</div>
-              <p style={{ fontSize: '16px', color: C.gray, marginBottom: '8px' }}>
-                Demo screenshots coming here
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+
+            {/* Step 1 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>1</div>
+              {/* SVG: Settings/link setup */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                <rect x="20" y="28" width="40" height="28" rx="4" fill="white" stroke="#2A5741" strokeWidth="2"/>
+                <line x1="20" y1="36" x2="60" y2="36" stroke="#2A5741" strokeWidth="2"/>
+                <circle cx="26" cy="32" r="2" fill="#6B9E80"/>
+                <circle cx="33" cy="32" r="2" fill="#6B9E80"/>
+                <rect x="26" y="42" width="20" height="3" rx="1.5" fill="#6B9E80"/>
+                <rect x="26" y="49" width="14" height="3" rx="1.5" fill="#C9A84C"/>
+                <rect x="48" y="42" width="8" height="10" rx="2" fill="#2A5741"/>
+                <line x1="40" y1="56" x2="40" y2="62" stroke="#2A5741" strokeWidth="2"/>
+                <line x1="32" y1="62" x2="48" y2="62" stroke="#2A5741" strokeWidth="2"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 2 Minutes</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Sign up, go to <strong>Settings</strong>, and copy your unique intake link — something like <em>bodymap.app/yourbusiness</em>. That's it.
               </p>
-              <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
-                (Client intake flow → Body map interface → Therapist dashboard)
-              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Text or email it to each client before their session →</p>
             </div>
+
+            {/* Step 2 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>2</div>
+              {/* SVG: Body with green/red dots */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                {/* Body silhouette */}
+                <circle cx="40" cy="22" r="7" fill="#D4C9B0"/>
+                <rect x="32" y="30" width="16" height="18" rx="4" fill="#D4C9B0"/>
+                <rect x="22" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
+                <rect x="49" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
+                <rect x="33" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
+                <rect x="41" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
+                {/* Green focus dots */}
+                <circle cx="40" cy="35" r="4" fill="#22C55E" opacity="0.9"/>
+                <circle cx="33" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
+                <circle cx="47" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
+                {/* Red avoid dots */}
+                <circle cx="36" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
+                <circle cx="44" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Client Maps Their Body</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Client opens the link on any phone — no app needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Done in under 60 seconds →</p>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>3</div>
+              {/* SVG: Laptop + phone side by side */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                {/* Laptop */}
+                <rect x="14" y="28" width="34" height="22" rx="2" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
+                <rect x="16" y="30" width="30" height="18" rx="1" fill="#E8F5EE"/>
+                <line x1="10" y1="50" x2="52" y2="50" stroke="#2A5741" strokeWidth="2"/>
+                <rect x="26" y="32" width="10" height="3" rx="1" fill="#6B9E80"/>
+                <rect x="26" y="37" width="14" height="2" rx="1" fill="#C9A84C"/>
+                <rect x="26" y="41" width="12" height="2" rx="1" fill="#9CA3AF"/>
+                {/* Phone */}
+                <rect x="54" y="30" width="13" height="22" rx="3" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
+                <rect x="56" y="33" width="9" height="14" rx="1" fill="#E8F5EE"/>
+                <circle cx="60.5" cy="50" r="1.5" fill="#2A5741"/>
+                <circle cx="60" cy="35" r="2" fill="#22C55E"/>
+                <circle cx="63" cy="38" r="2" fill="#EF4444"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You Deliver. Then Collect Feedback.</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Review their body map on any device — phone or laptop — before the session. Deliver a personalized massage. After, send a feedback link to keep improving.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Every session gets better than the last →</p>
+            </div>
+
           </div>
         </div>
       </section>
