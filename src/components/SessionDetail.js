@@ -261,8 +261,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   ].filter(p => p.value);
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px" }}>
+    <div style={{ paddingBottom: "100px" }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .bm-session-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
         <button onClick={onBack} style={{ background: "transparent", border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>
           ← Sessions
         </button>
@@ -272,7 +277,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
           <button onClick={() => window.print()} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>🖨️ Print Brief</button>
           <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
             {session.completed ? "✓ Completed" : "⏳ Pending Review"}
@@ -290,7 +295,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+      <div className="bm-session-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
             <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, marginBottom: "16px", letterSpacing: "-0.3px" }}>Client Preferences</h3>
