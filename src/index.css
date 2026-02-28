@@ -17,3 +17,18 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* BodyMap Mobile Fixes */
+* { box-sizing: border-box; }
+body { overflow-x: hidden; }
+
+@media (max-width: 640px) {
+  .bm-ref-grid { grid-template-columns: 1fr !important; }
+  .bm-upgrade-banner { flex-direction: column !important; align-items: flex-start !important; }
+  .bm-upgrade-banner a { width: 100% !important; text-align: center !important; }
+  .bm-dash-pad { padding: 16px 12px !important; }
+  .bm-profile-grid { grid-template-columns: 1fr !important; }
+  .bm-session-grid { grid-template-columns: 1fr !important; }
+  .bm-grid-3 { grid-template-columns: 1fr !important; }
+  .bm-table-wrap { overflow-x: auto !important; }
+}

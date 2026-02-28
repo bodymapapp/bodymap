@@ -86,7 +86,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
         <summary style={{ fontSize: 13, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
           ❓ Quick Reference — Session States &amp; Client Categories
         </summary>
-        <div style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+        <div className="bm-ref-grid" style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {/* Session States - Left */}
           <div>
             <p style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.5px", margin: "0 0 8px 0" }}>Session States</p>
@@ -146,7 +146,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
 
       {/* Upgrade banner */}
       {!isPaid && clients.length > FREE_LIMIT && (
-        <div style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 24px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+        <div className="bm-upgrade-banner" style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 20px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <p style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: "#fff", margin: "0 0 3px 0" }}>🎉 Your practice is growing!</p>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Silver for unlimited clients + pattern intelligence.</p>
