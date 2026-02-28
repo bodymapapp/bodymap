@@ -130,9 +130,9 @@ function SettingsPanel({ therapist }) {
             </p>
           </div>
           {therapist?.plan === 'free' && (
-            <button style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-              Upgrade ↗
-            </button>
+            <a href='https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00' target='_blank' rel='noopener noreferrer' style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+              Upgrade to Silver ↗
+            </a>
           )}
         </div>
       </div>

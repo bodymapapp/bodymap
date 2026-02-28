@@ -55,7 +55,8 @@ export default function Pricing() {
         "Priority email support (24hr)"
       ],
       cta: "Start 14-Day Free Trial",
-      ctaLink: "/signup?plan=silver"
+      ctaLink: "https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00",
+      external: true
     },
     {
       name: "Gold",
@@ -229,6 +230,22 @@ export default function Pricing() {
                     <div style={{ display: 'block', background: '#F3F4F6', color: '#9CA3AF', border: '2px solid #E5E7EB', padding: '14px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '700', textAlign: 'center', marginBottom: '32px', cursor: 'not-allowed' }}>
                       🔒 Coming Soon — Join Waitlist
                     </div>
+                  ) : tier.external ? (
+                    <a href={tier.ctaLink} target="_blank" rel="noopener noreferrer" style={{
+                      display: 'block',
+                      background: tier.popular ? C.lavender : 'white',
+                      color: tier.popular ? 'white' : C.lavender,
+                      border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
+                      padding: '14px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      marginBottom: '32px'
+                    }}>
+                      {tier.cta}
+                    </a>
                   ) : (
                     <Link to={tier.ctaLink} style={{
                       display: 'block',
