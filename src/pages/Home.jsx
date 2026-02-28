@@ -255,10 +255,10 @@ export default function Home() {
                 See exactly what you will see before each session — client body map, preferences, medical flags, session history, and feedback all in one place.
               </p>
               <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Live demo dashboard, no login needed →
+                Free account · no credit card · live in 30 seconds →
               </p>
               <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                See the Dashboard →
+                Create Free Account →
               </a>
             </div>
 
@@ -315,17 +315,17 @@ export default function Home() {
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>⚡ BENEFIT #3</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-                Give Clients 8 Extra Minutes
+                Body Intelligence That Builds Over Time
               </h3>
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
-                Review their visual intake in 2 minutes. Spend the other 58 minutes on hands-on therapy. No rushed table conversations. Full session time for what matters most.
+                Every session adds to a client's body intelligence profile. BodyMap shows you which areas they consistently focus on, which they avoid, and how confident that pattern is — across every session you've ever had with them.
               </p>
-              <div style={{ background: C.lightGray, borderRadius: '8px', padding: '16px' }}>
-                <div style={{ fontSize: '13px', color: C.gray, marginBottom: '8px' }}>Time Breakdown Per Session:</div>
-                <div style={{ fontSize: '14px', color: C.darkGray, lineHeight: '1.8' }}>
-                  • Quick review: 2 min<br/>
-                  • Hands-on therapy: 58 min<br/>
-                  • <strong>8 extra minutes of care</strong>
+              <div style={{ background: '#ECFDF5', borderRadius: '8px', padding: '16px', border: '1px solid #A7F3D0' }}>
+                <div style={{ fontSize: '13px', color: C.green, fontWeight: '600', marginBottom: '8px' }}>Example — After 5 Sessions:</div>
+                <div style={{ fontSize: '14px', color: C.darkGray, lineHeight: '1.9' }}>
+                  🔥 Lower Back — 5/5 sessions · <strong>100%</strong><br/>
+                  🔥 Hamstrings — 4/5 sessions · <strong>80%</strong><br/>
+                  🚫 Head — always avoid · <strong>3/5 sessions</strong>
                 </div>
               </div>
             </div>
@@ -363,32 +363,32 @@ export default function Home() {
               {
                 emoji: "🗺️",
                 title: "Visual Body Maps",
-                desc: "Front & back body diagrams. Clients tap to mark focus/avoid areas. Clear visual communication beats verbal every time."
+                desc: "Front & back body diagrams. Clients tap to mark focus and avoid areas before every session. Clear visual communication that beats verbal descriptions every time."
               },
               {
-                emoji: "🧠",
-                title: "AI Session Intelligence",
-                desc: "Pattern detection across sessions. \"Client often requests lower back + hamstring work.\" Gets smarter over time."
+                emoji: "🔥",
+                title: "Heatmap Pattern Intelligence",
+                desc: "See which body areas a client consistently requests across sessions — visualized as a heatmap with frequency badges. Lower Back marked 4 of 5 sessions? You'll know instantly."
               },
               {
                 emoji: "📊",
-                title: "Session History",
-                desc: "Track client preferences over time. See what worked last session. Build long-term relationships with data."
+                title: "Pattern Confidence Scores",
+                desc: "Each recurring preference shows a progress bar and percentage. \"Always avoids: Head — 3/5 sessions · 60%.\" Know your client before they arrive."
               },
               {
-                emoji: "⚡",
-                title: "Works in 60 Seconds",
-                desc: "No app download required. Works on any phone. Simple for clients of all ages and tech comfort levels."
+                emoji: "🚨",
+                title: "Medical Flag Alerts",
+                desc: "Medical conditions surface as a full-width red alert the moment you open a session. Never miss a contraindication. Protects your client and your practice."
               },
               {
-                emoji: "💜",
-                title: "Client Loyalty Built-In",
-                desc: "Automatic session tracking. Reward repeat clients. You set the rules (10 sessions = 1 free). We handle the counting."
+                emoji: "💬",
+                title: "Post-Session Feedback",
+                desc: "Send clients a one-tap feedback link after each session. Capture pressure ratings, focus area satisfaction, and return likelihood. Get better every session."
               },
               {
                 emoji: "📱",
-                title: "Mobile-First Design",
-                desc: "Works perfectly on phones, tablets, and desktop. Your clients can fill it anywhere. You can review anywhere."
+                title: "Works Everywhere",
+                desc: "No app download for clients. Works on any phone or tablet. You review on any device — phone at the table, laptop at your desk."
               }
             ].map((feature) => (
               <div key={feature.title} style={{ 
@@ -497,7 +497,7 @@ export default function Home() {
             {[
               { name: "Bronze", price: "$0", clients: "5 clients/month", cta: "Start Free", badge: "🥉" },
               { name: "Silver", price: "$24", clients: "Unlimited clients", cta: "Start Trial", badge: "🥈", popular: true },
-              { name: "Gold", price: "$49", clients: "Up to 5 therapists", cta: "Start Trial", badge: "🥇" }
+              { name: "Gold", price: "$49", clients: "Up to 5 therapists", cta: "Coming Soon", badge: "🥇", comingSoon: true }
             ].map((tier) => (
               <div key={tier.name} style={{ 
                 background: tier.popular ? 'white' : C.lightGray,
@@ -533,19 +533,26 @@ export default function Home() {
                 <div style={{ fontSize: '14px', color: C.gray, marginBottom: '24px', minHeight: '40px' }}>
                   {tier.clients}
                 </div>
-                <Link to="/signup" style={{
-                  display: 'block',
-                  background: tier.popular ? C.lavender : 'white',
-                  color: tier.popular ? 'white' : C.lavender,
-                  border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
-                  padding: '12px 24px',
-                  borderRadius: '8px',
-                  textDecoration: 'none',
-                  fontSize: '14px',
-                  fontWeight: '600'
-                }}>
-                  {tier.cta}
-                </Link>
+                {tier.comingSoon ? (
+                  <div style={{ display: 'block', background: '#E5E7EB', color: '#9CA3AF', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center', cursor: 'not-allowed' }}>
+                    🔒 Coming Soon
+                  </div>
+                ) : (
+                  <Link to="/signup" style={{
+                    display: 'block',
+                    background: tier.popular ? C.lavender : 'white',
+                    color: tier.popular ? 'white' : C.lavender,
+                    border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    textDecoration: 'none',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    textAlign: 'center'
+                  }}>
+                    {tier.cta}
+                  </Link>
+                )}
               </div>
             ))}
           </div>

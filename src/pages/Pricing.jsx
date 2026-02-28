@@ -28,9 +28,12 @@ export default function Pricing() {
       clients: "5 clients/month",
       tagline: "Perfect for new therapists",
       features: [
-        "Visual body maps (front/back)",
-        "Basic preferences tracking",
-        "Session history (last 10 sessions)"
+        "Visual body maps (front + back)",
+        "Client preferences (pressure, music, temp, draping)",
+        "Medical flag alerts",
+        "Session history (last 10 sessions)",
+        "Post-session feedback collection",
+        "Print session brief"
       ],
       cta: "Start Free",
       ctaLink: "/signup"
@@ -44,10 +47,11 @@ export default function Pricing() {
       popular: true,
       features: [
         "Everything in Bronze",
-        "UNLIMITED client intakes",
-        "AI Session Intelligence",
+        "Unlimited clients & sessions",
+        "Body map heatmap overlay",
+        "Pattern confidence scores with progress bars",
         "Full session history (unlimited)",
-        "Client Loyalty Program",
+        "Client Loyalty Program (coming soon)",
         "Priority email support (24hr)"
       ],
       cta: "Start 14-Day Free Trial",
@@ -67,8 +71,9 @@ export default function Pricing() {
         "Custom intake questions",
         "Priority support (12hr response)"
       ],
-      cta: "Start 14-Day Free Trial",
-      ctaLink: "/signup?plan=gold"
+      cta: "Coming Soon",
+      ctaLink: "/signup?plan=gold",
+      comingSoon: true
     }
   ];
 
@@ -204,21 +209,27 @@ export default function Pricing() {
                     <div style={{ fontSize: '13px' }}>{tier.tagline}</div>
                   </div>
 
-                  <Link to={tier.ctaLink} style={{
-                    display: 'block',
-                    background: tier.popular ? C.lavender : 'white',
-                    color: tier.popular ? 'white' : C.lavender,
-                    border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
-                    padding: '14px 24px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    fontSize: '15px',
-                    fontWeight: '600',
-                    textAlign: 'center',
-                    marginBottom: '32px'
-                  }}>
-                    {tier.cta}
-                  </Link>
+                  {tier.comingSoon ? (
+                    <div style={{ display: 'block', background: '#F3F4F6', color: '#9CA3AF', border: '2px solid #E5E7EB', padding: '14px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '700', textAlign: 'center', marginBottom: '32px', cursor: 'not-allowed' }}>
+                      🔒 Coming Soon — Join Waitlist
+                    </div>
+                  ) : (
+                    <Link to={tier.ctaLink} style={{
+                      display: 'block',
+                      background: tier.popular ? C.lavender : 'white',
+                      color: tier.popular ? 'white' : C.lavender,
+                      border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
+                      padding: '14px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      marginBottom: '32px'
+                    }}>
+                      {tier.cta}
+                    </Link>
+                  )}
 
                   <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: '24px' }}>
                     {tier.features.map((feature, idx) => (
@@ -290,10 +301,14 @@ export default function Pricing() {
               <tbody>
                 {[
                   { feature: "Client intakes/month", values: ["5", "∞", "∞"] },
-                  { feature: "Visual body maps", values: ["✓", "✓", "✓"] },
-                  { feature: "Session history", values: ["10", "∞", "∞"] },
-                  { feature: "AI Session Intelligence", values: ["—", "✓", "✓"] },
-                  { feature: "Client Loyalty Program", values: ["—", "✓", "✓"] },
+                  { feature: "Visual body maps (front + back)", values: ["✓", "✓", "✓"] },
+                  { feature: "Client preferences & medical flags", values: ["✓", "✓", "✓"] },
+                  { feature: "Post-session feedback collection", values: ["✓", "✓", "✓"] },
+                  { feature: "Print session brief", values: ["✓", "✓", "✓"] },
+                  { feature: "Session history", values: ["10 sessions", "∞", "∞"] },
+                  { feature: "Heatmap pattern overlay", values: ["—", "✓", "✓"] },
+                  { feature: "Pattern confidence scores", values: ["—", "✓", "✓"] },
+                  { feature: "Client Loyalty Program", values: ["—", "Soon", "Soon"] },
                   { feature: "Priority email support", values: ["—", "24hr", "12hr"] },
                   { feature: "Therapist accounts", values: ["1", "1", "5"] },
                   { feature: "Shared client database", values: ["—", "—", "✓"] },
@@ -372,9 +387,9 @@ export default function Pricing() {
             </div>
           </div>
 
-          <div style={{ background: C.lightGray, padding: '20px', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-            <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}>
-              <strong>Available in Silver & Gold plans.</strong> You control the rewards, we handle the tracking.
+          <div style={{ background: '#FFFBEB', padding: '20px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
+            <p style={{ fontSize: '14px', color: '#92400E', margin: 0 }}>
+              <strong>🚧 Coming Soon — Silver & Gold plans.</strong> Be among the first to use it. Sign up now and you'll get access the day it launches.
             </p>
           </div>
         </div>
