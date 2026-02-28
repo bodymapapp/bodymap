@@ -149,10 +149,10 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
         <div style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 24px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
           <div>
             <p style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: "#fff", margin: "0 0 3px 0" }}>🎉 Your practice is growing!</p>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Pro for unlimited clients + AI session briefs.</p>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Silver for unlimited clients + pattern intelligence.</p>
           </div>
           <button style={{ background: "#C9A84C", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "50px", fontWeight: "700", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>
-            Upgrade to Pro →
+            <a href='https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00' target='_blank' rel='noopener noreferrer' style={{ color: 'inherit', textDecoration: 'none' }}>Upgrade to Silver →</a>
           </button>
         </div>
       )}
@@ -283,7 +283,7 @@ function LockedClientCard({ client, initials, avatarColor }) {
       <div style={{ position: "absolute", inset: 0, background: "rgba(245,240,232,0.7)",
         display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, zIndex: 2 }}>
         <span style={{ fontSize: 20 }}>🔒</span>
-        <p style={{ fontSize: 11, fontWeight: 700, color: "#2A5741", margin: 0 }}>Upgrade to Pro to unlock</p>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#2A5741", margin: 0 }}>Upgrade to Silver to unlock</p>
       </div>
       <div style={{ filter: "blur(4px)", pointerEvents: "none" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
