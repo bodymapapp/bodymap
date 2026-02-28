@@ -79,7 +79,8 @@ export default function Home() {
             fontSize: '56px', 
             fontWeight: '700', 
             marginBottom: '8px',
-            transition: 'all 0.5s ease'
+            transition: 'all 0.5s ease',
+            minHeight: '70px'
           }}>
             {slides[currentSlide].text}
           </h1>
@@ -87,7 +88,8 @@ export default function Home() {
             fontSize: '24px', 
             opacity: 0.95,
             marginBottom: '32px',
-            transition: 'all 0.5s ease'
+            transition: 'all 0.5s ease',
+            minHeight: '36px'
           }}>
             {slides[currentSlide].subtitle}
           </p>

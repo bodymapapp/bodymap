@@ -84,8 +84,8 @@ export default function Pricing() {
         @media (max-width: 768px) {
           .bm-tiers { grid-template-columns: 1fr !important; }
           .bm-loyalty { grid-template-columns: 1fr !important; }
-          .bm-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-          .bm-table-wrap table { min-width: 500px; }
+          .bm-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; display: block; width: 100%; }
+          .bm-table-wrap table { min-width: 600px; table-layout: fixed; }
           .bm-pricing-hero h1 { font-size: 36px !important; }
           .bm-faq { padding: 48px 16px !important; }
           .bm-section-pad { padding: 48px 16px !important; }
