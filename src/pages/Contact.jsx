@@ -16,9 +16,15 @@ export default function Contact() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bm-contact-card { padding: 24px 16px !important; }
+          .bm-contact-section { padding: 40px 16px !important; }
+        }
+      `}</style>
       <Nav />
 
-      <section style={{ padding: '80px 24px', background: C.lightGray, minHeight: '70vh' }}>
+      <section className="bm-contact-section" style={{ padding: '80px 24px', background: C.lightGray, minHeight: '70vh' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', textAlign: 'center' }}>
             Get in Touch
@@ -27,7 +33,7 @@ export default function Contact() {
             Questions? Feedback? Enterprise pricing? We'd love to hear from you.
           </p>
 
-          <div style={{ background: 'white', borderRadius: '12px', padding: '48px', border: '1px solid #E5E7EB' }}>
+          <div className="bm-contact-card" style={{ background: 'white', borderRadius: '12px', padding: '48px', border: '1px solid #E5E7EB' }}>
             <div style={{ marginBottom: '32px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
                 Email Us

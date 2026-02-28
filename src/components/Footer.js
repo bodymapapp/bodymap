@@ -5,10 +5,16 @@ import { Link } from "react-router-dom";
 export default function Footer() {
   return (
     <footer style={{ background: "#1A2F23", color: "white", padding: "48px 24px 32px" }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bm-footer-grid { flex-direction: column !important; gap: 24px !important; }
+          .bm-footer-bottom { flex-direction: column !important; text-align: center !important; gap: 8px !important; }
+        }
+      `}</style>
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "32px", marginBottom: "40px" }}>
+        <div className="bm-footer-grid" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "32px", marginBottom: "40px" }}>
           <div>
-            <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", textDecoration: "none", color: "white" }}>
+            <Link to="/" onClick={() => window.scrollTo(0,0)} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", textDecoration: "none", color: "white" }}>
               <span style={{ fontSize: "24px" }}>🌿</span>
               <span style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: "700" }}>BodyMap</span>
             </Link>
@@ -20,7 +26,6 @@ export default function Footer() {
               <a href="/#features" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Features</a>
               <Link to="/pricing" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Pricing</Link>
               <Link to="/why-bodymap" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Why BodyMap</Link>
-              <a href="/#demo" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Demo</a>
             </div>
           </div>
           <div>
@@ -39,7 +44,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
+        <div className="bm-footer-bottom" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: 0 }}>© 2026 BodyMap. All rights reserved.</p>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: 0 }}>Made with 🌿 for massage therapists</p>
         </div>

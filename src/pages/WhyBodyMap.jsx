@@ -1,6 +1,6 @@
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function WhyBodyMap() {
@@ -20,6 +20,16 @@ export default function WhyBodyMap() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bm-why-3col { grid-template-columns: 1fr !important; }
+          .bm-why-2col { grid-template-columns: 1fr !important; }
+          .bm-why-2col-gap { gap: 24px !important; }
+          .bm-equation-row { flex-direction: column !important; gap: 24px !important; }
+          .bm-why-hero h1 { font-size: 32px !important; }
+          .bm-why-cta-btns { flex-direction: column !important; align-items: stretch !important; }
+        }
+      `}</style>
       
       {/* Header */}
       <Nav />
@@ -46,7 +56,7 @@ export default function WhyBodyMap() {
             BodyMap transforms how you connect with clients. The time savings? That's just a bonus.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', marginBottom: '60px' }}>
+          <div className="bm-why-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', marginBottom: '60px' }}>
             {[
               {
                 emoji: "💜",
@@ -100,7 +110,7 @@ export default function WhyBodyMap() {
             The Time Efficiency Breakdown
           </h2>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', marginBottom: '60px' }}>
+          <div className="bm-why-2col bm-why-2col-gap" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', marginBottom: '60px' }}>
             {/* Traditional Way */}
             <div style={{ background: '#FEF2F2', padding: '40px', borderRadius: '16px', border: '2px solid #FCA5A5' }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.red, marginBottom: '16px' }}>❌ TRADITIONAL INTAKE</div>
@@ -174,7 +184,7 @@ export default function WhyBodyMap() {
               <strong>32 min</strong> × <strong>$1/min</strong> × <strong>20 days</strong> = <strong>$640/month</strong>
             </div>
             
-            <div style={{ display: 'flex', gap: '48px', justifyContent: 'center', paddingTop: '32px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+            <div className="bm-equation-row" style={{ display: 'flex', gap: '48px', justifyContent: 'center', paddingTop: '32px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
               <div>
                 <div style={{ fontSize: '14px', opacity: 0.8, marginBottom: '8px' }}>Monthly Time Efficiency</div>
                 <div style={{ fontSize: '36px', fontWeight: '700' }}>640 min</div>
@@ -211,7 +221,7 @@ export default function WhyBodyMap() {
             Beyond the numbers, here's how BodyMap changes your practice.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
+          <div className="bm-why-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
             {[
               {
                 emoji: "👂",
@@ -269,19 +279,23 @@ export default function WhyBodyMap() {
             {[
               {
                 icon: "👤",
-                title: "Solo Therapist (You)",
+                title: "Solo Therapist",
                 cost: "$24/month Silver",
                 math: "4 clients/day × 8 min × 20 days = 640 min/month",
                 value: "$640 time value for $24 = 27x return",
-                impact: "See one extra client per week with saved time. Or finish early and have life balance. Your choice."
+                impact: "See one extra client per week with saved time. Or finish early and have life balance. Your choice.",
+                available: true
               },
               {
                 icon: "🏢",
-                title: "Small Practice (3 therapists)",
+                title: "Small Practice (2–5 therapists)",
                 cost: "$49/month Gold",
                 math: "3 therapists × 640 min = 1,920 min/month",
                 value: "$1,920 time value for $49 = 39x return",
-                impact: "Standardized intake across team. Consistent quality. Shared client insights. Professional brand."
+                impact: "Standardized intake across team. Consistent quality. Shared client insights. Professional brand.",
+                available: false,
+                waitlistLabel: "Gold Plan — Launching Soon",
+                waitlistSub: "Join the waitlist. Notify me when Gold launches."
               },
               {
                 icon: "🏭",
@@ -289,10 +303,23 @@ export default function WhyBodyMap() {
                 cost: "Custom pricing",
                 math: "50 therapists × 640 min = 32,000 min/month",
                 value: "$32,000 time value across organization",
-                impact: "Brand consistency at scale. Data-driven operations. Training tool for new therapists. Competitive advantage."
+                impact: "Brand consistency at scale. Data-driven operations. Training tool for new therapists. Competitive advantage.",
+                available: false,
+                waitlistLabel: "Enterprise — Coming Soon",
+                waitlistSub: "Express interest and we'll reach out first."
               }
             ].map((use) => (
-              <div key={use.title} style={{ background: 'white', padding: '32px', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
+              <div key={use.title} style={{ background: 'white', padding: '32px', borderRadius: '12px', border: `1px solid ${use.available ? '#E5E7EB' : '#D8D3E8'}`, position: 'relative', opacity: use.available ? 1 : 0.92 }}>
+                {!use.available && (
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#B4A7D6', color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    🔒 Coming Soon
+                  </div>
+                )}
+                {use.available && (
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#D1FAE5', color: '#065F46', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
+                    ✅ Available Now
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
                   <div style={{ fontSize: '56px' }}>{use.icon}</div>
                   <div style={{ flex: 1 }}>
@@ -307,9 +334,21 @@ export default function WhyBodyMap() {
                       <div style={{ fontSize: '14px', color: C.darkGray, marginBottom: '8px' }}>{use.math}</div>
                       <div style={{ fontSize: '14px', color: C.green, fontWeight: '600' }}>{use.value}</div>
                     </div>
-                    <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', margin: 0 }}>
+                    <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', margin: '0 0 16px 0' }}>
                       <strong>Real Impact:</strong> {use.impact}
                     </p>
+                    {!use.available && (
+                      <div style={{ background: '#F3F1F9', border: '1px solid #D8D3E8', borderRadius: '8px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <span style={{ fontSize: '18px' }}>📬</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '13px', fontWeight: '700', color: '#6B5FA6', marginBottom: '2px' }}>{use.waitlistLabel}</div>
+                          <div style={{ fontSize: '12px', color: C.gray }}>{use.waitlistSub}</div>
+                        </div>
+                        <a href="mailto:hello@mybodymap.app?subject=Waitlist: ' + use.title + '" style={{ background: '#B4A7D6', color: 'white', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                          Join Waitlist →
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -329,7 +368,7 @@ export default function WhyBodyMap() {
             Or give them a visual way to show you exactly what they need.
           </p>
           
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
+          <div className="bm-why-cta-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
             <Link to="/#demo" style={{
               background: C.sage,
               color: 'white',
