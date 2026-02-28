@@ -79,6 +79,17 @@ export default function Pricing() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bm-tiers { grid-template-columns: 1fr !important; }
+          .bm-loyalty { grid-template-columns: 1fr !important; }
+          .bm-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+          .bm-table-wrap table { min-width: 500px; }
+          .bm-pricing-hero h1 { font-size: 36px !important; }
+          .bm-faq { padding: 48px 16px !important; }
+          .bm-section-pad { padding: 48px 16px !important; }
+        }
+      `}</style>
       
       {/* Header */}
       <Nav />
@@ -148,7 +159,7 @@ export default function Pricing() {
       {/* Pricing Tiers */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', marginBottom: '80px' }}>
+          <div className="bm-tiers" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', marginBottom: '80px' }}>
             {tiers.map((tier) => {
               const price = billingCycle === 'monthly' ? tier.price.monthly : tier.price.annual;
               return (
@@ -288,7 +299,7 @@ export default function Pricing() {
             Feature Comparison
           </h2>
           
-          <div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+          <div className="bm-table-wrap"><div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: C.lightGray }}>
@@ -326,7 +337,7 @@ export default function Pricing() {
                 ))}
               </tbody>
             </table>
-          </div>
+          </div></div>
         </div>
       </section>
 
@@ -341,7 +352,7 @@ export default function Pricing() {
             Reward repeat clients automatically. Boost retention without extra work.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '48px' }}>
+          <div className="bm-loyalty" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '48px' }}>
             <div style={{ background: C.lavenderPale, padding: '32px', borderRadius: '12px', border: `1px solid ${C.lavenderMid}`, textAlign: 'left' }}>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '20px' }}>
                 How It Works

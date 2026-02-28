@@ -36,6 +36,23 @@ export default function Home() {
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+      <style>{`
+        @media (max-width: 768px) {
+          .bm-grid-3 { grid-template-columns: 1fr !important; }
+          .bm-grid-2 { grid-template-columns: 1fr !important; }
+          .bm-grid-pricing { grid-template-columns: 1fr !important; }
+          .bm-hero-btns { flex-direction: column !important; align-items: stretch !important; }
+          .bm-hero-h1 { font-size: 36px !important; }
+          .bm-hero-h2 { font-size: 28px !important; }
+          .bm-section-h2 { font-size: 28px !important; }
+          .bm-benefit-h3 { font-size: 22px !important; }
+          .bm-gap-60 { gap: 32px !important; }
+          .bm-section-pad { padding: 48px 16px !important; }
+          .bm-hide-mobile { display: none !important; }
+          .bm-try-card { padding: 28px 20px !important; }
+          .bm-nav-full { font-size: 13px !important; }
+        }
+      `}</style>
       
       {/* Header/Navigation */}
       <Nav />
@@ -91,7 +108,7 @@ export default function Home() {
       {/* Main Hero */}
       <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
+          <h2 className="bm-hero-h2" style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             Elevate Every Client Experience
           </h2>
           <p style={{ fontSize: '20px', color: C.gray, marginBottom: '40px', lineHeight: '1.6' }}>
@@ -99,7 +116,7 @@ export default function Home() {
             You deliver personalized, data-driven sessions.<br/>
             They remember the experience. They come back.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '60px' }}>
+          <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '60px' }}>
             <a href="#demo" style={{
               background: C.sage,
               color: 'white',
@@ -133,7 +150,7 @@ export default function Home() {
             Three simple steps. Immediate impact for you and your clients.
           </p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+          <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
 
             {/* Step 1 */}
             <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
@@ -226,7 +243,7 @@ export default function Home() {
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
             No signup needed. Experience BodyMap from both sides.
           </p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 
             {/* Client card */}
             <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
@@ -279,7 +296,7 @@ export default function Home() {
             It's about more than efficiency. It's about transforming your practice.
           </p>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center', marginBottom: '60px' }}>
+          <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center', marginBottom: '60px' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.lavender, marginBottom: '12px' }}>💜 BENEFIT #1</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
@@ -311,7 +328,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }}>
+          <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>⚡ BENEFIT #3</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
@@ -358,7 +375,7 @@ export default function Home() {
             Everything You Need
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
+          <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
             {[
               {
                 emoji: "🗺️",
@@ -423,7 +440,7 @@ export default function Home() {
             Built For Every Practice Size
           </h2>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
+          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
             {[
               {
                 icon: "👤",
@@ -493,7 +510,7 @@ export default function Home() {
             No credit card required. Cancel anytime.
           </p>
           
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+          <div className="bm-grid-pricing" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
             {[
               { name: "Bronze", price: "$0", clients: "5 clients/month", cta: "Start Free", badge: "🥉" },
               { name: "Silver", price: "$24", clients: "Unlimited clients", cta: "Start Trial", badge: "🥈", popular: true },
@@ -579,7 +596,7 @@ export default function Home() {
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '40px' }}>
             Join therapists who are seeing 2x retention, happier clients, and more efficient practices.
           </p>
-          <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
+          <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
             <a href="#demo" style={{
               background: C.sage,
               color: 'white',
