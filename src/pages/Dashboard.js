@@ -125,9 +125,12 @@ function SettingsPanel({ therapist }) {
             <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
               {therapist?.plan === 'free' ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver — $24/mo' : 'Gold — $49/mo'}
             </p>
-            <p style={{ fontSize: '13px', color: C2.gray, margin: 0 }}>
+            <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
               {therapist?.plan === 'free' ? 'Up to 5 clients. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
             </p>
+            {therapist?.plan !== 'free' && (
+              <p style={{ fontSize: '12px', color: C2.gray, margin: 0, opacity: 0.7 }}>Cancel anytime. Access continues until end of billing period.</p>
+            )}
           </div>
           {therapist?.plan === 'free' && (
             <a href='https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00' target='_blank' rel='noopener noreferrer' style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
