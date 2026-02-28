@@ -380,49 +380,60 @@ export default function Home() {
           <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
             {[
               {
-                emoji: "🗺️",
+                img: "/ss-bodymap.png",
                 title: "Visual Body Maps",
-                desc: "Front & back body diagrams. Clients tap to mark focus and avoid areas before every session. Clear visual communication that beats verbal descriptions every time."
+                desc: "Clients tap front & back diagrams to mark focus and avoid areas before every session. Instant clarity — no verbal back-and-forth."
               },
               {
-                emoji: "🔥",
+                img: "/ss-heatmap.png",
                 title: "Heatmap Pattern Intelligence",
-                desc: "See which body areas a client consistently requests across sessions — visualized as a heatmap with frequency badges. Lower Back marked 4 of 5 sessions? You'll know instantly."
+                desc: "See which areas a client consistently requests across sessions with frequency badges. Lower Back 4 of 5 sessions? You'll know before they walk in."
               },
               {
-                emoji: "📊",
-                title: "Pattern Confidence Scores",
-                desc: "Each recurring preference shows a progress bar and percentage. \"Always avoids: Head — 3/5 sessions · 60%.\" Know your client before they arrive."
+                img: "/ss-preferences.png",
+                title: "Client Preferences",
+                desc: "Pressure, music, lighting, draping, temperature — captured every session. Walk in already knowing exactly how they like it."
               },
               {
-                emoji: "🚨",
-                title: "Medical Flag Alerts",
-                desc: "Medical conditions surface as a full-width red alert the moment you open a session. Never miss a contraindication. Protects your client and your practice."
+                img: "/ss-patterns.png",
+                title: "Pattern Scores & Medical Flags",
+                desc: "Medical conditions surface as a red alert the moment you open a session. Pattern confidence scores show avoid areas by percentage — never miss a contraindication."
               },
               {
-                emoji: "💬",
+                img: "/ss-feedback.png",
                 title: "Post-Session Feedback",
-                desc: "Send clients a one-tap feedback link after each session. Capture pressure ratings, focus area satisfaction, and return likelihood. Get better every session."
+                desc: "One-tap feedback after each session. Capture pressure ratings, focus area satisfaction, and return likelihood. Get better every session."
               },
               {
-                emoji: "📱",
-                title: "Works Everywhere",
-                desc: "No app download for clients. Works on any phone or tablet. You review on any device — phone at the table, laptop at your desk."
+                img: "/ss-mobile.PNG",
+                title: "Works on Any Device",
+                desc: "No app download. Clients fill intake on any phone in 60 seconds. You review at the table or at your desk — wherever you are."
               }
             ].map((feature) => (
               <div key={feature.title} style={{ 
                 background: 'white', 
-                padding: '32px', 
-                borderRadius: '12px',
-                border: '1px solid #E5E7EB'
+                borderRadius: '16px',
+                border: '1px solid #E5E7EB',
+                overflow: 'hidden',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
               }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>{feature.emoji}</div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                  {feature.title}
-                </h3>
-                <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6' }}>
-                  {feature.desc}
-                </p>
+                <div style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', padding: '12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F57' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E' }} />
+                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840' }} />
+                  <div style={{ flex: 1, background: '#E5E7EB', borderRadius: 4, height: 18, marginLeft: 8 }} />
+                </div>
+                <div style={{ height: 220, overflow: 'hidden' }}>
+                  <img src={feature.img} alt={feature.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                </div>
+                <div style={{ padding: '20px 24px 24px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
+                    {feature.title}
+                  </h3>
+                  <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>
+                    {feature.desc}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
