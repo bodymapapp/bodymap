@@ -70,24 +70,30 @@ function BodySVG({ focusAreas = [], avoidAreas = [], heatmapFocus = {}, heatmapA
       <path d="M113 66 Q128 74 132 115 Q134 128 130 138 Q124 141 120 138 Q116 112 110 85 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
       <path d="M60 162 Q56 195 54 232 Q52 260 56 278 Q62 284 70 282 Q76 278 76 260 L78 162 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
       <path d="M110 162 Q114 195 116 232 Q118 260 114 278 Q108 284 100 282 Q94 278 94 260 L92 162 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
-      {showHeatmap && Object.entries(heatmapFocus).map(([area, opacity]) => {
+      {showHeatmap && Object.entries(heatmapFocus).map(([area, { opacity, count }]) => {
         const c = AREA_COORDS[area]; if (!c) return null;
+        const r = 8 + opacity * 10;
         return (
           <g key={"hf-" + area}>
-            <circle cx={c[0]} cy={c[1]} r="18" fill={"rgba(107,158,128," + (opacity * 0.35).toFixed(2) + ")"} stroke="none"/>
-            <circle cx={c[0]} cy={c[1]} r="12" fill={"rgba(107,158,128," + (opacity * 0.5).toFixed(2) + ")"} stroke="#6B9E80" strokeWidth={opacity > 0.6 ? "2.5" : "1.5"}/>
-            <circle cx={c[0]} cy={c[1]} r="5" fill={"rgba(42,87,65," + opacity.toFixed(2) + ")"}/>
+            <circle cx={c[0]} cy={c[1]} r={r + 8} fill={"rgba(107,158,128," + (opacity * 0.2).toFixed(2) + ")"} stroke="none"/>
+            <circle cx={c[0]} cy={c[1]} r={r} fill={"rgba(107,158,128," + (opacity * 0.55).toFixed(2) + ")"} stroke="#6B9E80" strokeWidth={opacity > 0.6 ? "2.5" : "1.5"}/>
+            <circle cx={c[0]} cy={c[1]} r="5" fill={"rgba(42,87,65," + Math.min(opacity + 0.2, 1).toFixed(2) + ")"}/>
+            <circle cx={c[0] + r - 1} cy={c[1] - r + 1} r="7" fill="#2A5741" stroke="white" strokeWidth="1.5"/>
+            <text x={c[0] + r - 1} y={c[1] - r + 5} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="system-ui">{count}</text>
           </g>
         );
       })}
-      {showHeatmap && Object.entries(heatmapAvoid).map(([area, opacity]) => {
+      {showHeatmap && Object.entries(heatmapAvoid).map(([area, { opacity, count }]) => {
         if (heatmapFocus[area]) return null;
         const c = AREA_COORDS[area]; if (!c) return null;
+        const r = 8 + opacity * 10;
         return (
           <g key={"ha-" + area}>
-            <circle cx={c[0]} cy={c[1]} r="18" fill={"rgba(239,68,68," + (opacity * 0.25).toFixed(2) + ")"} stroke="none"/>
-            <circle cx={c[0]} cy={c[1]} r="12" fill={"rgba(239,68,68," + (opacity * 0.35).toFixed(2) + ")"} stroke="#EF4444" strokeWidth={opacity > 0.6 ? "2.5" : "1.5"}/>
-            <circle cx={c[0]} cy={c[1]} r="5" fill={"rgba(185,28,28," + opacity.toFixed(2) + ")"}/>
+            <circle cx={c[0]} cy={c[1]} r={r + 8} fill={"rgba(239,68,68," + (opacity * 0.15).toFixed(2) + ")"} stroke="none"/>
+            <circle cx={c[0]} cy={c[1]} r={r} fill={"rgba(239,68,68," + (opacity * 0.4).toFixed(2) + ")"} stroke="#EF4444" strokeWidth={opacity > 0.6 ? "2.5" : "1.5"}/>
+            <circle cx={c[0]} cy={c[1]} r="5" fill={"rgba(185,28,28," + Math.min(opacity + 0.2, 1).toFixed(2) + ")"}/>
+            <circle cx={c[0] + r - 1} cy={c[1] - r + 1} r="7" fill="#991B1B" stroke="white" strokeWidth="1.5"/>
+            <text x={c[0] + r - 1} y={c[1] - r + 5} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="system-ui">{count}</text>
           </g>
         );
       })}
@@ -167,12 +173,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       (s.back_focus  || []).forEach(a => { bf[a] = (bf[a] || 0) + 1; });
       (s.back_avoid  || []).forEach(a => { ba[a] = (ba[a] || 0) + 1; });
     });
-    const toOp = c => parseFloat(Math.min(0.3 + (c / n) * 0.7, 1.0).toFixed(2));
+    const toEntry = (c) => ({ count: c, total: n, opacity: parseFloat(Math.min(0.3 + (c / n) * 0.7, 1.0).toFixed(2)) });
     return {
-      frontFocus: Object.fromEntries(Object.entries(ff).map(([k,v]) => [k, toOp(v)])),
-      frontAvoid: Object.fromEntries(Object.entries(fa).map(([k,v]) => [k, toOp(v)])),
-      backFocus:  Object.fromEntries(Object.entries(bf).map(([k,v]) => [k, toOp(v)])),
-      backAvoid:  Object.fromEntries(Object.entries(ba).map(([k,v]) => [k, toOp(v)])),
+      frontFocus: Object.fromEntries(Object.entries(ff).map(([k,v]) => [k, toEntry(v)])),
+      frontAvoid: Object.fromEntries(Object.entries(fa).map(([k,v]) => [k, toEntry(v)])),
+      backFocus:  Object.fromEntries(Object.entries(bf).map(([k,v]) => [k, toEntry(v)])),
+      backAvoid:  Object.fromEntries(Object.entries(ba).map(([k,v]) => [k, toEntry(v)])),
       count: n,
     };
   }, [history, session.id]);
@@ -180,10 +186,10 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const patterns = useMemo(() => {
     if (history.length < 2) return [];
     const result = [];
-    const medSessions = history.filter(s => s.med_flag && s.med_flag !== "none");
+    const medSessions = history.filter(s => s.med_flag && s.med_flag !== "none" && s.med_flag !== "no");
     if (medSessions.length > 0) {
-      const notes = medSessions.map(s => s.med_note).filter(Boolean);
-      const uniqueNotes = [...new Set(notes)];
+      const medNotes = medSessions.map(s => s.med_note).filter(Boolean);
+      const uniqueNotes = [...new Set(medNotes)];
       const noteText = uniqueNotes.length > 0 ? ": \"" + uniqueNotes[uniqueNotes.length-1] + "\"" : "";
       result.push({ icon: "🚨", text: "Medical flag" + noteText + " — always check before session", urgent: true });
     }
@@ -211,6 +217,15 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     if (lights.length >= 2 && new Set(lights).size === 1) result.push({ icon: "💡", text: "Always prefers " + lights[0] + " lighting" });
     return result.slice(0, 5);
   }, [history]);
+
+  const medFlagValue = (() => {
+    const flag = session.med_flag;
+    const note = session.med_note;
+    if (!flag || flag === "none" || flag === "no" || flag === "false") return null;
+    const flagIsGeneric = ["yes","true","flagged","1"].includes(String(flag).toLowerCase().trim());
+    if (flagIsGeneric) return note ? note : "Medical condition flagged — ask client for details";
+    return note ? flag + " — " + note : flag;
+  })();
 
   async function saveNotes() {
     setSaving(true);
@@ -242,9 +257,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     { label: "Conversation", value: session.conversation, icon: "💬" },
     { label: "Draping", value: session.draping, icon: "🛏️" },
     { label: "Oil Preference", value: session.oil_pref !== "none" ? session.oil_pref : null, icon: "🌿" },
-    { label: "Medical Flag", value: session.med_flag !== "none" ? session.med_flag : null, icon: "⚕️", urgent: true },
-    { label: "Medical Details", value: session.med_note || null, icon: "🚨", urgent: true },
-    { label: "Client Notes", value: session.client_notes || null, icon: "📝", highlight: true },
+    { label: "Client Notes", value: session.client_notes || null, icon: "📝" },
   ].filter(p => p.value);
 
   return (
@@ -254,30 +267,34 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           ← Sessions
         </button>
         <div style={{ flex: 1 }}>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>
-            {client.name}
-          </h2>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>{client.name}</h2>
           <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
         <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <button onClick={() => window.print()} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>
-            🖨️ Print Brief
-          </button>
+          <button onClick={() => window.print()} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>🖨️ Print Brief</button>
           <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
             {session.completed ? "✓ Completed" : "⏳ Pending Review"}
           </span>
         </div>
       </div>
 
+      {medFlagValue && (
+        <div style={{ background: "#FEF2F2", border: "2px solid #EF4444", borderRadius: "12px", padding: "14px 20px", marginBottom: "16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
+          <span style={{ fontSize: "22px", lineHeight: 1 }}>🚨</span>
+          <div>
+            <p style={{ fontSize: "12px", fontWeight: "800", color: "#991B1B", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "0.8px" }}>Medical Flag — Review Before Session</p>
+            <p style={{ fontSize: "15px", fontWeight: "600", color: "#7F1D1D", margin: 0 }}>{medFlagValue}</p>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
             <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, marginBottom: "16px", letterSpacing: "-0.3px" }}>Client Preferences</h3>
-            {prefs.length === 0 ? (
-              <p style={{ color: C.gray, fontSize: "14px" }}>No preferences recorded</p>
-            ) : (
+            {prefs.length === 0 ? <p style={{ color: C.gray, fontSize: "14px" }}>No preferences recorded</p> : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 {prefs.map((p, i) => (
                   <div key={i} style={{ padding: "10px 12px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
@@ -310,13 +327,11 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               style={{ width: "100%", minHeight: "100px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
             />
             <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
-              <button onClick={saveNotes} disabled={saving}
-                style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+              <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
                 {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Notes"}
               </button>
               {!session.completed && (
-                <button onClick={markComplete} disabled={completing}
-                  style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                <button onClick={markComplete} disabled={completing} style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
                   {completing ? "..." : "✓ Mark Complete"}
                 </button>
               )}
@@ -328,20 +343,9 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
             <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, margin: 0, letterSpacing: "-0.3px" }}>Body Map</h3>
             {heatmapData.count > 0 && (
-              <button
-                onClick={() => setShowHeatmap(v => !v)}
-                style={{
-                  display: "flex", alignItems: "center", gap: "6px",
-                  padding: "5px 13px", borderRadius: "20px",
-                  border: "2px solid " + (showHeatmap ? C.forest : C.lightGray),
-                  background: showHeatmap ? C.forest : C.white,
-                  color: showHeatmap ? C.white : C.gray,
-                  fontSize: "12px", fontWeight: "700", cursor: "pointer",
-                  transition: "all 0.2s ease", fontFamily: "system-ui",
-                }}
-              >
-                📊 History
-                <span style={{ background: showHeatmap ? "rgba(255,255,255,0.2)" : C.beige, borderRadius: "10px", padding: "1px 7px", fontSize: "11px", fontWeight: "700", color: showHeatmap ? C.white : C.forest }}>
+              <button onClick={() => setShowHeatmap(v => !v)} style={{ display: "flex", alignItems: "center", gap: "7px", padding: "7px 16px", borderRadius: "20px", border: "none", background: showHeatmap ? "linear-gradient(135deg, #2A5741, #3D7A5C)" : C.beige, color: showHeatmap ? C.white : C.gray, fontSize: "13px", fontWeight: "700", cursor: "pointer", boxShadow: showHeatmap ? "0 2px 8px rgba(42,87,65,0.35)" : "0 1px 3px rgba(0,0,0,0.1)", transition: "all 0.2s ease", fontFamily: "system-ui" }}>
+                {showHeatmap ? "🔥" : "📊"} {showHeatmap ? "Heatmap ON" : "History"}
+                <span style={{ background: showHeatmap ? "rgba(255,255,255,0.25)" : C.lightGray, borderRadius: "10px", padding: "2px 8px", fontSize: "11px", fontWeight: "800", color: showHeatmap ? C.white : C.forest }}>
                   {heatmapData.count}
                 </span>
               </button>
@@ -349,17 +353,17 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           </div>
 
           {showHeatmap && (
-            <div style={{ background: "linear-gradient(135deg, " + C.forest + "08, " + C.sage + "15)", border: "1px solid " + C.sage + "40", borderRadius: "8px", padding: "8px 12px", marginBottom: "12px", fontSize: "12px", color: C.forest, display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ background: "linear-gradient(135deg, #2A574108, #6B9E8015)", border: "1px solid #6B9E8040", borderRadius: "8px", padding: "8px 12px", marginBottom: "12px", fontSize: "12px", color: C.forest, display: "flex", alignItems: "center", gap: "8px" }}>
               <span>🔥</span>
-              <span><strong>Pattern history</strong> from last {heatmapData.count} sessions — darker = more consistent</span>
+              <span><strong>Pattern history</strong> — last {heatmapData.count} sessions. Badge = times marked.</span>
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
+          <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
             {showHeatmap ? (
               <>
-                <span style={{ fontSize: "12px", background: "rgba(42,87,65,0.12)", color: C.forest, padding: "4px 12px", borderRadius: "20px", fontWeight: "500" }}>🟢 Consistent focus</span>
-                <span style={{ fontSize: "12px", background: "rgba(239,68,68,0.1)", color: "#991B1B", padding: "4px 12px", borderRadius: "20px", fontWeight: "500" }}>🔴 Consistent avoid</span>
+                <span style={{ fontSize: "12px", background: "rgba(42,87,65,0.1)", color: C.forest, padding: "4px 12px", borderRadius: "20px", fontWeight: "600" }}>🟢 Consistent focus</span>
+                <span style={{ fontSize: "12px", background: "rgba(239,68,68,0.1)", color: "#991B1B", padding: "4px 12px", borderRadius: "20px", fontWeight: "600" }}>🔴 Consistent avoid</span>
               </>
             ) : (
               <>
@@ -398,16 +402,16 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             <div>
               <p style={{ fontSize: "12px", color: C.gray, marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Top recurring areas</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-                {Object.entries({ ...heatmapData.frontFocus, ...heatmapData.backFocus }).sort((a,b) => b[1]-a[1]).slice(0,4).map(([area, opacity]) => (
-                  <span key={"hft-"+area} style={{ background: "rgba(42,87,65," + (opacity * 0.15) + ")", color: C.forest, padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", border: "1px solid " + C.sage + "40" }}>
-                    🟢 {AREA_LABELS[area] || area}
+                {Object.entries({ ...heatmapData.frontFocus, ...heatmapData.backFocus }).sort((a,b) => b[1].count - a[1].count).slice(0,5).map(([area, { count, total }]) => (
+                  <span key={"hft-"+area} style={{ background: "rgba(42,87,65,0.1)", color: C.forest, padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", border: "1px solid " + C.sage + "40" }}>
+                    🟢 {AREA_LABELS[area] || area} <span style={{ opacity: 0.7 }}>{count}/{total}</span>
                   </span>
                 ))}
-                {Object.entries({ ...heatmapData.frontAvoid, ...heatmapData.backAvoid }).sort((a,b) => b[1]-a[1]).slice(0,3).map(([area, opacity]) => {
+                {Object.entries({ ...heatmapData.frontAvoid, ...heatmapData.backAvoid }).sort((a,b) => b[1].count - a[1].count).slice(0,3).map(([area, { count, total }]) => {
                   if (heatmapData.frontFocus[area] || heatmapData.backFocus[area]) return null;
                   return (
-                    <span key={"hat-"+area} style={{ background: "rgba(239,68,68," + (opacity * 0.12) + ")", color: "#991B1B", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", border: "1px solid rgba(239,68,68,0.25)" }}>
-                      🔴 {AREA_LABELS[area] || area}
+                    <span key={"hat-"+area} style={{ background: "rgba(239,68,68,0.1)", color: "#991B1B", padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", border: "1px solid rgba(239,68,68,0.25)" }}>
+                      🔴 {AREA_LABELS[area] || area} <span style={{ opacity: 0.7 }}>{count}/{total}</span>
                     </span>
                   );
                 })}
