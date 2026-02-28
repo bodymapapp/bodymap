@@ -92,11 +92,11 @@ function SessionRow({ session, onSelect }) {
         border: `1.5px solid ${hovered ? "#6B9E80" : C.lightGray}`,
         cursor: "pointer", transition: "all 0.15s ease",
         boxShadow: hovered ? "0 4px 16px rgba(42,87,65,0.1)" : "0 1px 3px rgba(0,0,0,0.04)",
-        display: "flex", alignItems: "center", gap: "16px"
+        display: "flex", alignItems: "center", gap: "8px", overflow: "hidden"
       }}
     >
-      <div style={{ flex: 1 }}>
-        <p style={{ fontSize: "15px", fontWeight: "600", color: "#1A1A2E", margin: "0 0 4px 0", fontFamily: "Georgia, serif" }}>
+      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+        <p style={{ fontSize: "15px", fontWeight: "600", color: "#1A1A2E", margin: "0 0 4px 0", fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
         </p>
         <div style={{ display: "flex", gap: "12px" }}>

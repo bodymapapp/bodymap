@@ -64,13 +64,14 @@ export default function Home() {
         textAlign: 'center',
         color: 'white',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        minHeight: '420px'
       }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ 
             fontSize: '72px', 
             marginBottom: '16px',
-            transition: 'all 0.5s ease',
+            transition: 'opacity 0.4s ease',
             opacity: 1
           }}>
             {slides[currentSlide].emoji}
@@ -79,7 +80,7 @@ export default function Home() {
             fontSize: '56px', 
             fontWeight: '700', 
             marginBottom: '8px',
-            transition: 'all 0.5s ease',
+            transition: 'opacity 0.4s ease',
             minHeight: '70px'
           }}>
             {slides[currentSlide].text}
@@ -88,7 +89,7 @@ export default function Home() {
             fontSize: '24px', 
             opacity: 0.95,
             marginBottom: '32px',
-            transition: 'all 0.5s ease',
+            transition: 'opacity 0.4s ease',
             minHeight: '36px'
           }}>
             {slides[currentSlide].subtitle}
