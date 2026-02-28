@@ -16,6 +16,7 @@ import Dashboard from './pages/Dashboard';
 import ClientIntake from './pages/ClientIntake';
 import ThankYou from './pages/ThankYou';
 import Feedback from './pages/Feedback';
+import CareSummary from './pages/CareSummary';
 
 function App() {
   return (
@@ -37,6 +38,7 @@ function App() {
           <Route path="/dashboard/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><Dashboard view="session-detail" /></ProtectedRoute>} />
           <Route path="/thank-you" element={<ThankYou />} />
           <Route path="/:customUrl/feedback/:sessionId" element={<Feedback />} />
+          <Route path="/summary/:code" element={<CareSummary />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
       </Router>

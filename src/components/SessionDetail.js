@@ -354,6 +354,54 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               )}
             </div>
           </div>
+
+          {/* Care Summary */}
+          {session.completed && (() => {
+            const AREA_LABELS_LOCAL = {
+              "f-head":"Head","f-neck":"Neck","f-l-shldr":"L Shoulder","f-r-shldr":"R Shoulder",
+              "f-l-chest":"L Chest","f-r-chest":"R Chest","f-abdomen":"Abdomen",
+              "f-l-arm-u":"L Upper Arm","f-r-arm-u":"R Upper Arm","f-l-forearm":"L Forearm",
+              "f-r-forearm":"R Forearm","f-l-hand":"L Hand","f-r-hand":"R Hand",
+              "f-l-hip":"L Hip","f-r-hip":"R Hip","f-l-thigh":"L Thigh","f-r-thigh":"R Thigh",
+              "f-l-knee":"L Knee","f-r-knee":"R Knee","f-l-calf":"L Calf","f-r-calf":"R Calf",
+              "f-l-foot":"L Foot","f-r-foot":"R Foot","b-head":"Back of Head","b-neck":"Back of Neck",
+              "b-l-shldr":"L Shoulder Blade","b-r-shldr":"R Shoulder Blade","b-upper-bk":"Upper Back",
+              "b-mid-bk":"Mid Back","b-lower-bk":"Lower Back","b-l-arm-u":"L Upper Arm",
+              "b-r-arm-u":"R Upper Arm","b-l-forearm":"L Forearm","b-r-forearm":"R Forearm",
+              "b-l-hand":"L Hand","b-r-hand":"R Hand","b-l-glute":"L Glute","b-r-glute":"R Glute",
+              "b-l-hamstr":"L Hamstring","b-r-hamstr":"R Hamstring","b-l-knee":"L Knee",
+              "b-r-knee":"R Knee","b-l-calf":"L Calf","b-r-calf":"R Calf",
+              "b-l-foot":"L Foot","b-r-foot":"R Foot"
+            };
+            const an = k => AREA_LABELS_LOCAL[k] || k;
+            const focusAreas = [...(session.front_focus||[]), ...(session.back_focus||[])].map(an);
+            const avoidAreas = [...(session.front_avoid||[]), ...(session.back_avoid||[])].map(an);
+            const summaryCode = session.feedback_code || session.id;
+            const summaryUrl = window.location.origin + "/summary/" + summaryCode;
+
+            const lines = [];
+            if (focusAreas.length > 0) lines.push("Today's session focused on " + focusAreas.slice(0,3).join(", ") + (session.goal ? ", with a goal to " + session.goal : "") + ".");
+            if (avoidAreas.length > 0) lines.push("Areas avoided: " + avoidAreas.slice(0,3).join(", ") + ".");
+            if (session.pressure) lines.push("Pressure preference: Level " + session.pressure + "/5.");
+            const summary = lines.join(" ");
+
+            return (
+              <div style={{ background: "linear-gradient(135deg, #2A574108, #6B9E8015)", borderRadius: "14px", padding: "20px 24px", border: "1px solid #6B9E8040", marginTop: "16px" }}>
+                <p style={{ fontSize: "12px", fontWeight: "700", color: C.forest, margin: "0 0 10px 0", textTransform: "uppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p>
+                <p style={{ fontSize: "14px", color: C.darkGray, lineHeight: "1.7", margin: "0 0 16px 0", fontFamily: "Georgia, serif" }}>{summary}</p>
+                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                  <button onClick={() => { navigator.clipboard.writeText(summaryUrl); alert("Summary link copied!"); }}
+                    style={{ background: C.forest, color: C.white, border: "none", padding: "10px 20px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}>
+                    📤 Share with Client
+                  </button>
+                  <a href={summaryUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ background: C.beige, color: C.forest, border: "1px solid " + C.lightGray, padding: "10px 20px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", textDecoration: "none" }}>
+                    👁 Preview
+                  </a>
+                </div>
+              </div>
+            );
+          })()}
         </div>
 
         <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
