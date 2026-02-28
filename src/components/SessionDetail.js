@@ -205,13 +205,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     const avoidCounts = {};
     allAvoid.forEach(a => avoidCounts[a] = (avoidCounts[a]||0)+1);
     Object.entries(avoidCounts).sort((a,b) => b[1]-a[1]).slice(0,2).forEach(([area, count]) => {
-      if (count >= 2) result.push({ icon: "⚠️", text: "Always avoids: " + (AREA_LABELS[area] || area) + " (" + count + "x)" });
+      if (count >= 2) result.push({ icon: "⚠️", text: "Always avoids: " + (AREA_LABELS[area] || area), count, total: history.length, pct: Math.round(count/history.length*100), type: "avoid" });
     });
     const allFocus = history.flatMap(s => [...(s.front_focus||[]), ...(s.back_focus||[])]);
     const focusCounts = {};
     allFocus.forEach(a => focusCounts[a] = (focusCounts[a]||0)+1);
     Object.entries(focusCounts).sort((a,b) => b[1]-a[1]).slice(0,2).forEach(([area, count]) => {
-      if (count >= 2) result.push({ icon: "✨", text: "Always focuses: " + (AREA_LABELS[area] || area) + " (" + count + "x)" });
+      if (count >= 2) result.push({ icon: "✨", text: "Always focuses: " + (AREA_LABELS[area] || area), count, total: history.length, pct: Math.round(count/history.length*100), type: "focus" });
     });
     const lights = history.filter(s => s.lighting).map(s => s.lighting);
     if (lights.length >= 2 && new Set(lights).size === 1) result.push({ icon: "💡", text: "Always prefers " + lights[0] + " lighting" });
@@ -310,11 +310,23 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             <div style={{ background: "linear-gradient(135deg, " + C.forest + "08, " + C.sage + "12)", borderRadius: "14px", padding: "24px", border: "1px solid " + C.sage + "30" }}>
               <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.forest, marginBottom: "16px", letterSpacing: "-0.3px" }}>🔍 Client Patterns</h3>
               <p style={{ fontSize: "12px", color: C.gray, margin: "0 0 12px 0" }}>Based on {history.length} sessions</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                 {patterns.map((p, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 12px", background: p.urgent ? "#FEF2F2" : C.white, borderRadius: "8px", border: "1px solid " + (p.urgent ? "#EF4444" : C.sage + "25") }}>
-                    <span style={{ fontSize: "16px" }}>{p.icon}</span>
-                    <span style={{ fontSize: "13px", color: p.urgent ? "#DC2626" : C.darkGray, fontWeight: p.urgent ? "700" : "500" }}>{p.text}</span>
+                  <div key={i} style={{ background: p.urgent ? "#FEF2F2" : C.white, borderRadius: "10px", padding: "10px 14px", border: "1px solid " + (p.urgent ? "#EF4444" : C.sage + "25") }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: p.pct ? "8px" : "0" }}>
+                      <span style={{ fontSize: "16px" }}>{p.icon}</span>
+                      <span style={{ fontSize: "13px", color: p.urgent ? "#DC2626" : C.darkGray, fontWeight: p.urgent ? "700" : "600", flex: 1 }}>{p.text}</span>
+                      {p.pct && (
+                        <span style={{ fontSize: "12px", fontWeight: "800", color: p.type === "avoid" ? "#991B1B" : C.forest, background: p.type === "avoid" ? "rgba(239,68,68,0.1)" : "rgba(42,87,65,0.1)", padding: "2px 8px", borderRadius: "10px", whiteSpace: "nowrap" }}>
+                          {p.count}/{p.total} · {p.pct}%
+                        </span>
+                      )}
+                    </div>
+                    {p.pct && (
+                      <div style={{ height: "6px", background: C.lightGray, borderRadius: "3px", overflow: "hidden" }}>
+                        <div style={{ height: "100%", width: p.pct + "%", background: p.type === "avoid" ? "linear-gradient(90deg, #EF4444, #DC2626)" : "linear-gradient(90deg, #6B9E80, #2A5741)", borderRadius: "3px", transition: "width 0.6s ease" }}/>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
