@@ -76,6 +76,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const signInWithGoogle = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } });
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  };
+
   const updateProfile = async (updates) => {
     try {
       const { data, error } = await supabase.from('therapists').update(updates).eq('id', user.id).select().single();
@@ -88,7 +98,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, therapist, loading, signIn, signOut, signUp, updateProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, therapist, loading, signIn, signOut, signUp, signInWithGoogle, updateProfile, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );

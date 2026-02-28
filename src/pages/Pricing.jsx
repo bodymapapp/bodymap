@@ -208,6 +208,11 @@ export default function Pricing() {
                     <div style={{ fontSize: '14px', color: C.gray }}>
                       per {billingCycle === 'monthly' ? 'month' : 'month, billed annually'}
                     </div>
+                    {tier.name === 'Silver' && billingCycle === 'monthly' && (
+                      <div style={{ fontSize: '12px', color: '#059669', marginTop: '6px', fontWeight: '600', background: '#ECFDF5', padding: '4px 10px', borderRadius: '20px', display: 'inline-block' }}>
+                        ~50¢ per massage at 50 clients/month
+                      </div>
+                    )}
                     {billingCycle === 'annual' && tier.price.annual > 0 && (
                       <div style={{ fontSize: '12px', color: C.green, marginTop: '4px', fontWeight: '600' }}>
                         Save ${(tier.price.monthly - tier.price.annual) * 12}/year

@@ -168,9 +168,9 @@ export default function Home() {
                 <line x1="40" y1="56" x2="40" y2="62" stroke="#2A5741" strokeWidth="2"/>
                 <line x1="32" y1="62" x2="48" y2="62" stroke="#2A5741" strokeWidth="2"/>
               </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 2 Minutes</h3>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 30 Seconds</h3>
               <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Sign up, go to <strong>Settings</strong>, and copy your unique intake link — something like <em>bodymap.app/yourbusiness</em>. That's it.
+                Sign up and your personal intake link is ready instantly — <strong>mybodymap.app/[yourbusiness]</strong>. Yours alone. With Gmail, you're live in under 10 seconds. Share it once. Clients use it before every session.
               </p>
               <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Text or email it to each client before their session →</p>
             </div>
@@ -198,7 +198,7 @@ export default function Home() {
               </svg>
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Client Maps Their Body</h3>
               <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Client opens the link on any phone — no app needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
+                Client opens your link on any phone or laptop — no app, no download, no login needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
               </p>
               <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Done in under 60 seconds →</p>
             </div>
@@ -223,11 +223,11 @@ export default function Home() {
                 <circle cx="60" cy="35" r="2" fill="#22C55E"/>
                 <circle cx="63" cy="38" r="2" fill="#EF4444"/>
               </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You Deliver. Then Collect Feedback.</h3>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You See Everything. Patterns Build Over Time.</h3>
               <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Review their body map on any device — phone or laptop — before the session. Deliver a personalized massage. After, send a feedback link to keep improving.
+                Review their body map before each session on any device. After session 3, BodyMap shows you patterns — which areas they always focus on, what they consistently avoid, pressure trends. After session 5, you know this client better than any notes ever could.
               </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Every session gets better than the last →</p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Session intelligence that compounds with every visit →</p>
             </div>
 
           </div>
@@ -238,10 +238,10 @@ export default function Home() {
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-            Try It Right Now
+            Experience Both Sides
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
-            No signup needed. Experience BodyMap from both sides.
+            No signup needed. See why clients love it — and why therapists never go back.
           </p>
           <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 
@@ -266,10 +266,10 @@ export default function Home() {
             <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
               <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
               <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Therapist Dashboard
+                Therapist Experience
               </h3>
               <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                See exactly what you will see before each session — client body map, preferences, medical flags, session history, and feedback all in one place.
+                See your dashboard before each session — body map, preferences, medical flags, and the patterns BodyMap has detected across every visit. Walk in knowing exactly what this client needs.
               </p>
               <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
                 Free account · no credit card · live in 30 seconds →
@@ -513,7 +513,7 @@ export default function Home() {
           <div className="bm-grid-pricing" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
             {[
               { name: "Bronze", price: "$0", clients: "5 clients/month", cta: "Start Free", badge: "🥉" },
-              { name: "Silver", price: "$24", clients: "Unlimited clients", cta: "Start Trial", badge: "🥈", popular: true },
+              { name: "Silver", price: "$24", clients: "Unlimited clients", cta: "Start Trial", badge: "🥈", popular: true, note: "~50¢ per massage at 50 clients/month" },
               { name: "Gold", price: "$49", clients: "Up to 5 therapists", cta: "Coming Soon", badge: "🥇", comingSoon: true }
             ].map((tier) => (
               <div key={tier.name} style={{ 
