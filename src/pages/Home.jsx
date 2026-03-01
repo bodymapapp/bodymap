@@ -3,6 +3,105 @@ import Footer from '../components/Footer';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+
+function TherapistCarousel() {
+  const [active, setActive] = React.useState(0);
+  const cards = [
+    {
+      num: '01',
+      time: '⚡ 10 seconds',
+      title: 'Send the intake link',
+      desc: 'One tap from your dashboard. Client gets it on their phone before they arrive.'
+    },
+    {
+      num: '02',
+      time: '⚡ 0 seconds',
+      title: 'Client maps arrive automatically',
+      desc: 'Body map, preferences, medical flags — all waiting for you. No chasing, no asking.'
+    },
+    {
+      num: '03',
+      time: '⚡ 30 seconds',
+      title: 'Review before they walk in',
+      desc: 'Pressure level, focus areas, what to avoid. Open your dashboard, know everything.'
+    },
+    {
+      num: '04',
+      time: '⚡ Builds automatically',
+      title: 'Patterns emerge over sessions',
+      desc: 'After a few sessions, BodyMap shows what this client always needs. No note-taking required.'
+    }
+  ];
+  return (
+    <div>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '40px 36px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '220px', border: '1.5px solid #E8E4DC', position: 'relative' }}>
+        <div style={{ fontSize: '56px', fontWeight: '800', color: '#F0EDE8', fontFamily: 'Georgia, serif', position: 'absolute', top: '24px', right: '28px', lineHeight: 1 }}>{cards[active].num}</div>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '20px' }}>{cards[active].time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px', lineHeight: '1.3' }}>{cards[active].title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{cards[active].desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
+        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
+          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {cards.map((_, i) => (
+            <button key={i} onClick={() => setActive(i)}
+              style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />
+          ))}
+        </div>
+        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
+          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+      </div>
+    </div>
+  );
+}
+
+function ClientCarousel() {
+  const [active, setActive] = React.useState(0);
+  const cards = [
+    {
+      num: '01',
+      time: '⚡ 0 seconds',
+      title: 'Get a link, tap it',
+      desc: 'No app. No download. No login. Your therapist texts you a link — it opens instantly on any phone.'
+    },
+    {
+      num: '02',
+      time: '⚡ 20 seconds',
+      title: 'Tap your body map',
+      desc: 'Front and back diagram. Tap what needs focus. Tap what to avoid. Done before you sit down.'
+    },
+    {
+      num: '03',
+      time: '⚡ 10 seconds',
+      title: 'Set your preferences',
+      desc: 'Pressure, music, lighting, temperature — captured once, remembered every time.'
+    }
+  ];
+  return (
+    <div>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '40px 36px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '220px', border: '1.5px solid #E8E4DC', position: 'relative' }}>
+        <div style={{ fontSize: '56px', fontWeight: '800', color: '#F0EDE8', fontFamily: 'Georgia, serif', position: 'absolute', top: '24px', right: '28px', lineHeight: 1 }}>{cards[active].num}</div>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '20px' }}>{cards[active].time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px', lineHeight: '1.3' }}>{cards[active].title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{cards[active].desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
+        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
+          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {cards.map((_, i) => (
+            <button key={i} onClick={() => setActive(i)}
+              style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />
+          ))}
+        </div>
+        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
+          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   
