@@ -291,7 +291,6 @@ export default function Signup() {
                 onChange={handlePhoneChange}
                 required
                 value={formData.phone}
-                onChange={handleChange}
                 placeholder="(555) 123-4567"
                 style={{
                   width: '100%',
