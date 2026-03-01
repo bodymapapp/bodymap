@@ -306,10 +306,20 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
           </p>
           <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "—"}</p>
         </div>
-        <span style={{ background: status.bg, color: status.color, fontSize: "11px", fontWeight: "700",
-          padding: "3px 8px", borderRadius: "20px", whiteSpace: "nowrap" }}>
-          {status.icon} {status.label}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <span style={{ background: status.bg, color: status.color, fontSize: "11px", fontWeight: "700",
+            padding: "3px 8px", borderRadius: "20px", whiteSpace: "nowrap" }}>
+            {status.icon} {status.label}
+          </span>
+          {status.label === "Lapsed" && client.phone && (
+            <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while — I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
+              onClick={e => e.stopPropagation()}
+              style={{ background: "#D97706", color: "white", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", textDecoration: "none", flexShrink: 0 }}
+              title="Send check-in SMS">
+              💬
+            </a>
+          )}
+        </div>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "10px", borderTop: `1px solid ${C.lightGray}` }}>
         <div style={{ textAlign: "center" }}>
