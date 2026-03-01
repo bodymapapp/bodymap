@@ -336,6 +336,29 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* Experience Carousels */}
+      <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
+            Less Time Than Setting Up Your Table
+          </h2>
+          <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
+            The entire BodyMap workflow — for both therapist and client — takes under 60 seconds.
+          </p>
+          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
+              <TherapistCarousel />
+            </div>
+            <div>
+              <p style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
+              <ClientCarousel />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Try It Section */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
