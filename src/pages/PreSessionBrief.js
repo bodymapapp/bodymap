@@ -92,7 +92,7 @@ export default function PreSessionBrief() {
       const { data: session } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from("clients").select("name,phone").eq("id", session.client_id).maybeSingle();
-      const { data: therapist } = await supabase.from("therapists").select("name,business_name").eq("id", session.therapist_id).maybeSingle();
+      const { data: therapist } = await supabase.from("therapists").select("name,business_name,custom_url,phone").eq("id", session.therapist_id).maybeSingle();
       const { data: history } = await supabase.from("sessions").select("*").eq("client_id", session.client_id).order("created_at",{ascending:false}).limit(10);
       setData({ session, client, therapist, history: history || [] });
       setLoading(false);
@@ -143,6 +143,8 @@ export default function PreSessionBrief() {
     session.draping && { label:"Draping", val:session.draping },
   ].filter(Boolean);
   const therapistName = therapist?.business_name || therapist?.name || "Your Practice";
+  const intakeUrl = therapist?.custom_url ? `${window.location.origin}/${therapist.custom_url}` : null;
+  const therapistPhone = therapist?.phone || null;
 
   return (
     <div style={{fontFamily:"system-ui,sans-serif",background:"white",minHeight:"100vh",color:"#1A1A2E"}}>
@@ -159,7 +161,9 @@ export default function PreSessionBrief() {
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:"13px",fontWeight:"700",color:"#2A5741"}}>🌿 Pre-Session Brief</div>
-            <div style={{fontSize:"11px",color:"#9CA3AF"}}>{therapistName}</div>
+            <div style={{fontSize:"11px",color:"#1A1A2E",fontWeight:"600"}}>{therapistName}</div>
+            {therapistPhone && <div style={{fontSize:"11px",color:"#6B7280"}}>{therapistPhone}</div>}
+            {intakeUrl && <div style={{fontSize:"10px",color:"#9CA3AF"}}>{intakeUrl}</div>}
           </div>
         </div>
         {medFlag && (
@@ -220,7 +224,7 @@ export default function PreSessionBrief() {
         )}
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>Confidential therapist document</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""} · Confidential</span>
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ const C = {
 function SettingsPanel({ therapist }) {
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
+  const [phone, setPhone] = React.useState(therapist?.phone || '');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -95,13 +96,18 @@ function SettingsPanel({ therapist }) {
               style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'system-ui', background: C2.beige }} />
           </div>
         </div>
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{ fontSize: '12px', fontWeight: '600', color: C2.gray, display: 'block', marginBottom: '6px' }}>Phone Number (shown on client briefs)</label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(512) 555-1234" type="tel"
+            style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box', fontFamily: 'system-ui', background: C2.beige }} />
+        </div>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <button
             onClick={async () => {
               setSaving(true);
               try {
                 const { supabase } = await import('../lib/supabase');
-                await supabase.from('therapists').update({ full_name: fullName, business_name: businessName }).eq('id', therapist.id);
+                await supabase.from('therapists').update({ full_name: fullName, business_name: businessName, phone: phone }).eq('id', therapist.id);
                 setSaved(true); setTimeout(() => setSaved(false), 2500);
               } catch(e) { console.error(e); }
               finally { setSaving(false); }

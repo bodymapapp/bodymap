@@ -37,7 +37,7 @@ const AREA_LABELS = {
 
 function an(k) { return AREA_LABELS[k] || k; }
 
-function BodySVG({ focusAreas=[], avoidAreas=[] }) {
+function BodySVG({ focusAreas=[], avoidAreas=[], heatmapFocus={}, heatmapAvoid={}, showHeatmap=false }) {
   return (
     <svg width="130" height="250" viewBox="0 0 170 310">
       <ellipse cx="85" cy="28" rx="20" ry="24" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
@@ -47,11 +47,32 @@ function BodySVG({ focusAreas=[], avoidAreas=[] }) {
       <path d="M113 66 Q128 74 132 115 Q134 128 130 138 Q124 141 120 138 Q116 112 110 85 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
       <path d="M60 162 Q56 195 54 232 Q52 260 56 278 Q62 284 70 282 Q76 278 76 260 L78 162 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
       <path d="M110 162 Q114 195 116 232 Q118 260 114 278 Q108 284 100 282 Q94 278 94 260 L92 162 Z" fill="#EDE8DF" stroke="#C8BFB0" strokeWidth="1.5"/>
-      {focusAreas.map((area,i) => {
+      {showHeatmap && Object.entries(heatmapFocus).map(([area,{opacity,count}]) => {
+        const c=AREA_COORDS[area]; if(!c) return null; const r=8+opacity*10;
+        return <g key={"hf-"+area}>
+          <circle cx={c[0]} cy={c[1]} r={r+8} fill={`rgba(107,158,128,${(opacity*0.2).toFixed(2)})`} stroke="none"/>
+          <circle cx={c[0]} cy={c[1]} r={r} fill={`rgba(107,158,128,${(opacity*0.55).toFixed(2)})`} stroke="#6B9E80" strokeWidth={opacity>0.6?"2.5":"1.5"}/>
+          <circle cx={c[0]} cy={c[1]} r="5" fill={`rgba(42,87,65,${Math.min(opacity+0.2,1).toFixed(2)})`}/>
+          <circle cx={c[0]+r-1} cy={c[1]-r+1} r="7" fill="#2A5741" stroke="white" strokeWidth="1.5"/>
+          <text x={c[0]+r-1} y={c[1]-r+5} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="system-ui">{count}</text>
+        </g>;
+      })}
+      {showHeatmap && Object.entries(heatmapAvoid).map(([area,{opacity,count}]) => {
+        if(heatmapFocus[area]) return null;
+        const c=AREA_COORDS[area]; if(!c) return null; const r=8+opacity*10;
+        return <g key={"ha-"+area}>
+          <circle cx={c[0]} cy={c[1]} r={r+8} fill={`rgba(239,68,68,${(opacity*0.15).toFixed(2)})`} stroke="none"/>
+          <circle cx={c[0]} cy={c[1]} r={r} fill={`rgba(239,68,68,${(opacity*0.4).toFixed(2)})`} stroke="#EF4444" strokeWidth={opacity>0.6?"2.5":"1.5"}/>
+          <circle cx={c[0]} cy={c[1]} r="5" fill={`rgba(185,28,28,${Math.min(opacity+0.2,1).toFixed(2)})`}/>
+          <circle cx={c[0]+r-1} cy={c[1]-r+1} r="7" fill="#991B1B" stroke="white" strokeWidth="1.5"/>
+          <text x={c[0]+r-1} y={c[1]-r+5} textAnchor="middle" fill="white" fontSize="8" fontWeight="bold" fontFamily="system-ui">{count}</text>
+        </g>;
+      })}
+      {!showHeatmap && focusAreas.map((area,i) => {
         const c=AREA_COORDS[area]; if(!c) return null;
         return <g key={"f"+i}><circle cx={c[0]} cy={c[1]} r="12" fill="rgba(107,158,128,0.25)" stroke="#6B9E80" strokeWidth="2"/><circle cx={c[0]} cy={c[1]} r="5" fill="#6B9E80"/></g>;
       })}
-      {avoidAreas.map((area,i) => {
+      {!showHeatmap && avoidAreas.map((area,i) => {
         const c=AREA_COORDS[area]; if(!c) return null;
         return <g key={"a"+i}><circle cx={c[0]} cy={c[1]} r="12" fill="rgba(239,68,68,0.2)" stroke="#EF4444" strokeWidth="2"/><circle cx={c[0]} cy={c[1]} r="5" fill="#EF4444"/></g>;
       })}
@@ -69,13 +90,36 @@ export default function PostSessionBrief() {
       const { data: session } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from("clients").select("name,phone").eq("id", session.client_id).maybeSingle();
-      const { data: therapist } = await supabase.from("therapists").select("name,business_name").eq("id", session.therapist_id).maybeSingle();
+      const { data: therapist } = await supabase.from("therapists").select("name,business_name,custom_url,phone").eq("id", session.therapist_id).maybeSingle();
       const { data: history } = await supabase.from("sessions").select("*").eq("client_id", session.client_id).eq("completed",true).order("created_at",{ascending:false}).limit(10);
       setData({ session, client, therapist, history: history || [] });
       setLoading(false);
     }
     load();
   }, [sessionId]);
+
+
+  const heatmapData = useMemo(() => {
+    if (!data) return { frontFocus:{}, frontAvoid:{}, backFocus:{}, backAvoid:{}, count:0 };
+    const past = data.history.filter(s => s.id !== data.session.id).slice(0,5);
+    const n = past.length;
+    if (n===0) return { frontFocus:{}, frontAvoid:{}, backFocus:{}, backAvoid:{}, count:0 };
+    const ff={},fa={},bf={},ba={};
+    past.forEach(s => {
+      (s.front_focus||[]).forEach(a => { ff[a]=(ff[a]||0)+1; });
+      (s.front_avoid||[]).forEach(a => { fa[a]=(fa[a]||0)+1; });
+      (s.back_focus||[]).forEach(a => { bf[a]=(bf[a]||0)+1; });
+      (s.back_avoid||[]).forEach(a => { ba[a]=(ba[a]||0)+1; });
+    });
+    const toEntry = c => ({ count:c, total:n, opacity:parseFloat(Math.min(0.3+(c/n)*0.7,1.0).toFixed(2)) });
+    return {
+      frontFocus: Object.fromEntries(Object.entries(ff).map(([k,v])=>[k,toEntry(v)])),
+      frontAvoid: Object.fromEntries(Object.entries(fa).map(([k,v])=>[k,toEntry(v)])),
+      backFocus:  Object.fromEntries(Object.entries(bf).map(([k,v])=>[k,toEntry(v)])),
+      backAvoid:  Object.fromEntries(Object.entries(ba).map(([k,v])=>[k,toEntry(v)])),
+      count: n
+    };
+  }, [data]);
 
   const patterns = useMemo(() => {
     if (!data || data.history.length < 2) return [];
@@ -103,6 +147,8 @@ export default function PostSessionBrief() {
   const focusAreas = [...(session.front_focus||[]),...(session.back_focus||[])];
   const avoidAreas = [...(session.front_avoid||[]),...(session.back_avoid||[])];
   const therapistName = therapist?.business_name || therapist?.name || "Your Therapist";
+  const intakeUrl = therapist?.custom_url ? `${window.location.origin}/${therapist.custom_url}` : null;
+  const therapistPhone = therapist?.phone || null;
   const summaryParts = [];
   if (focusAreas.length > 0) summaryParts.push(`Today's session focused on ${focusAreas.slice(0,3).map(an).join(", ")}${session.goal ? `, with a goal to ${session.goal}` : ""}.`);
   if (session.therapist_notes) summaryParts.push(session.therapist_notes);
@@ -136,20 +182,37 @@ export default function PostSessionBrief() {
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:"14px",fontWeight:"700"}}>🌿 {therapistName}</div>
-            <div style={{fontSize:"11px",opacity:0.75,marginTop:"3px"}}>{history.length} session{history.length!==1?"s":""} on record</div>
+            {therapistPhone && <div style={{fontSize:"11px",opacity:0.85,marginTop:"1px"}}>{therapistPhone}</div>}
+            <div style={{fontSize:"11px",opacity:0.65,marginTop:"1px"}}>{history.length} session{history.length!==1?"s":""} on record</div>
           </div>
         </div>
         {summary && <div style={{borderLeft:"4px solid #2A5741",background:"#F0F7F3",padding:"14px 16px",borderRadius:"0 8px 8px 0",marginBottom:"14px",fontSize:"13px",lineHeight:"1.7",color:"#1A1A2E",fontFamily:"Georgia,serif"}}>{summary}</div>}
-        <div style={{border:"1px solid #E8E4DC",borderRadius:"10px",padding:"14px",marginBottom:"14px"}}>
-          <div style={{fontSize:"10px",fontWeight:"700",color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px"}}>Today's Body Map</div>
-          <div style={{display:"flex",justifyContent:"space-around"}}>
-            <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Front</div><BodySVG focusAreas={session.front_focus||[]} avoidAreas={session.front_avoid||[]} /></div>
-            <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Back</div><BodySVG focusAreas={session.back_focus||[]} avoidAreas={session.back_avoid||[]} /></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
+          <div style={{border:"1px solid #E8E4DC",borderRadius:"10px",padding:"14px"}}>
+            <div style={{fontSize:"10px",fontWeight:"700",color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"10px"}}>Today's Body Map</div>
+            <div style={{display:"flex",justifyContent:"space-around"}}>
+              <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Front</div><BodySVG focusAreas={session.front_focus||[]} avoidAreas={session.front_avoid||[]} /></div>
+              <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Back</div><BodySVG focusAreas={session.back_focus||[]} avoidAreas={session.back_avoid||[]} /></div>
+            </div>
+            <div style={{display:"flex",gap:"12px",justifyContent:"center",marginTop:"8px"}}>
+              <span style={{fontSize:"10px",color:"#2A5741"}}>🟢 Focus</span>
+              <span style={{fontSize:"10px",color:"#991B1B"}}>🔴 Avoid</span>
+            </div>
           </div>
-          <div style={{display:"flex",gap:"16px",justifyContent:"center",marginTop:"8px"}}>
-            <span style={{fontSize:"11px",color:"#2A5741"}}>🟢 Focus areas</span>
-            <span style={{fontSize:"11px",color:"#991B1B"}}>🔴 Avoided areas</span>
-          </div>
+          {heatmapData.count > 0 ? (
+            <div style={{border:"1px solid #E8E4DC",borderRadius:"10px",padding:"14px"}}>
+              <div style={{fontSize:"10px",fontWeight:"700",color:"#6B7280",textTransform:"uppercase",letterSpacing:"0.5px",marginBottom:"4px"}}>Your Pattern History</div>
+              <div style={{fontSize:"10px",color:"#6B9E80",marginBottom:"8px"}}>Across your {heatmapData.count} session{heatmapData.count!==1?"s":""} with us</div>
+              <div style={{display:"flex",justifyContent:"space-around"}}>
+                <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Front</div><BodySVG heatmapFocus={heatmapData.frontFocus} heatmapAvoid={heatmapData.frontAvoid} showHeatmap={true} /></div>
+                <div style={{textAlign:"center"}}><div style={{fontSize:"10px",color:"#9CA3AF",marginBottom:"4px",textTransform:"uppercase"}}>Back</div><BodySVG heatmapFocus={heatmapData.backFocus} heatmapAvoid={heatmapData.backAvoid} showHeatmap={true} /></div>
+              </div>
+            </div>
+          ) : (
+            <div style={{border:"1px solid #E8E4DC",borderRadius:"10px",padding:"14px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div style={{textAlign:"center",color:"#9CA3AF"}}><div style={{fontSize:"22px",marginBottom:"6px"}}>📊</div><div style={{fontSize:"11px"}}>Pattern history available after 2+ sessions</div></div>
+            </div>
+          )}
         </div>
         {(focusAreas.length > 0 || avoidAreas.length > 0) && (
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"12px",marginBottom:"14px"}}>
@@ -171,13 +234,14 @@ export default function PostSessionBrief() {
             {patterns.map((p,i)=><div key={i} style={{fontSize:"12px",color:"#374151",lineHeight:"1.6"}}>• {p}</div>)}
           </div>
         )}
-        <div style={{background:"#F5F0E8",border:"1px solid #C8BFB0",borderRadius:"8px",padding:"12px 16px",marginBottom:"14px",textAlign:"center"}}>
-          <div style={{fontSize:"13px",fontWeight:"700",color:"#2A5741",marginBottom:"2px"}}>Ready for your next session? 🌿</div>
-          <div style={{fontSize:"11px",color:"#6B7280"}}>Reach out to {therapistName} to book your next appointment.</div>
+        <div style={{background:"#F5F0E8",border:"1px solid #C8BFB0",borderRadius:"8px",padding:"14px 16px",marginBottom:"14px",textAlign:"center"}}>
+          <div style={{fontSize:"13px",fontWeight:"700",color:"#2A5741",marginBottom:"4px"}}>Ready for your next session? 🌿</div>
+          <div style={{fontSize:"11px",color:"#6B7280",marginBottom:"6px"}}>Contact {therapistName}{therapistPhone ? " · " + therapistPhone : ""}</div>
+          {intakeUrl && <a href={intakeUrl} style={{fontSize:"12px",fontWeight:"700",color:"#2A5741",textDecoration:"none",background:"white",padding:"6px 16px",borderRadius:"20px",border:"1px solid #6B9E80",display:"inline-block"}}>📋 Fill intake form before next visit</a>}
         </div>
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>Prepared by {therapistName} · Confidential</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""}</span>
         </div>
       </div>
     </div>
