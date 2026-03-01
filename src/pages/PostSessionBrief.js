@@ -151,7 +151,7 @@ export default function PostSessionBrief() {
   const therapistPhone = therapist?.phone || null;
   const summaryParts = [];
   if (focusAreas.length > 0) summaryParts.push(`Today's session focused on ${focusAreas.slice(0,3).map(an).join(", ")}${session.goal ? `, with a goal to ${session.goal}` : ""}.`);
-  if (session.therapist_notes) summaryParts.push(session.therapist_notes);
+  if (session.public_notes) summaryParts.push(session.public_notes);
   if (avoidAreas.length > 0) summaryParts.push(`Areas we avoided today: ${avoidAreas.slice(0,3).map(an).join(", ")}.`);
   if (session.pressure) summaryParts.push(`Your pressure preference: Level ${session.pressure}/5.`);
   const summary = summaryParts.join(" ");

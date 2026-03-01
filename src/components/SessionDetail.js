@@ -117,6 +117,7 @@ function BodySVG({ focusAreas = [], avoidAreas = [], heatmapFocus = {}, heatmapA
 
 export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const [notes, setNotes] = useState(session.therapist_notes || "");
+  const [publicNotes, setPublicNotes] = useState(session.public_notes || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [completing, setCompleting] = useState(false);
@@ -230,7 +231,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function saveNotes() {
     setSaving(true);
     try {
-      const { data } = await supabase.from("sessions").update({ therapist_notes: notes }).eq("id", session.id).select().single();
+      const { data } = await supabase.from("sessions").update({ therapist_notes: notes, public_notes: publicNotes }).eq("id", session.id).select().single();
       setSaved(true); setTimeout(() => setSaved(false), 2000);
       if (onUpdate && data) onUpdate(data);
     } catch (err) { console.error(err); }
@@ -240,7 +241,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function markComplete() {
     setCompleting(true);
     try {
-      const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
+      const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notes, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
       onBack();
     } catch (err) { console.error(err); }
@@ -343,7 +344,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
 
           <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
             <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, marginBottom: "16px", letterSpacing: "-0.3px" }}>Your Notes</h3>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add session notes..."
+            <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Add your private session notes..."
+              style={{ width: "100%", minHeight: "100px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
+            />
+            <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px", marginTop: "20px" }}>Message to Client</h3>
+            <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>💌 Appears on the Post-Session Brief you share with your client</p>
+            <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional — write a personal note for your client..."
               style={{ width: "100%", minHeight: "100px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
             />
             <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
