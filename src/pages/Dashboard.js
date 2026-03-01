@@ -15,7 +15,7 @@ const C = {
 
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
-  const [lapsedSaved, setLapsedSaved] = React.useState(false); {
+  const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
   const [phone, setPhone] = React.useState(therapist?.phone || '');
