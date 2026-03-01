@@ -312,7 +312,7 @@ export default function Dashboard({ view }) {
             <div style={{ textAlign: 'center', padding: '40px', color: C.gray }}>Loading session...</div>
           )}
           {view === 'settings' && (
-            <SettingsPanel therapist={therapist} />
+            <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
           )}
         </div>
 
