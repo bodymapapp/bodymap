@@ -19,6 +19,7 @@ function SettingsPanel({ therapist }) {
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
   const [phone, setPhone] = React.useState(therapist?.phone || '');
   const [phoneError, setPhoneError] = React.useState('');
+  const [lapsedDays, setLapsedDays] = React.useState(() => parseInt(localStorage.getItem('bm_lapsed_days') || '60'));
   const [nameError, setNameError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -127,6 +128,18 @@ function SettingsPanel({ therapist }) {
             {nameError && <p style={{color:'#EF4444',fontSize:'11px',margin:'0 0 2px'}}>{nameError}</p>}
             <p style={{ fontSize: '12px', color: C2.gray, margin: 0 }}>Email: {therapist?.email}</p>
           </div>
+        </div>
+      </div>
+
+      {/* Lapsed Threshold */}
+      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 16px 0' }}>🍂 Lapsed Client Settings</p>
+        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Clients who haven't visited in this many days will appear in the re-engagement nudge on your dashboard.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <input type="number" min="7" max="365" value={lapsedDays}
+            onChange={e => { const v = parseInt(e.target.value); if(v >= 7 && v <= 365) { setLapsedDays(v); localStorage.setItem('bm_lapsed_days', v); }}}
+            style={{ width: '80px', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '16px', fontWeight: '700', color: C2.forest, background: C2.beige, textAlign: 'center', fontFamily: 'system-ui' }} />
+          <p style={{ fontSize: '14px', color: C2.darkGray, margin: 0 }}>days since last visit</p>
         </div>
       </div>
 
@@ -269,6 +282,8 @@ export default function Dashboard({ view }) {
             <ClientList
               therapistId={therapist?.id}
               onSelectClient={(c) => navigate(`/dashboard/clients/${c.id}`)}
+              lapsedDays={lapsedDays}
+              customUrl={therapist?.custom_url || ''}
             />
           )}
           {view === 'sessions' && client && (

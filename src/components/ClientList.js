@@ -58,8 +58,8 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
 
   const filterFns = {
     all: () => true,
-    active: c => c.days_since_visit !== null && c.days_since_visit <= 60,
-    lapsed: c => c.days_since_visit !== null && c.days_since_visit > 60,
+    active: c => c.days_since_visit !== null && c.days_since_visit <= lapsedDays,
+    lapsed: c => c.days_since_visit !== null && c.days_since_visit > lapsedDays,
     new: c => c.days_since_visit === null || c.total_sessions === 0,
   };
 
@@ -79,8 +79,45 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
     </div>
   );
 
+  const lapsedClients = clients.filter(c => c.days_since_visit !== null && c.days_since_visit > lapsedDays).sort((a,b) => b.days_since_visit - a.days_since_visit);
+  const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
+
   return (
     <div>
+      {/* Lapsed Client Nudge */}
+      {!nudgeDismissed && lapsedClients.length > 0 && (
+        <div style={{ background: "linear-gradient(135deg, #FEF3C7, #FFFBEB)", border: "1.5px solid #D97706", borderRadius: "14px", padding: "16px 20px", marginBottom: "16px" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+            <div>
+              <p style={{ fontSize: "14px", fontWeight: "700", color: "#92400E", margin: "0 0 2px 0" }}>🍂 {lapsedClients.length} client{lapsedClients.length > 1 ? "s" : ""} haven't visited in {lapsedDays}+ days</p>
+              <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>Tap to send a quick check-in message</p>
+            </div>
+            <button onClick={() => setNudgeDismissed(true)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#B45309", padding: "4px" }}>✕</button>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {lapsedClients.slice(0, 3).map(client => (
+              <div key={client.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "white", borderRadius: "10px", padding: "10px 14px", border: "1px solid #FDE68A" }}>
+                <div>
+                  <p style={{ fontSize: "14px", fontWeight: "600", color: "#1A1A2E", margin: "0 0 2px 0" }}>{client.name}</p>
+                  <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>{client.days_since_visit} days since last visit</p>
+                </div>
+                {client.phone ? (
+                  <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while — I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
+                    style={{ background: "#D97706", color: "white", padding: "8px 16px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", textDecoration: "none", whiteSpace: "nowrap" }}>
+                    💬 Send Check-in
+                  </a>
+                ) : (
+                  <span style={{ fontSize: "11px", color: "#B45309", fontStyle: "italic" }}>No phone on file</span>
+                )}
+              </div>
+            ))}
+            {lapsedClients.length > 3 && (
+              <p style={{ fontSize: "12px", color: "#B45309", textAlign: "center", margin: "4px 0 0 0" }}>+ {lapsedClients.length - 3} more — filter by 🍂 Lapsed to see all</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Legend - top of dashboard */}
       <details open style={{ marginBottom: 20, background: "#F5F0E8", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}>
         <summary style={{ fontSize: 13, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
