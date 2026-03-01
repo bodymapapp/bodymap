@@ -278,7 +278,149 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={() => window.print()} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>🖨️ Print Brief</button>
+          <button onClick={() => {
+            const AREA_LABELS_P = {
+              "f-head":"Head","f-neck":"Neck","f-l-shldr":"L Shoulder","f-r-shldr":"R Shoulder",
+              "f-l-chest":"L Chest","f-r-chest":"R Chest","f-abdomen":"Abdomen",
+              "f-l-arm-u":"L Upper Arm","f-r-arm-u":"R Upper Arm","f-l-forearm":"L Forearm",
+              "f-r-forearm":"R Forearm","f-l-hand":"L Hand","f-r-hand":"R Hand",
+              "f-l-hip":"L Hip","f-r-hip":"R Hip","f-l-thigh":"L Thigh","f-r-thigh":"R Thigh",
+              "f-l-knee":"L Knee","f-r-knee":"R Knee","f-l-calf":"L Calf","f-r-calf":"R Calf",
+              "f-l-foot":"L Foot","f-r-foot":"R Foot","b-head":"Back of Head","b-neck":"Back of Neck",
+              "b-l-shldr":"L Shoulder Blade","b-r-shldr":"R Shoulder Blade","b-upper-bk":"Upper Back",
+              "b-mid-bk":"Mid Back","b-lower-bk":"Lower Back","b-l-arm-u":"L Upper Arm",
+              "b-r-arm-u":"R Upper Arm","b-l-forearm":"L Forearm","b-r-forearm":"R Forearm",
+              "b-l-hand":"L Hand","b-r-hand":"R Hand","b-l-glute":"L Glute","b-r-glute":"R Glute",
+              "b-l-hamstr":"L Hamstring","b-r-hamstr":"R Hamstring","b-l-knee":"L Knee",
+              "b-r-knee":"R Knee","b-l-calf":"L Calf","b-r-calf":"R Calf",
+              "b-l-foot":"L Foot","b-r-foot":"R Foot"
+            };
+            const an = k => AREA_LABELS_P[k] || k;
+            const focusAreas = [...(session.front_focus||[]), ...(session.back_focus||[])].map(an);
+            const avoidAreas = [...(session.front_avoid||[]), ...(session.back_avoid||[])].map(an);
+            const sessionDate = new Date(session.created_at).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+            const prefs = [
+              session.pressure && `Pressure: Level ${session.pressure}/5`,
+              session.goal && `Goal: ${session.goal}`,
+              session.table_temp && `Table: ${session.table_temp}`,
+              session.room_temp && `Room: ${session.room_temp}`,
+              session.music && `Music: ${session.music}`,
+              session.lighting && `Lighting: ${session.lighting}`,
+              session.conversation && `Conversation: ${session.conversation}`,
+              session.draping && `Draping: ${session.draping}`,
+            ].filter(Boolean);
+            const medFlag = session.medical_flag && session.medical_flag !== "none" && session.medical_flag !== "" ? session.medical_flag : null;
+            const notes = session.therapist_notes || "";
+            const w = window.open("", "_blank");
+            w.document.write(`<!DOCTYPE html><html><head><title>Pre-Session Brief — ${client.name}</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body { font-family: Georgia, serif; font-size: 12px; color: #1A1A2E; background: white; padding: 24px; }
+              @media print { body { padding: 12px; } @page { size: A4; margin: 12mm; } }
+              .header { border-bottom: 2px solid #2A5741; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+              .logo { font-size: 14px; font-weight: 700; color: #2A5741; }
+              .client-name { font-size: 22px; font-weight: 700; color: #1A1A2E; }
+              .date { font-size: 12px; color: #6B7280; }
+              .flag { background: #FEF2F2; border: 2px solid #EF4444; border-radius: 8px; padding: 10px 14px; margin-bottom: 14px; }
+              .flag-title { font-size: 11px; font-weight: 800; color: #991B1B; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 3px; }
+              .flag-text { font-size: 13px; font-weight: 600; color: #7F1D1D; }
+              .section { margin-bottom: 14px; }
+              .section-title { font-size: 10px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+              .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+              .tag-focus { background: rgba(107,158,128,0.15); color: #2A5741; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+              .tag-avoid { background: rgba(239,68,68,0.1); color: #991B1B; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+              .prefs-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+              .pref-box { background: #F5F0E8; border-radius: 6px; padding: 6px 10px; font-size: 11px; color: #1A1A2E; }
+              .notes-box { background: #F9FAFB; border: 1px solid #E8E4DC; border-radius: 6px; padding: 10px; font-size: 12px; color: #374151; line-height: 1.5; min-height: 40px; }
+              .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #E8E4DC; font-size: 10px; color: #9CA3AF; text-align: center; }
+            </style></head><body>
+            <div class="header">
+              <div>
+                <div class="client-name">${client.name}</div>
+                <div class="date">${sessionDate}</div>
+              </div>
+              <div class="logo">🌿 Pre-Session Brief</div>
+            </div>
+            ${medFlag ? `<div class="flag"><div class="flag-title">🚨 Medical Flag — Review Before Session</div><div class="flag-text">${medFlag}</div></div>` : ""}
+            ${focusAreas.length > 0 ? `<div class="section"><div class="section-title">🟢 Focus Areas</div><div class="tags">${focusAreas.map(a => `<span class="tag-focus">${a}</span>`).join("")}</div></div>` : ""}
+            ${avoidAreas.length > 0 ? `<div class="section"><div class="section-title">🔴 Avoid Areas</div><div class="tags">${avoidAreas.map(a => `<span class="tag-avoid">${a}</span>`).join("")}</div></div>` : ""}
+            ${prefs.length > 0 ? `<div class="section"><div class="section-title">Client Preferences</div><div class="prefs-grid">${prefs.map(p => `<div class="pref-box">${p}</div>`).join("")}</div></div>` : ""}
+            ${notes ? `<div class="section"><div class="section-title">Your Notes</div><div class="notes-box">${notes}</div></div>` : ""}
+            <div class="footer">BodyMap — mybodymap.app · Confidential therapist document</div>
+            <script>window.onload = () => { window.print(); }<\/script>
+            </body></html>`);
+            w.document.close();
+          }} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>🖨️ Pre-Session Brief</button>
+
+          {session.completed && <button onClick={() => {
+            const AREA_LABELS_P = {
+              "f-head":"Head","f-neck":"Neck","f-l-shldr":"L Shoulder","f-r-shldr":"R Shoulder",
+              "f-l-chest":"L Chest","f-r-chest":"R Chest","f-abdomen":"Abdomen",
+              "f-l-arm-u":"L Upper Arm","f-r-arm-u":"R Upper Arm","f-l-forearm":"L Forearm",
+              "f-r-forearm":"R Forearm","f-l-hand":"L Hand","f-r-hand":"R Hand",
+              "f-l-hip":"L Hip","f-r-hip":"R Hip","f-l-thigh":"L Thigh","f-r-thigh":"R Thigh",
+              "f-l-knee":"L Knee","f-r-knee":"R Knee","f-l-calf":"L Calf","f-r-calf":"R Calf",
+              "f-l-foot":"L Foot","f-r-foot":"R Foot","b-head":"Back of Head","b-neck":"Back of Neck",
+              "b-l-shldr":"L Shoulder Blade","b-r-shldr":"R Shoulder Blade","b-upper-bk":"Upper Back",
+              "b-mid-bk":"Mid Back","b-lower-bk":"Lower Back","b-l-arm-u":"L Upper Arm",
+              "b-r-arm-u":"R Upper Arm","b-l-forearm":"L Forearm","b-r-forearm":"R Forearm",
+              "b-l-hand":"L Hand","b-r-hand":"R Hand","b-l-glute":"L Glute","b-r-glute":"R Glute",
+              "b-l-hamstr":"L Hamstring","b-r-hamstr":"R Hamstring","b-l-knee":"L Knee",
+              "b-r-knee":"R Knee","b-l-calf":"L Calf","b-r-calf":"R Calf",
+              "b-l-foot":"L Foot","b-r-foot":"R Foot"
+            };
+            const an = k => AREA_LABELS_P[k] || k;
+            const focusAreas = [...(session.front_focus||[]), ...(session.back_focus||[])].map(an);
+            const avoidAreas = [...(session.front_avoid||[]), ...(session.back_avoid||[])].map(an);
+            const sessionDate = new Date(session.created_at).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
+            const firstName = client.name ? client.name.split(" ")[0] : "there";
+            const lines = [];
+            if (focusAreas.length > 0) lines.push(`Today\'s session focused on ${focusAreas.slice(0,3).join(", ")}${session.goal ? ", with a goal to " + session.goal : ""}.`);
+            if (avoidAreas.length > 0) lines.push(`Areas avoided today: ${avoidAreas.slice(0,3).join(", ")}.`);
+            if (session.pressure) lines.push(`Your pressure preference was Level ${session.pressure}/5.`);
+            if (session.therapist_notes) lines.push(session.therapist_notes);
+            const summary = lines.join(" ");
+            const w = window.open("", "_blank");
+            w.document.write(`<!DOCTYPE html><html><head><title>Post-Session Brief — ${client.name}</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body { font-family: Georgia, serif; font-size: 12px; color: #1A1A2E; background: white; padding: 24px; }
+              @media print { body { padding: 12px; } @page { size: A4; margin: 12mm; } }
+              .header { background: linear-gradient(135deg, #2A5741, #4A8B6B); color: white; padding: 20px 24px; border-radius: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+              .logo { font-size: 13px; font-weight: 700; opacity: 0.85; }
+              .client-name { font-size: 20px; font-weight: 700; }
+              .date { font-size: 11px; opacity: 0.8; margin-top: 3px; }
+              .summary-box { background: #F0F7F3; border-left: 4px solid #2A5741; padding: 14px 16px; border-radius: 0 8px 8px 0; margin-bottom: 14px; font-size: 13px; line-height: 1.7; color: #1A1A2E; }
+              .section { margin-bottom: 14px; }
+              .section-title { font-size: 10px; font-weight: 700; color: #6B7280; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
+              .tags { display: flex; flex-wrap: wrap; gap: 6px; }
+              .tag-focus { background: rgba(107,158,128,0.15); color: #2A5741; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+              .tag-avoid { background: rgba(239,68,68,0.1); color: #991B1B; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+              .prefs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+              .pref-box { background: #F5F0E8; border-radius: 6px; padding: 8px 10px; font-size: 11px; }
+              .pref-label { color: #6B7280; text-transform: uppercase; font-size: 9px; letter-spacing: 0.5px; margin-bottom: 2px; }
+              .pref-val { font-weight: 700; color: #1A1A2E; font-size: 13px; }
+              .footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #E8E4DC; font-size: 10px; color: #9CA3AF; text-align: center; }
+              .book-again { background: #F0F7F3; border: 1px solid #6B9E80; border-radius: 8px; padding: 10px 14px; text-align: center; font-size: 12px; color: #2A5741; font-weight: 600; margin-bottom: 14px; }
+            </style></head><body>
+            <div class="header">
+              <div>
+                <div class="client-name">Hi ${firstName}!</div>
+                <div class="date">${sessionDate}</div>
+              </div>
+              <div class="logo">🌿 Post-Session Brief</div>
+            </div>
+            ${summary ? `<div class="summary-box">${summary}</div>` : ""}
+            ${focusAreas.length > 0 ? `<div class="section"><div class="section-title">🟢 Areas We Focused On</div><div class="tags">${focusAreas.map(a => `<span class="tag-focus">${a}</span>`).join("")}</div></div>` : ""}
+            ${avoidAreas.length > 0 ? `<div class="section"><div class="section-title">🔴 Areas We Avoided</div><div class="tags">${avoidAreas.map(a => `<span class="tag-avoid">${a}</span>`).join("")}</div></div>` : ""}
+            ${session.pressure || session.goal ? `<div class="section"><div class="section-title">Your Preferences on Record</div><div class="prefs-grid">${session.pressure ? `<div class="pref-box"><div class="pref-label">Pressure</div><div class="pref-val">Level ${session.pressure}/5</div></div>` : ""}${session.goal ? `<div class="pref-box"><div class="pref-label">Goal</div><div class="pref-val" style="text-transform:capitalize">${session.goal}</div></div>` : ""}</div></div>` : ""}
+            <div class="book-again">Ready for your next session? Reach out to book. 🌿</div>
+            <div class="footer">Prepared by your therapist using BodyMap · mybodymap.app · Confidential</div>
+            <script>window.onload = () => { window.print(); }<\/script>
+            </body></html>`);
+            w.document.close();
+          }} style={{ background: C.forest, color: C.white, border: "none", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📋 Post-Session Brief</button>}
+
           <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
             {session.completed ? "✓ Completed" : "⏳ Pending Review"}
           </span>
