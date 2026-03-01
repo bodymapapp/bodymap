@@ -3889,10 +3889,14 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
             style={{ padding: "9px 11px", fontSize: 14, marginBottom: 10 }}
           />
           <Btn
-            onClick={() =>
-              onStart({ name: name.trim(), contact: contact.trim() })
-            }
-            
+            onClick={() => {
+              const c = contact.trim();
+              const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c);
+              const phoneOk = c.replace(/\D/g,'').length === 10;
+              if (name.trim().length < 2) { alert('Please enter your full name'); return; }
+              if (!emailOk && !phoneOk) { alert('Please enter a valid phone number (10 digits) or email address'); return; }
+              onStart({ name: name.trim(), contact: c });
+            }}
             disabled={!name.trim() || !contact.trim()}
             style={{ width: "100%" }}
           >

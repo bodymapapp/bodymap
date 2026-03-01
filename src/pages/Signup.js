@@ -31,6 +31,19 @@ export default function Signup() {
   const { signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
+
+  const formatPhone = (v) => {
+    const d = v.replace(/\D/g, '').slice(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `(${d.slice(0,3)}) ${d.slice(3)}`;
+    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhone(e.target.value);
+    setFormData(prev => ({ ...prev, phone: formatted }));
+  };
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -50,6 +63,19 @@ export default function Signup() {
     setError('');
 
     // Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.fullName.trim() || formData.fullName.trim().length < 2) {
+      setError('Please enter your full name (at least 2 characters)'); return;
+    }
+    if (!formData.businessName.trim() || formData.businessName.trim().length < 2) {
+      setError('Please enter your business name (at least 2 characters)'); return;
+    }
+    if (formData.phone && formData.phone.replace(/\D/g,'').length > 0 && formData.phone.replace(/\D/g,'').length !== 10) {
+      setError('Please enter a valid 10-digit phone number'); return;
+    }
+    if (!emailRegex.test(formData.email)) {
+      setError('Please enter a valid email address'); return;
+    }
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       return;
@@ -262,6 +288,7 @@ export default function Signup() {
               <input
                 type="tel"
                 name="phone"
+                onChange={handlePhoneChange}
                 required
                 value={formData.phone}
                 onChange={handleChange}
