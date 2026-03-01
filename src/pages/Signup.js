@@ -70,7 +70,7 @@ export default function Signup() {
     if (!formData.businessName.trim() || formData.businessName.trim().length < 2) {
       setError('Please enter your business name (at least 2 characters)'); return;
     }
-    if (formData.phone && formData.phone.replace(/\D/g,'').length > 0 && formData.phone.replace(/\D/g,'').length !== 10) {
+    if (!formData.phone || formData.phone.replace(/\D/g,'').length !== 10) {
       setError('Please enter a valid 10-digit phone number'); return;
     }
     if (!emailRegex.test(formData.email)) {
