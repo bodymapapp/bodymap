@@ -92,7 +92,7 @@ export default function PreSessionBrief() {
       const { data: session } = await supabase.from("sessions").select("*").eq("id", sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from("clients").select("name,phone").eq("id", session.client_id).maybeSingle();
-      const { data: therapist } = await supabase.from("therapists").select("name,business_name,custom_url,phone").eq("id", session.therapist_id).maybeSingle();
+      const { data: therapist } = await supabase.from("therapists").select("full_name,business_name,custom_url,phone").eq("id", session.therapist_id).maybeSingle();
       const { data: history } = await supabase.from("sessions").select("*").eq("client_id", session.client_id).order("created_at",{ascending:false}).limit(10);
       setData({ session, client, therapist, history: history || [] });
       setLoading(false);
@@ -142,7 +142,7 @@ export default function PreSessionBrief() {
     session.conversation && { label:"Conversation", val:session.conversation },
     session.draping && { label:"Draping", val:session.draping },
   ].filter(Boolean);
-  const therapistName = therapist?.business_name || therapist?.name || "Your Practice";
+  const therapistName = therapist?.business_name || therapist?.full_name || "Your Practice";
   const intakeUrl = therapist?.custom_url ? `${window.location.origin}/${therapist.custom_url}` : null;
   const therapistPhone = therapist?.phone || null;
 
