@@ -374,22 +374,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             if (session.pressure) lines.push("Pressure preference: Level " + session.pressure + "/5.");
             const summary = lines.join(" ");
 
-            return (
-              <div style={{ background: "linear-gradient(135deg, #2A574108, #6B9E8015)", borderRadius: "14px", padding: "20px 24px", border: "1px solid #6B9E8040", marginTop: "16px" }}>
-                <p style={{ fontSize: "12px", fontWeight: "700", color: C.forest, margin: "0 0 10px 0", textTransform: "uppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p>
-                <p style={{ fontSize: "14px", color: C.darkGray, lineHeight: "1.7", margin: "0 0 16px 0", fontFamily: "Georgia, serif" }}>{summary}</p>
-                <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-                  <button onClick={() => { navigator.clipboard.writeText(summaryUrl); alert("Summary link copied!"); }}
-                    style={{ background: C.forest, color: C.white, border: "none", padding: "10px 20px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", cursor: "pointer" }}>
-                    📤 Share with Client
-                  </button>
-                  <a href={summaryUrl} target="_blank" rel="noopener noreferrer"
-                    style={{ background: C.beige, color: C.forest, border: "1px solid " + C.lightGray, padding: "10px 20px", borderRadius: "8px", fontSize: "13px", fontWeight: "700", textDecoration: "none" }}>
-                    👁 Preview
-                  </a>
-                </div>
-              </div>
-            );
+            return null;
           })()}
         </div>
 
@@ -472,34 +457,34 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               </div>
             </div>
           )}
-          <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <div>
-                <h3 style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Session Notes</h3>
-                <p style={{ fontSize: "11px", color: C.gray, marginBottom: "10px", fontFamily: "system-ui" }}>🔒 Private — never shared</p>
-                <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private notes..."
-                  style={{ width: "100%", minHeight: "120px", padding: "10px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
-                />
-              </div>
-              <div>
-                <h3 style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Message to Client</h3>
-                <p style={{ fontSize: "11px", color: C.gray, marginBottom: "10px", fontFamily: "system-ui" }}>💌 Appears on Post-Session Brief</p>
-                <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional personal note for your client..."
-                  style={{ width: "100%", minHeight: "120px", padding: "10px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
-                />
-              </div>
-            </div>
-            <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
-              <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
-                {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Notes"}
+        </div>
+      </div>
+
+      {/* Notes Row — full width, two equal cards */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
+        <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Session Notes</h3>
+          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>🔒 Private — only visible to you, never shared</p>
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
+            style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
+          />
+          <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+            <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+              {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Notes"}
+            </button>
+            {!session.completed && (
+              <button onClick={markComplete} disabled={completing} style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                {completing ? "..." : "✓ Mark Complete"}
               </button>
-              {!session.completed && (
-                <button onClick={markComplete} disabled={completing} style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
-                  {completing ? "..." : "✓ Mark Complete"}
-                </button>
-              )}
-            </div>
+            )}
           </div>
+        </div>
+        <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
+          <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Message to Client</h3>
+          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>💌 Appears on the Post-Session Brief you share with your client</p>
+          <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional — write a personal note for your client (e.g. stretches to try, what improved)..."
+            style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
+          />
         </div>
       </div>
 
