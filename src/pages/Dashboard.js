@@ -14,12 +14,11 @@ const C = {
 };
 
 
-function SettingsPanel({ therapist }) {
+function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
   const [phone, setPhone] = React.useState(therapist?.phone || '');
   const [phoneError, setPhoneError] = React.useState('');
-  const [lapsedDays, setLapsedDays] = React.useState(() => parseInt(localStorage.getItem('bm_lapsed_days') || '60'));
   const [nameError, setNameError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
@@ -182,6 +181,7 @@ export default function Dashboard({ view }) {
   const [sendPhone, setSendPhone] = useState('');
   const [sendCopied, setSendCopied] = useState(false);
   const [showBookmarkNudge, setShowBookmarkNudge] = useState(false);
+  const [lapsedDays, setLapsedDays] = React.useState(() => parseInt(localStorage.getItem('bm_lapsed_days') || '60'));
 
   useEffect(() => {
     if (therapist?.id) loadStats();

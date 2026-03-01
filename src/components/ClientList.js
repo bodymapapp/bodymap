@@ -18,11 +18,12 @@ function getStatus(client) {
   return { label: "Active", color: "#2A5741", bg: "#E8F5EE", icon: "🌱" };
 }
 
-export default function ClientList({ therapistId, onSelectClient, plan = "free" }) {
+export default function ClientList({ therapistId, onSelectClient, plan = "free", lapsedDays = 60, customUrl = "" }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
   const isPaid = plan === "pro" || plan === "clinic";
 
   useEffect(() => {
@@ -80,7 +81,6 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free" 
   );
 
   const lapsedClients = clients.filter(c => c.days_since_visit !== null && c.days_since_visit > lapsedDays).sort((a,b) => b.days_since_visit - a.days_since_visit);
-  const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
 
   return (
     <div>
