@@ -502,8 +502,7 @@ export default function Home() {
               </div>
             </div>
             
-            <div>
-              <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>💰 BENEFIT #4</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', minHeight: '80px' }}>
                 Time Savings Add Up
