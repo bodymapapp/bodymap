@@ -483,7 +483,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }}>
+          <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'start' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>⚡ BENEFIT #3</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
