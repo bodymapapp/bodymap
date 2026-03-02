@@ -9,27 +9,27 @@ function TherapistCarousel() {
   const cards = [
     {
       num: '01',
-      time: '⚡ 10 seconds',
-      title: 'Send the intake link',
-      desc: 'One tap from your dashboard. Client gets it on their phone before they arrive.'
+      time: '30 seconds, once',
+      title: 'Sign in. Send the intake form.',
+      desc: 'Your BodyMap dashboard is live the moment you sign up. Send your first client their intake form in one tap. They handle the rest.'
     },
     {
       num: '02',
-      time: '⚡ 0 seconds',
-      title: 'Client maps arrive automatically',
-      desc: 'Body map, preferences, medical flags — all waiting for you. No chasing, no asking.'
+      time: 'Automatic',
+      title: 'Their map is waiting when you are.',
+      desc: 'Once your client fills in their intake, their body map, preferences and health notes appear in your dashboard instantly. Nothing to chase.'
     },
     {
       num: '03',
-      time: '⚡ 30 seconds',
-      title: 'Review before they walk in',
-      desc: 'Pressure level, focus areas, what to avoid. Open your dashboard, know everything.'
+      time: 'Before every session',
+      title: 'Walk in already knowing.',
+      desc: 'Every session, you see exactly what this client needs today. Pressure, focus areas, what to avoid. Your hands are already in the right place before you begin.'
     },
     {
       num: '04',
-      time: '⚡ Builds automatically',
-      title: 'Patterns emerge over sessions',
-      desc: 'After a few sessions, BodyMap shows what this client always needs. No note-taking required.'
+      time: 'Builds over time',
+      title: 'BodyMap learns with every session.',
+      desc: 'Pressure preferences, recurring focus areas, patterns across visits. It builds quietly in the background so you never have to ask the same question twice.'
     }
   ];
   return (
@@ -61,21 +61,27 @@ function ClientCarousel() {
   const cards = [
     {
       num: '01',
-      time: '⚡ 0 seconds',
-      title: 'Get a link, tap it',
-      desc: 'No app. No download. No login. Your therapist texts you a link — it opens instantly on any phone.'
+      time: '0 seconds',
+      title: 'No app. No login. Just a link.',
+      desc: 'Your therapist texts you a link. Tap it. It opens on any phone, instantly. Nothing to download, nothing to remember.'
     },
     {
       num: '02',
-      time: '⚡ 20 seconds',
-      title: 'Tap your body map',
-      desc: 'Front and back diagram. Tap what needs focus. Tap what to avoid. Done before you sit down.'
+      time: '20 seconds',
+      title: 'Show them exactly where it hurts.',
+      desc: 'Tap front and back body maps to mark what needs attention and what to avoid. Your therapist sees it before you arrive.'
     },
     {
       num: '03',
-      time: '⚡ 10 seconds',
-      title: 'Set your preferences',
-      desc: 'Pressure, music, lighting, temperature — captured once, remembered every time.'
+      time: '10 seconds',
+      title: 'Tell them how you like it, once.',
+      desc: 'Pressure, music, lighting, temperature. Set your preferences once and they carry forward to every future session.'
+    },
+    {
+      num: '04',
+      time: 'After every session',
+      title: 'Your personal body report, automatically.',
+      desc: 'After each session, receive a one-page summary with your body map, patterns, and a note from your therapist. Your wellness story, building over time.'
     }
   ];
   return (
@@ -341,10 +347,10 @@ export default function Home() {
       <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
-            Less Time Than Setting Up Your Table
+            Your Clients Tell You Once. BodyMap Remembers Forever.
           </h2>
           <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
-            The entire BodyMap workflow — for both therapist and client — takes under 60 seconds.
+            Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.
           </p>
           <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
             <div>
