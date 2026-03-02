@@ -527,40 +527,46 @@ export default function Home() {
       <section id="features" style={{ background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '60px' }}>
-            Everything You Need
+            See What Your Practice Can Look Like
           </h2>
           
           <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
             {[
               {
-                img: "/ss-bodymap.png",
-                title: "Visual Body Maps",
-                desc: "Clients tap front & back diagrams to mark focus and avoid areas before every session. Instant clarity — no verbal back-and-forth."
+                num: '01',
+                img: '/ss-bodymap.png',
+                title: 'Clients Show You Exactly What They Need',
+                desc: 'No more guessing. Clients tap front and back body maps before every session to mark focus and avoid areas. You see it clearly before they walk in the door.'
               },
               {
-                img: "/ss-heatmap.png",
-                title: "Heatmap Pattern Intelligence",
-                desc: "See which areas a client consistently requests across sessions with frequency badges. Lower Back 4 of 5 sessions? You'll know before they walk in."
+                num: '02',
+                img: '/ss-heatmap.png',
+                title: 'Know This Client Better Than They Know Themselves',
+                desc: 'After a few sessions, BodyMap surfaces what this client always needs. Lower back 4 of 5 visits. Shoulders every time. Patterns you would never catch from memory alone.'
               },
               {
-                img: "/ss-preferences.png",
-                title: "Client Preferences",
-                desc: "Pressure, music, lighting, draping, temperature — captured every session. Walk in already knowing exactly how they like it."
+                num: '03',
+                img: '/ss-preferences.png',
+                title: 'Never Ask the Same Question Twice',
+                desc: 'Pressure, music, lighting, draping, temperature — captured once, carried forward forever. Every session starts exactly how they like it, without a single word.'
               },
               {
-                img: "/ss-patterns.png",
-                title: "Pattern Scores & Medical Flags",
-                desc: "Medical conditions surface as a red alert the moment you open a session. Pattern confidence scores show avoid areas by percentage — never miss a contraindication."
+                num: '04',
+                img: '/ss-patterns.png',
+                title: 'Walk In With Eyes Wide Open',
+                desc: 'Medical conditions surface as a red alert before you begin. Pattern confidence scores show avoid areas by frequency. Nothing gets missed. Nothing gets forgotten.'
               },
               {
-                img: "/ss-feedback.png",
-                title: "Post-Session Feedback",
-                desc: "One-tap feedback after each session. Capture pressure ratings, focus area satisfaction, and return likelihood. Get better every session."
+                num: '05',
+                img: '/ss-feedback.png',
+                title: 'Professional Briefs, One Tap',
+                desc: 'Before each session, pull up a full therapist brief — body map, patterns, medical flags, preferences. After, send the client a personalized summary. Your practice looks like a clinic.'
               },
               {
-                img: "/ss-mobile.PNG",
-                title: "Works on Any Device",
-                desc: "No app download. Clients fill intake on any phone in 60 seconds. You review at the table or at your desk — wherever you are."
+                num: '06',
+                img: '/ss-mobile.PNG',
+                title: 'Zero Friction for Your Clients',
+                desc: 'No app. No login. No download. Text them a link and they fill it in under 30 seconds on any phone. They arrive prepared. You arrive ready.'
               }
             ].map((feature) => (
               <div key={feature.title} style={{ 
@@ -577,10 +583,11 @@ export default function Home() {
                   <div style={{ flex: 1, background: '#E5E7EB', borderRadius: 4, height: 18, marginLeft: 8 }} />
                 </div>
                 <div style={{ height: 220, overflow: 'hidden' }}>
-                  <img src={feature.img} alt={feature.title} style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                  <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                 </div>
                 <div style={{ padding: '20px 24px 24px' }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '12px', fontWeight: '700', color: '#2A5741', marginBottom: '6px', letterSpacing: '0.05em' }}>{feature.num}</div>
+                  <h3 style={{ fontSize: '17px', fontWeight: '700', color: '#1F2937', marginBottom: '8px', lineHeight: '1.3' }}>
                     {feature.title}
                   </h3>
                   <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>
