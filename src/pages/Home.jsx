@@ -511,7 +511,7 @@ export default function Home() {
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
                 8 minutes per session × 4 clients = 32 minutes per day. That's 640 minutes (10+ hours) per month. Use it for more clients, personal time, or better work-life balance.
               </p>
-              <div style={{ background: C.lightGray, borderRadius: '8px', padding: '16px', marginTop: 'auto' }}>
+              <div style={{ background: C.lightGray, borderRadius: '8px', padding: '16px', marginTop: 'auto', border: '1px solid #D1CBC0' }}>
                 <div style={{ fontSize: '13px', color: C.gray, marginBottom: '8px' }}>Monthly Impact:</div>
                 <div style={{ fontSize: '14px', color: C.darkGray, lineHeight: '1.8' }}>
                   • 4 sessions/day × 8 min = 32 min/day<br/>
