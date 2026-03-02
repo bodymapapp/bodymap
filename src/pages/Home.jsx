@@ -400,23 +400,6 @@ export default function Home() {
           </p>
           <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
 
-            {/* Client card */}
-            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
-              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Client Experience
-              </h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Works on your phone right now →
-              </p>
-              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                Try Client Intake →
-              </a>
-            </div>
-
             {/* Therapist card */}
             <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
               <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
@@ -431,6 +414,23 @@ export default function Home() {
               </p>
               <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
                 Create Free Account →
+              </a>
+            </div>
+
+            {/* Client card */}
+            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+                Client Experience
+              </h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
+                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
+                Works on your phone right now →
+              </p>
+              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
+                Try Client Intake →
               </a>
             </div>
 
