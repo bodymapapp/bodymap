@@ -8,39 +8,51 @@ function TherapistCarousel() {
   const [active, setActive] = React.useState(0);
   const cards = [
     {
-      num: '01',
+      step: 'Step 1',
       time: '30 seconds, once',
+      barPct: 100,
+      barColor: '#2A5741',
+      barLabel: '30 sec — one time only',
       title: 'Sign in. Send the intake form.',
       desc: 'Your BodyMap dashboard is live the moment you sign up. Send your first client their intake form in one tap. They handle the rest.'
     },
     {
-      num: '02',
+      step: 'Step 2',
       time: 'Automatic',
+      barPct: 100,
+      barColor: '#C9A84C',
+      barLabel: 'Automatic — no effort needed',
       title: 'Their map is waiting when you are.',
-      desc: 'Once your client fills in their intake, their body map, preferences and health notes appear in your dashboard instantly. Nothing to chase.'
+      desc: 'Once your client fills in their intake, their body map, preferences and health notes appear instantly. Walk in already knowing their pressure, focus areas, and what to avoid.'
     },
     {
-      num: '03',
-      time: 'Before every session',
-      title: 'Walk in already knowing.',
-      desc: 'Every session, you see exactly what this client needs today. Pressure, focus areas, what to avoid. Your hands are already in the right place before you begin.'
-    },
-    {
-      num: '04',
+      step: 'Step 3',
       time: 'Builds over time',
+      barPct: 100,
+      barColor: '#C9A84C',
+      barLabel: 'Automatic — every session',
       title: 'BodyMap learns with every session.',
-      desc: 'Pressure preferences, recurring focus areas, patterns across visits. It builds quietly in the background so you never have to ask the same question twice.'
+      desc: 'Recurring focus areas, patterns across visits, preferences. It builds quietly in the background so you never have to ask the same question twice.'
     }
   ];
+  const card = cards[active];
   return (
     <div>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '40px 36px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '220px', border: '1.5px solid #E8E4DC', position: 'relative' }}>
-        <div style={{ fontSize: '56px', fontWeight: '800', color: '#F0EDE8', fontFamily: 'Georgia, serif', position: 'absolute', top: '24px', right: '28px', lineHeight: 1 }}>{cards[active].num}</div>
-        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '20px' }}>{cards[active].time}</span>
-        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px', lineHeight: '1.3' }}>{cards[active].title}</h3>
-        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{cards[active].desc}</p>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
+          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
+        </div>
+        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
         <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -60,39 +72,51 @@ function ClientCarousel() {
   const [active, setActive] = React.useState(0);
   const cards = [
     {
-      num: '01',
-      time: '0 seconds',
+      step: 'Step 1',
+      time: 'Instant',
+      barPct: 0,
+      barColor: '#2A5741',
+      barLabel: 'Zero effort',
       title: 'No app. No login. Just a link.',
-      desc: 'Your therapist texts you a link. Tap it. It opens on any phone, instantly. Nothing to download, nothing to remember.'
+      desc: 'Your therapist texts you a link. Tap it. Opens on any phone instantly. Nothing to download, nothing to remember.'
     },
     {
-      num: '02',
-      time: '20 seconds',
-      title: 'Show them exactly where it hurts.',
-      desc: 'Tap front and back body maps to mark what needs attention and what to avoid. Your therapist sees it before you arrive.'
+      step: 'Step 2',
+      time: '30 seconds',
+      barPct: 100,
+      barColor: '#2A5741',
+      barLabel: '30 sec total',
+      title: 'Show them what you need.',
+      desc: 'Tap your body map to mark focus and avoid areas, then set your pressure, music and lighting preferences. Done before you sit down.'
     },
     {
-      num: '03',
-      time: '10 seconds',
-      title: 'Tell them how you like it, once.',
-      desc: 'Pressure, music, lighting, temperature. Set your preferences once and they carry forward to every future session.'
-    },
-    {
-      num: '04',
+      step: 'Step 3',
       time: 'After every session',
+      barPct: 100,
+      barColor: '#C9A84C',
+      barLabel: 'Automatic — every session',
       title: 'Your personal body report, automatically.',
       desc: 'After each session, receive a one-page summary with your body map, patterns, and a note from your therapist. Your wellness story, building over time.'
     }
   ];
+  const card = cards[active];
   return (
     <div>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '40px 36px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '220px', border: '1.5px solid #E8E4DC', position: 'relative' }}>
-        <div style={{ fontSize: '56px', fontWeight: '800', color: '#F0EDE8', fontFamily: 'Georgia, serif', position: 'absolute', top: '24px', right: '28px', lineHeight: 1 }}>{cards[active].num}</div>
-        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '20px' }}>{cards[active].time}</span>
-        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px', lineHeight: '1.3' }}>{cards[active].title}</h3>
-        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{cards[active].desc}</p>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
+          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
+        </div>
+        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '24px' }}>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
         <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -347,18 +371,18 @@ export default function Home() {
       <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
-            Your Clients Tell You Once. BodyMap Remembers Forever.
+            Your Clients Tell You Once. Your Practice Remembers Forever.
           </h2>
           <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
             Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.
           </p>
           <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
             <div>
-              <p style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
               <TherapistCarousel />
             </div>
             <div>
-              <p style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
               <ClientCarousel />
             </div>
           </div>
