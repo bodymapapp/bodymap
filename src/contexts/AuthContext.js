@@ -11,25 +11,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         setUser(session.user);
         supabase.from('therapists').select('*').eq('id', session.user.id).single()
           .then(({ data }) => { if (data) setTherapist(data); })
           .finally(() => setLoading(false));
       } else {
-        setLoading(false);
-      }
-    }).catch(() => setLoading(false));
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-        supabase.from('therapists').select('*').eq('id', session.user.id).single()
-          .then(({ data }) => { if (data) setTherapist(data); });
-      } else {
         setUser(null);
         setTherapist(null);
+        setLoading(false);
       }
     });
 
