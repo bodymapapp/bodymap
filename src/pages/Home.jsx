@@ -484,7 +484,7 @@ export default function Home() {
           </div>
 
           <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'start' }}>
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>⚡ BENEFIT #3</div>
               <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', minHeight: '80px' }}>
                 Body Intelligence That Builds Over Time
@@ -492,7 +492,7 @@ export default function Home() {
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
                 Every session adds to a client's body intelligence profile. BodyMap shows you which areas they consistently focus on, which they avoid, and how confident that pattern is — across every session you've ever had with them.
               </p>
-              <div style={{ background: '#ECFDF5', borderRadius: '8px', padding: '16px', border: '1px solid #A7F3D0' }}>
+              <div style={{ background: '#ECFDF5', borderRadius: '8px', padding: '16px', border: '1px solid #A7F3D0', marginTop: 'auto' }}>
                 <div style={{ fontSize: '13px', color: C.green, fontWeight: '600', marginBottom: '8px' }}>Example — After 5 Sessions:</div>
                 <div style={{ fontSize: '14px', color: C.darkGray, lineHeight: '1.9' }}>
                   🔥 Lower Back — 5/5 sessions · <strong>100%</strong><br/>
@@ -510,7 +510,7 @@ export default function Home() {
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
                 8 minutes per session × 4 clients = 32 minutes per day. That's 640 minutes (10+ hours) per month. Use it for more clients, personal time, or better work-life balance.
               </p>
-              <div style={{ background: C.lightGray, borderRadius: '8px', padding: '16px' }}>
+              <div style={{ background: C.lightGray, borderRadius: '8px', padding: '16px', marginTop: 'auto' }}>
                 <div style={{ fontSize: '13px', color: C.gray, marginBottom: '8px' }}>Monthly Impact:</div>
                 <div style={{ fontSize: '14px', color: C.darkGray, lineHeight: '1.8' }}>
                   • 4 sessions/day × 8 min = 32 min/day<br/>
