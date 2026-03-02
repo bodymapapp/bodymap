@@ -486,7 +486,7 @@ export default function Home() {
           <div className="bm-grid-2 bm-gap-60" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'start' }}>
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>⚡ BENEFIT #3</div>
-              <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', minHeight: '80px' }}>
                 Body Intelligence That Builds Over Time
               </h3>
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
@@ -504,7 +504,7 @@ export default function Home() {
             
             <div>
               <div style={{ fontSize: '14px', fontWeight: '700', color: C.sage, marginBottom: '12px' }}>💰 BENEFIT #4</div>
-              <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '32px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', minHeight: '80px' }}>
                 Time Savings Add Up
               </h3>
               <p style={{ fontSize: '18px', color: C.gray, lineHeight: '1.6', marginBottom: '24px' }}>
