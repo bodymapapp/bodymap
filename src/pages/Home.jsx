@@ -639,13 +639,11 @@ export default function Home() {
                       <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840' }} />
                       <div style={{ flex: 1, background: '#E5E7EB', borderRadius: 4, height: 18, marginLeft: 8 }} />
                     </div>
-                    <div style={{ height: 200, overflow: 'hidden', background: group.bg, position: 'relative' }}>
+                    <div style={{ height: 200, overflow: 'hidden', background: group.bg }}>
                       <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'linear-gradient(to bottom, rgba(0,0,0,0.6) 0%, transparent 100%)', padding: '10px 14px' }}>
-                        <span style={{ color: 'white', fontSize: '12px', fontWeight: '700', letterSpacing: '0.04em' }}>{feature.label}</span>
-                      </div>
                     </div>
                     <div style={{ padding: '20px 24px 24px' }}>
+                      <div style={{ display: 'inline-block', background: group.bg, color: group.color, fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', marginBottom: '10px', letterSpacing: '0.04em' }}>{feature.label}</div>
                       <div style={{ fontSize: '11px', fontWeight: '700', color: group.color, marginBottom: '6px', letterSpacing: '0.08em' }}>{feature.num}</div>
                       <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1F2937', marginBottom: '8px', lineHeight: '1.3' }}>
                         {feature.title}
