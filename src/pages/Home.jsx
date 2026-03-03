@@ -631,24 +631,28 @@ export default function Home() {
                     borderRadius: '12px',
                     border: '1px solid #E5E7EB',
                     overflow: 'hidden',
-                    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
                     display: 'flex',
                     flexDirection: 'column'
                   }}>
-                    <div style={{ height: '4px', background: group.color, opacity: 0.7 }} />
-                    <div style={{ position: 'relative', height: 200, overflow: 'hidden', background: group.bg }}>
-                      <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
-                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: group.color, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '10px', fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em' }}>{feature.num}</span>
-                        <span style={{ width: '1px', height: '10px', background: 'rgba(255,255,255,0.3)' }} />
-                        <span style={{ fontSize: '12px', fontWeight: '700', color: 'white', letterSpacing: '0.02em' }}>{feature.label}</span>
+                    <div style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F57', flexShrink: 0 }} />
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E', flexShrink: 0 }} />
+                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840', flexShrink: 0 }} />
+                      <div style={{ marginLeft: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '700', color: group.color }}>{feature.num}</span>
+                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>|</span>
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#374151' }}>{feature.label}</span>
                       </div>
                     </div>
+                    <div style={{ height: 220, overflow: 'hidden', background: group.bg }}>
+                      <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                    </div>
                     <div style={{ padding: '20px 24px 28px', flex: 1 }}>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 8px 0' }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 10px 0' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>
+                      <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>
                         {feature.desc}
                       </p>
                     </div>
