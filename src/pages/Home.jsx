@@ -612,7 +612,7 @@ export default function Home() {
                 {
                   num: '09',
                   label: 'Repeat Customers',
-                  img: '/ss-lapsed2.png',
+                  img: '/ss-lapsed3.png',
                   title: 'Win Back Clients Before You Lose Them',
                   desc: 'BodyMap flags clients who have not returned in 30, 60, or 90 days. One tap sends a personal text. Clients who feel remembered come back.'
                 }
