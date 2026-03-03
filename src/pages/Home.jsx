@@ -645,7 +645,6 @@ export default function Home() {
                       </div>
                     </div>
                     <div style={{ padding: '20px 24px 28px', flex: 1 }}>
-                      <div style={{ marginBottom: '12px' }}>
                       <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 8px 0' }}>
                         {feature.title}
                       </h3>
