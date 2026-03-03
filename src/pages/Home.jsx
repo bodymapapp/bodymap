@@ -636,15 +636,16 @@ export default function Home() {
                     flexDirection: 'column'
                   }}>
                     <div style={{ height: '4px', background: group.color, opacity: 0.7 }} />
-                    <div style={{ height: 200, overflow: 'hidden', background: group.bg }}>
+                    <div style={{ position: 'relative', height: 200, overflow: 'hidden', background: group.bg }}>
                       <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: group.color, padding: '8px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '10px', fontWeight: '800', color: 'rgba(255,255,255,0.7)', letterSpacing: '0.1em' }}>{feature.num}</span>
+                        <span style={{ width: '1px', height: '10px', background: 'rgba(255,255,255,0.3)' }} />
+                        <span style={{ fontSize: '12px', fontWeight: '700', color: 'white', letterSpacing: '0.02em' }}>{feature.label}</span>
+                      </div>
                     </div>
                     <div style={{ padding: '20px 24px 28px', flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '800', color: group.color, letterSpacing: '0.1em' }}>{feature.num}</span>
-                        <span style={{ width: '1px', height: '12px', background: '#E5E7EB' }} />
-                        <span style={{ fontSize: '11px', fontWeight: '600', color: group.color, background: group.bg, padding: '2px 8px', borderRadius: '4px' }}>{feature.label}</span>
-                      </div>
+                      <div style={{ marginBottom: '12px' }}>
                       <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 8px 0' }}>
                         {feature.title}
                       </h3>
