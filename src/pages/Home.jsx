@@ -541,18 +541,21 @@ export default function Home() {
               cards: [
                 {
                   num: '01',
+                  label: 'Send Intake',
                   img: '/ss-intake.png',
                   title: 'Send Intake in One Tap',
                   desc: 'Text your client their intake link directly from your dashboard. They fill it in before they arrive. You walk in already knowing what they need.'
                 },
                 {
                   num: '02',
+                  label: 'Body Map',
                   img: '/ss-bodymap.png',
                   title: 'Clients Show You Exactly What They Need',
                   desc: 'No more guessing or verbal back-and-forth. Clients tap front and back body maps to mark focus and avoid areas. Instant clarity, every session.'
                 },
                 {
                   num: '03',
+                  label: 'Pre-Session Brief',
                   img: '/ss-pre-brief.png',
                   title: 'Your Pre-Session Brief, Ready to Go',
                   desc: 'One tap opens a full therapist brief — body map, medical flags, preferences, and pattern history. Walk in prepared. Every single time.'
@@ -566,18 +569,21 @@ export default function Home() {
               cards: [
                 {
                   num: '04',
+                  label: 'Client Preferences',
                   img: '/ss-preferences.png',
                   title: 'Never Ask the Same Question Twice',
                   desc: 'Pressure, music, lighting, draping, temperature — captured once, carried forward forever. Every session starts exactly how they like it.'
                 },
                 {
                   num: '05',
+                  label: 'Medical Flags',
                   img: '/ss-patterns.png',
                   title: 'Walk In With Eyes Wide Open',
                   desc: 'Medical conditions surface as a red alert before you begin. Pattern confidence scores show avoid areas by frequency. Nothing gets missed.'
                 },
                 {
                   num: '06',
+                  label: 'Pattern Heatmap',
                   img: '/ss-heatmap.png',
                   title: 'Know This Client Better Than They Know Themselves',
                   desc: 'After a few sessions, BodyMap shows what this client always needs. Lower back 4 of 5 visits. Shoulders every time. Patterns memory alone would miss.'
@@ -591,18 +597,21 @@ export default function Home() {
               cards: [
                 {
                   num: '07',
+                  label: 'Post-Session Brief',
                   img: '/ss-post-brief.png',
                   title: 'Send Clients a Personalized Summary',
                   desc: 'After each session, send your client a Post-Session Brief with their body map, patterns, and your notes. Clients who receive this book again.'
                 },
                 {
                   num: '08',
+                  label: 'Client Feedback',
                   img: '/ss-feedback.png',
                   title: 'Capture Feedback That Makes You Better',
                   desc: 'One-tap feedback after each session. Pressure ratings, focus area satisfaction, return likelihood. Know what landed. Improve with every visit.'
                 },
                 {
                   num: '09',
+                  label: 'Re-engagement',
                   img: '/ss-lapsed.png',
                   title: 'Win Back Clients Before You Lose Them',
                   desc: 'BodyMap flags clients who have not returned in 30, 60, or 90 days. One tap sends a personal text. Clients who feel remembered come back.'
