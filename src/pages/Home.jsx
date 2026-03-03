@@ -646,7 +646,7 @@ export default function Home() {
                       </div>
                     </div>
                     <div style={{ height: 220, overflow: 'hidden', background: group.bg }}>
-                      <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
+                      <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: feature.imgPosition || 'top' }} />
                     </div>
                     <div style={{ padding: '20px 24px 28px', flex: 1 }}>
                       <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 10px 0' }}>
