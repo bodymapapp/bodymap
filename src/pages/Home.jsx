@@ -628,27 +628,27 @@ export default function Home() {
                 {group.cards.map((feature) => (
                   <div key={feature.title} style={{
                     background: 'white',
-                    borderRadius: '16px',
+                    borderRadius: '12px',
                     border: '1px solid #E5E7EB',
                     overflow: 'hidden',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+                    boxShadow: '0 2px 12px rgba(0,0,0,0.07)',
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}>
-                    <div style={{ background: '#F9FAFB', borderBottom: '1px solid #E5E7EB', padding: '12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F57' }} />
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E' }} />
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840' }} />
-                      <div style={{ flex: 1, background: '#E5E7EB', borderRadius: 4, height: 18, marginLeft: 8 }} />
-                    </div>
+                    <div style={{ height: '4px', background: group.color, opacity: 0.7 }} />
                     <div style={{ height: 200, overflow: 'hidden', background: group.bg }}>
                       <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} />
                     </div>
-                    <div style={{ padding: '20px 24px 24px' }}>
-                      <div style={{ display: 'inline-block', background: group.bg, color: group.color, fontSize: '11px', fontWeight: '700', padding: '3px 10px', borderRadius: '20px', marginBottom: '10px', letterSpacing: '0.04em' }}>{feature.label}</div>
-                      <div style={{ fontSize: '11px', fontWeight: '700', color: group.color, marginBottom: '6px', letterSpacing: '0.08em' }}>{feature.num}</div>
-                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#1F2937', marginBottom: '8px', lineHeight: '1.3' }}>
+                    <div style={{ padding: '20px 24px 28px', flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '800', color: group.color, letterSpacing: '0.1em' }}>{feature.num}</span>
+                        <span style={{ width: '1px', height: '12px', background: '#E5E7EB' }} />
+                        <span style={{ fontSize: '11px', fontWeight: '600', color: group.color, background: group.bg, padding: '2px 8px', borderRadius: '4px' }}>{feature.label}</span>
+                      </div>
+                      <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 8px 0' }}>
                         {feature.title}
                       </h3>
-                      <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>
+                      <p style={{ fontSize: '13px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>
                         {feature.desc}
                       </p>
                     </div>
