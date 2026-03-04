@@ -1,74 +1,37 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-
+const C = { forest: '#2A5741', darkGray: '#1F2937', gray: '#6B7280', lightGray: '#F9FAFB', border: '#E5E7EB' };
 export default function Terms() {
-  const C = { sage: '#6B9E80', forest: '#2A5741', gray: '#6B7280', darkGray: '#1F2937' };
+  const sections = [
+    { title: '1. What BodyMap Is', body: 'BodyMap is a client communication and intake management tool for licensed massage therapists. It is NOT a medical platform, EHR, or HIPAA-covered entity. Therapists are solely responsible for all clinical decisions.' },
+    { title: '2. Eligibility', body: 'You must be at least 18 years old to use BodyMap. By using this platform you represent that you are a licensed wellness professional or a client of one.' },
+    { title: '3. Your Account', body: 'You are responsible for maintaining confidentiality of your login credentials. Notify us at support@mybodymap.app if you suspect unauthorized access.' },
+    { title: '4. Acceptable Use', body: 'You agree not to use BodyMap to collect data for unauthorized purposes, access another user's data, reverse engineer the platform, or use it for any unlawful purpose. We may terminate accounts that violate these terms without notice.' },
+    { title: '5. Subscription and Payments', body: 'Paid plans are billed monthly through Stripe. Cancel anytime — access continues until end of billing period. No refunds for partial periods. Pricing changes communicated with 30 days notice.' },
+    { title: '6. Client Data Responsibility', body: 'As a therapist, you are the data controller for your clients information. You are responsible for obtaining client consent to store their intake data on BodyMap. BodyMap LLC acts as a data processor on your behalf.' },
+    { title: '7. Not Medical Software — No HIPAA Coverage', body: 'BodyMap is a communication tool, not medical software. It is not designed to store protected health information (PHI) under HIPAA. BodyMap LLC does not sign Business Associate Agreements (BAAs). If your practice is subject to HIPAA, consult a legal professional before use.' },
+    { title: '8. Limitation of Liability', body: 'BodyMap LLC shall not be liable for any indirect, incidental, or consequential damages. Our total liability shall not exceed the amount you paid us in the 12 months preceding any claim.' },
+    { title: '9. Intellectual Property', body: 'All platform content, design, and software are owned by BodyMap LLC. You may not copy, modify, or distribute any part of the platform without written permission.' },
+    { title: '10. Termination', body: 'You may close your account at any time by emailing support@mybodymap.app. Data is retained for 30 days then permanently deleted. We may terminate accounts for violations of these terms.' },
+    { title: '11. Governing Law', body: 'These terms are governed by the laws of the State of Texas. Disputes shall be resolved in the courts of Fort Bend County, Texas.' },
+    { title: '12. Changes', body: 'We may update these terms and will notify you of material changes by email or platform notice.' },
+    { title: '13. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
+  ];
   return (
-    <div style={{ fontFamily: '-apple-system, sans-serif' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 0' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '28px' }}>🌿</span>
-            <span style={{ fontSize: '24px', fontWeight: '700', color: C.forest }}>BodyMap</span>
-          </Link>
+    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto", background: "white", borderRadius: "16px", padding: "56px 64px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
+        <div style={{ marginBottom: "40px" }}>
+          <div style={{ fontSize: "13px", color: C.gray, marginBottom: "8px" }}>Last updated: March 2026</div>
+          <h1 style={{ fontSize: "36px", fontWeight: "700", color: C.darkGray, margin: "0 0 12px 0" }}>Terms of Service</h1>
+          <p style={{ fontSize: "16px", color: C.gray, lineHeight: "1.6", margin: 0 }}>These Terms of Service govern your use of BodyMap, operated by BodyMap LLC, a Texas limited liability company.</p>
         </div>
-      </nav>
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '80px 24px' }}>
-        <h1 style={{ fontSize: '48px', fontWeight: '700', marginBottom: '32px' }}>Terms of Service</h1>
-        <p style={{ color: C.gray, marginBottom: '32px' }}>Last updated: February 20, 2026</p>
-        
-        <div style={{ lineHeight: '1.8', color: C.darkGray }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>1. Acceptance of Terms</h2>
-          <p style={{ marginBottom: '24px' }}>By accessing and using BodyMap, you accept and agree to be bound by these Terms of Service. If you do not agree, do not use our services.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>2. Description of Service</h2>
-          <p style={{ marginBottom: '24px' }}>BodyMap provides client intake management software for massage therapists. Our service allows therapists to collect visual body maps and preferences from clients before sessions.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>3. User Accounts</h2>
-          <p style={{ marginBottom: '16px' }}>You are responsible for:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Maintaining the confidentiality of your account</li>
-            <li>All activities that occur under your account</li>
-            <li>Notifying us immediately of any unauthorized use</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>4. Acceptable Use</h2>
-          <p style={{ marginBottom: '16px' }}>You agree not to:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Use the service for any illegal purpose</li>
-            <li>Violate any laws in your jurisdiction</li>
-            <li>Infringe on intellectual property rights</li>
-            <li>Transmit malicious code or viruses</li>
-            <li>Attempt to gain unauthorized access to our systems</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>5. Payment Terms</h2>
-          <p style={{ marginBottom: '16px' }}>Subscription fees:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Billed monthly or annually based on your selection</li>
-            <li>Charged automatically until you cancel</li>
-            <li>Non-refundable except as required by law</li>
-            <li>Subject to change with 30 days notice</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>6. Cancellation</h2>
-          <p style={{ marginBottom: '24px' }}>You may cancel your subscription at any time. Cancellation takes effect at the end of your current billing period. You can export your data before canceling.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>7. Disclaimer of Warranties</h2>
-          <p style={{ marginBottom: '24px' }}>BodyMap is provided "as is" without warranties of any kind. We do not guarantee uninterrupted or error-free service. BodyMap is a communication tool, not medical software, and should not be used for medical diagnosis or treatment.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>8. Limitation of Liability</h2>
-          <p style={{ marginBottom: '24px' }}>BodyMap LLC shall not be liable for any indirect, incidental, special, or consequential damages arising from your use of the service. Our total liability shall not exceed the amount you paid us in the past 12 months.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>9. Changes to Terms</h2>
-          <p style={{ marginBottom: '24px' }}>We reserve the right to modify these terms at any time. We will notify you of significant changes via email. Continued use after changes constitutes acceptance.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>10. Contact</h2>
-          <p style={{ marginBottom: '24px' }}>Questions about these Terms? Contact us at: <a href="mailto:legal@mybodymap.app" style={{ color: C.sage }}>legal@mybodymap.app</a></p>
-        </div>
-
-        <div style={{ marginTop: '48px', textAlign: 'center' }}>
-          <Link to="/" style={{ color: C.sage, textDecoration: 'none', fontWeight: '600' }}>← Back to Home</Link>
+        {sections.map((s) => (
+          <div key={s.title} style={{ marginBottom: "36px", paddingBottom: "36px", borderBottom: "1px solid " + C.border }}>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", color: C.darkGray, margin: "0 0 12px 0" }}>{s.title}</h2>
+            <div style={{ fontSize: "15px", color: "#374151", lineHeight: "1.75", whiteSpace: "pre-line" }}>{s.body}</div>
+          </div>
+        ))}
+        <div style={{ marginTop: "40px", padding: "24px", background: "#F0FDF4", borderRadius: "10px", border: "1px solid #BBF7D0" }}>
+          <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>Questions? <a href="mailto:support@mybodymap.app" style={{ color: C.forest }}>support@mybodymap.app</a></p>
         </div>
       </div>
     </div>

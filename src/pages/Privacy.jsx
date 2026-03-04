@@ -1,66 +1,36 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-
+const C = { forest: '#2A5741', darkGray: '#1F2937', gray: '#6B7280', lightGray: '#F9FAFB', border: '#E5E7EB' };
 export default function Privacy() {
-  const C = { sage: '#6B9E80', forest: '#2A5741', gray: '#6B7280', darkGray: '#1F2937', lightGray: '#F9FAFB' };
+  const sections = [
+    { title: '1. Who We Are', body: 'BodyMap LLC is a Texas limited liability company operating mybodymap.app. Contact us at support@mybodymap.app.' },
+    { title: '2. What Data We Collect', body: 'Therapist data: name, business name, email, phone, license number. Payment data processed by Stripe — we never store card details.\n\nClient intake data: name, phone, body map selections, session preferences, massage goals, and health notes voluntarily provided.\n\nSession data: therapist notes, completion status, feedback, and session dates.\n\nUsage data: browser type, device type, pages visited — collected anonymously.' },
+    { title: '3. How We Use Your Data', body: 'To operate the platform, enable session management, send intake links, process payments, improve features, and generate anonymized aggregate insights. We do not use your data for advertising. We do not sell your data. Ever.' },
+    { title: '4. How Your Data Is Protected', body: 'BodyMap runs on Supabase with: AES-256 encryption at rest, TLS 1.3 encryption in transit, Row Level Security — each therapist can only access their own data, and SOC 2 Type II compliant infrastructure.' },
+    { title: '5. Anonymized Aggregate Data', body: 'To improve platform recommendations, we may analyze anonymized patterns across sessions — stripped of all personally identifiable information. No individual can be identified. You may opt out by emailing support@mybodymap.app.' },
+    { title: '6. Data Sharing', body: 'We do not sell or share your data. We share only with: Supabase (hosting), Stripe (payments), and SMS providers for intake links. All providers are contractually bound to protect your data.' },
+    { title: '7. Client Data', body: 'Therapists are responsible for informing clients that intake data is stored digitally. Clients may request deletion by contacting their therapist or emailing support@mybodymap.app. We process requests within 30 days.' },
+    { title: '8. Data Retention', body: 'Data is retained while your account is active. On closure, retained 30 days then permanently deleted. Session history is retained indefinitely while active to support pattern tracking.' },
+    { title: '9. Your Rights (CCPA)', body: 'California residents have the right to know what data we collect, request deletion, and opt out of data sale (we do not sell data). Contact support@mybodymap.app.' },
+    { title: '10. Cookies', body: 'We use only essential cookies for authentication. No tracking cookies, no advertising cookies, no Google Analytics.' },
+    { title: '11. Changes', body: 'We will notify you of material changes by email or platform notice.' },
+    { title: '12. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
+  ];
   return (
-    <div style={{ fontFamily: '-apple-system, sans-serif' }}>
-      <nav style={{ background: 'white', borderBottom: '1px solid #e5e7eb', padding: '16px 0' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '28px' }}>🌿</span>
-            <span style={{ fontSize: '24px', fontWeight: '700', color: C.forest }}>BodyMap</span>
-          </Link>
+    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto", background: "white", borderRadius: "16px", padding: "56px 64px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
+        <div style={{ marginBottom: "40px" }}>
+          <div style={{ fontSize: "13px", color: C.gray, marginBottom: "8px" }}>Last updated: March 2026</div>
+          <h1 style={{ fontSize: "36px", fontWeight: "700", color: C.darkGray, margin: "0 0 12px 0" }}>Privacy Policy</h1>
+          <p style={{ fontSize: "16px", color: C.gray, lineHeight: "1.6", margin: 0 }}>BodyMap LLC is committed to protecting the privacy of therapists and their clients.</p>
         </div>
-      </nav>
-      <div style={{ maxWidth: '800px', margin: '0 auto', padding: '80px 24px' }}>
-        <h1 style={{ fontSize: '48px', fontWeight: '700', marginBottom: '32px' }}>Privacy Policy</h1>
-        <p style={{ color: C.gray, marginBottom: '32px' }}>Last updated: February 20, 2026</p>
-        
-        <div style={{ lineHeight: '1.8', color: C.darkGray }}>
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>1. Information We Collect</h2>
-          <p style={{ marginBottom: '16px' }}>We collect information you provide directly to us, including:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Account information (name, email, business name)</li>
-            <li>Client intake preferences (body map selections, session preferences)</li>
-            <li>Session history and notes</li>
-            <li>Payment information (processed securely through Stripe)</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>2. How We Use Your Information</h2>
-          <p style={{ marginBottom: '16px' }}>We use the information we collect to:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Provide, maintain, and improve our services</li>
-            <li>Process transactions and send related information</li>
-            <li>Send technical notices and support messages</li>
-            <li>Respond to your comments and questions</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>3. Data Security</h2>
-          <p style={{ marginBottom: '24px' }}>We use industry-standard encryption to protect your data both in transit (SSL) and at rest. Only you and your authorized clients can access your practice data.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>4. Data Sharing</h2>
-          <p style={{ marginBottom: '24px' }}>We do not sell, trade, or rent your personal information to third parties. We may share data only with service providers who help us operate our business (hosting, payment processing) under strict confidentiality agreements.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>5. Your Rights</h2>
-          <p style={{ marginBottom: '16px' }}>You have the right to:</p>
-          <ul style={{ marginBottom: '24px', paddingLeft: '24px' }}>
-            <li>Access your personal data</li>
-            <li>Correct inaccurate data</li>
-            <li>Request deletion of your data</li>
-            <li>Export your data</li>
-            <li>Opt out of marketing communications</li>
-          </ul>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>6. HIPAA Compliance</h2>
-          <p style={{ marginBottom: '24px' }}>BodyMap is a communication tool for intake preferences, not medical software. It does not store protected health information (PHI) and does not require HIPAA compliance. Your existing practice management software should be used for any HIPAA-regulated data.</p>
-
-          <h2 style={{ fontSize: '24px', fontWeight: '700', marginTop: '32px', marginBottom: '16px' }}>7. Contact Us</h2>
-          <p style={{ marginBottom: '24px' }}>If you have questions about this Privacy Policy, please contact us at: <a href="mailto:privacy@mybodymap.app" style={{ color: C.sage }}>privacy@mybodymap.app</a></p>
-        </div>
-
-        <div style={{ marginTop: '48px', textAlign: 'center' }}>
-          <Link to="/" style={{ color: C.sage, textDecoration: 'none', fontWeight: '600' }}>← Back to Home</Link>
+        {sections.map((s) => (
+          <div key={s.title} style={{ marginBottom: "36px", paddingBottom: "36px", borderBottom: "1px solid " + C.border }}>
+            <h2 style={{ fontSize: "18px", fontWeight: "700", color: C.darkGray, margin: "0 0 12px 0" }}>{s.title}</h2>
+            <div style={{ fontSize: "15px", color: "#374151", lineHeight: "1.75", whiteSpace: "pre-line" }}>{s.body}</div>
+          </div>
+        ))}
+        <div style={{ marginTop: "40px", padding: "24px", background: "#F0FDF4", borderRadius: "10px", border: "1px solid #BBF7D0" }}>
+          <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>Questions? <a href="mailto:support@mybodymap.app" style={{ color: C.forest }}>support@mybodymap.app</a></p>
         </div>
       </div>
     </div>
