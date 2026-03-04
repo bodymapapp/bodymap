@@ -700,7 +700,7 @@ export default function Home() {
               {
                 icon: '🚫',
                 title: 'Never sold. Never shared.',
-                desc: 'We do not sell your data or your clients' data. No advertisers. No third-party data brokers. Ever.'
+                desc: 'We do not sell your data or your clients\' data. No advertisers. No third-party data brokers. Ever.'
               },
               {
                 icon: '🏗️',
