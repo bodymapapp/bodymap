@@ -670,6 +670,76 @@ export default function Home() {
         </div>
       </section>
 
+
+      {/* Security Trust Section */}
+      <section style={{ background: '#F8FAFC', padding: '80px 24px', borderTop: '1px solid #E5E7EB' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '20px', padding: '6px 16px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '14px' }}>🔒</span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#2A5741' }}>Built for trust</span>
+            </div>
+            <h2 style={{ fontSize: '36px', fontWeight: '700', color: '#111827', margin: '0 0 16px 0' }}>Your clients' data is safe with you</h2>
+            <p style={{ fontSize: '17px', color: '#6B7280', maxWidth: '560px', margin: '0 auto', lineHeight: '1.6' }}>
+              BodyMap is built on enterprise-grade infrastructure. Your clients' intake data belongs to you — not us.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
+            {[
+              {
+                icon: '🔐',
+                title: 'Encrypted end to end',
+                desc: 'All data is encrypted at rest with AES-256 and in transit with TLS 1.3. The same standard used by banks.'
+              },
+              {
+                icon: '🏠',
+                title: 'Your data stays yours',
+                desc: 'Every therapist operates in a completely isolated environment. No other practitioner can ever see your clients.'
+              },
+              {
+                icon: '🚫',
+                title: 'Never sold. Never shared.',
+                desc: 'We do not sell your data or your clients' data. No advertisers. No third-party data brokers. Ever.'
+              },
+              {
+                icon: '🏗️',
+                title: 'Enterprise infrastructure',
+                desc: 'Built on Supabase — SOC 2 Type II certified. The same infrastructure trusted by thousands of companies worldwide.'
+              },
+              {
+                icon: '🩺',
+                title: 'Not medical software',
+                desc: 'BodyMap is a communication tool, not an EHR. Solo massage therapists are generally not subject to HIPAA.'
+              },
+              {
+                icon: '📋',
+                title: 'Full transparency',
+                desc: <>We publish our <a href="/privacy" style={{ color: '#2A5741', fontWeight: '600' }}>Privacy Policy</a> and <a href="/terms" style={{ color: '#2A5741', fontWeight: '600' }}>Terms of Service</a> in plain language. No legalese designed to confuse.</>
+              },
+            ].map((item) => (
+              <div key={item.title} style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '28px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{item.icon}</div>
+                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' }}>{item.title}</h3>
+                <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+              {['AES-256 Encryption', 'TLS 1.3', 'SOC 2 Type II', 'Row Level Security', 'No Ads. No Trackers.'].map((badge) => (
+                <div key={badge} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ color: '#2A5741', fontSize: '13px' }}>✓</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{badge}</span>
+                </div>
+              ))}
+            </div>
+            <a href="/privacy" style={{ fontSize: '13px', color: '#2A5741', fontWeight: '600', textDecoration: 'none', whiteSpace: 'nowrap' }}>Read our Privacy Policy →</a>
+          </div>
+        </div>
+      </section>
+
       {/* Who It's For */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
