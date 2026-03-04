@@ -715,7 +715,7 @@ export default function Home() {
               {
                 icon: '📋',
                 title: 'Full transparency',
-                desc: <>We publish our <a href="/privacy" style={{ color: '#2A5741', fontWeight: '600' }}>Privacy Policy</a> and <a href="/terms" style={{ color: '#2A5741', fontWeight: '600' }}>Terms of Service</a> in plain language. No legalese designed to confuse.</>
+                desc: 'We publish our Privacy Policy and Terms of Service in plain language. No legalese designed to confuse.'
               },
             ].map((item) => (
               <div key={item.title} style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '28px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
