@@ -231,6 +231,31 @@ export default function Pricing() {
                       🔒 Coming Soon — Join Waitlist
                     </div>
                   ) : tier.external ? (
+                    <>
+                    <input
+                      id="promoCode"
+                      type="text"
+                      placeholder="Have a promo code? Enter it here"
+                      style={{
+                        width: '100%',
+                        padding: '10px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid #E5E7EB',
+                        fontSize: '14px',
+                        fontFamily: 'inherit',
+                        boxSizing: 'border-box',
+                        outline: 'none',
+                        color: '#374151',
+                        marginBottom: '8px'
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const code = e.target.value.trim().toUpperCase();
+                          window.open(tier.ctaLink + '?prefilled_promo_code=' + code, '_blank');
+                        }
+                      }}
+                    />
+                    <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '0 0 8px 2px' }}>Press Enter to apply code</p>
                     <a href={tier.ctaLink} target="_blank" rel="noopener noreferrer" style={{
                       display: 'block',
                       background: tier.popular ? C.lavender : 'white',
