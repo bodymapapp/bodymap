@@ -43,7 +43,7 @@ export default function WhyBodyMap() {
             One client back pays for everything
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '56px', maxWidth: '600px', margin: '0 auto 56px' }}>
-            BodyMap is not a cost. It is a client back in your chair.
+            BodyMap is not a cost. It is a client back on your table.
           </p>
 
           <div className="bm-equation-row" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
@@ -64,10 +64,10 @@ export default function WhyBodyMap() {
 
           <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '16px', padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ fontSize: '20px', fontWeight: '700', color: C.forest, marginBottom: '8px' }}>
-              BodyMap costs $24/month.
+              One month of BodyMap costs $24.
             </div>
             <div style={{ fontSize: '16px', color: '#374151', lineHeight: 1.6 }}>
-              One lapsed client who comes back and stays monthly pays for BodyMap <strong>50 times over</strong> in a single year. That is not a software subscription. That is a revenue recovery tool.
+              One lapsed client who comes back monthly for a year is worth $1,200 — that is the $24 you spent in January still paying off in December. It happens again next month. And the month after that. Not a subscription. A revenue recovery engine that compounds.
             </div>
           </div>
         </div>
