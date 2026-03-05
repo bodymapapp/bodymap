@@ -2742,19 +2742,30 @@ const PrefScreen = ({
           onChange={(e) => setNotes(e.target.value)}
         />
       </Card>
-      <div style={{ background: C.sagePale, borderRadius: 16, padding: "16px 18px", textAlign: "center" }}>
-        <p style={{ fontFamily: F.body, fontSize: 13, color: C.green, fontWeight: 700, margin: "0 0 6px 0" }}>
+      <Card style={{ background: C.sagePale }}>
+        <p style={{ fontFamily: F.body, fontSize: 13, color: C.green, fontWeight: 700, margin: "0 0 8px 0", textAlign: "center" }}>
           🌿 Your information is private
         </p>
-        <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
-          Only your therapist can see this. It is shared solely to help them prepare for your session.
+        <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: "0 0 14px 0", textAlign: "center" }}>
+          Only your therapist can see this. Shared solely to help them prepare for your session.
         </p>
-      </div>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <input
+            type="checkbox"
+            checked={consent}
+            onChange={(e) => setConsent(e.target.checked)}
+            style={{ width: 18, height: 18, marginTop: 2, accentColor: C.green, cursor: "pointer", flexShrink: 0 }}
+          />
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
+            I agree to share this information with my therapist for session planning purposes.
+          </p>
+        </div>
+      </Card>
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <Btn ghost onClick={onBack}>
           ← Back
         </Btn>
-        <Btn onClick={onNext} style={{ flex: 2 }}>
+        <Btn onClick={onNext} disabled={!consent} style={{ flex: 2 }}>
           Send to Therapist 💆
         </Btn>
       </div>
