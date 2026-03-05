@@ -118,7 +118,7 @@ export default function Pricing() {
         "Priority email support (24hr)"
       ],
       cta: "Start 14-Day Free Trial",
-      ctaLink: "https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00",
+      ctaLink: "https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01",
       external: true
     },
     {

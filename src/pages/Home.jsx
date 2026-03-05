@@ -137,7 +137,7 @@ function HomePromoField() {
   const [applied, setApplied] = React.useState(false);
   const [error, setError] = React.useState(false);
   if (new Date() > new Date('2026-04-17')) return null;
-  const ctaLink = 'https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00';
+  const ctaLink = 'https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01';
   const validCodes = ['REDDIT50'];
   const handleApply = () => {
     const c = code.trim().toUpperCase();
