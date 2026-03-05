@@ -562,14 +562,14 @@ export default function Home() {
                 You got into this work because you care.
               </h3>
               <p style={{ fontSize: '17px', color: '#A8C5B4', lineHeight: '1.7', margin: 0 }}>
-                BodyMap just makes sure your clients can feel that — every single visit, without you having to remember everything alone.
+                One month of BodyMap costs $24. One lapsed client who comes back monthly for a year is worth $1,200. That's the $24 you spent in January still paying off in December. It happens again next month. And the month after that.
               </p>
             </div>
             <div style={{ flex: '0 0 auto', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
               {[
-                { value: '$1,200', label: 'One loyal client\nper year' },
-                { value: '$24', label: 'BodyMap\nper month' },
-                { value: '50×', label: 'Your return\non that $24', gold: true },
+                { value: '$24', label: 'One month\nof BodyMap' },
+                { value: '$1,200', label: 'One returned client\nstays all year' },
+                { value: '50×', label: 'Return on\nthat one month', gold: true },
               ].map(({ value, label, gold }) => (
                 <div key={value} style={{ textAlign: 'center', minWidth: '90px' }}>
                   <p style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: '700', color: gold ? '#C9A84C' : 'white', margin: '0 0 6px 0', lineHeight: 1 }}>
