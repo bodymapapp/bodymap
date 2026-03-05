@@ -503,43 +503,54 @@ export default function Home() {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px', marginBottom: '56px' }}>
 
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>🌿</div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: C.sage, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
-                Maya — Client since 2023
+            {/* Maya */}
+            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#6B9E80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>M</div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>Maya</div>
+                  <div style={{ fontSize: '13px', color: C.gray }}>Regular client, 3 years</div>
+                </div>
               </div>
-              <p style={{ fontSize: '17px', color: C.darkGray, lineHeight: '1.75', margin: 0 }}>
-                Maya came every three weeks for a year. Then life happened — new job, a move, just life. Six weeks went by. Then eight.
-                BodyMap flagged her as quiet. Her therapist sent one text: <em>"Hey Maya, been thinking about you. Lower back still giving you trouble?"</em>
-                <br /><br />
-                She booked the next day. She's been coming ever since.
+              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
+                She was gone 8 weeks. One BodyMap alert brought her back.
+              </p>
+              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
+                Life got busy — new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: <em>"Hey Maya, been thinking about you. Lower back still giving you trouble?"</em> She booked the next day. She's been coming ever since.
               </p>
             </div>
 
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>🤍</div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: C.sage, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
-                James — Client since 2024
+            {/* James */}
+            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>J</div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>James</div>
+                  <div style={{ fontSize: '13px', color: C.gray }}>Monthly client, 1 year</div>
+                </div>
               </div>
-              <p style={{ fontSize: '17px', color: C.darkGray, lineHeight: '1.75', margin: 0 }}>
-                James never remembered to mention he hated deep pressure on his left shoulder. Every session, he'd wince and say it again.
-                Then his therapist started using BodyMap. Third visit, she just said <em>"I've got you"</em> before he even sat down.
-                <br /><br />
-                He told his wife that night. His wife booked the next morning.
+              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
+                Every visit, he repeated himself. Until she just knew with BodyMap.
+              </p>
+              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
+                He hated deep pressure on his left shoulder. Every session, he'd wince and say it again. Third visit with BodyMap, his therapist just said <em>"I've got you"</em> before he even sat down. He told his wife that night. His wife booked the next morning.
               </p>
             </div>
 
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC' }}>
-              <div style={{ fontSize: '32px', marginBottom: '16px' }}>✨</div>
-              <div style={{ fontSize: '13px', fontWeight: '700', color: C.sage, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '12px' }}>
-                Priya — Client since 2024
+            {/* Priya */}
+            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#C9A84C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>P</div>
+                <div>
+                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>Priya</div>
+                  <div style={{ fontSize: '13px', color: C.gray }}>New client, found her therapist</div>
+                </div>
               </div>
-              <p style={{ fontSize: '17px', color: C.darkGray, lineHeight: '1.75', margin: 0 }}>
-                Priya tried three different therapists in two years. Good hands, all of them.
-                But every session felt like the first session — explaining herself from scratch every single time.
-                <br /><br />
-                With BodyMap, her therapist knew her patterns by session two.
-                By session four, Priya stopped looking. She'd found her person.
+              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
+                3 therapists in 2 years. BodyMap changed that.
+              </p>
+              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
+                Good hands, all of them — but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She'd found her person.
               </p>
             </div>
 
@@ -548,11 +559,10 @@ export default function Home() {
           <div style={{ background: '#2A5741', borderRadius: '20px', padding: '48px 56px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '40px' }}>
             <div style={{ flex: '1 1 320px' }}>
               <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '28px', fontWeight: '700', color: 'white', margin: '0 0 16px 0', lineHeight: '1.3' }}>
-                Clients don't leave because they found someone better.
+                You got into this work because you care.
               </h3>
               <p style={{ fontSize: '17px', color: '#A8C5B4', lineHeight: '1.7', margin: 0 }}>
-                They leave because nobody made them feel like they mattered.
-                BodyMap is how you make sure that never happens — and how you bring them back when life gets in the way.
+                BodyMap just makes sure your clients can feel that — every single visit, without you having to remember everything alone.
               </p>
             </div>
             <div style={{ flex: '0 0 auto', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
