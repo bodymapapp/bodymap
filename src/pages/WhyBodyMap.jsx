@@ -5,17 +5,9 @@ import { Link } from 'react-router-dom';
 
 export default function WhyBodyMap() {
   const C = {
-    sage: '#6B9E80',
-    forest: '#2A5741',
-    lavender: '#B4A7D6',
-    lavenderPale: '#F3F1F9',
-    beige: '#F0EAD9',
-    white: '#FFFFFF',
-    gray: '#6B7280',
-    darkGray: '#1F2937',
-    lightGray: '#F9FAFB',
-    green: '#059669',
-    red: '#DC2626'
+    sage: '#6B9E80', forest: '#2A5741', lavender: '#B4A7D6', lavenderPale: '#F3F1F9',
+    beige: '#F0EAD9', white: '#FFFFFF', gray: '#6B7280', darkGray: '#1F2937',
+    lightGray: '#F9FAFB', green: '#059669', red: '#DC2626'
   };
 
   return (
@@ -24,319 +16,259 @@ export default function WhyBodyMap() {
         @media (max-width: 768px) {
           .bm-why-3col { grid-template-columns: 1fr !important; }
           .bm-why-2col { grid-template-columns: 1fr !important; }
-          .bm-why-2col-gap { gap: 24px !important; }
-          .bm-equation-row { flex-direction: column !important; gap: 24px !important; }
           .bm-why-hero h1 { font-size: 32px !important; }
           .bm-why-cta-btns { flex-direction: column !important; align-items: stretch !important; }
+          .bm-equation-row { flex-direction: column !important; gap: 24px !important; }
         }
       `}</style>
-      
-      {/* Header */}
+
       <Nav />
 
       {/* Hero */}
       <section style={{ background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`, padding: '80px 24px', textAlign: 'center', color: 'white' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '56px', fontWeight: '700', marginBottom: '16px' }}>
-            Why Massage Therapists Choose BodyMap
+        <div className="bm-why-hero" style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h1 style={{ fontSize: '56px', fontWeight: '700', marginBottom: '16px', lineHeight: 1.2 }}>
+            Your clients come back<br/>when they feel known
           </h1>
-          <p style={{ fontSize: '22px', opacity: 0.95 }}>
-            Better client experience. Higher retention. Time efficiency. All in one.
+          <p style={{ fontSize: '22px', opacity: 0.95, maxWidth: '600px', margin: '0 auto' }}>
+            BodyMap gives every therapist the tools to make clients feel remembered — before they even walk in the door.
           </p>
         </div>
       </section>
 
-      {/* Primary Benefits - MOVED UP */}
+      {/* Retention ROI */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '16px' }}>
-            It's More Than Efficiency
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
+            One client back pays for everything
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '60px' }}>
-            BodyMap transforms how you connect with clients. The time savings? That's just a bonus.
+          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '56px', maxWidth: '600px', margin: '0 auto 56px' }}>
+            BodyMap is not a cost. It is a client back in your chair.
           </p>
 
-          <div className="bm-why-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px', marginBottom: '60px' }}>
+          <div className="bm-equation-row" style={{ display: 'flex', gap: '16px', justifyContent: 'center', alignItems: 'center', marginBottom: '40px', flexWrap: 'wrap' }}>
             {[
-              {
-                emoji: "💜",
-                title: "Elevated Client Experience",
-                desc: "Clients feel heard before they arrive. Visual body maps beat verbal descriptions. Every session is personalized. Data-driven care they can feel.",
-                stat: "92%",
-                statLabel: "say sessions feel more personalized"
-              },
-              {
-                emoji: "🔄",
-                title: "2x Higher Retention",
-                desc: "When clients feel understood, they come back. BodyMap therapists see double the repeat bookings vs. traditional intake methods.",
-                stat: "2x",
-                statLabel: "repeat client rate vs. old way"
-              },
-              {
-                emoji: "⚡",
-                title: "Time Efficiency",
-                desc: "Review their visual intake in 2 minutes. Spend 58 minutes on hands-on therapy. Give clients 8 extra minutes of care every session.",
-                stat: "8 min",
-                statLabel: "extra care per session"
-              }
-            ].map((benefit) => (
-              <div key={benefit.title} style={{ 
-                background: C.lightGray, 
-                padding: '32px', 
-                borderRadius: '12px',
-                border: '1px solid #E5E7EB'
-              }}>
-                <div style={{ fontSize: '56px', marginBottom: '16px', textAlign: 'center' }}>{benefit.emoji}</div>
-                <h3 style={{ fontSize: '22px', fontWeight: '700', color: C.darkGray, marginBottom: '12px', textAlign: 'center' }}>
-                  {benefit.title}
-                </h3>
-                <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '20px', textAlign: 'center' }}>
-                  {benefit.desc}
-                </p>
-                <div style={{ background: C.lavenderPale, borderRadius: '8px', padding: '16px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '32px', fontWeight: '700', color: C.lavender, marginBottom: '4px' }}>{benefit.stat}</div>
-                  <div style={{ fontSize: '13px', color: C.gray }}>{benefit.statLabel}</div>
+              { value: '$100', label: 'Average session value' },
+              { value: '×12', label: 'Monthly visits per year' },
+              { value: '$1,200', label: 'One loyal client per year', highlight: true },
+            ].map((item, i) => (
+              <React.Fragment key={item.label}>
+                <div style={{ background: item.highlight ? C.forest : C.lightGray, borderRadius: '16px', padding: '32px 28px', textAlign: 'center', minWidth: '160px' }}>
+                  <div style={{ fontSize: '40px', fontWeight: '800', color: item.highlight ? 'white' : C.lavender }}>{item.value}</div>
+                  <div style={{ fontSize: '13px', color: item.highlight ? 'rgba(255,255,255,0.8)' : C.gray, marginTop: '8px' }}>{item.label}</div>
                 </div>
-              </div>
+                {i < 2 && <div style={{ fontSize: '28px', color: C.gray, fontWeight: '300' }}>=</div>}
+              </React.Fragment>
             ))}
+          </div>
+
+          <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '16px', padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: C.forest, marginBottom: '8px' }}>
+              BodyMap costs $24/month.
+            </div>
+            <div style={{ fontSize: '16px', color: '#374151', lineHeight: 1.6 }}>
+              One lapsed client who comes back and stays monthly pays for BodyMap <strong>50 times over</strong> in a single year. That is not a software subscription. That is a revenue recovery tool.
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Time-Money Equation - UPDATED MATH */}
+      {/* 6 Value Props */}
       <section style={{ background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '60px' }}>
-            The Time Efficiency Breakdown
-          </h2>
-
-          <div className="bm-why-2col bm-why-2col-gap" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', marginBottom: '60px' }}>
-            {/* Traditional Way */}
-            <div style={{ background: '#FEF2F2', padding: '40px', borderRadius: '16px', border: '2px solid #FCA5A5' }}>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: C.red, marginBottom: '16px' }}>❌ TRADITIONAL INTAKE</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '24px' }}>
-                60-Minute Session Breakdown
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #FECACA' }}>
-                  <span style={{ color: C.gray }}>Verbal intake conversation</span>
-                  <span style={{ fontWeight: '700', color: C.red }}>10 min</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #FECACA' }}>
-                  <span style={{ color: C.gray }}>Hands-on therapy</span>
-                  <span style={{ fontWeight: '700', color: C.darkGray }}>50 min</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: C.red }}>
-                  <span>Client gets:</span>
-                  <span>50 min of care</span>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '32px', padding: '20px', background: '#FEE2E2', borderRadius: '12px' }}>
-                <div style={{ fontSize: '13px', color: C.red, marginBottom: '8px' }}>DAILY IMPACT (4 clients)</div>
-                <div style={{ fontSize: '14px', color: '#991B1B', marginBottom: '8px' }}>
-                  4 sessions × 10 min = <strong>40 min/day in intake</strong>
-                </div>
-                <div style={{ fontSize: '13px', color: '#991B1B' }}>
-                  40 min × $1/min = $40/day | $800/month (20 days)
-                </div>
-              </div>
-            </div>
-
-            {/* With BodyMap */}
-            <div style={{ background: '#ECFDF5', padding: '40px', borderRadius: '16px', border: '2px solid #6EE7B7' }}>
-              <div style={{ fontSize: '14px', fontWeight: '700', color: C.green, marginBottom: '16px' }}>✅ WITH BODYMAP</div>
-              <h3 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '24px' }}>
-                60-Minute Session Breakdown
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '15px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #A7F3D0' }}>
-                  <span style={{ color: C.gray }}>Review visual intake</span>
-                  <span style={{ fontWeight: '700', color: C.green }}>2 min</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: '1px solid #A7F3D0' }}>
-                  <span style={{ color: C.gray }}>Hands-on therapy</span>
-                  <span style={{ fontWeight: '700', color: C.darkGray }}>58 min</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '700', color: C.green }}>
-                  <span>Client gets:</span>
-                  <span>58 min of care</span>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '32px', padding: '20px', background: '#D1FAE5', borderRadius: '12px' }}>
-                <div style={{ fontSize: '13px', color: C.green, marginBottom: '8px' }}>DAILY IMPACT (4 clients)</div>
-                <div style={{ fontSize: '14px', color: '#047857', marginBottom: '8px' }}>
-                  4 sessions × 8 min saved = <strong>32 min/day efficiency</strong>
-                </div>
-                <div style={{ fontSize: '13px', color: '#047857' }}>
-                  32 min × $1/min = $32/day | $640/month (20 days)
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Line - Clear Equation */}
-          <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, #1a3d2e 100%)`, padding: '48px', borderRadius: '16px', textAlign: 'center', color: 'white' }}>
-            <div style={{ fontSize: '16px', opacity: 0.9, marginBottom: '24px' }}>THE COMPLETE EQUATION</div>
-            <div style={{ fontSize: '20px', marginBottom: '32px', lineHeight: '1.8', opacity: 0.95 }}>
-              <strong>4 clients</strong> × <strong>8 min saved</strong> = <strong>32 min/day</strong><br/>
-              <strong>32 min</strong> × <strong>$1/min</strong> × <strong>20 days</strong> = <strong>$640/month</strong>
-            </div>
-            
-            <div className="bm-equation-row" style={{ display: 'flex', gap: '48px', justifyContent: 'center', paddingTop: '32px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-              <div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginBottom: '8px' }}>Monthly Time Efficiency</div>
-                <div style={{ fontSize: '36px', fontWeight: '700' }}>640 min</div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>≈ 10.5 hours/month</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginBottom: '8px' }}>Time Value</div>
-                <div style={{ fontSize: '36px', fontWeight: '700' }}>$640</div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>at $1/minute</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginBottom: '8px' }}>BodyMap Cost</div>
-                <div style={{ fontSize: '36px', fontWeight: '700' }}>$24</div>
-                <div style={{ fontSize: '14px', opacity: 0.8, marginTop: '4px' }}>Silver plan</div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginTop: '40px', background: C.lavenderPale, padding: '24px', borderRadius: '12px', border: `1px solid ${C.lavender}`, textAlign: 'center' }}>
-            <p style={{ fontSize: '16px', color: C.darkGray, margin: 0, lineHeight: '1.6' }}>
-              <strong>But remember:</strong> The real value isn't just time or money. It's the elevated client experience, the 2x retention rate, and the professional edge that sets you apart. The efficiency? That's the bonus.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* What You Actually Get */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '16px' }}>
-            What You Actually Get
+            Six reasons therapists never go back
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '60px' }}>
-            Beyond the numbers, here's how BodyMap changes your practice.
+          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '56px' }}>
+            Once your clients feel this level of care, they stop looking for anyone else.
           </p>
 
-          <div className="bm-why-2col" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
+          <div className="bm-why-3col" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
             {[
               {
-                emoji: "👂",
-                title: "Clients Feel Truly Heard",
-                desc: "Visual body maps beat verbal descriptions every time. Preferences are remembered. No repeating themselves. They arrive knowing you understand their needs."
+                emoji: '📱',
+                title: 'One tap brings them back',
+                desc: 'See a client who has not visited in 60 days? One tap sends them a personal text. No awkward calls. No bulk emails. Just a warm nudge that feels like it came from you.'
               },
               {
-                emoji: "📈",
-                title: "Predictable Revenue",
-                desc: "2x repeat booking rate means you can actually forecast revenue. Loyal clients, consistent schedule, less time spent on acquisition."
+                emoji: '🏆',
+                title: 'You look like a clinic',
+                desc: 'You send a professional intake link before every session. Your client\'s experience feels like a high-end spa. That gap in professionalism is what sets you apart from the therapist down the street.'
               },
               {
-                emoji: "🧠",
-                title: "Pattern Intelligence",
-                desc: "AI detects patterns you might miss. \"This client always needs hamstring work.\" Personalize treatment plans with data, not guesswork."
+                emoji: '💬',
+                title: 'They never repeat themselves',
+                desc: 'Every returning client dreads "so what are we working on today?" BodyMap eliminates that forever. You already know. That moment of "you remembered" turns a good therapist into their therapist.'
               },
               {
-                emoji: "😌",
-                title: "Zero Awkward Moments",
-                desc: "No more rushed table conversations. No \"wait, where does it hurt again?\" No forgotten preferences. Just smooth, professional sessions."
+                emoji: '🌱',
+                title: 'Your intake is your marketing',
+                desc: 'Every time a client receives your BodyMap intake link, they see a professional, branded experience. When they tell a friend about their massage, they mention the app. Organic word of mouth built into your workflow.'
               },
               {
-                emoji: "⭐",
-                title: "Better Reviews",
-                desc: "\"She knew exactly what I needed.\" \"So organized and professional.\" \"Best massage I've ever had.\" The reviews write themselves."
+                emoji: '🛡️',
+                title: 'Protection from bad reviews',
+                desc: 'You have documented intake, preferences, and session history. If a client ever says "she didn\'t listen," you have proof you did. That paper trail matters more than most therapists realize.'
               },
               {
-                emoji: "💼",
-                title: "Professional Edge",
-                desc: "Stand out from the therapist down the street. Clients see you as modern, organized, data-driven. You're not just good - you're different."
+                emoji: '🧠',
+                title: 'Clarity going into every session',
+                desc: 'You are not trying to remember what Sarah said last time about her shoulder. It is right there. That mental clarity makes you a better therapist — and your clients feel the difference.'
               }
             ].map((item) => (
-              <div key={item.title} style={{ background: C.lightGray, padding: '32px', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>{item.emoji}</div>
-                <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                  {item.title}
-                </h3>
-                <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', margin: 0 }}>
-                  {item.desc}
-                </p>
+              <div key={item.title} style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '32px' }}>
+                <div style={{ fontSize: '40px', marginBottom: '16px' }}>{item.emoji}</div>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>{item.title}</h3>
+                <p style={{ fontSize: '14px', color: C.gray, lineHeight: '1.7', margin: 0 }}>{item.desc}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Use Cases by Practice Size */}
-      <section style={{ background: C.lavenderPale, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '60px' }}>
-            Impact Across Practice Sizes
+      {/* The moment that changes everything */}
+      <section style={{ background: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }} className="bm-why-2col">
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: C.sage, letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '16px' }}>The moment that changes everything</div>
+              <h2 style={{ fontSize: '36px', fontWeight: '700', color: C.darkGray, marginBottom: '20px', lineHeight: 1.3 }}>
+                It is 9am on a Tuesday. You have a gap in your schedule.
+              </h2>
+              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.8', marginBottom: '20px' }}>
+                Before BodyMap: you scroll your contacts, feel awkward about reaching out, and the slot stays empty.
+              </p>
+              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.8', marginBottom: '20px' }}>
+                With BodyMap: you open your lapsed clients list. You see Maria has not been in for 47 days. One tap. She gets a text. She books that afternoon.
+              </p>
+              <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '12px', padding: '20px' }}>
+                <div style={{ fontSize: '15px', fontWeight: '700', color: C.forest, marginBottom: '4px' }}>That one tap just recovered $100.</div>
+                <div style={{ fontSize: '14px', color: '#374151' }}>If Maria stays monthly, that is $1,200 this year. From one tap on a Tuesday morning.</div>
+              </div>
+            </div>
+            <div style={{ background: `linear-gradient(135deg, ${C.sage}22 0%, ${C.forest}22 100%)`, borderRadius: '20px', padding: '40px', textAlign: 'center' }}>
+              <div style={{ fontSize: '64px', marginBottom: '24px' }}>📱</div>
+              <div style={{ background: 'white', borderRadius: '12px', padding: '20px', marginBottom: '16px', textAlign: 'left', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                <div style={{ fontSize: '12px', color: C.gray, marginBottom: '8px', fontWeight: '600' }}>LAPSED CLIENTS</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '15px', fontWeight: '700', color: C.darkGray }}>Maria S.</div>
+                    <div style={{ fontSize: '12px', color: C.red }}>47 days since last visit</div>
+                  </div>
+                  <div style={{ background: C.forest, color: 'white', padding: '8px 16px', borderRadius: '20px', fontSize: '13px', fontWeight: '700' }}>Send Text 💬</div>
+                </div>
+              </div>
+              <div style={{ background: '#DCF8C6', borderRadius: '12px', padding: '14px 18px', textAlign: 'left' }}>
+                <div style={{ fontSize: '13px', color: '#1F2937' }}>Hey Maria! It has been a while — would love to see you back. Here is a link to book 🌿</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* You vs the therapist down the street */}
+      <section style={{ background: C.lightGray, padding: '80px 24px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '56px' }}>
+            You vs. the therapist down the street
           </h2>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          <div className="bm-why-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ background: '#FEF2F2', borderRadius: '16px', border: '2px solid #FCA5A5', padding: '40px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: C.red, marginBottom: '20px' }}>WITHOUT BODYMAP</div>
+              {[
+                'Clients repeat themselves every visit',
+                'Lapsed clients slip away quietly',
+                'You guess what they need each session',
+                'Intake is a verbal conversation at the table',
+                'Nothing is documented if something goes wrong',
+                'Looks the same as everyone else',
+              ].map((item) => (
+                <div key={item} style={{ display: 'flex', gap: '12px', marginBottom: '16px', fontSize: '14px', color: '#374151' }}>
+                  <span style={{ color: C.red, fontWeight: '700', flexShrink: 0 }}>✗</span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ background: '#ECFDF5', borderRadius: '16px', border: '2px solid #6EE7B7', padding: '40px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '700', color: C.green, marginBottom: '20px' }}>WITH BODYMAP</div>
+              {[
+                'Their preferences are remembered forever',
+                'One tap brings lapsed clients back',
+                'Body map + patterns tell you exactly what they need',
+                'Intake is done before they arrive',
+                'Every session is documented automatically',
+                'Stands out as modern, professional, different',
+              ].map((item) => (
+                <div key={item} style={{ display: 'flex', gap: '12px', marginBottom: '16px', fontSize: '14px', color: '#374151' }}>
+                  <span style={{ color: C.green, fontWeight: '700', flexShrink: 0 }}>✓</span>
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Practice Sizes — retention framing */}
+      <section style={{ background: C.lavenderPale, padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '56px' }}>
+            Works for every size practice
+          </h2>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             {[
               {
-                icon: "👤",
-                title: "Solo Therapist",
-                cost: "$24/month Silver",
-                math: "4 clients/day × 8 min × 20 days = 640 min/month",
-                value: "$640 time value for $24 = 27x return",
-                impact: "See one extra client per week with saved time. Or finish early and have life balance. Your choice.",
+                icon: '👤',
+                title: 'Solo Therapist',
+                cost: '$24/month Silver',
+                retention: 'Re-engage just 1 lapsed client per month',
+                value: '$1,200/year recovered. BodyMap pays for itself 50x over.',
+                impact: 'You look professional, clients feel remembered, and your schedule stays full without chasing anyone.',
                 available: true
               },
               {
-                icon: "🏢",
-                title: "Small Practice (2–5 therapists)",
-                cost: "$49/month Gold",
-                math: "3 therapists × 640 min = 1,920 min/month",
-                value: "$1,920 time value for $49 = 39x return",
-                impact: "Standardized intake across team. Consistent quality. Shared client insights. Professional brand.",
+                icon: '🏢',
+                title: 'Small Practice (2–5 therapists)',
+                cost: '$49/month Gold',
+                retention: '3 therapists each re-engage 1 lapsed client/month',
+                value: '$3,600/year recovered. 73x ROI on Gold plan.',
+                impact: 'Consistent client experience across every therapist. Shared intake data. One professional brand.',
                 available: false,
-                waitlistLabel: "Gold Plan — Launching Soon",
-                waitlistSub: "Join the waitlist. Notify me when Gold launches."
+                waitlistLabel: 'Gold Plan — Launching Soon',
+                waitlistSub: 'Join the waitlist to be first notified.'
               },
               {
-                icon: "🏭",
-                title: "Massage Chain (10+ locations)",
-                cost: "Custom pricing",
-                math: "50 therapists × 640 min = 32,000 min/month",
-                value: "$32,000 time value across organization",
-                impact: "Brand consistency at scale. Data-driven operations. Training tool for new therapists. Competitive advantage.",
+                icon: '🏭',
+                title: 'Massage Chain (10+ locations)',
+                cost: 'Custom pricing',
+                retention: 'Platform-wide retention intelligence',
+                value: 'Predictable revenue recovery at scale.',
+                impact: 'Brand consistency, training tool for new therapists, data-driven operations across every location.',
                 available: false,
-                waitlistLabel: "Enterprise — Coming Soon",
-                waitlistSub: "Express interest and we'll reach out first."
+                waitlistLabel: 'Enterprise — Coming Soon',
+                waitlistSub: 'Express interest and we will reach out first.'
               }
             ].map((use) => (
               <div key={use.title} style={{ background: 'white', padding: '32px', borderRadius: '12px', border: `1px solid ${use.available ? '#E5E7EB' : '#D8D3E8'}`, position: 'relative', opacity: use.available ? 1 : 0.92 }}>
                 {!use.available && (
-                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#B4A7D6', color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                    🔒 Coming Soon
-                  </div>
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#B4A7D6', color: 'white', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', textTransform: 'uppercase' }}>🔒 Coming Soon</div>
                 )}
                 {use.available && (
-                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#D1FAE5', color: '#065F46', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', letterSpacing: '0.5px', textTransform: 'uppercase' }}>
-                    ✅ Available Now
-                  </div>
+                  <div style={{ position: 'absolute', top: '16px', right: '16px', background: '#D1FAE5', color: '#065F46', fontSize: '11px', fontWeight: '800', padding: '4px 12px', borderRadius: '20px', textTransform: 'uppercase' }}>✅ Available Now</div>
                 )}
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: '24px' }}>
-                  <div style={{ fontSize: '56px' }}>{use.icon}</div>
+                  <div style={{ fontSize: '48px' }}>{use.icon}</div>
                   <div style={{ flex: 1 }}>
-                    <h3 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '8px' }}>
-                      {use.title}
-                    </h3>
-                    <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600', marginBottom: '16px' }}>
-                      {use.cost}
+                    <h3 style={{ fontSize: '22px', fontWeight: '700', color: C.darkGray, marginBottom: '4px' }}>{use.title}</h3>
+                    <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600', marginBottom: '16px' }}>{use.cost}</div>
+                    <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
+                      <div style={{ fontSize: '13px', color: C.green, fontWeight: '600', marginBottom: '4px' }}>{use.retention}</div>
+                      <div style={{ fontSize: '14px', color: C.forest, fontWeight: '700' }}>{use.value}</div>
                     </div>
-                    <div style={{ background: C.lightGray, padding: '16px', borderRadius: '8px', marginBottom: '16px' }}>
-                      <div style={{ fontSize: '13px', color: C.gray, marginBottom: '8px', fontWeight: '600' }}>THE MATH:</div>
-                      <div style={{ fontSize: '14px', color: C.darkGray, marginBottom: '8px' }}>{use.math}</div>
-                      <div style={{ fontSize: '14px', color: C.green, fontWeight: '600' }}>{use.value}</div>
-                    </div>
-                    <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', margin: '0 0 16px 0' }}>
-                      <strong>Real Impact:</strong> {use.impact}
-                    </p>
+                    <p style={{ fontSize: '14px', color: C.gray, lineHeight: '1.7', margin: '0 0 16px 0' }}>{use.impact}</p>
                     {!use.available && (
                       <div style={{ background: '#F3F1F9', border: '1px solid #D8D3E8', borderRadius: '8px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                         <span style={{ fontSize: '18px' }}>📬</span>
@@ -344,9 +276,7 @@ export default function WhyBodyMap() {
                           <div style={{ fontSize: '13px', fontWeight: '700', color: '#6B5FA6', marginBottom: '2px' }}>{use.waitlistLabel}</div>
                           <div style={{ fontSize: '12px', color: C.gray }}>{use.waitlistSub}</div>
                         </div>
-                        <a href="mailto:hello@mybodymap.app?subject=Waitlist: ' + use.title + '" style={{ background: '#B4A7D6', color: 'white', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                          Join Waitlist →
-                        </a>
+                        <a href="mailto:hello@mybodymap.app" style={{ background: '#B4A7D6', color: 'white', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>Join Waitlist →</a>
                       </div>
                     )}
                   </div>
@@ -361,42 +291,20 @@ export default function WhyBodyMap() {
       <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            The Decision Is Simple
+            The decision is simple
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '40px', lineHeight: '1.6' }}>
-            Keep doing verbal intake and hoping clients remember to mention everything.<br/>
-            Or give them a visual way to show you exactly what they need.
+            Keep doing verbal intake and hoping clients remember to come back.<br/>
+            Or give them a reason to.
           </p>
-          
           <div className="bm-why-cta-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
-            <Link to="/#demo" style={{
-              background: C.sage,
-              color: 'white',
-              padding: '16px 40px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600'
-            }}>See How It Works</Link>
-            <Link to="/signup" style={{
-              background: 'white',
-              color: C.lavender,
-              padding: '16px 40px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600',
-              border: `2px solid ${C.lavender}`
-            }}>Start Free Trial</Link>
+            <Link to="/#demo" style={{ background: C.sage, color: 'white', padding: '16px 40px', borderRadius: '8px', textDecoration: 'none', fontSize: '18px', fontWeight: '600' }}>See How It Works</Link>
+            <Link to="/signup" style={{ background: 'white', color: C.lavender, padding: '16px 40px', borderRadius: '8px', textDecoration: 'none', fontSize: '18px', fontWeight: '600', border: `2px solid ${C.lavender}` }}>Start Free Trial</Link>
           </div>
-          
-          <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
-            No credit card. No commitment. See the difference yourself.
-          </p>
+          <p style={{ fontSize: '14px', color: '#9CA3AF' }}>No credit card. No commitment. See the difference in your first session.</p>
         </div>
       </section>
 
-      {/* Footer */}
       <Footer />
     </div>
   );
