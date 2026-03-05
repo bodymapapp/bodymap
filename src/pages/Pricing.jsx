@@ -271,6 +271,7 @@ export default function Pricing() {
                     }}>
                       {tier.cta}
                     </a>
+                    </>
                   ) : (
                     <Link to={tier.ctaLink} style={{
                       display: 'block',
