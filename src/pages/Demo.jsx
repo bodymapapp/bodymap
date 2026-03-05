@@ -4254,7 +4254,7 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
         </div>
       </Card>
       <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 11, color: "#9CA3AF", textAlign: "center", lineHeight: 1.5, margin: "0 0 12px 0", padding: "0 8px" }}>
-        By submitting, you consent to your information being stored and used by {therapistName} for session planning purposes. <a href="/privacy" style={{ color: "#2A5741" }}>Privacy Policy</a>
+        By submitting, you consent to your information being stored and used by your therapist for session planning purposes. <a href="/privacy" style={{ color: "#2A5741" }}>Privacy Policy</a>
       </p>
       <Btn
         onClick={onViewTherapist}
