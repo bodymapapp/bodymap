@@ -1,5 +1,6 @@
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import WaitlistModal from '../components/WaitlistModal';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -61,12 +62,15 @@ function PromoField({ ctaLink }) {
       }}>
         {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start 14-Day Free Trial'}
       </a>
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
 
 
 export default function Pricing() {
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false);
+  const [waitlistInterest, setWaitlistInterest] = React.useState('');
   const [billingCycle, setBillingCycle] = useState('monthly');
 
   const C = {
@@ -290,9 +294,9 @@ export default function Pricing() {
                   </div>
 
                   {tier.comingSoon ? (
-                    <div style={{ display: 'block', background: '#F3F4F6', color: '#9CA3AF', border: '2px solid #E5E7EB', padding: '14px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '700', textAlign: 'center', marginBottom: '32px', cursor: 'not-allowed' }}>
-                      🔒 Coming Soon — Join Waitlist
-                    </div>
+                    <button onClick={() => { setWaitlistInterest(tier.name); setWaitlistOpen(true); }} style={{ display: 'block', width: '100%', background: C.forest, color: 'white', border: 'none', padding: '14px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '700', textAlign: 'center', marginBottom: '32px', cursor: 'pointer' }}>
+                      Join Waitlist →
+                    </button>
                   ) : tier.external ? (
                     <>
                     <PromoField ctaLink={tier.ctaLink} />
@@ -568,6 +572,7 @@ export default function Pricing() {
 
       {/* Footer */}
       <Footer />
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }

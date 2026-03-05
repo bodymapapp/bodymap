@@ -1,9 +1,12 @@
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
+import WaitlistModal from '../components/WaitlistModal';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function WhyBodyMap() {
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false);
+  const [waitlistInterest, setWaitlistInterest] = React.useState('');
   const C = {
     sage: '#6B9E80', forest: '#2A5741', lavender: '#B4A7D6', lavenderPale: '#F3F1F9',
     beige: '#F0EAD9', white: '#FFFFFF', gray: '#6B7280', darkGray: '#1F2937',
@@ -276,7 +279,7 @@ export default function WhyBodyMap() {
                           <div style={{ fontSize: '13px', fontWeight: '700', color: '#6B5FA6', marginBottom: '2px' }}>{use.waitlistLabel}</div>
                           <div style={{ fontSize: '12px', color: C.gray }}>{use.waitlistSub}</div>
                         </div>
-                        <a href="mailto:hello@mybodymap.app" style={{ background: '#B4A7D6', color: 'white', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>Join Waitlist →</a>
+                        <button onClick={() => { setWaitlistInterest(use.waitlistLabel); setWaitlistOpen(true); }} style={{ background: '#2A5741', color: 'white', padding: '8px 16px', borderRadius: '6px', fontSize: '12px', fontWeight: '700', border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>Join Waitlist →</button>
                       </div>
                     )}
                   </div>
@@ -306,6 +309,7 @@ export default function WhyBodyMap() {
       </section>
 
       <Footer />
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
