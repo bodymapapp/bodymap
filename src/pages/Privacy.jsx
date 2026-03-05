@@ -13,7 +13,9 @@ export default function Privacy() {
     { title: '9. Your Rights (CCPA)', body: 'California residents have the right to know what data we collect, request deletion, and opt out of data sale (we do not sell data). Contact support@mybodymap.app.' },
     { title: '10. Cookies', body: 'We use only essential cookies for authentication. No tracking cookies, no advertising cookies, no Google Analytics.' },
     { title: '11. Changes', body: 'We will notify you of material changes by email or platform notice.' },
-    { title: '12. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
+    { title: '12. Aggregate Data & De-Identification', body: 'BodyMap may use anonymized, de-identified data to improve platform recommendations and features. De-identified means all personally identifiable information — name, phone number, email, therapist identity — has been permanently removed. Only body area codes, session frequency counts, and preference selections are used in aggregate analysis. Raw PII data (names, phone numbers) is stored separately from body map analytics data. No individual can be identified from this aggregate data. You may opt out by emailing support@mybodymap.app.' },
+    { title: '13. Consent Toggle for Aggregate Analysis', body: 'When you use BodyMap, your anonymized session patterns may contribute to platform-wide recommendations that help all therapists deliver better sessions. This is opt-in by default for therapists on paid plans. You can withdraw consent at any time by contacting support@mybodymap.app. Withdrawing consent does not affect your access to any platform features.' },
+    { title: '14. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
   ];
   return (
     <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
