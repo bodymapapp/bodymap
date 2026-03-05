@@ -135,37 +135,50 @@ function ClientCarousel() {
 function HomePromoField() {
   const [code, setCode] = React.useState('');
   const [applied, setApplied] = React.useState(false);
+  const [error, setError] = React.useState(false);
   if (new Date() > new Date('2026-04-17')) return null;
   const ctaLink = 'https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00';
   const validCodes = ['REDDIT50'];
-  const isValid = validCodes.includes(code.trim().toUpperCase());
-  const apply = () => {
+  const handleApply = () => {
     const c = code.trim().toUpperCase();
-    if (c && isValid) setApplied(true);
-    window.open(ctaLink + (c ? '?prefilled_promo_code=' + c : ''), '_blank');
+    if (validCodes.includes(c)) {
+      setApplied(true);
+      setError(false);
+    } else {
+      setError(true);
+      setApplied(false);
+    }
   };
+  const finalLink = applied ? ctaLink + '?prefilled_promo_code=' + code.trim().toUpperCase() : ctaLink;
   return (
     <div style={{ marginBottom: '12px' }}>
-      {applied && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '13px', color: '#2A5741', fontWeight: '600' }}>
-          ✅ Code applied! On the next page, scroll down to find the promo code field — REDDIT50 will be pre-filled. Click Apply there to get $12/mo for 3 months.
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
         <input
           type="text"
           value={code}
-          onChange={(e) => { setCode(e.target.value); setApplied(false); }}
+          onChange={(e) => { setCode(e.target.value); setApplied(false); setError(false); }}
           placeholder="Have a promo code?"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '1px solid #BBF7D0' : '1px solid #E5E7EB', fontSize: '14px', outline: 'none', color: '#374151' }}
-          onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
+          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '2px solid #2A5741' : error ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', outline: 'none', color: '#374151' }}
         />
-        <button onClick={apply} style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Apply</button>
+        <button onClick={handleApply} style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Apply</button>
       </div>
-      {code && !isValid && <p style={{ fontSize: '11px', color: '#EF4444', margin: '4px 0 0 2px' }}>Invalid promo code</p>}
+      {error && <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ That code doesn't look right. Try REDDIT50.</p>}
+      {applied && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', color: '#2A5741', fontWeight: '700', margin: '0 0 4px 0' }}>🎉 You got 50% off for 3 months!</p>
+          <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $24/mo, you pay just <strong>$12/mo</strong> for your first 3 months. Click below to lock it in.</p>
+        </div>
+      )}
+      <a href={finalLink} target="_blank" rel="noopener noreferrer" style={{
+        display: 'block', background: '#6B5FB5', color: 'white', padding: '12px 24px',
+        borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', textAlign: 'center'
+      }}>
+        {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start Trial'}
+      </a>
     </div>
   );
 }
+
 
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -899,20 +912,6 @@ export default function Home() {
                 ) : tier.popular ? (
                   <>
                     <HomePromoField />
-                    <a href="https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00" target="_blank" rel="noopener noreferrer" style={{
-                      display: 'block',
-                      background: C.lavender,
-                      color: 'white',
-                      border: 'none',
-                      padding: '12px 24px',
-                      borderRadius: '8px',
-                      textDecoration: 'none',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      textAlign: 'center'
-                    }}>
-                      {tier.cta}
-                    </a>
                   </>
                 ) : (
                   <Link to="/signup" style={{
