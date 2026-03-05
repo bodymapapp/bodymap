@@ -64,7 +64,6 @@ function PromoField({ ctaLink }) {
       </a>
     </div>
   );
-      <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
 }
 
 
