@@ -18,7 +18,7 @@ function PromoField({ ctaLink }) {
     <div style={{ marginBottom: '12px' }}>
       {applied && (
         <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '13px', color: '#2A5741', fontWeight: '600' }}>
-          ✅ REDDIT50 applied — your first 3 months are $12/mo. You'll see the discount on the next page.
+          ✅ Code applied! On the next page, scroll down to find the promo code field — REDDIT50 will be pre-filled. Click Apply there to get $12/mo for 3 months.
         </div>
       )}
       <div style={{ display: 'flex', gap: '8px' }}>
