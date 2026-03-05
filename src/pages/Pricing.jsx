@@ -5,24 +5,29 @@ import { Link } from 'react-router-dom';
 
 function PromoField({ ctaLink }) {
   const [code, setCode] = React.useState('');
+  const [applied, setApplied] = React.useState(false);
   if (new Date() > new Date('2026-04-17')) return null;
+  const validCodes = ['REDDIT50'];
+  const isValid = validCodes.includes(code.trim().toUpperCase());
   const apply = () => {
     const c = code.trim().toUpperCase();
-    if (c) {
-      window.open(ctaLink + '?prefilled_promo_code=' + c, '_blank');
-    } else {
-      window.open(ctaLink, '_blank');
-    }
+    if (c && isValid) setApplied(true);
+    window.open(ctaLink + (c ? '?prefilled_promo_code=' + c : ''), '_blank');
   };
   return (
     <div style={{ marginBottom: '12px' }}>
+      {applied && (
+        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px', fontSize: '13px', color: '#2A5741', fontWeight: '600' }}>
+          ✅ REDDIT50 applied — your first 3 months are $12/mo. You'll see the discount on the next page.
+        </div>
+      )}
       <div style={{ display: 'flex', gap: '8px' }}>
         <input
           type="text"
           value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="Promo code"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit', outline: 'none', color: '#374151' }}
+          onChange={(e) => { setCode(e.target.value); setApplied(false); }}
+          placeholder="Have a promo code?"
+          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '1px solid #BBF7D0' : '1px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit', outline: 'none', color: '#374151' }}
           onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
         />
         <button
@@ -32,7 +37,7 @@ function PromoField({ ctaLink }) {
           Apply
         </button>
       </div>
-      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '4px 0 8px 2px' }}>Enter code then click Apply or Start Trial</p>
+      {code && !isValid && <p style={{ fontSize: '11px', color: '#EF4444', margin: '4px 0 0 2px' }}>Invalid promo code</p>}
     </div>
   );
 }
