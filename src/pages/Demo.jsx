@@ -2742,42 +2742,25 @@ const PrefScreen = ({
           onChange={(e) => setNotes(e.target.value)}
         />
       </Card>
-      <Card style={{ background: C.sagePale }}>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-          <input
-            type="checkbox"
-            checked={consent}
-            onChange={(e) => setConsent(e.target.checked)}
-            style={{
-              width: 18,
-              height: 18,
-              marginTop: 2,
-              accentColor: C.green,
-              cursor: "pointer",
-              flexShrink: 0,
-            }}
-          />
-          <p
-            style={{
-              fontFamily: F.body,
-              fontSize: 12,
-              color: C.textMid,
-              lineHeight: 1.6,
-            }}
-          >
-            I confirm this is a communication tool, not a medical service. I
-            authorize sharing this information with my massage therapist.
-          </p>
-        </div>
-      </Card>
+      <div style={{ background: C.sagePale, borderRadius: 16, padding: "16px 18px", textAlign: "center" }}>
+        <p style={{ fontFamily: F.body, fontSize: 13, color: C.green, fontWeight: 700, margin: "0 0 6px 0" }}>
+          🌿 Your information is private
+        </p>
+        <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
+          Only your therapist can see this. It is shared solely to help them prepare for your session.
+        </p>
+      </div>
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <Btn ghost onClick={onBack}>
           ← Back
         </Btn>
-        <Btn onClick={onNext} disabled={!consent} style={{ flex: 2 }}>
-          Send to Therapist 📤
+        <Btn onClick={onNext} style={{ flex: 2 }}>
+          Send to Therapist 💆
         </Btn>
       </div>
+      <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, textAlign: "center", lineHeight: 1.5, margin: "8px 0 0 0" }}>
+        By continuing, you agree to BodyMap&apos;s <a href="/terms" style={{ color: C.green }}>Terms</a> and <a href="/privacy" style={{ color: C.green }}>Privacy Policy</a>. We never sell your data.
+      </p>
     </div>
   );
 };
@@ -4253,9 +4236,7 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
           </span>
         </div>
       </Card>
-      <p style={{ fontFamily: "Nunito, sans-serif", fontSize: 11, color: "#9CA3AF", textAlign: "center", lineHeight: 1.5, margin: "0 0 12px 0", padding: "0 8px" }}>
-        By submitting, you consent to your information being stored and used by your therapist for session planning purposes. <a href="/privacy" style={{ color: "#2A5741" }}>Privacy Policy</a>
-      </p>
+
       <Btn
         onClick={onViewTherapist}
         style={{ width: "100%", marginBottom: 10 }}
