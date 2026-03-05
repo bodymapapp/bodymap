@@ -575,4 +575,5 @@ export default function Pricing() {
     <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
 }
