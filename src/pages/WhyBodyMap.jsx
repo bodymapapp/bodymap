@@ -107,8 +107,8 @@ export default function WhyBodyMap() {
               },
               {
                 emoji: '🛡️',
-                title: 'Protection from bad reviews',
-                desc: 'You have documented intake, preferences, and session history. If a client ever says "she didn\'t listen," you have proof you did. That paper trail matters more than most therapists realize.'
+                title: 'You remember everything',
+                desc: 'Every preference, every note, every session — documented and ready. Clients trust therapists who remember the details. That trust is what keeps them coming back to you and nobody else.'
               },
               {
                 emoji: '🧠',
