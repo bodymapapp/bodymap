@@ -156,7 +156,7 @@ function HomePromoField() {
         <input
           type="text"
           value={code}
-          onChange={(e) => { setCode(e.target.value); setApplied(false); }}
+          onChange={(e) => { const v = e.target.value; setCode(v); setApplied(false); setError(v.length > 0 && !['REDDIT50'].includes(v.trim().toUpperCase())); }}
           placeholder="Have a promo code?"
           style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '2px solid #2A5741' : error ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', outline: 'none', color: '#374151' }}
         />
