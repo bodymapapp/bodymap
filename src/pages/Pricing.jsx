@@ -38,7 +38,7 @@ function PromoField({ ctaLink }) {
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ That code doesn't look right. Try REDDIT50.</p>
+        <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $12/mo — only 200 spots available.</p>
       )}
       {applied && (
         <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>

@@ -162,7 +162,7 @@ function HomePromoField() {
         />
         <button onClick={handleApply} style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Apply</button>
       </div>
-      {error && <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ That code doesn't look right. Try REDDIT50.</p>}
+      {error && <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $12/mo — only 200 spots available.</p>}
       {applied && (
         <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
           <p style={{ fontSize: '13px', color: '#2A5741', fontWeight: '700', margin: '0 0 4px 0' }}>🎉 You got 50% off for 3 months!</p>
