@@ -557,12 +557,9 @@ export default function Home() {
             </div>
             <div style={{ flex: '0 0 auto', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
               {[
-                { value: '$1,200', label: 'One loyal client
-per year' },
-                { value: '$24', label: 'BodyMap
-per month' },
-                { value: '50×', label: 'Your return
-on that $24', gold: true },
+                { value: '$1,200', label: 'One loyal client\nper year' },
+                { value: '$24', label: 'BodyMap\nper month' },
+                { value: '50×', label: 'Your return\non that $24', gold: true },
               ].map(({ value, label, gold }) => (
                 <div key={value} style={{ textAlign: 'center', minWidth: '90px' }}>
                   <p style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: '700', color: gold ? '#C9A84C' : 'white', margin: '0 0 6px 0', lineHeight: 1 }}>
