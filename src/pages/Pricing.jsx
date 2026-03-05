@@ -3,6 +3,40 @@ import Footer from '../components/Footer';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+function PromoField({ ctaLink }) {
+  const [code, setCode] = React.useState('');
+  if (new Date() > new Date('2026-04-17')) return null;
+  const apply = () => {
+    const c = code.trim().toUpperCase();
+    if (c) {
+      window.open(ctaLink + '?prefilled_promo_code=' + c, '_blank');
+    } else {
+      window.open(ctaLink, '_blank');
+    }
+  };
+  return (
+    <div style={{ marginBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Promo code"
+          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit', outline: 'none', color: '#374151' }}
+          onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
+        />
+        <button
+          onClick={apply}
+          style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          Apply
+        </button>
+      </div>
+      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '4px 0 8px 2px' }}>Enter code then click Apply or Start Trial</p>
+    </div>
+  );
+}
+
 export default function Pricing() {
   const [billingCycle, setBillingCycle] = useState('monthly');
 
@@ -232,30 +266,7 @@ export default function Pricing() {
                     </div>
                   ) : tier.external ? (
                     <>
-                    <input
-                      id="promoCode"
-                      type="text"
-                      placeholder="Have a promo code? Enter it here"
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #E5E7EB',
-                        fontSize: '14px',
-                        fontFamily: 'inherit',
-                        boxSizing: 'border-box',
-                        outline: 'none',
-                        color: '#374151',
-                        marginBottom: '8px'
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          const code = e.target.value.trim().toUpperCase();
-                          window.open(tier.ctaLink + '?prefilled_promo_code=' + code, '_blank');
-                        }
-                      }}
-                    />
-                    <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '0 0 8px 2px' }}>Press Enter to apply code</p>
+                    <PromoField ctaLink={tier.ctaLink} />
                     <a href={tier.ctaLink} target="_blank" rel="noopener noreferrer" style={{
                       display: 'block',
                       background: tier.popular ? C.lavender : 'white',

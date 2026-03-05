@@ -132,6 +132,32 @@ function ClientCarousel() {
   );
 }
 
+function HomePromoField() {
+  const [code, setCode] = React.useState('');
+  if (new Date() > new Date('2026-04-17')) return null;
+  const ctaLink = 'https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00';
+  const apply = () => {
+    const c = code.trim().toUpperCase();
+    window.open(ctaLink + (c ? '?prefilled_promo_code=' + c : ''), '_blank');
+  };
+  return (
+    <div style={{ marginBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          placeholder="Promo code"
+          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '14px', outline: 'none', color: '#374151' }}
+          onKeyDown={(e) => { if (e.key === 'Enter') apply(); }}
+        />
+        <button onClick={apply} style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Apply</button>
+      </div>
+      <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '4px 0 8px 2px' }}>Have a promo code? Enter it above</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   
@@ -861,12 +887,30 @@ export default function Home() {
                   <div style={{ display: 'block', background: '#E5E7EB', color: '#9CA3AF', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center', cursor: 'not-allowed' }}>
                     🔒 Coming Soon
                   </div>
+                ) : tier.popular ? (
+                  <>
+                    <HomePromoField />
+                    <a href="https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00" target="_blank" rel="noopener noreferrer" style={{
+                      display: 'block',
+                      background: C.lavender,
+                      color: 'white',
+                      border: 'none',
+                      padding: '12px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      textAlign: 'center'
+                    }}>
+                      {tier.cta}
+                    </a>
+                  </>
                 ) : (
                   <Link to="/signup" style={{
                     display: 'block',
-                    background: tier.popular ? C.lavender : 'white',
-                    color: tier.popular ? 'white' : C.lavender,
-                    border: tier.popular ? 'none' : `2px solid ${C.lavender}`,
+                    background: 'white',
+                    color: C.lavender,
+                    border: `2px solid ${C.lavender}`,
                     padding: '12px 24px',
                     borderRadius: '8px',
                     textDecoration: 'none',
