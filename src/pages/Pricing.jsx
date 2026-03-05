@@ -62,9 +62,9 @@ function PromoField({ ctaLink }) {
       }}>
         {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start 14-Day Free Trial'}
       </a>
-    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
+      <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
 }
 
 
