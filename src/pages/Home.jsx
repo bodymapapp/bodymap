@@ -575,6 +575,24 @@ export default function Home() {
 
         </div>
       </section>
+
+      {/* Features Grid */}
+      <section id="features" style={{ background: C.lightGray, padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '12px' }}>
+            See What Your Practice Can Look Like
+          </h2>
+          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '64px' }}>
+            Every feature is built around one goal — clients who feel known come back.
+          </p>
+
+          {[
+            {
+              label: 'Before the Session',
+              color: '#2A5741',
+              bg: '#E8F5EE',
+              cards: [
+                {
                   num: '01',
                   label: 'Send Intake',
                   img: '/ss-intake.png',
