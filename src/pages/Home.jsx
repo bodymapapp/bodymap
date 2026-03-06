@@ -184,9 +184,9 @@ export default function Home() {
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
-    { emoji: "🌿", text: "Be Professional", subtitle: "Modern intake that clients love" },
-    { emoji: "⚡", text: "Be Efficient", subtitle: "Give clients 8 extra minutes of care" },
-    { emoji: "💜", text: "Be Memorable", subtitle: "Data-driven sessions they'll remember" }
+    { emoji: "🌿", text: "Be Remembered", subtitle: "Clients feel known from session one" },
+    { emoji: "⚡", text: "Be Present", subtitle: "Walk in already knowing what they need" },
+    { emoji: "💜", text: "Be Irreplaceable", subtitle: "The therapist they never stop coming back to" }
   ];
 
   React.useEffect(() => {
@@ -327,7 +327,7 @@ export default function Home() {
             How BodyMap Works
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '64px' }}>
-            Three simple steps. Immediate impact for you and your clients.
+            You already put so much into every session. BodyMap just makes sure your clients feel all of it.
           </p>
 
           <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
@@ -590,10 +590,10 @@ export default function Home() {
       <section id="features" style={{ background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '12px' }}>
-            See What Your Practice Can Look Like
+            This Is What It Feels Like to Never Lose a Client to Drift
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '64px' }}>
-            Every feature is built around one goal — clients who feel known come back.
+            Every feature was built with one person in mind — you.
           </p>
 
           {[
@@ -815,7 +815,7 @@ export default function Home() {
               {
                 icon: "👤",
                 title: "Solo Therapists",
-                desc: "Elevate client experience, boost retention, reclaim your time",
+                desc: "For independent therapists who want every client to feel like their only client",
                 plan: "Free or Silver plan"
               },
               {
@@ -968,7 +968,7 @@ export default function Home() {
             Ready to Elevate Your Client Experience?
           </h2>
           <p style={{ fontSize: '18px', color: C.gray, marginBottom: '40px' }}>
-            Join therapists who are seeing 2x retention, happier clients, and more efficient practices.
+            You have worked hard to build your practice. BodyMap helps you protect it — one relationship at a time.
           </p>
           <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
             <a href="#demo" style={{

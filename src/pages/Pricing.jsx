@@ -92,7 +92,7 @@ export default function Pricing() {
       badge: "🥉",
       price: { monthly: 0, annual: 0 },
       clients: "5 clients/month",
-      tagline: "Perfect for new therapists",
+      tagline: "Just getting started — everything you need, nothing you don't",
       features: [
         "Visual body maps (front + back)",
         "Client preferences (pressure, music, temp, draping)",
