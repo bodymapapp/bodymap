@@ -15,11 +15,17 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         setUser(session.user);
         supabase.from('therapists').select('*').eq('id', session.user.id).single()
-          .then(({ data }) => { 
-            if (data) setTherapist(data);
-            else setLoading(false);
+          .then(({ data }) => {
+            if (data) {
+              setTherapist(data);
+            } else {
+              // New Google user — no therapist row yet, send to onboarding
+              if (window.location.pathname !== '/onboarding') {
+                window.location.href = '/onboarding';
+              }
+            }
           })
-          .catch(() => setLoading(false))
+          .catch(() => {})
           .finally(() => setLoading(false));
       } else {
         setUser(null);

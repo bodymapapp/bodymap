@@ -20,6 +20,7 @@ import Feedback from './pages/Feedback';
 import CareSummary from './pages/CareSummary';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
+import Onboarding from './pages/Onboarding';
 
 function App() {
   return (
@@ -45,6 +46,7 @@ function App() {
           <Route path="/summary/:code" element={<CareSummary />} />
           <Route path="/brief/pre/:sessionId" element={<PreSessionBrief />} />
           <Route path="/brief/post/:sessionId" element={<PostSessionBrief />} />
+          <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
       </Router>
