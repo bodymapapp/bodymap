@@ -371,21 +371,6 @@ export default function Home() {
         </div>
       </section>
 
-            }}>See How It Works</a>
-            <Link to="/signup" style={{
-              background: 'white',
-              color: C.sage,
-              padding: '16px 32px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600',
-              border: `2px solid ${C.sage}`
-            }}>Start Free Trial</Link>
-          </div>
-        </div>
-      </section>
-
       {/* How It Works */}
       <section id="demo" style={{ background: C.lavenderPale, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
