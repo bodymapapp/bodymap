@@ -118,7 +118,7 @@ export default function Pricing() {
         "Pattern confidence scores with progress bars",
         "Full session history (unlimited)",
         "Client Loyalty Program (coming soon)",
-        "Priority email support (24hr)"
+        "Email support"
       ],
       cta: "Start 14-Day Free Trial",
       ctaLink: "https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01",
@@ -136,7 +136,7 @@ export default function Pricing() {
         "Shared client database",
         "Team dashboard",
         "Custom intake questions",
-        "Priority support (12hr response)"
+        "Priority email support"
       ],
       cta: "Coming Soon",
       ctaLink: "/signup?plan=gold",
@@ -362,7 +362,7 @@ export default function Pricing() {
               fontSize: '16px',
               fontWeight: '600'
             }}>
-              Contact for Pricing
+              Join Waitlist →
             </Link>
           </div>
         </div>
@@ -396,7 +396,7 @@ export default function Pricing() {
                   { feature: "Heatmap pattern overlay", values: ["—", "✓", "✓"] },
                   { feature: "Pattern confidence scores", values: ["—", "✓", "✓"] },
                   { feature: "Client Loyalty Program", values: ["—", "Soon", "Soon"] },
-                  { feature: "Priority email support", values: ["—", "24hr", "12hr"] },
+                  { feature: "Email support", values: ["—", "✓", "✓"] },
                   { feature: "Therapist accounts", values: ["1", "1", "5"] },
                   { feature: "Shared client database", values: ["—", "—", "✓"] },
                   { feature: "Team dashboard", values: ["—", "—", "✓"] },
