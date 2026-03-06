@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
+import Features from './pages/Features';
 import Pricing from './pages/Pricing';
 import WhyBodyMap from './pages/WhyBodyMap';
 import Contact from './pages/Contact';
@@ -27,6 +28,7 @@ function App() {
       <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/contact" element={<Contact />} />

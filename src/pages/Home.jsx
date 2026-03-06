@@ -234,55 +234,11 @@ export default function Home() {
       {/* Header/Navigation */}
       <Nav />
 
-      {/* Carousel Hero */}
-      <section style={{ 
-        background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`,
-        padding: '80px 24px',
-        textAlign: 'center',
-        color: 'white',
-        position: 'relative',
-        overflow: 'hidden',
-        minHeight: '420px'
-      }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ 
-            fontSize: '72px', 
-            marginBottom: '16px',
-            transition: 'opacity 0.4s ease',
-            opacity: 1
-          }}>
-            {slides[currentSlide].emoji}
-          </div>
-          <h1 style={{ 
-            fontSize: '56px', 
-            fontWeight: '700', 
-            marginBottom: '8px',
-            transition: 'opacity 0.4s ease',
-            minHeight: '70px'
-          }}>
-            {slides[currentSlide].text}
-          </h1>
-          <p style={{ 
-            fontSize: '24px', 
-            opacity: 0.95,
-            marginBottom: '32px',
-            transition: 'opacity 0.4s ease',
-            minHeight: '36px'
-          }}>
-            {slides[currentSlide].subtitle}
-          </p>
-          <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '24px' }}>
-            {slides.map((_, idx) => (
-              <div key={idx} style={{
-                width: '8px',
-                height: '8px',
-                borderRadius: '50%',
-                background: currentSlide === idx ? 'white' : 'rgba(255,255,255,0.4)',
-                transition: 'all 0.3s'
-              }} />
-            ))}
-          </div>
-        </div>
+      {/* Static Hero Banner */}
+      <section style={{ background: 'linear-gradient(135deg, #2A5741 0%, #3D7A5C 100%)', padding: '18px 24px', textAlign: 'center' }}>
+        <p style={{ margin: 0, fontSize: '16px', color: 'white', fontWeight: '500', letterSpacing: '0.01em' }}>
+          Built for the therapist who never wants to lose a client to drift.
+        </p>
       </section>
 
       {/* Main Hero */}
@@ -292,9 +248,8 @@ export default function Home() {
             Elevate Every Client Experience
           </h2>
           <p style={{ fontSize: '20px', color: C.gray, marginBottom: '40px', lineHeight: '1.6' }}>
-            Your clients visualize their needs in 60 seconds.<br/>
-            You deliver personalized, data-driven sessions.<br/>
-            They remember the experience. They come back.
+            Your clients feel it when you remember them.<br/>
+            BodyMap makes sure you always do.<br/>
           </p>
           <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '60px' }}>
             <a href="#demo" style={{
@@ -305,191 +260,6 @@ export default function Home() {
               textDecoration: 'none',
               fontSize: '18px',
               fontWeight: '600'
-            }}>See How It Works</a>
-            <Link to="/signup" style={{
-              background: 'white',
-              color: C.sage,
-              padding: '16px 32px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600',
-              border: `2px solid ${C.sage}`
-            }}>Start Free Trial</Link>
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="demo" style={{ background: C.lavenderPale, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            How BodyMap Works
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '64px' }}>
-            You already put so much into every session. BodyMap just makes sure your clients feel all of it.
-          </p>
-
-          <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-
-            {/* Step 1 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>1</div>
-              {/* SVG: Settings/link setup */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                <rect x="20" y="28" width="40" height="28" rx="4" fill="white" stroke="#2A5741" strokeWidth="2"/>
-                <line x1="20" y1="36" x2="60" y2="36" stroke="#2A5741" strokeWidth="2"/>
-                <circle cx="26" cy="32" r="2" fill="#6B9E80"/>
-                <circle cx="33" cy="32" r="2" fill="#6B9E80"/>
-                <rect x="26" y="42" width="20" height="3" rx="1.5" fill="#6B9E80"/>
-                <rect x="26" y="49" width="14" height="3" rx="1.5" fill="#C9A84C"/>
-                <rect x="48" y="42" width="8" height="10" rx="2" fill="#2A5741"/>
-                <line x1="40" y1="56" x2="40" y2="62" stroke="#2A5741" strokeWidth="2"/>
-                <line x1="32" y1="62" x2="48" y2="62" stroke="#2A5741" strokeWidth="2"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 30 Seconds</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Sign up and your personal intake link is ready instantly — <strong>mybodymap.app/[yourbusiness]</strong>. Yours alone. With Gmail, you're live in under 10 seconds. Share it once. Clients use it before every session.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Text or email it to each client before their session →</p>
-            </div>
-
-            {/* Step 2 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>2</div>
-              {/* SVG: Body with green/red dots */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                {/* Body silhouette */}
-                <circle cx="40" cy="22" r="7" fill="#D4C9B0"/>
-                <rect x="32" y="30" width="16" height="18" rx="4" fill="#D4C9B0"/>
-                <rect x="22" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
-                <rect x="49" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
-                <rect x="33" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
-                <rect x="41" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
-                {/* Green focus dots */}
-                <circle cx="40" cy="35" r="4" fill="#22C55E" opacity="0.9"/>
-                <circle cx="33" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
-                <circle cx="47" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
-                {/* Red avoid dots */}
-                <circle cx="36" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
-                <circle cx="44" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Client Maps Their Body</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Client opens your link on any phone or laptop — no app, no download, no login needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Done in under 60 seconds →</p>
-            </div>
-
-            {/* Step 3 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>3</div>
-              {/* SVG: Laptop + phone side by side */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                {/* Laptop */}
-                <rect x="14" y="28" width="34" height="22" rx="2" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
-                <rect x="16" y="30" width="30" height="18" rx="1" fill="#E8F5EE"/>
-                <line x1="10" y1="50" x2="52" y2="50" stroke="#2A5741" strokeWidth="2"/>
-                <rect x="26" y="32" width="10" height="3" rx="1" fill="#6B9E80"/>
-                <rect x="26" y="37" width="14" height="2" rx="1" fill="#C9A84C"/>
-                <rect x="26" y="41" width="12" height="2" rx="1" fill="#9CA3AF"/>
-                {/* Phone */}
-                <rect x="54" y="30" width="13" height="22" rx="3" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
-                <rect x="56" y="33" width="9" height="14" rx="1" fill="#E8F5EE"/>
-                <circle cx="60.5" cy="50" r="1.5" fill="#2A5741"/>
-                <circle cx="60" cy="35" r="2" fill="#22C55E"/>
-                <circle cx="63" cy="38" r="2" fill="#EF4444"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You See Everything. Patterns Build Over Time.</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Review their body map before each session on any device. After session 3, BodyMap shows you patterns — which areas they always focus on, what they consistently avoid, pressure trends. After session 5, you know this client better than any notes ever could.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600' }}>Session intelligence that compounds with every visit →</p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-
-      {/* Experience Carousels */}
-      <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
-            Your Clients Tell You Once. Your Practice Remembers Forever.
-          </h2>
-          <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
-            Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.
-          </p>
-          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
-            <div>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
-              <TherapistCarousel />
-            </div>
-            <div>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
-              <ClientCarousel />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Try It Section */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-            Experience Both Sides
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
-            No signup needed. See why clients love it — and why therapists never go back.
-          </p>
-          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-
-            {/* Therapist card */}
-            <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
-              <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Therapist Experience
-              </h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                See your dashboard before each session — body map, preferences, medical flags, and the patterns BodyMap has detected across every visit. Walk in knowing exactly what this client needs.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Free account · no credit card · live in 30 seconds →
-              </p>
-              <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                Create Free Account →
-              </a>
-            </div>
-
-            {/* Client card */}
-            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
-              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Client Experience
-              </h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Works on your phone right now →
-              </p>
-              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                Try Client Intake →
-              </a>
-            </div>
-
-          </div>
-          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '24px' }}>
-            🔒 Demo data only — nothing is saved
-          </p>
-        </div>
-      </section>
-
-
       {/* The Benefits Are Clear */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -586,150 +356,184 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section id="features" style={{ background: C.lightGray, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '12px' }}>
-            This Is What It Feels Like to Never Lose a Client to Drift
+            }}>See How It Works</a>
+            <Link to="/signup" style={{
+              background: 'white',
+              color: C.sage,
+              padding: '16px 32px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '18px',
+              fontWeight: '600',
+              border: `2px solid ${C.sage}`
+            }}>Start Free Trial</Link>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section id="demo" style={{ background: C.lavenderPale, padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
+            How BodyMap Works
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '64px' }}>
-            Every feature was built with one person in mind — you.
+          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '64px' }}>
+            You already put so much into every session. BodyMap just makes sure your clients feel all of it.
           </p>
 
-          {[
-            {
-              label: 'Before the Session',
-              color: '#2A5741',
-              bg: '#E8F5EE',
-              cards: [
-                {
-                  num: '01',
-                  label: 'Send Intake',
-                  img: '/ss-intake.png',
-                  title: 'Send Intake in One Tap',
-                  desc: 'Text your client their intake link directly from your dashboard. They fill it in before they arrive. You walk in already knowing what they need.'
-                },
-                {
-                  num: '02',
-                  label: 'Body Map',
-                  img: '/ss-bodymap.png',
-                  title: 'Clients Show You Exactly What They Need',
-                  desc: 'No more guessing or verbal back-and-forth. Clients tap front and back body maps to mark focus and avoid areas. Instant clarity, every session.'
-                },
-                {
-                  num: '03',
-                  label: 'Pre-Session Brief',
-                  img: '/ss-pre-brief.png',
-                  title: 'Your Pre-Session Brief, Ready to Go',
-                  desc: 'One tap opens a full therapist brief — body map, medical flags, preferences, and pattern history. Walk in prepared. Every single time.'
-                }
-              ]
-            },
-            {
-              label: 'During the Session',
-              color: '#6B4C9A',
-              bg: '#F3EEFF',
-              cards: [
-                {
-                  num: '04',
-                  label: 'Client Preferences',
-                  img: '/ss-preferences.png',
-                  title: 'Never Ask the Same Question Twice',
-                  desc: 'Pressure, music, lighting, draping, temperature — captured once, carried forward forever. Every session starts exactly how they like it.'
-                },
-                {
-                  num: '05',
-                  label: 'Medical Flags',
-                  img: '/ss-patterns.png',
-                  title: 'Walk In With Eyes Wide Open',
-                  desc: 'Medical conditions surface as a red alert before you begin. Pattern confidence scores show avoid areas by frequency. Nothing gets missed.'
-                },
-                {
-                  num: '06',
-                  label: 'Pattern Heatmap',
-                  img: '/ss-heatmap.png',
-                  title: 'Know This Client Better Than They Know Themselves',
-                  desc: 'After a few sessions, BodyMap shows what this client always needs. Lower back 4 of 5 visits. Shoulders every time. Patterns memory alone would miss.'
-                }
-              ]
-            },
-            {
-              label: 'After the Session',
-              color: '#C9A84C',
-              bg: '#FEF9EC',
-              cards: [
-                {
-                  num: '07',
-                  label: 'Post-Session Brief',
-                  img: '/ss-post-brief.png',
-                  title: 'Send Clients a Personalized Summary',
-                  desc: 'After each session, send your client a Post-Session Brief with their body map, patterns, and your notes. Clients who receive this book again.'
-                },
-                {
-                  num: '08',
-                  label: 'Client Feedback',
-                  img: '/ss-feedback.png',
-                  title: 'Capture Feedback That Makes You Better',
-                  desc: 'One-tap feedback after each session. Pressure ratings, focus area satisfaction, return likelihood. Know what landed. Improve with every visit.'
-                },
-                {
-                  num: '09',
-                  label: 'Repeat Customers',
-                  img: '/ss-lapsed3.png',
-                  title: 'Win Back Clients Before You Lose Them',
-                  desc: 'BodyMap flags clients who have not returned in 30, 60, or 90 days. One tap sends a personal text. Clients who feel remembered come back.'
-                }
-              ]
-            }
-          ].map((group) => (
-            <div key={group.label} style={{ marginBottom: '56px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '28px' }}>
-                <div style={{ width: '4px', height: '28px', background: group.color, borderRadius: '2px' }} />
-                <h3 style={{ fontSize: '20px', fontWeight: '700', color: group.color, margin: 0 }}>{group.label}</h3>
-              </div>
-              <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px' }}>
-                {group.cards.map((feature) => (
-                  <div key={feature.title} style={{
-                    background: 'white',
-                    borderRadius: '12px',
-                    border: '1px solid #E5E7EB',
-                    overflow: 'hidden',
-                    boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}>
-                    <div style={{ background: '#F3F4F6', borderBottom: '1px solid #E5E7EB', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FF5F57', flexShrink: 0 }} />
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#FFBD2E', flexShrink: 0 }} />
-                      <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28C840', flexShrink: 0 }} />
-                      <div style={{ marginLeft: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: '700', color: group.color }}>{feature.num}</span>
-                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>|</span>
-                        <span style={{ fontSize: '11px', fontWeight: '600', color: '#374151' }}>{feature.label}</span>
-                      </div>
-                    </div>
-                    <div style={{ height: 220, overflow: 'hidden', background: group.bg }}>
-                      <img src={feature.img} alt={feature.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: feature.imgFit || 'cover', objectPosition: feature.imgPosition || 'top', background: 'white' }} />
-                    </div>
-                    <div style={{ padding: '20px 24px 28px', flex: 1 }}>
-                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', lineHeight: '1.35', margin: '0 0 10px 0' }}>
-                        {feature.title}
-                      </h3>
-                      <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>
-                        {feature.desc}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+          <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
 
-          <div style={{ marginTop: '40px', background: C.lavenderPale, padding: '24px', borderRadius: '12px', border: `1px solid ${C.lavenderMid}`, textAlign: 'center' }}>
-            <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}>
-              <strong>Note:</strong> BodyMap is a communication tool for intake preferences, not medical software. No HIPAA compliance required.
-            </p>
+            {/* Step 1 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>1</div>
+              {/* SVG: Settings/link setup */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                <rect x="20" y="28" width="40" height="28" rx="4" fill="white" stroke="#2A5741" strokeWidth="2"/>
+                <line x1="20" y1="36" x2="60" y2="36" stroke="#2A5741" strokeWidth="2"/>
+                <circle cx="26" cy="32" r="2" fill="#6B9E80"/>
+                <circle cx="33" cy="32" r="2" fill="#6B9E80"/>
+                <rect x="26" y="42" width="20" height="3" rx="1.5" fill="#6B9E80"/>
+                <rect x="26" y="49" width="14" height="3" rx="1.5" fill="#C9A84C"/>
+                <rect x="48" y="42" width="8" height="10" rx="2" fill="#2A5741"/>
+                <line x1="40" y1="56" x2="40" y2="62" stroke="#2A5741" strokeWidth="2"/>
+                <line x1="32" y1="62" x2="48" y2="62" stroke="#2A5741" strokeWidth="2"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 30 Seconds</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Sign up and your personal intake link is ready instantly — <strong>mybodymap.app/[yourbusiness]</strong>. Yours alone. With Gmail, you're live in under 10 seconds. Share it once. Clients use it before every session.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>2</div>
+              {/* SVG: Body with green/red dots */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                {/* Body silhouette */}
+                <circle cx="40" cy="22" r="7" fill="#D4C9B0"/>
+                <rect x="32" y="30" width="16" height="18" rx="4" fill="#D4C9B0"/>
+                <rect x="22" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
+                <rect x="49" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
+                <rect x="33" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
+                <rect x="41" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
+                {/* Green focus dots */}
+                <circle cx="40" cy="35" r="4" fill="#22C55E" opacity="0.9"/>
+                <circle cx="33" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
+                <circle cx="47" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
+                {/* Red avoid dots */}
+                <circle cx="36" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
+                <circle cx="44" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Client Maps Their Body</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Client opens your link on any phone or laptop — no app, no download, no login needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>3</div>
+              {/* SVG: Laptop + phone side by side */}
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
+                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
+                {/* Laptop */}
+                <rect x="14" y="28" width="34" height="22" rx="2" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
+                <rect x="16" y="30" width="30" height="18" rx="1" fill="#E8F5EE"/>
+                <line x1="10" y1="50" x2="52" y2="50" stroke="#2A5741" strokeWidth="2"/>
+                <rect x="26" y="32" width="10" height="3" rx="1" fill="#6B9E80"/>
+                <rect x="26" y="37" width="14" height="2" rx="1" fill="#C9A84C"/>
+                <rect x="26" y="41" width="12" height="2" rx="1" fill="#9CA3AF"/>
+                {/* Phone */}
+                <rect x="54" y="30" width="13" height="22" rx="3" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
+                <rect x="56" y="33" width="9" height="14" rx="1" fill="#E8F5EE"/>
+                <circle cx="60.5" cy="50" r="1.5" fill="#2A5741"/>
+                <circle cx="60" cy="35" r="2" fill="#22C55E"/>
+                <circle cx="63" cy="38" r="2" fill="#EF4444"/>
+              </svg>
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You See Everything. Patterns Build Over Time.</h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
+                Review their body map before each session on any device. After session 3, BodyMap shows you patterns — which areas they always focus on, what they consistently avoid, pressure trends. After session 5, you know this client better than any notes ever could.
+              </p>
+            </div>
+
           </div>
+        </div>
+      </section>
+
+
+      {/* Experience Carousels */}
+      <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
+            Your Clients Tell You Once. Your Practice Remembers Forever.
+          </h2>
+          <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
+            Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.
+          </p>
+          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
+            <div>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
+              <TherapistCarousel />
+            </div>
+            <div>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
+              <ClientCarousel />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Try It Section */}
+      <section style={{ background: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+            Experience Both Sides
+          </h2>
+          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
+            No signup needed. See why clients love it — and why therapists never go back.
+          </p>
+          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+
+            {/* Therapist card */}
+            <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+                Therapist Experience
+              </h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
+                See your dashboard before each session — body map, preferences, medical flags, and the patterns BodyMap has detected across every visit. Walk in knowing exactly what this client needs.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
+                Free account · no credit card · live in 30 seconds →
+              </p>
+              <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
+                Create Free Account →
+              </a>
+            </div>
+
+            {/* Client card */}
+            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
+                Client Experience
+              </h3>
+              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
+                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
+              </p>
+              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
+                Works on your phone right now →
+              </p>
+              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
+                Try Client Intake →
+              </a>
+            </div>
+
+          </div>
+          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '24px' }}>
+            🔒 Demo data only — nothing is saved
+          </p>
         </div>
       </section>
 
