@@ -381,7 +381,7 @@ export default function Pricing() {
             Feature Comparison
           </h2>
           
-          <div className="bm-table-wrap"><div style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E7EB' }}>
+          <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', borderRadius: '12px', border: '1px solid #E5E7EB' }}><div style={{ background: 'white', minWidth: '480px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: C.lightGray }}>

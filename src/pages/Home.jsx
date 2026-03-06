@@ -64,6 +64,7 @@ function TherapistCarousel() {
         <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       </div>
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
@@ -128,6 +129,7 @@ function ClientCarousel() {
         <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       </div>
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
@@ -175,12 +177,15 @@ function HomePromoField() {
       }}>
         {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start Trial'}
       </a>
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
 
 
 export default function Home() {
+  const [waitlistOpen, setWaitlistOpen] = React.useState(false);
+  const [waitlistInterest, setWaitlistInterest] = React.useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const slides = [
@@ -666,9 +671,15 @@ export default function Home() {
                 <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
                   {segment.desc}
                 </p>
-                <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600' }}>
-                  {segment.waitlist ? segment.plan : '→ ' + segment.plan}
-                </div>
+                {segment.waitlist ? (
+                  <button onClick={() => { setWaitlistInterest(segment.title + ' — Interest'); setWaitlistOpen(true); }} style={{ marginTop: '8px', background: C.sage, color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                    Join Waitlist
+                  </button>
+                ) : (
+                  <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600' }}>
+                    → {segment.plan}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -804,6 +815,7 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
+    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
 }
