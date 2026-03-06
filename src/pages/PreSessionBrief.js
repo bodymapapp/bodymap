@@ -143,6 +143,7 @@ export default function PreSessionBrief() {
     session.draping && { label:"Draping", val:session.draping },
   ].filter(Boolean);
   const therapistName = therapist?.business_name || therapist?.full_name || "Your Practice";
+  const therapistFullName = therapist?.full_name || '';
   const intakeUrl = therapist?.custom_url ? `${window.location.origin}/${therapist.custom_url}` : null;
   const therapistPhone = therapist?.phone || null;
 
@@ -161,7 +162,7 @@ export default function PreSessionBrief() {
           </div>
           <div style={{textAlign:"right"}}>
             <div style={{fontSize:"13px",fontWeight:"700",color:"#2A5741"}}>🌿 Pre-Session Brief</div>
-            <div style={{fontSize:"11px",color:"#1A1A2E",fontWeight:"600"}}>{therapistName}</div>
+            <div style={{fontSize:"11px",color:"#1A1A2E",fontWeight:"600"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}</div>
             {therapistPhone && <div style={{fontSize:"11px",color:"#6B7280"}}>{therapistPhone}</div>}
             {intakeUrl && <div style={{fontSize:"10px",color:"#9CA3AF"}}>{intakeUrl}</div>}
           </div>
@@ -224,7 +225,7 @@ export default function PreSessionBrief() {
         )}
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""} · Confidential</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""} · Confidential</span>
         </div>
       </div>
     </div>

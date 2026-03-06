@@ -146,7 +146,8 @@ export default function PostSessionBrief() {
   const sessionDate = new Date(session.created_at).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"});
   const focusAreas = [...(session.front_focus||[]),...(session.back_focus||[])];
   const avoidAreas = [...(session.front_avoid||[]),...(session.back_avoid||[])];
-  const therapistName = therapist?.business_name || therapist?.full_name || "Your Therapist";
+  const therapistName = therapist?.business_name || therapist?.full_name || "Your Practice";
+  const therapistFullName = therapist?.full_name || '';
   const intakeUrl = therapist?.custom_url ? `${window.location.origin}/${therapist.custom_url}` : null;
   const therapistPhone = therapist?.phone || null;
   const summaryParts = [];
@@ -181,7 +182,7 @@ export default function PostSessionBrief() {
             <div style={{fontSize:"12px",opacity:0.8,marginTop:"3px"}}>{sessionDate}</div>
           </div>
           <div style={{textAlign:"right"}}>
-            <div style={{fontSize:"14px",fontWeight:"700"}}>🌿 {therapistName}</div>
+            <div style={{fontSize:"14px",fontWeight:"700"}}>🌿 {therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}</div>
             {therapistPhone && <div style={{fontSize:"11px",opacity:0.85,marginTop:"1px"}}>{therapistPhone}</div>}
             <div style={{fontSize:"11px",opacity:0.65,marginTop:"1px"}}>{history.length} session{history.length!==1?"s":""} on record</div>
           </div>
@@ -236,12 +237,12 @@ export default function PostSessionBrief() {
         )}
         <div style={{background:"#F5F0E8",border:"1px solid #C8BFB0",borderRadius:"8px",padding:"14px 16px",marginBottom:"14px",textAlign:"center"}}>
           <div style={{fontSize:"13px",fontWeight:"700",color:"#2A5741",marginBottom:"4px"}}>Ready for your next session? 🌿</div>
-          <div style={{fontSize:"11px",color:"#6B7280",marginBottom:"6px"}}>Contact {therapistName}{therapistPhone ? " · " + therapistPhone : ""}</div>
+          <div style={{fontSize:"11px",color:"#6B7280",marginBottom:"6px"}}>Contact {therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}</div>
           {intakeUrl && <a href={intakeUrl} style={{fontSize:"12px",fontWeight:"700",color:"#2A5741",textDecoration:"none",background:"white",padding:"6px 16px",borderRadius:"20px",border:"1px solid #6B9E80",display:"inline-block"}}>📋 Fill intake form before next visit</a>}
         </div>
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""}</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""}</span>
         </div>
       </div>
     </div>
