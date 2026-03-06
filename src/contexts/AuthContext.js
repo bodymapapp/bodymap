@@ -15,7 +15,11 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         setUser(session.user);
         supabase.from('therapists').select('*').eq('id', session.user.id).single()
-          .then(({ data }) => { if (data) setTherapist(data); })
+          .then(({ data }) => { 
+            if (data) setTherapist(data);
+            else setLoading(false);
+          })
+          .catch(() => setLoading(false))
           .finally(() => setLoading(false));
       } else {
         setUser(null);
@@ -61,6 +65,9 @@ export const AuthProvider = ({ children }) => {
         plan: 'free'
       }]);
       if (dbError) throw dbError;
+      // Fetch back to confirm insert and set state
+      const { data: newT } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
+      if (newT) setTherapist(newT);
       // Re-fetch therapist so dashboard loads correctly
       const { data: t } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
       return { success: true, therapist: t };

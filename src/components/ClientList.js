@@ -74,7 +74,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
     <div style={{ display: "flex", justifyContent: "center", padding: "60px", color: C.gray }}>
       <div style={{ textAlign: "center" }}>
         <div style={{ fontSize: "32px", marginBottom: "12px" }}>🌿</div>
-        <p style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: C.gray }}>Loading clients...</p>
+        <p style={{ fontFamily: "Georgia, serif", fontSize: "16px", color: C.gray }}>Your first client is one link away 🌿</p>
       </div>
     </div>
   );
@@ -105,7 +105,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                     style={{ background: "#D97706", color: "white", padding: "8px 16px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", textDecoration: "none", whiteSpace: "nowrap" }}>
                     💬 Send Check-in
                   </a>
-                ) : (
+                  ) : (
                   <span style={{ fontSize: "11px", color: "#B45309", fontStyle: "italic" }}>No phone on file</span>
                 )}
               </div>
@@ -230,7 +230,13 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {clients.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '60px 24px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
+            <p style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>Ready when your first client is</p>
+            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px' }}>Share your intake link and their preferences will appear here instantly.</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px", color: C.gray }}>
             <p style={{ fontSize: "16px" }}>No clients found</p>
           </div>
