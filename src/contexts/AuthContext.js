@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
       if (t) setTherapist(t);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
     }
   };
 
@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
       const { data: t } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
       return { success: true, therapist: t };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
     }
   };
 
@@ -82,7 +82,7 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
     }
   };
 
@@ -93,7 +93,7 @@ export const AuthProvider = ({ children }) => {
       setTherapist(data);
       return { success: true, data };
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
     }
   };
 
