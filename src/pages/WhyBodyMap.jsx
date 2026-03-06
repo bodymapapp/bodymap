@@ -28,7 +28,7 @@ export default function WhyBodyMap() {
       <Nav />
 
       {/* Hero */}
-      <section style={{ background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`, padding: '80px 24px', textAlign: 'center', color: 'white' }}>
+      <section style={{ overflowX: 'hidden', background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`, padding: '80px 24px', textAlign: 'center', color: 'white' }}>
         <div className="bm-why-hero" style={{ maxWidth: '900px', margin: '0 auto' }}>
           <h1 style={{ fontSize: '56px', fontWeight: '700', marginBottom: '16px', lineHeight: 1.2 }}>
             Your clients come back<br/>when they feel known
@@ -40,7 +40,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* Retention ROI */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
+      <section style={{ overflowX: 'hidden', background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             One client back pays for everything
@@ -77,7 +77,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* 6 Value Props */}
-      <section style={{ background: C.lightGray, padding: '80px 24px' }}>
+      <section style={{ overflowX: 'hidden', background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '16px' }}>
             Six reasons therapists never go back
@@ -130,7 +130,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* The moment that changes everything */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
+      <section style={{ overflowX: 'hidden', background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', alignItems: 'center' }} className="bm-why-2col">
             <div>
@@ -170,7 +170,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* You vs the therapist down the street */}
-      <section style={{ background: C.lightGray, padding: '80px 24px' }}>
+      <section style={{ overflowX: 'hidden', background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '56px' }}>
             You vs. the therapist down the street
@@ -215,7 +215,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* Practice Sizes — retention framing */}
-      <section style={{ background: C.lavenderPale, padding: '80px 24px' }}>
+      <section style={{ overflowX: 'hidden', background: C.lavenderPale, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '56px' }}>
             Works for every size practice
@@ -291,7 +291,7 @@ export default function WhyBodyMap() {
       </section>
 
       {/* Final CTA */}
-      <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
+      <section style={{ overflowX: 'hidden', background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             The decision is simple

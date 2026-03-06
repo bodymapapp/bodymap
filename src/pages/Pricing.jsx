@@ -148,6 +148,11 @@ export default function Pricing() {
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
       <style>{`
         @media (max-width: 768px) {
+          .bm-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+          .bm-table-wrap table { min-width: 480px !important; }
+          .bm-who-card { padding: 20px 16px !important; overflow: hidden !important; }
+          .bm-who-card p { word-break: break-word !important; }
+          .bm-roi-box { padding: 16px !important; }
           .bm-tiers { grid-template-columns: 1fr !important; }
           .bm-loyalty { grid-template-columns: 1fr !important; }
           .bm-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; display: block; width: 100%; }
@@ -352,18 +357,19 @@ export default function Pricing() {
                 For now, contact us for volume discounts on individual therapist accounts.
               </p>
             </div>
-            <Link to="/contact" style={{
+            <button onClick={() => { setWaitlistInterest('Enterprise — Coming Soon'); setWaitlistOpen(true); }} style={{
               display: 'inline-block',
               background: C.sage,
               color: 'white',
               padding: '16px 40px',
               borderRadius: '8px',
-              textDecoration: 'none',
+              border: 'none',
               fontSize: '16px',
-              fontWeight: '600'
+              fontWeight: '600',
+              cursor: 'pointer'
             }}>
               Join Waitlist →
-            </Link>
+            </button>
           </div>
         </div>
       </section>
