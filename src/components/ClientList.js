@@ -310,7 +310,15 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
             fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {client.name}
           </p>
-          <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "—"}</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "—"}</p>
+            {client.phone && (
+              <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(client.phone); setCopiedPhone(true); setTimeout(() => setCopiedPhone(false), 2000); }}
+                style={{ background: copiedPhone ? "#2A5741" : "#F3F4F6", border: "none", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: "600", color: copiedPhone ? "white" : "#6B7280", cursor: "pointer", flexShrink: 0 }}>
+                {copiedPhone ? "✓" : "📋"}
+              </button>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <span style={{ background: status.bg, color: status.color, fontSize: "11px", fontWeight: "700",
