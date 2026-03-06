@@ -15,7 +15,7 @@ export default function Features() {
   };
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", color: C.darkGray }}>
+    <div style={{ paddingTop: "64px", fontFamily: "'Inter', -apple-system, sans-serif", color: C.darkGray }}>
       <Nav />
       <section style={{ background: C.lightGray, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>

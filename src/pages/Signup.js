@@ -251,14 +251,14 @@ export default function Signup() {
                 Your Custom URL
               </label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: C.gray, fontSize: '14px' }}>mybodymap.app/</span>
+                <span style={{ color: C.gray, fontSize: '14px', whiteSpace: 'nowrap', flexShrink: 0 }}>mybodymap.app/</span>
                 <input
                   type="text"
                   name="customUrl"
                   required
                   value={formData.customUrl}
                   onChange={handleChange}
-                  placeholder="healinghands"
+                  placeholder="healinghands" style={{ minWidth: 0, flex: 1 }}
                   style={{
                     flex: 1,
                     padding: '12px',

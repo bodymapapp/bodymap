@@ -44,7 +44,7 @@ export default function Nav() {
   }
 
   return (
-    <nav style={{ background: C.white, borderBottom: "1px solid #e5e7eb", padding: "16px 0", position: "sticky", top: 0, zIndex: 100 }}>
+    <nav style={{ background: C.white, borderBottom: "1px solid #e5e7eb", padding: "16px 0", position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000 }}>
       <style>{`
         @media (max-width: 768px) {
           .bm-desktop-nav { display: none !important; }

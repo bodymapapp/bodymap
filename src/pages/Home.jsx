@@ -212,7 +212,7 @@ export default function Home() {
   };
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflowX: 'hidden', width: '100%' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflowX: 'hidden', width: '100%', paddingTop: '64px' }}>
       <style>{`
         @media (max-width: 768px) {
           .bm-grid-3 { grid-template-columns: 1fr !important; }
@@ -628,13 +628,15 @@ export default function Home() {
                 icon: "🏭",
                 title: "Massage Chains",
                 desc: "Enterprise pricing available. Volume discounts for 10+ locations.",
-                plan: "Contact for pricing"
+                plan: "Join Waitlist →",
+                waitlist: true
               },
               {
                 icon: "🎓",
                 title: "Massage Schools",
                 desc: "Train students with professional intake tools. Real-world experience.",
-                plan: "Education pricing"
+                plan: "Join Waitlist →",
+                waitlist: true
               }
             ].map((segment) => (
               <div key={segment.title} style={{ 
@@ -643,7 +645,10 @@ export default function Home() {
                 borderRadius: '12px',
                 border: '2px solid #E5E7EB',
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                overflow: 'hidden',
+                wordBreak: 'break-word',
+                boxSizing: 'border-box'
               }}
               onMouseOver={(e) => {
                 e.currentTarget.style.borderColor = C.lavender;
@@ -662,7 +667,7 @@ export default function Home() {
                   {segment.desc}
                 </p>
                 <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600' }}>
-                  → {segment.plan}
+                  {segment.waitlist ? segment.plan : '→ ' + segment.plan}
                 </div>
               </div>
             ))}
