@@ -61,7 +61,9 @@ export const AuthProvider = ({ children }) => {
         plan: 'free'
       }]);
       if (dbError) throw dbError;
-      return { success: true };
+      // Re-fetch therapist so dashboard loads correctly
+      const { data: t } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
+      return { success: true, therapist: t };
     } catch (error) {
       return { success: false, error: error.message };
     }
