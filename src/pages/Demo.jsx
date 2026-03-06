@@ -583,6 +583,15 @@ const Sil = ({ isFront }) => {
     ol = C.skinDark,
     sw = 1.2;
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <g>
       <ellipse
         cx="100"
@@ -812,6 +821,15 @@ const BMSVG = ({
   const [tip, setTip] = useState(null);
   const front = regions[0]?.id?.startsWith("f-");
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div style={{ position: "relative", userSelect: "none" }}>
       <svg
         viewBox="0 0 200 340"
@@ -940,6 +958,8 @@ const Inp = ({ style = {}, ...p }) => (
   <input
     {...p}
     style={{
+      overflowX: "hidden",
+      width: "100%",
       fontFamily: F.body,
       border: `2px solid ${C.border}`,
       borderRadius: 12,
@@ -958,6 +978,8 @@ const TA = ({ style = {}, ...p }) => (
   <textarea
     {...p}
     style={{
+      overflowX: "hidden",
+      width: "100%",
       fontFamily: F.body,
       border: `2px solid ${C.border}`,
       borderRadius: 12,
@@ -1079,6 +1101,15 @@ const Slider = ({ value, onChange }) => (
 const Step = ({ step }) => {
   const steps = ["Front", "Back", "Preferences"];
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         display: "flex",
@@ -1182,6 +1213,15 @@ const AT = ({ regions, selections }) => {
   const sel = regions.filter((r) => selections[r.id]);
   if (!sel.length) return null;
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         marginTop: 12,
@@ -1355,6 +1395,15 @@ const LoyaltyBar = ({ sessions }) => {
       </div>
     );
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.goldPale,
@@ -1531,6 +1580,15 @@ const TherapistLoyalty = ({ sessions, clientName }) => {
       </div>
     );
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.goldPale,
@@ -1618,6 +1676,15 @@ const AIBrief = ({ clientInfo, bodyMap, prefs, notes, sessions }) => {
     setDone(true);
   };
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <AIC>
       <AIB label="AI Session Brief" />
       <p
@@ -1734,6 +1801,15 @@ const Insights = ({ sessions, clientName }) => {
       </AIC>
     );
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <AIC>
       <AIB label="Wellness Intelligence" />
       <h3
@@ -1823,6 +1899,15 @@ const PreFill = ({ sessions, onPreFill }) => {
   ).length;
   const d = Math.floor((Date.now() - new Date(last.date)) / 86400000);
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <AIC style={{ marginBottom: 14 }}>
       <AIB label="Smart Session Start" />
       <div
@@ -1904,6 +1989,15 @@ const Prediction = ({ sessions, onApply }) => {
       ? "Clear pattern"
       : "Emerging pattern";
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <AIC>
       <AIB label="Session Intelligence" />
       <h3
@@ -2372,6 +2466,15 @@ const ReviewScreen = ({ clientInfo, onDone }) => {
     );
 
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.bg,
@@ -2518,6 +2621,15 @@ const PrefScreen = ({
 }) => {
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.bg,
@@ -2833,6 +2945,15 @@ const TherapistView = ({
   const fa = ALL_REGIONS.filter((r) => bodyMap[r.id] === "focus");
   const av = ALL_REGIONS.filter((r) => bodyMap[r.id] === "avoid");
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: "#EEF2EC",
@@ -2845,9 +2966,9 @@ const TherapistView = ({
           background: `linear-gradient(135deg,${C.green} 0%,#1E4230 100%)`,
           borderRadius: "0 0 28px 28px",
           padding: "28px 22px 22px",
-          marginLeft: -20,
-          marginRight: -20,
-          width: "calc(100% + 40px)",
+          marginLeft: 0,
+          marginRight: 0,
+          width: "100%",
           marginBottom: 18,
         }}
       >
@@ -3445,6 +3566,15 @@ const HistoryScreen = ({ sessions, clientName, onBack, onNewSession }) => {
     .sort(([, a], [, b]) => b.avoid - a.avoid)
     .slice(0, 3);
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.bg,
@@ -3822,6 +3952,15 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div style={{ minHeight: "100vh", background: C.bg }}>
       <div
         style={{
@@ -4059,6 +4198,15 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
     setTimeout(() => setCopied(false), 2500);
   };
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <div
       style={{
         background: C.bg,
@@ -4531,6 +4679,15 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   };
 
   return (
+    <>  <style>{`
+    @media (max-width: 768px) {
+      .bm-demo-toggle-row { flex-wrap: wrap !important; }
+      .bm-demo-toggle-row button { flex: 1 1 45% !important; min-width: 120px !important; }
+      .bm-demo-welcome-bar { flex-direction: column !important; align-items: flex-start !important; gap: 10px !important; }
+      .bm-demo-welcome-bar button { width: 100% !important; }
+      .bm-demo-body-container { max-width: 100vw !important; overflow-x: hidden !important; }
+    }
+  `}</style>
     <>
       <style>{`
         .intake-desktop-bg { min-height:100vh; background:linear-gradient(155deg,#2A5741,#4A8B6B); display:flex; align-items:center; justify-content:center; padding:40px 20px; }
@@ -4548,5 +4705,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
         </div>
       </div>
     </>
+  );
+}</>
   );
 }
