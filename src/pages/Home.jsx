@@ -212,22 +212,25 @@ export default function Home() {
   };
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflowX: 'hidden', width: '100%' }}>
       <style>{`
         @media (max-width: 768px) {
           .bm-grid-3 { grid-template-columns: 1fr !important; }
           .bm-grid-2 { grid-template-columns: 1fr !important; }
           .bm-grid-pricing { grid-template-columns: 1fr !important; }
-          .bm-hero-btns { flex-direction: column !important; align-items: stretch !important; }
-          .bm-hero-h1 { font-size: 36px !important; }
-          .bm-hero-h2 { font-size: 28px !important; }
-          .bm-section-h2 { font-size: 28px !important; }
-          .bm-benefit-h3 { font-size: 22px !important; }
+          .bm-hero-btns { flex-direction: column !important; align-items: stretch !important; width: 100% !important; box-sizing: border-box !important; }
+          .bm-hero-btns a { width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
+          .bm-hero-h1 { font-size: 32px !important; }
+          .bm-hero-h2 { font-size: 28px !important; padding: 0 8px !important; }
+          .bm-section-h2 { font-size: 26px !important; padding: 0 8px !important; }
+          .bm-benefit-h3 { font-size: 20px !important; }
           .bm-gap-60 { gap: 32px !important; }
           .bm-section-pad { padding: 48px 16px !important; }
           .bm-hide-mobile { display: none !important; }
           .bm-try-card { padding: 28px 20px !important; }
           .bm-nav-full { font-size: 13px !important; }
+          section { overflow-x: hidden !important; box-sizing: border-box !important; }
+          div { max-width: 100vw !important; box-sizing: border-box !important; }
         }
       `}</style>
       
@@ -235,7 +238,7 @@ export default function Home() {
       <Nav />
 
       {/* Main Hero */}
-      <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
+      <section className='bm-section-pad' style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 className="bm-hero-h2" style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             Elevate Every Client Experience
@@ -759,7 +762,7 @@ export default function Home() {
       </section>
 
       {/* Final CTA */}
-      <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
+      <section className='bm-section-pad' style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
             Ready to Elevate Your Client Experience?
