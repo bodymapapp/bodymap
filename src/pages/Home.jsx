@@ -260,6 +260,21 @@ export default function Home() {
               textDecoration: 'none',
               fontSize: '18px',
               fontWeight: '600'
+            }}>See How It Works</a>
+            <a href="/signup" style={{
+              background: 'white',
+              color: C.sage,
+              padding: '16px 32px',
+              borderRadius: '8px',
+              textDecoration: 'none',
+              fontSize: '18px',
+              fontWeight: '600',
+              border: '2px solid ' + C.sage
+            }}>Start Free Trial</a>
+          </div>
+        </div>
+      </section>
+
       {/* The Benefits Are Clear */}
       <section style={{ background: 'white', padding: '80px 24px' }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
