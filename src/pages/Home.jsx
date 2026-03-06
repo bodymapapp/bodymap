@@ -1,3 +1,4 @@
+import WaitlistModal from '../components/WaitlistModal';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import React, { useState } from 'react';
@@ -64,7 +65,7 @@ function TherapistCarousel() {
         <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       </div>
-    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
+
     </div>
   );
 }
@@ -129,7 +130,7 @@ function ClientCarousel() {
         <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
           style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
       </div>
-    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
+
     </div>
   );
 }
@@ -177,7 +178,7 @@ function HomePromoField() {
       }}>
         {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start Trial'}
       </a>
-    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
+
     </div>
   );
 }
@@ -815,6 +816,7 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
+
     <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
     </div>
   );
