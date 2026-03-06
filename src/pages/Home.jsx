@@ -234,13 +234,6 @@ export default function Home() {
       {/* Header/Navigation */}
       <Nav />
 
-      {/* Static Hero Banner */}
-      <section style={{ background: 'linear-gradient(135deg, #2A5741 0%, #3D7A5C 100%)', padding: '18px 24px', textAlign: 'center' }}>
-        <p style={{ margin: 0, fontSize: '16px', color: 'white', fontWeight: '500', letterSpacing: '0.01em' }}>
-          Built for the therapist who never wants to lose a client to drift.
-        </p>
-      </section>
-
       {/* Main Hero */}
       <section style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
