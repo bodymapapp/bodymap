@@ -143,6 +143,19 @@ export default function Signup() {
           <span style={{ fontSize: '32px', fontWeight: '700', color: C.forest }}>BodyMap</span>
         </Link>
 
+        {nextPlan === 'silver' && (
+          <div style={{ background: '#EEF2FF', border: '1.5px solid #6366F1', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '16px', fontWeight: '700', color: '#1e1b4b', margin: '0 0 4px 0' }}>🚀 Almost there!</p>
+            <p style={{ fontSize: '14px', color: '#3730a3', margin: 0 }}>Create your free account first — you'll go straight to Silver payment after.</p>
+          </div>
+        )}
+        {justPaid && (
+          <div style={{ background: '#ECFDF5', border: '1.5px solid #6B9E80', borderRadius: '12px', padding: '16px 20px', marginBottom: '20px', textAlign: 'center' }}>
+            <p style={{ fontSize: '16px', fontWeight: '700', color: '#2A5741', margin: '0 0 4px 0' }}>✅ Payment received!</p>
+            <p style={{ fontSize: '14px', color: '#2A5741', margin: 0 }}>Create your account below to activate your Silver plan.</p>
+          </div>
+        )}
+
         {/* Signup Card */}
         <div style={{ 
           background: 'white', 
