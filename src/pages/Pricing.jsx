@@ -1,4 +1,5 @@
 import Nav from '../components/Nav';
+import { supabase } from '../lib/supabase';
 import Footer from '../components/Footer';
 import WaitlistModal from '../components/WaitlistModal';
 import React, { useState } from 'react';
@@ -75,7 +76,6 @@ export default function Pricing() {
   const navigate = useNavigate();
 
   const handleSilverClick = async (stripeLink) => {
-    const { supabase } = await import('../lib/supabaseClient');
     const { data: { session } } = await supabase.auth.getSession();
     const loggedIn = !!session?.user;
     if (loggedIn) {
