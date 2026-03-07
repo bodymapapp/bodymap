@@ -23,7 +23,7 @@ function PromoField({ ctaLink, onAuthRedirect }) {
       setApplied(false);
     }
   };
-  const finalLink = applied ? ctaLink + '?prefilled_promo_code=' + code.trim().toUpperCase() : ctaLink;
+  const finalLink = applied ? ctaLink + (ctaLink.includes('?') ? '&' : '?') + 'prefilled_promo_code=' + code.trim().toUpperCase() : ctaLink;
   return (
     <div style={{ marginBottom: '12px' }}>
       <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
