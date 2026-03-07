@@ -23,29 +23,22 @@ export default function Signup() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    confirmPassword: '',
     fullName: '',
     businessName: '',
-    phone: '',
     customUrl: ''
   });
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signUp, signInWithGoogle } = useAuth();
   const navigate = useNavigate();
 
 
-  const formatPhone = (v) => {
-    const d = v.replace(/\D/g, '').slice(0, 10);
     if (d.length <= 3) return d;
     if (d.length <= 6) return `(${d.slice(0,3)}) ${d.slice(3)}`;
     return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
   };
 
-  const handlePhoneChange = (e) => {
-    const formatted = formatPhone(e.target.value);
-    setFormData(prev => ({ ...prev, phone: formatted }));
-  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -73,15 +66,8 @@ export default function Signup() {
     if (!formData.businessName.trim() || formData.businessName.trim().length < 2) {
       setError('Please enter your business name (at least 2 characters)'); return;
     }
-    if (!formData.phone || formData.phone.replace(/\D/g,'').length !== 10) {
-      setError('Please enter a valid 10-digit phone number'); return;
-    }
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address'); return;
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
     }
 
     if (formData.password.length < 8) {
@@ -99,7 +85,6 @@ export default function Signup() {
     const result = await signUp(formData.email, formData.password, {
       fullName: formData.fullName,
       businessName: formData.businessName,
-      phone: formData.phone,
       customUrl: formData.customUrl
     });
 
@@ -203,255 +188,48 @@ export default function Signup() {
 
           <form onSubmit={handleSubmit}>
             {/* Full Name */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Your Full Name
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                required
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Jane Smith"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Your Full Name</label>
+              <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #E5E7EB', fontSize: '15px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
             </div>
 
             {/* Business Name */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Business Name
-              </label>
-              <input
-                type="text"
-                name="businessName"
-                required
-                value={formData.businessName}
-                onChange={handleChange}
-                placeholder="Healing Hands Massage"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Business Name</label>
+              <input name="businessName" type="text" placeholder="Healing Hands Massage" value={formData.businessName} onChange={handleChange}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #E5E7EB', fontSize: '15px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
             </div>
 
             {/* Custom URL */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Your Custom URL
-              </label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: C.gray, fontSize: '14px', whiteSpace: 'nowrap', flexShrink: 0 }}>mybodymap.app/</span>
-                <input
-                  type="text"
-                  name="customUrl"
-                  required
-                  value={formData.customUrl}
-                  onChange={handleChange}
-                  placeholder="healinghands" style={{ minWidth: 0, flex: 1 }}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    fontSize: '15px',
-                    border: '1px solid #D1D5DB',
-                    borderRadius: '8px',
-                    boxSizing: 'border-box'
-                  }}
-                />
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Your Intake Link</label>
+              <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #E5E7EB', borderRadius: '10px', overflow: 'hidden' }}>
+                <span style={{ padding: '12px 10px 12px 14px', background: '#F9FAFB', color: '#6B7280', fontSize: '14px', whiteSpace: 'nowrap', borderRight: '1.5px solid #E5E7EB' }}>mybodymap.app/</span>
+                <input name="customUrl" type="text" placeholder="janesmassage" value={formData.customUrl} onChange={handleChange}
+                  style={{ flex: 1, padding: '12px 14px', border: 'none', fontSize: '15px', outline: 'none', fontFamily: 'inherit', minWidth: 0 }} />
               </div>
-              <p style={{ fontSize: '12px', color: C.gray, marginTop: '4px' }}>
-                Clients will use this link to fill out their body map
-              </p>
-            </div>
-
-            {/* Phone */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Phone Number
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                onChange={handlePhoneChange}
-                required
-                value={formData.phone}
-                placeholder="(555) 123-4567"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <p style={{ fontSize: '12px', color: '#9CA3AF', margin: '4px 0 0 2px' }}>Clients tap this link to fill their body map</p>
             </div>
 
             {/* Email */}
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Email</label>
+              <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #E5E7EB', fontSize: '15px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+            </div>
+
+            {/* Password with show/hide */}
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="you@example.com"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
+              <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>Password</label>
+              <div style={{ position: 'relative' }}>
+                <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Minimum 8 characters" value={formData.password} onChange={handleChange}
+                  style={{ width: '100%', padding: '12px 44px 12px 14px', borderRadius: '10px', border: '1.5px solid #E5E7EB', fontSize: '15px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                <button type="button" onClick={() => setShowPassword(p => !p)}
+                  style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '4px' }}>
+                  {showPassword ? '🙈' : '👁️'}
+                </button>
+              </div>
             </div>
 
-            {/* Password */}
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Password
-              </label>
-              <input
-                type="password"
-                name="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Minimum 8 characters"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
 
-            {/* Confirm Password */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ 
-                display: 'block', 
-                fontSize: '14px', 
-                fontWeight: '600', 
-                color: '#374151', 
-                marginBottom: '8px' 
-              }}>
-                Confirm Password
-              </label>
-              <input
-                type="password"
-                name="confirmPassword"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                placeholder="Re-enter your password"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontSize: '15px',
-                  border: '1px solid #D1D5DB',
-                  borderRadius: '8px',
-                  boxSizing: 'border-box'
-                }}
-              />
-            </div>
-
-            <button 
-              type="submit"
-              disabled={loading}
-              style={{
-                width: '100%',
-                background: loading ? '#9CA3AF' : C.sage,
-                color: 'white',
-                padding: '14px',
-                borderRadius: '8px',
-                border: 'none',
-                fontSize: '16px',
-                fontWeight: '600',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                marginBottom: '16px'
-              }}
-            >
-              {loading ? 'Creating account...' : 'Create Account'}
-            </button>
-
-            <div style={{ textAlign: 'center', fontSize: '14px', color: C.gray }}>
-              Already have an account?{' '}
-              <Link to="/login" style={{ color: C.sage, fontWeight: '600', textDecoration: 'none' }}>
-                Sign in
-              </Link>
-            </div>
-          </form>
-
-          <p style={{ fontSize: '12px', color: C.gray, textAlign: 'center', marginTop: '24px' }}>
-            By signing up, you agree to our{' '}
-            <Link to="/terms" style={{ color: C.sage }}>Terms</Link>
-            {' '}and{' '}
-            <Link to="/privacy" style={{ color: C.sage }}>Privacy Policy</Link>
-          </p>
-        </div>
-
-        <div style={{ textAlign: 'center', marginTop: '24px' }}>
-          <Link to="/" style={{ color: C.gray, fontSize: '14px', textDecoration: 'none' }}>
-            ← Back to home
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}

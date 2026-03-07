@@ -47,6 +47,44 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         Account Settings
       </h2>
 
+      {/* Profile Completion Bar */}
+      {(() => {
+        const fields = [
+          { label: 'Full Name', done: !!(therapist?.full_name) },
+          { label: 'Business Name', done: !!(therapist?.business_name) },
+          { label: 'Intake URL', done: !!(therapist?.custom_url) },
+          { label: 'Phone Number', done: !!(therapist?.phone) },
+          { label: 'Profile Photo', done: false },
+        ];
+        const done = fields.filter(f => f.done).length;
+        const pct = Math.round((done / fields.length) * 100);
+        if (pct === 100) return null;
+        return (
+          <div style={{ background: '#fff', border: '1.5px solid #E8E4DC', borderRadius: '14px', padding: '20px 24px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#1A1A2E' }}>Profile Completion</span>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#2A5741' }}>{pct}%</span>
+            </div>
+            <div style={{ background: '#E8E4DC', borderRadius: '99px', height: '8px', marginBottom: '14px' }}>
+              <div style={{ width: pct + '%', background: 'linear-gradient(90deg, #6B9E80, #2A5741)', borderRadius: '99px', height: '8px', transition: 'width 0.5s ease' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {fields.map(f => (
+                <span key={f.label} style={{ fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '99px', background: f.done ? '#F0FDF4' : '#FEF9F0', color: f.done ? '#2A5741' : '#92400E', border: f.done ? '1px solid #BBF7D0' : '1px solid #FDE68A' }}>
+                  {f.done ? '✓' : '+'} {f.label}
+                </span>
+              ))}
+            </div>
+            {!therapist?.phone && (
+              <p style={{ fontSize: '12px', color: '#6B7280', margin: '10px 0 0 0' }}>
+                💡 Add your phone number below — shown on client session briefs
+              </p>
+            )}
+          </div>
+        );
+      })()}
+
+
       {/* Intake Link */}
       <div style={{ background: `linear-gradient(135deg, ${C2.forest}08, ${C2.sage}15)`, border: `1.5px solid ${C2.sage}40`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.sage, margin: '0 0 8px 0' }}>
