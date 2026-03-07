@@ -43,11 +43,6 @@ export default function Onboarding() {
         localStorage.removeItem('postSignupRedirect');
         window.open(postRedirect, '_blank');
       }
-      const postRedirect = localStorage.getItem('postSignupRedirect');
-      if (postRedirect) {
-        localStorage.removeItem('postSignupRedirect');
-        window.open(postRedirect, '_blank');
-      }
       window.location.href = '/dashboard';
     }
   };
