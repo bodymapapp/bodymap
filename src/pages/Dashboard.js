@@ -201,7 +201,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             )}
           </div>
           {therapist?.plan === 'free' && (
-            <a href='https://buy.stripe.com/test_28EdRbfAO34N973ddvafS00' target='_blank' rel='noopener noreferrer' style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+            <a href='https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01' target='_blank' rel='noopener noreferrer' style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
               Upgrade to Silver ↗
             </a>
           )}
