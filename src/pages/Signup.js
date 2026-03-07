@@ -103,7 +103,14 @@ export default function Signup() {
     });
 
     if (result.success) {
-      navigate('/dashboard');
+      const postRedirect = sessionStorage.getItem('postSignupRedirect');
+      if (postRedirect) {
+        sessionStorage.removeItem('postSignupRedirect');
+        window.open(postRedirect, '_blank');
+        navigate('/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       setError(result.error);
     }

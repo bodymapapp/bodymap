@@ -2,9 +2,12 @@ import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 import WaitlistModal from '../components/WaitlistModal';
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
 
-function PromoField({ ctaLink }) {
+const STRIPE_SILVER = 'https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01';
+
+function PromoField({ ctaLink, onAuthRedirect }) {
   const [code, setCode] = React.useState('');
   const [applied, setApplied] = React.useState(false);
   const [error, setError] = React.useState(false);
@@ -47,7 +50,7 @@ function PromoField({ ctaLink }) {
           <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $24/mo, you pay just <strong>$12/mo</strong> for your first 3 months. Click the button below to lock it in.</p>
         </div>
       )}
-      <a href={finalLink} target="_blank" rel="noopener noreferrer" style={{
+      <a href={finalLink} target="_blank" rel="noopener noreferrer" onClick={onAuthRedirect ? (e) => { e.preventDefault(); onAuthRedirect(finalLink); } : undefined} style={{
         display: 'block',
         background: '#6B5FB5',
         color: 'white',
@@ -68,6 +71,18 @@ function PromoField({ ctaLink }) {
 
 
 export default function Pricing() {
+  const { isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSilverClick = (stripeLink) => {
+    if (isAuthenticated) {
+      window.open(stripeLink, '_blank');
+    } else {
+      // Store stripe link and redirect to signup
+      sessionStorage.setItem('postSignupRedirect', stripeLink);
+      navigate('/signup?next=silver');
+    }
+  };
   const [waitlistOpen, setWaitlistOpen] = React.useState(false);
   const [waitlistInterest, setWaitlistInterest] = React.useState('');
   const [billingCycle, setBillingCycle] = useState('monthly');
@@ -303,7 +318,7 @@ export default function Pricing() {
                     </button>
                   ) : tier.external ? (
                     <>
-                    <PromoField ctaLink={tier.ctaLink} />
+                    <PromoField ctaLink={tier.ctaLink} onAuthRedirect={tier.external ? handleSilverClick : undefined} />
                     </>
                   ) : (
                     <Link to={tier.ctaLink} style={{
