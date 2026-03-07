@@ -290,6 +290,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
 
 function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsedDays = 60, customUrl = "" }) {
   const [hovered, setHovered] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const status = getStatus(client, lapsedDays);
 
   return (
