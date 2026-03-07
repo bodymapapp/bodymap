@@ -136,7 +136,7 @@ export default function Pricing() {
         "Email support"
       ],
       cta: "Start 14-Day Free Trial",
-      ctaLink: "https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01?success_url=https://www.mybodymap.app/signup?plan=silver%26paid=true",
+      ctaLink: "https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01",
       external: true
     },
     {

@@ -40,10 +40,10 @@ export default function Onboarding() {
       // Update auth context
       const postRedirect = localStorage.getItem('postSignupRedirect');
       if (postRedirect) {
-        localStorage.removeItem('postSignupRedirect');
-        window.open(postRedirect, '_blank');
+        window.location.href = '/dashboard?activate=silver';
+      } else {
+        window.location.href = '/dashboard';
       }
-      window.location.href = '/dashboard';
     }
   };
 

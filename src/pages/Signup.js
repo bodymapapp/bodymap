@@ -106,9 +106,7 @@ export default function Signup() {
     if (result.success) {
       const postRedirect = localStorage.getItem('postSignupRedirect');
       if (postRedirect) {
-        localStorage.removeItem('postSignupRedirect');
-        window.open(postRedirect, '_blank');
-        navigate('/dashboard');
+        navigate('/dashboard?activate=silver');
       } else {
         navigate('/dashboard');
       }
