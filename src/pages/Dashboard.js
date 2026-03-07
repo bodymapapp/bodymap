@@ -272,6 +272,12 @@ export default function Dashboard({ view }) {
 
   return (
     <div style={{ minHeight: '100vh', background: C.beige, fontFamily: 'system-ui, sans-serif', overflowX: 'hidden', paddingTop: '0' }}>
+      {new URLSearchParams(window.location.search).get('upgraded') === 'true' && (
+        <div style={{ background: '#ECFDF5', borderBottom: '2px solid #059669', padding: '16px 24px', textAlign: 'center' }}>
+          <p style={{ fontSize: '17px', fontWeight: '700', color: '#065F46', margin: '0 0 2px 0' }}>🎉 Congratulations! You're now on Silver.</p>
+          <p style={{ fontSize: '13px', color: '#047857', margin: 0 }}>Unlimited clients and sessions are now unlocked. Let's get to work!</p>
+        </div>
+      )}
       <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
           <span style={{ fontSize: '32px' }}>🌿</span>
