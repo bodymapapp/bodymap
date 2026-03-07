@@ -38,6 +38,11 @@ export default function Onboarding() {
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
       // Update auth context
+      const postRedirect = localStorage.getItem('postSignupRedirect');
+      if (postRedirect) {
+        localStorage.removeItem('postSignupRedirect');
+        window.open(postRedirect, '_blank');
+      }
       window.location.href = '/dashboard';
     }
   };

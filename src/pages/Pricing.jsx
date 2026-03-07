@@ -79,7 +79,7 @@ export default function Pricing() {
       window.open(stripeLink, '_blank');
     } else {
       // Store stripe link and redirect to signup
-      sessionStorage.setItem('postSignupRedirect', stripeLink);
+      localStorage.setItem('postSignupRedirect', stripeLink);
       navigate('/signup?next=silver');
     }
   };

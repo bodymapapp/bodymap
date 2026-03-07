@@ -104,9 +104,9 @@ export default function Signup() {
     });
 
     if (result.success) {
-      const postRedirect = sessionStorage.getItem('postSignupRedirect');
+      const postRedirect = localStorage.getItem('postSignupRedirect');
       if (postRedirect) {
-        sessionStorage.removeItem('postSignupRedirect');
+        localStorage.removeItem('postSignupRedirect');
         window.open(postRedirect, '_blank');
         navigate('/dashboard');
       } else {
