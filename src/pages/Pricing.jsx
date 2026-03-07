@@ -74,8 +74,11 @@ export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleSilverClick = (stripeLink) => {
-    if (isAuthenticated) {
+  const handleSilverClick = async (stripeLink) => {
+    const { supabase } = await import('../lib/supabaseClient');
+    const { data: { session } } = await supabase.auth.getSession();
+    const loggedIn = !!session?.user;
+    if (loggedIn) {
       window.open(stripeLink, '_blank');
     } else {
       // Store stripe link and redirect to signup
