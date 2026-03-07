@@ -19,6 +19,7 @@ const C = {
 export default function Signup() {
   const paidPlan = new URLSearchParams(window.location.search).get('plan');
   const justPaid = new URLSearchParams(window.location.search).get('paid') === 'true';
+  const nextPlan = new URLSearchParams(window.location.search).get('next');
   const [formData, setFormData] = useState({
     email: '',
     password: '',
