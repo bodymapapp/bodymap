@@ -20,8 +20,15 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { signUp, signInWithGoogle } = useAuth();
+  const { signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
+
+  // If already logged in and coming from Stripe payment, go straight to dashboard
+  React.useEffect(() => {
+    if (user && justPaid) {
+      navigate('/dashboard?upgraded=true');
+    }
+  }, [user, justPaid, navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
