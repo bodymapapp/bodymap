@@ -21,7 +21,12 @@ export default function Terms() {
     { title: '17. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
   ];
   return (
-    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
+    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>\n      <div style={{ maxWidth: "780px", margin: "0 auto 24px auto" }}>
+        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
+          <span style={{ fontSize: "22px" }}>🌿</span>
+          <span style={{ fontSize: "18px", fontWeight: "800", color: "#2A5741", letterSpacing: "-0.3px" }}>BodyMap</span>
+        </a>
+      </div>
       <div style={{ maxWidth: "780px", margin: "0 auto" }}>
         <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "24px", textDecoration: "none" }}>
           <span style={{ fontSize: "22px" }}>🌿</span>
