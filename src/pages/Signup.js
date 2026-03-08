@@ -133,11 +133,13 @@ export default function Signup() {
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px', overflowY: 'auto' }}>
       <div style={{ maxWidth: '480px', width: '100%' }}>
 
-        {/* Logo */}
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '28px', textDecoration: 'none' }}>
-          <span style={{ fontSize: '32px' }}>🌿</span>
-          <span style={{ fontSize: '26px', fontWeight: '700', color: C.forest }}>BodyMap</span>
-        </Link>
+        {/* Logo — only show on mobile when left panel is hidden */}
+        {!isDesktop && (
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '20px', textDecoration: 'none' }}>
+            <span style={{ fontSize: '32px' }}>🌿</span>
+            <span style={{ fontSize: '26px', fontWeight: '700', color: C.forest }}>BodyMap</span>
+          </Link>
+        )}
 
         {/* Banners */}
         {justPaid && (
@@ -175,14 +177,14 @@ export default function Signup() {
           <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Your Full Name</label>
             <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
           </div>
 
           {/* Business Name */}
           <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Business Name</label>
             <input name="businessName" type="text" placeholder="Healing Hands Massage" value={formData.businessName} onChange={handleChange}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
           </div>
 
           {/* Intake Link — styled as auto-generated */}
@@ -191,9 +193,9 @@ export default function Signup() {
               Your Intake Link <span style={{ fontSize: '11px', fontWeight: '500', color: C.sage, background: '#F0F9F4', padding: '2px 7px', borderRadius: '20px', marginLeft: '6px' }}>✨ auto-generated</span>
             </label>
             <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #D1FAE5', borderRadius: '8px', overflow: 'hidden', background: '#F0F9F4' }}>
-              <span style={{ padding: '10px 8px 10px 12px', color: C.sage, fontSize: '13px', whiteSpace: 'nowrap', fontWeight: '500' }}>mybodymap.app/</span>
+              <span style={{ padding: '8px 8px 8px 12px', color: C.sage, fontSize: '13px', whiteSpace: 'nowrap', fontWeight: '500' }}>mybodymap.app/</span>
               <input name="customUrl" type="text" placeholder="janesmassage" value={formData.customUrl} onChange={handleChange}
-                style={{ flex: 1, padding: '10px 12px', border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: C.forest, minWidth: 0 }} />
+                style={{ flex: 1, padding: '8px 12px', border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: C.forest, minWidth: 0 }} />
             </div>
             <p style={{ fontSize: '11px', color: C.sage, margin: '3px 0 0 2px' }}>Clients tap this to fill their body map before each session</p>
           </div>
@@ -202,14 +204,14 @@ export default function Signup() {
           <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Phone Number</label>
             <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
           </div>
 
           {/* Email */}
           <div style={{ marginBottom: '8px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Email</label>
             <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
           </div>
 
           {/* Password */}
@@ -217,7 +219,7 @@ export default function Signup() {
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Minimum 8 characters" value={formData.password} onChange={handleChange}
-                style={{ width: '100%', padding: '10px 40px 10px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 40px 8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
               <button type="button" onClick={() => setShowPassword(p => !p)}
                 style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px' }}>
                 {showPassword ? '🙈' : '👁️'}
@@ -229,7 +231,7 @@ export default function Signup() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Confirm Password</label>
             <input name="confirmPassword" type="password" placeholder="Re-enter your password" value={formData.confirmPassword} onChange={handleChange}
-              style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: formData.confirmPassword && formData.confirmPassword !== formData.password ? '1.5px solid #EF4444' : '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: formData.confirmPassword && formData.confirmPassword !== formData.password ? '1.5px solid #EF4444' : '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
             {formData.confirmPassword && formData.confirmPassword !== formData.password && (
               <p style={{ fontSize: '11px', color: '#EF4444', margin: '3px 0 0 2px' }}>Passwords don't match</p>
             )}
@@ -237,7 +239,7 @@ export default function Signup() {
 
           {/* Error */}
           {error && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '10px 12px', marginBottom: '8px' }}>
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '8px 12px', marginBottom: '8px' }}>
               <p style={{ fontSize: '13px', color: C.red, margin: 0 }}>{error}</p>
             </div>
           )}
