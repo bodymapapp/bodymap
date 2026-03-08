@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,6 +19,12 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 900);
+  useEffect(() => {
+    const handler = () => setIsDesktop(window.innerWidth >= 900);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
+  }, []);
   const { signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
 
@@ -80,7 +86,7 @@ export default function Signup() {
     <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
 
       {/* LEFT PANEL — desktop only */}
-      <div style={{ display: 'none', flex: '0 0 420px', background: '#2A5741', padding: '48px 40px', flexDirection: 'column', justifyContent: 'center' }} className="signup-left-panel">
+      <div style={{ display: isDesktop ? 'flex' : 'none', flex: '0 0 420px', background: '#2A5741', padding: '48px 40px', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ marginBottom: '32px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
             <span style={{ fontSize: '32px' }}>🌿</span>
@@ -122,9 +128,6 @@ export default function Signup() {
           <p style={{ fontSize: '12px', color: '#6B9E80', margin: 0 }}>— Sarah M., Licensed Massage Therapist</p>
         </div>
       </div>
-
-      {/* Inline style for left panel visibility */}
-      <style>{`@media (min-width: 900px) { .signup-left-panel { display: flex !important; } }`}</style>
 
       {/* RIGHT PANEL — the form */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
