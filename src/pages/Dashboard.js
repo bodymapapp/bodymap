@@ -22,6 +22,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [phoneError, setPhoneError] = React.useState('');
   const [nameError, setNameError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const [photoUrl, setPhotoUrl] = React.useState(therapist?.photo_url || '');
+  const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
