@@ -231,7 +231,7 @@ export default function Signup() {
         {/* Heading */}
         <div style={{ marginBottom: '20px' }}>
           <h1 style={{ fontSize: '28px', fontWeight: '800', color: C.darkGray, margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Create your account</h1>
-          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>Free forever · No credit card required · Up and running in 30 seconds</p>
+          {!justPaid && <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>Free forever · No credit card required · Up and running in 30 seconds</p>}
         </div>
 
         {/* Google button */}

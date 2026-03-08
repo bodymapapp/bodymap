@@ -233,7 +233,8 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
         {clients.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 24px' }}>
             <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
-            <p style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>Ready when your first client is</p>
+            <p style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '700', color: '#1F2937', marginBottom: '8px' }}>You're all set — add your first client</p>
+            <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px', lineHeight: '1.6' }}>Tap <strong>Send Intake</strong> to text a client their body map link.<br/>They fill it out before their session — you walk in knowing exactly what they need.</p>
             <p style={{ fontSize: '14px', color: '#6B7280', marginBottom: '24px' }}>Share your intake link and their preferences will appear here instantly.</p>
           </div>
         ) : filtered.length === 0 ? (
