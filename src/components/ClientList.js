@@ -187,7 +187,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
             <p style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: "#fff", margin: "0 0 3px 0" }}>🎉 Your practice is growing!</p>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Silver for unlimited clients + pattern intelligence.</p>
           </div>
-          <a href="https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01" target="_blank" rel="noopener noreferrer" style={{ background: "#C9A84C", color: "#fff", padding: "10px 20px", borderRadius: "50px", fontWeight: "700", fontSize: "13px", whiteSpace: "nowrap", textDecoration: "none" }}>Upgrade to Silver →</a>
+
         </div>
       )}
 

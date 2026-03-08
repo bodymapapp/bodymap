@@ -126,6 +126,49 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 16px 0' }}>
           ✏️ Profile
         </p>
+        {/* Photo Upload */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: `1px solid ${C2.lightGray}` }}>
+          <div style={{ position: 'relative' }}>
+            {photoUrl || therapist?.photo_url ? (
+              <img src={photoUrl || therapist?.photo_url} alt="Profile" style={{ width: '72px', height: '72px', borderRadius: '50%', objectFit: 'cover', border: `2px solid ${C2.sage}` }} />
+            ) : (
+              <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: C2.beige, border: `2px dashed ${C2.sage}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>🌿</div>
+            )}
+          </div>
+          <div>
+            <p style={{ fontSize: '13px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>Profile Photo / Business Logo</p>
+            <p style={{ fontSize: '11px', color: C2.gray, margin: '0 0 10px 0' }}>Used on client briefs. Square image works best.</p>
+            <label style={{ display: 'inline-block', background: C2.beige, border: `1.5px solid ${C2.lightGray}`, color: C2.darkGray, padding: '7px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: photoUploading ? 'not-allowed' : 'pointer' }}>
+              {photoUploading ? '⏳ Uploading...' : '📷 Upload Photo'}
+              <input type="file" accept="image/*" style={{ display: 'none' }} disabled={photoUploading}
+                onChange={async (e) => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (file.size > 5 * 1024 * 1024) { alert('Image must be under 5MB'); return; }
+                  setPhotoUploading(true);
+                  try {
+                    const { supabase } = await import('../lib/supabase');
+                    const ext = file.name.split('.').pop();
+                    const path = `therapist-photos/${therapist.id}.${ext}`;
+                    const { error: upErr } = await supabase.storage.from('bodymap-assets').upload(path, file, { upsert: true });
+                    if (upErr) throw upErr;
+                    const { data: { publicUrl } } = supabase.storage.from('bodymap-assets').getPublicUrl(path);
+                    await supabase.from('therapists').update({ photo_url: publicUrl }).eq('id', therapist.id);
+                    setPhotoUrl(publicUrl);
+                  } catch(err) { console.error(err); alert('Upload failed. Please try again.'); }
+                  finally { setPhotoUploading(false); }
+                }} />
+            </label>
+            {(photoUrl || therapist?.photo_url) && (
+              <button onClick={async () => {
+                const { supabase } = await import('../lib/supabase');
+                await supabase.from('therapists').update({ photo_url: null }).eq('id', therapist.id);
+                setPhotoUrl('');
+              }} style={{ marginLeft: '8px', background: 'none', border: 'none', fontSize: '11px', color: '#EF4444', cursor: 'pointer', fontWeight: '600' }}>Remove</button>
+            )}
+          </div>
+        </div>
+
         <div className="bm-profile-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
             <label style={{ fontSize: '12px', fontWeight: '600', color: C2.gray, display: 'block', marginBottom: '6px' }}>Full Name</label>
