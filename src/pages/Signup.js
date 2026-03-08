@@ -125,7 +125,18 @@ export default function Signup() {
     const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: formData.businessName, customUrl: formData.customUrl, phone: formData.phone });
     if (result.success) {
       const postRedirect = localStorage.getItem('postSignupRedirect');
-      navigate(postRedirect ? '/dashboard?activate=silver' : '/dashboard');
+      if (justPaid) {
+        try {
+          const { supabase } = await import('../lib/supabase');
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('therapists').update({ plan: 'silver' }).eq('id', user.id);
+          }
+        } catch(e) { console.error('Plan upgrade error:', e); }
+        navigate('/dashboard?upgraded=true');
+      } else {
+        navigate(postRedirect ? '/dashboard?activate=silver' : '/dashboard');
+      }
     } else { setError(result.error); }
     setLoading(false);
   };
