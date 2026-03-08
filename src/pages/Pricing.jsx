@@ -75,16 +75,8 @@ export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const handleSilverClick = async (stripeLink) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    const loggedIn = !!session?.user;
-    if (loggedIn) {
-      window.open(stripeLink, '_blank');
-    } else {
-      // Store stripe link and redirect to signup
-      localStorage.setItem('postSignupRedirect', stripeLink);
-      navigate('/signup?next=silver');
-    }
+  const handleSilverClick = (stripeLink) => {
+    window.open(stripeLink, '_blank');
   };
   const [waitlistOpen, setWaitlistOpen] = React.useState(false);
   const [waitlistInterest, setWaitlistInterest] = React.useState('');
