@@ -80,6 +80,7 @@ function BodyMapMockup() {
 
 export default function Signup() {
   const justPaid = new URLSearchParams(window.location.search).get('paid') === 'true';
+  if (justPaid) localStorage.setItem('justPaid', 'true');
   const nextPlan = new URLSearchParams(window.location.search).get('next');
   const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', fullName: '', businessName: '', customUrl: '', phone: '' });
   const [error, setError] = useState('');

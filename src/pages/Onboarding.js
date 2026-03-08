@@ -8,6 +8,13 @@ const C = { sage: '#6B9E80', forest: '#2A5741', gray: '#6B7280', darkGray: '#1F2
 export default function Onboarding() {
   const { user, setTherapist } = useAuth();
   const navigate = useNavigate();
+
+  React.useEffect(() => {
+    if (localStorage.getItem('justPaid') === 'true') {
+      localStorage.removeItem('justPaid');
+      navigate('/dashboard?upgraded=true');
+    }
+  }, [navigate]);
   const [businessName, setBusinessName] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [phone, setPhone] = useState('');
