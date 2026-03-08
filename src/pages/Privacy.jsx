@@ -17,17 +17,29 @@ export default function Privacy() {
     { title: '13. Consent Toggle for Aggregate Analysis', body: 'When you use BodyMap, your anonymized session patterns may contribute to platform-wide recommendations that help all therapists deliver better sessions. This is opt-in by default for therapists on paid plans. You can withdraw consent at any time by contacting support@mybodymap.app. Withdrawing consent does not affect your access to any platform features.' },
     { title: '14. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
   ];
+  const sections = [
+    { title: '1. Who We Are', body: 'BodyMap LLC is a Wyoming limited liability company operating mybodymap.app. Contact us at support@mybodymap.app.' },
+    { title: '2. What Data We Collect', body: 'Therapist data: name, business name, email, phone, license number. Payment data processed by Stripe — we never store card details.\n\nClient intake data: name, phone, body map selections, session preferences, massage goals, and health notes voluntarily provided.\n\nSession data: therapist notes, completion status, feedback, and session dates.\n\nUsage data: browser type, device type, pages visited — collected anonymously.' },
+    { title: '3. How We Use Your Data', body: 'To operate the platform, enable session management, send intake links, process payments, improve features, and generate anonymized aggregate insights. We do not use your data for advertising. We do not sell your data. Ever.' },
+    { title: '4. How Your Data Is Protected', body: 'BodyMap runs on Supabase with: AES-256 encryption at rest, TLS 1.3 encryption in transit, Row Level Security — each therapist can only access their own data, and SOC 2 Type II compliant infrastructure.' },
+    { title: '5. Anonymized Aggregate Data', body: 'To improve platform recommendations, we may analyze anonymized patterns across sessions — stripped of all personally identifiable information. No individual can be identified. You may opt out by emailing support@mybodymap.app.' },
+    { title: '6. Data Sharing', body: 'We do not sell or share your data. We share only with: Supabase (hosting), Stripe (payments), and SMS providers for intake links. All providers are contractually bound to protect your data.' },
+    { title: '7. Client Data', body: 'Therapists are responsible for informing clients that intake data is stored digitally. Clients may request deletion by contacting their therapist or emailing support@mybodymap.app. We process requests within 30 days.' },
+    { title: '8. Data Retention', body: 'Data is retained while your account is active. On closure, retained 30 days then permanently deleted. Session history is retained indefinitely while active to support pattern tracking.' },
+    { title: '9. Your Rights (CCPA)', body: 'California residents have the right to know what data we collect, request deletion, and opt out of data sale (we do not sell data). Contact support@mybodymap.app.' },
+    { title: '10. Cookies', body: 'We use only essential cookies for authentication. No tracking cookies, no advertising cookies, no Google Analytics.' },
+    { title: '11. Changes', body: 'We will notify you of material changes by email or platform notice.' },
+    { title: '12. Aggregate Data & De-Identification', body: 'BodyMap may use anonymized, de-identified data to improve platform recommendations and features. De-identified means all personally identifiable information — name, phone number, email, therapist identity — has been permanently removed. Only body area codes, session frequency counts, and preference selections are used in aggregate analysis. Raw PII data (names, phone numbers) is stored separately from body map analytics data. No individual can be identified from this aggregate data. You may opt out by emailing support@mybodymap.app.' },
+    { title: '13. Consent Toggle for Aggregate Analysis', body: 'When you use BodyMap, your anonymized session patterns may contribute to platform-wide recommendations that help all therapists deliver better sessions. This is opt-in by default for therapists on paid plans. You can withdraw consent at any time by contacting support@mybodymap.app. Withdrawing consent does not affect your access to any platform features.' },
+    { title: '14. Contact', body: 'BodyMap LLC\nsupport@mybodymap.app\nmybodymap.app' },
+  ];
+
   return (
-    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>\n      <div style={{ maxWidth: "780px", margin: "0 auto 24px auto" }}>
+    <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto 24px auto" }}>
         <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
           <span style={{ fontSize: "22px" }}>🌿</span>
           <span style={{ fontSize: "18px", fontWeight: "800", color: "#2A5741", letterSpacing: "-0.3px" }}>BodyMap</span>
-        </a>
-      </div>
-      <div style={{ maxWidth: "780px", margin: "0 auto" }}>
-        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "24px", textDecoration: "none" }}>
-          <span style={{ fontSize: "22px" }}>🌿</span>
-          <span style={{ fontSize: "18px", fontWeight: "800", color: C.forest, letterSpacing: "-0.3px" }}>BodyMap</span>
         </a>
       </div>
       <div style={{ maxWidth: "780px", margin: "0 auto", background: "white", borderRadius: "16px", padding: "56px 64px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
@@ -39,12 +51,9 @@ export default function Privacy() {
         {sections.map((s) => (
           <div key={s.title} style={{ marginBottom: "36px", paddingBottom: "36px", borderBottom: "1px solid " + C.border }}>
             <h2 style={{ fontSize: "18px", fontWeight: "700", color: C.darkGray, margin: "0 0 12px 0" }}>{s.title}</h2>
-            <div style={{ fontSize: "15px", color: "#374151", lineHeight: "1.75", whiteSpace: "pre-line" }}>{s.body}</div>
+            <p style={{ fontSize: "15px", color: C.gray, lineHeight: "1.7", margin: 0, whiteSpace: "pre-line" }}>{s.body}</p>
           </div>
         ))}
-        <div style={{ marginTop: "40px", padding: "24px", background: "#F0FDF4", borderRadius: "10px", border: "1px solid #BBF7D0" }}>
-          <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>Questions? <a href="mailto:support@mybodymap.app" style={{ color: C.forest }}>support@mybodymap.app</a></p>
-        </div>
       </div>
     </div>
   );
