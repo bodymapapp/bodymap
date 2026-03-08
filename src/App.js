@@ -1,6 +1,7 @@
 // src/App.js
 import React from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import posthog from 'posthog-js';
 import ScrollToTop from './components/ScrollToTop';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -22,6 +23,8 @@ import CareSummary from './pages/CareSummary';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
 import Onboarding from './pages/Onboarding';
+
+posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
 function App() {
   return (
