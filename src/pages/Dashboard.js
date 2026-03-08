@@ -201,11 +201,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               <p style={{ fontSize: '12px', color: C2.gray, margin: 0, opacity: 0.7 }}>Cancel anytime. Access continues until end of billing period.</p>
             )}
           </div>
-          {therapist?.plan === 'free' && (
-            <a href='https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01' target='_blank' rel='noopener noreferrer' style={{ background: C2.gold, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
-              Upgrade to Silver ↗
-            </a>
-          )}
+
         </div>
       </div>
     </div>
