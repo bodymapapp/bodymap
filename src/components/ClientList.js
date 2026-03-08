@@ -371,7 +371,7 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
 
 function LockedClientCard({ client, initials, avatarColor }) {
   return (
-    <a href="https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
+    <a href="https://buy.stripe.com/8x26oI6wO1iEaAUgY8eQM01" target="_blank" rel="noopener noreferrer" style={{ textDecoration: "none", display: "block" }}>
     <div style={{ background: "#F9F9F9", borderRadius: "14px", padding: "16px 18px",
       border: "1.5px dashed #D4C9B0", position: "relative", overflow: "hidden", cursor: "pointer" }}>
       <div style={{ position: "absolute", inset: 0, background: "rgba(245,240,232,0.7)",
