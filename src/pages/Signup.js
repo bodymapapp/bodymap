@@ -162,9 +162,9 @@ export default function Signup() {
           </div>
 
           {/* Body Map SVG */}
-          <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '14px', marginBottom: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '14px', marginBottom: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 1 auto', justifyContent: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: '0.08em' }}>SARAH M. · SESSION 8</span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: '0.08em' }}>Sample session data</span>
               <span style={{ fontSize: '10px', color: '#6FCF97', fontWeight: '700' }}>● Live data</span>
             </div>
             <BodyMapMockup />
@@ -181,7 +181,7 @@ export default function Signup() {
           </div>
 
           {/* Therapist quote */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '14px', marginTop: 'auto' }}>
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '14px' }}>
             <p style={{ fontSize: '12px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 5px 0', lineHeight: 1.5 }}>"I used to ask the same questions every visit. BodyMap changed that — I walk in knowing exactly what Sarah needs before I touch her."</p>
             <p style={{ fontSize: '11px', color: '#6B9E80', margin: 0, fontWeight: '600' }}>— Jennifer K., LMT · Houston TX</p>
           </div>
