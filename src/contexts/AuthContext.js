@@ -19,8 +19,23 @@ export const AuthProvider = ({ children }) => {
             if (data) {
               setTherapist(data);
             } else {
-              // New Google user — no therapist row yet, send to onboarding
-              if (window.location.pathname !== '/onboarding') {
+              // New Google user — no therapist row yet
+              const justPaid = localStorage.getItem('justPaid') === 'true';
+              if (justPaid) {
+                // Paid flow — create therapist record directly, skip onboarding
+                localStorage.removeItem('justPaid');
+                const u = session.user;
+                const name = u.user_metadata?.full_name || u.email?.split('@')[0] || '';
+                const urlSlug = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30);
+                await supabase.from('therapists').insert([{
+                  id: u.id, email: u.email,
+                  full_name: name, business_name: name,
+                  custom_url: urlSlug,
+                  password_hash: 'managed_by_supabase_auth',
+                  plan: 'silver'
+                }]);
+                window.location.href = '/dashboard?upgraded=true';
+              } else if (window.location.pathname !== '/onboarding') {
                 window.location.href = '/onboarding';
               }
             }
