@@ -167,7 +167,7 @@ export default function Signup() {
           {/* Body Map SVG */}
           <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '12px', padding: '14px', marginBottom: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 1 auto', justifyContent: 'center' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px' }}>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: '0.08em' }}>Sample session data</span>
+              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.5)', fontWeight: '600', letterSpacing: '0.08em' }}>Sample Client Intelligence</span>
               <span style={{ fontSize: '10px', color: '#6FCF97', fontWeight: '700' }}>● Live data</span>
             </div>
             <BodyMapMockup />
