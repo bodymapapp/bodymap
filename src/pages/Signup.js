@@ -173,18 +173,18 @@ export default function Signup() {
             <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
           </div>
 
-          {/* Full Name */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Your Full Name</label>
-            <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
-          </div>
-
-          {/* Business Name */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Business Name</label>
-            <input name="businessName" type="text" placeholder="Healing Hands Massage" value={formData.businessName} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+          {/* Full Name + Business Name side by side */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Full Name</label>
+              <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Business Name</label>
+              <input name="businessName" type="text" placeholder="Healing Hands" value={formData.businessName} onChange={handleChange}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+            </div>
           </div>
 
           {/* Intake Link — styled as auto-generated */}
@@ -200,18 +200,18 @@ export default function Signup() {
             <p style={{ fontSize: '11px', color: C.sage, margin: '3px 0 0 2px' }}>Clients tap this to fill their body map before each session</p>
           </div>
 
-          {/* Phone */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Phone Number</label>
-            <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
-          </div>
-
-          {/* Email */}
-          <div style={{ marginBottom: '8px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Email</label>
-            <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+          {/* Phone + Email side by side */}
+          <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Phone</label>
+              <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Email</label>
+              <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+            </div>
           </div>
 
           {/* Password */}
