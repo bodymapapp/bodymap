@@ -171,9 +171,9 @@ export default function Signup() {
           </div>
         )}
 
-        {/* Card */}
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '20px 24px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
-          <h1 style={{ fontSize: '22px', fontWeight: '700', color: C.darkGray, margin: '0 0 2px 0', textAlign: 'center' }}>Create Your Account</h1>
+        {/* Form — no card box */}
+        <div style={{ padding: '8px 0' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '800', color: C.darkGray, margin: '0 0 2px 0', textAlign: 'center', letterSpacing: '-0.5px' }}>Create Your Account</h1>
           <p style={{ fontSize: '13px', color: C.gray, textAlign: 'center', margin: '0 0 20px 0' }}>Start your 14-day free trial</p>
 
           {/* Google */}
