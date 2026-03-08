@@ -54,7 +54,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           { label: 'Business Name', done: !!(therapist?.business_name) },
           { label: 'Intake URL', done: !!(therapist?.custom_url) },
           { label: 'Phone Number', done: !!(therapist?.phone) },
-          { label: 'Profile Photo', done: false },
+          { label: 'Email', done: !!(therapist?.email) },
+          { label: 'Profile Photo', done: !!(therapist?.photo_url) },
         ];
         const done = fields.filter(f => f.done).length;
         const pct = Math.round((done / fields.length) * 100);
@@ -290,9 +291,15 @@ export default function Dashboard({ view }) {
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '14px', fontWeight: '600', color: C.darkGray, margin: 0 }}>{therapist?.full_name}</p>
             <p style={{ fontSize: '12px', color: C.gray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver Plan' : 'Gold Plan'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
             </p>
           </div>
+          {(!therapist?.plan || therapist?.plan === 'free') && (
+            <a href="https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01" target="_blank" rel="noopener noreferrer"
+              style={{ background: '#C9A84C', color: '#fff', padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              Upgrade to Silver →
+            </a>
+          )}
           <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '8px 16px', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>
             Logout
           </button>

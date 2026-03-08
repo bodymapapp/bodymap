@@ -77,7 +77,57 @@ export default function Signup() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', fontFamily: 'system-ui, sans-serif' }}>
+
+      {/* LEFT PANEL — desktop only */}
+      <div style={{ display: 'none', flex: '0 0 420px', background: '#2A5741', padding: '48px 40px', flexDirection: 'column', justifyContent: 'center' }} className="signup-left-panel">
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+            <span style={{ fontSize: '32px' }}>🌿</span>
+            <span style={{ fontSize: '24px', fontWeight: '700', color: '#fff' }}>BodyMap</span>
+          </div>
+          <h2 style={{ fontSize: '28px', fontWeight: '800', color: '#fff', margin: '0 0 8px 0', lineHeight: 1.2 }}>Know every client.<br/>Every session.</h2>
+          <p style={{ fontSize: '15px', color: '#A8C5B5', margin: '0 0 28px 0' }}>Set up in less than 30 seconds. Free forever for up to 5 clients.</p>
+
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '32px' }}>
+            {[['⚡', '30 sec', 'to set up'], ['🎁', 'Free', 'forever plan'], ['📱', 'Works', 'on any device']].map(([icon, bold, sub]) => (
+              <div key={bold} style={{ flex: 1, background: 'rgba(255,255,255,0.1)', borderRadius: '10px', padding: '12px 10px', textAlign: 'center' }}>
+                <div style={{ fontSize: '20px', marginBottom: '4px' }}>{icon}</div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>{bold}</div>
+                <div style={{ fontSize: '11px', color: '#A8C5B5' }}>{sub}</div>
+              </div>
+            ))}
+          </div>
+
+          {[
+            '📋 Visual body maps — front & back',
+            '🔔 Medical flag alerts',
+            '💆 Client pressure & preference profiles',
+            '📊 Session history & pattern tracking',
+            '📱 QR code intake — works on any phone',
+            '📝 Pre-session briefs — know before you touch',
+            '💌 Post-session feedback collection',
+            '🔗 Your own intake link: mybodymap.app/you',
+            '🔒 HIPAA-friendly secure storage',
+          ].map(f => (
+            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '14px' }}>{f.split(' ')[0]}</span>
+              <span style={{ fontSize: '13px', color: '#D4E9DE' }}>{f.split(' ').slice(1).join(' ')}</span>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '20px' }}>
+          <p style={{ fontSize: '13px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 6px 0' }}>"I used to forget pressure preferences all the time. BodyMap changed everything."</p>
+          <p style={{ fontSize: '12px', color: '#6B9E80', margin: 0 }}>— Sarah M., Licensed Massage Therapist</p>
+        </div>
+      </div>
+
+      {/* Inline style for left panel visibility */}
+      <style>{`@media (min-width: 900px) { .signup-left-panel { display: flex !important; } }`}</style>
+
+      {/* RIGHT PANEL — the form */}
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', overflowY: 'auto' }}>
       <div style={{ maxWidth: '480px', width: '100%' }}>
 
         {/* Logo */}
@@ -200,6 +250,7 @@ export default function Signup() {
           </p>
         </div>
       </div>
+      </div>{/* end right panel */}
     </div>
   );
 }
