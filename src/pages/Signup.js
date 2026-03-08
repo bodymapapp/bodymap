@@ -165,10 +165,10 @@ export default function Signup() {
         <div style={{ width: '420px', flexShrink: 0, background: 'linear-gradient(160deg, #1e3d2d 0%, #2A5741 60%, #1e3d2d 100%)', display: 'flex', flexDirection: 'column', padding: '28px 28px 24px', overflow: 'hidden' }}>
 
           {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', textDecoration: 'none' }}>
             <span style={{ fontSize: '24px' }}>🌿</span>
             <span style={{ fontSize: '20px', fontWeight: '800', color: '#fff', letterSpacing: '-0.3px' }}>BodyMap</span>
-          </div>
+          </a>
 
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>

@@ -218,12 +218,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Lapsed Threshold */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 16px 0' }}>🍂 Lapsed Client Settings</p>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
+        <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Clients who haven't visited in this many days will appear in the re-engagement nudge on your dashboard.</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <input type="number" min="1" max="365" value={lapsedDays}
             onChange={e => { const v = parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
             onBlur={e => { const v = parseInt(e.target.value); const clamped = Math.max(1, Math.min(365, isNaN(v) ? 60 : v)); setLapsedDays(clamped); localStorage.setItem('bm_lapsed_days', clamped); setLapsedSaved(true); setTimeout(() => setLapsedSaved(false), 2000); }}
+            placeholder="60"
             style={{ width: '80px', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '16px', fontWeight: '700', color: C2.forest, background: C2.beige, textAlign: 'center', fontFamily: 'system-ui' }} />
           <p style={{ fontSize: '14px', color: C2.darkGray, margin: 0 }}>days since last visit</p>
           {lapsedSaved && <p style={{ fontSize: '13px', color: C2.forest, fontWeight: '600', margin: 0 }}>✓ Saved</p>}
