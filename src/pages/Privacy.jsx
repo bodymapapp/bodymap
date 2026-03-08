@@ -19,6 +19,12 @@ export default function Privacy() {
   ];
   return (
     <div style={{ background: C.lightGray, minHeight: "100vh", padding: "60px 24px" }}>
+      <div style={{ maxWidth: "780px", margin: "0 auto" }}>
+        <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", marginBottom: "24px", textDecoration: "none" }}>
+          <span style={{ fontSize: "22px" }}>🌿</span>
+          <span style={{ fontSize: "18px", fontWeight: "800", color: C.forest, letterSpacing: "-0.3px" }}>BodyMap</span>
+        </a>
+      </div>
       <div style={{ maxWidth: "780px", margin: "0 auto", background: "white", borderRadius: "16px", padding: "56px 64px", boxShadow: "0 4px 24px rgba(0,0,0,0.06)" }}>
         <div style={{ marginBottom: "40px" }}>
           <div style={{ fontSize: "13px", color: C.gray, marginBottom: "8px" }}>Last updated: March 2026</div>
