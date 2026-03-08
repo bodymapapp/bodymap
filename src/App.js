@@ -1,5 +1,6 @@
 // src/App.js
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import ScrollToTop from './components/ScrollToTop';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
@@ -49,7 +50,8 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
-      </Router>
+        <Analytics />
+</Router>
     </AuthProvider>
   );
 }
