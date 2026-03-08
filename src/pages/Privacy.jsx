@@ -2,7 +2,7 @@ import React from 'react';
 const C = { forest: '#2A5741', darkGray: '#1F2937', gray: '#6B7280', lightGray: '#F9FAFB', border: '#E5E7EB' };
 export default function Privacy() {
   const sections = [
-    { title: '1. Who We Are', body: 'BodyMap LLC is a Texas limited liability company operating mybodymap.app. Contact us at support@mybodymap.app.' },
+    { title: '1. Who We Are', body: 'BodyMap LLC is a Wyoming limited liability company operating mybodymap.app. Contact us at support@mybodymap.app.' },
     { title: '2. What Data We Collect', body: 'Therapist data: name, business name, email, phone, license number. Payment data processed by Stripe — we never store card details.\n\nClient intake data: name, phone, body map selections, session preferences, massage goals, and health notes voluntarily provided.\n\nSession data: therapist notes, completion status, feedback, and session dates.\n\nUsage data: browser type, device type, pages visited — collected anonymously.' },
     { title: '3. How We Use Your Data', body: 'To operate the platform, enable session management, send intake links, process payments, improve features, and generate anonymized aggregate insights. We do not use your data for advertising. We do not sell your data. Ever.' },
     { title: '4. How Your Data Is Protected', body: 'BodyMap runs on Supabase with: AES-256 encryption at rest, TLS 1.3 encryption in transit, Row Level Security — each therapist can only access their own data, and SOC 2 Type II compliant infrastructure.' },
