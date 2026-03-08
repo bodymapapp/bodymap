@@ -134,12 +134,15 @@ export default function Signup() {
   const labelStyle = { display: 'block', fontSize: '11px', fontWeight: '700', color: '#9CA3AF', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
   const features = [
-    { icon: '🗺️', label: 'Visual Body Maps' },
-    { icon: '🧠', label: 'AI Pattern Intel' },
+    { icon: '📤', label: 'Send Intake' },
+    { icon: '🗺️', label: 'Body Map' },
+    { icon: '📋', label: 'Pre-Session Brief' },
+    { icon: '🎯', label: 'Client Preferences' },
     { icon: '⚠️', label: 'Medical Flags' },
-    { icon: '📋', label: 'Pre-Session Briefs' },
-    { icon: '📱', label: 'QR Intake Link' },
+    { icon: '🔥', label: 'Pattern Heatmap' },
+    { icon: '📝', label: 'Post-Session Brief' },
     { icon: '💬', label: 'Client Feedback' },
+    { icon: '🔄', label: 'Repeat Customers' },
   ];
 
   return (
@@ -157,8 +160,8 @@ export default function Signup() {
 
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Walk in knowing.<br/>Every single session.</h2>
-            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool that answers what every other app misses: <em style={{ color: '#D4E9DE' }}>"What does this client need today?"</em></p>
+            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Make it impossible for clients<br/>not to come back.</h2>
+            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores — helping every client feel like your #1.</p>
           </div>
 
           {/* Body Map SVG */}
