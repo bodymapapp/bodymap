@@ -105,22 +105,38 @@ export default function Signup() {
             ))}
           </div>
 
-          {[
-            '📋 Visual body maps — front & back',
-            '🔔 Medical flag alerts',
-            '💆 Client pressure & preference profiles',
-            '📊 Session history & pattern tracking',
-            '📱 QR code intake — works on any phone',
-            '📝 Pre-session briefs — know before you touch',
-            '💌 Post-session feedback collection',
-            '🔗 Your own intake link: mybodymap.app/you',
-            '🔒 HIPAA-friendly secure storage',
-          ].map(f => (
-            <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '14px' }}>{f.split(' ')[0]}</span>
-              <span style={{ fontSize: '13px', color: '#D4E9DE' }}>{f.split(' ').slice(1).join(' ')}</span>
-            </div>
-          ))}
+          {/* Numbered steps */}
+          <div style={{ marginBottom: '20px' }}>
+            {[
+              ['01', 'Sign up in 30 seconds', 'Your intake link is ready instantly — no setup needed'],
+              ['02', 'Share with your clients', 'They fill their body map before every session on any phone'],
+              ['03', 'Walk in knowing everything', 'Pressure, injuries, history — all in one place before you touch'],
+            ].map(([num, title, desc]) => (
+              <div key={num} style={{ display: 'flex', gap: '14px', marginBottom: '16px', alignItems: 'flex-start' }}>
+                <span style={{ fontSize: '22px', fontWeight: '800', color: 'rgba(255,255,255,0.2)', lineHeight: 1, minWidth: '28px' }}>{num}</span>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff', marginBottom: '2px' }}>{title}</div>
+                  <div style={{ fontSize: '12px', color: '#A8C5B5', lineHeight: 1.4 }}>{desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Clean checkmarks */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '16px', marginBottom: '20px' }}>
+            {[
+              'Visual body maps — front & back',
+              'Medical flag alerts & pressure profiles',
+              'Session history & pattern tracking',
+              'Pre-session briefs before every appointment',
+              'HIPAA-friendly secure storage',
+            ].map(f => (
+              <div key={f} style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="7" fill="rgba(255,255,255,0.15)"/><path d="M4 7l2 2 4-4" stroke="#6FCF97" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <span style={{ fontSize: '12px', color: '#D4E9DE' }}>{f}</span>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '20px' }}>
@@ -161,7 +177,7 @@ export default function Signup() {
           <p style={{ fontSize: '13px', color: C.gray, textAlign: 'center', margin: '0 0 20px 0' }}>Start your 14-day free trial</p>
 
           {/* Google */}
-          <button onClick={signInWithGoogle} style={{ width: '100%', padding: '12px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', fontWeight: '600', color: C.darkGray, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px' }}>
+          <button onClick={signInWithGoogle} style={{ width: '100%', padding: '13px', background: '#fff', border: '2px solid #E5E7EB', borderRadius: '12px', fontSize: '15px', fontWeight: '700', color: C.darkGray, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
             <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.12l2.67-2.07z"/><path fill="#EA4335" d="M8.98 3.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.43L4.5 7.5a4.77 4.77 0 0 1 4.48-4.32z"/></svg>
             Sign Up with Google — Live in 10 Seconds
           </button>
@@ -178,12 +194,12 @@ export default function Signup() {
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Full Name</label>
               <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 4px', borderRadius: '0', border: 'none', borderBottom: '1.5px solid #D1D5DB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Business Name</label>
               <input name="businessName" type="text" placeholder="Healing Hands" value={formData.businessName} onChange={handleChange}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 4px', borderRadius: '0', border: 'none', borderBottom: '1.5px solid #D1D5DB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
             </div>
           </div>
 
@@ -192,7 +208,7 @@ export default function Signup() {
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>
               Your Intake Link <span style={{ fontSize: '11px', fontWeight: '500', color: C.sage, background: '#F0F9F4', padding: '2px 7px', borderRadius: '20px', marginLeft: '6px' }}>✨ auto-generated</span>
             </label>
-            <div style={{ display: 'flex', alignItems: 'center', border: '1.5px solid #D1FAE5', borderRadius: '8px', overflow: 'hidden', background: '#F0F9F4' }}>
+            <div style={{ display: 'flex', alignItems: 'center', border: 'none', borderBottom: '1.5px solid #6B9E80', borderRadius: '0', overflow: 'hidden', background: 'transparent' }}>
               <span style={{ padding: '8px 8px 8px 12px', color: C.sage, fontSize: '13px', whiteSpace: 'nowrap', fontWeight: '500' }}>mybodymap.app/</span>
               <input name="customUrl" type="text" placeholder="janesmassage" value={formData.customUrl} onChange={handleChange}
                 style={{ flex: 1, padding: '8px 12px', border: 'none', fontSize: '14px', outline: 'none', fontFamily: 'inherit', background: 'transparent', color: C.forest, minWidth: 0 }} />
@@ -205,12 +221,12 @@ export default function Signup() {
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Phone</label>
               <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 4px', borderRadius: '0', border: 'none', borderBottom: '1.5px solid #D1D5DB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Email</label>
               <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 4px', borderRadius: '0', border: 'none', borderBottom: '1.5px solid #D1D5DB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
             </div>
           </div>
 
@@ -219,7 +235,7 @@ export default function Signup() {
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Password</label>
             <div style={{ position: 'relative' }}>
               <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Minimum 8 characters" value={formData.password} onChange={handleChange}
-                style={{ width: '100%', padding: '8px 40px 8px 12px', borderRadius: '8px', border: '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '8px 40px 8px 4px', borderRadius: '0', border: 'none', borderBottom: '1.5px solid #D1D5DB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
               <button type="button" onClick={() => setShowPassword(p => !p)}
                 style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px' }}>
                 {showPassword ? '🙈' : '👁️'}
@@ -231,7 +247,7 @@ export default function Signup() {
           <div style={{ marginBottom: '12px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Confirm Password</label>
             <input name="confirmPassword" type="password" placeholder="Re-enter your password" value={formData.confirmPassword} onChange={handleChange}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: formData.confirmPassword && formData.confirmPassword !== formData.password ? '1.5px solid #EF4444' : '1.5px solid #E5E7EB', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' }} />
+              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: 'none', borderBottom: formData.confirmPassword && formData.confirmPassword !== formData.password ? '1.5px solid #EF4444' : '1.5px solid #D1D5DB', borderRadius: '0', fontSize: '14px', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit', background: 'transparent' }} />
             {formData.confirmPassword && formData.confirmPassword !== formData.password && (
               <p style={{ fontSize: '11px', color: '#EF4444', margin: '3px 0 0 2px' }}>Passwords don't match</p>
             )}
@@ -246,7 +262,7 @@ export default function Signup() {
 
           {/* Submit */}
           <button onClick={handleSubmit} disabled={loading}
-            style={{ width: '100%', padding: '12px', background: loading ? '#9CA3AF' : C.forest, color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', padding: '14px', background: loading ? '#9CA3AF' : C.forest, color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
             {loading ? 'Creating account...' : 'Create Account →'}
           </button>
 
