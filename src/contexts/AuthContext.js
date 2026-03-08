@@ -15,8 +15,18 @@ export const AuthProvider = ({ children }) => {
       if (session?.user) {
         setUser(session.user);
         supabase.from('therapists').select('*').eq('id', session.user.id).single()
-          .then(({ data }) => {
+          .then(async ({ data }) => {
             if (data) {
+              // Existing user — check if they just paid and need Silver upgrade
+              const justPaid = localStorage.getItem('justPaid') === 'true';
+              if (justPaid) {
+                localStorage.removeItem('justPaid');
+                await supabase.from('therapists').update({ plan: 'silver' }).eq('id', session.user.id);
+                data.plan = 'silver';
+                setTherapist(data);
+                window.location.href = '/dashboard?upgraded=true';
+                return;
+              }
               setTherapist(data);
             } else {
               // New Google user — no therapist row yet
