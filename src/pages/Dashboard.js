@@ -151,7 +151,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   try {
                     const { supabase } = await import('../lib/supabase');
                     const ext = file.name.split('.').pop();
-                    const path = `therapist-photos/${therapist.id}.${ext}`;
+                    const { data: { user } } = await supabase.auth.getUser();
+                    const path = `${user.id}/profile.${ext}`;
                     const { error: upErr } = await supabase.storage.from('bodymap-assets').upload(path, file, { upsert: true });
                     if (upErr) throw upErr;
                     const { data: { publicUrl } } = supabase.storage.from('bodymap-assets').getPublicUrl(path);
