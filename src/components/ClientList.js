@@ -289,6 +289,14 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
   );
 }
 
+function formatIntakeDate(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    + ' · '
+    + d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
 function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsedDays = 60, customUrl = "" }) {
   const [hovered, setHovered] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
@@ -363,6 +371,11 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
       {client.has_old_pending && !client.has_pending && (
         <div style={{ marginTop: 10, background: "#F3F4F6", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
           ⚠️ Old incomplete session
+        </div>
+      )}
+      {client.last_session_at && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "#6B9E80", fontStyle: "italic" }}>
+          📋 Last intake: {formatIntakeDate(client.last_session_at)}
         </div>
       )}
     </div>
