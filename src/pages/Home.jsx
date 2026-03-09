@@ -1,823 +1,280 @@
 import WaitlistModal from '../components/WaitlistModal';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 
-
-function TherapistCarousel() {
-  const [active, setActive] = React.useState(0);
-  const cards = [
-    {
-      step: 'Step 1',
-      time: '30 seconds, once',
-      barPct: 100,
-      barColor: '#2A5741',
-      barLabel: '30 sec — one time only',
-      title: 'Sign in. Send the intake form.',
-      desc: 'Your BodyMap dashboard is live the moment you sign up. Send your first client their intake form in one tap. They handle the rest.'
-    },
-    {
-      step: 'Step 2',
-      time: 'Automatic',
-      barPct: 100,
-      barColor: '#C9A84C',
-      barLabel: 'Automatic — no effort needed',
-      title: 'Their map is waiting when you are.',
-      desc: 'Once your client fills in their intake, their body map, preferences and health notes appear instantly. Walk in already knowing their pressure, focus areas, and what to avoid.'
-    },
-    {
-      step: 'Step 3',
-      time: 'Builds over time',
-      barPct: 100,
-      barColor: '#C9A84C',
-      barLabel: 'Automatic — every session',
-      title: 'BodyMap learns with every session.',
-      desc: 'Recurring focus areas, patterns across visits, preferences. It builds quietly in the background so you never have to ask the same question twice.'
-    }
+function BodyMapVisual() {
+  const zones = [
+    { id: 'neck',      x: 88,  y: 52,  w: 24, h: 18, status: 'avoid' },
+    { id: 'lshoulder', x: 52,  y: 72,  w: 32, h: 20, status: 'focus' },
+    { id: 'rshoulder', x: 116, y: 72,  w: 32, h: 20, status: 'focus' },
+    { id: 'upperback', x: 72,  y: 90,  w: 56, h: 22, status: 'focus' },
+    { id: 'lowerback', x: 72,  y: 114, w: 56, h: 22, status: 'focus' },
+    { id: 'lhip',      x: 56,  y: 138, w: 30, h: 18, status: 'note'  },
+    { id: 'rhip',      x: 114, y: 138, w: 30, h: 18, status: 'neutral'},
   ];
-  const card = cards[active];
-  return (
-    <div>
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
-          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
-        </div>
-        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
-        </div>
-      </div>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
-        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
-        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
-        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
-        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {cards.map((_, i) => (
-            <button key={i} onClick={() => setActive(i)}
-              style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />
-          ))}
-        </div>
-        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-      </div>
-
-    </div>
-  );
-}
-
-function ClientCarousel() {
-  const [active, setActive] = React.useState(0);
-  const cards = [
-    {
-      step: 'Step 1',
-      time: 'Instant',
-      barPct: 0,
-      barColor: '#2A5741',
-      barLabel: 'Zero effort',
-      title: 'No app. No login. Just a link.',
-      desc: 'Your therapist texts you a link. Tap it. Opens on any phone instantly. Nothing to download, nothing to remember.'
-    },
-    {
-      step: 'Step 2',
-      time: '30 seconds',
-      barPct: 100,
-      barColor: '#2A5741',
-      barLabel: '30 sec total',
-      title: 'Show them what you need.',
-      desc: 'Tap your body map to mark focus and avoid areas, then set your pressure, music and lighting preferences. Done before you sit down.'
-    },
-    {
-      step: 'Step 3',
-      time: 'After every session',
-      barPct: 100,
-      barColor: '#C9A84C',
-      barLabel: 'Automatic — every session',
-      title: 'Your personal body report, automatically.',
-      desc: 'After each session, receive a one-page summary with your body map, patterns, and a note from your therapist. Your wellness story, building over time.'
-    }
-  ];
-  const card = cards[active];
-  return (
-    <div>
-      <div style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
-          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
-        </div>
-        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
-        </div>
-      </div>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
-        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
-        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
-        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
-        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {cards.map((_, i) => (
-            <button key={i} onClick={() => setActive(i)}
-              style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />
-          ))}
-        </div>
-        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1}
-          style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
-      </div>
-
-    </div>
-  );
-}
-
-function HomePromoField() {
-  const [code, setCode] = React.useState('');
-  const [applied, setApplied] = React.useState(false);
-  const [error, setError] = React.useState(false);
-  if (new Date() > new Date('2026-04-17')) return null;
-  const ctaLink = 'https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01';
-  const validCodes = ['REDDIT50'];
-  const handleApply = () => {
-    const c = code.trim().toUpperCase();
-    if (validCodes.includes(c)) {
-      setApplied(true);
-      setError(false);
-    } else {
-      setError(true);
-      setApplied(false);
-    }
+  const colors = {
+    focus:   { fill: 'rgba(82,183,136,0.25)',  stroke: '#52b788', dot: '#52b788' },
+    avoid:   { fill: 'rgba(220,80,80,0.15)',   stroke: '#dc5050', dot: '#dc5050' },
+    note:    { fill: 'rgba(201,168,76,0.18)',  stroke: '#c9a84c', dot: '#c9a84c' },
+    neutral: { fill: 'rgba(200,200,200,0.12)', stroke: '#ccc',    dot: '#aaa'    },
   };
-  const finalLink = applied ? ctaLink + '?prefilled_promo_code=' + code.trim().toUpperCase() : ctaLink;
   return (
-    <div style={{ marginBottom: '12px' }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => { const v = e.target.value; setCode(v); setApplied(false); setError(v.length > 0 && !['REDDIT50'].includes(v.trim().toUpperCase())); }}
-          placeholder="Have a promo code?"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '2px solid #2A5741' : error ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', outline: 'none', color: '#374151' }}
-        />
-        <button onClick={handleApply} style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>Apply</button>
-      </div>
-      {error && <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $12/mo — only 200 spots available.</p>}
-      {applied && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
-          <p style={{ fontSize: '13px', color: '#2A5741', fontWeight: '700', margin: '0 0 4px 0' }}>🎉 You got 50% off for 3 months!</p>
-          <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $24/mo, you pay just <strong>$12/mo</strong> for your first 3 months. Click below to lock it in.</p>
-        </div>
-      )}
-      <a href={finalLink} target="_blank" rel="noopener noreferrer" style={{
-        display: 'block', background: '#6B5FB5', color: 'white', padding: '12px 24px',
-        borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: '600', textAlign: 'center'
-      }}>
-        {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start Trial'}
-      </a>
+    <svg viewBox="0 0 200 200" style={{ width: '100%', maxWidth: 200, display: 'block' }}>
+      <ellipse cx="100" cy="36" rx="18" ry="20" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      <rect x="72" y="55" width="56" height="110" rx="12" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      <rect x="44" y="62" width="26" height="70" rx="10" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      <rect x="130" y="62" width="26" height="70" rx="10" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      <rect x="74"  y="163" width="22" height="28" rx="8" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      <rect x="104" y="163" width="22" height="28" rx="8" fill="#e8f5ee" stroke="#b2dfc4" strokeWidth="1.5"/>
+      {zones.map(z => {
+        const c = colors[z.status];
+        return (
+          <g key={z.id}>
+            <rect x={z.x} y={z.y} width={z.w} height={z.h} rx="6" fill={c.fill} stroke={c.stroke} strokeWidth="1.5"/>
+            <circle cx={z.x + z.w - 5} cy={z.y + 5} r="3.5" fill={c.dot}/>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
 
+function ClientCard() {
+  const [pulse, setPulse] = useState(false);
+  useEffect(() => {
+    const t = setInterval(() => setPulse(p => !p), 2000);
+    return () => clearInterval(t);
+  }, []);
+  const zones = [
+    { color: '#52b788', bg: 'rgba(82,183,136,0.1)',  border: 'rgba(82,183,136,0.3)', text: '🟢 Upper back' },
+    { color: '#52b788', bg: 'rgba(82,183,136,0.1)',  border: 'rgba(82,183,136,0.3)', text: '🟢 L. Shoulder' },
+    { color: '#b84040', bg: 'rgba(220,80,80,0.07)',  border: 'rgba(220,80,80,0.2)',  text: '🔴 Neck — skip' },
+    { color: '#9a7a20', bg: 'rgba(201,168,76,0.09)', border: 'rgba(201,168,76,0.25)',text: '🎵 Ambient music' },
+    { color: '#9a7a20', bg: 'rgba(201,168,76,0.09)', border: 'rgba(201,168,76,0.25)',text: '💆 Medium pressure' },
+  ];
+  return (
+    <div style={{ background:'#fff', borderRadius:20, border:'1px solid #e8e4dd', boxShadow:'0 20px 60px rgba(0,0,0,0.09)', padding:'28px 28px 24px', maxWidth:460, width:'100%', textAlign:'left', position:'relative' }}>
+      <div style={{ position:'absolute', top:-14, right:20, background: pulse ? '#2d6a4f' : '#52b788', color:'#fff', fontSize:12, fontWeight:700, padding:'5px 14px', borderRadius:100, boxShadow:'0 4px 12px rgba(45,106,79,0.3)', transition:'background 0.6s' }}>📍 Session in 40 min</div>
+      <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#999', marginBottom:14 }}>YOUR NEXT CLIENT</div>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
+        <div style={{ width:44, height:44, borderRadius:'50%', background:'#d8f3dc', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0 }}>💆</div>
+        <div>
+          <div style={{ fontWeight:700, fontSize:16, color:'#1c1c1c' }}>Sarah M.</div>
+          <div style={{ fontSize:13, color:'#999', marginTop:2 }}>Client since Jan 2024 · 8 sessions</div>
+        </div>
+      </div>
+      <div style={{ display:'flex', gap:16, alignItems:'flex-start', marginBottom:16 }}>
+        <div style={{ flexShrink:0, width:90 }}><BodyMapVisual /></div>
+        <div style={{ flex:1, display:'flex', flexDirection:'column', gap:7 }}>
+          {zones.map((z,i) => (
+            <div key={i} style={{ background:z.bg, border:`1px solid ${z.border}`, color:z.color, borderRadius:8, padding:'5px 10px', fontSize:12, fontWeight:600 }}>{z.text}</div>
+          ))}
+        </div>
+      </div>
+      {[
+        { icon:'📊', text:'L. shoulder recurring — 6 of 8 sessions', badge:'Pattern' },
+        { icon:'💬', text:'"Stress from work — go deeper today"', badge:null },
+      ].map((p,i) => (
+        <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'#f5f3ef', borderRadius:10, padding:'9px 13px', fontSize:12, color:'#4a4a4a', marginBottom: i===0 ? 8 : 0 }}>
+          <span>{p.icon}</span>
+          <span style={{ flex:1 }}>{p.text}</span>
+          {p.badge && <span style={{ background:'#2d6a4f', color:'#fff', fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:100 }}>{p.badge}</span>}
+        </div>
+      ))}
     </div>
   );
 }
 
+function StoryCard({ initial, color, name, since, headline, body, outcome }) {
+  return (
+    <div style={{ background:'#fff', borderRadius:20, border:'1px solid #e8e4dd', padding:'32px 28px', display:'flex', flexDirection:'column' }}>
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:18 }}>
+        <div style={{ width:46, height:46, borderRadius:'50%', background:color, display:'flex', alignItems:'center', justifyContent:'center', fontSize:19, fontWeight:700, color:'#fff', flexShrink:0 }}>{initial}</div>
+        <div>
+          <div style={{ fontWeight:700, fontSize:15 }}>{name}</div>
+          <div style={{ fontSize:12, color:'#999', marginTop:2 }}>{since}</div>
+        </div>
+      </div>
+      <div style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:600, color:'#1a3d2b', lineHeight:1.35, marginBottom:12 }}>{headline}</div>
+      <div style={{ fontSize:14, color:'#4a4a4a', lineHeight:1.65, flex:1 }}>{body}</div>
+      <div style={{ marginTop:20, padding:'10px 14px', background:'#d8f3dc', borderRadius:10, fontSize:13, fontWeight:600, color:'#2d6a4f' }}>{outcome}</div>
+    </div>
+  );
+}
 
 export default function Home() {
-  const [waitlistOpen, setWaitlistOpen] = React.useState(false);
-  const [waitlistInterest, setWaitlistInterest] = React.useState('');
-  const [currentSlide, setCurrentSlide] = useState(0);
-  
-  const slides = [
-    { emoji: "🌿", text: "Be Remembered", subtitle: "Clients feel known from session one" },
-    { emoji: "⚡", text: "Be Present", subtitle: "Walk in already knowing what they need" },
-    { emoji: "💜", text: "Be Irreplaceable", subtitle: "The therapist they never stop coming back to" }
-  ];
-
-  React.useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 3000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const C = {
-    sage: '#6B9E80',
-    forest: '#2A5741',
-    lavender: '#B4A7D6',
-    lavenderPale: '#F3F1F9',
-    lavenderMid: '#D8D3E8',
-    beige: '#F0EAD9',
-    white: '#FFFFFF',
-    gray: '#6B7280',
-    darkGray: '#1F2937',
-    lightGray: '#F9FAFB',
-    green: '#059669',
-    red: '#DC2626'
-  };
+  const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const G = { deep:'#1a3d2b', mid:'#2d6a4f', soft:'#52b788', pale:'#d8f3dc', white:'#fafaf8', card:'#f5f3ef', border:'#e8e4dd', dark:'#1c1c1c', mid2:'#4a4a4a', light:'#7a7a7a' };
+  const btnPrimary = { display:'inline-flex', alignItems:'center', gap:8, background:G.mid, color:'#fff', fontSize:16, fontWeight:700, padding:'16px 32px', borderRadius:12, textDecoration:'none', boxShadow:'0 4px 16px rgba(45,106,79,0.28)', border:'none', cursor:'pointer', fontFamily:'inherit' };
+  const btnGhost   = { display:'inline-flex', alignItems:'center', gap:8, background:'transparent', color:G.mid, fontSize:16, fontWeight:600, padding:'15px 28px', borderRadius:12, textDecoration:'none', border:`1.5px solid ${G.soft}`, cursor:'pointer', fontFamily:'inherit' };
+  const eyebrow    = { fontSize:13, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:G.mid, background:'rgba(82,183,136,0.12)', border:'1px solid rgba(82,183,136,0.25)', padding:'6px 16px', borderRadius:100, display:'inline-block', marginBottom:28 };
 
   return (
-    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', overflowX: 'hidden', width: '100%', paddingTop: '64px' }}>
-      <style>{`
-        @media (max-width: 768px) {
-          .bm-grid-3 { grid-template-columns: 1fr !important; }
-          .bm-grid-2 { grid-template-columns: 1fr !important; }
-          .bm-grid-pricing { grid-template-columns: 1fr !important; }
-          .bm-hero-btns { flex-direction: column !important; align-items: stretch !important; width: 100% !important; box-sizing: border-box !important; }
-          .bm-hero-btns a { width: 100% !important; box-sizing: border-box !important; text-align: center !important; }
-          .bm-hero-h1 { font-size: 32px !important; }
-          .bm-hero-h2 { font-size: 28px !important; padding: 0 8px !important; }
-          .bm-section-h2 { font-size: 26px !important; padding: 0 8px !important; }
-          .bm-benefit-h3 { font-size: 20px !important; }
-          .bm-gap-60 { gap: 32px !important; }
-          .bm-section-pad { padding: 48px 16px !important; }
-          .bm-hide-mobile { display: none !important; }
-          .bm-try-card { padding: 28px 20px !important; }
-          .bm-nav-full { font-size: 13px !important; }
-          section { overflow-x: hidden !important; box-sizing: border-box !important; }
-          div { max-width: 100vw !important; box-sizing: border-box !important; }
-        }
-      `}</style>
-      
-      {/* Header/Navigation */}
+    <div style={{ background:G.white, fontFamily:"'DM Sans','Helvetica Neue',sans-serif", color:G.dark }}>
       <Nav />
 
-      {/* Main Hero */}
-      <section className='bm-section-pad' style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 className="bm-hero-h2" style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            Elevate Every Client Experience
-          </h2>
-          <p style={{ fontSize: '20px', color: C.gray, marginBottom: '40px', lineHeight: '1.6' }}>
-            Your clients feel it when you remember them.<br/>
-            BodyMap makes sure you always do.<br/>
-          </p>
-          <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '60px' }}>
-            <a href="#demo" style={{
-              background: C.sage,
-              color: 'white',
-              padding: '16px 32px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600'
-            }}>See How It Works</a>
-            <a href="/signup" style={{
-              background: 'white',
-              color: C.sage,
-              padding: '16px 32px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600',
-              border: '2px solid ' + C.sage
-            }}>Start Free Trial</a>
-          </div>
-        </div>
-      </section>
-
-      {/* The Benefits Are Clear */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '16px' }}>
-            The Benefits Are Clear
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', maxWidth: '600px', margin: '0 auto 64px auto' }}>
-            Don't take our word for it. Here's what happens when a therapist actually knows their client.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '28px', marginBottom: '56px' }}>
-
-            {/* Maya */}
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#6B9E80', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>M</div>
-                <div>
-                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>Maya</div>
-                  <div style={{ fontSize: '13px', color: C.gray }}>Regular client, 3 years</div>
-                </div>
-              </div>
-              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
-                She was gone 8 weeks. One BodyMap alert brought her back.
-              </p>
-              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
-                Life got busy — new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: <em>"Hey Maya, been thinking about you. Lower back still giving you trouble?"</em> She booked the next day. She's been coming ever since.
-              </p>
-            </div>
-
-            {/* James */}
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>J</div>
-                <div>
-                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>James</div>
-                  <div style={{ fontSize: '13px', color: C.gray }}>Monthly client, 1 year</div>
-                </div>
-              </div>
-              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
-                Every visit, he repeated himself. Until she just knew with BodyMap.
-              </p>
-              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
-                He hated deep pressure on his left shoulder. Every session, he'd wince and say it again. Third visit with BodyMap, his therapist just said <em>"I've got you"</em> before he even sat down. He told his wife that night. His wife booked the next morning.
-              </p>
-            </div>
-
-            {/* Priya */}
-            <div style={{ background: '#F5F0E8', borderRadius: '16px', padding: '36px 32px', border: '1px solid #E8E4DC', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#C9A84C', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', fontWeight: '700', color: 'white', flexShrink: 0 }}>P</div>
-                <div>
-                  <div style={{ fontSize: '17px', fontWeight: '700', color: C.darkGray }}>Priya</div>
-                  <div style={{ fontSize: '13px', color: C.gray }}>New client, found her therapist</div>
-                </div>
-              </div>
-              <p style={{ fontSize: '20px', fontWeight: '700', color: '#2A5741', margin: 0, lineHeight: '1.4' }}>
-                3 therapists in 2 years. BodyMap changed that.
-              </p>
-              <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', margin: 0 }}>
-                Good hands, all of them — but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She'd found her person.
-              </p>
-            </div>
-
-          </div>
-
-          <div style={{ background: '#2A5741', borderRadius: '20px', padding: '48px 56px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '40px' }}>
-            <div style={{ flex: '1 1 320px' }}>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '28px', fontWeight: '700', color: 'white', margin: '0 0 16px 0', lineHeight: '1.3' }}>
-                You got into this work because you care.
-              </h3>
-              <p style={{ fontSize: '17px', color: '#A8C5B4', lineHeight: '1.7', margin: 0 }}>
-                One month of BodyMap costs $24. One lapsed client who comes back monthly for a year is worth $1,200. That's the $24 you spent in January still paying off in December. It happens again next month. And the month after that.
-              </p>
-            </div>
-            <div style={{ flex: '0 0 auto', display: 'flex', gap: '40px', flexWrap: 'wrap' }}>
-              {[
-                { value: '$24', label: 'One month\nof BodyMap' },
-                { value: '$1,200', label: 'One returned client\nstays all year' },
-                { value: '50×', label: 'Return on\nthat one month', gold: true },
-              ].map(({ value, label, gold }) => (
-                <div key={value} style={{ textAlign: 'center', minWidth: '90px' }}>
-                  <p style={{ fontFamily: 'Georgia, serif', fontSize: '36px', fontWeight: '700', color: gold ? '#C9A84C' : 'white', margin: '0 0 6px 0', lineHeight: 1 }}>
-                    {value}
-                  </p>
-                  <p style={{ fontSize: '13px', color: '#A8C5B4', margin: 0, lineHeight: '1.5', whiteSpace: 'pre-line' }}>
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section id="demo" style={{ background: C.lavenderPale, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            How BodyMap Works
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '64px' }}>
-            You already put so much into every session. BodyMap just makes sure your clients feel all of it.
-          </p>
-
-          <div className="bm-grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '32px' }}>
-
-            {/* Step 1 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>1</div>
-              {/* SVG: Settings/link setup */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                <rect x="20" y="28" width="40" height="28" rx="4" fill="white" stroke="#2A5741" strokeWidth="2"/>
-                <line x1="20" y1="36" x2="60" y2="36" stroke="#2A5741" strokeWidth="2"/>
-                <circle cx="26" cy="32" r="2" fill="#6B9E80"/>
-                <circle cx="33" cy="32" r="2" fill="#6B9E80"/>
-                <rect x="26" y="42" width="20" height="3" rx="1.5" fill="#6B9E80"/>
-                <rect x="26" y="49" width="14" height="3" rx="1.5" fill="#C9A84C"/>
-                <rect x="48" y="42" width="8" height="10" rx="2" fill="#2A5741"/>
-                <line x1="40" y1="56" x2="40" y2="62" stroke="#2A5741" strokeWidth="2"/>
-                <line x1="32" y1="62" x2="48" y2="62" stroke="#2A5741" strokeWidth="2"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Set Up in 30 Seconds</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Sign up and your personal intake link is ready instantly — <strong>mybodymap.app/[yourbusiness]</strong>. Yours alone. With Gmail, you're live in under 10 seconds. Share it once. Clients use it before every session.
-              </p>
-            </div>
-
-            {/* Step 2 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>2</div>
-              {/* SVG: Body with green/red dots */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                {/* Body silhouette */}
-                <circle cx="40" cy="22" r="7" fill="#D4C9B0"/>
-                <rect x="32" y="30" width="16" height="18" rx="4" fill="#D4C9B0"/>
-                <rect x="22" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
-                <rect x="49" y="31" width="9" height="14" rx="3" fill="#D4C9B0"/>
-                <rect x="33" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
-                <rect x="41" y="48" width="6" height="16" rx="3" fill="#D4C9B0"/>
-                {/* Green focus dots */}
-                <circle cx="40" cy="35" r="4" fill="#22C55E" opacity="0.9"/>
-                <circle cx="33" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
-                <circle cx="47" cy="40" r="3.5" fill="#22C55E" opacity="0.9"/>
-                {/* Red avoid dots */}
-                <circle cx="36" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
-                <circle cx="44" cy="52" r="3.5" fill="#EF4444" opacity="0.9"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>Client Maps Their Body</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Client opens your link on any phone or laptop — no app, no download, no login needed. They tap <span style={{ color: '#22C55E', fontWeight: '700' }}>green</span> for focus areas, <span style={{ color: '#EF4444', fontWeight: '700' }}>red</span> for areas to avoid, and set preferences like pressure, music, and temperature.
-              </p>
-            </div>
-
-            {/* Step 3 */}
-            <div style={{ background: 'white', borderRadius: '20px', padding: '36px 28px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: C.forest, color: 'white', fontSize: '22px', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 24px' }}>3</div>
-              {/* SVG: Laptop + phone side by side */}
-              <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ margin: '0 auto 24px', display: 'block' }}>
-                <circle cx="40" cy="40" r="38" fill="#E8F5EE" stroke="#6B9E80" strokeWidth="2"/>
-                {/* Laptop */}
-                <rect x="14" y="28" width="34" height="22" rx="2" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
-                <rect x="16" y="30" width="30" height="18" rx="1" fill="#E8F5EE"/>
-                <line x1="10" y1="50" x2="52" y2="50" stroke="#2A5741" strokeWidth="2"/>
-                <rect x="26" y="32" width="10" height="3" rx="1" fill="#6B9E80"/>
-                <rect x="26" y="37" width="14" height="2" rx="1" fill="#C9A84C"/>
-                <rect x="26" y="41" width="12" height="2" rx="1" fill="#9CA3AF"/>
-                {/* Phone */}
-                <rect x="54" y="30" width="13" height="22" rx="3" fill="white" stroke="#2A5741" strokeWidth="1.5"/>
-                <rect x="56" y="33" width="9" height="14" rx="1" fill="#E8F5EE"/>
-                <circle cx="60.5" cy="50" r="1.5" fill="#2A5741"/>
-                <circle cx="60" cy="35" r="2" fill="#22C55E"/>
-                <circle cx="63" cy="38" r="2" fill="#EF4444"/>
-              </svg>
-              <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>You See Everything. Patterns Build Over Time.</h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                Review their body map before each session on any device. After session 3, BodyMap shows you patterns — which areas they always focus on, what they consistently avoid, pressure trends. After session 5, you know this client better than any notes ever could.
-              </p>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-
-      {/* Experience Carousels */}
-      <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>
-            Your Clients Tell You Once. Your Practice Remembers Forever.
-          </h2>
-          <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>
-            Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.
-          </p>
-          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
-            <div>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
-              <TherapistCarousel />
-            </div>
-            <div>
-              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
-              <ClientCarousel />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Try It Section */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-            Experience Both Sides
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '48px' }}>
-            No signup needed. See why clients love it — and why therapists never go back.
-          </p>
-          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-
-            {/* Therapist card */}
-            <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
-              <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Therapist Experience
-              </h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                See your dashboard before each session — body map, preferences, medical flags, and the patterns BodyMap has detected across every visit. Walk in knowing exactly what this client needs.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Free account · no credit card · live in 30 seconds →
-              </p>
-              <a href="/signup" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                Create Free Account →
-              </a>
-            </div>
-
-            {/* Client card */}
-            <div style={{ background: C.beige, borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
-              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
-              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                Client Experience
-              </h3>
-              <p style={{ fontSize: '15px', color: C.gray, lineHeight: '1.6', marginBottom: '8px' }}>
-                Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.
-              </p>
-              <p style={{ fontSize: '13px', color: C.sage, fontWeight: '600', marginBottom: '28px' }}>
-                Works on your phone right now →
-              </p>
-              <a href="/demo" style={{ display: 'inline-block', background: C.forest, color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>
-                Try Client Intake →
-              </a>
-            </div>
-
-          </div>
-          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '24px' }}>
-            🔒 Demo data only — nothing is saved
-          </p>
-        </div>
-      </section>
-
-
-      {/* Security Trust Section */}
-      <section style={{ background: '#F8FAFC', padding: '80px 24px', borderTop: '1px solid #E5E7EB' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: '56px' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '20px', padding: '6px 16px', marginBottom: '16px' }}>
-              <span style={{ fontSize: '14px' }}>🔒</span>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#2A5741' }}>Built for trust</span>
-            </div>
-            <h2 style={{ fontSize: '36px', fontWeight: '700', color: '#111827', margin: '0 0 16px 0' }}>Your clients' data is safe with you</h2>
-            <p style={{ fontSize: '17px', color: '#6B7280', maxWidth: '560px', margin: '0 auto', lineHeight: '1.6' }}>
-              BodyMap is built on enterprise-grade infrastructure. Your clients' intake data belongs to you — not us.
+      {/* ── SECTION 1 — HERO ─────────────────────────────────── */}
+      <section style={{ minHeight:'92vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'linear-gradient(160deg,#eef8f2 0%,#fafaf8 65%)', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-80, right:-80, width:500, height:500, background:'radial-gradient(circle,rgba(82,183,136,0.13) 0%,transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{ maxWidth:1100, width:'100%', display:'flex', flexWrap:'wrap', alignItems:'center', gap:48, justifyContent:'center', position:'relative', zIndex:1 }}>
+          <div style={{ flex:'1 1 420px', maxWidth:540 }}>
+            <div style={eyebrow}>Built for Massage Therapists</div>
+            <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,60px)', fontWeight:700, lineHeight:1.13, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
+              Make it impossible for clients{' '}
+              <em style={{ fontStyle:'italic', color:G.mid }}>not</em>{' '}
+              to come back.
+            </h1>
+            <p style={{ fontSize:'clamp(16px,2vw,20px)', color:G.mid2, lineHeight:1.6, margin:'0 0 36px', maxWidth:480 }}>
+              The only tool built around what every other app ignores — knowing your clients so well, they never need to find someone else.
             </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-            {[
-              {
-                icon: '🔐',
-                title: 'Encrypted end to end',
-                desc: 'All data is encrypted at rest with AES-256 and in transit with TLS 1.3. The same standard used by banks.'
-              },
-              {
-                icon: '🏠',
-                title: 'Your data stays yours',
-                desc: 'Every therapist operates in a completely isolated environment. No other practitioner can ever see your clients.'
-              },
-              {
-                icon: '🚫',
-                title: 'Never sold. Never shared.',
-                desc: 'We do not sell your data or your clients\' data. No advertisers. No third-party data brokers. Ever.'
-              },
-              {
-                icon: '🏗️',
-                title: 'Enterprise infrastructure',
-                desc: 'Built on Supabase — SOC 2 Type II certified. The same infrastructure trusted by thousands of companies worldwide.'
-              },
-              {
-                icon: '🩺',
-                title: 'Not medical software',
-                desc: 'BodyMap is a communication tool, not an EHR. Solo massage therapists are generally not subject to HIPAA.'
-              },
-              {
-                icon: '📋',
-                title: 'Full transparency',
-                desc: 'We publish our Privacy Policy and Terms of Service in plain language. No legalese designed to confuse.'
-              },
-            ].map((item) => (
-              <div key={item.title} style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '28px 24px', boxShadow: '0 1px 4px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{item.icon}</div>
-                <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', margin: '0 0 8px 0' }}>{item.title}</h3>
-                <p style={{ fontSize: '14px', color: '#6B7280', lineHeight: '1.65', margin: 0 }}>{item.desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-              {['AES-256 Encryption', 'TLS 1.3', 'SOC 2 Type II', 'Row Level Security', 'No Ads. No Trackers.'].map((badge) => (
-                <div key={badge} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ color: '#2A5741', fontSize: '13px' }}>✓</span>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{badge}</span>
-                </div>
+            <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:32 }}>
+              <Link to="/signup" style={btnPrimary}>Start Free — No Card Needed →</Link>
+              <Link to="/demo"   style={btnGhost}>See How It Works</Link>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:G.light, flexWrap:'wrap' }}>
+              {['Free forever on Bronze','Live in 30 seconds','No credit card'].map((t,i) => (
+                <React.Fragment key={t}>
+                  {i > 0 && <span style={{ width:4, height:4, borderRadius:'50%', background:'#ccc', display:'inline-block' }}/>}
+                  <span>{t}</span>
+                </React.Fragment>
               ))}
             </div>
-            <a href="/privacy" style={{ fontSize: '13px', color: '#2A5741', fontWeight: '600', textDecoration: 'none', whiteSpace: 'nowrap' }}>Read our Privacy Policy →</a>
+          </div>
+          <div style={{ flex:'1 1 340px', display:'flex', justifyContent:'center' }}>
+            <ClientCard />
           </div>
         </div>
       </section>
 
-      {/* Who It's For */}
-      <section style={{ background: 'white', padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, textAlign: 'center', marginBottom: '60px' }}>
-            Built For Every Practice Size
+      {/* ── SECTION 2 — PAIN STRIP ───────────────────────────── */}
+      <section style={{ background:G.deep, padding:'80px 24px', textAlign:'center' }}>
+        <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:G.soft, marginBottom:16 }}>The Problem</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(22px,3.5vw,36px)', fontWeight:600, color:'#fff', margin:'0 auto 44px', maxWidth:620, lineHeight:1.35 }}>
+          You're losing clients you worked hard to earn.{' '}
+          <em style={{ fontStyle:'italic', color:G.soft }}>Not because of your work — because they feel forgotten.</em>
+        </h2>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:20, maxWidth:900, margin:'0 auto' }}>
+          {[
+            { icon:'🗂️', title:'Starting over every session',    desc:'Clients repeat their history. You take mental notes you\'ll lose by next week. Nothing accumulates.' },
+            { icon:'📅', title:'Lapsed clients, zero alerts',     desc:'Your best clients go quiet. Life happens. You had no way to notice — or reach back at the right moment.' },
+            { icon:'💸', title:'Revenue walking out the door',    desc:'One lost monthly client = $600–$1,200/year gone. Multiply that and you\'re running harder just to stay in place.' },
+          ].map(item => (
+            <div key={item.title} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:'28px 24px', textAlign:'left' }}>
+              <div style={{ fontSize:28, marginBottom:14 }}>{item.icon}</div>
+              <div style={{ fontWeight:700, color:'#fff', fontSize:15, marginBottom:8 }}>{item.title}</div>
+              <div style={{ fontSize:14, color:'rgba(255,255,255,0.55)', lineHeight:1.55 }}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── SECTION 3 — ROI MATH ────────────────────────────── */}
+      <section style={{ padding:'88px 24px', background:G.white, textAlign:'center' }}>
+        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>The Math</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,42px)', fontWeight:700, color:G.deep, margin:'0 auto 16px', maxWidth:600, lineHeight:1.2, textAlign:'center' }}>
+          $24 in January.<br/>Still paying off in December.
+        </h2>
+        <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, maxWidth:500, margin:'0 auto 52px', textAlign:'center' }}>
+          One client you almost lost — brought back by a single alert — pays for your entire year.
+        </p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:24, maxWidth:860, margin:'0 auto 36px', alignItems:'center' }}>
+          {[
+            { val:'$24',    label:'One month of BodyMap Silver',                         hi:false },
+            { val:'$1,200', label:'Revenue from one retained client over a year',        hi:true,  tag:'One returned client × 12 months' },
+            { val:'50×',    label:'Return on that one month, all year long',             hi:false },
+          ].map(card => (
+            <div key={card.val} style={{ background:card.hi ? G.deep : G.card, border:`1px solid ${card.hi ? G.deep : G.border}`, borderRadius:20, padding:'32px 24px', textAlign:'center', transform:card.hi ? 'scale(1.05)' : 'scale(1)', boxShadow:card.hi ? '0 16px 40px rgba(26,61,43,0.2)' : 'none' }}>
+              {card.tag && <div style={{ fontSize:12, fontWeight:700, color:G.soft, marginBottom:8 }}>{card.tag}</div>}
+              <div style={{ fontSize:44, fontWeight:800, color:card.hi ? G.soft : G.mid, marginBottom:8 }}>{card.val}</div>
+              <div style={{ fontSize:14, color:card.hi ? 'rgba(255,255,255,0.6)' : G.light, lineHeight:1.4 }}>{card.label}</div>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize:14, color:G.light, maxWidth:480, margin:'0 auto', lineHeight:1.6 }}>
+          That's the $24 you spent in January still paying off in December — again in January, again in December.
+        </p>
+      </section>
+
+      {/* ── SECTION 4 — DEMO CTA ────────────────────────────── */}
+      <section style={{ background:'#f0f9f4', borderTop:'1px solid #c8ecd8', borderBottom:'1px solid #c8ecd8', padding:'64px 24px', textAlign:'center' }}>
+        <div style={{ maxWidth:680, margin:'0 auto' }}>
+          <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>See It In Action</div>
+          <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(24px,3.5vw,38px)', fontWeight:700, color:G.deep, margin:'0 0 16px', lineHeight:1.25 }}>Experience Both Sides</h2>
+          <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, marginBottom:36 }}>No signup needed. See why clients love it — and why therapists never go back.</p>
+          <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
+            <Link to="/demo"     style={btnPrimary}>Try the Demo →</Link>
+            <Link to="/features" style={btnGhost}>See All Features</Link>
+          </div>
+          <p style={{ marginTop:20, fontSize:13, color:G.light }}>No account. No credit card. 60 seconds.</p>
+        </div>
+      </section>
+
+      {/* ── SECTION 5 — STORIES ─────────────────────────────── */}
+      <section style={{ background:G.card, padding:'88px 24px' }}>
+        <div style={{ textAlign:'center', marginBottom:52 }}>
+          <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>Real Moments</div>
+          <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,3.5vw,40px)', fontWeight:700, color:G.deep, margin:'0 auto 12px', maxWidth:640, lineHeight:1.25, textAlign:'center' }}>
+            This is what it feels like when your therapist truly knows you.
           </h2>
-          
-          <div className="bm-grid-2" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '32px' }}>
-            {[
-              {
-                icon: "👤",
-                title: "Solo Therapists",
-                desc: "For independent therapists who want every client to feel like their only client",
-                plan: "Free or Silver plan"
-              },
-              {
-                icon: "🏢",
-                title: "Small Practices (2-5 therapists)",
-                desc: "Standardize intake, share insights, maintain quality across your team",
-                plan: "Gold plan"
-              },
-              {
-                icon: "🏭",
-                title: "Massage Chains",
-                desc: "Enterprise pricing available. Volume discounts for 10+ locations.",
-                plan: "Join Waitlist →",
-                waitlist: true
-              },
-              {
-                icon: "🎓",
-                title: "Massage Schools",
-                desc: "Train students with professional intake tools. Real-world experience.",
-                plan: "Join Waitlist →",
-                waitlist: true
-              }
-            ].map((segment) => (
-              <div key={segment.title} style={{ 
-                background: C.lightGray, 
-                padding: '32px', 
-                borderRadius: '12px',
-                border: '2px solid #E5E7EB',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                overflow: 'hidden',
-                wordBreak: 'break-word',
-                boxSizing: 'border-box'
-              }}
-              onMouseOver={(e) => {
-                e.currentTarget.style.borderColor = C.lavender;
-                e.currentTarget.style.background = C.lavenderPale;
-              }}
-              onMouseOut={(e) => {
-                e.currentTarget.style.borderColor = '#E5E7EB';
-                e.currentTarget.style.background = C.lightGray;
-              }}
-              >
-                <div style={{ fontSize: '56px', marginBottom: '16px' }}>{segment.icon}</div>
-                <h3 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, marginBottom: '12px' }}>
-                  {segment.title}
-                </h3>
-                <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.6', marginBottom: '12px' }}>
-                  {segment.desc}
-                </p>
-                {segment.waitlist ? (
-                  <button onClick={() => { setWaitlistInterest(segment.title + ' — Interest'); setWaitlistOpen(true); }} style={{ marginTop: '8px', background: C.sage, color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                    Join Waitlist
-                  </button>
-                ) : (
-                  <div style={{ fontSize: '14px', color: C.lavender, fontWeight: '600' }}>
-                    → {segment.plan}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          <p style={{ fontSize:18, color:G.light, maxWidth:460, margin:'0 auto', textAlign:'center' }}>What changes when you stop relying on memory.</p>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:24, maxWidth:1020, margin:'0 auto' }}>
+          <StoryCard initial="M" color="#52b788" name="Maya"  since="Regular client · 3 years"
+            headline="She was gone 8 weeks. One BodyMap alert brought her back."
+            body="Life got busy — new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: 'Hey Maya, been thinking about you. Lower back still giving you trouble?' She booked the next day."
+            outcome="✓ One text. Client retained." />
+          <StoryCard initial="J" color="#2d6a4f" name="James" since="Monthly client · 1 year"
+            headline="Every visit, he repeated himself. Until she just knew."
+            body="He hated deep pressure on his left shoulder. Every session, he'd wince and say it again. Third visit with BodyMap, his therapist just said 'I've got you' before he even sat down. He told his wife that night. His wife booked the next morning."
+            outcome="✓ Loyalty earned. Referral earned." />
+          <StoryCard initial="P" color="#c9a84c" name="Priya" since="New client · found her person"
+            headline="3 therapists in 2 years. BodyMap changed that."
+            body="Good hands, all of them — but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She'd found her person."
+            outcome="✓ Client stopped searching." />
         </div>
       </section>
 
-      {/* Pricing Preview */}
-      <section style={{ background: C.lavenderPale, padding: '80px 24px' }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '42px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            Start Free, Upgrade When Ready
+      {/* ── SECTION 6 — TRUST ───────────────────────────────── */}
+      <section style={{ background:G.white, padding:'64px 24px', textAlign:'center', borderTop:`1px solid ${G.border}` }}>
+        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:28 }}>Your Clients' Data Is Safe With You</div>
+        <div style={{ display:'flex', gap:32, justifyContent:'center', flexWrap:'wrap', maxWidth:820, margin:'0 auto' }}>
+          {[
+            { icon:'🔒', title:'Enterprise-grade encryption',  desc:'All data encrypted at rest and in transit. Same infrastructure used by Fortune 500 companies.' },
+            { icon:'🏛️', title:'Your data. Not ours.',         desc:"Your clients' intake data belongs to you. We never sell it, share it, or use it for advertising." },
+            { icon:'📤', title:'Export anytime',               desc:'Your data is always yours to take. Export everything in one click — no holdbacks, no lock-in.' },
+          ].map(item => (
+            <div key={item.title} style={{ flex:'1 1 220px', maxWidth:260 }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>{item.icon}</div>
+              <div style={{ fontWeight:700, fontSize:15, color:G.dark, marginBottom:8 }}>{item.title}</div>
+              <div style={{ fontSize:14, color:G.light, lineHeight:1.55 }}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── SECTION 7 — FINAL CTA ───────────────────────────── */}
+      <section style={{ background:G.deep, padding:'100px 24px', textAlign:'center', position:'relative', overflow:'hidden' }}>
+        <div style={{ position:'absolute', top:-100, left:-100, width:400, height:400, background:'radial-gradient(circle,rgba(82,183,136,0.15) 0%,transparent 70%)', pointerEvents:'none' }}/>
+        <div style={{ position:'relative', zIndex:1 }}>
+          <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(28px,4.5vw,50px)', fontWeight:700, color:'#fff', margin:'0 auto 20px', maxWidth:680, lineHeight:1.2 }}>
+            Your clients deserve to feel like{' '}
+            <em style={{ fontStyle:'italic', color:G.soft }}>your only client.</em>
           </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '60px' }}>
-            No credit card required. Cancel anytime.
+          <p style={{ fontSize:18, color:'rgba(255,255,255,0.65)', maxWidth:420, margin:'0 auto 40px', lineHeight:1.6 }}>
+            Start free. Upgrade when you're ready. Your first 5 clients are always free.
           </p>
-          
-          <div className="bm-grid-pricing" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '24px', marginBottom: '40px' }}>
-            {[
-              { name: "Bronze", price: "$0", clients: "5 clients/month", cta: "Start Free", badge: "🥉" },
-              { name: "Silver", price: "$24", clients: "Unlimited clients", cta: "Start Trial", badge: "🥈", popular: true, note: "~50¢ per massage at 50 clients/month" },
-              { name: "Gold", price: "$49", clients: "Up to 5 therapists", cta: "Coming Soon", badge: "🥇", comingSoon: true }
-            ].map((tier) => (
-              <div key={tier.name} style={{ 
-                background: tier.popular ? 'white' : C.lightGray,
-                border: tier.popular ? `3px solid ${C.lavender}` : '1px solid #E5E7EB',
-                borderRadius: '12px',
-                padding: '32px 24px',
-                position: 'relative'
-              }}>
-                {tier.popular && (
-                  <div style={{
-                    position: 'absolute',
-                    top: '-12px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: C.lavender,
-                    color: 'white',
-                    padding: '4px 16px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '700'
-                  }}>MOST POPULAR</div>
-                )}
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>{tier.badge}</div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: C.darkGray, marginBottom: '8px' }}>
-                  {tier.name}
-                </div>
-                <div style={{ fontSize: '36px', fontWeight: '700', color: C.lavender, marginBottom: '4px' }}>
-                  {tier.price}
-                </div>
-                <div style={{ fontSize: '14px', color: C.gray, marginBottom: '20px' }}>
-                  per month
-                </div>
-                <div style={{ fontSize: '14px', color: C.gray, marginBottom: '24px', minHeight: '40px' }}>
-                  {tier.clients}
-                </div>
-                {tier.comingSoon ? (
-                  <div style={{ display: 'block', background: '#E5E7EB', color: '#9CA3AF', border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', textAlign: 'center', cursor: 'not-allowed' }}>
-                    🔒 Coming Soon
-                  </div>
-                ) : tier.popular ? (
-                  <>
-                    <HomePromoField />
-                  </>
-                ) : (
-                  <Link to="/signup" style={{
-                    display: 'block',
-                    background: 'white',
-                    color: C.lavender,
-                    border: `2px solid ${C.lavender}`,
-                    padding: '12px 24px',
-                    borderRadius: '8px',
-                    textDecoration: 'none',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    textAlign: 'center'
-                  }}>
-                    {tier.cta}
-                  </Link>
-                )}
-              </div>
-            ))}
+          <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
+            <Link to="/signup" style={{ ...btnPrimary, background:'#fff', color:G.deep }}>Start Free — No Card Needed →</Link>
+            <Link to="/demo"   style={{ ...btnGhost,   color:'rgba(255,255,255,0.85)', borderColor:'rgba(255,255,255,0.3)' }}>See How It Works</Link>
           </div>
-
-          <Link to="/pricing" style={{
-            display: 'inline-block',
-            color: C.lavender,
-            textDecoration: 'none',
-            fontSize: '16px',
-            fontWeight: '600',
-            borderBottom: `2px solid ${C.lavender}`
-          }}>
-            See Full Pricing & Features →
-          </Link>
+          <p style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Free forever on Bronze · $24/mo when you're ready to grow</p>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className='bm-section-pad' style={{ background: 'white', padding: '80px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
-            Ready to Elevate Your Client Experience?
-          </h2>
-          <p style={{ fontSize: '18px', color: C.gray, marginBottom: '40px' }}>
-            You have worked hard to build your practice. BodyMap helps you protect it — one relationship at a time.
-          </p>
-          <div className="bm-hero-btns" style={{ display: 'flex', gap: '16px', justifyContent: 'center', marginBottom: '24px' }}>
-            <a href="#demo" style={{
-              background: C.sage,
-              color: 'white',
-              padding: '16px 40px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600'
-            }}>See How It Works</a>
-            <Link to="/signup" style={{
-              background: 'white',
-              color: C.lavender,
-              padding: '16px 40px',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontSize: '18px',
-              fontWeight: '600',
-              border: `2px solid ${C.lavender}`
-            }}>Start Free Trial</Link>
-          </div>
-          <p style={{ fontSize: '14px', color: '#9CA3AF' }}>
-            No credit card. No setup fees. Cancel anytime.
-          </p>
-        </div>
-      </section>
-
-      {/* Footer */}
       <Footer />
-
-    <WaitlistModal isOpen={waitlistOpen} onClose={() => setWaitlistOpen(false)} interest={waitlistInterest} />
+      {waitlistOpen && <WaitlistModal onClose={() => setWaitlistOpen(false)} />}
     </div>
   );
 }
