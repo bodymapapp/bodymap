@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import React from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
@@ -94,6 +95,31 @@ export default function Features() {
               <strong>Note:</strong> BodyMap is a communication tool for intake preferences, not medical software. No HIPAA compliance required.
             </p>
           </div>
+        </div>
+      </section>
+      <section style={{ background: "#f0f9f4", borderTop: "1px solid #c8ecd8", borderBottom: "1px solid #c8ecd8", padding: "64px 24px", textAlign: "center" }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#2d6a4f", marginBottom: "16px" }}>See It In Action</div>
+          <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 700, color: "#1a3d2b", margin: "0 0 16px", lineHeight: 1.25 }}>Experience Both Sides</h2>
+          <p style={{ fontSize: "18px", color: "#4a4a4a", lineHeight: 1.6, marginBottom: "36px" }}>No signup needed. See why clients love it — and why therapists never go back.</p>
+          <div style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/demo" style={{ display: "inline-flex", alignItems: "center", background: "#2d6a4f", color: "#fff", fontSize: "16px", fontWeight: 700, padding: "16px 32px", borderRadius: "12px", textDecoration: "none", boxShadow: "0 4px 16px rgba(45,106,79,0.28)" }}>Try the Demo →</a>
+            <a href="/signup" style={{ display: "inline-flex", alignItems: "center", background: "transparent", color: "#2d6a4f", fontSize: "16px", fontWeight: 600, padding: "15px 28px", borderRadius: "12px", textDecoration: "none", border: "1.5px solid #52b788" }}>Start Free</a>
+          </div>
+          <p style={{ marginTop: "20px", fontSize: "13px", color: "#7a7a7a" }}>No account. No credit card. 60 seconds.</p>
+        </div>
+      </section>
+
+      <section style={{ background: '#f0f9f4', borderTop: '1px solid #c8ecd8', borderBottom: '1px solid #c8ecd8', padding: '64px 24px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#2d6a4f', marginBottom: '16px' }}>See It In Action</div>
+          <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(24px,3.5vw,38px)', fontWeight: 700, color: '#1a3d2b', margin: '0 0 16px', lineHeight: 1.25 }}>Experience Both Sides</h2>
+          <p style={{ fontSize: '18px', color: '#4a4a4a', lineHeight: 1.6, marginBottom: '36px' }}>No signup needed. See why clients love it — and why therapists never go back.</p>
+          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <Link to='/demo' style={{ display: 'inline-flex', alignItems: 'center', background: '#2d6a4f', color: '#fff', fontSize: '16px', fontWeight: 700, padding: '16px 32px', borderRadius: '12px', textDecoration: 'none', boxShadow: '0 4px 16px rgba(45,106,79,0.28)' }}>Try the Demo →</Link>
+            <Link to='/signup' style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: '#2d6a4f', fontSize: '16px', fontWeight: 600, padding: '15px 28px', borderRadius: '12px', textDecoration: 'none', border: '1.5px solid #52b788' }}>Start Free</Link>
+          </div>
+          <p style={{ marginTop: '20px', fontSize: '13px', color: '#7a7a7a' }}>No account. No credit card. 60 seconds.</p>
         </div>
       </section>
       <Footer />
