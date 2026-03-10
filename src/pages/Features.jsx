@@ -3,6 +3,77 @@ import React from 'react';
 import Nav from '../components/Nav';
 import Footer from '../components/Footer';
 
+
+function TherapistCarousel() {
+  const [active, setActive] = React.useState(0);
+  const cards = [
+    { step: 'Step 1', time: '30 seconds, once', barPct: 100, barColor: '#2A5741', barLabel: '30 sec — one time only', title: 'Sign in. Send the intake form.', desc: 'Your BodyMap dashboard is live the moment you sign up. Send your first client their intake form in one tap. They handle the rest.' },
+    { step: 'Step 2', time: 'Automatic', barPct: 100, barColor: '#C9A84C', barLabel: 'Automatic — no effort needed', title: 'Their map is waiting when you are.', desc: 'Once your client fills in their intake, their body map, preferences and health notes appear instantly. Walk in already knowing their pressure, focus areas, and what to avoid.' },
+    { step: 'Step 3', time: 'Builds over time', barPct: 100, barColor: '#C9A84C', barLabel: 'Automatic — every session', title: 'BodyMap learns with every session.', desc: 'Recurring focus areas, patterns across visits, preferences. It builds quietly in the background so you never have to ask the same question twice.' }
+  ];
+  const card = cards[active];
+  return (
+    <div>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
+          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
+        </div>
+        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
+        </div>
+      </div>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
+        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {cards.map((_, i) => (<button key={i} onClick={() => setActive(i)} style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />))}
+        </div>
+        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+      </div>
+    </div>
+  );
+}
+
+function ClientCarousel() {
+  const [active, setActive] = React.useState(0);
+  const cards = [
+    { step: 'Step 1', time: 'Instant', barPct: 0, barColor: '#2A5741', barLabel: 'Zero effort', title: 'No app. No login. Just a link.', desc: 'Your therapist texts you a link. Tap it. Opens on any phone instantly. Nothing to download, nothing to remember.' },
+    { step: 'Step 2', time: '30 seconds', barPct: 100, barColor: '#2A5741', barLabel: '30 sec total', title: 'Show them what you need.', desc: 'Tap your body map to mark focus and avoid areas, then set your pressure, music and lighting preferences. Done before you sit down.' },
+    { step: 'Step 3', time: 'After every session', barPct: 100, barColor: '#C9A84C', barLabel: 'Automatic — every session', title: 'Your personal body report, automatically.', desc: 'After each session, receive a one-page summary with your body map, patterns, and a note from your therapist. Your wellness story, building over time.' }
+  ];
+  const card = cards[active];
+  return (
+    <div>
+      <div style={{ marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.step}</span>
+          <span style={{ fontSize: '12px', color: '#6B7280' }}>{card.barLabel}</span>
+        </div>
+        <div style={{ height: '6px', background: '#E8E4DC', borderRadius: '3px', overflow: 'hidden' }}>
+          <div style={{ height: '100%', width: card.barPct + '%', background: card.barColor, borderRadius: '3px', transition: 'all 0.4s ease' }} />
+        </div>
+      </div>
+      <div style={{ background: 'white', borderRadius: '20px', padding: '32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', minHeight: '200px', border: '1.5px solid #E8E4DC' }}>
+        <span style={{ display: 'inline-block', background: '#FEF9EC', color: '#C9A84C', fontSize: '12px', fontWeight: '700', padding: '4px 12px', borderRadius: '20px', border: '1px solid #F0D88A', marginBottom: '16px' }}>{card.time}</span>
+        <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '21px', fontWeight: '700', color: '#1A1A2E', marginBottom: '10px', lineHeight: '1.3' }}>{card.title}</h3>
+        <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', margin: 0 }}>{card.desc}</p>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px', marginTop: '20px' }}>
+        <button onClick={() => setActive(a => Math.max(0, a-1))} disabled={active === 0} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === 0 ? '#F5F0E8' : 'white', cursor: active === 0 ? 'default' : 'pointer', fontSize: '16px', color: active === 0 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>‹</button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {cards.map((_, i) => (<button key={i} onClick={() => setActive(i)} style={{ width: i === active ? '24px' : '8px', height: '8px', borderRadius: '4px', border: 'none', background: i === active ? '#2A5741' : '#D1CBC0', cursor: 'pointer', transition: 'all 0.3s ease', padding: 0 }} />))}
+        </div>
+        <button onClick={() => setActive(a => Math.min(cards.length-1, a+1))} disabled={active === cards.length-1} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1.5px solid #E8E4DC', background: active === cards.length-1 ? '#F5F0E8' : 'white', cursor: active === cards.length-1 ? 'default' : 'pointer', fontSize: '16px', color: active === cards.length-1 ? '#D1CBC0' : '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>›</button>
+      </div>
+    </div>
+  );
+}
+
 export default function Features() {
   const C = {
     sage: '#6B9E80',
@@ -110,16 +181,44 @@ export default function Features() {
         </div>
       </section>
 
-      <section style={{ background: '#f0f9f4', borderTop: '1px solid #c8ecd8', borderBottom: '1px solid #c8ecd8', padding: '64px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '680px', margin: '0 auto' }}>
-          <div style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: '#2d6a4f', marginBottom: '16px' }}>See It In Action</div>
-          <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(24px,3.5vw,38px)', fontWeight: 700, color: '#1a3d2b', margin: '0 0 16px', lineHeight: 1.25 }}>Experience Both Sides</h2>
-          <p style={{ fontSize: '18px', color: '#4a4a4a', lineHeight: 1.6, marginBottom: '36px' }}>No signup needed. See why clients love it — and why therapists never go back.</p>
-          <div style={{ display: 'flex', gap: '14px', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to='/demo' style={{ display: 'inline-flex', alignItems: 'center', background: '#2d6a4f', color: '#fff', fontSize: '16px', fontWeight: 700, padding: '16px 32px', borderRadius: '12px', textDecoration: 'none', boxShadow: '0 4px 16px rgba(45,106,79,0.28)' }}>Try the Demo →</Link>
-            <Link to='/signup' style={{ display: 'inline-flex', alignItems: 'center', background: 'transparent', color: '#2d6a4f', fontSize: '16px', fontWeight: 600, padding: '15px 28px', borderRadius: '12px', textDecoration: 'none', border: '1.5px solid #52b788' }}>Start Free</Link>
+      <section style={{ background: '#F5F0E8', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', textAlign: 'center', marginBottom: '12px' }}>Your Clients Tell You Once. Your Practice Remembers Forever.</h2>
+          <p style={{ fontSize: '18px', color: '#6B7280', textAlign: 'center', marginBottom: '64px' }}>Therapist setup: 30 seconds. Client intake: 30 seconds. Everything else: automatic.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '48px' }}>
+            <div>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>💆 For Therapists</p>
+              <TherapistCarousel />
+            </div>
+            <div>
+              <p style={{ fontSize: '18px', fontWeight: '700', color: '#2A5741', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '20px', textAlign: 'center' }}>📱 For Clients</p>
+              <ClientCarousel />
+            </div>
           </div>
-          <p style={{ marginTop: '20px', fontSize: '13px', color: '#7a7a7a' }}>No account. No credit card. 60 seconds.</p>
+        </div>
+      </section>
+
+      <section style={{ background: 'white', padding: '80px 24px' }}>
+        <div style={{ maxWidth: '900px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '42px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px' }}>Experience Both Sides</h2>
+          <p style={{ fontSize: '18px', color: '#6B7280', marginBottom: '48px' }}>No signup needed. See why clients love it — and why therapists never go back.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+            <div style={{ background: '#E8F5EE', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #C8E6D4' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>💆</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px' }}>Therapist Experience</h3>
+              <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', marginBottom: '8px' }}>See your dashboard before each session — body map, preferences, medical flags, and the patterns BodyMap has detected across every visit. Walk in knowing exactly what this client needs.</p>
+              <p style={{ fontSize: '13px', color: '#6B9E80', fontWeight: '600', marginBottom: '28px' }}>Free account · no credit card · live in 30 seconds →</p>
+              <Link to="/signup" style={{ display: 'inline-block', background: '#2A5741', color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>Create Free Account →</Link>
+            </div>
+            <div style={{ background: '#F5F0E8', borderRadius: '20px', padding: '40px 32px', textAlign: 'center', border: '2px solid #E8E4DC' }}>
+              <div style={{ fontSize: '52px', marginBottom: '16px' }}>📱</div>
+              <h3 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '700', color: '#1A1A2E', marginBottom: '12px' }}>Client Experience</h3>
+              <p style={{ fontSize: '15px', color: '#6B7280', lineHeight: '1.6', marginBottom: '8px' }}>Tap your body map, mark focus and avoid areas, set your preferences — exactly what your clients will do before every session.</p>
+              <p style={{ fontSize: '13px', color: '#6B9E80', fontWeight: '600', marginBottom: '28px' }}>Works on your phone right now →</p>
+              <Link to="/demo" style={{ display: 'inline-block', background: '#2A5741', color: 'white', padding: '14px 32px', borderRadius: '50px', fontFamily: 'Georgia, serif', fontSize: '16px', fontWeight: '700', textDecoration: 'none' }}>Try Client Intake →</Link>
+            </div>
+          </div>
+          <p style={{ fontSize: '13px', color: '#9CA3AF', marginTop: '24px' }}>🔒 Demo data only — nothing is saved</p>
         </div>
       </section>
       <Footer />
