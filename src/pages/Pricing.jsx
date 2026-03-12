@@ -137,7 +137,7 @@ export default function Pricing() {
     {
       name: "Gold",
       badge: "🥇",
-      price: { monthly: 49, annual: 39 },
+      price: { monthly: 19, annual: 15 },
       clients: "Up to 5 therapists",
       tagline: "Perfect for small practices",
       features: [
@@ -537,7 +537,7 @@ export default function Pricing() {
               },
               {
                 q: "Do you offer discounts for annual plans?",
-                a: "Yes. Save 20% with annual billing on Silver ($7/mo) and Gold plans."
+                a: "Yes. Save 20% with annual billing on Silver ($7/mo) and Gold ($15/mo) plans."
               }
             ].map((faq, idx) => (
               <div key={idx} style={{ 

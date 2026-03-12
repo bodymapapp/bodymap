@@ -235,9 +235,9 @@ export default function WhyBodyMap() {
               {
                 icon: '🏢',
                 title: 'Small Practice (2–5 therapists)',
-                cost: '$49/month Gold',
+                cost: '$19/month Gold',
                 retention: '3 therapists each re-engage 1 lapsed client/month',
-                value: '$3,600/year recovered. 73x ROI on Gold plan.',
+                value: '$3,600/year recovered. 16x ROI on Gold plan.',
                 impact: 'Consistent client experience across every therapist. Shared intake data. One professional brand.',
                 available: false,
                 waitlistLabel: 'Gold Plan — Launching Soon',
