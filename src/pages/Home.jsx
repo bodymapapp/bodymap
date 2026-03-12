@@ -166,9 +166,9 @@ export default function Home() {
         <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, maxWidth:500, margin:'0 auto 52px', textAlign:'center' }}>One client you almost lost — brought back by a single alert — pays for your entire year.</p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:24, maxWidth:860, margin:'0 auto 36px', alignItems:'center' }}>
           {[
-            { val:'$24',    label:'One month of BodyMap Silver',                  hi:false },
+            { val:'$9',     label:'One month of BodyMap Silver',                  hi:false },
             { val:'$1,200', label:'Revenue from one retained client over a year', hi:true, tag:'One returned client x 12 months' },
-            { val:'50x',    label:'Return on that one month, all year long',      hi:false },
+            { val:'133x',   label:'Return on that one month, all year long',      hi:false },
           ].map(card => (
             <div key={card.val} style={{ background:card.hi ? G.deep : G.card, border:`1px solid ${card.hi ? G.deep : G.border}`, borderRadius:20, padding:'32px 24px', textAlign:'center', transform:card.hi ? 'scale(1.05)' : 'scale(1)', boxShadow:card.hi ? '0 16px 40px rgba(26,61,43,0.2)' : 'none' }}>
               {card.tag && <div style={{ fontSize:12, fontWeight:700, color:G.soft, marginBottom:8 }}>{card.tag}</div>}

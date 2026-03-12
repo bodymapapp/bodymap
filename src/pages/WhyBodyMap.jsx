@@ -67,10 +67,10 @@ export default function WhyBodyMap() {
 
           <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '16px', padding: '32px', maxWidth: '600px', margin: '0 auto' }}>
             <div style={{ fontSize: '20px', fontWeight: '700', color: C.forest, marginBottom: '8px' }}>
-              One month of BodyMap costs $24.
+              One month of BodyMap costs $9.
             </div>
             <div style={{ fontSize: '16px', color: '#374151', lineHeight: 1.6 }}>
-              One lapsed client who comes back monthly for a year is worth $1,200 — that is the $24 you spent in January still paying off in December. It happens again next month. And the month after that. Not a subscription. A revenue recovery engine that compounds.
+              One lapsed client who comes back monthly for a year is worth $1,200 — that is the $9 you spent in January still paying off in December. It happens again next month. And the month after that. Not a subscription. A revenue recovery engine that compounds.
             </div>
           </div>
         </div>
@@ -226,9 +226,9 @@ export default function WhyBodyMap() {
               {
                 icon: '👤',
                 title: 'Solo Therapist',
-                cost: '$24/month Silver',
+                cost: '$9/month Silver',
                 retention: 'Re-engage just 1 lapsed client per month',
-                value: '$1,200/year recovered. BodyMap pays for itself 50x over.',
+                value: '$1,200/year recovered. BodyMap pays for itself 133x over.',
                 impact: 'You look professional, clients feel remembered, and your schedule stays full without chasing anyone.',
                 available: true
               },

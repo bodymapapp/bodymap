@@ -64,7 +64,7 @@ function PromoField({ ctaLink, onAuthRedirect }) {
         textAlign: 'center',
         marginBottom: '32px'
       }}>
-        {applied ? '🎉 Start My Free Trial — $12/mo' : 'Start 14-Day Free Trial'}
+        {applied ? '🎉 Start My Free Trial — $4.50/mo' : 'Start 14-Day Free Trial'}
       </a>
     </div>
   );
@@ -117,7 +117,7 @@ export default function Pricing() {
     {
       name: "Silver",
       badge: "🥈",
-      price: { monthly: 24, annual: 19 },
+      price: { monthly: 9, annual: 7 },
       clients: "Unlimited clients",
       tagline: "Perfect for established therapists",
       popular: true,
@@ -292,7 +292,7 @@ export default function Pricing() {
                     </div>
                     {tier.name === 'Silver' && billingCycle === 'monthly' && (
                       <div style={{ fontSize: '12px', color: '#059669', marginTop: '6px', fontWeight: '600', background: '#ECFDF5', padding: '4px 10px', borderRadius: '20px', display: 'inline-block' }}>
-                        ~50¢ per massage at 50 clients/month
+                        ~18¢ per massage at 50 clients/month
                       </div>
                     )}
                     {billingCycle === 'annual' && tier.price.annual > 0 && (
@@ -537,7 +537,7 @@ export default function Pricing() {
               },
               {
                 q: "Do you offer discounts for annual plans?",
-                a: "Yes. Save 20% with annual billing on Silver and Gold plans."
+                a: "Yes. Save 20% with annual billing on Silver ($7/mo) and Gold plans."
               }
             ].map((faq, idx) => (
               <div key={idx} style={{ 
