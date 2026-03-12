@@ -6,6 +6,7 @@ import { db, supabase } from '../lib/supabase';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
 import SessionDetail from '../components/SessionDetail';
+import ScheduleDashboard from '../components/ScheduleDashboard';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -405,6 +406,9 @@ export default function Dashboard({ view }) {
           )}
           {view === 'session-detail' && (!session || !client) && (
             <div style={{ textAlign: 'center', padding: '40px', color: C.gray }}>Loading session...</div>
+          )}
+          {view === 'schedule' && (
+            <ScheduleDashboard therapist={therapist} />
           )}
           {view === 'settings' && (
             <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
