@@ -43,12 +43,12 @@ function PromoField({ ctaLink, onAuthRedirect }) {
         </button>
       </div>
       {error && (
-        <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $12/mo — only 200 spots available.</p>
+        <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $4.50/mo — only 200 spots available.</p>
       )}
       {applied && (
         <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
           <p style={{ fontSize: '13px', color: '#2A5741', fontWeight: '700', margin: '0 0 4px 0' }}>🎉 You got 50% off for 3 months!</p>
-          <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $24/mo, you pay just <strong>$12/mo</strong> for your first 3 months. Click the button below to lock it in.</p>
+          <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $9/mo, you pay just <strong>$4.50/mo</strong> for your first 3 months. Click the button below to lock it in.</p>
         </div>
       )}
       <a href={finalLink} target="_blank" rel="noopener noreferrer" onClick={onAuthRedirect ? (e) => { e.preventDefault(); onAuthRedirect(finalLink); } : undefined} style={{
