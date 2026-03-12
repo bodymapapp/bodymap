@@ -492,7 +492,7 @@ export default function Pricing() {
 
           <div style={{ background: '#FFFBEB', padding: '20px', borderRadius: '12px', border: '1px solid #FDE68A' }}>
             <p style={{ fontSize: '14px', color: '#92400E', margin: 0 }}>
-              <strong>🚧 Coming Soon — Silver & Gold plans.</strong> Be among the first to use it. Sign up now and you'll get access the day it launches.
+              <strong>🚀 Silver is live!</strong> Try it free for 30 days — no credit card required.
             </p>
           </div>
         </div>
