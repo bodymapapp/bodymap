@@ -6,7 +6,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
-const STRIPE_SILVER = 'https://buy.stripe.com/8x26oI6wO1iEaAUgY8eQM01';
+const STRIPE_SILVER = 'https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02';
 
 function PromoField({ ctaLink, onAuthRedirect }) {
   const [code, setCode] = React.useState('');
@@ -131,7 +131,7 @@ export default function Pricing() {
         "Email support"
       ],
       cta: "Start 14-Day Free Trial",
-      ctaLink: "https://buy.stripe.com/8x26oI6wO1iEaAUgY8eQM01",
+      ctaLink: "https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02",
       external: true
     },
     {
