@@ -8,67 +8,7 @@ import { Link, useNavigate } from 'react-router-dom';
 
 const STRIPE_SILVER = 'https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02';
 
-function PromoField({ ctaLink, onAuthRedirect }) {
-  const [code, setCode] = React.useState('');
-  const [applied, setApplied] = React.useState(false);
-  const [error, setError] = React.useState(false);
-  if (new Date() > new Date('2026-04-17')) return null;
-  const validCodes = ['REDDIT50'];
-  const handleApply = () => {
-    const c = code.trim().toUpperCase();
-    if (validCodes.includes(c)) {
-      setApplied(true);
-      setError(false);
-    } else {
-      setError(true);
-      setApplied(false);
-    }
-  };
-  const finalLink = applied ? ctaLink + (ctaLink.includes('?') ? '&' : '?') + 'prefilled_promo_code=' + code.trim().toUpperCase() : ctaLink;
-  return (
-    <div style={{ marginBottom: '12px' }}>
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '6px' }}>
-        <input
-          type="text"
-          value={code}
-          onChange={(e) => { const v = e.target.value; setCode(v); setApplied(false); setError(v.length > 0 && !['REDDIT50'].includes(v.trim().toUpperCase())); }}
-          placeholder="Have a promo code?"
-          style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: applied ? '2px solid #2A5741' : error ? '2px solid #EF4444' : '1px solid #E5E7EB', fontSize: '14px', fontFamily: 'inherit', outline: 'none', color: '#374151' }}
-        />
-        <button
-          onClick={handleApply}
-          style={{ padding: '10px 16px', borderRadius: '8px', background: '#6B5FB5', color: 'white', border: 'none', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >
-          Apply
-        </button>
-      </div>
-      {error && (
-        <p style={{ fontSize: '12px', color: '#EF4444', margin: '0 0 8px 2px' }}>❌ Close! Use REDDIT50 to lock in $4.50/mo — only 200 spots available.</p>
-      )}
-      {applied && (
-        <div style={{ background: '#F0FDF4', border: '1px solid #BBF7D0', borderRadius: '8px', padding: '10px 14px', marginBottom: '10px' }}>
-          <p style={{ fontSize: '13px', color: '#2A5741', fontWeight: '700', margin: '0 0 4px 0' }}>🎉 You got 50% off for 3 months!</p>
-          <p style={{ fontSize: '12px', color: '#374151', margin: 0, lineHeight: 1.5 }}>Instead of $9/mo, you pay just <strong>$4.50/mo</strong> for your first 3 months. Click the button below to lock it in.</p>
-        </div>
-      )}
-      <a href={finalLink} target="_blank" rel="noopener noreferrer" onClick={onAuthRedirect ? (e) => { e.preventDefault(); onAuthRedirect(finalLink); } : undefined} style={{
-        display: 'block',
-        background: '#6B5FB5',
-        color: 'white',
-        border: 'none',
-        padding: '14px 24px',
-        borderRadius: '8px',
-        textDecoration: 'none',
-        fontSize: '15px',
-        fontWeight: '600',
-        textAlign: 'center',
-        marginBottom: '32px'
-      }}>
-        {applied ? '🎉 Start My Free Trial — $4.50/mo' : 'Start 14-Day Free Trial'}
-      </a>
-    </div>
-  );
-}
+
 
 
 export default function Pricing() {
@@ -130,7 +70,7 @@ export default function Pricing() {
         "Client Loyalty Program (coming soon)",
         "Email support"
       ],
-      cta: "Start 14-Day Free Trial",
+      cta: "Start 30-Day Free Trial",
       ctaLink: "https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02",
       external: true
     },
@@ -313,7 +253,20 @@ export default function Pricing() {
                     </button>
                   ) : tier.external ? (
                     <>
-                    <PromoField ctaLink={tier.ctaLink} onAuthRedirect={tier.external ? handleSilverClick : undefined} />
+                    <a href={tier.ctaLink} target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); handleSilverClick(tier.ctaLink); }} style={{
+                      display: 'block',
+                      background: '#6B5FB5',
+                      color: 'white',
+                      border: 'none',
+                      padding: '14px 24px',
+                      borderRadius: '8px',
+                      textDecoration: 'none',
+                      fontSize: '15px',
+                      fontWeight: '600',
+                      textAlign: 'center',
+                      marginBottom: '32px'
+                    }}>Start 30-Day Free Trial</a>
+                    <p style={{ fontSize: '12px', color: '#6B7280', textAlign: 'center', marginTop: '-24px', marginBottom: '16px' }}>Have a promo code? Enter it at checkout.</p>
                     </>
                   ) : (
                     <Link to={tier.ctaLink} style={{
