@@ -369,6 +369,12 @@ export default function Dashboard({ view }) {
             📋 Clients
           </button>
           <button
+            onClick={() => navigate('/dashboard/schedule')}
+            style={{ flex: 1, background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            📅 Schedule
+          </button>
+          <button
             onClick={() => navigate('/dashboard/settings')}
             style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
