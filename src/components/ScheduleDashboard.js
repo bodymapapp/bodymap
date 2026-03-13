@@ -24,11 +24,11 @@ const CLIENT_PROFILES = {
 };
 
 const APPOINTMENTS = [
-  { id:1,  client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,0),   status:'intake-done',    sessions:7 },
-  { id:2,  client:'Jennifer K.',  time:'10:30 AM', duration:90, date:addDays(TODAY,0),   status:'pending-intake', sessions:2 },
-  { id:3,  client:'Maria L.',     time:'12:00 PM', duration:60, date:addDays(TODAY,0),   status:'complete',       sessions:14 },
-  { id:4,  client:'Rachel T.',    time:'2:00 PM',  duration:60, date:addDays(TODAY,0),   status:'pending-intake', sessions:1 },
-  { id:5,  client:'Amy W.',       time:'3:30 PM',  duration:90, date:addDays(TODAY,0),   status:'intake-done',    sessions:5 },
+  { id:1,  client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,0),   status:'intake-done',    sessions:7,  sessionId:'sess-001' },
+  { id:2,  client:'Jennifer K.',  time:'10:30 AM', duration:90, date:addDays(TODAY,0),   status:'pending-intake', sessions:2,  sessionId:'sess-002' },
+  { id:3,  client:'Maria L.',     time:'12:00 PM', duration:60, date:addDays(TODAY,0),   status:'complete',       sessions:14, sessionId:'sess-003' },
+  { id:4,  client:'Rachel T.',    time:'2:00 PM',  duration:60, date:addDays(TODAY,0),   status:'pending-intake', sessions:1,  sessionId:'sess-004' },
+  { id:5,  client:'Amy W.',       time:'3:30 PM',  duration:90, date:addDays(TODAY,0),   status:'intake-done',    sessions:5,  sessionId:'sess-005' },
   { id:6,  client:'Dana P.',      time:'9:00 AM',  duration:90, date:addDays(TODAY,1),   status:'pending-intake', sessions:3 },
   { id:7,  client:'Christine B.', time:'11:00 AM', duration:60, date:addDays(TODAY,1),   status:'pending-intake', sessions:9 },
   { id:8,  client:'Lisa N.',      time:'2:00 PM',  duration:90, date:addDays(TODAY,2),   status:'pending-intake', sessions:1 },
@@ -132,6 +132,15 @@ function SlideOutPanel({ appt, intakeUrl, onClose }) {
         <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {appt.status === 'pending-intake' && (
             <a href={smsLink} style={{ display:'block', background:'#6B9E80', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>💬 Send Intake via SMS</a>
+          )}
+          {appt.status === 'intake-done' && (
+            <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#2A5741', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📋 Open Pre-Session Brief</a>
+          )}
+          {appt.status === 'complete' && (
+            <>
+              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#2A5741', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📋 Pre-Session Brief</a>
+              <a href={`/brief/post/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#6B9E80', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📄 Post-Session Brief</a>
+            </>
           )}
           <button onClick={copyLink} style={{ background:'transparent', color:'#6B9E80', border:'1.5px solid #6B9E80', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, cursor:'pointer' }}>
             {copied ? '✓ Link Copied!' : '📋 Copy Intake Link'}
@@ -452,7 +461,7 @@ export default function ScheduleDashboard({ therapist }) {
   ];
 
   return (
-    <div style={{ maxWidth:900, width:'100%' }}>
+    <div style={{ width:'100%' }}>
       <div style={{ marginBottom:20 }}>
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Schedule</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>

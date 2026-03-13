@@ -45,7 +45,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   };
 
   return (
-    <div style={{ maxWidth: 680, width: '100%' }}>
+    <div style={{ width: '100%' }}>
       <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '700', color: C2.darkGray, margin: '0 0 28px 0' }}>
         Account Settings
       </h2>
