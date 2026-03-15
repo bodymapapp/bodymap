@@ -7,6 +7,7 @@ import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
 import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
+import BillingDashboard from '../components/BillingDashboard';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -375,6 +376,12 @@ export default function Dashboard({ view }) {
             📅 Schedule
           </button>
           <button
+            onClick={() => navigate('/dashboard/billing')}
+            style={{ flex: 1, background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            💰 Billing
+          </button>
+          <button
             onClick={() => navigate('/dashboard/settings')}
             style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
@@ -415,6 +422,9 @@ export default function Dashboard({ view }) {
           )}
           {view === 'schedule' && (
             <ScheduleDashboard therapist={therapist} />
+          )}
+          {view === 'billing' && (
+            <BillingDashboard therapist={therapist} />
           )}
           {view === 'settings' && (
             <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
