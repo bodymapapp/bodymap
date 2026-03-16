@@ -289,7 +289,7 @@ function ScheduleDemo() {
         </div>
       </div>
 
-      <div style={{ padding:16 }}>
+      <div style={{ padding:16, minHeight:420 }}>
         {view==="daily" && (
           <>
             <div style={{ display:"flex", gap:6, marginBottom:14 }}>
@@ -436,7 +436,7 @@ function BillingDemo() {
           ))}
         </div>
       </div>
-      <div style={{ padding:16 }}>
+      <div style={{ padding:16, minHeight:420 }}>
         {view==="daily" && (
           <>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
@@ -777,7 +777,7 @@ function GrowthEngine() {
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48 }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48, alignItems:"start" }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
             <div style={{ width:4, height:28, background:C.forest, borderRadius:99 }}/>
@@ -785,7 +785,7 @@ function GrowthEngine() {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {retention.map((r,i)=>(
-              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", height:"100%", boxSizing:"border-box" }}>
                 <div style={{ fontSize:28, flexShrink:0 }}>{r.icon}</div>
                 <div>
                   <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:4 }}>{r.title}</div>
@@ -802,7 +802,7 @@ function GrowthEngine() {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {growth.map((g,i)=>(
-              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", opacity:g.title.includes("coming")?0.75:1 }}>
+              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", opacity:g.title.includes("coming")?0.75:1, height:"100%", boxSizing:"border-box" }}>
                 <div style={{ fontSize:28, flexShrink:0 }}>{g.icon}</div>
                 <div>
                   <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:4 }}>{g.title}</div>
@@ -1111,7 +1111,7 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start", gridAutoRows:"1fr" }}>
             <FadeIn delay={0.1}>
               <div>
                 <AIDemo />
@@ -1127,7 +1127,7 @@ export default function Features() {
                     { q:"How is my revenue trending?", a:"Compares 30-day collected vs expected, highlights your best clients", tag:"Billing" },
                     { q:"What patterns does Sarah have?", a:"Surfaces her body area frequency, pressure trend, and AI insight in seconds", tag:"Patterns" },
                   ].map(({q,a,tag})=>(
-                    <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}` }}>
+                    <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}`, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                         <div style={{ background:"#DCFCE7", color:"#16A34A", borderRadius:20, padding:"2px 10px", fontSize:10, fontWeight:700 }}>{tag}</div>
                       </div>
