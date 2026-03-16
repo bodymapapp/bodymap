@@ -456,6 +456,8 @@ function InsightsView() {
 
 export default function ScheduleDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
+  const [realBookings, setRealBookings] = useState(null);
+  const [loadingCal, setLoadingCal] = useState(false);
   // Banner if using real Cal.com data
   const usingRealData = !!realBookings;
 
