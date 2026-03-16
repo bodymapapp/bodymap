@@ -289,7 +289,7 @@ function ScheduleDemo() {
         </div>
       </div>
 
-      <div style={{ padding:16, minHeight:420 }}>
+      <div style={{ padding:16, height:460, overflow:"hidden" }}>
         {view==="daily" && (
           <>
             <div style={{ display:"flex", gap:6, marginBottom:14 }}>
@@ -333,8 +333,11 @@ function ScheduleDemo() {
 
         {view==="weekly" && (
           <>
-            <div style={{ fontSize:12, fontWeight:700, color:C.dark, marginBottom:12 }}>This Week · 22 sessions</div>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:100, marginBottom:16 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:C.dark }}>This Week · 22 sessions</div>
+              <div style={{ fontSize:10, color:C.gray }}>Sessions per day</div>
+            </div>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:6, height:100, marginBottom:8 }}>
               {weekData.map((d,i)=>(
                 <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center" }}>
                   <div style={{ fontSize:10, color:C.gray, marginBottom:4 }}>{d.sessions}</div>
@@ -360,13 +363,13 @@ function ScheduleDemo() {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3, marginBottom:4 }}>
               {["M","T","W","T","F","S","S"].map((d,i)=><div key={i} style={{ textAlign:"center", fontSize:9, color:C.gray, fontWeight:700 }}>{d}</div>)}
             </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:3, marginBottom:12 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(7,1fr)", gap:2, marginBottom:8 }}>
               {[null,null,null,null,null,1,2,...Array.from({length:29},(_,i)=>i+3)].map((d,i)=>{
                 if(!d) return <div key={i}/>;
                 const hasSessions = [3,4,5,10,11,12,17,18,19,24,25,26].includes(d);
                 const isToday = d===15;
                 return (
-                  <div key={i} style={{ aspectRatio:"1", padding:2, borderRadius:4, background:isToday?C.forest:hasSessions?"#F0FDF4":"#F9FAFB", border:`1px solid ${isToday?C.forest:hasSessions?"#86EFAC":"#E5E7EB"}`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
+                  <div key={i} style={{ padding:"4px 2px", borderRadius:4, minHeight:28, background:isToday?C.forest:hasSessions?"#F0FDF4":"#F9FAFB", border:`1px solid ${isToday?C.forest:hasSessions?"#86EFAC":"#E5E7EB"}`, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center" }}>
                     <div style={{ fontSize:9, fontWeight:isToday?700:400, color:isToday?"#fff":C.dark }}>{d}</div>
                     {hasSessions&&!isToday&&<div style={{ width:4, height:4, borderRadius:"50%", background:C.sage }}/>}
                   </div>
@@ -436,7 +439,7 @@ function BillingDemo() {
           ))}
         </div>
       </div>
-      <div style={{ padding:16, minHeight:420 }}>
+      <div style={{ padding:16, height:460, overflow:"hidden" }}>
         {view==="daily" && (
           <>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
@@ -492,9 +495,17 @@ function BillingDemo() {
                 </div>
               ))}
             </div>
-            <div style={{ display:"flex", gap:12, marginTop:8, fontSize:10 }}>
+            <div style={{ display:"flex", gap:12, marginTop:8, marginBottom:14, fontSize:10 }}>
               <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10,height:10,background:"#E5E7EB",borderRadius:2 }}/><span style={{ color:C.gray }}>Expected</span></div>
               <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10,height:10,background:C.forest,borderRadius:2 }}/><span style={{ color:C.gray }}>Collected</span></div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {[{l:"Sessions this week",v:"22",color:C.forest},{l:"Pending intake",v:"7",color:"#D97706"},{l:"Avg/session",v:"$85",color:C.sage},{l:"Collection rate",v:"86%",color:"#16A34A"}].map(s=>(
+                <div key={s.l} style={{ background:"#F9FAFB", borderRadius:8, padding:"10px 12px", border:"1px solid #E5E7EB" }}>
+                  <div style={{ fontSize:16, fontWeight:700, color:s.color, fontFamily:"Georgia,serif" }}>{s.v}</div>
+                  <div style={{ fontSize:10, color:C.gray }}>{s.l}</div>
+                </div>
+              ))}
             </div>
           </>
         )}
@@ -509,17 +520,30 @@ function BillingDemo() {
                 </div>
               ))}
             </div>
-            <div style={{ background:"#F0FDF4", borderRadius:10, padding:"10px 14px", fontSize:12, color:C.forest }}>
+            <div style={{ background:"#F0FDF4", borderRadius:10, padding:"10px 14px", fontSize:12, color:C.forest, marginBottom:12 }}>
               <strong>Q1 2026:</strong> $11,100 collected · On track for $60K annual
+            </div>
+            <div style={{ display:"flex", gap:12, marginBottom:12, fontSize:10 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10,height:10,background:"#E5E7EB",borderRadius:2 }}/><span style={{ color:C.gray }}>Expected (projected)</span></div>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10,height:10,background:C.forest,borderRadius:2 }}/><span style={{ color:C.gray }}>Collected</span></div>
+              <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10,height:10,background:C.gold,borderRadius:2 }}/><span style={{ color:C.gray }}>Current month</span></div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8 }}>
+              {[{l:"Annual pace",v:"$60K"},{l:"Best month",v:"Dec"},{l:"Growth",v:"+8%/mo"}].map(s=>(
+                <div key={s.l} style={{ background:"#F9FAFB", borderRadius:8, padding:"10px 12px", border:"1px solid #E5E7EB" }}>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.forest, fontFamily:"Georgia,serif" }}>{s.v}</div>
+                  <div style={{ fontSize:10, color:C.gray }}>{s.l}</div>
+                </div>
+              ))}
             </div>
           </>
         )}
         {view==="insights" && (
           <>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-              {[{l:"30-Day Revenue",v:"$5,440",sub:"+18% vs prior month"},{l:"Collection Rate",v:"89%",sub:"industry avg: 82%"},{l:"Avg Session Value",v:"$91",sub:"up from $85"},{l:"Outstanding",v:"$170",sub:"2 sessions"}].map(s=>(
+              {[{l:"30-Day Revenue",v:"$5,440",sub:"+18% vs prior month",color:C.forest},{l:"Collection Rate",v:"89%",sub:"industry avg: 82%",color:"#16A34A"},{l:"Avg Session Value",v:"$91",sub:"up from $85",color:C.sage},{l:"Outstanding",v:"$170",sub:"2 sessions",color:"#DC2626"}].map(s=>(
                 <div key={s.l} style={{ background:"#F9FAFB", borderRadius:8, padding:"10px 12px" }}>
-                  <div style={{ fontSize:16, fontWeight:700, color:C.forest, fontFamily:"Georgia,serif" }}>{s.v}</div>
+                  <div style={{ fontSize:16, fontWeight:700, color:s.color, fontFamily:"Georgia,serif" }}>{s.v}</div>
                   <div style={{ fontSize:11, fontWeight:600, color:C.dark }}>{s.l}</div>
                   <div style={{ fontSize:10, color:C.gray }}>{s.sub}</div>
                 </div>
@@ -777,7 +801,7 @@ function GrowthEngine() {
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48, alignItems:"start" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
             <div style={{ width:4, height:28, background:C.forest, borderRadius:99 }}/>
@@ -785,7 +809,7 @@ function GrowthEngine() {
           </div>
           <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
             {retention.map((r,i)=>(
-              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)", height:"100%", boxSizing:"border-box" }}>
+              <div key={i} style={{ display:"flex", gap:14, padding:"16px 20px", background:"#fff", borderRadius:14, border:`1px solid ${C.border}`, boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
                 <div style={{ fontSize:28, flexShrink:0 }}>{r.icon}</div>
                 <div>
                   <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:4 }}>{r.title}</div>
@@ -1111,7 +1135,7 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start", gridAutoRows:"1fr" }}>
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start" }}>
             <FadeIn delay={0.1}>
               <div>
                 <AIDemo />
@@ -1127,7 +1151,7 @@ export default function Features() {
                     { q:"How is my revenue trending?", a:"Compares 30-day collected vs expected, highlights your best clients", tag:"Billing" },
                     { q:"What patterns does Sarah have?", a:"Surfaces her body area frequency, pressure trend, and AI insight in seconds", tag:"Patterns" },
                   ].map(({q,a,tag})=>(
-                    <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}`, display:"flex", flexDirection:"column", justifyContent:"space-between" }}>
+                    <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}` }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                         <div style={{ background:"#DCFCE7", color:"#16A34A", borderRadius:20, padding:"2px 10px", fontSize:10, fontWeight:700 }}>{tag}</div>
                       </div>
