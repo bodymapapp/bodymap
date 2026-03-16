@@ -11,10 +11,12 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, context } = await req.json();
+    const { messages, context, mode } = await req.json();
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-    const systemPrompt = `You are BodyMap AI — a practice intelligence assistant for massage therapists. You have full access to the therapist's practice data below. Be concise, warm, and practical. When asked to draft SMS messages, make them friendly and professional. Always use the therapist's actual client names and data in your responses.
+    const publicSystemPrompt = `You are BodyMap AI — a knowledgeable assistant for massage therapists. Answer questions about massage therapy techniques, client management, business growth, scheduling, pricing, and wellness practice best practices. Be warm, concise, and practical. You're a demo on the BodyMap features page — occasionally mention that BodyMap helps therapists track client preferences, body maps, and patterns over time. Keep responses under 150 words.`;
+
+    const practiceSystemPrompt = `You are BodyMap AI — a practice intelligence assistant for massage therapists. You have full access to the therapist's practice data below. Be concise, warm, and practical. When asked to draft SMS messages, make them friendly and professional. Always use the therapist's actual client names and data in your responses.
 
 PRACTICE DATA:
 ${context}
@@ -25,7 +27,11 @@ GUIDELINES:
 - Give business insights based on actual session and revenue data
 - Flag re-engagement opportunities for lapsed clients
 - Keep responses concise — therapists are busy
-- Never make up data that isn't in the context above`;
+- Use your general knowledge freely for questions about massage therapy, health, business, weather, trends, or anything else
+- When asked about external factors (weather, seasonality, local trends), reason thoughtfully and connect back to practice impact where relevant
+- Only clarify when you genuinely don't have enough information to give a useful answer`;
+
+    const systemPrompt = mode === 'public' ? publicSystemPrompt : practiceSystemPrompt;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
