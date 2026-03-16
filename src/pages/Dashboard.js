@@ -8,6 +8,7 @@ import SessionList from '../components/SessionList';
 import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
+import AIDashboard from '../components/AIDashboard';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -382,6 +383,12 @@ export default function Dashboard({ view }) {
             💰 Billing
           </button>
           <button
+            onClick={() => navigate('/dashboard/ai')}
+            style={{ flex: 1, background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            🤖 AI
+          </button>
+          <button
             onClick={() => navigate('/dashboard/settings')}
             style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
@@ -425,6 +432,9 @@ export default function Dashboard({ view }) {
           )}
           {view === 'billing' && (
             <BillingDashboard therapist={therapist} />
+          )}
+          {view === 'ai' && (
+            <AIDashboard therapist={therapist} />
           )}
           {view === 'settings' && (
             <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />

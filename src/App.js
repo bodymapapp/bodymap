@@ -18,6 +18,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ScheduleDashboard from './components/ScheduleDashboard';
 import BillingDashboard from './components/BillingDashboard';
+import AIDashboard from './components/AIDashboard';
 import ClientIntake from './pages/ClientIntake';
 import ThankYou from './pages/ThankYou';
 import Feedback from './pages/Feedback';
@@ -47,6 +48,7 @@ function App() {
           <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Dashboard view="billing" /></ProtectedRoute>} />
+          <Route path="/dashboard/ai" element={<ProtectedRoute><Dashboard view="ai" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId" element={<ProtectedRoute><Dashboard view="sessions" /></ProtectedRoute>} />
           <Route path="/dashboard/clients/:clientId/sessions/:sessionId" element={<ProtectedRoute><Dashboard view="session-detail" /></ProtectedRoute>} />
           <Route path="/thank-you" element={<ThankYou />} />
