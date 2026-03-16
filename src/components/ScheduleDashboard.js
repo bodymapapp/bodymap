@@ -1,5 +1,8 @@
 // src/components/ScheduleDashboard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+
+const SUPABASE_URL = 'https://rmnqfrljoknmellbnpiy.supabase.co';
 
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
@@ -453,6 +456,9 @@ function InsightsView() {
 
 export default function ScheduleDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
+  // Banner if using real Cal.com data
+  const usingRealData = !!realBookings;
+
   const TABS = [
     { id:'daily',    label:'📋 Daily' },
     { id:'weekly',   label:'📅 Weekly' },
