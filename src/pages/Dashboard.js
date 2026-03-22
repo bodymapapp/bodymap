@@ -253,7 +253,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>📅 Cal.com Integration</p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect your Cal.com account to sync real appointments into your Schedule dashboard.</p>
-        {therapist?.cal_connected ? (
+        {(therapist?.cal_connected || therapist?.cal_api_key) ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: '10px', padding: '12px 16px', marginBottom: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <span style={{ fontSize: '18px' }}>✅</span>
@@ -463,7 +463,7 @@ export default function Dashboard({ view }) {
             </p>
           </div>
           {(!therapist?.plan || therapist?.plan === 'free') && (
-            <a href="https://buy.stripe.com/test_5kQ3cxcoC8p75UR6P7afS01" target="_blank" rel="noopener noreferrer"
+            <a href="https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02" target="_blank" rel="noopener noreferrer"
               style={{ background: '#C9A84C', color: '#fff', padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               Upgrade to Silver →
             </a>
