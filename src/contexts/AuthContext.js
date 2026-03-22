@@ -45,8 +45,11 @@ export const AuthProvider = ({ children }) => {
                   plan: 'silver'
                 }]);
                 window.location.href = '/dashboard?upgraded=true';
-              } else if (window.location.pathname !== '/onboarding') {
-                window.location.href = '/onboarding';
+              } else {
+                const provider = session.user?.app_metadata?.provider;
+                if (provider === 'google' && window.location.pathname !== '/onboarding') {
+                  window.location.href = '/onboarding';
+                }
               }
             }
           })
