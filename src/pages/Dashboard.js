@@ -250,9 +250,37 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             });
             const data = await res.json();
             if (data.url) window.location.href = data.url;
-          }} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#2A5741', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px', width: '100%', justifyContent: 'center' }}>
+          }} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#2A5741', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px', width: '100%', justifyContent: 'center' }}>
             <span>📅</span> Connect Cal.com Calendar
           </button>
+          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <button onClick={() => setShowCalKey(!showCalKey)} style={{ background: 'none', border: 'none', fontSize: '12px', color: C2.gray, cursor: 'pointer', textDecoration: 'underline' }}>
+              {showCalKey ? 'Hide' : 'Or connect manually with an API key'}
+            </button>
+          </div>
+          {showCalKey && (
+            <div style={{ background: C2.beige, borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
+              <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 10px 0', lineHeight: 1.5 }}>
+                Get your API key from <strong>cal.com → Settings → Developer → API Keys</strong>
+              </p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="password"
+                  value={calKey}
+                  onChange={e => setCalKey(e.target.value)}
+                  placeholder="cal_live_..."
+                  style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E8E4DC', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', background: '#fff' }}
+                />
+                <button onClick={async () => {
+                  await supabase.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
+                  setCalSaved(true);
+                  setTimeout(() => setCalSaved(false), 2000);
+                }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {calSaved ? '✓ Saved' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
         )}
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
         <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
@@ -304,6 +332,9 @@ export default function Dashboard({ view }) {
   const [sendCopied, setSendCopied] = useState(false);
   const [showBookmarkNudge, setShowBookmarkNudge] = useState(false);
   const [lapsedDays, setLapsedDays] = React.useState(() => parseInt(localStorage.getItem('bm_lapsed_days') || '60'));
+  const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
+  const [calSaved, setCalSaved] = React.useState(false);
+  const [showCalKey, setShowCalKey] = React.useState(false);
 
   useEffect(() => {
     if (therapist?.id) loadStats();
