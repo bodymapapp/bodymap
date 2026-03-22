@@ -470,15 +470,13 @@ export default function ScheduleDashboard({ therapist }) {
       const { data: td } = await supabase.from('therapists').select('cal_api_key').eq('id', therapist.id).single();
       if (!td?.cal_api_key) { setLoadingCal(false); return; }
       console.log('Fetching Cal.com with key:', td.cal_api_key?.slice(0,20));
-      console.log('Fetching Cal.com with key:', td.cal_api_key?.slice(0,20));
       const calRes = await fetch(`${SUPABASE_URL}/functions/v1/cal-bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ apiKey: td.cal_api_key, dateFrom: new Date(Date.now()-7*86400000).toISOString(), dateTo: new Date(Date.now()+14*86400000).toISOString() }),
       });
       const calData = await calRes.json();
-      console.log('Cal.com response:', JSON.stringify(calData).slice(0,500));
-      if (!calData.bookings?.length) { console.log('No bookings found'); setLoadingCal(false); return; }
+      if (!calData.bookings?.length) { setLoadingCal(false); return; }
       const { data: sessions } = await supabase.from('sessions').select('*, clients(name,email)').eq('therapist_id', therapist.id).order('created_at', { ascending: false });
       const { data: clients } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
       const merged = calData.bookings.map(booking => {

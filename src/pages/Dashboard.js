@@ -29,6 +29,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  const [sessionRate, setSessionRate] = React.useState(therapist?.session_rate || 85);
+  const [rateSaved, setRateSaved] = React.useState(false);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
   const [calSaved, setCalSaved] = React.useState(false);
   const [showCalKey, setShowCalKey] = React.useState(false);
@@ -225,6 +227,30 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Lapsed Threshold */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>💰 Session Rates</p>
+        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Set your default session rate. Used to calculate expected revenue in your Billing dashboard.</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: C2.beige, border: '1.5px solid #E8E4DC', borderRadius: '8px', padding: '10px 14px' }}>
+            <span style={{ fontSize: '16px', fontWeight: '700', color: C2.darkGray }}>$</span>
+            <input
+              type="number"
+              value={sessionRate}
+              onChange={e => setSessionRate(parseInt(e.target.value) || 0)}
+              min="0"
+              max="999"
+              style={{ width: '70px', border: 'none', background: 'transparent', fontSize: '18px', fontWeight: '700', color: C2.forest, fontFamily: 'Georgia, serif', outline: 'none' }}
+            />
+            <span style={{ fontSize: '13px', color: C2.gray }}>per session</span>
+          </div>
+          <button onClick={async () => {
+            const { supabase: sb } = await import('../lib/supabase');
+            await sb.from('therapists').update({ session_rate: sessionRate }).eq('id', therapist.id);
+            setRateSaved(true);
+            setTimeout(() => setRateSaved(false), 2000);
+          }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
+            {rateSaved ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>📅 Cal.com Integration</p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect your Cal.com account to sync real appointments into your Schedule dashboard.</p>
         {therapist?.cal_connected ? (
