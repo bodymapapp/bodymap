@@ -403,8 +403,16 @@ function InsightsView() {
   );
 }
 
-export default function BillingDashboard() {
+export default function BillingDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
+  const [stripeConnected, setStripeConnected] = React.useState(null);
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    import('../lib/supabase').then(({ supabase }) => {
+      supabase.from('therapists').select('stripe_account_id').eq('id', therapist.id).single()
+        .then(({ data }) => setStripeConnected(!!(data?.stripe_account_id)));
+    });
+  }, [therapist]);
   const TABS = [
     { id:'daily',    label:'📋 Daily' },
     { id:'weekly',   label:'📅 Weekly' },
