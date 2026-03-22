@@ -314,6 +314,33 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           )}
           </div>
         )}
+        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>💳 Stripe Payments</p>
+        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect Stripe to accept payments from clients and track real revenue in your Billing dashboard.</p>
+        {therapist?.stripe_account_connected ? (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:'10px', padding:'12px 16px', marginBottom:'24px' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+              <span style={{ fontSize:'18px' }}>✅</span>
+              <div>
+                <div style={{ fontSize:'13px', fontWeight:'700', color:'#2A5741' }}>Stripe Connected</div>
+                <div style={{ fontSize:'11px', color:'#6B7280' }}>Real payments tracked in Billing</div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button onClick={async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+              body: JSON.stringify({ action: 'get_oauth_url', therapist_id: therapist.id }),
+            });
+            const data = await res.json();
+            if (data.url) window.location.href = data.url;
+            else alert('Error: ' + JSON.stringify(data));
+          }} style={{ display:'flex', alignItems:'center', gap:'10px', background:'#635BFF', color:'#fff', border:'none', borderRadius:'10px', padding:'14px 20px', fontSize:'14px', fontWeight:'600', cursor:'pointer', marginBottom:'24px', width:'100%', justifyContent:'center' }}>
+            <span>💳</span> Connect Stripe Account
+          </button>
+        )}
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
         <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Clients who haven't visited in this many days will appear in the re-engagement nudge on your dashboard.</p>
