@@ -241,6 +241,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </button>
           </div>
         ) : (
+          <div>
           <button onClick={async () => {
             const { data: { session } } = await supabase.auth.getSession();
             const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
@@ -281,6 +282,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               </div>
             </div>
           )}
+          </div>
         )}
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
         <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
