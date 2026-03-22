@@ -74,7 +74,11 @@ export const AuthProvider = ({ children }) => {
       if (t) setTherapist(t);
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
+      let msg = error.message;
+      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
+      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
+      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
+      return { success: false, error: msg };
     }
   };
 
@@ -106,7 +110,11 @@ export const AuthProvider = ({ children }) => {
       const { data: t } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
       return { success: true, therapist: t };
     } catch (error) {
-      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
+      let msg = error.message;
+      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
+      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
+      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
+      return { success: false, error: msg };
     }
   };
 
@@ -116,7 +124,11 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
       return { success: true };
     } catch (error) {
-      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
+      let msg = error.message;
+      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
+      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
+      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
+      return { success: false, error: msg };
     }
   };
 
@@ -127,7 +139,11 @@ export const AuthProvider = ({ children }) => {
       setTherapist(data);
       return { success: true, data };
     } catch (error) {
-      return { success: false, error: error.message === "User already registered" ? "An account with this email already exists. Log in instead." : error.message };
+      let msg = error.message;
+      if (msg === "User already registered") msg = "An account with this email already exists. Sign in instead.";
+      else if (msg.includes("therapists_custom_url_key")) msg = "That intake URL is already taken. Please choose a different one.";
+      else if (msg.includes("duplicate key")) msg = "An account with these details already exists.";
+      return { success: false, error: msg };
     }
   };
 
