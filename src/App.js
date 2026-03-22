@@ -16,6 +16,7 @@ import Terms from './pages/Terms';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import CalConnect from './pages/CalConnect';
 import ScheduleDashboard from './components/ScheduleDashboard';
 import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
@@ -57,6 +58,7 @@ function App() {
           <Route path="/brief/pre/:sessionId" element={<PreSessionBrief />} />
           <Route path="/brief/post/:sessionId" element={<PostSessionBrief />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/dashboard/cal-connect" element={<ProtectedRoute><CalConnect /></ProtectedRoute>} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
         <Analytics />

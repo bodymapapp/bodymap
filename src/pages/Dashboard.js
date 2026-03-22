@@ -26,8 +26,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [nameError, setNameError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [photoUrl, setPhotoUrl] = React.useState(therapist?.photo_url || '');
-  const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
-  const [calSaved, setCalSaved] = React.useState(false);
+
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -224,26 +223,37 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       {/* Lapsed Threshold */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>📅 Cal.com Integration</p>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Connect your Cal.com account to sync real appointments into your Schedule dashboard.</p>
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-          <input
-            type="password"
-            value={calKey}
-            onChange={e => setCalKey(e.target.value)}
-            placeholder="cal_live_..."
-            style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E8E4DC', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', background: C2.beige }}
-          />
+        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect your Cal.com account to sync real appointments into your Schedule dashboard.</p>
+        {therapist?.cal_connected ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: '10px', padding: '12px 16px', marginBottom: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '18px' }}>✅</span>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741' }}>Cal.com Connected</div>
+                <div style={{ fontSize: '11px', color: '#6B7280' }}>Your appointments sync automatically</div>
+              </div>
+            </div>
+            <button onClick={async () => {
+              await supabase.from('therapists').update({ cal_connected: false, cal_access_token: null, cal_refresh_token: null }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ background: 'transparent', border: '1px solid #DC2626', color: '#DC2626', borderRadius: '6px', padding: '5px 12px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
           <button onClick={async () => {
-            await import('../lib/supabase').then(async ({ supabase }) => {
-              await supabase.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
-              setCalSaved(true);
-              setTimeout(() => setCalSaved(false), 2000);
+            const { data: { session } } = await supabase.auth.getSession();
+            const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+              body: JSON.stringify({ action: 'get_auth_url' }),
             });
-          }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-            {calSaved ? '✓ Saved' : 'Save'}
+            const data = await res.json();
+            if (data.url) window.location.href = data.url;
+          }} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#2A5741', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '24px', width: '100%', justifyContent: 'center' }}>
+            <span>📅</span> Connect Cal.com Calendar
           </button>
-        </div>
-        <p style={{ fontSize: '11px', color: C2.gray, margin: '0 0 24px 0' }}>Get your API key from cal.com → Settings → Developer → API Keys</p>
+        )}
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
         <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Clients who haven't visited in this many days will appear in the re-engagement nudge on your dashboard.</p>
