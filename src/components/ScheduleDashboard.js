@@ -469,6 +469,7 @@ export default function ScheduleDashboard({ therapist }) {
       const { data: td } = await supabase.from('therapists').select('cal_api_key').eq('id', therapist.id).single();
       if (!td?.cal_api_key) { setLoadingCal(false); return; }
       console.log('Fetching Cal.com with key:', td.cal_api_key?.slice(0,20));
+      console.log('Fetching Cal.com with key:', td.cal_api_key?.slice(0,20));
       const calRes = await fetch(`${SUPABASE_URL}/functions/v1/cal-bookings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
