@@ -181,7 +181,7 @@ function AppointmentCard({ appt, onClick }) {
   );
 }
 
-function DailyView({ therapist }) {
+function DailyView({ therapist, appointments: apptOverride }) {
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
@@ -458,7 +458,41 @@ export default function ScheduleDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
   const [realBookings, setRealBookings] = useState(null);
   const [loadingCal, setLoadingCal] = useState(false);
-  // Banner if using real Cal.com data
+
+  useEffect(() => { if (therapist?.id) fetchCalBookings(); }, [therapist]);
+
+  const fetchCalBookings = async () => {
+    setLoadingCal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const { data: td } = await supabase.from('therapists').select('cal_api_key').eq('id', therapist.id).single();
+      if (!td?.cal_api_key) { setLoadingCal(false); return; }
+      const calRes = await fetch(`${SUPABASE_URL}/functions/v1/cal-bookings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ apiKey: td.cal_api_key, dateFrom: new Date(Date.now()-7*86400000).toISOString(), dateTo: new Date(Date.now()+14*86400000).toISOString() }),
+      });
+      const calData = await calRes.json();
+      if (!calData.bookings?.length) { setLoadingCal(false); return; }
+      const { data: sessions } = await supabase.from('sessions').select('*, clients(name,email)').eq('therapist_id', therapist.id).order('created_at', { ascending: false });
+      const { data: clients } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
+      const merged = calData.bookings.map(booking => {
+        const bookingDate = new Date(booking.date); bookingDate.setHours(0,0,0,0);
+        const client = clients?.find(c => c.email === booking.email || c.name?.toLowerCase() === booking.client?.toLowerCase());
+        const session = sessions?.find(s => { const sd = new Date(s.created_at); sd.setHours(0,0,0,0); return s.client_id === client?.id && sd.toDateString() === bookingDate.toDateString(); });
+        const clientSessions = sessions?.filter(s => s.client_id === client?.id && s.completed) || [];
+        let status = 'pending-intake';
+        if (session?.completed) status = 'complete';
+        else if (session) status = 'intake-done';
+        const focusAreas = session ? [...(session.front_focus||[]),...(session.back_focus||[])].slice(0,3).join(', ') : '—';
+        return { id: booking.calId, client: booking.client, time: booking.time, duration: booking.duration, date: bookingDate, status, focus: focusAreas||'—', sessions: clientSessions.length, sessionId: session?.id };
+      });
+      setRealBookings(merged);
+    } catch(err) { console.error('Cal fetch error:', err); }
+    setLoadingCal(false);
+  };
+
   const usingRealData = !!realBookings;
 
   const TABS = [
@@ -474,9 +508,20 @@ export default function ScheduleDashboard({ therapist }) {
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Schedule</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
-      <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
-        🔗 <strong>Cal.com integration coming soon.</strong>&nbsp;This preview uses sample data. Your real appointments will sync automatically.
-      </div>
+      {usingRealData ? (
+        <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
+          ✅ <strong>Cal.com connected.</strong>&nbsp;Showing your real appointments with BodyMap intake status.
+          <button onClick={fetchCalBookings} style={{ marginLeft:'auto', background:'transparent', border:'1px solid #16A34A', borderRadius:6, padding:'4px 10px', fontSize:11, color:'#16A34A', cursor:'pointer' }}>↻ Refresh</button>
+        </div>
+      ) : loadingCal ? (
+        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A' }}>
+          ⏳ Connecting to Cal.com...
+        </div>
+      ) : (
+        <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
+          🔗 <strong>Cal.com not connected.</strong>&nbsp;Add your API key in Settings to see real appointments.
+        </div>
+      )}
       <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content' }}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setSubView(t.id)} style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s' }}>
