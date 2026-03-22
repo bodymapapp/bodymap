@@ -29,6 +29,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
+  const [calSaved, setCalSaved] = React.useState(false);
+  const [showCalKey, setShowCalKey] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
@@ -334,9 +337,7 @@ export default function Dashboard({ view }) {
   const [sendCopied, setSendCopied] = useState(false);
   const [showBookmarkNudge, setShowBookmarkNudge] = useState(false);
   const [lapsedDays, setLapsedDays] = React.useState(() => parseInt(localStorage.getItem('bm_lapsed_days') || '60'));
-  const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
-  const [calSaved, setCalSaved] = React.useState(false);
-  const [showCalKey, setShowCalKey] = React.useState(false);
+
 
   useEffect(() => {
     if (therapist?.id) loadStats();
