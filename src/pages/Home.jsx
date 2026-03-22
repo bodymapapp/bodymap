@@ -162,7 +162,7 @@ export default function Home() {
       </section>
       <section style={{ padding:'88px 24px', background:G.white, textAlign:'center' }}>
         <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>The Math</div>
-        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,42px)', fontWeight:700, color:G.deep, margin:'0 auto 16px', maxWidth:600, lineHeight:1.2, textAlign:'center' }}>$24 in January. Still paying off in December.</h2>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,42px)', fontWeight:700, color:G.deep, margin:'0 auto 16px', maxWidth:600, lineHeight:1.2, textAlign:'center' }}>$9 in January. Still paying off in December.</h2>
         <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, maxWidth:500, margin:'0 auto 52px', textAlign:'center' }}>One client you almost lost — brought back by a single alert — pays for your entire year.</p>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:24, maxWidth:860, margin:'0 auto 36px', alignItems:'center' }}>
           {[
@@ -177,7 +177,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <p style={{ fontSize:14, color:G.light, maxWidth:480, margin:'0 auto', lineHeight:1.6 }}>That is the $24 you spent in January still paying off in December — again in January, again in December.</p>
+        <p style={{ fontSize:14, color:G.light, maxWidth:480, margin:'0 auto', lineHeight:1.6 }}>That is the $9 you spent in January still paying off in December — again in January, again in December.</p>
       </section>
       <section style={{ background:'#f0f9f4', borderTop:'1px solid #c8ecd8', borderBottom:'1px solid #c8ecd8', padding:'64px 24px', textAlign:'center' }}>
         <div style={{ maxWidth:680, margin:'0 auto' }}>
@@ -230,7 +230,7 @@ export default function Home() {
             <Link to="/signup" style={{ ...btnPrimary, background:'#fff', color:G.deep }}>Start Free — No Card Needed</Link>
             <Link to="/demo" style={{ ...btnGhost, color:'rgba(255,255,255,0.85)', borderColor:'rgba(255,255,255,0.3)' }}>See How It Works</Link>
           </div>
-          <p style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Free forever on Bronze · $24 per month when you are ready to grow</p>
+          <p style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Free forever on Bronze · $9 per month when you are ready to grow</p>
         </div>
       </section>
       <Footer />
