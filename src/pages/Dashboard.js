@@ -276,7 +276,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E8E4DC', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', background: '#fff' }}
                 />
                 <button onClick={async () => {
-                  await supabase.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
+                  const { supabase: sb } = await import('../lib/supabase');
+                  await sb.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
                   setCalSaved(true);
                   setTimeout(() => setCalSaved(false), 2000);
                 }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
