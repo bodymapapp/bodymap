@@ -182,13 +182,14 @@ function AppointmentCard({ appt, onClick }) {
 }
 
 function DailyView({ therapist, appointments: apptOverride }) {
+  const APPTS = apptOverride || APPOINTMENTS;
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
   const days = [0,1,2,3,4].map(n => addDays(TODAY,n));
-  const todayAppts = APPOINTMENTS.filter(a => sameDay(a.date, TODAY));
+  const todayAppts = APPTS.filter(a => sameDay(a.date, TODAY));
   const selectedDate = days[selectedDay];
-  const filtered = APPOINTMENTS.filter(a => sameDay(a.date, selectedDate));
+  const filtered = APPTS.filter(a => sameDay(a.date, selectedDate));
 
   return (
     <div>
@@ -197,7 +198,7 @@ function DailyView({ therapist, appointments: apptOverride }) {
           { label:"Today's Sessions", value:todayAppts.length, sub:'scheduled', color:'#2A5741' },
           { label:'Intake Done', value:todayAppts.filter(a=>a.status==='intake-done').length, sub:'ready to review', color:'#16A34A' },
           { label:'Pending Intake', value:todayAppts.filter(a=>a.status==='pending-intake').length, sub:'send link now', color:'#D97706' },
-          { label:'This Week', value:APPOINTMENTS.filter(a=>a.date>=TODAY&&a.date<=addDays(TODAY,7)).length, sub:'total sessions', color:'#6B9E80' },
+          { label:'This Week', value:APPTS.filter(a=>a.date>=TODAY&&a.date<=addDays(TODAY,7)).length, sub:'total sessions', color:'#6B9E80' },
         ].map(s => (
           <div key={s.label} style={{ background:'#FFFFFF', borderRadius:12, padding:'20px 24px', flex:1, minWidth:120, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
             <div style={{ fontSize:28, fontWeight:700, color:s.color, fontFamily:'Georgia, serif' }}>{s.value}</div>
@@ -208,7 +209,7 @@ function DailyView({ therapist, appointments: apptOverride }) {
       </div>
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {days.map((d,i) => {
-          const count = APPOINTMENTS.filter(a=>sameDay(a.date,d)).length;
+          const count = APPTS.filter(a=>sameDay(a.date,d)).length;
           const isSel = i===selectedDay;
           return (
             <button key={i} onClick={()=>setSelectedDay(i)} style={{ background:isSel?'#2A5741':'#FFFFFF', color:isSel?'#FFFFFF':'#1F2937', border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`, borderRadius:10, padding:'10px 18px', fontSize:13, fontWeight:600, cursor:'pointer' }}>
@@ -532,7 +533,7 @@ export default function ScheduleDashboard({ therapist }) {
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView therapist={therapist} />}
+      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings} />}
       {subView==='weekly'   && <WeeklyView therapist={therapist} />}
       {subView==='monthly'  && <MonthlyView therapist={therapist} />}
       {subView==='insights' && <InsightsView />}
