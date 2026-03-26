@@ -279,7 +279,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               body: JSON.stringify({ action: 'get_auth_url' }),
             });
             const data = await res.json();
-            if (data.url) window.location.href = data.url;
+            if (data.url) window.open(data.url, '_blank');
           }} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#2A5741', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px', width: '100%', justifyContent: 'center' }}>
             <span>📅</span> Connect Cal.com Calendar
           </button>
@@ -335,7 +335,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               body: JSON.stringify({ action: 'get_oauth_url', therapist_id: therapist.id }),
             });
             const data = await res.json();
-            if (data.url) window.location.href = data.url;
+            if (data.url) window.open(data.url, '_blank');
             else alert('Error: ' + JSON.stringify(data));
           }} style={{ display:'flex', alignItems:'center', gap:'10px', background:'#635BFF', color:'#fff', border:'none', borderRadius:'10px', padding:'14px 20px', fontSize:'14px', fontWeight:'600', cursor:'pointer', marginBottom:'24px', width:'100%', justifyContent:'center' }}>
             <span>💳</span> Connect Stripe Account
