@@ -225,133 +225,131 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div>
 
-      {/* Lapsed Threshold */}
-      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>💰 Session Rates</p>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Set your default session rate. Used to calculate expected revenue in your Billing dashboard.</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: C2.beige, border: '1.5px solid #E8E4DC', borderRadius: '8px', padding: '10px 14px' }}>
-            <span style={{ fontSize: '16px', fontWeight: '700', color: C2.darkGray }}>$</span>
-            <input
-              type="number"
-              value={sessionRate}
-              onChange={e => setSessionRate(parseInt(e.target.value) || 0)}
-              min="0"
-              max="999"
-              style={{ width: '70px', border: 'none', background: 'transparent', fontSize: '18px', fontWeight: '700', color: C2.forest, fontFamily: 'Georgia, serif', outline: 'none' }}
-            />
-            <span style={{ fontSize: '13px', color: C2.gray }}>per session</span>
-          </div>
-          <button onClick={async () => {
-            const { supabase: sb } = await import('../lib/supabase');
-            await sb.from('therapists').update({ session_rate: sessionRate }).eq('id', therapist.id);
-            setRateSaved(true);
-            setTimeout(() => setRateSaved(false), 2000);
-          }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-            {rateSaved ? '✓ Saved' : 'Save'}
-          </button>
-        </div>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>📅 Cal.com Integration</p>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect your Cal.com account to sync real appointments into your Schedule dashboard.</p>
-        {(therapist?.cal_connected || therapist?.cal_api_key) ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: '10px', padding: '12px 16px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontSize: '18px' }}>✅</span>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: '700', color: '#2A5741' }}>Cal.com Connected</div>
-                <div style={{ fontSize: '11px', color: '#6B7280' }}>Your appointments sync automatically</div>
-              </div>
+      {/* Practice Settings Row — Session Rate + Lapsed Days side by side */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>💰 Session Rate</p>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6, background:C2.beige, border:'1.5px solid #E8E4DC', borderRadius:8, padding:'8px 12px', flex:1 }}>
+              <span style={{ fontSize:'15px', fontWeight:'700', color:C2.darkGray }}>$</span>
+              <input type="number" value={sessionRate} onChange={e => setSessionRate(parseInt(e.target.value)||0)} min="0" max="999"
+                style={{ width:'60px', border:'none', background:'transparent', fontSize:'17px', fontWeight:'700', color:C2.forest, fontFamily:'Georgia, serif', outline:'none' }} />
+              <span style={{ fontSize:'12px', color:C2.gray }}>/ session</span>
             </div>
             <button onClick={async () => {
-              await supabase.from('therapists').update({ cal_connected: false, cal_access_token: null, cal_refresh_token: null }).eq('id', therapist.id);
-              window.location.reload();
-            }} style={{ background: 'transparent', border: '1px solid #DC2626', color: '#DC2626', borderRadius: '6px', padding: '5px 12px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}>
-              Disconnect
+              const { supabase: sb } = await import('../lib/supabase');
+              await sb.from('therapists').update({ session_rate: sessionRate }).eq('id', therapist.id);
+              setRateSaved(true); setTimeout(() => setRateSaved(false), 2000);
+            }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:'13px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>
+              {rateSaved ? '✓' : 'Save'}
             </button>
           </div>
-        ) : (
-          <div>
-          <button onClick={async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-              body: JSON.stringify({ action: 'get_auth_url' }),
-            });
-            const data = await res.json();
-            if (data.url) window.open(data.url, '_blank');
-          }} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#2A5741', color: '#fff', border: 'none', borderRadius: '10px', padding: '14px 20px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', marginBottom: '12px', width: '100%', justifyContent: 'center' }}>
-            <span>📅</span> Connect Cal.com Calendar
-          </button>
-          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-            <button onClick={() => setShowCalKey(!showCalKey)} style={{ background: 'none', border: 'none', fontSize: '12px', color: C2.gray, cursor: 'pointer', textDecoration: 'underline' }}>
-              {showCalKey ? 'Hide' : 'Or connect manually with an API key'}
-            </button>
+          <p style={{ fontSize:'11px', color:C2.gray, margin:'8px 0 0' }}>Used for expected revenue in Billing</p>
+        </div>
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>🍂 Lapsed Threshold</p>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            <input type="number" min="1" max="365" value={lapsedDays}
+              onChange={e => { const v=parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
+              onBlur={e => { const v=parseInt(e.target.value); const c=Math.max(1,Math.min(365,isNaN(v)?60:v)); setLapsedDays(c); localStorage.setItem('bm_lapsed_days',c); setLapsedSaved(true); setTimeout(()=>setLapsedSaved(false),2000); }}
+              style={{ width:'70px', padding:'8px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:'17px', fontWeight:'700', color:C2.forest, background:C2.beige, textAlign:'center' }} />
+            <p style={{ fontSize:'13px', color:C2.darkGray, margin:0 }}>days</p>
+            {lapsedSaved && <p style={{ fontSize:'12px', color:C2.forest, fontWeight:'600', margin:0 }}>✓ Saved</p>}
           </div>
-          {showCalKey && (
-            <div style={{ background: C2.beige, borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
-              <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 10px 0', lineHeight: 1.5 }}>
-                Get your API key from <strong>cal.com → Settings → Developer → API Keys</strong>
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <input
-                  type="password"
-                  value={calKey}
-                  onChange={e => setCalKey(e.target.value)}
-                  placeholder="cal_live_..."
-                  style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E8E4DC', borderRadius: '8px', fontSize: '13px', fontFamily: 'monospace', background: '#fff' }}
-                />
-                <button onClick={async () => {
-                  const { supabase: sb } = await import('../lib/supabase');
-                  await sb.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
-                  setCalSaved(true);
-                  setTimeout(() => setCalSaved(false), 2000);
-                }} style={{ background: C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                  {calSaved ? '✓ Saved' : 'Save'}
+          <p style={{ fontSize:'11px', color:C2.gray, margin:'8px 0 0' }}>Clients flagged lapsed after this many days</p>
+        </div>
+      </div>
+
+      {/* Integrations Row — Cal.com + Stripe side by side */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
+        {/* Cal.com */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>📅 Calendar</p>
+          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Sync your bookings so clients appear in your Schedule tab automatically.</p>
+          {(therapist?.cal_connected || therapist?.cal_api_key) ? (
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span>✅</span>
+                <div>
+                  <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Calendar Connected</div>
+                  <div style={{ fontSize:'11px', color:'#6B7280' }}>Syncing automatically</div>
+                </div>
+              </div>
+              <button onClick={async () => {
+                await supabase.from('therapists').update({ cal_connected:false, cal_access_token:null, cal_refresh_token:null }).eq('id', therapist.id);
+                window.location.reload();
+              }} style={{ background:'transparent', border:'1px solid #DC2626', color:'#DC2626', borderRadius:6, padding:'4px 10px', fontSize:'11px', fontWeight:'600', cursor:'pointer' }}>
+                Disconnect
+              </button>
+            </div>
+          ) : (
+            <div>
+              <button onClick={async () => {
+                const { data: { session } } = await supabase.auth.getSession();
+                const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
+                  method:'POST',
+                  headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
+                  body: JSON.stringify({ action:'get_auth_url' }),
+                });
+                const data = await res.json();
+                if (data.url) window.open(data.url, '_blank');
+              }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#2A5741', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:8 }}>
+                📅 Connect Calendar
+              </button>
+              <div style={{ textAlign:'center' }}>
+                <button onClick={() => setShowCalKey(!showCalKey)} style={{ background:'none', border:'none', fontSize:'11px', color:C2.gray, cursor:'pointer', textDecoration:'underline' }}>
+                  {showCalKey ? 'Hide manual option' : 'Or enter key manually'}
                 </button>
               </div>
+              {showCalKey && (
+                <div style={{ background:C2.beige, borderRadius:10, padding:12, marginTop:8 }}>
+                  <p style={{ fontSize:'11px', color:C2.gray, margin:'0 0 8px 0', lineHeight:1.5 }}>
+                    Find your key at <strong>cal.com → Settings → Developer</strong>
+                  </p>
+                  <div style={{ display:'flex', gap:6 }}>
+                    <input type="password" value={calKey} onChange={e => setCalKey(e.target.value)} placeholder="cal_live_..."
+                      style={{ flex:1, padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:'12px', fontFamily:'monospace', background:'#fff' }} />
+                    <button onClick={async () => {
+                      const { supabase: sb } = await import('../lib/supabase');
+                      await sb.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
+                      setCalSaved(true); setTimeout(() => setCalSaved(false), 2000);
+                    }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 14px', borderRadius:8, fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>
+                      {calSaved ? '✓' : 'Save'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-          </div>
-        )}
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>💳 Stripe Payments</p>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0' }}>Connect Stripe to accept payments from clients and track real revenue in your Billing dashboard.</p>
-        {therapist?.stripe_account_connected ? (
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:'10px', padding:'12px 16px', marginBottom:'24px' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-              <span style={{ fontSize:'18px' }}>✅</span>
+        </div>
+
+        {/* Stripe */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💳 Payments</p>
+          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Accept payments from clients and track real revenue in your Billing tab.</p>
+          {therapist?.stripe_account_connected ? (
+            <div style={{ display:'flex', alignItems:'center', gap:8, background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+              <span>✅</span>
               <div>
-                <div style={{ fontSize:'13px', fontWeight:'700', color:'#2A5741' }}>Stripe Connected</div>
-                <div style={{ fontSize:'11px', color:'#6B7280' }}>Real payments tracked in Billing</div>
+                <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Payments Connected</div>
+                <div style={{ fontSize:'11px', color:'#6B7280' }}>Real revenue tracked in Billing</div>
               </div>
             </div>
-          </div>
-        ) : (
-          <button onClick={async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-              body: JSON.stringify({ action: 'get_oauth_url', therapist_id: therapist.id }),
-            });
-            const data = await res.json();
-            if (data.url) window.open(data.url, '_blank');
-            else alert('Error: ' + JSON.stringify(data));
-          }} style={{ display:'flex', alignItems:'center', gap:'10px', background:'#635BFF', color:'#fff', border:'none', borderRadius:'10px', padding:'14px 20px', fontSize:'14px', fontWeight:'600', cursor:'pointer', marginBottom:'24px', width:'100%', justifyContent:'center' }}>
-            <span>💳</span> Connect Stripe Account
-          </button>
-        )}
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 8px 0' }}>🍂 Lapsed Client Settings</p>
-        <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>Set how many days before a client is flagged as lapsed. Default is 60 days — adjust to match how often your clients typically book.</p>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 12px 0' }}>Clients who haven't visited in this many days will appear in the re-engagement nudge on your dashboard.</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <input type="number" min="1" max="365" value={lapsedDays}
-            onChange={e => { const v = parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
-            onBlur={e => { const v = parseInt(e.target.value); const clamped = Math.max(1, Math.min(365, isNaN(v) ? 60 : v)); setLapsedDays(clamped); localStorage.setItem('bm_lapsed_days', clamped); setLapsedSaved(true); setTimeout(() => setLapsedSaved(false), 2000); }}
-            placeholder="60"
-            style={{ width: '80px', padding: '10px 12px', border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', fontSize: '16px', fontWeight: '700', color: C2.forest, background: C2.beige, textAlign: 'center', fontFamily: 'system-ui' }} />
-          <p style={{ fontSize: '14px', color: C2.darkGray, margin: 0 }}>days since last visit</p>
-          {lapsedSaved && <p style={{ fontSize: '13px', color: C2.forest, fontWeight: '600', margin: 0 }}>✓ Saved</p>}
+          ) : (
+            <button onClick={async () => {
+              const { data: { session } } = await supabase.auth.getSession();
+              const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
+                method:'POST',
+                headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
+                body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
+              });
+              const data = await res.json();
+              if (data.url) window.open(data.url, '_blank');
+              else alert('Error: ' + JSON.stringify(data));
+            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
+              💳 Connect Payments
+            </button>
+          )}
         </div>
       </div>
 

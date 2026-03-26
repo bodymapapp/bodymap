@@ -521,7 +521,7 @@ export default function ScheduleDashboard({ therapist }) {
         </div>
       ) : (
         <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
-          🔗 <strong>Cal.com not connected.</strong>&nbsp;Add your API key in Settings to see real appointments.
+          📅 <strong>Your calendar isn't connected yet.</strong>&nbsp;Go to Settings to sync your real appointments here.
         </div>
       )}
       <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content' }}>
