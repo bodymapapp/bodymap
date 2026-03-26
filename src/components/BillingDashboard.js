@@ -507,15 +507,25 @@ export default function BillingDashboard({ therapist }) {
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
 
-      {isSampleData && <SampleDataBanner />}
+      {/* Stripe not connected — sample data, prompt to connect */}
+      {!stripeConnected && <SampleDataBanner />}
 
+      {/* Stripe connected, no real data yet — sample data but show connected state */}
+      {stripeConnected && realTransactions !== null && realTransactions.length === 0 && (
+        <div style={{ background:'#EFF6FF', border:'1.5px dashed #93C5FD', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#1D4ED8', display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:16 }}>👁️</span>
+          <div><strong>Sample data — preview only.</strong> Your Stripe is connected. Real payments will replace this preview automatically after your first session.</div>
+        </div>
+      )}
+
+      {/* Stripe connected with real transactions */}
       {stripeConnected && realTransactions && realTransactions.length > 0 && (
         <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
           ✅ <strong>Stripe Connected.</strong>&nbsp;Showing real payment data.
         </div>
       )}
 
-      {sessionRate !== DEFAULT_RATE && isSampleData && (
+      {sessionRate !== DEFAULT_RATE && (realTransactions === null || realTransactions.length === 0) && (
         <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'8px 16px', marginBottom:12, fontSize:12, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
           💰 Preview using your rate: <strong>${sessionRate}/session</strong>
         </div>
