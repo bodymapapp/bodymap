@@ -487,18 +487,6 @@ export default function BillingDashboard({ therapist }) {
     );
   }
 
-  // Connected but no transactions yet — show clean empty state
-  if (stripeConnected && realTransactions !== null && realTransactions.length === 0) {
-    return (
-      <div style={{ width:'100%' }}>
-        <div style={{ marginBottom:20 }}>
-          <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
-          <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
-        </div>
-        <EmptyBillingState />
-      </div>
-    );
-  }
 
   return (
     <div style={{ width:'100%' }}>
