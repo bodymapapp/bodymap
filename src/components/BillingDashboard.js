@@ -8,11 +8,11 @@ const sameDay = (a, b) => a.toDateString() === b.toDateString();
 const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 const fmtShort = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 const fmtMonth = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-const currency = (n) => `$${n.toFixed(0)}`;
+const currency = (n) => `$${Number(n).toFixed(0)}`;
 
 const DEFAULT_RATE = 85;
 
-const BASE_SESSIONS = [
+const SAMPLE_SESSIONS = [
   { id:1,  client:'Sarah M.',     date:addDays(TODAY,0),   time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
   { id:2,  client:'Jennifer K.',  date:addDays(TODAY,0),   time:'10:30 AM', duration:90, rate:110,          actual:null,         status:'pending' },
   { id:3,  client:'Maria L.',     date:addDays(TODAY,0),   time:'12:00 PM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
@@ -102,6 +102,32 @@ function SessionRow({ s }) {
   );
 }
 
+function EmptyBillingState() {
+  return (
+    <div style={{ background:'#FFFFFF', borderRadius:16, padding:'48px 32px', textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
+      <div style={{ fontSize:48, marginBottom:16 }}>💳</div>
+      <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', marginBottom:8 }}>No payments recorded yet</div>
+      <div style={{ fontSize:14, color:'#6B7280', maxWidth:320, margin:'0 auto 24px' }}>
+        Your Stripe account is connected. Payments from your clients will appear here automatically after your first session.
+      </div>
+      <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'12px 20px', display:'inline-block', fontSize:13, color:'#16A34A', fontWeight:600 }}>
+        ✅ Stripe Connected — Ready to receive payments
+      </div>
+    </div>
+  );
+}
+
+function SampleDataBanner() {
+  return (
+    <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
+      <span style={{ fontSize:16 }}>👁️</span>
+      <div>
+        <strong>Sample data — for preview only.</strong> Connect Stripe in Settings to track your real payments here. Your actual revenue will replace this preview automatically.
+      </div>
+    </div>
+  );
+}
+
 function DailyView({ sessions }) {
   const [dayOffset, setDayOffset] = useState(0);
   const days = [-2,-1,0,1,2].map(n=>addDays(TODAY,n));
@@ -110,7 +136,6 @@ function DailyView({ sessions }) {
   const expected = daySessions.reduce((s,x)=>s+x.rate,0);
   const actual = daySessions.reduce((s,x)=>s+(x.actual||0),0);
   const pending = daySessions.filter(s=>s.status==='pending'||s.status==='outstanding').length;
-
   return (
     <div>
       <div style={{ display:'flex', gap:12, marginBottom:24, flexWrap:'wrap' }}>
@@ -153,7 +178,6 @@ function WeeklyView({ sessions }) {
   const expected = weekSessions.reduce((s,x)=>s+x.rate,0);
   const actual = weekSessions.reduce((s,x)=>s+(x.actual||0),0);
   const maxDay = Math.max(...weekDays.map(d=>sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0)),1);
-
   return (
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
@@ -215,7 +239,6 @@ function MonthlyView({ sessions }) {
   const monthExpected = monthSessions.reduce((t,x)=>t+x.rate,0);
   const monthActual = monthSessions.reduce((t,x)=>t+(x.actual||0),0);
   const selectedDaySessions = sessions.filter(s=>sameDay(s.date,selectedDate));
-
   return (
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
@@ -271,7 +294,6 @@ function YearlyView({ sessions }) {
   const yearExpected = monthData.reduce((t,m)=>t+m.expected,0);
   const yearActual = monthData.reduce((t,m)=>t+m.actual,0);
   const yearSessions = monthData.reduce((t,m)=>t+m.count,0);
-
   return (
     <div>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
@@ -321,20 +343,15 @@ function InsightsView({ sessions }) {
   const last30Rev = last30.reduce((t,x)=>t+(x.actual||0),0);
   const prev30Rev = prev30.reduce((t,x)=>t+(x.actual||0),0);
   const growth = prev30Rev>0?Math.round(((last30Rev-prev30Rev)/prev30Rev)*100):0;
-  const collectionRate = Math.round((sessions.filter(s=>s.status==='paid').length/sessions.length)*100);
+  const collectionRate = sessions.length > 0 ? Math.round((sessions.filter(s=>s.status==='paid').length/sessions.length)*100) : 0;
   const outstanding = sessions.filter(s=>s.status==='outstanding');
   const outstandingTotal = outstanding.reduce((t,x)=>t+x.rate,0);
-
   const clientRev = {};
   sessions.forEach(s=>{ clientRev[s.client]=(clientRev[s.client]||0)+(s.actual||0); });
   const topClients = Object.entries(clientRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxRev = Math.max(...topClients.map(c=>c[1]),1);
-
   const paidSessions = sessions.filter(s=>s.actual>0);
-  const avgSession = paidSessions.length > 0
-    ? Math.round(paidSessions.reduce((t,x)=>t+(x.actual||0),0) / paidSessions.length)
-    : 0;
-
+  const avgSession = paidSessions.length>0 ? Math.round(paidSessions.reduce((t,x)=>t+(x.actual||0),0)/paidSessions.length) : 0;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
       <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
@@ -343,7 +360,6 @@ function InsightsView({ sessions }) {
         <StatCard label="Avg Session Value" value={currency(avgSession)} sub="collected" color="#6B9E80" small />
         <StatCard label="Outstanding" value={currency(outstandingTotal)} sub={`${outstanding.length} session${outstanding.length!==1?'s':''}`} color="#DC2626" small />
       </div>
-
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>⭐ Top Clients by Revenue</div>
@@ -361,7 +377,6 @@ function InsightsView({ sessions }) {
             ))}
           </div>
         </div>
-
         <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>📊 Revenue Breakdown</div>
           {[
@@ -380,7 +395,6 @@ function InsightsView({ sessions }) {
           ))}
         </div>
       </div>
-
       {outstanding.length > 0 && (
         <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:20 }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#DC2626', marginBottom:12 }}>🔴 Outstanding Payments — {currency(outstandingTotal)}</div>
@@ -389,10 +403,6 @@ function InsightsView({ sessions }) {
           </div>
         </div>
       )}
-
-      <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'12px 16px', fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
-        💳 <strong>Stripe Connect coming soon.</strong>&nbsp;Connect Stripe to accept payments directly from clients. BodyMap takes only 0.25% + 25¢ per transaction.
-      </div>
     </div>
   );
 }
@@ -401,35 +411,65 @@ export default function BillingDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
   const [stripeConnected, setStripeConnected] = useState(null);
   const [sessionRate, setSessionRate] = useState(DEFAULT_RATE);
+  const [realTransactions, setRealTransactions] = useState(null); // null = loading, [] = connected but empty, [...] = has data
 
   useEffect(() => {
     if (!therapist?.id) return;
     import('../lib/supabase').then(({ supabase }) => {
       supabase
         .from('therapists')
-        .select('stripe_account_id, session_rate')
+        .select('stripe_account_id, stripe_account_connected, session_rate')
         .eq('id', therapist.id)
         .single()
-        .then(({ data }) => {
-          if (data?.stripe_account_id) setStripeConnected(true);
-          else setStripeConnected(false);
-          if (data?.session_rate && data.session_rate > 0) {
-            setSessionRate(data.session_rate);
+        .then(async ({ data }) => {
+          const connected = !!(data?.stripe_account_id);
+          setStripeConnected(connected);
+          if (data?.session_rate && data.session_rate > 0) setSessionRate(data.session_rate);
+
+          if (connected) {
+            // Fetch real transactions from Edge Function
+            try {
+              const { data: fnData, error } = await supabase.functions.invoke('stripe-connect', {
+                body: { action: 'get_transactions', therapist_id: therapist.id }
+              });
+              if (!error && fnData?.transactions) {
+                setRealTransactions(fnData.transactions);
+              } else {
+                setRealTransactions([]);
+              }
+            } catch {
+              setRealTransactions([]);
+            }
           }
         });
     });
   }, [therapist]);
 
-  // Remap dummy sessions: replace DEFAULT_RATE placeholders with the therapist's live rate.
-  // Hardcoded 90-min rates (110) are left unchanged — those represent a different service tier.
+  // Determine which sessions to show
+  const isSampleData = !stripeConnected;
+  const isLoading = stripeConnected === null;
+
   const sessions = useMemo(() => {
-    if (sessionRate === DEFAULT_RATE) return BASE_SESSIONS;
-    return BASE_SESSIONS.map(s => ({
+    if (stripeConnected && realTransactions && realTransactions.length > 0) {
+      // Map real Stripe transactions to session format
+      return realTransactions.map((t, i) => ({
+        id: i + 1,
+        client: t.client_name || t.description || 'Client',
+        date: new Date(t.created * 1000),
+        time: new Date(t.created * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+        duration: 60,
+        rate: sessionRate,
+        actual: t.amount / 100,
+        status: t.status === 'succeeded' ? 'paid' : 'pending',
+      }));
+    }
+    // Not connected — show sample data with live session rate applied
+    return SAMPLE_SESSIONS.map(s => ({
       ...s,
       rate:   s.rate   === DEFAULT_RATE ? sessionRate : s.rate,
       actual: s.actual === DEFAULT_RATE ? sessionRate : s.actual,
     }));
-  }, [sessionRate]);
+  }, [stripeConnected, realTransactions, sessionRate]);
 
   const TABS = [
     { id:'daily',    label:'📋 Daily' },
@@ -439,27 +479,48 @@ export default function BillingDashboard({ therapist }) {
     { id:'insights', label:'📊 Insights' },
   ];
 
+  if (isLoading) {
+    return (
+      <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:64 }}>
+        <div style={{ fontSize:14, color:'#9CA3AF' }}>Loading billing data…</div>
+      </div>
+    );
+  }
+
+  // Connected but no transactions yet — show clean empty state
+  if (stripeConnected && realTransactions !== null && realTransactions.length === 0) {
+    return (
+      <div style={{ width:'100%' }}>
+        <div style={{ marginBottom:20 }}>
+          <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
+          <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
+        </div>
+        <EmptyBillingState />
+      </div>
+    );
+  }
+
   return (
     <div style={{ width:'100%' }}>
       <div style={{ marginBottom:20 }}>
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
-      {sessionRate !== DEFAULT_RATE && (
-        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'8px 16px', marginBottom:12, fontSize:12, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
-          💰 Session rate: <strong>${sessionRate}/session</strong> — pulled from your Settings.
-        </div>
-      )}
-      {stripeConnected === true && (
+
+      {isSampleData && <SampleDataBanner />}
+
+      {stripeConnected && realTransactions && realTransactions.length > 0 && (
         <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
-          ✅ <strong>Stripe Connected.</strong>&nbsp;Real payment tracking active.
+          ✅ <strong>Stripe Connected.</strong>&nbsp;Showing real payment data.
         </div>
       )}
-      {stripeConnected === false && (
-        <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
-          💳 <strong>Stripe not connected.</strong>&nbsp;Go to Settings → Connect Stripe to track real payments.
+
+      {sessionRate !== DEFAULT_RATE && isSampleData && (
+        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'8px 16px', marginBottom:12, fontSize:12, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
+          💰 Preview using your rate: <strong>${sessionRate}/session</strong>
         </div>
       )}
+
       <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content', flexWrap:'wrap' }}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setSubView(t.id)} style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s' }}>
@@ -467,6 +528,7 @@ export default function BillingDashboard({ therapist }) {
           </button>
         ))}
       </div>
+
       {subView==='daily'    && <DailyView    sessions={sessions} />}
       {subView==='weekly'   && <WeeklyView   sessions={sessions} />}
       {subView==='monthly'  && <MonthlyView  sessions={sessions} />}
