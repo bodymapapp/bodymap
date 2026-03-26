@@ -1,5 +1,5 @@
 // src/components/BillingDashboard.js
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
@@ -10,68 +10,59 @@ const fmtShort = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month:
 const fmtMonth = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 const currency = (n) => `$${n.toFixed(0)}`;
 
-const RATE = 85;
+const DEFAULT_RATE = 85;
 
-const SESSIONS = [
-  // Today
-  { id:1,  client:'Sarah M.',     date:addDays(TODAY,0),   time:'9:00 AM',  duration:60, rate:RATE,   actual:85,  status:'paid' },
-  { id:2,  client:'Jennifer K.',  date:addDays(TODAY,0),   time:'10:30 AM', duration:90, rate:110,    actual:null,status:'pending' },
-  { id:3,  client:'Maria L.',     date:addDays(TODAY,0),   time:'12:00 PM', duration:60, rate:RATE,   actual:85,  status:'paid' },
-  { id:4,  client:'Rachel T.',    date:addDays(TODAY,0),   time:'2:00 PM',  duration:60, rate:RATE,   actual:null,status:'pending' },
-  { id:5,  client:'Amy W.',       date:addDays(TODAY,0),   time:'3:30 PM',  duration:90, rate:110,    actual:null,status:'pending' },
-  // Yesterday
-  { id:6,  client:'Dana P.',      date:addDays(TODAY,-1),  time:'9:00 AM',  duration:60, rate:RATE,   actual:85,  status:'paid' },
-  { id:7,  client:'Christine B.', date:addDays(TODAY,-1),  time:'11:00 AM', duration:60, rate:RATE,   actual:85,  status:'paid' },
-  { id:8,  client:'Monica G.',    date:addDays(TODAY,-1),  time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  // 2 days ago
-  { id:9,  client:'Tanya R.',     date:addDays(TODAY,-2),  time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:10, client:'Lisa N.',      date:addDays(TODAY,-2),  time:'1:00 PM',  duration:90, rate:110,    actual:100, status:'paid' },
-  { id:11, client:'Sarah M.',     date:addDays(TODAY,-2),  time:'3:00 PM',  duration:60, rate:RATE,   actual:0,   status:'waived' },
-  // 3 days ago
-  { id:12, client:'Jennifer K.',  date:addDays(TODAY,-3),  time:'9:30 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:13, client:'Maria L.',     date:addDays(TODAY,-3),  time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  // 4 days ago
-  { id:14, client:'Amy W.',       date:addDays(TODAY,-4),  time:'10:00 AM', duration:90, rate:110,    actual:110, status:'paid' },
-  { id:15, client:'Rachel T.',    date:addDays(TODAY,-4),  time:'2:00 PM',  duration:60, rate:RATE,   actual:null,status:'outstanding' },
-  // 5-7 days ago
-  { id:16, client:'Monica G.',    date:addDays(TODAY,-5),  time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:17, client:'Dana P.',      date:addDays(TODAY,-6),  time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:18, client:'Christine B.', date:addDays(TODAY,-7),  time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  // 2 weeks ago
-  { id:19, client:'Sarah M.',     date:addDays(TODAY,-8),  time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:20, client:'Tanya R.',     date:addDays(TODAY,-9),  time:'1:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:21, client:'Lisa N.',      date:addDays(TODAY,-10), time:'3:00 PM',  duration:90, rate:110,    actual:110, status:'paid' },
-  { id:22, client:'Monica G.',    date:addDays(TODAY,-11), time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:23, client:'Maria L.',     date:addDays(TODAY,-12), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:24, client:'Jennifer K.',  date:addDays(TODAY,-13), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:25, client:'Amy W.',       date:addDays(TODAY,-14), time:'9:00 AM',  duration:90, rate:110,    actual:110, status:'paid' },
-  // 3-4 weeks ago
-  { id:26, client:'Sarah M.',     date:addDays(TODAY,-16), time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:27, client:'Dana P.',      date:addDays(TODAY,-17), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:28, client:'Christine B.', date:addDays(TODAY,-18), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:29, client:'Monica G.',    date:addDays(TODAY,-20), time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:30, client:'Tanya R.',     date:addDays(TODAY,-21), time:'3:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  // Older sessions for monthly/yearly
-  { id:31, client:'Sarah M.',     date:addDays(TODAY,-25), time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:32, client:'Maria L.',     date:addDays(TODAY,-26), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:33, client:'Jennifer K.',  date:addDays(TODAY,-28), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:34, client:'Amy W.',       date:addDays(TODAY,-30), time:'9:00 AM',  duration:90, rate:110,    actual:110, status:'paid' },
-  { id:35, client:'Monica G.',    date:addDays(TODAY,-35), time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:36, client:'Dana P.',      date:addDays(TODAY,-40), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:37, client:'Christine B.', date:addDays(TODAY,-45), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:38, client:'Tanya R.',     date:addDays(TODAY,-50), time:'3:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:39, client:'Sarah M.',     date:addDays(TODAY,-55), time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:40, client:'Maria L.',     date:addDays(TODAY,-60), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:41, client:'Monica G.',    date:addDays(TODAY,-65), time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:42, client:'Lisa N.',      date:addDays(TODAY,-70), time:'1:00 PM',  duration:90, rate:110,    actual:110, status:'paid' },
-  { id:43, client:'Jennifer K.',  date:addDays(TODAY,-75), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:44, client:'Amy W.',       date:addDays(TODAY,-80), time:'9:00 AM',  duration:90, rate:110,    actual:110, status:'paid' },
-  { id:45, client:'Sarah M.',     date:addDays(TODAY,-85), time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:46, client:'Dana P.',      date:addDays(TODAY,-90), time:'11:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:47, client:'Christine B.', date:addDays(TODAY,-95), time:'2:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:48, client:'Tanya R.',     date:addDays(TODAY,-100),time:'3:00 PM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:49, client:'Monica G.',    date:addDays(TODAY,-110),time:'10:00 AM', duration:60, rate:RATE,   actual:RATE,status:'paid' },
-  { id:50, client:'Sarah M.',     date:addDays(TODAY,-120),time:'9:00 AM',  duration:60, rate:RATE,   actual:RATE,status:'paid' },
+const BASE_SESSIONS = [
+  { id:1,  client:'Sarah M.',     date:addDays(TODAY,0),   time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:2,  client:'Jennifer K.',  date:addDays(TODAY,0),   time:'10:30 AM', duration:90, rate:110,          actual:null,         status:'pending' },
+  { id:3,  client:'Maria L.',     date:addDays(TODAY,0),   time:'12:00 PM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:4,  client:'Rachel T.',    date:addDays(TODAY,0),   time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:null,         status:'pending' },
+  { id:5,  client:'Amy W.',       date:addDays(TODAY,0),   time:'3:30 PM',  duration:90, rate:110,          actual:null,         status:'pending' },
+  { id:6,  client:'Dana P.',      date:addDays(TODAY,-1),  time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:7,  client:'Christine B.', date:addDays(TODAY,-1),  time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:8,  client:'Monica G.',    date:addDays(TODAY,-1),  time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:9,  client:'Tanya R.',     date:addDays(TODAY,-2),  time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:10, client:'Lisa N.',      date:addDays(TODAY,-2),  time:'1:00 PM',  duration:90, rate:110,          actual:100,          status:'paid' },
+  { id:11, client:'Sarah M.',     date:addDays(TODAY,-2),  time:'3:00 PM',  duration:60, rate:DEFAULT_RATE, actual:0,            status:'waived' },
+  { id:12, client:'Jennifer K.',  date:addDays(TODAY,-3),  time:'9:30 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:13, client:'Maria L.',     date:addDays(TODAY,-3),  time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:14, client:'Amy W.',       date:addDays(TODAY,-4),  time:'10:00 AM', duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:15, client:'Rachel T.',    date:addDays(TODAY,-4),  time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:null,         status:'outstanding' },
+  { id:16, client:'Monica G.',    date:addDays(TODAY,-5),  time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:17, client:'Dana P.',      date:addDays(TODAY,-6),  time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:18, client:'Christine B.', date:addDays(TODAY,-7),  time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:19, client:'Sarah M.',     date:addDays(TODAY,-8),  time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:20, client:'Tanya R.',     date:addDays(TODAY,-9),  time:'1:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:21, client:'Lisa N.',      date:addDays(TODAY,-10), time:'3:00 PM',  duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:22, client:'Monica G.',    date:addDays(TODAY,-11), time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:23, client:'Maria L.',     date:addDays(TODAY,-12), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:24, client:'Jennifer K.',  date:addDays(TODAY,-13), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:25, client:'Amy W.',       date:addDays(TODAY,-14), time:'9:00 AM',  duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:26, client:'Sarah M.',     date:addDays(TODAY,-16), time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:27, client:'Dana P.',      date:addDays(TODAY,-17), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:28, client:'Christine B.', date:addDays(TODAY,-18), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:29, client:'Monica G.',    date:addDays(TODAY,-20), time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:30, client:'Tanya R.',     date:addDays(TODAY,-21), time:'3:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:31, client:'Sarah M.',     date:addDays(TODAY,-25), time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:32, client:'Maria L.',     date:addDays(TODAY,-26), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:33, client:'Jennifer K.',  date:addDays(TODAY,-28), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:34, client:'Amy W.',       date:addDays(TODAY,-30), time:'9:00 AM',  duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:35, client:'Monica G.',    date:addDays(TODAY,-35), time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:36, client:'Dana P.',      date:addDays(TODAY,-40), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:37, client:'Christine B.', date:addDays(TODAY,-45), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:38, client:'Tanya R.',     date:addDays(TODAY,-50), time:'3:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:39, client:'Sarah M.',     date:addDays(TODAY,-55), time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:40, client:'Maria L.',     date:addDays(TODAY,-60), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:41, client:'Monica G.',    date:addDays(TODAY,-65), time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:42, client:'Lisa N.',      date:addDays(TODAY,-70), time:'1:00 PM',  duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:43, client:'Jennifer K.',  date:addDays(TODAY,-75), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:44, client:'Amy W.',       date:addDays(TODAY,-80), time:'9:00 AM',  duration:90, rate:110,          actual:110,          status:'paid' },
+  { id:45, client:'Sarah M.',     date:addDays(TODAY,-85), time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:46, client:'Dana P.',      date:addDays(TODAY,-90), time:'11:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:47, client:'Christine B.', date:addDays(TODAY,-95), time:'2:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:48, client:'Tanya R.',     date:addDays(TODAY,-100),time:'3:00 PM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:49, client:'Monica G.',    date:addDays(TODAY,-110),time:'10:00 AM', duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
+  { id:50, client:'Sarah M.',     date:addDays(TODAY,-120),time:'9:00 AM',  duration:60, rate:DEFAULT_RATE, actual:DEFAULT_RATE, status:'paid' },
 ];
 
 const STATUS_CFG = {
@@ -111,11 +102,11 @@ function SessionRow({ s }) {
   );
 }
 
-function DailyView() {
+function DailyView({ sessions }) {
   const [dayOffset, setDayOffset] = useState(0);
   const days = [-2,-1,0,1,2].map(n=>addDays(TODAY,n));
   const selectedDate = addDays(TODAY, dayOffset - 2);
-  const daySessions = SESSIONS.filter(s => sameDay(s.date, selectedDate));
+  const daySessions = sessions.filter(s => sameDay(s.date, selectedDate));
   const expected = daySessions.reduce((s,x)=>s+x.rate,0);
   const actual = daySessions.reduce((s,x)=>s+(x.actual||0),0);
   const pending = daySessions.filter(s=>s.status==='pending'||s.status==='outstanding').length;
@@ -131,7 +122,7 @@ function DailyView() {
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {days.map((d,i) => {
           const isSel = i === dayOffset;
-          const count = SESSIONS.filter(s=>sameDay(s.date,d)).length;
+          const count = sessions.filter(s=>sameDay(s.date,d)).length;
           const label = sameDay(d,TODAY)?'Today':sameDay(d,addDays(TODAY,-1))?'Yesterday':sameDay(d,addDays(TODAY,1))?'Tomorrow':fmtShort(d);
           return (
             <button key={i} onClick={()=>setDayOffset(i)} style={{ background:isSel?'#2A5741':'#FFFFFF', color:isSel?'#FFFFFF':'#1F2937', border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`, borderRadius:10, padding:'10px 18px', fontSize:13, fontWeight:600, cursor:'pointer' }}>
@@ -152,16 +143,16 @@ function DailyView() {
   );
 }
 
-function WeeklyView() {
+function WeeklyView({ sessions }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const getMonday = (d) => { const x=new Date(d); const day=x.getDay(); x.setDate(x.getDate()+(day===0?-6:1-day)); x.setHours(0,0,0,0); return x; };
   const weekStart = addDays(getMonday(TODAY), weekOffset*7);
   const weekDays = [0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const weekSessions = SESSIONS.filter(s=>s.date>=weekStart&&s.date<addDays(weekStart,7));
+  const weekSessions = sessions.filter(s=>s.date>=weekStart&&s.date<addDays(weekStart,7));
   const expected = weekSessions.reduce((s,x)=>s+x.rate,0);
   const actual = weekSessions.reduce((s,x)=>s+(x.actual||0),0);
-  const maxDay = Math.max(...weekDays.map(d=>SESSIONS.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0)),1);
+  const maxDay = Math.max(...weekDays.map(d=>sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0)),1);
 
   return (
     <div>
@@ -181,8 +172,8 @@ function WeeklyView() {
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
         {weekDays.map((d,i) => {
-          const dayRev = SESSIONS.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
-          const dayExp = SESSIONS.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
+          const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
+          const dayExp = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
           const isToday = sameDay(d,TODAY);
           const barH = Math.max((dayExp/maxDay)*100,dayExp>0?6:0);
           const actH = dayExp>0?Math.max((dayRev/dayExp)*barH,0):0;
@@ -210,7 +201,7 @@ function WeeklyView() {
   );
 }
 
-function MonthlyView() {
+function MonthlyView({ sessions }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const viewMonth = new Date(TODAY.getFullYear(), TODAY.getMonth()+monthOffset, 1);
@@ -220,10 +211,10 @@ function MonthlyView() {
   const calDays = [];
   for(let i=0;i<startOffset;i++) calDays.push(null);
   for(let i=1;i<=daysInMonth;i++) calDays.push(new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i));
-  const monthSessions = SESSIONS.filter(s=>s.date.getMonth()===viewMonth.getMonth()&&s.date.getFullYear()===viewMonth.getFullYear());
+  const monthSessions = sessions.filter(s=>s.date.getMonth()===viewMonth.getMonth()&&s.date.getFullYear()===viewMonth.getFullYear());
   const monthExpected = monthSessions.reduce((t,x)=>t+x.rate,0);
   const monthActual = monthSessions.reduce((t,x)=>t+(x.actual||0),0);
-  const selectedDaySessions = SESSIONS.filter(s=>sameDay(s.date,selectedDate));
+  const selectedDaySessions = sessions.filter(s=>sameDay(s.date,selectedDate));
 
   return (
     <div>
@@ -245,8 +236,8 @@ function MonthlyView() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:20 }}>
         {calDays.map((d,i)=>{
           if(!d) return <div key={i}/>;
-          const dayRev = SESSIONS.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
-          const dayExp = SESSIONS.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
+          const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
+          const dayExp = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
           const isToday = sameDay(d,TODAY);
           const isSel = sameDay(d,selectedDate);
           return (
@@ -269,12 +260,12 @@ function MonthlyView() {
   );
 }
 
-function YearlyView() {
+function YearlyView({ sessions }) {
   const [year, setYear] = useState(TODAY.getFullYear());
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const monthData = MONTH_NAMES.map((name,i)=>{
-    const sessions = SESSIONS.filter(s=>s.date.getFullYear()===year&&s.date.getMonth()===i);
-    return { name, expected:sessions.reduce((t,x)=>t+x.rate,0), actual:sessions.reduce((t,x)=>t+(x.actual||0),0), count:sessions.length };
+    const ms = sessions.filter(s=>s.date.getFullYear()===year&&s.date.getMonth()===i);
+    return { name, expected:ms.reduce((t,x)=>t+x.rate,0), actual:ms.reduce((t,x)=>t+(x.actual||0),0), count:ms.length };
   });
   const maxVal = Math.max(...monthData.map(m=>m.expected),1);
   const yearExpected = monthData.reduce((t,m)=>t+m.expected,0);
@@ -324,22 +315,25 @@ function YearlyView() {
   );
 }
 
-function InsightsView() {
-  const last30 = SESSIONS.filter(s=>s.date>=addDays(TODAY,-30)&&s.date<=TODAY);
-  const prev30 = SESSIONS.filter(s=>s.date>=addDays(TODAY,-60)&&s.date<addDays(TODAY,-30));
+function InsightsView({ sessions }) {
+  const last30 = sessions.filter(s=>s.date>=addDays(TODAY,-30)&&s.date<=TODAY);
+  const prev30 = sessions.filter(s=>s.date>=addDays(TODAY,-60)&&s.date<addDays(TODAY,-30));
   const last30Rev = last30.reduce((t,x)=>t+(x.actual||0),0);
   const prev30Rev = prev30.reduce((t,x)=>t+(x.actual||0),0);
   const growth = prev30Rev>0?Math.round(((last30Rev-prev30Rev)/prev30Rev)*100):0;
-  const collectionRate = Math.round((SESSIONS.filter(s=>s.status==='paid').length/SESSIONS.length)*100);
-  const outstanding = SESSIONS.filter(s=>s.status==='outstanding');
+  const collectionRate = Math.round((sessions.filter(s=>s.status==='paid').length/sessions.length)*100);
+  const outstanding = sessions.filter(s=>s.status==='outstanding');
   const outstandingTotal = outstanding.reduce((t,x)=>t+x.rate,0);
 
   const clientRev = {};
-  SESSIONS.forEach(s=>{ clientRev[s.client]=(clientRev[s.client]||0)+(s.actual||0); });
+  sessions.forEach(s=>{ clientRev[s.client]=(clientRev[s.client]||0)+(s.actual||0); });
   const topClients = Object.entries(clientRev).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const maxRev = Math.max(...topClients.map(c=>c[1]),1);
 
-  const avgSession = Math.round(SESSIONS.filter(s=>s.actual>0).reduce((t,x)=>t+(x.actual||0),0)/SESSIONS.filter(s=>s.actual>0).length);
+  const paidSessions = sessions.filter(s=>s.actual>0);
+  const avgSession = paidSessions.length > 0
+    ? Math.round(paidSessions.reduce((t,x)=>t+(x.actual||0),0) / paidSessions.length)
+    : 0;
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
@@ -371,10 +365,10 @@ function InsightsView() {
         <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>📊 Revenue Breakdown</div>
           {[
-            { label:'Paid', value:SESSIONS.filter(s=>s.status==='paid').length, color:'#16A34A' },
-            { label:'Pending', value:SESSIONS.filter(s=>s.status==='pending').length, color:'#D97706' },
-            { label:'Outstanding', value:SESSIONS.filter(s=>s.status==='outstanding').length, color:'#DC2626' },
-            { label:'Waived', value:SESSIONS.filter(s=>s.status==='waived').length, color:'#6B7280' },
+            { label:'Paid',        value:sessions.filter(s=>s.status==='paid').length,        color:'#16A34A' },
+            { label:'Pending',     value:sessions.filter(s=>s.status==='pending').length,     color:'#D97706' },
+            { label:'Outstanding', value:sessions.filter(s=>s.status==='outstanding').length, color:'#DC2626' },
+            { label:'Waived',      value:sessions.filter(s=>s.status==='waived').length,      color:'#6B7280' },
           ].map(({label,value,color})=>(
             <div key={label} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'8px 0', borderBottom:'1px solid #F3F4F6' }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -405,14 +399,38 @@ function InsightsView() {
 
 export default function BillingDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
-  const [stripeConnected, setStripeConnected] = React.useState(null);
-  React.useEffect(() => {
+  const [stripeConnected, setStripeConnected] = useState(null);
+  const [sessionRate, setSessionRate] = useState(DEFAULT_RATE);
+
+  useEffect(() => {
     if (!therapist?.id) return;
     import('../lib/supabase').then(({ supabase }) => {
-      supabase.from('therapists').select('stripe_account_id').eq('id', therapist.id).single()
-        .then(({ data }) => setStripeConnected(!!(data?.stripe_account_id)));
+      supabase
+        .from('therapists')
+        .select('stripe_account_id, session_rate')
+        .eq('id', therapist.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.stripe_account_id) setStripeConnected(true);
+          else setStripeConnected(false);
+          if (data?.session_rate && data.session_rate > 0) {
+            setSessionRate(data.session_rate);
+          }
+        });
     });
   }, [therapist]);
+
+  // Remap dummy sessions: replace DEFAULT_RATE placeholders with the therapist's live rate.
+  // Hardcoded 90-min rates (110) are left unchanged — those represent a different service tier.
+  const sessions = useMemo(() => {
+    if (sessionRate === DEFAULT_RATE) return BASE_SESSIONS;
+    return BASE_SESSIONS.map(s => ({
+      ...s,
+      rate:   s.rate   === DEFAULT_RATE ? sessionRate : s.rate,
+      actual: s.actual === DEFAULT_RATE ? sessionRate : s.actual,
+    }));
+  }, [sessionRate]);
+
   const TABS = [
     { id:'daily',    label:'📋 Daily' },
     { id:'weekly',   label:'📅 Weekly' },
@@ -427,6 +445,11 @@ export default function BillingDashboard({ therapist }) {
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
+      {sessionRate !== DEFAULT_RATE && (
+        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'8px 16px', marginBottom:12, fontSize:12, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
+          💰 Session rate: <strong>${sessionRate}/session</strong> — pulled from your Settings.
+        </div>
+      )}
       {stripeConnected === true && (
         <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
           ✅ <strong>Stripe Connected.</strong>&nbsp;Real payment tracking active.
@@ -444,11 +467,11 @@ export default function BillingDashboard({ therapist }) {
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView />}
-      {subView==='weekly'   && <WeeklyView />}
-      {subView==='monthly'  && <MonthlyView />}
-      {subView==='yearly'   && <YearlyView />}
-      {subView==='insights' && <InsightsView />}
+      {subView==='daily'    && <DailyView    sessions={sessions} />}
+      {subView==='weekly'   && <WeeklyView   sessions={sessions} />}
+      {subView==='monthly'  && <MonthlyView  sessions={sessions} />}
+      {subView==='yearly'   && <YearlyView   sessions={sessions} />}
+      {subView==='insights' && <InsightsView sessions={sessions} />}
     </div>
   );
 }
