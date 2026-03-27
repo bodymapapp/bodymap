@@ -22,7 +22,7 @@ serve(async (req) => {
     // Action: get_auth_url - generate the Cal.com OAuth URL
     if (action === 'get_auth_url') {
       const redirectUri = 'https://www.mybodymap.app/dashboard/cal-connect';
-      const authUrl = `https://app.cal.com/oauth/authorize?client_id=${CAL_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code`;
+      const authUrl = `https://app.cal.com/auth/oauth2/authorize?client_id=${CAL_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=BOOKING_READ%20PROFILE_READ`;
       return new Response(JSON.stringify({ url: authUrl }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
