@@ -520,8 +520,9 @@ export default function ScheduleDashboard({ therapist }) {
           ⏳ Connecting to Cal.com...
         </div>
       ) : (
-        <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#92400E', display:'flex', alignItems:'center', gap:8 }}>
-          📅 <strong>Your calendar isn't connected yet.</strong>&nbsp;Go to Settings to sync your real appointments here.
+        <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
+          <span style={{ fontSize:16 }}>👁️</span>
+          <div><strong>Sample schedule — for preview only.</strong> Go to Settings → Connect Calendar to see your real appointments here.</div>
         </div>
       )}
       <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content' }}>
