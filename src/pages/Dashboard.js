@@ -285,14 +285,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           ) : (
             <div>
               <button onClick={async () => {
-                const { data: { session } } = await supabase.auth.getSession();
-                const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
-                  method:'POST',
-                  headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
-                  body: JSON.stringify({ action:'get_auth_url' }),
+                const { data, error } = await supabase.functions.invoke('cal-oauth', {
+                  body: { action: 'get_auth_url' },
                 });
-                const data = await res.json();
-                if (data.url) window.open(data.url, '_blank');
+                if (data?.url) window.open(data.url, '_blank');
               }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#2A5741', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:8 }}>
                 📅 Connect Calendar
               </button>
