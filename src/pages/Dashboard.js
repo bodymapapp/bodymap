@@ -285,10 +285,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           ) : (
             <div>
               <button onClick={async () => {
-                const { data, error } = await supabase.functions.invoke('cal-oauth', {
-                  body: { action: 'get_auth_url' },
-                });
-                if (data?.url) window.open(data.url, '_blank');
+                const CAL_CLIENT_ID = '85e8e56eaa0724d2ccdaf4333db44413772b3f79c29f8090753f13cd10ccc6b9';
+                const redirectUri = encodeURIComponent('https://www.mybodymap.app/dashboard/cal-connect');
+                const calUrl = `https://app.cal.com/auth/oauth2/authorize?client_id=${CAL_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=BOOKING_READ%20PROFILE_READ`;
+                window.open(calUrl, '_blank');
               }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#2A5741', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:8 }}>
                 📅 Connect Calendar
               </button>
