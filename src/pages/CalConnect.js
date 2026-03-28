@@ -24,23 +24,24 @@ export default function CalConnect() {
 
   const exchangeCode = async (code) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      // Wait for therapist to load if not yet available
+      const { data: { user } } = await supabase.auth.getUser();
+      const therapistId = therapist?.id || user?.id;
+      if (!therapistId) { setStatus('error'); return; }
 
-      const res = await fetch(`${SUPABASE_URL}/functions/v1/cal-oauth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ action: 'exchange_code', code, therapist_id: therapist?.id }),
+      const { data, error } = await supabase.functions.invoke('cal-oauth', {
+        body: { action: 'exchange_code', code, therapist_id: therapistId },
       });
 
-      const data = await res.json();
-      if (data.success) {
+      if (data?.success) {
         setStatus('success');
         setTimeout(() => navigate('/dashboard/settings'), 2000);
       } else {
+        console.error('Cal exchange error:', error, data);
         setStatus('error');
       }
-    } catch {
+    } catch(e) {
+      console.error('Cal connect exception:', e);
       setStatus('error');
     }
   };
