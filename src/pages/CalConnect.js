@@ -20,15 +20,20 @@ export default function CalConnect() {
     if (error) { setStatus('error'); return; }
     if (!code) { setStatus('error'); return; }
 
-    exchangeCode(code);
+    const state = params.get('state');
+    exchangeCode(code, state);
   }, []);
 
-  const exchangeCode = async (code) => {
+  const exchangeCode = async (code, state) => {
     try {
-      // Wait for therapist to load if not yet available
-      const { data: { user } } = await supabase.auth.getUser();
-      const therapistId = therapist?.id || user?.id;
-      if (!therapistId) { setStatus('error'); return; }
+      // Get therapist_id from state param (passed during OAuth initiation)
+      // Fall back to auth session if available
+      let therapistId = state ? decodeURIComponent(state) : null;
+      if (!therapistId) {
+        const { data: { user } } = await supabase.auth.getUser();
+        therapistId = user?.id;
+      }
+      if (!therapistId) { setStatus('error'); setErrorDetail('No therapist ID found'); return; }
 
       const { data, error } = await supabase.functions.invoke('cal-oauth', {
         body: { action: 'exchange_code', code, therapist_id: therapistId },
