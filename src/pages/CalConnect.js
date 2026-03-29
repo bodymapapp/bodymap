@@ -8,6 +8,7 @@ const SUPABASE_URL = 'https://rmnqfrljoknmellbnpiy.supabase.co';
 
 export default function CalConnect() {
   const [status, setStatus] = useState('connecting');
+  const [errorDetail, setErrorDetail] = useState('');
   const { therapist } = useAuth();
   const navigate = useNavigate();
 
@@ -39,6 +40,7 @@ export default function CalConnect() {
       } else {
         console.error('Cal exchange error:', error, data);
         setStatus('error');
+        setErrorDetail(JSON.stringify(data || error || 'unknown'));
       }
     } catch(e) {
       console.error('Cal connect exception:', e);
@@ -68,6 +70,7 @@ export default function CalConnect() {
             <div style={{ fontSize:48, marginBottom:16 }}>❌</div>
             <div style={{ fontSize:20, fontWeight:700, color:'#DC2626', marginBottom:8, fontFamily:'Georgia, serif' }}>Connection Failed</div>
             <div style={{ fontSize:14, color:'#6B7280', marginBottom:24 }}>Something went wrong. Please try again.</div>
+            {errorDetail && <div style={{ fontSize:11, color:'#9CA3AF', marginBottom:16, wordBreak:'break-all', textAlign:'left', background:'#F9FAFB', padding:8, borderRadius:8 }}>{errorDetail}</div>}
             <button onClick={() => navigate('/dashboard/settings')} style={{ background:'#2A5741', color:'#fff', border:'none', borderRadius:50, padding:'12px 28px', fontSize:14, fontWeight:600, cursor:'pointer' }}>Back to Settings</button>
           </>
         )}
