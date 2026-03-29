@@ -17,6 +17,155 @@ const C = {
 };
 
 
+function ServicesAndAvailability({ therapist }) {
+  const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+  const [services, setServices] = React.useState([]);
+  const [availability, setAvailability] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [newSvc, setNewSvc] = React.useState({ name:'', duration:60, price:85, description:'' });
+  const [addingSvc, setAddingSvc] = React.useState(false);
+  const [savingSvc, setSavingSvc] = React.useState(false);
+
+  const DAYS = [{id:1,label:'Mon'},{id:2,label:'Tue'},{id:3,label:'Wed'},{id:4,label:'Thu'},{id:5,label:'Fri'},{id:6,label:'Sat'},{id:0,label:'Sun'}];
+
+  React.useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
+
+  async function load() {
+    const [{ data: svcs }, { data: avail }] = await Promise.all([
+      supabase.from('services').select('*').eq('therapist_id', therapist.id).order('duration'),
+      supabase.from('availability').select('*').eq('therapist_id', therapist.id),
+    ]);
+    setServices(svcs || []);
+    setAvailability(avail || []);
+    setLoading(false);
+  }
+
+  async function addService() {
+    if (!newSvc.name.trim()) return;
+    setSavingSvc(true);
+    const { data } = await supabase.from('services').insert({ ...newSvc, therapist_id: therapist.id, active: true }).select().single();
+    setServices(s => [...s, data]);
+    setNewSvc({ name:'', duration:60, price:85, description:'' });
+    setAddingSvc(false);
+    setSavingSvc(false);
+  }
+
+  async function toggleService(svc) {
+    await supabase.from('services').update({ active: !svc.active }).eq('id', svc.id);
+    setServices(s => s.map(x => x.id === svc.id ? { ...x, active: !x.active } : x));
+  }
+
+  async function deleteService(id) {
+    await supabase.from('services').delete().eq('id', id);
+    setServices(s => s.filter(x => x.id !== id));
+  }
+
+  async function toggleDay(dow) {
+    const existing = availability.find(a => a.day_of_week === dow);
+    if (existing) {
+      await supabase.from('availability').update({ active: !existing.active }).eq('id', existing.id);
+      setAvailability(a => a.map(x => x.id === existing.id ? { ...x, active: !x.active } : x));
+    } else {
+      const { data } = await supabase.from('availability').insert({ therapist_id: therapist.id, day_of_week: dow, start_time: '09:00', end_time: '17:00', active: true }).select().single();
+      setAvailability(a => [...a, data]);
+    }
+  }
+
+  async function updateHours(id, field, val) {
+    await supabase.from('availability').update({ [field]: val }).eq('id', id);
+    setAvailability(a => a.map(x => x.id === id ? { ...x, [field]: val } : x));
+  }
+
+  if (loading) return null;
+
+  return (
+    <div style={{ marginBottom:20 }}>
+      {/* Services */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+          <div>
+            <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:0 }}>💆 Services</p>
+            <p style={{ fontSize:'12px', color:C2.gray, margin:'4px 0 0' }}>What you offer on your booking page</p>
+          </div>
+          <button onClick={() => setAddingSvc(true)} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:8, padding:'8px 14px', fontSize:'12px', fontWeight:700, cursor:'pointer' }}>+ Add</button>
+        </div>
+        {services.length === 0 && !addingSvc && (
+          <div style={{ textAlign:'center', padding:'20px 0', color:C2.gray, fontSize:13 }}>
+            No services yet. Add your first one above.
+          </div>
+        )}
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {services.map(svc => (
+            <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:12, background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, padding:'12px 14px', opacity:svc.active?1:0.6 }}>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:14, fontWeight:700, color:C2.darkGray }}>{svc.name}</div>
+                <div style={{ fontSize:12, color:C2.gray }}>{svc.duration} min · ${svc.price}</div>
+              </div>
+              <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:6, padding:'4px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer' }}>
+                {svc.active ? 'Active' : 'Off'}
+              </button>
+              <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16, padding:'4px' }}>×</button>
+            </div>
+          ))}
+        </div>
+        {addingSvc && (
+          <div style={{ background:'#F9FAFB', borderRadius:10, padding:16, marginTop:12 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 80px', gap:8, marginBottom:8 }}>
+              <input value={newSvc.name} onChange={e => setNewSvc(s => ({...s, name:e.target.value}))} placeholder="Service name (e.g. Deep Tissue)"
+                style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, fontFamily:'system-ui', outline:'none' }} />
+              <input type="number" value={newSvc.duration} onChange={e => setNewSvc(s => ({...s, duration:parseInt(e.target.value)||60}))} placeholder="Min"
+                style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, textAlign:'center', outline:'none' }} />
+              <div style={{ display:'flex', alignItems:'center', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'0 8px', background:'#fff' }}>
+                <span style={{ fontSize:13, color:C2.gray }}>$</span>
+                <input type="number" value={newSvc.price} onChange={e => setNewSvc(s => ({...s, price:parseInt(e.target.value)||0}))}
+                  style={{ flex:1, border:'none', fontSize:13, background:'transparent', outline:'none', textAlign:'center' }} />
+              </div>
+            </div>
+            <input value={newSvc.description} onChange={e => setNewSvc(s => ({...s, description:e.target.value}))} placeholder="Description (optional)"
+              style={{ width:'100%', padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, fontFamily:'system-ui', boxSizing:'border-box', marginBottom:8, outline:'none' }} />
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={addService} disabled={savingSvc} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:8, padding:'9px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
+                {savingSvc ? 'Saving...' : 'Save Service'}
+              </button>
+              <button onClick={() => setAddingSvc(false)} style={{ background:'transparent', color:C2.gray, border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 14px', fontSize:13, cursor:'pointer' }}>Cancel</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Availability */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px' }}>🕐 Working Hours</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>Set which days and hours you're available for bookings.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          {DAYS.map(({ id: dow, label }) => {
+            const avail = availability.find(a => a.day_of_week === dow);
+            const isOn = avail?.active;
+            return (
+              <div key={dow} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1.5px solid ${isOn?C2.lightGray:'transparent'}` }}>
+                <button onClick={() => toggleDay(dow)} style={{ width:40, height:22, borderRadius:11, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+                  <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
+                </button>
+                <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:C2.gray, width:36 }}>{label}</span>
+                {isOn && avail && (
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
+                    <input type="time" value={avail.start_time} onChange={e => updateHours(avail.id, 'start_time', e.target.value)}
+                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none' }} />
+                    <span style={{ fontSize:12, color:C2.gray }}>to</span>
+                    <input type="time" value={avail.end_time} onChange={e => updateHours(avail.id, 'end_time', e.target.value)}
+                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none' }} />
+                  </div>
+                )}
+                {!isOn && <span style={{ fontSize:12, color:'#D1D5DB' }}>Unavailable</span>}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
@@ -331,6 +480,26 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           )}
         </div>
       </div>
+
+      {/* Booking Link */}
+      <div style={{ background:`linear-gradient(135deg,${C2.forest}08,${C2.sage}15)`, border:`1.5px solid ${C2.sage}40`, borderRadius:14, padding:20, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.sage, margin:'0 0 6px' }}>📅 Your Booking Link</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you — no back-and-forth needed.</p>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {window.location.origin}/book/{therapist?.custom_url}
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/book/${therapist?.custom_url}`); }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'9px 16px', borderRadius:8, fontSize:'12px', fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+            Copy
+          </button>
+          <a href={`/book/${therapist?.custom_url}`} target="_blank" rel="noreferrer" style={{ background:C2.forest, color:'#fff', border:'none', padding:'9px 14px', borderRadius:8, fontSize:'12px', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+            Preview →
+          </a>
+        </div>
+      </div>
+
+      {/* Services + Availability */}
+      <ServicesAndAvailability therapist={therapist} />
 
       {/* Plan */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
