@@ -3,581 +3,601 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const SUPABASE_URL = 'https://rmnqfrljoknmellbnpiy.supabase.co';
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
+const sameDay = (a,b) => a.toDateString()===b.toDateString();
+const fmt12 = t => { if(!t) return ''; const [h,m]=t.toString().split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
+const fmtDay = d => d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+const fmtShort = d => d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+const fmtMonth = d => d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+const initials = name => name?.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2)||'?';
+const AVATAR_COLORS = ['#2A5741','#3B6B8A','#7B5EA7','#C05621','#276749','#2C5282','#702459'];
+const avatarColor = name => AVATAR_COLORS[(name?.charCodeAt(0)||0)%AVATAR_COLORS.length];
 
-const TODAY = new Date();
-TODAY.setHours(0,0,0,0);
-
-const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const sameDay = (a, b) => a.toDateString() === b.toDateString();
-const fmt = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-const fmtShort = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-const fmtMonth = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-const CLIENT_PROFILES = {
-  'Sarah M.':     { phone: '(512) 555-0101', memberSince: 'Aug 2025', pressure: 4, music: 'Soft jazz',     temp: 'Warm',    focus: ['Neck', 'Left Shoulder', 'Upper Back'], avoid: ['Knees'],    notes: 'Prefers quiet, no conversation during session' },
-  'Jennifer K.':  { phone: '(512) 555-0202', memberSince: 'Jan 2026', pressure: 2, music: 'Nature sounds', temp: 'Neutral', focus: ['Lower Back', 'Hips'],               avoid: [],           notes: 'New client, first-time massage' },
-  'Maria L.':     { phone: '(512) 555-0303', memberSince: 'Mar 2025', pressure: 5, music: 'None',          temp: 'Cool',    focus: ['Lower Back', 'Glutes', 'Hamstrings'],avoid: ['Abdomen'],  notes: 'Deep tissue preferred, chronic lower back pain' },
-  'Rachel T.':    { phone: '(512) 555-0404', memberSince: 'Feb 2026', pressure: 3, music: 'Soft piano',    temp: 'Warm',    focus: ['Shoulders'],                         avoid: [],           notes: '' },
-  'Amy W.':       { phone: '(512) 555-0505', memberSince: 'Oct 2025', pressure: 3, music: 'Ambient',       temp: 'Warm',    focus: ['Full Back', 'Neck'],                 avoid: ['Head'],     notes: 'Sensitive to scented oils' },
-  'Dana P.':      { phone: '(512) 555-0606', memberSince: 'Dec 2025', pressure: 4, music: 'Classical',     temp: 'Warm',    focus: ['Upper Back', 'Shoulders'],           avoid: [],           notes: '' },
-  'Christine B.': { phone: '(512) 555-0707', memberSince: 'Jun 2025', pressure: 3, music: 'R&B',           temp: 'Neutral', focus: ['Legs', 'Feet'],                      avoid: ['Back'],     notes: 'Runner — focuses on legs and feet' },
-  'Lisa N.':      { phone: '(512) 555-0808', memberSince: 'Mar 2026', pressure: 2, music: 'Soft jazz',     temp: 'Warm',    focus: ['Neck'],                              avoid: ['Lower Back'],notes: '' },
-  'Tanya R.':     { phone: '(512) 555-0909', memberSince: 'Nov 2025', pressure: 4, music: 'None',          temp: 'Cool',    focus: ['Shoulders', 'Arms'],                 avoid: [],           notes: 'Desk worker, tension in shoulders' },
-  'Monica G.':    { phone: '(512) 555-1010', memberSince: 'Apr 2025', pressure: 5, music: 'Classical',     temp: 'Warm',    focus: ['Full Body'],                         avoid: ['Knees','Feet'], notes: 'Monthly regular, prefers consistent routine' },
-};
-
-const APPOINTMENTS = [
-  { id:1,  client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,0),   status:'intake-done',    sessions:7,  sessionId:'sess-001' },
-  { id:2,  client:'Jennifer K.',  time:'10:30 AM', duration:90, date:addDays(TODAY,0),   status:'pending-intake', sessions:2,  sessionId:'sess-002' },
-  { id:3,  client:'Maria L.',     time:'12:00 PM', duration:60, date:addDays(TODAY,0),   status:'complete',       sessions:14, sessionId:'sess-003' },
-  { id:4,  client:'Rachel T.',    time:'2:00 PM',  duration:60, date:addDays(TODAY,0),   status:'pending-intake', sessions:1,  sessionId:'sess-004' },
-  { id:5,  client:'Amy W.',       time:'3:30 PM',  duration:90, date:addDays(TODAY,0),   status:'intake-done',    sessions:5,  sessionId:'sess-005' },
-  { id:6,  client:'Dana P.',      time:'9:00 AM',  duration:90, date:addDays(TODAY,1),   status:'pending-intake', sessions:3 },
-  { id:7,  client:'Christine B.', time:'11:00 AM', duration:60, date:addDays(TODAY,1),   status:'pending-intake', sessions:9 },
-  { id:8,  client:'Lisa N.',      time:'2:00 PM',  duration:90, date:addDays(TODAY,2),   status:'pending-intake', sessions:1 },
-  { id:9,  client:'Tanya R.',     time:'4:00 PM',  duration:60, date:addDays(TODAY,2),   status:'pending-intake', sessions:6 },
-  { id:10, client:'Monica G.',    time:'10:00 AM', duration:60, date:addDays(TODAY,4),   status:'pending-intake', sessions:11 },
-  { id:11, client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,-7),  status:'complete',       sessions:6 },
-  { id:12, client:'Maria L.',     time:'11:00 AM', duration:60, date:addDays(TODAY,-7),  status:'complete',       sessions:13 },
-  { id:13, client:'Monica G.',    time:'2:00 PM',  duration:60, date:addDays(TODAY,-7),  status:'complete',       sessions:10 },
-  { id:14, client:'Christine B.', time:'10:00 AM', duration:60, date:addDays(TODAY,-6),  status:'complete',       sessions:8 },
-  { id:15, client:'Amy W.',       time:'3:00 PM',  duration:90, date:addDays(TODAY,-5),  status:'complete',       sessions:4 },
-  { id:16, client:'Tanya R.',     time:'9:30 AM',  duration:60, date:addDays(TODAY,-4),  status:'complete',       sessions:5 },
-  { id:17, client:'Dana P.',      time:'1:00 PM',  duration:60, date:addDays(TODAY,-3),  status:'complete',       sessions:2 },
-  { id:18, client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,-14), status:'complete',       sessions:5 },
-  { id:19, client:'Monica G.',    time:'11:00 AM', duration:60, date:addDays(TODAY,-14), status:'complete',       sessions:9 },
-  { id:20, client:'Maria L.',     time:'2:00 PM',  duration:60, date:addDays(TODAY,-13), status:'complete',       sessions:12 },
-  { id:21, client:'Jennifer K.',  time:'10:00 AM', duration:60, date:addDays(TODAY,-10), status:'complete',       sessions:1 },
-  { id:22, client:'Christine B.', time:'4:00 PM',  duration:60, date:addDays(TODAY,-11), status:'complete',       sessions:7 },
-  { id:23, client:'Sarah M.',     time:'9:00 AM',  duration:60, date:addDays(TODAY,-21), status:'complete',       sessions:4 },
-  { id:24, client:'Monica G.',    time:'2:00 PM',  duration:60, date:addDays(TODAY,-21), status:'complete',       sessions:8 },
-  { id:25, client:'Tanya R.',     time:'11:00 AM', duration:60, date:addDays(TODAY,-18), status:'complete',       sessions:4 },
+// Sample preview data — shown when < 3 real bookings exist
+const SAMPLE = [
+  {id:'s1',client:'Emma R.',time:'9:00 AM',duration:60,date:addDays(TODAY,0),status:'intake-done',sessions:4,preview:true,service:'Swedish Massage',focus:['Neck','Shoulders'],notes:'Prefers quiet session'},
+  {id:'s2',client:'Jess M.',time:'10:30 AM',duration:90,date:addDays(TODAY,0),status:'pending-intake',preview:true,sessions:1,service:'Deep Tissue',focus:[],notes:''},
+  {id:'s3',client:'Maria L.',time:'2:00 PM',duration:60,date:addDays(TODAY,0),status:'complete',sessions:12,preview:true,service:'Hot Stone',focus:['Lower Back','Hips'],notes:'Monthly regular'},
+  {id:'s4',client:'Dana P.',time:'9:00 AM',duration:90,date:addDays(TODAY,1),status:'pending-intake',sessions:3,preview:true,service:'Swedish Massage',focus:[],notes:''},
+  {id:'s5',client:'Amy W.',time:'11:00 AM',duration:60,date:addDays(TODAY,1),status:'intake-done',sessions:5,preview:true,service:'Sports Massage',focus:['Legs','Feet'],notes:'Runner'},
+  {id:'s6',client:'Emma R.',time:'9:00 AM',duration:60,date:addDays(TODAY,3),status:'pending-intake',sessions:5,preview:true,service:'Swedish Massage',focus:[],notes:''},
+  {id:'s7',client:'Jess M.',time:'3:00 PM',duration:60,date:addDays(TODAY,4),status:'pending-intake',sessions:2,preview:true,service:'Deep Tissue',focus:[],notes:''},
 ];
 
-const STATUS_CFG = {
-  'intake-done':    { label:'🧭 Intake Done',    bg:'#DCFCE7', color:'#16A34A' },
-  'pending-intake': { label:'🔔 Pending Intake', bg:'#FEF3C7', color:'#D97706' },
-  'complete':       { label:'✅ Complete',         bg:'#F3F4F6', color:'#6B7280' },
+const STATUS = {
+  'intake-done':    {label:'Brief Ready',   bg:'#DCFCE7',color:'#16A34A',dot:'#16A34A',icon:'🧭'},
+  'pending-intake': {label:'No Intake',     bg:'#FEF3C7',color:'#D97706',dot:'#F59E0B',icon:'📋'},
+  'complete':       {label:'Complete',      bg:'#F3F4F6',color:'#6B7280',dot:'#9CA3AF',icon:'✓'},
 };
 
-function SlideOutPanel({ appt, intakeUrl, onClose }) {
+// ─── Slide-out detail panel ──────────────────────────────────────────────────
+function DetailPanel({ appt, therapist, onClose }) {
+  const st = STATUS[appt.status] || STATUS['pending-intake'];
+  const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const [copied, setCopied] = useState(false);
-  const profile = CLIENT_PROFILES[appt.client] || {};
-  const sc = STATUS_CFG[appt.status];
-  const firstName = appt.client.split(' ')[0];
-  const copyLink = () => { navigator.clipboard.writeText(intakeUrl); setCopied(true); setTimeout(()=>setCopied(false),2000); };
-  const smsLink = `sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill out your intake form before your session: ${intakeUrl}`)}`;
+  const firstName = appt.client?.split(' ')[0];
 
   return (
     <>
-      <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.25)', zIndex:200 }} />
-      <div style={{ position:'fixed', top:0, right:0, bottom:0, width:380, maxWidth:'92vw', background:'#FFFFFF', zIndex:201, overflowY:'auto', boxShadow:'-6px 0 30px rgba(0,0,0,0.12)', padding:'28px 24px' }}>
-        <button onClick={onClose} style={{ position:'absolute', top:16, right:16, background:'none', border:'none', fontSize:20, cursor:'pointer', color:'#6B7280' }}>✕</button>
-
-        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', background:'#2A5741', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, fontWeight:700, flexShrink:0 }}>
-            {appt.client.split(' ').map(w=>w[0]).join('')}
-          </div>
-          <div>
-            <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia, serif' }}>{appt.client}</div>
-            <div style={{ fontSize:13, color:'#6B7280' }}>{appt.sessions} sessions · Member since {profile.memberSince || '—'}</div>
-          </div>
-        </div>
-
-        <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 16px', marginBottom:20 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'#6B7280', marginBottom:8 }}>Today's Appointment</div>
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-            <div style={{ fontSize:15, fontWeight:700, color:'#1F2937' }}>{appt.time} · {appt.duration} min</div>
-            <div style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:'3px 10px', fontSize:11, fontWeight:600 }}>{sc.label}</div>
-          </div>
-        </div>
-
-        <div style={{ marginBottom:20 }}>
-          <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'#6B7280', marginBottom:10 }}>Body Map Preferences</div>
-          {profile.focus && profile.focus.length > 0 ? (
-            <>
-              <div style={{ marginBottom:8 }}>
-                <span style={{ fontSize:12, color:'#6B7280', marginRight:6 }}>Focus:</span>
-                {profile.focus.map(f => <span key={f} style={{ display:'inline-block', background:'#DCFCE7', color:'#16A34A', borderRadius:12, padding:'2px 10px', fontSize:12, fontWeight:600, marginRight:4, marginBottom:4 }}>{f}</span>)}
+      <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
+      <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'92vw',background:'#fff',zIndex:301,
+        overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column'}}>
+        
+        {/* Header */}
+        <div style={{padding:'20px 20px 0',borderBottom:'1px solid #F3F4F6',paddingBottom:16}}>
+          <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:14}}>
+            <div style={{display:'flex',alignItems:'center',gap:12}}>
+              <div style={{width:48,height:48,borderRadius:'50%',background:avatarColor(appt.client),
+                color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                fontSize:16,fontWeight:700,flexShrink:0}}>
+                {initials(appt.client)}
               </div>
-              {profile.avoid && profile.avoid.length > 0 && (
-                <div>
-                  <span style={{ fontSize:12, color:'#6B7280', marginRight:6 }}>Avoid:</span>
-                  {profile.avoid.map(a => <span key={a} style={{ display:'inline-block', background:'#FEE2E2', color:'#DC2626', borderRadius:12, padding:'2px 10px', fontSize:12, fontWeight:600, marginRight:4, marginBottom:4 }}>{a}</span>)}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ fontSize:13, color:'#9CA3AF' }}>No intake completed yet</div>
-          )}
-        </div>
-
-        {profile.pressure && (
-          <div style={{ marginBottom:20 }}>
-            <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', color:'#6B7280', marginBottom:10 }}>Session Preferences</div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
-              {[{label:'Pressure',value:`${profile.pressure}/5`},{label:'Music',value:profile.music||'—'},{label:'Table Temp',value:profile.temp||'—'},{label:'Phone',value:profile.phone||'—'}].map(({label,value})=>(
-                <div key={label} style={{ background:'#F9FAFB', borderRadius:8, padding:'8px 12px' }}>
-                  <div style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', color:'#9CA3AF', marginBottom:2 }}>{label}</div>
-                  <div style={{ fontSize:13, fontWeight:600, color:'#1F2937' }}>{value}</div>
-                </div>
-              ))}
+              <div>
+                <div style={{fontSize:17,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{appt.client}</div>
+                <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions} sessions{appt.preview?' · Preview':''}</div>
+              </div>
+            </div>
+            <button onClick={onClose} style={{background:'#F3F4F6',border:'none',borderRadius:'50%',
+              width:32,height:32,cursor:'pointer',fontSize:16,color:'#6B7280',display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+          </div>
+          
+          {/* Appointment strip */}
+          <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+            <div>
+              <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+              <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'} · {fmtShort(appt.date)}</div>
+            </div>
+            <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:700}}>
+              {st.icon} {st.label}
             </div>
           </div>
-        )}
+        </div>
 
-        {profile.notes ? (
-          <div style={{ background:'#FFFBEB', border:'1px solid #FCD34D', borderRadius:8, padding:'10px 14px', marginBottom:20, fontSize:13, color:'#92400E' }}>
-            📝 {profile.notes}
+        {/* Body */}
+        <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:16}}>
+
+          {/* Focus areas */}
+          {appt.focus?.length > 0 && (
+            <div>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'#9CA3AF',marginBottom:8}}>Focus Areas</div>
+              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                {appt.focus.map(f=>(
+                  <span key={f} style={{background:'#DCFCE7',color:'#16A34A',borderRadius:20,padding:'4px 12px',fontSize:12,fontWeight:600}}>{f}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          {appt.notes && (
+            <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>
+              📝 {appt.notes}
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+            {appt.status==='intake-done' && appt.sessionId && (
+              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
+                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',
+                  fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                🧭 Open Pre-Session Brief
+              </a>
+            )}
+            {appt.status==='complete' && appt.sessionId && (
+              <>
+                <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
+                  style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                  📋 Pre-Session Brief
+                </a>
+                <a href={`/brief/post/${appt.sessionId}`} target="_blank" rel="noreferrer"
+                  style={{display:'block',background:'#6B9E80',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                  📄 Post-Session Brief
+                </a>
+              </>
+            )}
+            {appt.status==='pending-intake' && (
+              <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill out your intake form before your session: ${intakeUrl}`)}`}
+                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                💬 Send Intake via SMS
+              </a>
+            )}
+            <button onClick={()=>{navigator.clipboard.writeText(intakeUrl);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
+              style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+              {copied?'✓ Copied!':'📋 Copy Intake Link'}
+            </button>
           </div>
-        ) : null}
 
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {appt.status === 'pending-intake' && (
-            <a href={smsLink} style={{ display:'block', background:'#6B9E80', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>💬 Send Intake via SMS</a>
+          {appt.preview && (
+            <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center',lineHeight:1.5}}>
+              This is a preview card. Real clients will appear here after they book.
+            </div>
           )}
-          {appt.status === 'intake-done' && (
-            <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#2A5741', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📋 Open Pre-Session Brief</a>
-          )}
-          {appt.status === 'complete' && (
-            <>
-              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#2A5741', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📋 Pre-Session Brief</a>
-              <a href={`/brief/post/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{ display:'block', background:'#6B9E80', color:'#fff', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, textDecoration:'none', textAlign:'center' }}>📄 Post-Session Brief</a>
-            </>
-          )}
-          <button onClick={copyLink} style={{ background:'transparent', color:'#6B9E80', border:'1.5px solid #6B9E80', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, cursor:'pointer' }}>
-            {copied ? '✓ Link Copied!' : '📋 Copy Intake Link'}
-          </button>
-          <button style={{ background:'#F3F4F6', color:'#1F2937', border:'none', borderRadius:8, padding:'11px 16px', fontSize:14, fontWeight:600, cursor:'pointer' }}>👤 View Full Profile</button>
         </div>
       </div>
     </>
   );
 }
 
-function AppointmentCard({ appt, onClick }) {
-  const sc = STATUS_CFG[appt.status];
-  const profile = CLIENT_PROFILES[appt.client] || {};
-  const focusSummary = profile.focus && profile.focus.length > 0 ? `Focus: ${profile.focus.slice(0,2).join(', ')}` : 'No intake yet';
-  return (
-    <div onClick={onClick}
-      onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(0,0,0,0.12)'}
-      onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.07)'}
-      style={{ background:'#FFFFFF', borderRadius:12, padding:'16px 20px', boxShadow:'0 1px 4px rgba(0,0,0,0.07)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', borderLeft:`4px solid ${sc.color}`, cursor:'pointer', transition:'box-shadow 0.15s' }}>
-      <div style={{ minWidth:70 }}>
-        <div style={{ fontSize:15, fontWeight:700, color:'#1F2937' }}>{appt.time}</div>
-        <div style={{ fontSize:12, color:'#6B7280' }}>{appt.duration} min</div>
-      </div>
-      <div style={{ width:40, height:40, borderRadius:'50%', background:'#2A5741', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, flexShrink:0 }}>
-        {appt.client.split(' ').map(w=>w[0]).join('')}
-      </div>
-      <div style={{ flex:1, minWidth:120 }}>
-        <div style={{ fontSize:15, fontWeight:700, color:'#1F2937' }}>{appt.client}</div>
-        <div style={{ fontSize:12, color:'#6B7280' }}>{appt.sessions} sessions · {focusSummary}</div>
-      </div>
-      <div style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:'4px 12px', fontSize:12, fontWeight:600, whiteSpace:'nowrap' }}>{sc.label}</div>
-      <div style={{ color:'#9CA3AF', fontSize:18 }}>›</div>
-    </div>
-  );
-}
+// ─── Mission Control — Today View ────────────────────────────────────────────
+function TodayView({ therapist, allAppts }) {
+  const [selected, setSelected] = useState(null);
+  const [dayOffset, setDayOffset] = useState(0);
+  const viewDate = addDays(TODAY, dayOffset);
+  const dayAppts = allAppts.filter(a => sameDay(a.date, viewDate));
+  const realAppts = dayAppts.filter(a => !a.preview);
+  const previewAppts = dayAppts.filter(a => a.preview);
 
-function DailyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPTS;
-  const [selectedDay, setSelectedDay] = useState(0);
-  const [selectedAppt, setSelectedAppt] = useState(null);
-  const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
-  const days = [0,1,2,3,4].map(n => addDays(TODAY,n));
-  const todayAppts = APPTS.filter(a => sameDay(a.date, TODAY));
-  const selectedDate = days[selectedDay];
-  const filtered = APPTS.filter(a => sameDay(a.date, selectedDate));
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const firstName = therapist?.full_name?.split(' ')[0] || 'there';
+
+  // Stats for today
+  const todayReal = allAppts.filter(a => sameDay(a.date, TODAY) && !a.preview);
+  const intakeDone = todayReal.filter(a => a.status === 'intake-done').length;
+  const pending = todayReal.filter(a => a.status === 'pending-intake').length;
+  const weekAppts = allAppts.filter(a => !a.preview && a.date >= TODAY && a.date <= addDays(TODAY, 7));
+
+  // Day selector — next 5 days
+  const days = [0,1,2,3,4].map(n => addDays(TODAY, n));
 
   return (
     <div>
-      <div style={{ display:'flex', gap:12, marginBottom:28, flexWrap:'wrap' }}>
+      {/* Hero greeting */}
+      <div style={{marginBottom:24}}>
+        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 4px'}}>
+          {greeting}, {firstName}.
+        </h2>
+        <p style={{fontSize:14,color:'#6B7280',margin:0}}>
+          {dayOffset === 0 ? fmtDay(TODAY) : fmtDay(viewDate)}
+        </p>
+      </div>
+
+      {/* Stats row */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:24}}>
         {[
-          { label:"Today's Sessions", value:todayAppts.length, sub:'scheduled', color:'#2A5741' },
-          { label:'Intake Done', value:todayAppts.filter(a=>a.status==='intake-done').length, sub:'ready to review', color:'#16A34A' },
-          { label:'Pending Intake', value:todayAppts.filter(a=>a.status==='pending-intake').length, sub:'send link now', color:'#D97706' },
-          { label:'This Week', value:APPTS.filter(a=>a.date>=TODAY&&a.date<=addDays(TODAY,7)).length, sub:'total sessions', color:'#6B9E80' },
-        ].map(s => (
-          <div key={s.label} style={{ background:'#FFFFFF', borderRadius:12, padding:'20px 24px', flex:1, minWidth:120, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
-            <div style={{ fontSize:28, fontWeight:700, color:s.color, fontFamily:'Georgia, serif' }}>{s.value}</div>
-            <div style={{ fontSize:13, fontWeight:600, color:'#1F2937', marginTop:2 }}>{s.label}</div>
-            <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{s.sub}</div>
+          {val:todayReal.length,label:"Today's sessions",color:'#2A5741'},
+          {val:intakeDone,label:'Brief ready',color:'#16A34A'},
+          {val:pending,label:'Awaiting intake',color:'#D97706'},
+          {val:weekAppts.length,label:'This week',color:'#6B9E80'},
+        ].map(s=>(
+          <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'16px 14px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+            <div style={{fontSize:28,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
+            <div style={{fontSize:11,color:'#6B7280',marginTop:4,lineHeight:1.3}}>{s.label}</div>
           </div>
         ))}
       </div>
-      <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+
+      {/* Day selector */}
+      <div style={{display:'flex',gap:8,marginBottom:20,overflowX:'auto',paddingBottom:4}}>
         {days.map((d,i) => {
-          const count = APPTS.filter(a=>sameDay(a.date,d)).length;
-          const isSel = i===selectedDay;
+          const count = allAppts.filter(a => sameDay(a.date,d) && !a.preview).length;
+          const isSel = i === dayOffset;
           return (
-            <button key={i} onClick={()=>setSelectedDay(i)} style={{ background:isSel?'#2A5741':'#FFFFFF', color:isSel?'#FFFFFF':'#1F2937', border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`, borderRadius:10, padding:'10px 18px', fontSize:13, fontWeight:600, cursor:'pointer' }}>
-              <div>{i===0?'Today':i===1?'Tomorrow':d.toLocaleDateString('en-US',{weekday:'short'})}</div>
-              <div style={{ fontSize:11, opacity:0.75, marginTop:2 }}>{count} session{count!==1?'s':''}</div>
+            <button key={i} onClick={()=>setDayOffset(i)}
+              style={{flexShrink:0,background:isSel?'#2A5741':'#fff',
+                color:isSel?'#fff':'#1F2937',
+                border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,
+                borderRadius:12,padding:'10px 16px',cursor:'pointer',minWidth:80,textAlign:'center'}}>
+              <div style={{fontSize:12,fontWeight:700,textTransform:'uppercase',opacity:0.8}}>
+                {i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
+              </div>
+              <div style={{fontSize:20,fontWeight:700,margin:'2px 0'}}>{d.getDate()}</div>
+              <div style={{fontSize:11,opacity:0.7}}>{count} session{count!==1?'s':''}</div>
             </button>
           );
         })}
       </div>
-      <div style={{ fontSize:13, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>
-        {fmtShort(selectedDate)} — {filtered.length} appointment{filtered.length!==1?'s':''}
-      </div>
-      {filtered.length === 0
-        ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#6B7280', fontSize:14 }}>No appointments scheduled.</div>
-        : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{filtered.map(appt=><AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelectedAppt(appt)} />)}</div>
-      }
-      {selectedAppt && <SlideOutPanel appt={selectedAppt} intakeUrl={intakeUrl} onClose={()=>setSelectedAppt(null)} />}
+
+      {/* Appointment list */}
+      {dayAppts.length === 0 ? (
+        <div style={{background:'#fff',borderRadius:14,padding:'32px 24px',textAlign:'center'}}>
+          <div style={{fontSize:32,marginBottom:12}}>🌿</div>
+          <div style={{fontSize:15,fontWeight:600,color:'#1F2937',marginBottom:6}}>No sessions {dayOffset===0?'today':'this day'}</div>
+          <div style={{fontSize:13,color:'#6B7280'}}>Share your booking link to fill your schedule.</div>
+        </div>
+      ) : (
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {/* Real bookings */}
+          {realAppts.map(appt => <AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)} />)}
+
+          {/* Preview divider */}
+          {realAppts.length > 0 && previewAppts.length > 0 && (
+            <div style={{display:'flex',alignItems:'center',gap:12,margin:'4px 0'}}>
+              <div style={{flex:1,height:'1px',background:'#E5E7EB',borderTop:'1px dashed #D1D5DB'}}/>
+              <span style={{fontSize:11,color:'#9CA3AF',fontWeight:600,whiteSpace:'nowrap'}}>PREVIEW EXAMPLES BELOW</span>
+              <div style={{flex:1,height:'1px',background:'#E5E7EB',borderTop:'1px dashed #D1D5DB'}}/>
+            </div>
+          )}
+
+          {/* Preview bookings */}
+          {previewAppts.map(appt => <AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)} preview />)}
+        </div>
+      )}
+
+      {selected && <DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} />}
     </div>
   );
 }
 
-function WeeklyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPTS;
+// ─── Appointment Card ─────────────────────────────────────────────────────────
+function AppointmentCard({ appt, onClick, preview }) {
+  const st = STATUS[appt.status] || STATUS['pending-intake'];
+  return (
+    <div onClick={onClick}
+      style={{background:preview?'#FAFAF8':'#fff',
+        border:`1.5px ${preview?'dashed':'solid'} ${preview?'#E5E7EB':st.dot+'40'}`,
+        borderLeft:`4px solid ${preview?'#D1D5DB':st.dot}`,
+        borderRadius:14,padding:'14px 16px',cursor:'pointer',
+        display:'flex',alignItems:'center',gap:14,
+        opacity:preview?0.75:1,
+        transition:'all 0.15s',boxShadow:'0 1px 4px rgba(0,0,0,0.04)'}}
+      onMouseEnter={e=>{if(!preview){e.currentTarget.style.boxShadow='0 4px 16px rgba(0,0,0,0.1)';e.currentTarget.style.transform='translateY(-1px)';}}}
+      onMouseLeave={e=>{e.currentTarget.style.boxShadow='0 1px 4px rgba(0,0,0,0.04)';e.currentTarget.style.transform='none';}}>
+      
+      {/* Time */}
+      <div style={{minWidth:64,textAlign:'center',flexShrink:0}}>
+        <div style={{fontSize:14,fontWeight:700,color:'#1F2937'}}>{appt.time}</div>
+        <div style={{fontSize:11,color:'#9CA3AF'}}>{appt.duration}m</div>
+      </div>
+
+      {/* Avatar */}
+      <div style={{width:40,height:40,borderRadius:'50%',flexShrink:0,
+        background:preview?'#D1D5DB':avatarColor(appt.client),
+        color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+        fontSize:13,fontWeight:700}}>
+        {initials(appt.client)}
+      </div>
+
+      {/* Info */}
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:15,fontWeight:700,color:preview?'#9CA3AF':'#1F2937',marginBottom:2}}>
+          {appt.client}
+          {preview && <span style={{fontSize:10,fontWeight:600,background:'#F3F4F6',color:'#9CA3AF',borderRadius:4,padding:'1px 6px',marginLeft:6}}>PREVIEW</span>}
+        </div>
+        <div style={{fontSize:12,color:'#6B7280',display:'flex',gap:6,flexWrap:'wrap'}}>
+          <span>{appt.service||'Session'}</span>
+          {appt.sessions > 0 && <span>· {appt.sessions} sessions</span>}
+          {appt.focus?.length > 0 && <span>· {appt.focus.slice(0,2).join(', ')}</span>}
+        </div>
+      </div>
+
+      {/* Status badge */}
+      <div style={{flexShrink:0,display:'flex',alignItems:'center',gap:6}}>
+        <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700,whiteSpace:'nowrap'}}>
+          {st.icon} {st.label}
+        </div>
+        <div style={{color:'#D1D5DB',fontSize:16}}>›</div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Weekly View ──────────────────────────────────────────────────────────────
+function WeeklyView({ therapist, appointments }) {
+  const APPTS = appointments || [];
   const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedAppt, setSelectedAppt] = useState(null);
-  const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
+  const [selected, setSelected] = useState(null);
 
-  const getMonday = (d) => {
-    const x = new Date(d); const day = x.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    x.setDate(x.getDate() + diff); x.setHours(0,0,0,0); return x;
-  };
-
-  const weekStart = addDays(getMonday(TODAY), weekOffset * 7);
-  const weekDays = [0,1,2,3,4,5,6].map(n => addDays(weekStart,n));
+  const getMonday = d => { const x=new Date(d); const day=x.getDay(); x.setDate(x.getDate()+(day===0?-6:1-day)); x.setHours(0,0,0,0); return x; };
+  const weekStart = addDays(getMonday(TODAY), weekOffset*7);
+  const weekDays = [0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const weekAppts = APPTS.filter(a => a.date >= weekStart && a.date < addDays(weekStart,7));
+  const weekAppts = APPTS.filter(a=>a.date>=weekStart&&a.date<addDays(weekStart,7));
+  const realWeek = weekAppts.filter(a=>!a.preview);
 
   return (
     <div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <button onClick={()=>setWeekOffset(weekOffset-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← Prev</button>
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{weekOffset===0?'This Week':weekOffset===1?'Next Week':weekOffset===-1?'Last Week':fmtShort(weekStart)}</div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>{weekAppts.length} sessions · Est. ${weekAppts.length * 85}</div>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+        <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{weekOffset===0?'This Week':weekOffset===1?'Next Week':weekOffset===-1?'Last Week':fmtShort(weekStart)}</div>
+          <div style={{fontSize:12,color:'#6B7280'}}>{realWeek.length} sessions{realWeek.length>0?` · Est. $${realWeek.reduce((s,a)=>s+(a.price||85),0)}`:''}</div>
         </div>
-        <button onClick={()=>setWeekOffset(weekOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
+        <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8 }}>
-        {weekDays.map((d,i) => {
-          const dayAppts = APPTS.filter(a=>sameDay(a.date,d));
-          const isToday = sameDay(d,TODAY);
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6}}>
+        {weekDays.map((d,i)=>{
+          const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
+          const isToday=sameDay(d,TODAY);
           return (
-            <div key={i} style={{ minHeight:120 }}>
-              <div style={{ textAlign:'center', padding:'8px 4px', borderRadius:8, marginBottom:6, background:isToday?'#2A5741':'transparent', color:isToday?'#FFFFFF':'#6B7280' }}>
-                <div style={{ fontSize:11, fontWeight:700, textTransform:'uppercase' }}>{DAY_NAMES[i]}</div>
-                <div style={{ fontSize:13, fontWeight:600 }}>{d.getDate()}</div>
+            <div key={i} style={{minHeight:100}}>
+              <div style={{textAlign:'center',padding:'8px 4px',borderRadius:8,marginBottom:6,
+                background:isToday?'#2A5741':'transparent',color:isToday?'#fff':'#6B7280'}}>
+                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{DAY_NAMES[i]}</div>
+                <div style={{fontSize:14,fontWeight:600}}>{d.getDate()}</div>
               </div>
-              {dayAppts.length === 0
-                ? <div style={{ height:60, border:'1.5px dashed #E5E7EB', borderRadius:8 }} />
-                : <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                    {dayAppts.map(appt => {
-                      const sc = STATUS_CFG[appt.status];
-                      return (
-                        <div key={appt.id} onClick={()=>setSelectedAppt(appt)} style={{ background:sc.bg, borderLeft:`3px solid ${sc.color}`, borderRadius:6, padding:'6px 8px', cursor:'pointer', fontSize:11, fontWeight:600, color:'#1F2937' }}>
-                          <div style={{ color:sc.color, fontSize:10 }}>{appt.time}</div>
-                          <div>{appt.client.split(' ')[0]}</div>
-                          <div style={{ color:'#9CA3AF', fontSize:10 }}>{appt.duration}m</div>
-                        </div>
-                      );
-                    })}
-                  </div>
+              {dayAppts.length===0
+                ?<div style={{height:50,border:'1.5px dashed #E5E7EB',borderRadius:8}}/>
+                :<div style={{display:'flex',flexDirection:'column',gap:3}}>
+                  {dayAppts.map(appt=>{
+                    const st=STATUS[appt.status]||STATUS['pending-intake'];
+                    return (
+                      <div key={appt.id} onClick={()=>setSelected(appt)}
+                        style={{background:appt.preview?'#F9FAFB':st.bg,
+                          borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,
+                          borderRadius:6,padding:'5px 7px',cursor:'pointer',opacity:appt.preview?0.6:1}}>
+                        <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#9CA3AF':st.color}}>{appt.time}</div>
+                        <div style={{fontSize:11,fontWeight:600,color:'#1F2937',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
+                        <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
+                      </div>
+                    );
+                  })}
+                </div>
               }
             </div>
           );
         })}
       </div>
-      {selectedAppt && <SlideOutPanel appt={selectedAppt} intakeUrl={intakeUrl} onClose={()=>setSelectedAppt(null)} />}
+      {selected && <DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)}/>}
     </div>
   );
 }
 
-function MonthlyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPTS;
+// ─── Monthly View ─────────────────────────────────────────────────────────────
+function MonthlyView({ therapist, appointments }) {
+  const APPTS = appointments || [];
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(TODAY);
-  const [selectedAppt, setSelectedAppt] = useState(null);
-  const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
+  const [selected, setSelected] = useState(null);
 
-  const viewMonth = new Date(TODAY.getFullYear(), TODAY.getMonth() + monthOffset, 1);
+  const viewMonth = new Date(TODAY.getFullYear(), TODAY.getMonth()+monthOffset, 1);
   const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()+1, 0).getDate();
   const firstDayOfWeek = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), 1).getDay();
-  const startOffset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
-
-  const calDays = [];
-  for (let i=0; i<startOffset; i++) calDays.push(null);
-  for (let i=1; i<=daysInMonth; i++) calDays.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i));
-
-  const selectedDayAppts = APPTS.filter(a => sameDay(a.date, selectedDate));
+  const offset = firstDayOfWeek===0?6:firstDayOfWeek-1;
+  const calDays = [...Array(offset).fill(null), ...Array.from({length:daysInMonth},(_,i)=>new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i+1))];
+  const selectedDayAppts = APPTS.filter(a=>sameDay(a.date,selectedDate));
 
   return (
     <div>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
-        <button onClick={()=>setMonthOffset(monthOffset-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← Prev</button>
-        <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{fmtMonth(viewMonth)}</div>
-        <button onClick={()=>setMonthOffset(monthOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+        <button onClick={()=>setMonthOffset(m=>m-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
+        <div style={{fontSize:16,fontWeight:700,color:'#1F2937'}}>{fmtMonth(viewMonth)}</div>
+        <button onClick={()=>setMonthOffset(m=>m+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:4}}>
         {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>(
-          <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', padding:'4px 0' }}>{d}</div>
+          <div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',padding:'4px 0'}}>{d}</div>
         ))}
       </div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:24 }}>
-        {calDays.map((d,i) => {
-          if (!d) return <div key={i} />;
-          const dayAppts = APPTS.filter(a=>sameDay(a.date,d));
-          const isToday = sameDay(d,TODAY);
-          const isSel = sameDay(d,selectedDate);
-          const hasPending = dayAppts.some(a=>a.status==='pending-intake');
-          const hasIntakeDone = dayAppts.some(a=>a.status==='intake-done');
+      <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:20}}>
+        {calDays.map((d,i)=>{
+          if(!d) return <div key={i}/>;
+          const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
+          const realAppts=dayAppts.filter(a=>!a.preview);
+          const isToday=sameDay(d,TODAY); const isSel=sameDay(d,selectedDate);
           return (
-            <div key={i} onClick={()=>setSelectedDate(d)} style={{ minHeight:56, padding:6, borderRadius:8, cursor:dayAppts.length>0?'pointer':'default', background:isSel?'#2A5741':isToday?'#F0FDF4':'#FFFFFF', border:`1.5px solid ${isSel?'#2A5741':isToday?'#16A34A':'#E5E7EB'}` }}>
-              <div style={{ fontSize:12, fontWeight:600, color:isSel?'#FFFFFF':isToday?'#16A34A':'#6B7280', marginBottom:2 }}>{d.getDate()}</div>
-              {dayAppts.length > 0 && <div style={{ fontSize:11, fontWeight:700, color:isSel?'#FFFFFF':'#1F2937' }}>{dayAppts.length} session{dayAppts.length>1?'s':''}</div>}
-              {(hasPending||hasIntakeDone) && !isSel && (
-                <div style={{ display:'flex', gap:2, marginTop:2 }}>
-                  {hasIntakeDone && <div style={{ width:6, height:6, borderRadius:'50%', background:'#16A34A' }} />}
-                  {hasPending && <div style={{ width:6, height:6, borderRadius:'50%', background:'#D97706' }} />}
-                </div>
-              )}
+            <div key={i} onClick={()=>setSelectedDate(d)}
+              style={{minHeight:52,padding:6,borderRadius:8,cursor:'pointer',
+                background:isSel?'#2A5741':isToday?'#F0FDF4':'#fff',
+                border:`1.5px solid ${isSel?'#2A5741':isToday?'#86EFAC':'#F3F4F6'}`,
+                transition:'all 0.1s'}}>
+              <div style={{fontSize:12,fontWeight:600,color:isSel?'#fff':isToday?'#16A34A':'#6B7280',marginBottom:2}}>{d.getDate()}</div>
+              {realAppts.length>0&&<div style={{fontSize:11,fontWeight:700,color:isSel?'#fff':'#1F2937'}}>{realAppts.length} session{realAppts.length>1?'s':''}</div>}
+              <div style={{display:'flex',gap:2,marginTop:2}}>
+                {dayAppts.filter(a=>!a.preview&&a.status==='intake-done').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
+                {dayAppts.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
+              </div>
             </div>
           );
         })}
       </div>
-      <div style={{ fontSize:13, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>
-        {fmtShort(selectedDate)} — {selectedDayAppts.length} appointment{selectedDayAppts.length!==1?'s':''}
+      <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
+        {fmtShort(selectedDate)} — {selectedDayAppts.filter(a=>!a.preview).length} appointment{selectedDayAppts.filter(a=>!a.preview).length!==1?'s':''}
       </div>
-      {selectedDayAppts.length === 0
-        ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No appointments. Click a day with sessions to view.</div>
-        : <div style={{ display:'flex', flexDirection:'column', gap:10 }}>{selectedDayAppts.map(appt=><AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelectedAppt(appt)} />)}</div>
+      {selectedDayAppts.length===0
+        ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments. Click a day to view.</div>
+        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {selectedDayAppts.filter(a=>!a.preview).map(appt=><AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)}/>)}
+          {selectedDayAppts.filter(a=>a.preview).length>0&&selectedDayAppts.filter(a=>!a.preview).length>0&&(
+            <div style={{textAlign:'center',fontSize:11,color:'#9CA3AF',padding:'4px 0'}}>— preview examples —</div>
+          )}
+          {selectedDayAppts.filter(a=>a.preview).map(appt=><AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)} preview/>)}
+        </div>
       }
-      {selectedAppt && <SlideOutPanel appt={selectedAppt} intakeUrl={intakeUrl} onClose={()=>setSelectedAppt(null)} />}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)}/>}
     </div>
   );
 }
 
-function InsightsView({ appointments: apptOverride }) {
-  const APPTS = apptOverride || APPOINTMENTS;
-  const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const dayCounts = DAY_NAMES.map((name,i) => {
-    const jsDay = i===6 ? 0 : i+1;
-    return { name, count: APPTS.filter(a=>a.date.getDay()===jsDay).length };
-  });
-  const maxDay = Math.max(...dayCounts.map(d=>d.count),1);
+// ─── Insights View ────────────────────────────────────────────────────────────
+function InsightsView({ appointments }) {
+  const APPTS = (appointments||[]).filter(a=>!a.preview);
+  const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const dayCounts=DAY_NAMES.map((name,i)=>{const jsDay=i===6?0:i+1;return{name,count:APPTS.filter(a=>a.date.getDay()===jsDay).length};});
+  const maxDay=Math.max(...dayCounts.map(d=>d.count),1);
+  const clientCounts={};
+  APPTS.forEach(a=>{clientCounts[a.client]=(clientCounts[a.client]||0)+1;});
+  const topClients=Object.entries(clientCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const intakePct=APPTS.length?Math.round((APPTS.filter(a=>a.status!=='pending-intake').length/APPTS.length)*100):0;
+  const weeklyCounts=[3,2,1,0].map(w=>{const start=addDays(TODAY,-7*(w+1));const end=addDays(TODAY,-7*w);return{label:w===0?'This wk':`${w}w ago`,count:APPTS.filter(a=>a.date>=start&&a.date<end).length};});
+  const maxWeek=Math.max(...weeklyCounts.map(w=>w.count),1);
 
-  const completionRate = Math.round((APPTS.filter(a=>a.status==='complete'||a.status==='intake-done').length/APPOINTMENTS.length)*100);
-
-  const clientCounts = {};
-  APPTS.forEach(a=>{ clientCounts[a.client]=(clientCounts[a.client]||0)+1; });
-  const topClients = Object.entries(clientCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-
-  const lastSession = {};
-  APPTS.forEach(a=>{ if(!lastSession[a.client]||a.date>lastSession[a.client]) lastSession[a.client]=a.date; });
-  const lapsed = Object.entries(lastSession)
-    .map(([name,date])=>({ name, daysSince:Math.floor((TODAY-date)/86400000) }))
-    .filter(c=>c.daysSince>14&&!APPTS.some(a=>a.client===c.name&&a.date>TODAY))
-    .sort((a,b)=>b.daysSince-a.daysSince);
-
-  const weeklyCounts = [3,2,1,0].map(w=>{
-    const start=addDays(TODAY,-7*(w+1)); const end=addDays(TODAY,-7*w);
-    return { label:w===0?'This wk':`${w}w ago`, count:APPTS.filter(a=>a.date>=start&&a.date<end).length };
-  });
-  const maxWeek = Math.max(...weeklyCounts.map(w=>w.count),1);
+  if(APPTS.length===0) return (
+    <div style={{background:'#fff',borderRadius:14,padding:'40px 24px',textAlign:'center'}}>
+      <div style={{fontSize:36,marginBottom:12}}>📊</div>
+      <div style={{fontSize:16,fontWeight:600,color:'#1F2937',marginBottom:8}}>Insights will appear here</div>
+      <div style={{fontSize:13,color:'#6B7280',lineHeight:1.6}}>Once clients start booking, you'll see your busiest days, top clients, and booking trends.</div>
+    </div>
+  );
 
   return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20 }}>
-
-      <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', gridColumn:'1/-1' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>📊 Busiest Days of the Week</div>
-        <div style={{ display:'flex', alignItems:'flex-end', gap:12, height:110 }}>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',gridColumn:'1/-1'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:16}}>📊 Busiest Days</div>
+        <div style={{display:'flex',alignItems:'flex-end',gap:10,height:100}}>
           {dayCounts.map(({name,count})=>(
-            <div key={name} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#6B7280' }}>{count}</div>
-              <div style={{ width:'100%', background:'#2A5741', borderRadius:'4px 4px 0 0', height:`${Math.max((count/maxDay)*80,count>0?8:2)}px`, opacity:count>0?1:0.15 }} />
-              <div style={{ fontSize:11, fontWeight:600, color:'#9CA3AF' }}>{name}</div>
+            <div key={name} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#6B7280'}}>{count||''}</div>
+              <div style={{width:'100%',background:'#2A5741',borderRadius:'4px 4px 0 0',height:`${Math.max((count/maxDay)*75,count>0?6:2)}px`,opacity:count>0?1:0.12}}/>
+              <div style={{fontSize:10,fontWeight:600,color:'#9CA3AF'}}>{name}</div>
             </div>
           ))}
         </div>
       </div>
-
-      <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>📈 Sessions Per Week</div>
-        <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:90 }}>
+      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:16}}>📈 Weekly Trend</div>
+        <div style={{display:'flex',alignItems:'flex-end',gap:8,height:80}}>
           {weeklyCounts.map(({label,count})=>(
-            <div key={label} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:4 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:'#6B9E80' }}>{count}</div>
-              <div style={{ width:'100%', background:'#6B9E80', borderRadius:'4px 4px 0 0', height:`${Math.max((count/maxWeek)*65,count>0?8:2)}px` }} />
-              <div style={{ fontSize:10, color:'#9CA3AF', textAlign:'center' }}>{label}</div>
+            <div key={label} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+              <div style={{fontSize:11,fontWeight:700,color:'#6B9E80'}}>{count}</div>
+              <div style={{width:'100%',background:'#6B9E80',borderRadius:'4px 4px 0 0',height:`${Math.max((count/maxWeek)*60,count>0?6:2)}px`}}/>
+              <div style={{fontSize:10,color:'#9CA3AF',textAlign:'center'}}>{label}</div>
             </div>
           ))}
         </div>
       </div>
-
-      <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:12 }}>✅ Intake Completion Rate</div>
-        <div style={{ fontSize:48, fontWeight:700, color:'#2A5741', fontFamily:'Georgia, serif' }}>{completionRate}%</div>
-        <div style={{ fontSize:13, color:'#6B7280', marginTop:4 }}>of sessions have intake completed</div>
-        <div style={{ marginTop:12, background:'#E5E7EB', borderRadius:99, height:8 }}>
-          <div style={{ width:`${completionRate}%`, background:'#2A5741', borderRadius:99, height:8 }} />
+      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:8}}>✅ Intake Rate</div>
+        <div style={{fontSize:40,fontWeight:700,color:'#2A5741',fontFamily:'Georgia,serif'}}>{intakePct}%</div>
+        <div style={{fontSize:12,color:'#6B7280',marginTop:4}}>sessions with intake</div>
+        <div style={{marginTop:10,background:'#E5E7EB',borderRadius:99,height:6}}>
+          <div style={{width:`${intakePct}%`,background:'#2A5741',borderRadius:99,height:6,transition:'width 0.6s ease'}}/>
         </div>
       </div>
-
-      <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>⭐ Top Clients</div>
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      <div style={{background:'#fff',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:14}}>⭐ Top Clients</div>
+        {topClients.length===0?<div style={{fontSize:13,color:'#9CA3AF'}}>No data yet</div>
+        :<div style={{display:'flex',flexDirection:'column',gap:8}}>
           {topClients.map(([name,count])=>(
-            <div key={name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <div style={{ width:32, height:32, borderRadius:'50%', background:'#2A5741', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700 }}>
-                  {name.split(' ').map(w=>w[0]).join('')}
-                </div>
-                <span style={{ fontSize:14, fontWeight:600, color:'#1F2937' }}>{name}</span>
+            <div key={name} style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:28,height:28,borderRadius:'50%',background:avatarColor(name),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700}}>{initials(name)}</div>
+                <span style={{fontSize:13,fontWeight:600,color:'#1F2937'}}>{name}</span>
               </div>
-              <span style={{ fontSize:13, color:'#6B7280' }}>{count} sessions</span>
+              <span style={{fontSize:12,color:'#6B7280'}}>{count} sessions</span>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', gridColumn:'1/-1' }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:4 }}>🍂 Re-engagement Opportunities</div>
-        <div style={{ fontSize:12, color:'#6B7280', marginBottom:16 }}>Clients with no upcoming booking</div>
-        {lapsed.length === 0
-          ? <div style={{ fontSize:13, color:'#9CA3AF' }}>All clients have upcoming appointments. Great retention!</div>
-          : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {lapsed.map(c=>(
-                <div key={c.name} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'#FEF3C7', borderRadius:8 }}>
-                  <div style={{ fontSize:14, fontWeight:600, color:'#1F2937' }}>{c.name}</div>
-                  <div style={{ fontSize:12, color:'#D97706', fontWeight:600 }}>Last seen {c.daysSince}d ago</div>
-                </div>
-              ))}
-            </div>
-        }
+        </div>}
       </div>
     </div>
   );
 }
 
+// ─── Main Export ──────────────────────────────────────────────────────────────
 export default function ScheduleDashboard({ therapist }) {
-  const [subView, setSubView] = useState('daily');
+  const [subView, setSubView] = useState('today');
   const [realBookings, setRealBookings] = useState(null);
-  const [loadingCal, setLoadingCal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (therapist?.id) fetchCalBookings(); }, [therapist?.id]);
+  useEffect(() => { if(therapist?.id) fetchBookings(); }, [therapist?.id]);
 
-  const fetchCalBookings = async () => {
-    setLoadingCal(true);
+  async function fetchBookings() {
+    setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setLoadingCal(false); return; }
+      if(!user) { setLoading(false); return; }
 
-      // Always try native bookings first
-      const today = new Date(); today.setHours(0,0,0,0);
-      const pastDate = new Date(today); pastDate.setDate(pastDate.getDate()-30);
-      const futureDate = new Date(today); futureDate.setDate(futureDate.getDate()+60);
+      const past = new Date(TODAY); past.setDate(past.getDate()-30);
+      const future = new Date(TODAY); future.setDate(future.getDate()+60);
 
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select('*, services(name,duration,price)')
         .eq('therapist_id', therapist.id)
-        .neq('status', 'cancelled')
-        .gte('booking_date', pastDate.toISOString().split('T')[0])
-        .lte('booking_date', futureDate.toISOString().split('T')[0])
-        .order('booking_date')
-        .order('start_time');
+        .neq('status','cancelled')
+        .gte('booking_date', past.toISOString().split('T')[0])
+        .lte('booking_date', future.toISOString().split('T')[0])
+        .order('booking_date').order('start_time');
 
-      console.log('Bookings fetch result:', { bookings, error, therapistId: therapist.id });
+      if(error) { console.error('Bookings error:', error); setLoading(false); return; }
 
-      if (bookings && bookings.length > 0) {
+      if(bookings?.length > 0) {
         const mapped = bookings.map(b => {
-          const bookingDate = new Date(b.booking_date + 'T12:00:00');
-          bookingDate.setHours(0,0,0,0);
+          const bookingDate = new Date(b.booking_date+'T12:00:00'); bookingDate.setHours(0,0,0,0);
           const [h,m] = b.start_time.split(':').map(Number);
-          const timeDisplay = `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
           return {
-            id: b.id,
-            client: b.client_name,
-            email: b.client_email,
-            phone: b.client_phone,
-            time: timeDisplay,
-            duration: b.services?.duration || 60,
-            date: bookingDate,
-            status: 'pending-intake',
-            sessions: 0,
-            service: b.services?.name || 'Session',
-            notes: b.notes,
-            source: 'native',
+            id: b.id, client: b.client_name, email: b.client_email,
+            time: fmt12(`${h}:${m}`), duration: b.services?.duration||60,
+            date: bookingDate, status: 'pending-intake', sessions: 0,
+            service: b.services?.name||'Session', notes: b.notes||'',
+            price: b.services?.price||85, focus: [], preview: false, source: 'native',
           };
         });
         setRealBookings(mapped);
-        setLoadingCal(false);
-        return;
+      } else {
+        setRealBookings([]);
       }
+    } catch(err) { console.error('Fetch error:', err); }
+    setLoading(false);
+  }
 
-      // Fallback: Cal.com API key
-      const { data: td } = await supabase.from('therapists').select('cal_api_key').eq('id', therapist.id).single();
-      if (!td?.cal_api_key) { setLoadingCal(false); return; }
-      const { data: { session } } = await supabase.auth.getSession();
-      const calRes = await fetch(`${SUPABASE_URL}/functions/v1/cal-bookings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({ apiKey: td.cal_api_key, dateFrom: new Date(Date.now()-7*86400000).toISOString(), dateTo: new Date(Date.now()+14*86400000).toISOString() }),
-      });
-      const calData = await calRes.json();
-      if (calData.bookings?.length) {
-        const mapped = calData.bookings.map(b => {
-          const bookingDate = new Date(b.date); bookingDate.setHours(0,0,0,0);
-          return { id: b.calId, client: b.client, time: b.time, duration: b.duration, date: bookingDate, status: 'pending-intake', sessions: 0, source: 'cal' };
-        });
-        setRealBookings(mapped);
-      }
-    } catch(err) {
-      console.error('Bookings fetch error:', err);
-    }
-    setLoadingCal(false);
-  };
-
-  const usingRealData = !!realBookings;
+  // Merge: real bookings + sample preview (show sample when < 3 real bookings)
+  const hasReal = realBookings && realBookings.length > 0;
+  const showSample = !realBookings || realBookings.length < 3;
+  const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
 
   const TABS = [
-    { id:'daily',    label:'📋 Daily' },
-    { id:'weekly',   label:'📅 Weekly' },
-    { id:'monthly',  label:'🗓 Monthly' },
-    { id:'insights', label:'📊 Insights' },
+    {id:'today',label:'Today'},
+    {id:'weekly',label:'Weekly'},
+    {id:'monthly',label:'Monthly'},
+    {id:'insights',label:'Insights'},
   ];
 
   return (
-    <div style={{ width:'100%' }}>
-      <div style={{ marginBottom:20 }}>
-        <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Schedule</h2>
-        <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
+    <div style={{width:'100%'}}>
+      {/* Header */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:10}}>
+        <div>
+          <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
+          <p style={{fontSize:13,color:'#6B7280',margin:0}}>{fmtDay(TODAY)}</p>
+        </div>
+        {hasReal && (
+          <div style={{display:'flex',alignItems:'center',gap:8,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#16A34A',fontWeight:600}}>
+            ✅ Live bookings active
+            <button onClick={fetchBookings} style={{background:'transparent',border:'1px solid #16A34A',borderRadius:6,padding:'2px 8px',fontSize:11,color:'#16A34A',cursor:'pointer',marginLeft:4}}>↻</button>
+          </div>
+        )}
+        {!hasReal && !loading && (
+          <div style={{background:'#FFF7ED',border:'1.5px dashed #F97316',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#9A3412',display:'flex',alignItems:'center',gap:6}}>
+            👁️ <span><strong>Preview mode</strong> — share your booking link to get real sessions</span>
+          </div>
+        )}
       </div>
-      {usingRealData ? (
-        <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
-          ✅ <strong>Cal.com connected.</strong>&nbsp;Showing your real appointments with BodyMap intake status.
-          <button onClick={fetchCalBookings} style={{ marginLeft:'auto', background:'transparent', border:'1px solid #16A34A', borderRadius:6, padding:'4px 10px', fontSize:11, color:'#16A34A', cursor:'pointer' }}>↻ Refresh</button>
-        </div>
-      ) : loadingCal ? (
-        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A' }}>
-          ⏳ Connecting to Cal.com...
-        </div>
-      ) : (
-        <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
-          <span style={{ fontSize:16 }}>👁️</span>
-          <div><strong>Sample preview</strong> — this is what your schedule looks like with real bookings. Share your booking link with clients to fill it up!</div>
-        </div>
-      )}
-      <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content' }}>
+
+      {/* Tab bar */}
+      <div style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:24,width:'fit-content'}}>
         {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setSubView(t.id)} style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s' }}>
+          <button key={t.id} onClick={()=>setSubView(t.id)}
+            style={{background:subView===t.id?'#fff':'transparent',
+              color:subView===t.id?'#1F2937':'#6B7280',
+              border:'none',borderRadius:8,padding:'8px 18px',fontSize:13,fontWeight:600,cursor:'pointer',
+              boxShadow:subView===t.id?'0 1px 4px rgba(0,0,0,0.1)':'none',transition:'all 0.15s'}}>
             {t.label}
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='insights' && <InsightsView appointments={realBookings || APPOINTMENTS} />}
+
+      {loading
+        ?<div style={{textAlign:'center',padding:'40px',color:'#9CA3AF',fontSize:14}}>Loading your schedule...</div>
+        :<>
+          {subView==='today'    && <TodayView therapist={therapist} allAppts={allAppts}/>}
+          {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={allAppts}/>}
+          {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={allAppts}/>}
+          {subView==='insights' && <InsightsView appointments={allAppts}/>}
+        </>
+      }
     </div>
   );
 }
