@@ -465,33 +465,72 @@ export default function ScheduleDashboard({ therapist }) {
   const fetchCalBookings = async () => {
     setLoadingCal(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoadingCal(false); return; }
+
+      // Always try native bookings first
+      const today = new Date(); today.setHours(0,0,0,0);
+      const pastDate = new Date(today); pastDate.setDate(pastDate.getDate()-30);
+      const futureDate = new Date(today); futureDate.setDate(futureDate.getDate()+60);
+
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('*, services(name,duration,price)')
+        .eq('therapist_id', therapist.id)
+        .neq('status', 'cancelled')
+        .gte('booking_date', pastDate.toISOString().split('T')[0])
+        .lte('booking_date', futureDate.toISOString().split('T')[0])
+        .order('booking_date')
+        .order('start_time');
+
+      console.log('Bookings fetch result:', { bookings, error, therapistId: therapist.id });
+
+      if (bookings && bookings.length > 0) {
+        const mapped = bookings.map(b => {
+          const bookingDate = new Date(b.booking_date + 'T12:00:00');
+          bookingDate.setHours(0,0,0,0);
+          const [h,m] = b.start_time.split(':').map(Number);
+          const timeDisplay = `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`;
+          return {
+            id: b.id,
+            client: b.client_name,
+            email: b.client_email,
+            phone: b.client_phone,
+            time: timeDisplay,
+            duration: b.services?.duration || 60,
+            date: bookingDate,
+            status: 'pending-intake',
+            sessions: 0,
+            service: b.services?.name || 'Session',
+            notes: b.notes,
+            source: 'native',
+          };
+        });
+        setRealBookings(mapped);
+        setLoadingCal(false);
+        return;
+      }
+
+      // Fallback: Cal.com API key
       const { data: td } = await supabase.from('therapists').select('cal_api_key').eq('id', therapist.id).single();
       if (!td?.cal_api_key) { setLoadingCal(false); return; }
-      console.log('Fetching Cal.com with key:', td.cal_api_key?.slice(0,20));
+      const { data: { session } } = await supabase.auth.getSession();
       const calRes = await fetch(`${SUPABASE_URL}/functions/v1/cal-bookings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ apiKey: td.cal_api_key, dateFrom: new Date(Date.now()-7*86400000).toISOString(), dateTo: new Date(Date.now()+14*86400000).toISOString() }),
       });
       const calData = await calRes.json();
-      if (!calData.bookings?.length) { setLoadingCal(false); return; }
-      const { data: sessions } = await supabase.from('sessions').select('*, clients(name,email)').eq('therapist_id', therapist.id).order('created_at', { ascending: false });
-      const { data: clients } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
-      const merged = calData.bookings.map(booking => {
-        const bookingDate = new Date(booking.date); bookingDate.setHours(0,0,0,0);
-        const client = clients?.find(c => c.email === booking.email || c.name?.toLowerCase() === booking.client?.toLowerCase());
-        const session = sessions?.find(s => { const sd = new Date(s.created_at); sd.setHours(0,0,0,0); return s.client_id === client?.id && sd.toDateString() === bookingDate.toDateString(); });
-        const clientSessions = sessions?.filter(s => s.client_id === client?.id && s.completed) || [];
-        let status = 'pending-intake';
-        if (session?.completed) status = 'complete';
-        else if (session) status = 'intake-done';
-        const focusAreas = session ? [...(session.front_focus||[]),...(session.back_focus||[])].slice(0,3).join(', ') : '—';
-        return { id: booking.calId, client: booking.client, time: booking.time, duration: booking.duration, date: bookingDate, status, focus: focusAreas||'—', sessions: clientSessions.length, sessionId: session?.id };
-      });
-      setRealBookings(merged);
-    } catch(err) { console.error('Cal fetch error:', err); }
+      if (calData.bookings?.length) {
+        const mapped = calData.bookings.map(b => {
+          const bookingDate = new Date(b.date); bookingDate.setHours(0,0,0,0);
+          return { id: b.calId, client: b.client, time: b.time, duration: b.duration, date: bookingDate, status: 'pending-intake', sessions: 0, source: 'cal' };
+        });
+        setRealBookings(mapped);
+      }
+    } catch(err) {
+      console.error('Bookings fetch error:', err);
+    }
     setLoadingCal(false);
   };
 
