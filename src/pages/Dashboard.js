@@ -283,39 +283,21 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               </button>
             </div>
           ) : (
-            <div>
-              <button onClick={async () => {
-                const CAL_CLIENT_ID = '85e8e56eaa0724d2ccdaf4333db44413772b3f79c29f8090753f13cd10ccc6b9';
-                const redirectUri = encodeURIComponent('https://www.mybodymap.app/dashboard/cal-connect');
-                const state = encodeURIComponent(therapist?.id || '');
-                const calUrl = `https://app.cal.com/auth/oauth2/authorize?client_id=${CAL_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=code&scope=BOOKING_READ%20PROFILE_READ&state=${state}`;
-                window.open(calUrl, '_blank');
-              }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#2A5741', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:8 }}>
-                📅 Connect Calendar
-              </button>
-              <div style={{ textAlign:'center' }}>
-                <button onClick={() => setShowCalKey(!showCalKey)} style={{ background:'none', border:'none', fontSize:'11px', color:C2.gray, cursor:'pointer', textDecoration:'underline' }}>
-                  {showCalKey ? 'Hide manual option' : 'Or enter key manually'}
+            <div style={{ background:C2.beige, borderRadius:10, padding:12 }}>
+              <p style={{ fontSize:'11px', color:C2.gray, margin:'0 0 8px 0', lineHeight:1.5 }}>
+                Using Cal.com? Find your API key at <strong>cal.com → Settings → Developer → API Keys</strong>
+              </p>
+              <div style={{ display:'flex', gap:6 }}>
+                <input type="password" value={calKey} onChange={e => setCalKey(e.target.value)} placeholder="cal_live_..."
+                  style={{ flex:1, padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:'12px', fontFamily:'monospace', background:'#fff' }} />
+                <button onClick={async () => {
+                  const { supabase: sb } = await import('../lib/supabase');
+                  await sb.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
+                  setCalSaved(true); setTimeout(() => setCalSaved(false), 2000);
+                }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 14px', borderRadius:8, fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>
+                  {calSaved ? '✓' : 'Save'}
                 </button>
               </div>
-              {showCalKey && (
-                <div style={{ background:C2.beige, borderRadius:10, padding:12, marginTop:8 }}>
-                  <p style={{ fontSize:'11px', color:C2.gray, margin:'0 0 8px 0', lineHeight:1.5 }}>
-                    Find your key at <strong>cal.com → Settings → Developer</strong>
-                  </p>
-                  <div style={{ display:'flex', gap:6 }}>
-                    <input type="password" value={calKey} onChange={e => setCalKey(e.target.value)} placeholder="cal_live_..."
-                      style={{ flex:1, padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:'12px', fontFamily:'monospace', background:'#fff' }} />
-                    <button onClick={async () => {
-                      const { supabase: sb } = await import('../lib/supabase');
-                      await sb.from('therapists').update({ cal_api_key: calKey }).eq('id', therapist.id);
-                      setCalSaved(true); setTimeout(() => setCalSaved(false), 2000);
-                    }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 14px', borderRadius:8, fontSize:'12px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>
-                      {calSaved ? '✓' : 'Save'}
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

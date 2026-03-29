@@ -19,7 +19,6 @@ serve(async (req) => {
   try {
     const { action, code, therapist_id } = await req.json();
 
-    // Action: get_auth_url - generate the Cal.com OAuth URL
     if (action === 'get_auth_url') {
       const redirectUri = 'https://www.mybodymap.app/dashboard/cal-connect';
       const authUrl = `https://app.cal.com/auth/oauth2/authorize?client_id=${CAL_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=BOOKING_READ%20PROFILE_READ`;
@@ -28,11 +27,10 @@ serve(async (req) => {
       });
     }
 
-    // Action: exchange_code - exchange auth code for access token
     if (action === 'exchange_code' && code && therapist_id) {
       const redirectUri = 'https://www.mybodymap.app/dashboard/cal-connect';
 
-      const tokenRes = await fetch('https://app.cal.com/api/auth/oauth2/token', {
+      const tokenRes = await fetch('https://app.cal.com/auth/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -44,7 +42,16 @@ serve(async (req) => {
         }),
       });
 
-      const tokenData = await tokenRes.json();
+      const tokenText = await tokenRes.text();
+      let tokenData;
+      try {
+        tokenData = JSON.parse(tokenText);
+      } catch {
+        return new Response(JSON.stringify({ error: 'Cal.com token parse failed', raw: tokenText }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       if (!tokenData.access_token) {
         return new Response(JSON.stringify({ error: 'Token exchange failed', details: tokenData }), {
@@ -53,12 +60,11 @@ serve(async (req) => {
         });
       }
 
-      // Store tokens in Supabase
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
       await supabase.from('therapists').update({
         cal_access_token: tokenData.access_token,
         cal_refresh_token: tokenData.refresh_token,
-        cal_token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+        cal_token_expires_at: tokenData.expires_in ? new Date(Date.now() + tokenData.expires_in * 1000).toISOString() : null,
         cal_connected: true,
       }).eq('id', therapist_id);
 
