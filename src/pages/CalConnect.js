@@ -35,17 +35,23 @@ export default function CalConnect() {
       }
       if (!therapistId) { setStatus('error'); setErrorDetail('No therapist ID found'); return; }
 
-      const { data, error } = await supabase.functions.invoke('cal-oauth', {
-        body: { action: 'exchange_code', code, therapist_id: therapistId },
+      const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/cal-oauth', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJtbnFmcmxqb2tubWVsbGJucGl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE3NDg4MDMsImV4cCI6MjA4NzMyNDgwM30.FiZzRBOtjbeGA6cWhj3YhTu87F0dImSsK8joMiWab9E',
+        },
+        body: JSON.stringify({ action: 'exchange_code', code, therapist_id: therapistId }),
       });
+      const data = await res.json();
 
       if (data?.success) {
         setStatus('success');
         setTimeout(() => navigate('/dashboard/settings'), 2000);
       } else {
-        console.error('Cal exchange error:', error, data);
+        console.error('Cal exchange error:', data);
         setStatus('error');
-        setErrorDetail(JSON.stringify(data || error || 'unknown'));
+        setErrorDetail(JSON.stringify(data || 'unknown'));
       }
     } catch(e) {
       console.error('Cal connect exception:', e);
