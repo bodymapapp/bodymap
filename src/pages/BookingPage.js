@@ -323,7 +323,14 @@ export default function BookingPage() {
                     {l}{r&&<span style={{color:C.danger}}> *</span>}
                   </label>
                   <input type={t} value={form[k]} placeholder={p} autoComplete={k==='name'?'name':k==='email'?'email':'tel'}
-                    onChange={e=>{setForm(f=>({...f,[k]:e.target.value}));setErrors(er=>({...er,[k]:''}));}}
+                    onChange={e=>{
+                      let val = e.target.value;
+                      if(k==='phone'){
+                        const d=val.replace(/\D/g,'').slice(0,10);
+                        val=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+                      }
+                      setForm(f=>({...f,[k]:val}));setErrors(er=>({...er,[k]:''}));
+                    }}
                     style={{width:'100%',padding:'13px 14px',border:`1.5px solid ${errors[k]?C.danger:C.light}`,borderRadius:10,fontSize:15,boxSizing:'border-box',outline:'none',fontFamily:'system-ui'}}/>
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>

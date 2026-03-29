@@ -231,7 +231,8 @@ function DailyView({ therapist, appointments: apptOverride }) {
   );
 }
 
-function WeeklyView({ therapist }) {
+function WeeklyView({ therapist, appointments: apptOverride }) {
+  const APPTS = apptOverride || APPOINTMENTS;
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
@@ -245,7 +246,7 @@ function WeeklyView({ therapist }) {
   const weekStart = addDays(getMonday(TODAY), weekOffset * 7);
   const weekDays = [0,1,2,3,4,5,6].map(n => addDays(weekStart,n));
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const weekAppts = APPOINTMENTS.filter(a => a.date >= weekStart && a.date < addDays(weekStart,7));
+  const weekAppts = APPTS.filter(a => a.date >= weekStart && a.date < addDays(weekStart,7));
 
   return (
     <div>
@@ -259,7 +260,7 @@ function WeeklyView({ therapist }) {
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8 }}>
         {weekDays.map((d,i) => {
-          const dayAppts = APPOINTMENTS.filter(a=>sameDay(a.date,d));
+          const dayAppts = APPTS.filter(a=>sameDay(a.date,d));
           const isToday = sameDay(d,TODAY);
           return (
             <div key={i} style={{ minHeight:120 }}>
@@ -291,7 +292,8 @@ function WeeklyView({ therapist }) {
   );
 }
 
-function MonthlyView({ therapist }) {
+function MonthlyView({ therapist, appointments: apptOverride }) {
+  const APPTS = apptOverride || APPOINTMENTS;
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const [selectedAppt, setSelectedAppt] = useState(null);
@@ -306,7 +308,7 @@ function MonthlyView({ therapist }) {
   for (let i=0; i<startOffset; i++) calDays.push(null);
   for (let i=1; i<=daysInMonth; i++) calDays.push(new Date(viewMonth.getFullYear(), viewMonth.getMonth(), i));
 
-  const selectedDayAppts = APPOINTMENTS.filter(a => sameDay(a.date, selectedDate));
+  const selectedDayAppts = APPTS.filter(a => sameDay(a.date, selectedDate));
 
   return (
     <div>
@@ -561,7 +563,7 @@ export default function ScheduleDashboard({ therapist }) {
       ) : (
         <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
           <span style={{ fontSize:16 }}>👁️</span>
-          <div><strong>Sample schedule — for preview only.</strong> Go to Settings → Connect Calendar to see your real appointments here.</div>
+          <div><strong>Sample preview</strong> — this is what your schedule looks like with real bookings. Share your booking link with clients to fill it up!</div>
         </div>
       )}
       <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content' }}>
@@ -571,9 +573,9 @@ export default function ScheduleDashboard({ therapist }) {
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings} />}
-      {subView==='weekly'   && <WeeklyView therapist={therapist} />}
-      {subView==='monthly'  && <MonthlyView therapist={therapist} />}
+      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
+      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
+      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
       {subView==='insights' && <InsightsView />}
     </div>
   );
