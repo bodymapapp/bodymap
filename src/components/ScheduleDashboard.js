@@ -356,7 +356,7 @@ function TodayView({ therapist, allAppts }) {
             {sortedAppts.map((appt, idx) => {
               const startMin = timeToMin(appt.time);
               const y = (startMin - TIMELINE_START) * PX_PER_MIN;
-              const h = Math.max(appt.duration * PX_PER_MIN, 44);
+              const h = Math.max(appt.duration * PX_PER_MIN, 36);
               const st = STATUS[appt.status] || STATUS['pending-intake'];
               const isSelected = selected?.id === appt.id;
               const isPast = dayOffset === 0 && startMin + appt.duration < nowMin;
@@ -376,7 +376,7 @@ function TodayView({ therapist, allAppts }) {
                     transform: isSelected ? 'scale(1.01)' : 'none',
                     zIndex: isSelected ? 5 : 1,
                   }}>
-                  <div style={{padding:'8px 10px',height:'100%',display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                  <div style={{padding:'6px 10px',height:'100%',display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6}}>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
@@ -393,7 +393,7 @@ function TodayView({ therapist, allAppts }) {
                           {appt.preview && <span style={{fontSize:9,fontWeight:700,color:'#9CA3AF',
                             background:'#F3F4F6',borderRadius:4,padding:'1px 5px',flexShrink:0}}>PREVIEW</span>}
                         </div>
-                        {h > 56 && (
+                        {h > 46 && (
                           <div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:32}}>
                             {appt.service}
                             {appt.focus?.length > 0 && ` · ${appt.focus.slice(0,2).join(', ')}`}
@@ -405,7 +405,7 @@ function TodayView({ therapist, allAppts }) {
                         <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
                       </div>
                     </div>
-                    {h > 80 && (
+                    {h > 65 && (
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
                         <div style={{background: appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,
                           borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>
@@ -738,7 +738,7 @@ export default function ScheduleDashboard({ therapist }) {
 
   // Merge: real bookings + sample preview (show sample when < 3 real bookings)
   const hasReal = realBookings && realBookings.length > 0;
-  const showSample = !realBookings || realBookings.length < 3;
+  const showSample = !realBookings || realBookings.length < 5;
   const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
 
   const TABS = [
