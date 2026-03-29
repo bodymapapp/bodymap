@@ -22,10 +22,21 @@ function ServicesAndAvailability({ therapist }) {
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
-  const [newSvc, setNewSvc] = React.useState({ name:'', duration:60, price:85, description:'' });
-  const [addingSvc, setAddingSvc] = React.useState(false);
-  const [savingSvc, setSavingSvc] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
+  const [saved, setSaved] = React.useState(null);
 
+  const PRESETS = [
+    { name:'Swedish Massage', duration:60, price:85 },
+    { name:'Deep Tissue', duration:60, price:100 },
+    { name:'Hot Stone', duration:90, price:130 },
+    { name:'Sports Massage', duration:60, price:95 },
+    { name:'Prenatal Massage', duration:60, price:90 },
+    { name:'Relaxation Massage', duration:60, price:80 },
+    { name:'Chair Massage', duration:30, price:45 },
+    { name:'Custom...', duration:60, price:85 },
+  ];
+
+  const [draft, setDraft] = React.useState({ preset:'', name:'', duration:60, price:85 });
   const DAYS = [{id:1,label:'Mon'},{id:2,label:'Tue'},{id:3,label:'Wed'},{id:4,label:'Thu'},{id:5,label:'Fri'},{id:6,label:'Sat'},{id:0,label:'Sun'}];
 
   React.useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
@@ -40,14 +51,22 @@ function ServicesAndAvailability({ therapist }) {
     setLoading(false);
   }
 
+  function handlePreset(val) {
+    if (val === 'Custom...') {
+      setDraft(d => ({ ...d, preset: val, name: '' }));
+    } else {
+      const p = PRESETS.find(x => x.name === val);
+      if (p) setDraft({ preset: val, name: p.name, duration: p.duration, price: p.price });
+    }
+  }
+
   async function addService() {
-    if (!newSvc.name.trim()) return;
-    setSavingSvc(true);
-    const { data } = await supabase.from('services').insert({ ...newSvc, therapist_id: therapist.id, active: true }).select().single();
+    if (!draft.name.trim()) return;
+    setSaving('add');
+    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true }).select().single();
     setServices(s => [...s, data]);
-    setNewSvc({ name:'', duration:60, price:85, description:'' });
-    setAddingSvc(false);
-    setSavingSvc(false);
+    setDraft({ preset:'', name:'', duration:60, price:85 });
+    setSaving(false);
   }
 
   async function toggleService(svc) {
@@ -78,85 +97,93 @@ function ServicesAndAvailability({ therapist }) {
 
   if (loading) return null;
 
+  const isCustom = draft.preset === 'Custom...';
+  const canAdd = draft.name.trim().length > 0;
+
   return (
     <div style={{ marginBottom:20 }}>
       {/* Services */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
-          <div>
-            <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:0 }}>💆 Services</p>
-            <p style={{ fontSize:'12px', color:C2.gray, margin:'4px 0 0' }}>What you offer on your booking page</p>
-          </div>
-          <button onClick={() => setAddingSvc(true)} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:8, padding:'8px 14px', fontSize:'12px', fontWeight:700, cursor:'pointer' }}>+ Add</button>
-        </div>
-        {services.length === 0 && !addingSvc && (
-          <div style={{ textAlign:'center', padding:'20px 0', color:C2.gray, fontSize:13 }}>
-            No services yet. Add your first one above.
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💆 Services</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Clients choose from these when booking online.</p>
+
+        {/* Existing services */}
+        {services.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
+            {services.map(svc => (
+              <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
+                  <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>{svc.duration} min · ${svc.price}</span>
+                </div>
+                <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                  {svc.active ? 'On' : 'Off'}
+                </button>
+                <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:15, padding:'2px 4px', flexShrink:0, lineHeight:1 }}>×</button>
+              </div>
+            ))}
           </div>
         )}
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          {services.map(svc => (
-            <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:12, background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, padding:'12px 14px', opacity:svc.active?1:0.6 }}>
-              <div style={{ flex:1 }}>
-                <div style={{ fontSize:14, fontWeight:700, color:C2.darkGray }}>{svc.name}</div>
-                <div style={{ fontSize:12, color:C2.gray }}>{svc.duration} min · ${svc.price}</div>
-              </div>
-              <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:6, padding:'4px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer' }}>
-                {svc.active ? 'Active' : 'Off'}
-              </button>
-              <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16, padding:'4px' }}>×</button>
+
+        {/* Add service — always visible inline */}
+        <div style={{ background:'#F9FAFB', borderRadius:10, padding:14, border:`1.5px dashed ${C2.lightGray}` }}>
+          <p style={{ fontSize:'11px', fontWeight:700, color:C2.gray, margin:'0 0 10px', textTransform:'uppercase', letterSpacing:'0.06em' }}>+ Add a service</p>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:8, alignItems:'center' }}>
+            <select value={draft.preset} onChange={e => handlePreset(e.target.value)}
+              style={{ padding:'10px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:13, fontFamily:'system-ui', background:'#fff', color: draft.preset ? C2.darkGray : C2.gray, outline:'none', cursor:'pointer' }}>
+              <option value="" disabled>Select a service type</option>
+              {PRESETS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42 }}>
+              <input type="number" value={draft.duration} onChange={e => setDraft(d => ({...d, duration:parseInt(e.target.value)||60}))} min="15" max="240"
+                style={{ width:38, border:'none', fontSize:13, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
+              <span style={{ fontSize:12, color:C2.gray }}>min</span>
             </div>
-          ))}
-        </div>
-        {addingSvc && (
-          <div style={{ background:'#F9FAFB', borderRadius:10, padding:16, marginTop:12 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 80px 80px', gap:8, marginBottom:8 }}>
-              <input value={newSvc.name} onChange={e => setNewSvc(s => ({...s, name:e.target.value}))} placeholder="Service name (e.g. Deep Tissue)"
-                style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, fontFamily:'system-ui', outline:'none' }} />
-              <input type="number" value={newSvc.duration} onChange={e => setNewSvc(s => ({...s, duration:parseInt(e.target.value)||60}))} placeholder="Min"
-                style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, textAlign:'center', outline:'none' }} />
-              <div style={{ display:'flex', alignItems:'center', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'0 8px', background:'#fff' }}>
-                <span style={{ fontSize:13, color:C2.gray }}>$</span>
-                <input type="number" value={newSvc.price} onChange={e => setNewSvc(s => ({...s, price:parseInt(e.target.value)||0}))}
-                  style={{ flex:1, border:'none', fontSize:13, background:'transparent', outline:'none', textAlign:'center' }} />
-              </div>
-            </div>
-            <input value={newSvc.description} onChange={e => setNewSvc(s => ({...s, description:e.target.value}))} placeholder="Description (optional)"
-              style={{ width:'100%', padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, fontFamily:'system-ui', boxSizing:'border-box', marginBottom:8, outline:'none' }} />
-            <div style={{ display:'flex', gap:8 }}>
-              <button onClick={addService} disabled={savingSvc} style={{ background:C2.forest, color:'#fff', border:'none', borderRadius:8, padding:'9px 18px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
-                {savingSvc ? 'Saving...' : 'Save Service'}
-              </button>
-              <button onClick={() => setAddingSvc(false)} style={{ background:'transparent', color:C2.gray, border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 14px', fontSize:13, cursor:'pointer' }}>Cancel</button>
+            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42 }}>
+              <span style={{ fontSize:13, color:C2.gray, marginRight:2 }}>$</span>
+              <input type="number" value={draft.price} onChange={e => setDraft(d => ({...d, price:parseInt(e.target.value)||0}))} min="0"
+                style={{ width:46, border:'none', fontSize:13, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
             </div>
           </div>
-        )}
+          {isCustom && (
+            <input value={draft.name} onChange={e => setDraft(d => ({...d, name:e.target.value}))} placeholder="Enter service name"
+              style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:13, fontFamily:'system-ui', boxSizing:'border-box', marginTop:8, outline:'none' }} />
+          )}
+          {draft.preset && (
+            <button onClick={addService} disabled={!canAdd || saving === 'add'}
+              style={{ marginTop:10, background:canAdd?C2.forest:'#D1D5DB', color:'#fff', border:'none', borderRadius:10, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:canAdd?'pointer':'default', transition:'background 0.15s' }}>
+              {saving === 'add' ? 'Saving...' : `Add ${draft.name || 'Service'}`}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Availability */}
+      {/* Working Hours */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px' }}>🕐 Working Hours</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>Set which days and hours you're available for bookings.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off, then set your hours.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {DAYS.map(({ id: dow, label }) => {
             const avail = availability.find(a => a.day_of_week === dow);
             const isOn = avail?.active;
             return (
-              <div key={dow} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1.5px solid ${isOn?C2.lightGray:'transparent'}` }}>
-                <button onClick={() => toggleDay(dow)} style={{ width:40, height:22, borderRadius:11, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
-                  <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
+              <div key={dow} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, transition:'all 0.15s' }}>
+                <button onClick={() => toggleDay(dow)}
+                  style={{ width:38, height:20, borderRadius:10, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+                  <div style={{ width:14, height:14, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
                 </button>
-                <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:C2.gray, width:36 }}>{label}</span>
-                {isOn && avail && (
-                  <div style={{ display:'flex', alignItems:'center', gap:8, flex:1 }}>
-                    <input type="time" value={avail.start_time} onChange={e => updateHours(avail.id, 'start_time', e.target.value)}
-                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none' }} />
-                    <span style={{ fontSize:12, color:C2.gray }}>to</span>
-                    <input type="time" value={avail.end_time} onChange={e => updateHours(avail.id, 'end_time', e.target.value)}
-                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none' }} />
+                <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', width:32, flexShrink:0 }}>{label}</span>
+                {isOn && avail ? (
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <input type="time" value={avail.start_time.slice(0,5)} onChange={e => updateHours(avail.id, 'start_time', e.target.value)}
+                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff' }} />
+                    <span style={{ fontSize:12, color:C2.gray }}>–</span>
+                    <input type="time" value={avail.end_time.slice(0,5)} onChange={e => updateHours(avail.id, 'end_time', e.target.value)}
+                      style={{ padding:'6px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff' }} />
                   </div>
+                ) : (
+                  <span style={{ fontSize:12, color:'#D1D5DB' }}>Off</span>
                 )}
-                {!isOn && <span style={{ fontSize:12, color:'#D1D5DB' }}>Unavailable</span>}
               </div>
             );
           })}
