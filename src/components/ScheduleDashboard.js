@@ -265,7 +265,7 @@ function TodayView({ therapist, allAppts }) {
                     {label}
                   </div>
                   <div style={{position:'absolute',top:y,left:0,right:0,
-                    borderTop:h===8||h===19?'none':'1px solid #F3F4F6',pointerEvents:'none'}}/>
+                    borderTop:h===8||h===19?'none':'1px solid #EEEEEE',pointerEvents:'none'}}/>
                 </div>
               );
             })}
@@ -374,6 +374,25 @@ function TodayView({ therapist, allAppts }) {
 
           </div>
         )}
+      </div>
+
+      {/* Status legend */}
+      <div style={{display:'flex',gap:16,flexWrap:'wrap',marginTop:14,padding:'10px 14px',background:'#F9FAFB',borderRadius:10}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#6B7280',marginRight:4}}>KEY:</span>
+        {[
+          {color:'#16A34A',label:'Brief ready — intake done, read before session'},
+          {color:'#F59E0B',label:'No intake yet — send link'},
+          {color:'#9CA3AF',label:'Complete'},
+        ].map(({color,label})=>(
+          <div key={label} style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:10,height:10,borderRadius:2,background:color,flexShrink:0}}/>
+            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+          </div>
+        ))}
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:10,height:10,borderRadius:2,background:'#CBD5E1',border:'1px dashed #94A3B8',flexShrink:0}}/>
+          <span style={{fontSize:11,color:'#6B7280'}}>Preview example</span>
+        </div>
       </div>
 
       {/* Preview legend */}
