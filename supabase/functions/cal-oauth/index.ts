@@ -32,7 +32,7 @@ serve(async (req) => {
     if (action === 'exchange_code' && code && therapist_id) {
       const redirectUri = 'https://www.mybodymap.app/dashboard/cal-connect';
 
-      const tokenRes = await fetch('https://app.cal.com/oauth/token', {
+      const tokenRes = await fetch('https://app.cal.com/api/auth/oauth2/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
