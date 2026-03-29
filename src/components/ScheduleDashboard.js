@@ -182,7 +182,7 @@ function AppointmentCard({ appt, onClick }) {
 }
 
 function DailyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPOINTMENTS;
+  const APPTS = apptOverride || APPTS;
   const [selectedDay, setSelectedDay] = useState(0);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
@@ -232,7 +232,7 @@ function DailyView({ therapist, appointments: apptOverride }) {
 }
 
 function WeeklyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPOINTMENTS;
+  const APPTS = apptOverride || APPTS;
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedAppt, setSelectedAppt] = useState(null);
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url || 'demo'}`;
@@ -293,7 +293,7 @@ function WeeklyView({ therapist, appointments: apptOverride }) {
 }
 
 function MonthlyView({ therapist, appointments: apptOverride }) {
-  const APPTS = apptOverride || APPOINTMENTS;
+  const APPTS = apptOverride || APPTS;
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const [selectedAppt, setSelectedAppt] = useState(null);
@@ -325,7 +325,7 @@ function MonthlyView({ therapist, appointments: apptOverride }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:24 }}>
         {calDays.map((d,i) => {
           if (!d) return <div key={i} />;
-          const dayAppts = APPOINTMENTS.filter(a=>sameDay(a.date,d));
+          const dayAppts = APPTS.filter(a=>sameDay(a.date,d));
           const isToday = sameDay(d,TODAY);
           const isSel = sameDay(d,selectedDate);
           const hasPending = dayAppts.some(a=>a.status==='pending-intake');
@@ -356,30 +356,31 @@ function MonthlyView({ therapist, appointments: apptOverride }) {
   );
 }
 
-function InsightsView() {
+function InsightsView({ appointments: apptOverride }) {
+  const APPTS = apptOverride || APPOINTMENTS;
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayCounts = DAY_NAMES.map((name,i) => {
     const jsDay = i===6 ? 0 : i+1;
-    return { name, count: APPOINTMENTS.filter(a=>a.date.getDay()===jsDay).length };
+    return { name, count: APPTS.filter(a=>a.date.getDay()===jsDay).length };
   });
   const maxDay = Math.max(...dayCounts.map(d=>d.count),1);
 
-  const completionRate = Math.round((APPOINTMENTS.filter(a=>a.status==='complete'||a.status==='intake-done').length/APPOINTMENTS.length)*100);
+  const completionRate = Math.round((APPTS.filter(a=>a.status==='complete'||a.status==='intake-done').length/APPOINTMENTS.length)*100);
 
   const clientCounts = {};
-  APPOINTMENTS.forEach(a=>{ clientCounts[a.client]=(clientCounts[a.client]||0)+1; });
+  APPTS.forEach(a=>{ clientCounts[a.client]=(clientCounts[a.client]||0)+1; });
   const topClients = Object.entries(clientCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
 
   const lastSession = {};
-  APPOINTMENTS.forEach(a=>{ if(!lastSession[a.client]||a.date>lastSession[a.client]) lastSession[a.client]=a.date; });
+  APPTS.forEach(a=>{ if(!lastSession[a.client]||a.date>lastSession[a.client]) lastSession[a.client]=a.date; });
   const lapsed = Object.entries(lastSession)
     .map(([name,date])=>({ name, daysSince:Math.floor((TODAY-date)/86400000) }))
-    .filter(c=>c.daysSince>14&&!APPOINTMENTS.some(a=>a.client===c.name&&a.date>TODAY))
+    .filter(c=>c.daysSince>14&&!APPTS.some(a=>a.client===c.name&&a.date>TODAY))
     .sort((a,b)=>b.daysSince-a.daysSince);
 
   const weeklyCounts = [3,2,1,0].map(w=>{
     const start=addDays(TODAY,-7*(w+1)); const end=addDays(TODAY,-7*w);
-    return { label:w===0?'This wk':`${w}w ago`, count:APPOINTMENTS.filter(a=>a.date>=start&&a.date<end).length };
+    return { label:w===0?'This wk':`${w}w ago`, count:APPTS.filter(a=>a.date>=start&&a.date<end).length };
   });
   const maxWeek = Math.max(...weeklyCounts.map(w=>w.count),1);
 
@@ -573,10 +574,10 @@ export default function ScheduleDashboard({ therapist }) {
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
-      {subView==='insights' && <InsightsView />}
+      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPTS} />}
+      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPTS} />}
+      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPTS} />}
+      {subView==='insights' && <InsightsView appointments={realBookings || APPOINTMENTS} />}
     </div>
   );
 }
