@@ -460,7 +460,7 @@ export default function ScheduleDashboard({ therapist }) {
   const [realBookings, setRealBookings] = useState(null);
   const [loadingCal, setLoadingCal] = useState(false);
 
-  useEffect(() => { if (therapist?.id) fetchCalBookings(); }, [therapist]);
+  useEffect(() => { if (therapist?.id) fetchCalBookings(); }, [therapist?.id]);
 
   const fetchCalBookings = async () => {
     setLoadingCal(true);
