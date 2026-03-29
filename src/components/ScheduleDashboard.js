@@ -574,9 +574,9 @@ export default function ScheduleDashboard({ therapist }) {
           </button>
         ))}
       </div>
-      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPTS} />}
-      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPTS} />}
-      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPTS} />}
+      {subView==='daily'    && <DailyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
+      {subView==='weekly'   && <WeeklyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
+      {subView==='monthly'  && <MonthlyView therapist={therapist} appointments={realBookings || APPOINTMENTS} />}
       {subView==='insights' && <InsightsView appointments={realBookings || APPOINTMENTS} />}
     </div>
   );
