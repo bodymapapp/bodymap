@@ -267,6 +267,32 @@ function TodayView({ therapist, allAppts }) {
         </div>
       </div>
 
+      {/* Legend — top */}
+      <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#374151',marginRight:2}}>HOW TO READ:</span>
+        {[
+          {color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},
+          {color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},
+          {color:'#6B7280',bg:'#F3F4F6',label:'Complete'},
+        ].map(({color,bg,label})=>(
+          <div key={label} style={{display:'flex',alignItems:'center',gap:5}}>
+            <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`,flexShrink:0}}/>
+            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+          </div>
+        ))}
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:12,height:12,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1',flexShrink:0}}/>
+          <span style={{fontSize:11,color:'#9CA3AF'}}>Preview example</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:5}}>
+          <div style={{width:12,height:4,borderRadius:2,background:'#EF4444',flexShrink:0}}/>
+          <span style={{fontSize:11,color:'#9CA3AF'}}>Current time</span>
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:5,marginLeft:'auto'}}>
+          <span style={{fontSize:10,color:'#9CA3AF'}}>Tap any block for details</span>
+        </div>
+      </div>
+
       {/* ── VISUAL TIMELINE ─────────────────────────────────────── */}
       <div style={{background:'#fff',borderRadius:16,padding:'20px 16px 24px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflowX:'hidden'}}>
 
