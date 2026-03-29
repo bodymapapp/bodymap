@@ -149,99 +149,247 @@ function TodayView({ therapist, allAppts }) {
   const realAppts = dayAppts.filter(a => !a.preview);
   const previewAppts = dayAppts.filter(a => a.preview);
 
-  const hour = new Date().getHours();
+  const now = new Date();
+  const nowMin = dayOffset === 0 ? now.getHours() * 60 + now.getMinutes() : -1;
+
+  const hour = now.getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = therapist?.full_name?.split(' ')[0] || 'there';
 
-  // Stats for today
   const todayReal = allAppts.filter(a => sameDay(a.date, TODAY) && !a.preview);
-  const intakeDone = todayReal.filter(a => a.status === 'intake-done').length;
-  const pending = todayReal.filter(a => a.status === 'pending-intake').length;
-  const weekAppts = allAppts.filter(a => !a.preview && a.date >= TODAY && a.date <= addDays(TODAY, 7));
+  const weekReal = allAppts.filter(a => !a.preview && a.date >= TODAY && a.date <= addDays(TODAY, 7));
 
-  // Day selector — next 5 days
-  const days = [0,1,2,3,4].map(n => addDays(TODAY, n));
+  // Parse time string like "9:00 AM" → minutes from midnight
+  function timeToMin(t) {
+    if (!t) return 0;
+    const m = t.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    if (!m) return 0;
+    let h = parseInt(m[1]), min = parseInt(m[2]);
+    if (m[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+    if (m[3].toUpperCase() === 'AM' && h === 12) h = 0;
+    return h * 60 + min;
+  }
+
+  // Timeline config
+  const TIMELINE_START = 8 * 60;  // 8 AM
+  const TIMELINE_END   = 19 * 60; // 7 PM
+  const TOTAL_MINS     = TIMELINE_END - TIMELINE_START;
+  const PX_PER_MIN     = 2.2;
+  const TIMELINE_H     = TOTAL_MINS * PX_PER_MIN;
+  const LEFT_GUTTER    = 52;
+
+  const hourLabels = [];
+  for (let h = 8; h <= 19; h++) {
+    hourLabels.push(h);
+  }
+
+  // Detect gaps > 90 min between appointments
+  const sortedAppts = [...dayAppts].sort((a,b) => timeToMin(a.time) - timeToMin(b.time));
+  const gaps = [];
+  for (let i = 0; i < sortedAppts.length - 1; i++) {
+    const aEnd = timeToMin(sortedAppts[i].time) + sortedAppts[i].duration;
+    const bStart = timeToMin(sortedAppts[i+1].time);
+    if (bStart - aEnd > 90) {
+      gaps.push({ start: aEnd, end: bStart, mins: bStart - aEnd });
+    }
+  }
 
   return (
     <div>
-      {/* Hero greeting */}
-      <div style={{marginBottom:24}}>
-        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 4px'}}>
+      {/* Greeting */}
+      <div style={{marginBottom:20}}>
+        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>
           {greeting}, {firstName}.
         </h2>
-        <p style={{fontSize:14,color:'#6B7280',margin:0}}>
-          {dayOffset === 0 ? fmtDay(TODAY) : fmtDay(viewDate)}
-        </p>
+        <p style={{fontSize:13,color:'#6B7280',margin:0}}>{fmtDay(viewDate)}</p>
       </div>
 
-      {/* Stats row */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:24}}>
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
         {[
-          {val:todayReal.length,label:"Today's sessions",color:'#2A5741'},
-          {val:intakeDone,label:'Brief ready',color:'#16A34A'},
-          {val:pending,label:'Awaiting intake',color:'#D97706'},
-          {val:weekAppts.length,label:'This week',color:'#6B9E80'},
-        ].map(s=>(
-          <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'16px 14px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-            <div style={{fontSize:28,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
-            <div style={{fontSize:11,color:'#6B7280',marginTop:4,lineHeight:1.3}}>{s.label}</div>
+          {val:todayReal.length,    label:"Today",         color:'#2A5741'},
+          {val:todayReal.filter(a=>a.status==='intake-done').length, label:'Brief ready', color:'#16A34A'},
+          {val:todayReal.filter(a=>a.status==='pending-intake').length, label:'Need intake', color:'#D97706'},
+          {val:weekReal.length,     label:'This week',     color:'#6B9E80'},
+        ].map(s => (
+          <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+            <div style={{fontSize:26,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
+            <div style={{fontSize:11,color:'#9CA3AF',marginTop:3,lineHeight:1.3}}>{s.label}</div>
           </div>
         ))}
       </div>
 
       {/* Day selector */}
-      <div style={{display:'flex',gap:8,marginBottom:20,overflowX:'auto',paddingBottom:4}}>
-        {days.map((d,i) => {
+      <div style={{display:'flex',gap:6,marginBottom:24,overflowX:'auto',paddingBottom:2}}>
+        {[0,1,2,3,4].map(i => {
+          const d = addDays(TODAY, i);
           const count = allAppts.filter(a => sameDay(a.date,d) && !a.preview).length;
           const isSel = i === dayOffset;
           return (
-            <button key={i} onClick={()=>setDayOffset(i)}
+            <button key={i} onClick={() => setDayOffset(i)}
               style={{flexShrink:0,background:isSel?'#2A5741':'#fff',
                 color:isSel?'#fff':'#1F2937',
                 border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,
-                borderRadius:12,padding:'10px 16px',cursor:'pointer',minWidth:80,textAlign:'center'}}>
-              <div style={{fontSize:12,fontWeight:700,textTransform:'uppercase',opacity:0.8}}>
+                borderRadius:12,padding:'10px 14px',cursor:'pointer',minWidth:72,textAlign:'center',transition:'all 0.15s'}}>
+              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2}}>
                 {i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
               </div>
-              <div style={{fontSize:20,fontWeight:700,margin:'2px 0'}}>{d.getDate()}</div>
-              <div style={{fontSize:11,opacity:0.7}}>{count} session{count!==1?'s':''}</div>
+              <div style={{fontSize:18,fontWeight:700}}>{d.getDate()}</div>
+              {count > 0 && <div style={{fontSize:10,marginTop:2,opacity:0.7}}>{count} appt{count!==1?'s':''}</div>}
             </button>
           );
         })}
       </div>
 
-      {/* Appointment list */}
-      {dayAppts.length === 0 ? (
-        <div style={{background:'#fff',borderRadius:14,padding:'32px 24px',textAlign:'center'}}>
-          <div style={{fontSize:32,marginBottom:12}}>🌿</div>
-          <div style={{fontSize:15,fontWeight:600,color:'#1F2937',marginBottom:6}}>No sessions {dayOffset===0?'today':'this day'}</div>
-          <div style={{fontSize:13,color:'#6B7280'}}>Share your booking link to fill your schedule.</div>
-        </div>
-      ) : (
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {/* Real bookings */}
-          {realAppts.map(appt => <AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)} />)}
+      {/* ── VISUAL TIMELINE ─────────────────────────────────────── */}
+      <div style={{background:'#fff',borderRadius:16,padding:'20px 16px 24px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',overflowX:'hidden'}}>
 
-          {/* Preview divider */}
-          {realAppts.length > 0 && previewAppts.length > 0 && (
-            <div style={{display:'flex',alignItems:'center',gap:12,margin:'4px 0'}}>
-              <div style={{flex:1,height:'1px',background:'#E5E7EB',borderTop:'1px dashed #D1D5DB'}}/>
-              <span style={{fontSize:11,color:'#9CA3AF',fontWeight:600,whiteSpace:'nowrap'}}>PREVIEW EXAMPLES BELOW</span>
-              <div style={{flex:1,height:'1px',background:'#E5E7EB',borderTop:'1px dashed #D1D5DB'}}/>
-            </div>
-          )}
+        {dayAppts.length === 0 ? (
+          <div style={{textAlign:'center',padding:'40px 0'}}>
+            <div style={{fontSize:36,marginBottom:10}}>🌿</div>
+            <div style={{fontSize:15,fontWeight:600,color:'#1F2937',marginBottom:6}}>No sessions {dayOffset===0?'today':'this day'}</div>
+            <div style={{fontSize:13,color:'#9CA3AF'}}>Share your booking link to fill your calendar.</div>
+          </div>
+        ) : (
+          <div style={{position:'relative',height:TIMELINE_H,marginLeft:LEFT_GUTTER}}>
 
-          {/* Preview bookings */}
-          {previewAppts.map(appt => <AppointmentCard key={appt.id} appt={appt} onClick={()=>setSelected(appt)} preview />)}
+            {/* Hour grid lines + labels */}
+            {hourLabels.map(h => {
+              const y = (h * 60 - TIMELINE_START) * PX_PER_MIN;
+              const label = h === 12 ? '12 PM' : h < 12 ? `${h} AM` : `${h-12} PM`;
+              return (
+                <div key={h}>
+                  <div style={{position:'absolute',top:y,left:-LEFT_GUTTER,width:LEFT_GUTTER-8,
+                    textAlign:'right',fontSize:10,fontWeight:600,color:'#D1D5DB',lineHeight:'1',
+                    transform:'translateY(-50%)',userSelect:'none'}}>
+                    {label}
+                  </div>
+                  <div style={{position:'absolute',top:y,left:0,right:0,
+                    borderTop:h===8||h===19?'none':'1px solid #F3F4F6',pointerEvents:'none'}}/>
+                </div>
+              );
+            })}
+
+            {/* Gap indicators */}
+            {gaps.map((g,i) => {
+              const y = (g.start - TIMELINE_START) * PX_PER_MIN;
+              const h = g.mins * PX_PER_MIN;
+              const hrs = Math.floor(g.mins/60);
+              const mins = g.mins % 60;
+              const label = hrs > 0 ? `${hrs}h ${mins>0?mins+'m ':''} gap` : `${mins}m gap`;
+              return (
+                <div key={i} style={{position:'absolute',top:y,left:0,right:0,height:h,
+                  background:'repeating-linear-gradient(45deg,transparent,transparent 6px,#FEF9EE 6px,#FEF9EE 7px)',
+                  borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',
+                  border:'1px dashed #FCD34D',opacity:0.7}}>
+                  <span style={{fontSize:11,fontWeight:700,color:'#D97706',background:'#FFFBEB',
+                    padding:'2px 10px',borderRadius:20,border:'1px solid #FCD34D'}}>
+                    ⚡ {label} — consider filling this slot
+                  </span>
+                </div>
+              );
+            })}
+
+            {/* Current time indicator */}
+            {nowMin >= TIMELINE_START && nowMin <= TIMELINE_END && (
+              <div style={{position:'absolute',top:(nowMin-TIMELINE_START)*PX_PER_MIN,left:-8,right:0,zIndex:10,pointerEvents:'none'}}>
+                <div style={{display:'flex',alignItems:'center',gap:0}}>
+                  <div style={{width:10,height:10,borderRadius:'50%',background:'#EF4444',flexShrink:0}}/>
+                  <div style={{flex:1,height:2,background:'#EF4444',opacity:0.7}}/>
+                </div>
+              </div>
+            )}
+
+            {/* Appointment blocks */}
+            {sortedAppts.map((appt, idx) => {
+              const startMin = timeToMin(appt.time);
+              const y = (startMin - TIMELINE_START) * PX_PER_MIN;
+              const h = Math.max(appt.duration * PX_PER_MIN, 44);
+              const st = STATUS[appt.status] || STATUS['pending-intake'];
+              const isSelected = selected?.id === appt.id;
+              const isPast = dayOffset === 0 && startMin + appt.duration < nowMin;
+
+              return (
+                <div key={appt.id}
+                  onClick={() => setSelected(isSelected ? null : appt)}
+                  style={{
+                    position:'absolute', top:y, left:4, right:4, height:h,
+                    background: appt.preview ? '#F9FAFB' : st.bg,
+                    border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#E5E7EB':st.dot}`,
+                    borderLeft:`4px solid ${appt.preview?'#D1D5DB':st.dot}`,
+                    borderRadius:10, cursor:'pointer', overflow:'hidden',
+                    opacity: appt.preview ? 0.65 : isPast ? 0.55 : 1,
+                    transition:'all 0.15s',
+                    boxShadow: isSelected ? '0 4px 20px rgba(0,0,0,0.15)' : '0 1px 3px rgba(0,0,0,0.06)',
+                    transform: isSelected ? 'scale(1.01)' : 'none',
+                    zIndex: isSelected ? 5 : 1,
+                  }}>
+                  <div style={{padding:'8px 10px',height:'100%',display:'flex',flexDirection:'column',justifyContent:'space-between'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6}}>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                          <div style={{width:26,height:26,borderRadius:'50%',flexShrink:0,
+                            background:appt.preview?'#D1D5DB':avatarColor(appt.client),
+                            color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',
+                            fontSize:10,fontWeight:700}}>
+                            {initials(appt.client)}
+                          </div>
+                          <span style={{fontSize:13,fontWeight:700,color:appt.preview?'#9CA3AF':'#1F2937',
+                            overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                            {appt.client}
+                          </span>
+                          {appt.preview && <span style={{fontSize:9,fontWeight:700,color:'#9CA3AF',
+                            background:'#F3F4F6',borderRadius:4,padding:'1px 5px',flexShrink:0}}>PREVIEW</span>}
+                        </div>
+                        {h > 56 && (
+                          <div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:32}}>
+                            {appt.service}
+                            {appt.focus?.length > 0 && ` · ${appt.focus.slice(0,2).join(', ')}`}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{flexShrink:0,textAlign:'right'}}>
+                        <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937'}}>{appt.time}</div>
+                        <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
+                      </div>
+                    </div>
+                    {h > 80 && (
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:4}}>
+                        <div style={{background: appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,
+                          borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>
+                          {st.icon} {st.label}
+                        </div>
+                        {!appt.preview && appt.status==='intake-done' && (
+                          <div style={{fontSize:10,fontWeight:700,color:'#2A5741',
+                            background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>
+                            Brief ready →
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+          </div>
+        )}
+      </div>
+
+      {/* Preview legend */}
+      {previewAppts.length > 0 && (
+        <div style={{marginTop:12,padding:'8px 14px',background:'#FFFBEB',borderRadius:10,
+          fontSize:12,color:'#92400E',display:'flex',alignItems:'center',gap:6}}>
+          <span>👁</span>
+          <span>Dashed blocks are preview examples showing what a full day looks like. Real bookings appear solid.</span>
         </div>
       )}
 
-      {selected && <DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} />}
+      {selected && <DetailPanel appt={selected} therapist={therapist} onClose={() => setSelected(null)} />}
     </div>
   );
 }
 
-// ─── Appointment Card ─────────────────────────────────────────────────────────
 function AppointmentCard({ appt, onClick, preview }) {
   const st = STATUS[appt.status] || STATUS['pending-intake'];
   return (
