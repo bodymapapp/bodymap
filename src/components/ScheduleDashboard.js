@@ -247,7 +247,9 @@ function WeeklyView({ therapist, appointments }) {
         <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
         <div style={{textAlign:'center'}}>
           <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{weekOffset===0?'This Week':weekOffset===1?'Next Week':weekOffset===-1?'Last Week':fmtShort(weekStart)}</div>
-          <div style={{fontSize:12,color:'#6B7280'}}>{realWeek.length} sessions</div>
+          <div style={{fontSize:12,color:'#6B7280'}}>
+            {realWeek.length} sessions{realWeek.length>0?` · ~$${realWeek.reduce((s,a)=>s+(a.price||85),0)}`:''}
+          </div>
         </div>
         <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
@@ -268,9 +270,18 @@ function WeeklyView({ therapist, appointments }) {
                     const st=STATUS[appt.status]||STATUS['pending-intake'];
                     return (
                       <div key={appt.id} onClick={()=>setSelected(appt)}
-                        style={{background:appt.preview?'#F9FAFB':st.bg,borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,borderRadius:6,padding:'5px 7px',cursor:'pointer',opacity:appt.preview?0.5:1}}>
-                        <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#9CA3AF':st.color}}>{appt.time}</div>
-                        <div style={{fontSize:11,fontWeight:600,color:'#1F2937',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
+                        style={{background:appt.preview?'#F9FAFB':st.bg,
+                          borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,
+                          borderRadius:6,padding:'5px 7px',cursor:'pointer',
+                          opacity:appt.preview?0.45:1,
+                          boxShadow:appt.preview?'none':'0 1px 3px rgba(0,0,0,0.06)',
+                          transition:'all 0.15s'}}
+                        onMouseEnter={e=>{if(!appt.preview)e.currentTarget.style.transform='translateY(-1px)';}}
+                        onMouseLeave={e=>{e.currentTarget.style.transform='none';}}>
+                        <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
+                        <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
+                        <div style={{fontSize:10,color:appt.preview?'#D1D5DB':'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.service||'Session'}</div>
+                        <div style={{fontSize:9,fontWeight:600,color:appt.preview?'#D1D5DB':st.color,marginTop:1}}>{st.icon} {appt.preview?'Preview':st.label}</div>
                       </div>
                     );
                   })}
