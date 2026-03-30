@@ -118,7 +118,7 @@ export default function Home() {
           <div style={{ flex:'1 1 420px', maxWidth:540 }}>
             <div style={eyebrow}>Built for Massage Therapists</div>
             <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,60px)', fontWeight:700, lineHeight:1.13, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
-              Make it impossible for clients{' '}<em style={{ fontStyle:'italic', color:G.mid }}>not</em>{' '}to come back.
+              Your client's full history,<br/>ready before every session.
             </h1>
             <p style={{ fontSize:'clamp(16px,2vw,20px)', color:G.mid2, lineHeight:1.6, margin:'0 0 36px', maxWidth:480 }}>
               The only tool built around what every other app ignores — knowing your clients so well, they never need to find someone else.
