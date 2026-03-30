@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
-const STRIPE_PRO = 'https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02';
+const STRIPE_SILVER = 'https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#F3F4F6', border:'#E5E7EB', gold:'#C9A84C' };
 
 export default function Pricing() {
@@ -15,8 +15,8 @@ export default function Pricing() {
   const [promoApplied, setPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState('');
 
-  const PRO_MONTHLY = promoApplied ? 19 : 24;
-  const PRO_ANNUAL = promoApplied ? 15 : 19;
+  const SILVER_MONTHLY = promoApplied ? 19 : 24;
+  const SILVER_ANNUAL = promoApplied ? 15 : 19;
 
   function applyPromo() {
     if (promoCode.trim().toUpperCase() === 'BETAONE') { setPromoApplied(true); setPromoError(''); }
@@ -25,7 +25,7 @@ export default function Pricing() {
 
   const tiers = [
     {
-      name: 'Solo', emoji: '🌱', highlight: false,
+      name: 'Bronze', emoji: '🥉', highlight: false,
       price: { monthly: 0, annual: 0 },
       tagline: 'Everything to run your practice. Free forever.',
       cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free — No Card',
@@ -39,36 +39,37 @@ export default function Pricing() {
         { text: 'AI pre/post session briefs', on: true },
         { text: 'Unlimited clients & bookings', on: true },
         { text: 'Session history — last 5 per client', on: true },
-        { text: 'Pattern intelligence beyond 5 sessions', on: false },
-        { text: 'Business analytics & forecasting', on: false },
-        { text: 'Retention alerts', on: false },
+        { text: 'Pattern intelligence (first 5 sessions)', on: true },
+        { text: 'Business analytics (first 5 sessions)', on: true },
+        { text: 'Retention alerts (first 5 sessions)', on: true },
+        { text: 'Full intelligence beyond 5 sessions', on: false },
       ],
     },
     {
-      name: 'Pro', emoji: '🧠', highlight: true, badge: 'Most Popular',
-      price: { monthly: PRO_MONTHLY, annual: PRO_ANNUAL },
+      name: 'Silver', emoji: '🥈', highlight: true, badge: 'Most Popular',
+      price: { monthly: SILVER_MONTHLY, annual: SILVER_ANNUAL },
       tagline: 'Your data works for you. Intelligence that grows your earnings.',
       cta: 'Start 30-Day Free Trial',
-      ctaAction: () => window.open(STRIPE_PRO, '_blank'),
+      ctaAction: () => window.open(STRIPE_SILVER, '_blank'),
       features: [
-        { text: 'Everything in Solo', on: true },
+        { text: 'Everything in Bronze', on: true },
         { text: 'Full session history — unlimited', on: true },
-        { text: 'Client pattern intelligence', on: true, detail: 'Tension patterns tracked across every session' },
-        { text: 'Business analytics & revenue forecasting', on: true, detail: 'Trends, busiest days, projected income' },
-        { text: 'Retention alerts', on: true, detail: 'Know when a client is drifting before they leave' },
+        { text: 'Pattern intelligence — all sessions', on: true, detail: 'Tension trends tracked across every session forever' },
+        { text: 'Business analytics & revenue forecasting', on: true, detail: 'Busiest days, projected income, seasonal trends' },
+        { text: 'Retention alerts — all clients', on: true, detail: 'Know when a client is drifting before they leave' },
         { text: 'Longitudinal body map overlays', on: true, detail: 'Visual diff of body patterns over time' },
         { text: 'Revenue gap intelligence', on: true, detail: 'See exactly what dead schedule time costs you' },
         { text: 'Priority support', on: true },
       ],
     },
     {
-      name: 'Team', emoji: '🏢', highlight: false, comingSoon: true,
+      name: 'Gold', emoji: '🥇', highlight: false, comingSoon: true,
       price: { monthly: 79, annual: 63 },
-      tagline: 'Pro intelligence for your whole practice. Up to 10 therapists.',
+      tagline: 'Silver intelligence for your whole practice. Up to 10 therapists.',
       cta: 'Coming Soon',
       ctaAction: null,
       features: [
-        { text: 'Everything in Pro', on: true },
+        { text: 'Everything in Silver', on: true },
         { text: 'Up to 10 therapist profiles', on: true },
         { text: 'Team schedule view', on: true },
         { text: 'Per-therapist analytics', on: true },
@@ -86,7 +87,7 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🌱 Solo plan is free forever — no credit card needed
+          🥉 Bronze is free forever — no credit card needed
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
           Simple pricing.<br/>Serious intelligence.
@@ -142,7 +143,7 @@ export default function Pricing() {
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
               {tier.features.map(f => (
                 <div key={f.text} style={{ display:'flex', alignItems:'flex-start', gap:10, opacity:f.on?1:0.35 }}>
-                  <span style={{ fontSize:13, flexShrink:0, color:f.on?(tier.highlight?'#fff':C.forest):'#999' }}>{f.on?'✓':'✕'}</span>
+                  <span style={{ fontSize:13, flexShrink:0, color:f.on?(tier.highlight?'#fff':C.forest):'#999' }}>{f.on ? '✓' : '✕'}</span>
                   <div>
                     <div style={{ fontSize:13, color:tier.highlight?(f.on?'#fff':'rgba(255,255,255,0.4)'):(f.on?C.dark:C.gray), fontWeight:f.on?500:400, lineHeight:1.4 }}>{f.text}</div>
                     {f.detail && f.on && <div style={{ fontSize:11, color:tier.highlight?'rgba(255,255,255,0.5)':C.gray, marginTop:1 }}>{f.detail}</div>}
@@ -162,7 +163,7 @@ export default function Pricing() {
               style={{ padding:'10px 14px', border:`1.5px solid ${promoApplied?'#16A34A':C.border}`, borderRadius:8, fontSize:14, outline:'none', width:140, fontFamily:'system-ui' }} />
             <button onClick={applyPromo} style={{ padding:'10px 18px', background:C.forest, color:'#fff', border:'none', borderRadius:8, fontSize:14, fontWeight:600, cursor:'pointer' }}>Apply</button>
           </div>
-          {promoApplied && <div style={{ fontSize:12, color:'#16A34A', marginTop:8, fontWeight:600 }}>✓ BETAONE applied — Pro at $19/month</div>}
+          {promoApplied && <div style={{ fontSize:12, color:'#16A34A', marginTop:8, fontWeight:600 }}>✓ BETAONE applied — Silver at $19/month</div>}
           {promoError && <div style={{ fontSize:12, color:'#EF4444', marginTop:8 }}>{promoError}</div>}
         </div>
       </div>
@@ -170,11 +171,11 @@ export default function Pricing() {
       <div style={{ maxWidth:680, margin:'0 auto', padding:'0 24px 80px' }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:40 }}>Common questions</h2>
         {[
-          { q:'Is Solo really free forever?', a:'Yes. No credit card, no trial, no hidden limits. Solo gives you everything you need to run your practice — booking, intake, schedule, SOAP notes, and reminders. Free forever.' },
-          { q:'What does "5 sessions of history" mean on Solo?', a:'For each client, you see their last 5 sessions — body map, notes, briefs. On Pro, you get the full history plus AI that analyzes patterns across all sessions to surface insights.' },
-          { q:'What is the intelligence layer in Pro?', a:"Pro analyzes your client data over time — tension patterns, retention risk, revenue trends, schedule gaps — and surfaces insights that help you earn more and keep clients longer. It's the difference between data and wisdom." },
-          { q:'When is Team launching?', a:'Team is in development. Early access pricing will be offered to those who sign up before launch.' },
-          { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Pro to Solo, your historical data is preserved — you just lose access to the intelligence layer until you re-upgrade.' },
+          { q:'Is Bronze really free forever?', a:'Yes. No credit card, no trial, no hidden limits. Bronze gives you everything to run your practice — booking, intake, schedule, SOAP notes, and reminders. Free forever.' },
+          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client — pattern alerts, analytics, and retention signals. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use it.' },
+          { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your client data across all sessions over time — tension patterns, retention risk, revenue trends, schedule gaps — and surfaces insights that help you earn more and keep clients longer. It gets smarter the longer you use BodyMap." },
+          { q:'When is Gold launching?', a:'Gold is in development. Early access pricing will be offered to those who sign up before launch.' },
+          { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your historical data is preserved — you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
         ].map(({ q, a }) => (
           <div key={q} style={{ borderBottom:`1px solid ${C.border}`, padding:'20px 0' }}>
             <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{q}</div>

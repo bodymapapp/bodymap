@@ -536,7 +536,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver — $24/mo' : 'Gold — $49/mo'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze — Free' : therapist?.plan === 'silver' ? 'Silver — $24/mo' : 'Gold — $79/mo'}
             </p>
             <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
               {therapist?.plan === 'free' ? 'Up to 5 clients. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
@@ -632,7 +632,7 @@ export default function Dashboard({ view }) {
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '14px', fontWeight: '600', color: C.darkGray, margin: 0 }}>{therapist?.full_name}</p>
             <p style={{ fontSize: '12px', color: C.gray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Free Plan' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze — Free' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
             </p>
           </div>
           {(!therapist?.plan || therapist?.plan === 'free') && (
@@ -747,7 +747,7 @@ export default function Dashboard({ view }) {
           <div style={{ background: C.white, borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <p style={{ fontSize: '14px', color: C.gray, margin: '0 0 8px 0' }}>Plan</p>
             <p style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Free (5 clients max)' : therapist?.plan === 'silver' ? 'Silver ($24/mo)' : 'Gold ($49/mo)'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze (Free)' : therapist?.plan === 'silver' ? 'Silver ($24/mo)' : 'Gold ($49/mo)'}
             </p>
           </div>
         </div>
