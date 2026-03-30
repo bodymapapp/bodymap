@@ -846,8 +846,10 @@ function SectionNav() {
   const [active, setActive] = useState("pattern");
   const sections = [
     { id:"pattern", label:"Pattern Intelligence" },
+    { id:"booking", label:"Online Booking" },
     { id:"intake", label:"Client Intake" },
     { id:"schedule", label:"Schedule" },
+    { id:"reminders", label:"Reminders" },
     { id:"billing", label:"Billing" },
     { id:"ai", label:"BodyMap AI" },
     { id:"automation", label:"Automation" },
@@ -1018,8 +1020,74 @@ export default function Features() {
           </div>
         </div>
       </section>
+      {/* ONLINE BOOKING */}
+      <section id="booking" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Online Booking</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Book in 2 Taps.<br/>No Account. No App.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                One link. Clients pick a service, choose a time, confirm. Smart recommendations fill gaps in your day automatically.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🔗", title:"One shareable link", desc:"Share mybodymap.app/book/yourname anywhere. Instagram, text, email." },
+                { icon:"⚡", title:"Smart gap filling", desc:"Recommended slots fill holes in your day. No more 9 AM and 3 PM with nothing in between." },
+                { icon:"📋", title:"Intake flows immediately", desc:"After booking, clients fill their body map in the same session. Zero extra steps." },
+                { icon:"📧", title:"Auto confirmations", desc:"Clients get a confirmation instantly. No manual follow-up needed." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
 
       {/* INTAKE */}
+      {/* ONLINE BOOKING */}
+      <section id="booking" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Online Booking</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Book in 2 Taps.<br/>No Account. No App.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                One link. Clients pick a service, choose a time, confirm. Smart recommendations fill gaps in your day automatically.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🔗", title:"One shareable link", desc:"Share mybodymap.app/book/yourname anywhere. Instagram, text, email." },
+                { icon:"⚡", title:"Smart gap filling", desc:"Recommended slots fill holes in your day. No more 9 AM and 3 PM with nothing in between." },
+                { icon:"📋", title:"Intake flows immediately", desc:"After booking, clients fill their body map in the same session. Zero extra steps." },
+                { icon:"📧", title:"Auto confirmations", desc:"Clients get a confirmation instantly. No manual follow-up needed." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       <section id="intake" style={{ padding:"100px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
           <FadeIn>
@@ -1048,6 +1116,39 @@ export default function Features() {
             <div>
               <BodyMapDemo />
               <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ This is live — tap the areas above</div>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* AUTOMATED REMINDERS */}
+      <section id="reminders" style={{ padding:"80px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Automated Reminders</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Never Chase a Client Again.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                BodyMap sends every client a reminder 24 hours before their session — with their intake form link included. Automatic. Every day.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📧", title:"24h automatic email", desc:"Sent from your domain every morning. Branded and personal — not generic spam." },
+                { icon:"📋", title:"Intake link included", desc:"Every reminder links directly to the client body map. More completions, better sessions." },
+                { icon:"✅", title:"Delivery status visible", desc:"See which clients got their reminder and who still needs intake. No guessing." },
+                { icon:"🔄", title:"Zero configuration", desc:"Set up once. Runs every day automatically. Nothing to remember." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"#fff", borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
             </div>
           </FadeIn>
         </div>
@@ -1088,6 +1189,39 @@ export default function Features() {
       </section>
 
       {/* BILLING */}
+      {/* AUTOMATED REMINDERS */}
+      <section id="reminders" style={{ padding:"80px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Automated Reminders</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Never Chase a Client Again.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                BodyMap sends every client a reminder 24 hours before their session — with their intake form link included. Automatic. Every day.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📧", title:"24h automatic email", desc:"Sent from your domain every morning. Branded and personal — not generic spam." },
+                { icon:"📋", title:"Intake link included", desc:"Every reminder links directly to the client body map. More completions, better sessions." },
+                { icon:"✅", title:"Delivery status visible", desc:"See which clients got their reminder and who still needs intake. No guessing." },
+                { icon:"🔄", title:"Zero configuration", desc:"Set up once. Runs every day automatically. Nothing to remember." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"#fff", borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       <section id="billing" style={{ padding:"100px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
           <FadeIn>
