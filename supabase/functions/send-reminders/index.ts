@@ -115,7 +115,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'BodyMap <onboarding@resend.dev>',
+        from: 'BodyMap <reminders@mybodymap.app>',
         to: [booking.client_email],
         subject: `Your massage is tomorrow at ${timeStr} — please fill your intake form`,
         html: emailHtml,
