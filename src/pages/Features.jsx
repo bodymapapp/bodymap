@@ -917,7 +917,7 @@ export default function Features() {
               {[
                 { label:"Patterns detected", value:12847, suffix:"+" },
                 { label:"Client retention rate", value:94, suffix:"%" },
-                { label:"Per session", prefix:"$", value:9, suffix:"/mo" },
+                { label:"Silver per month", prefix:"$", value:19, suffix:"/mo" },
               ].map((s,i)=>(
                 <div key={i} style={{ textAlign:"center" }}>
                   <div style={{ fontSize:"clamp(28px,3vw,42px)", fontWeight:700, color:"#fff", fontFamily:"Georgia, serif" }}>
