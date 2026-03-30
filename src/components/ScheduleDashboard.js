@@ -67,6 +67,15 @@ function DetailPanel({ appt, therapist, onClose }) {
             </div>
           )}
           {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
+          {!appt.preview && (
+            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.reminder_sent?'#F0FDF4':'#F9FAFB',borderRadius:10,border:`1px solid ${appt.reminder_sent?'#86EFAC':'#E5E7EB'}`}}>
+              <span style={{fontSize:16}}>{appt.reminder_sent?'📧':'⏳'}</span>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:appt.reminder_sent?'#16A34A':'#6B7280'}}>{appt.reminder_sent?'Reminder sent':'Reminder pending'}</div>
+                <div style={{fontSize:11,color:'#9CA3AF'}}>{appt.reminder_sent?'Client received email 24h before session':'Sends automatically 24h before session'}</div>
+              </div>
+            </div>
+          )}
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {appt.status==='intake-done' && appt.sessionId && (
               <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>🧭 Open Pre-Session Brief</a>
@@ -198,6 +207,8 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
                       <div style={{flexShrink:0,textAlign:'right'}}>
                         <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937'}}>{appt.time}</div>
                         <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
+                        {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Reminded</div>}
+                        {!appt.preview&&!appt.reminder_sent&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>📧 Pending</div>}
                       </div>
                     </div>
                     {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>{appt.service}{appt.focus?.length>0?` · ${appt.focus.slice(0,2).join(', ')}`:''}
@@ -405,7 +416,7 @@ export default function ScheduleDashboard({ therapist }) {
       if(!user){setLoading(false);return;}
       const past=new Date(TODAY);past.setDate(past.getDate()-30);
       const future=new Date(TODAY);future.setDate(future.getDate()+60);
-      const {data:bookings,error}=await supabase.from('bookings').select('*,services(name,duration,price)').eq('therapist_id',therapist.id).neq('status','cancelled').gte('booking_date',past.toISOString().split('T')[0]).lte('booking_date',future.toISOString().split('T')[0]).order('booking_date').order('start_time');
+      const {data:bookings,error}=await supabase.from('bookings').select('*,services(name,duration,price),reminder_sent_at').eq('therapist_id',therapist.id).neq('status','cancelled').gte('booking_date',past.toISOString().split('T')[0]).lte('booking_date',future.toISOString().split('T')[0]).order('booking_date').order('start_time');
       if(error||!bookings?.length){setRealBookings([]);setLoading(false);return;}
       const mapped=bookings.map(b=>{
         const bd=new Date(b.booking_date+'T12:00:00');bd.setHours(0,0,0,0);
