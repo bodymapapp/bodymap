@@ -155,7 +155,7 @@ export default function BookingPage() {
     </div>
   );
 
-  // Confirmed screen — immediately shows intake link
+  // Confirmed screen - immediately shows intake link
   if(confirmed) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:'system-ui'}}>
       <div style={{background:C.white,borderRadius:24,padding:'40px 32px',maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
@@ -164,9 +164,9 @@ export default function BookingPage() {
         <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 24px'}}>
           <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> with {therapist.business_name||therapist.full_name}.
         </p>
-        {/* Immediately prompt intake — same flow, no extra steps */}
+        {/* Immediately prompt intake - same flow, no extra steps */}
         <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px 20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing — takes 60 seconds</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing - takes 60 seconds</div>
           <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
             Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
           </div>
@@ -215,11 +215,11 @@ export default function BookingPage() {
 
       <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px 100px'}}>
 
-        {/* STEP 1 — Service selection */}
+        {/* STEP 1 - Service selection */}
         {step===1&&(
           <div>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like — no account needed.</p>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like - no account needed.</p>
             {services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -248,7 +248,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 2 — Date + smart time slots */}
+        {/* STEP 2 - Date + smart time slots */}
         {step===2&&(
           <div>
             <button onClick={()=>setStep(1)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
@@ -306,7 +306,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 3 — Client details */}
+        {/* STEP 3 - Client details */}
         {step===3&&(
           <div>
             <button onClick={()=>setStep(2)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
@@ -354,7 +354,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 4 — Confirm */}
+        {/* STEP 4 - Confirm */}
         {step===4&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
@@ -364,7 +364,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price',`$${svc.price} — pay at session`],['Name',form.name],['Email',form.email],
+                ['Price',`$${svc.price} - pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
                 ...(form.notes?[['Notes',form.notes]]:[]),
               ].map(([l,v],i,arr)=>(

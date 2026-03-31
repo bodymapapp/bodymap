@@ -178,7 +178,7 @@ function PatternDemo() {
   return (
     <div ref={ref} style={{ background:"#fff", borderRadius:20, padding:24, boxShadow:"0 12px 48px rgba(0,0,0,0.14)", maxWidth:440, margin:"0 auto" }}>
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:4 }}>
-        <div style={{ fontSize:15, fontWeight:700, color:C.dark }}>📊 Sarah M. — Pattern Intelligence</div>
+        <div style={{ fontSize:15, fontWeight:700, color:C.dark }}>📊 Sarah M. - Pattern Intelligence</div>
         <div style={{ background:"#DCFCE7", color:"#16A34A", borderRadius:20, padding:"3px 10px", fontSize:11, fontWeight:700 }}>10 sessions</div>
       </div>
       <div style={{ fontSize:12, color:C.gray, marginBottom:20 }}>Patterns detected across 10 sessions · Member since Aug 2025</div>
@@ -233,7 +233,7 @@ function PatternDemo() {
       </div>
 
       <div style={{ background:"linear-gradient(135deg, #F0FDF4, #DCFCE7)", border:"1px solid #86EFAC", borderRadius:10, padding:"12px 16px", fontSize:12, color:"#1A3A28", lineHeight:1.5 }}>
-        🤖 <strong>AI Insight:</strong> Sarah has a chronic lower back pattern (9/10 sessions) with escalating pressure preference. Her left shoulder shows worsening trend — worth addressing proactively in next session.
+        🤖 <strong>AI Insight:</strong> Sarah has a chronic lower back pattern (9/10 sessions) with escalating pressure preference. Her left shoulder shows worsening trend - worth addressing proactively in next session.
       </div>
     </div>
   );
@@ -463,7 +463,7 @@ function BillingDemo() {
                       <div style={{ fontSize:10, color:C.gray }}>{s.time}</div>
                     </div>
                     <div style={{ textAlign:"right", minWidth:60 }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:C.dark }}>{s.actual?`$${s.actual}`:"—"}</div>
+                      <div style={{ fontSize:13, fontWeight:700, color:C.dark }}>{s.actual?`$${s.actual}`:"-"}</div>
                       <div style={{ fontSize:9, color:C.gray }}>of ${s.expected}</div>
                     </div>
                     <div style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:"2px 8px", fontSize:9, fontWeight:700 }}>{sc.label}</div>
@@ -573,24 +573,24 @@ function AIDemo() {
   const SCRIPTED = [
     {
       q: "Which clients need re-engagement?",
-      a: "Based on your practice data:\n\n🍂 Sarah M. — 17 days since last visit (usually weekly)\n🍂 Dana P. — 21 days (monthly pattern broken)\n🍂 Monica G. — 21 days (8-month regular, this is unusual)\n\nMonica is your highest churn risk — her pattern break is significant. Want me to draft an SMS for her?"
+      a: "Based on your practice data:\n\n🍂 Sarah M. - 17 days since last visit (usually weekly)\n🍂 Dana P. - 21 days (monthly pattern broken)\n🍂 Monica G. - 21 days (8-month regular, this is unusual)\n\nMonica is your highest churn risk - her pattern break is significant. Want me to draft an SMS for her?"
     },
     {
       q: "Draft an SMS for Monica",
-      a: "Here's a personalized message based on Monica's history:\n\n---\nHi Monica! It's been a few weeks — I noticed your lower back and shoulders are probably overdue. You've been such a consistent client and I'd love to get you back in. Ready to book? [intake link]\n---\n\nI referenced her consistent focus areas (lower back, full body) from 11 sessions. Copy it above or ask me to adjust the tone."
+      a: "Here's a personalized message based on Monica's history:\n\n---\nHi Monica! It's been a few weeks - I noticed your lower back and shoulders are probably overdue. You've been such a consistent client and I'd love to get you back in. Ready to book? [intake link]\n---\n\nI referenced her consistent focus areas (lower back, full body) from 11 sessions. Copy it above or ask me to adjust the tone."
     },
     {
       q: "How is my revenue trending?",
-      a: "Your last 30 days: $5,440 collected across 64 sessions — up 18% from the prior period.\n\nCollection rate: 89% (industry avg is 82%) ✅\nAvg session value: $91 (up from $85) ✅\nOutstanding: $170 across 2 sessions\n\nTop revenue driver: Sarah M. and Monica G. at $595 each. Your Tuesday/Friday slots are your highest-earning days."
+      a: "Your last 30 days: $5,440 collected across 64 sessions - up 18% from the prior period.\n\nCollection rate: 89% (industry avg is 82%) ✅\nAvg session value: $91 (up from $85) ✅\nOutstanding: $170 across 2 sessions\n\nTop revenue driver: Sarah M. and Monica G. at $595 each. Your Tuesday/Friday slots are your highest-earning days."
     },
     {
       q: "What patterns does Sarah have?",
-      a: "Sarah M. — 7 sessions:\n\n🎯 Neck: 7/7 sessions (100%)\n🎯 Left Shoulder: 6/7 (worsening trend ↑)\n🎯 Upper Back: 5/7\n⚠️ Knees: always avoid\n\nPressure: escalating from 3→5 over 7 sessions\n\n💡 Her left shoulder is trending worse — worth addressing directly next session. Her pressure tolerance has grown significantly."
+      a: "Sarah M. - 7 sessions:\n\n🎯 Neck: 7/7 sessions (100%)\n🎯 Left Shoulder: 6/7 (worsening trend ↑)\n🎯 Upper Back: 5/7\n⚠️ Knees: always avoid\n\nPressure: escalating from 3→5 over 7 sessions\n\n💡 Her left shoulder is trending worse - worth addressing directly next session. Her pressure tolerance has grown significantly."
     }
   ];
 
   const [messages, setMessages] = useState([
-    { role:"assistant", content:"Hi! I'm BodyMap AI. In the dashboard, I have access to your actual client data — names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
+    { role:"assistant", content:"Hi! I'm BodyMap AI. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -652,7 +652,7 @@ function AIDemo() {
                   if(part.startsWith("---")&&part.endsWith("---")) {
                     const sms = part.replace(/^---\n?/,"").replace(/\n?---$/,"").trim();
                     return <div key={j} style={{ background:"#F0FDF4", border:"1.5px solid #86EFAC", borderRadius:8, padding:"10px 12px", margin:"8px 0" }}>
-                      <div style={{ fontSize:10, fontWeight:700, color:"#16A34A", marginBottom:6 }}>💬 SMS DRAFT — Click to copy</div>
+                      <div style={{ fontSize:10, fontWeight:700, color:"#16A34A", marginBottom:6 }}>💬 SMS DRAFT - Click to copy</div>
                       <div style={{ fontSize:12, color:"#1F2937", marginBottom:8 }}>{sms}</div>
                       <button onClick={()=>navigator.clipboard.writeText(sms)} style={{ background:"#16A34A", color:"#fff", border:"none", borderRadius:5, padding:"4px 10px", fontSize:10, fontWeight:600, cursor:"pointer" }}>📋 Copy</button>
                     </div>;
@@ -697,7 +697,7 @@ function AutomationHub() {
       steps:[
         { icon:"🔍", label:"BodyMap detects", desc:"Automatically flags clients whose visit interval has broken" },
         { icon:"🤖", label:"AI drafts message", desc:"Personalized SMS using their name, last focus area, and session history" },
-        { icon:"✋", label:"You approve", desc:"One tap to review and send — or edit before sending" },
+        { icon:"✋", label:"You approve", desc:"One tap to review and send - or edit before sending" },
         { icon:"📱", label:"Client receives", desc:"Personal message arrives. They tap the intake link. They book." },
       ],
       result:"avg 67% of lapsed clients re-book within 48 hours"
@@ -722,7 +722,7 @@ function AutomationHub() {
         { icon:"✅", label:"Session marked done", desc:"Therapist taps Mark Complete in the dashboard" },
         { icon:"📄", label:"Brief auto-generated", desc:"Today's body map + pattern history + therapist notes compiled" },
         { icon:"📤", label:"Sent to client", desc:"Client receives their personal body story after every session" },
-        { icon:"❤️", label:"Client shares", desc:"Clients share briefs with friends — word-of-mouth built in" },
+        { icon:"❤️", label:"Client shares", desc:"Clients share briefs with friends - word-of-mouth built in" },
       ],
       result:"clients who receive briefs are 3x more likely to rebook"
     },
@@ -732,7 +732,7 @@ function AutomationHub() {
       trigger:"New client books for the first time",
       steps:[
         { icon:"🔗", label:"Intake link sent", desc:"Your mybodymap.app/name link automatically goes to new clients" },
-        { icon:"🗺️", label:"Client maps their body", desc:"30 seconds on their phone — focus, avoid, pressure, preferences" },
+        { icon:"🗺️", label:"Client maps their body", desc:"30 seconds on their phone - focus, avoid, pressure, preferences" },
         { icon:"🧾", label:"Brief ready before arrival", desc:"You open their profile before the session. Already prepared." },
         { icon:"🤝", label:"Instant trust built", desc:"Clients feel remembered from session one. Retention starts here." },
       ],
@@ -787,16 +787,16 @@ function AutomationHub() {
 // ── GROWTH ENGINE ─────────────────────────────────────────────────────────────
 function GrowthEngine() {
   const retention = [
-    { icon:"🔮", title:"Churn Prediction", desc:"BodyMap AI detects when a regular client breaks their visit pattern — 7 days before they would have ghosted. You reach out first." },
+    { icon:"🔮", title:"Churn Prediction", desc:"BodyMap AI detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
     { icon:"📈", title:"Pressure Trend Alerts", desc:"When a client's pressure preference escalates (3→5 over 8 sessions), BodyMap flags it. You adjust before they find someone who does deep tissue better." },
-    { icon:"💌", title:"Milestone Moments", desc:"10th session, 1-year anniversary, returning after a break — BodyMap identifies these moments and drafts a personalized message. Clients feel seen." },
-    { icon:"🎁", title:"Re-engagement Campaigns", desc:"One tap launches a personalized outreach to all lapsed clients — not a mass text, a message that references their specific body history." },
+    { icon:"💌", title:"Milestone Moments", desc:"10th session, 1-year anniversary, returning after a break - BodyMap identifies these moments and drafts a personalized message. Clients feel seen." },
+    { icon:"🎁", title:"Re-engagement Campaigns", desc:"One tap launches a personalized outreach to all lapsed clients - not a mass text, a message that references their specific body history." },
   ];
   const growth = [
-    { icon:"🔗", title:"Your Intake Link = Marketing", desc:"mybodymap.app/yourname is your professional identity. Share it on Instagram, your email signature, anywhere. Clients tap it to see how it works — and book." },
+    { icon:"🔗", title:"Your Intake Link = Marketing", desc:"mybodymap.app/yourname is your professional identity. Share it on Instagram, your email signature, anywhere. Clients tap it to see how it works - and book." },
     { icon:"📄", title:"Post-Session Briefs Go Viral", desc:"Clients share their body summaries with friends. 'My therapist sent me this after every session.' That's word-of-mouth you can't buy." },
-    { icon:"⭐", title:"Review Triggers (coming soon)", desc:"After session 3, BodyMap prompts clients to leave a Google review — timed when satisfaction is highest. Your 5-star count grows automatically." },
-    { icon:"👥", title:"Referral Intelligence (coming soon)", desc:"BodyMap identifies your top clients and makes it easy for them to refer friends. Each referral arrives with a completed intake form — warm leads, ready to book." },
+    { icon:"⭐", title:"Review Triggers (coming soon)", desc:"After session 3, BodyMap prompts clients to leave a Google review - timed when satisfaction is highest. Your 5-star count grows automatically." },
+    { icon:"👥", title:"Referral Intelligence (coming soon)", desc:"BodyMap identifies your top clients and makes it easy for them to refer friends. Each referral arrives with a completed intake form - warm leads, ready to book." },
   ];
 
   return (
@@ -905,7 +905,7 @@ export default function Features() {
           <FadeIn delay={0.3}>
             <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:52 }}>
               <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 24px rgba(201,168,76,0.4)" }}>
-                Start Free — No Card Needed →
+                Start Free - No Card Needed →
               </Link>
               <Link to="/pricing" style={{ background:"rgba(255,255,255,0.08)", color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:600, textDecoration:"none", border:"1.5px solid rgba(255,255,255,0.2)" }}>
                 View Pricing
@@ -941,7 +941,7 @@ export default function Features() {
                 Every Session, You Start From Scratch
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                Paper forms. Verbal check-ins. Clients repeating themselves every visit. Preferences forgotten. Patterns invisible. And 78% of clients switch therapists within 18 months — not because of skill, but because they felt forgotten.
+                Paper forms. Verbal check-ins. Clients repeating themselves every visit. Preferences forgotten. Patterns invisible. And 78% of clients switch therapists within 18 months - not because of skill, but because they felt forgotten.
               </p>
             </div>
           </FadeIn>
@@ -976,13 +976,13 @@ export default function Features() {
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
               <div style={{ display:"inline-block", background:"rgba(201,168,76,0.15)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:20, padding:"5px 16px", fontSize:12, fontWeight:700, color:C.gold, letterSpacing:"0.08em", marginBottom:16 }}>
-                EXCLUSIVE TO BODYMAP — NO COMPETITOR HAS THIS
+                EXCLUSIVE TO BODYMAP - NO COMPETITOR HAS THIS
               </div>
               <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(32px,4vw,56px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:20 }}>
                 Pattern Intelligence
               </h2>
               <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", maxWidth:620, margin:"0 auto" }}>
-                After a few sessions, BodyMap reveals what this client always needs — patterns memory alone would miss. This is the intelligence layer that makes you irreplaceable.
+                After a few sessions, BodyMap reveals what this client always needs - patterns memory alone would miss. This is the intelligence layer that makes you irreplaceable.
               </p>
             </div>
           </FadeIn>
@@ -994,10 +994,10 @@ export default function Features() {
               <div>
                 <div style={{ display:"flex", flexDirection:"column", gap:20, marginBottom:32 }}>
                   {[
-                    { icon:"📍", title:"Body Area Frequency", desc:"Track exactly which areas clients focus on across every session. Lower back 9 of 10 visits isn't a preference — it's a chronic condition. Treat it accordingly." },
+                    { icon:"📍", title:"Body Area Frequency", desc:"Track exactly which areas clients focus on across every session. Lower back 9 of 10 visits isn't a preference - it's a chronic condition. Treat it accordingly." },
                     { icon:"📈", title:"Pressure Trend Tracking", desc:"When a client's pressure tolerance escalates from 3 to 5 over 8 sessions, BodyMap shows you the trend. You adapt before they have to ask." },
                     { icon:"⚠️", title:"Avoid Area Memory", desc:"A client avoided their knees every single session. Do you remember that after 6 months? BodyMap does. Permanently." },
-                    { icon:"🤖", title:"AI Pattern Summary", desc:"After each session, BodyMap AI summarizes what's changing in this client's body — in plain language, without you asking." },
+                    { icon:"🤖", title:"AI Pattern Summary", desc:"After each session, BodyMap AI summarizes what's changing in this client's body - in plain language, without you asking." },
                   ].map((f,i)=>(
                     <div key={i} style={{ display:"flex", gap:14 }}>
                       <div style={{ width:40, height:40, borderRadius:10, background:"rgba(107,158,128,0.15)", border:"1px solid rgba(107,158,128,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{f.icon}</div>
@@ -1066,14 +1066,14 @@ export default function Features() {
                 Never Chase a Client Again.
               </h2>
               <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
-                BodyMap sends every client a reminder 24 hours before their session — with their intake form link included. Automatic. Every day.
+                BodyMap sends every client a reminder 24 hours before their session - with their intake form link included. Automatic. Every day.
               </p>
             </div>
           </FadeIn>
           <FadeIn delay={0.1}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
               {[
-                { icon:"📧", title:"24h automatic email", desc:"Sent from your domain every morning. Branded and personal — not generic spam." },
+                { icon:"📧", title:"24h automatic email", desc:"Sent from your domain every morning. Branded and personal - not generic spam." },
                 { icon:"📋", title:"Intake link included", desc:"Every reminder links directly to the client body map. More completions, better sessions." },
                 { icon:"✅", title:"Delivery status visible", desc:"See which clients got their reminder and who still needs intake. No guessing." },
                 { icon:"🔄", title:"Zero configuration", desc:"Set up once. Runs every day automatically. Nothing to remember." },
@@ -1105,10 +1105,10 @@ export default function Features() {
                 Your Entire Day.<br/>Every Client's Status.<br/>One Screen.
               </h2>
               <p style={{ fontSize:16, color:C.gray, lineHeight:1.7, marginBottom:32 }}>
-                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment — their body map history, focus areas, and session count appear instantly.
+                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment - their body map history, focus areas, and session count appear instantly.
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:32 }}>
-                {["Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Action hub: send intake, open brief, view profile — all from schedule","Cal.com integration coming for automatic sync"].map((f,i)=>(
+                {["Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Action hub: send intake, open brief, view profile - all from schedule","Cal.com integration coming for automatic sync"].map((f,i)=>(
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, fontSize:15, color:C.dark }}>
                     <div style={{ width:20, height:20, borderRadius:"50%", background:"#DCFCE7", color:"#16A34A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, marginTop:1 }}>✓</div>
                     {f}
@@ -1165,7 +1165,7 @@ export default function Features() {
                   ))}
                 </div>
                 <div style={{ background:"#FEF3C7", borderRadius:12, padding:"14px 18px", fontSize:13, color:"#92400E", lineHeight:1.5 }}>
-                  💡 The demo uses sample data. When you're logged in, BodyMap AI has access to your real clients, sessions, body maps, and revenue — and answers from that context, not generic knowledge.
+                  💡 The demo uses sample data. When you're logged in, BodyMap AI has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
                 </div>
               </div>
             </FadeIn>
@@ -1183,7 +1183,7 @@ export default function Features() {
                 Set It Once.<br/>BodyMap Runs Your Practice.
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                Don't send that re-engagement text. Don't assemble that pre-session brief. Don't remember to follow up. BodyMap detects, drafts, and acts — you approve in one tap.
+                Don't send that re-engagement text. Don't assemble that pre-session brief. Don't remember to follow up. BodyMap detects, drafts, and acts - you approve in one tap.
               </p>
             </div>
           </FadeIn>
@@ -1245,7 +1245,7 @@ export default function Features() {
             </p>
             <div style={{ display:"flex", gap:16, justifyContent:"center", flexWrap:"wrap", marginBottom:24 }}>
               <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"18px 44px", borderRadius:50, fontSize:18, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 32px rgba(201,168,76,0.4)" }}>
-                Start Free — No Card Needed →
+                Start Free - No Card Needed →
               </Link>
               <Link to="/pricing" style={{ background:"rgba(255,255,255,0.08)", color:"#fff", padding:"18px 44px", borderRadius:50, fontSize:18, fontWeight:600, textDecoration:"none", border:"1.5px solid rgba(255,255,255,0.2)" }}>
                 View Pricing

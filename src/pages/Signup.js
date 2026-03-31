@@ -12,7 +12,7 @@ function BodyMapMockup() {
       <text x="72" y="12" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9" fontFamily="system-ui">FRONT</text>
       <text x="232" y="12" textAnchor="middle" fill="rgba(255,255,255,0.5)" fontSize="9" fontFamily="system-ui">BACK</text>
 
-      {/* FRONT — Head */}
+      {/* FRONT - Head */}
       <ellipse cx="72" cy="30" rx="12" ry="14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
       {/* Neck */}
       <rect x="68" y="43" width="8" height="8" rx="2" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
@@ -27,7 +27,7 @@ function BodyMapMockup() {
       {/* Right leg */}
       <rect x="76" y="100" width="16" height="56" rx="7" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
 
-      {/* BACK — Head */}
+      {/* BACK - Head */}
       <ellipse cx="232" cy="30" rx="12" ry="14" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
       {/* Neck */}
       <rect x="228" y="43" width="8" height="8" rx="2" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
@@ -42,23 +42,23 @@ function BodyMapMockup() {
       {/* Right leg */}
       <rect x="236" y="100" width="16" height="56" rx="7" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.2"/>
 
-      {/* FRONT — heat zones */}
-      {/* R shoulder — focus (green) */}
+      {/* FRONT - heat zones */}
+      {/* R shoulder - focus (green) */}
       <circle cx="97" cy="58" r="8" fill="rgba(107,207,107,0.7)"/>
       <text x="97" y="61" textAnchor="middle" fill="#fff" fontSize="7" fontFamily="system-ui" fontWeight="bold">F</text>
-      {/* L shoulder — avoid (red) */}
+      {/* L shoulder - avoid (red) */}
       <circle cx="47" cy="58" r="8" fill="rgba(239,68,68,0.8)"/>
       <text x="47" y="61" textAnchor="middle" fill="#fff" fontSize="7" fontFamily="system-ui" fontWeight="bold">!</text>
-      {/* Neck — focus */}
+      {/* Neck - focus */}
       <circle cx="72" cy="47" r="6" fill="rgba(107,207,107,0.6)"/>
       {/* R knee */}
       <circle cx="84" cy="138" r="6" fill="rgba(251,191,36,0.8)"/>
 
-      {/* BACK — heat zones */}
-      {/* Upper back — focus */}
+      {/* BACK - heat zones */}
+      {/* Upper back - focus */}
       <circle cx="232" cy="62" r="9" fill="rgba(107,207,107,0.7)"/>
       <text x="232" y="65" textAnchor="middle" fill="#fff" fontSize="7" fontFamily="system-ui" fontWeight="bold">F</text>
-      {/* Lower back — avoid (most intense) */}
+      {/* Lower back - avoid (most intense) */}
       <circle cx="228" cy="88" r="9" fill="rgba(239,68,68,0.9)"/>
       <text x="228" y="91" textAnchor="middle" fill="#fff" fontSize="7" fontFamily="system-ui" fontWeight="bold">!</text>
       <circle cx="244" cy="88" r="7" fill="rgba(239,68,68,0.7)"/>
@@ -173,7 +173,7 @@ export default function Signup() {
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Make it impossible for clients<br/>not to come back.</h2>
-            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores — helping every client feel like your #1.</p>
+            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores - helping every client feel like your #1.</p>
           </div>
 
           {/* Body Map SVG */}
@@ -185,7 +185,7 @@ export default function Signup() {
             <BodyMapMockup />
           </div>
 
-          {/* 6 Feature boxes — 2x3 grid */}
+          {/* 6 Feature boxes - 2x3 grid */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '7px', marginBottom: '16px' }}>
             {features.map(({ icon, label }) => (
               <div key={label} style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 6px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)' }}>
@@ -197,8 +197,8 @@ export default function Signup() {
 
           {/* Therapist quote */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '14px' }}>
-            <p style={{ fontSize: '12px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 5px 0', lineHeight: 1.5 }}>"I used to ask the same questions every visit. BodyMap changed that — I walk in knowing exactly what Sarah needs before I touch her."</p>
-            <p style={{ fontSize: '11px', color: '#6B9E80', margin: 0, fontWeight: '600' }}>— Jennifer K., LMT · Houston TX</p>
+            <p style={{ fontSize: '12px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 5px 0', lineHeight: 1.5 }}>"I used to ask the same questions every visit. BodyMap changed that - I walk in knowing exactly what Sarah needs before I touch her."</p>
+            <p style={{ fontSize: '11px', color: '#6B9E80', margin: 0, fontWeight: '600' }}>- Jennifer K., LMT · Houston TX</p>
           </div>
         </div>
       )}
@@ -224,7 +224,7 @@ export default function Signup() {
         {nextPlan === 'silver' && !justPaid && (
           <div style={{ background: '#EEF2FF', border: '1.5px solid #6366F1', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
             <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e1b4b', margin: '0 0 2px 0' }}>🚀 Almost there!</p>
-            <p style={{ fontSize: '12px', color: '#3730a3', margin: 0 }}>Create your free account — you'll go straight to Silver payment after.</p>
+            <p style={{ fontSize: '12px', color: '#3730a3', margin: 0 }}>Create your free account - you'll go straight to Silver payment after.</p>
           </div>
         )}
 
@@ -239,7 +239,7 @@ export default function Signup() {
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.12l2.67-2.07z"/><path fill="#EA4335" d="M8.98 3.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.43L4.5 7.5a4.77 4.77 0 0 1 4.48-4.32z"/></svg>
           Continue with Google
         </button>
-        <p style={{ fontSize: '11px', color: '#9CA3AF', textAlign: 'center', margin: '0 0 16px 0' }}>Fastest — your intake link is ready in 10 seconds</p>
+        <p style={{ fontSize: '11px', color: '#9CA3AF', textAlign: 'center', margin: '0 0 16px 0' }}>Fastest - your intake link is ready in 10 seconds</p>
 
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>

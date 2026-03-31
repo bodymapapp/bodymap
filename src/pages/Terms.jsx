@@ -6,7 +6,7 @@ export default function Terms() {
     { title: '2. Eligibility', body: 'You must be at least 18 years old to use BodyMap. By using this platform you represent that you are a licensed wellness professional or a client of one.' },
     { title: '3. Your Account', body: 'You are responsible for maintaining confidentiality of your login credentials. Notify us at support@mybodymap.app if you suspect unauthorized access.' },
     { title: '4. Acceptable Use', body: 'You agree not to use BodyMap to collect data for unauthorized purposes, access another user\'s data, reverse engineer the platform, or use it for any unlawful purpose.' },
-    { title: '5. Subscription and Payments', body: 'Paid plans are billed monthly through Stripe. Cancel anytime — access continues until end of billing period. No refunds for partial periods.' },
+    { title: '5. Subscription and Payments', body: 'Paid plans are billed monthly through Stripe. Cancel anytime - access continues until end of billing period. No refunds for partial periods.' },
     { title: '6. Client Data Responsibility', body: 'As a therapist, you are the data controller for your clients information. You are responsible for obtaining client consent to store their intake data on BodyMap.' },
     { title: '7. Not Medical Software', body: 'BodyMap is a communication tool, not medical software. It is not designed to store protected health information (PHI) under HIPAA. BodyMap LLC does not sign Business Associate Agreements (BAAs).' },
     { title: '8. Limitation of Liability', body: 'BodyMap LLC shall not be liable for any indirect, incidental, or consequential damages. Our total liability shall not exceed the amount you paid us in the 12 months preceding any claim.' },

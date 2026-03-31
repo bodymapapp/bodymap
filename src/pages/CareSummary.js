@@ -60,12 +60,12 @@ function generateSummary(session, allSessions, clientName) {
     const areaList = focusAreas.slice(0,3).join(", ");
     lines.push(`Today's session focused on ${areaList}${goal ? `, with a goal to ${goal}` : ""}.`);
   } else {
-    lines.push(`Thank you for your session today${goal ? ` — goal was to ${goal}` : ""}.`);
+    lines.push(`Thank you for your session today${goal ? ` - goal was to ${goal}` : ""}.`);
   }
 
   // Sentence 2: Avoid pattern or today's avoids
   if (consistentAvoids.length > 0 && sessionCount > 1) {
-    lines.push(`${firstName} consistently avoids ${consistentAvoids.join(" and ")} — noted and respected across ${sessionCount} sessions.`);
+    lines.push(`${firstName} consistently avoids ${consistentAvoids.join(" and ")} - noted and respected across ${sessionCount} sessions.`);
   } else if (avoidAreas.length > 0) {
     lines.push(`Areas avoided today: ${avoidAreas.slice(0,3).join(", ")}.`);
   }
@@ -73,7 +73,7 @@ function generateSummary(session, allSessions, clientName) {
   // Sentence 3: Pressure preference
   if (pressure) {
     if (avgPressure && sessionCount > 1) {
-      lines.push(`Pressure preference: Level ${pressure}/5 — consistent with your average of ${avgPressure}/5 across ${sessionCount} sessions.`);
+      lines.push(`Pressure preference: Level ${pressure}/5 - consistent with your average of ${avgPressure}/5 across ${sessionCount} sessions.`);
     } else {
       lines.push(`Pressure preference recorded: Level ${pressure}/5.`);
     }

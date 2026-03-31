@@ -87,7 +87,7 @@ function DetailPanel({ appt, therapist, onClose }) {
               {copied?'✓ Copied!':'📋 Copy Intake Link'}
             </button>
           </div>
-          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card — real clients appear here after booking.</div>}
+          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card - real clients appear here after booking.</div>}
         </div>
       </div>
     </>
@@ -169,7 +169,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
               const lbl=hrs>0?`${hrs}h${mins>0?` ${mins}m`:''} gap`:`${mins}m gap`;
               return (
                 <div key={i} style={{position:'absolute',top:y,left:0,right:0,height:gh,background:'repeating-linear-gradient(45deg,transparent,transparent 5px,#FFFBEB 5px,#FFFBEB 6px)',border:'1px dashed #FCD34D',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.8}}>
-                  {gh>18 && <span style={{fontSize:10,fontWeight:700,color:'#D97706',background:'#FFFBEB',padding:'2px 8px',borderRadius:20,border:'1px solid #FCD34D'}}>⚡ {lbl} — book a client here</span>}
+                  {gh>18 && <span style={{fontSize:10,fontWeight:700,color:'#D97706',background:'#FFFBEB',padding:'2px 8px',borderRadius:20,border:'1px solid #FCD34D'}}>⚡ {lbl} - book a client here</span>}
                 </div>
               );
             })}
@@ -337,7 +337,7 @@ function MonthlyView({ therapist, appointments }) {
         })}
       </div>
       <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-        {fmtShort(selDate)} — {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
+        {fmtShort(selDate)} - {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
       </div>
       {selAppts.length===0
         ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
@@ -456,7 +456,7 @@ export default function ScheduleDashboard({ therapist }) {
             <button onClick={fetchBookings} style={{background:'transparent',border:'1px solid #16A34A',borderRadius:6,padding:'2px 8px',fontSize:11,color:'#16A34A',cursor:'pointer',marginLeft:4}}>↻</button>
           </div>
           :<div style={{background:'#FFF7ED',border:'1.5px dashed #F97316',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#9A3412',display:'flex',alignItems:'center',gap:6}}>
-            👁️ <span><strong>Preview mode</strong> — share your booking link to get real sessions</span>
+            👁️ <span><strong>Preview mode</strong> - share your booking link to get real sessions</span>
           </div>
         }
       </div>
@@ -476,7 +476,7 @@ export default function ScheduleDashboard({ therapist }) {
         ))}
       </div>
 
-      {/* Day selector — only for today view */}
+      {/* Day selector - only for today view */}
       {subView==='today'&&(
         <div style={{display:'flex',gap:6,marginBottom:20,overflowX:'auto',paddingBottom:2}}>
           {[0,1,2,3,4].map(i=>{

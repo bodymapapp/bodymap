@@ -23,7 +23,7 @@ export default function Pricing() {
       name: 'Bronze', emoji: '🥉', highlight: false,
       price: { monthly: 0, annual: 0 },
       tagline: 'Automate your practice. Retain every client. Free forever.',
-      cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free — No Card',
+      cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free - No Card',
       ctaAction: () => isAuthenticated ? navigate('/dashboard') : navigate('/signup'),
       features: [
         { text: 'Unlimited clients & bookings', on: true },
@@ -32,10 +32,10 @@ export default function Pricing() {
         { text: 'Automated email reminders', on: true, auto: true, detail: '24h notice to every client, automatically' },
         { text: 'Automated AI pre-session brief', on: true, auto: true, detail: 'Client history ready before you walk in' },
         { text: 'Automated AI post-session brief', on: true, auto: true, detail: 'Session notes drafted for you after' },
-        { text: 'BodyMap AI — chat with your client data', on: true },
-        { text: 'Visual body map — front & back', on: true, detail: 'Focus zones, avoid areas, medical flags' },
+        { text: 'BodyMap AI - chat with your client data', on: true },
+        { text: 'Visual body map - front & back', on: true, detail: 'Focus zones, avoid areas, medical flags' },
         { text: 'SOAP notes', on: true },
-        { text: 'Schedule — today, weekly, monthly', on: true },
+        { text: 'Schedule - today, weekly, monthly', on: true },
         { text: 'Billing dashboard & Stripe payments', on: true },
         { text: 'Automated pain pattern intelligence', on: true, auto: true, detail: 'First 5 sessions per client' },
         { text: 'Automated retention alerts', on: true, auto: true, detail: 'First 5 sessions per client' },
@@ -50,8 +50,8 @@ export default function Pricing() {
       cta: 'Start 7-Day Free Trial',
       ctaAction: () => window.open(billingCycle === 'annual' ? STRIPE_SILVER_ANNUAL : STRIPE_SILVER, '_blank'),
       features: [
-        { text: 'Everything in Bronze — fully automated', on: true },
-        { text: 'Full session history — unlimited, forever', on: true },
+        { text: 'Everything in Bronze - fully automated', on: true },
+        { text: 'Full session history - unlimited, forever', on: true },
         { text: 'Automated pattern intelligence', on: true, auto: true, detail: 'All sessions, all clients, compounds over time' },
         { text: 'Automated retention alerts', on: true, auto: true, detail: 'Catches drifting clients before they leave' },
         { text: 'Automated revenue forecasting', on: true, auto: true, detail: 'Projected income based on booking pace' },
@@ -69,9 +69,9 @@ export default function Pricing() {
       cta: 'Coming Soon',
       ctaAction: null,
       features: [
-        { text: 'Everything in Silver — automated', on: true },
+        { text: 'Everything in Silver - automated', on: true },
         { text: 'Up to 10 therapist profiles', on: true },
-        { text: 'Team schedule view — all therapists, one screen', on: true },
+        { text: 'Team schedule view - all therapists, one screen', on: true },
         { text: 'Per-therapist analytics & billing', on: true },
         { text: 'Shared client pool', on: true },
         { text: 'Commission tracking', on: true },
@@ -87,7 +87,7 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🥉 Bronze is free forever — no credit card needed
+          🥉 Bronze is free forever - no credit card needed
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
           Simple pricing.<br/>Serious intelligence.
@@ -100,7 +100,7 @@ export default function Pricing() {
             <button key={c} onClick={() => setBillingCycle(c)}
               style={{ padding:'8px 20px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:600,
                 background:billingCycle===c?C.forest:'transparent', color:billingCycle===c?'#fff':C.gray, transition:'all 0.15s' }}>
-              {c === 'monthly' ? 'Monthly' : 'Annual — save 20%'}
+              {c === 'monthly' ? 'Monthly' : 'Annual - save 20%'}
             </button>
           ))}
         </div>
@@ -166,11 +166,11 @@ export default function Pricing() {
       <div style={{ maxWidth:680, margin:'0 auto', padding:'0 24px 80px' }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:40 }}>Common questions</h2>
         {[
-          { q:'Is Bronze really free forever?', a:'Yes. No credit card, no trial, no hidden limits. Bronze gives you everything to run and grow your practice — automated booking, intake, reminders, AI briefs, SOAP notes, billing, and scheduling. Free forever.' },
-          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client — automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use BodyMap.' },
-          { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history — tension patterns, retention risk, revenue trends, schedule gaps — and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets.' },
+          { q:'Is Bronze really free forever?', a:'Yes. No credit card, no trial, no hidden limits. Bronze gives you everything to run and grow your practice - automated booking, intake, reminders, AI briefs, SOAP notes, billing, and scheduling. Free forever.' },
+          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use BodyMap.' },
+          { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets.' },
           { q:'When is Gold launching?', a:'Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches.' },
-          { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your full history is preserved — you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
+          { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
         ].map(({ q, a }) => (
           <div key={q} style={{ borderBottom:`1px solid ${C.border}`, padding:'20px 0' }}>
             <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{q}</div>

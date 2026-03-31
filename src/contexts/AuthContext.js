@@ -17,7 +17,7 @@ export const AuthProvider = ({ children }) => {
         supabase.from('therapists').select('*').eq('id', session.user.id).single()
           .then(async ({ data }) => {
             if (data) {
-              // Existing user — check if they just paid and need Silver upgrade
+              // Existing user - check if they just paid and need Silver upgrade
               const justPaid = localStorage.getItem('justPaid') === 'true';
               if (justPaid) {
                 localStorage.removeItem('justPaid');
@@ -29,10 +29,10 @@ export const AuthProvider = ({ children }) => {
               }
               setTherapist(data);
             } else {
-              // New Google user — no therapist row yet
+              // New Google user - no therapist row yet
               const justPaid = localStorage.getItem('justPaid') === 'true';
               if (justPaid) {
-                // Paid flow — create therapist record directly, skip onboarding
+                // Paid flow - create therapist record directly, skip onboarding
                 localStorage.removeItem('justPaid');
                 const u = session.user;
                 const name = u.user_metadata?.full_name || u.email?.split('@')[0] || '';

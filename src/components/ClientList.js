@@ -101,7 +101,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                   <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>{client.days_since_visit} days since last visit</p>
                 </div>
                 {client.phone ? (
-                  <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while — I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
+                  <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while - I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
                     style={{ background: "#D97706", color: "white", padding: "8px 16px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", textDecoration: "none", whiteSpace: "nowrap" }}>
                     💬 Send Check-in
                   </a>
@@ -111,7 +111,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
               </div>
             ))}
             {lapsedClients.length > 3 && (
-              <p style={{ fontSize: "12px", color: "#B45309", textAlign: "center", margin: "4px 0 0 0" }}>+ {lapsedClients.length - 3} more — filter by 🍂 Lapsed to see all</p>
+              <p style={{ fontSize: "12px", color: "#B45309", textAlign: "center", margin: "4px 0 0 0" }}>+ {lapsedClients.length - 3} more - filter by 🍂 Lapsed to see all</p>
             )}
           </div>
         </div>
@@ -120,7 +120,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
       {/* Legend - top of dashboard */}
       <details open style={{ marginBottom: 20, background: "#F5F0E8", borderRadius: 12, padding: "14px 18px", cursor: "pointer" }}>
         <summary style={{ fontSize: 13, fontWeight: 700, color: C.forest, listStyle: "none", display: "flex", alignItems: "center", gap: 6, marginBottom: 0 }}>
-          ❓ Quick Reference — Session States &amp; Client Categories
+          ❓ Quick Reference - Session States &amp; Client Categories
         </summary>
         <div className="bm-ref-grid" style={{ marginTop: 14, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
           {/* Session States - Left */}
@@ -131,7 +131,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                 <span style={{ fontSize: 16 }}>🧭</span>
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 700, color: "#2A5741", margin: "0 0 1px 0" }}>Intake Done</p>
-                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Client filled form in last 48hrs — review now</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>Client filled form in last 48hrs - review now</p>
                 </div>
               </div>
               <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -165,7 +165,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                 <span style={{ fontSize: 16 }}>🍂</span>
                 <div>
                   <p style={{ fontSize: 12, fontWeight: 700, color: "#92400E", margin: "0 0 1px 0" }}>Lapsed</p>
-                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No visit in 60+ days — time to reach out</p>
+                  <p style={{ fontSize: 11, color: C.gray, margin: 0 }}>No visit in 60+ days - time to reach out</p>
                 </div>
               </div>
               <div style={{ background: "white", borderRadius: 8, padding: "8px 10px", display: "flex", alignItems: "flex-start", gap: 8 }}>
@@ -185,7 +185,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
         <div className="bm-upgrade-banner" style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 20px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <div>
             <p style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: "#fff", margin: "0 0 3px 0" }}>🎉 Your practice is growing!</p>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients — upgrade to Silver for unlimited clients + pattern intelligence.</p>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients - upgrade to Silver for unlimited clients + pattern intelligence.</p>
           </div>
 
         </div>
@@ -234,7 +234,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
           <div>
             <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>👁️</span>
-              <div><strong>Sample clients — for preview only.</strong> Tap <strong>Send Intake</strong> to add your first real client. They fill out their body map and appear here instantly.</div>
+              <div><strong>Sample clients - for preview only.</strong> Tap <strong>Send Intake</strong> to add your first real client. They fill out their body map and appear here instantly.</div>
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
               {[
@@ -296,7 +296,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                   <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>{client.days_since_visit} days since last visit</p>
                 </div>
                 {client.phone ? (
-                  <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while — I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
+                  <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while - I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
                     style={{ background: "#D97706", color: "white", padding: "8px 16px", borderRadius: "20px", fontSize: "12px", fontWeight: "700", textDecoration: "none", whiteSpace: "nowrap" }}>
                     💬 Send Check-in
                   </a>
@@ -306,7 +306,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
               </div>
             ))}
             {lapsedClients.length > 3 && (
-              <p style={{ fontSize: "12px", color: "#B45309", textAlign: "center", margin: "4px 0 0 0" }}>+ {lapsedClients.length - 3} more — filter by 🍂 Lapsed to see all</p>
+              <p style={{ fontSize: "12px", color: "#B45309", textAlign: "center", margin: "4px 0 0 0" }}>+ {lapsedClients.length - 3} more - filter by 🍂 Lapsed to see all</p>
             )}
           </div>
         </div>
@@ -347,7 +347,7 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
             {client.name}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "—"}</p>
+            <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "-"}</p>
             {client.phone && (
               <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(client.phone); setCopiedPhone(true); setTimeout(() => setCopiedPhone(false), 2000); }}
                 style={{ background: copiedPhone ? "#2A5741" : "#F3F4F6", border: "none", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: "600", color: copiedPhone ? "white" : "#6B7280", cursor: "pointer", flexShrink: 0 }}>
@@ -362,7 +362,7 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
             {status.icon} {status.label}
           </span>
           {status.label === "Lapsed" && client.phone && (
-            <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while — I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
+            <a href={"sms:" + client.phone.replace(/\D/g,"") + "?body=" + encodeURIComponent("Hi " + client.name.split(" ")[0] + "! It's been a while - I'd love to see you back. Book your next session: " + window.location.origin + "/" + customUrl)}
               onClick={e => e.stopPropagation()}
               style={{ background: "#D97706", color: "white", width: "28px", height: "28px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", textDecoration: "none", flexShrink: 0 }}
               title="Send check-in SMS">
@@ -391,7 +391,7 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
       </div>
       {client.has_pending && (
         <div style={{ marginTop: 10, background: "#E8F5EE", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#2A5741" }}>
-          🧭 Intake done — tap to review session
+          🧭 Intake done - tap to review session
         </div>
       )}
       {client.has_old_pending && !client.has_pending && (
@@ -426,7 +426,7 @@ function LockedClientCard({ client, initials, avatarColor }) {
           </div>
           <div>
             <p style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 2px 0" }}>{client.name}</p>
-            <p style={{ fontSize: "12px", margin: 0 }}>{client.phone || "—"}</p>
+            <p style={{ fontSize: "12px", margin: 0 }}>{client.phone || "-"}</p>
           </div>
         </div>
       </div>

@@ -153,7 +153,7 @@ const DEMO_CLIENT = {
   focus: ["Neck", "L Shoulder", "R Shoulder", "Upper Back"],
   avoid: ["L Knee", "R Knee"],
   prefs: { pressure: "4 - Firm", goal: "Pain Relief", music: "Soft", temp: "Warm", conversation: "Quiet" },
-  medNote: "Recent neck injury — avoid deep pressure on cervical spine",
+  medNote: "Recent neck injury - avoid deep pressure on cervical spine",
   note: "Client prefers silence during session. Always check in at start.",
 };
 
@@ -207,7 +207,7 @@ function TherapistDemo() {
       </div>
       {/* Body map preview */}
       <div style={{ background: C.white, borderRadius: 12, padding: "16px", border: "1px solid " + C.lightGray, marginBottom: 12 }}>
-        <p style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: C.darkGray, marginBottom: 12 }}>Body Map — Sarah M.</p>
+        <p style={{ fontFamily: "Georgia, serif", fontSize: 15, fontWeight: 700, color: C.darkGray, marginBottom: 12 }}>Body Map - Sarah M.</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
           {DEMO_CLIENT.focus.map(a => <span key={a} style={{ background: "#E8F5EE", color: "#22C55E", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>🟢 {a}</span>)}
           {DEMO_CLIENT.avoid.map(a => <span key={a} style={{ background: "#FEF2F2", color: "#EF4444", fontSize: 12, fontWeight: 700, padding: "3px 10px", borderRadius: 20 }}>🔴 {a}</span>)}
@@ -257,7 +257,7 @@ export default function InteractiveDemo() {
           <div>
             <div style={{ textAlign: "center", marginBottom: 20 }}>
               <p style={{ fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: C.darkGray, margin: "0 0 4px 0" }}>🌿 Serenity Massage Studio</p>
-              <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>Pre-session intake — takes under 60 seconds</p>
+              <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>Pre-session intake - takes under 60 seconds</p>
             </div>
             <ClientDemo />
           </div>

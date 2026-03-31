@@ -66,7 +66,7 @@ export default function WaitlistModal({ isOpen, onClose, interest }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
                 <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '700', color: C.forest, margin: '0 0 8px 0' }}>Join the Waitlist</h2>
-                <p style={{ fontSize: '15px', color: C.gray, margin: 0 }}>{interest} — we will reach out when it is ready.</p>
+                <p style={{ fontSize: '15px', color: C.gray, margin: 0 }}>{interest} - we will reach out when it is ready.</p>
               </div>
               <button onClick={handleClose} style={{ background: 'none', border: 'none', fontSize: '22px', color: C.gray, cursor: 'pointer', padding: '0 0 0 16px', lineHeight: 1 }}>×</button>
             </div>

@@ -125,7 +125,7 @@ function ServicesAndAvailability({ therapist }) {
           </div>
         )}
 
-        {/* Add service — always visible inline */}
+        {/* Add service - always visible inline */}
         <div style={{ background:'#F9FAFB', borderRadius:10, padding:14, border:`1.5px dashed ${C2.lightGray}` }}>
           <p style={{ fontSize:'11px', fontWeight:700, color:C2.gray, margin:'0 0 10px', textTransform:'uppercase', letterSpacing:'0.06em' }}>+ Add a service</p>
           <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:8, alignItems:'center' }}>
@@ -265,7 +265,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
             {!therapist?.phone && (
               <p style={{ fontSize: '12px', color: '#6B7280', margin: '10px 0 0 0' }}>
-                💡 Add your phone number below — shown on client session briefs
+                💡 Add your phone number below - shown on client session briefs
               </p>
             )}
           </div>
@@ -279,7 +279,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           🔗 Your Client Intake Link
         </p>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 14px 0' }}>
-          Share this with clients — they tap it, fill their body map, you get it instantly.
+          Share this with clients - they tap it, fill their body map, you get it instantly.
         </p>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -401,7 +401,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div>
 
-      {/* Practice Settings Row — Session Rate + Lapsed Days side by side */}
+      {/* Practice Settings Row - Session Rate + Lapsed Days side by side */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
         <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
           <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>💰 Session Rate</p>
@@ -436,7 +436,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div>
 
-      {/* Integrations Row — Cal.com + Stripe side by side */}
+      {/* Integrations Row - Cal.com + Stripe side by side */}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
         {/* Cal.com */}
         <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
@@ -511,7 +511,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       {/* Booking Link */}
       <div style={{ background:`linear-gradient(135deg,${C2.forest}08,${C2.sage}15)`, border:`1.5px solid ${C2.sage}40`, borderRadius:14, padding:20, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.sage, margin:'0 0 6px' }}>📅 Your Booking Link</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you — no back-and-forth needed.</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
         <div style={{ display:'flex', gap:8, alignItems:'center' }}>
           <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {window.location.origin}/book/{therapist?.custom_url}
@@ -536,7 +536,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze — Free' : therapist?.plan === 'silver' ? 'Silver — $19/mo' : 'Gold — $49/mo'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver - $19/mo' : 'Gold - $49/mo'}
             </p>
             <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
               {therapist?.plan === 'free' ? 'Up to 5 clients. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
@@ -632,7 +632,7 @@ export default function Dashboard({ view }) {
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '14px', fontWeight: '600', color: C.darkGray, margin: 0 }}>{therapist?.full_name}</p>
             <p style={{ fontSize: '12px', color: C.gray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze — Free' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
             </p>
           </div>
           {(!therapist?.plan || therapist?.plan === 'free') && (
@@ -651,7 +651,7 @@ export default function Dashboard({ view }) {
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>📲</span>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant 3-second access — bookmark this page or use Share → Add to Home Screen</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant 3-second access - bookmark this page or use Share → Add to Home Screen</p>
           </div>
           <button onClick={() => setShowBookmarkNudge(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>Got it ✓</button>
         </div>

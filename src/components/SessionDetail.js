@@ -192,7 +192,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       const medNotes = medSessions.map(s => s.med_note).filter(Boolean);
       const uniqueNotes = [...new Set(medNotes)];
       const noteText = uniqueNotes.length > 0 ? ": \"" + uniqueNotes[uniqueNotes.length-1] + "\"" : "";
-      result.push({ icon: "🚨", text: "Medical flag" + noteText + " — always check before session", urgent: true });
+      result.push({ icon: "🚨", text: "Medical flag" + noteText + " - always check before session", urgent: true });
     }
     const pressures = history.filter(s => s.pressure).map(s => s.pressure);
     if (pressures.length >= 2) {
@@ -224,8 +224,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     const note = session.med_note;
     if (!flag || flag === "none" || flag === "no" || flag === "false") return null;
     const flagIsGeneric = ["yes","true","flagged","1"].includes(String(flag).toLowerCase().trim());
-    if (flagIsGeneric) return note ? note : "Medical condition flagged — ask client for details";
-    return note ? flag + " — " + note : flag;
+    if (flagIsGeneric) return note ? note : "Medical condition flagged - ask client for details";
+    return note ? flag + " - " + note : flag;
   })();
 
   async function saveNotes() {
@@ -293,7 +293,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         <div style={{ background: "#FEF2F2", border: "2px solid #EF4444", borderRadius: "12px", padding: "14px 20px", marginBottom: "16px", display: "flex", alignItems: "flex-start", gap: "12px" }}>
           <span style={{ fontSize: "22px", lineHeight: 1 }}>🚨</span>
           <div>
-            <p style={{ fontSize: "12px", fontWeight: "800", color: "#991B1B", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "0.8px" }}>Medical Flag — Review Before Session</p>
+            <p style={{ fontSize: "12px", fontWeight: "800", color: "#991B1B", margin: "0 0 4px 0", textTransform: "uppercase", letterSpacing: "0.8px" }}>Medical Flag - Review Before Session</p>
             <p style={{ fontSize: "15px", fontWeight: "600", color: "#7F1D1D", margin: 0 }}>{medFlagValue}</p>
           </div>
         </div>
@@ -394,7 +394,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {showHeatmap && (
             <div style={{ background: "linear-gradient(135deg, #2A574108, #6B9E8015)", border: "1px solid #6B9E8040", borderRadius: "8px", padding: "8px 12px", marginBottom: "12px", fontSize: "12px", color: C.forest, display: "flex", alignItems: "center", gap: "8px" }}>
               <span>🔥</span>
-              <span><strong>Pattern history</strong> — last {heatmapData.count} sessions. Badge = times marked.</span>
+              <span><strong>Pattern history</strong> - last {heatmapData.count} sessions. Badge = times marked.</span>
             </div>
           )}
 
@@ -460,11 +460,11 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
       </div>
 
-      {/* Notes Row — full width, two equal cards */}
+      {/* Notes Row - full width, two equal cards */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
         <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
           <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Session Notes</h3>
-          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>🔒 Private — only visible to you, never shared</p>
+          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>🔒 Private - only visible to you, never shared</p>
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
             style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
           />
@@ -482,7 +482,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
           <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Message to Client</h3>
           <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>💌 Appears on the Post-Session Brief you share with your client</p>
-          <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional — write a personal note for your client (e.g. stretches to try, what improved)..."
+          <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
             style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
           />
         </div>

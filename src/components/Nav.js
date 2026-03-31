@@ -58,7 +58,7 @@ export default function Nav() {
       `}</style>
 
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        {/* Logo — always goes to top of home */}
+        {/* Logo - always goes to top of home */}
         <a href="/" onClick={goHome} style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
           <span style={{ fontSize: "24px" }}>🌿</span>
           <span style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: "700", color: C.forest }}>BodyMap</span>

@@ -171,7 +171,7 @@ export default function PostSessionBrief() {
     <div style={{fontFamily:"system-ui,sans-serif",background:"white",minHeight:"100vh",color:"#1A1A2E"}}>
       <style>{`@media print{.no-print{display:none!important}body{margin:0}@page{size:A4;margin:12mm}}*{box-sizing:border-box}`}</style>
       <div className="no-print" style={{background:"#2A5741",padding:"12px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{color:"white",fontWeight:"700",fontSize:"15px"}}>📋 Post-Session Brief — {client?.name}</span>
+        <span style={{color:"white",fontWeight:"700",fontSize:"15px"}}>📋 Post-Session Brief - {client?.name}</span>
         <button onClick={() => window.print()} style={{background:"white",color:"#2A5741",border:"none",padding:"8px 20px",borderRadius:"8px",fontWeight:"700",fontSize:"14px",cursor:"pointer"}}>🖨️ Save as PDF / Print</button>
       </div>
       <div style={{maxWidth:"740px",margin:"0 auto",padding:"24px"}}>
@@ -241,7 +241,7 @@ export default function PostSessionBrief() {
           {intakeUrl && <a href={intakeUrl} style={{fontSize:"12px",fontWeight:"700",color:"#2A5741",textDecoration:"none",background:"white",padding:"6px 16px",borderRadius:"20px",border:"1px solid #6B9E80",display:"inline-block"}}>📋 Fill intake form before next visit</a>}
         </div>
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap - mybodymap.app</span>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""}</span>
         </div>
       </div>

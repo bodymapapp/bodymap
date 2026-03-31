@@ -94,7 +94,7 @@ function SessionRow({ s }) {
         <div style={{ fontSize:12, color:'#6B7280' }}>{fmtShort(s.date)} · {s.time} · {s.duration}min</div>
       </div>
       <div style={{ textAlign:'right', minWidth:80 }}>
-        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937' }}>{s.actual !== null ? currency(s.actual) : '—'}</div>
+        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937' }}>{s.actual !== null ? currency(s.actual) : '-'}</div>
         <div style={{ fontSize:11, color:'#9CA3AF' }}>Expected: {currency(s.rate)}</div>
       </div>
       <div style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:'4px 12px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{sc.label}</div>
@@ -111,7 +111,7 @@ function EmptyBillingState() {
         Your Stripe account is connected. Payments from your clients will appear here automatically after your first session.
       </div>
       <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'12px 20px', display:'inline-block', fontSize:13, color:'#16A34A', fontWeight:600 }}>
-        ✅ Stripe Connected — Ready to receive payments
+        ✅ Stripe Connected - Ready to receive payments
       </div>
     </div>
   );
@@ -122,7 +122,7 @@ function SampleDataBanner() {
     <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
       <span style={{ fontSize:16 }}>👁️</span>
       <div>
-        <strong>Sample data — for preview only.</strong> Connect Stripe in Settings to track your real payments here. Your actual revenue will replace this preview automatically.
+        <strong>Sample data - for preview only.</strong> Connect Stripe in Settings to track your real payments here. Your actual revenue will replace this preview automatically.
       </div>
     </div>
   );
@@ -142,7 +142,7 @@ function DailyView({ sessions }) {
         <StatCard label="Expected Revenue" value={currency(expected)} sub={`${daySessions.length} sessions`} color="#2A5741" />
         <StatCard label="Actual Collected" value={currency(actual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Pending" value={pending} sub="awaiting payment" color="#D97706" />
-        <StatCard label="Collection Rate" value={expected>0?`${Math.round((actual/expected)*100)}%`:'—'} sub="actual vs expected" color="#6B9E80" />
+        <StatCard label="Collection Rate" value={expected>0?`${Math.round((actual/expected)*100)}%`:'-'} sub="actual vs expected" color="#6B9E80" />
       </div>
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {days.map((d,i) => {
@@ -158,7 +158,7 @@ function DailyView({ sessions }) {
         })}
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>
-        {fmtShort(selectedDate)} — {daySessions.length} session{daySessions.length!==1?'s':''}
+        {fmtShort(selectedDate)} - {daySessions.length} session{daySessions.length!==1?'s':''}
       </div>
       {daySessions.length === 0
         ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions on this day.</div>
@@ -192,7 +192,7 @@ function WeeklyView({ sessions }) {
         <StatCard label="Expected" value={currency(expected)} sub="this week" color="#2A5741" />
         <StatCard label="Collected" value={currency(actual)} sub="confirmed" color="#16A34A" />
         <StatCard label="Sessions" value={weekSessions.length} sub="total" color="#6B9E80" />
-        <StatCard label="Avg/Session" value={weekSessions.length>0?currency(actual/weekSessions.length):'—'} sub="collected" color="#C9A84C" small />
+        <StatCard label="Avg/Session" value={weekSessions.length>0?currency(actual/weekSessions.length):'-'} sub="collected" color="#C9A84C" small />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
         {weekDays.map((d,i) => {
@@ -249,7 +249,7 @@ function MonthlyView({ sessions }) {
       <div style={{ display:'flex', gap:12, marginBottom:20, flexWrap:'wrap' }}>
         <StatCard label="Monthly Expected" value={currency(monthExpected)} sub={`${monthSessions.length} sessions`} color="#2A5741" />
         <StatCard label="Monthly Collected" value={currency(monthActual)} sub="confirmed payments" color="#16A34A" />
-        <StatCard label="Collection Rate" value={monthExpected>0?`${Math.round((monthActual/monthExpected)*100)}%`:'—'} sub="actual vs expected" color="#6B9E80" />
+        <StatCard label="Collection Rate" value={monthExpected>0?`${Math.round((monthActual/monthExpected)*100)}%`:'-'} sub="actual vs expected" color="#6B9E80" />
       </div>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
         {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>(
@@ -273,7 +273,7 @@ function MonthlyView({ sessions }) {
         })}
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>
-        {fmtShort(selectedDate)} — {selectedDaySessions.length} session{selectedDaySessions.length!==1?'s':''}
+        {fmtShort(selectedDate)} - {selectedDaySessions.length} session{selectedDaySessions.length!==1?'s':''}
       </div>
       {selectedDaySessions.length===0
         ?<div style={{ background:'#FFFFFF', borderRadius:12, padding:24, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions. Click a day to view.</div>
@@ -305,7 +305,7 @@ function YearlyView({ sessions }) {
         <StatCard label="Annual Expected" value={currency(yearExpected)} sub={`${yearSessions} sessions`} color="#2A5741" />
         <StatCard label="Annual Collected" value={currency(yearActual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Avg/Month" value={currency(yearActual/12)} sub="collected" color="#6B9E80" small />
-        <StatCard label="Avg/Session" value={yearSessions>0?currency(yearActual/yearSessions):'—'} sub="collected" color="#C9A84C" small />
+        <StatCard label="Avg/Session" value={yearSessions>0?currency(yearActual/yearSessions):'-'} sub="collected" color="#C9A84C" small />
       </div>
       <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, color:'#1F2937', marginBottom:20 }}>Revenue by Month</div>
@@ -397,7 +397,7 @@ function InsightsView({ sessions }) {
       </div>
       {outstanding.length > 0 && (
         <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:20 }}>
-          <div style={{ fontSize:14, fontWeight:700, color:'#DC2626', marginBottom:12 }}>🔴 Outstanding Payments — {currency(outstandingTotal)}</div>
+          <div style={{ fontSize:14, fontWeight:700, color:'#DC2626', marginBottom:12 }}>🔴 Outstanding Payments - {currency(outstandingTotal)}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
             {outstanding.map(s=><SessionRow key={s.id} s={s}/>)}
           </div>
@@ -463,7 +463,7 @@ export default function BillingDashboard({ therapist }) {
         status: t.status === 'succeeded' ? 'paid' : 'pending',
       }));
     }
-    // Not connected — show sample data with live session rate applied
+    // Not connected - show sample data with live session rate applied
     return SAMPLE_SESSIONS.map(s => ({
       ...s,
       rate:   s.rate   === DEFAULT_RATE ? sessionRate : s.rate,
@@ -495,14 +495,14 @@ export default function BillingDashboard({ therapist }) {
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
 
-      {/* Stripe not connected — sample data, prompt to connect */}
+      {/* Stripe not connected - sample data, prompt to connect */}
       {!stripeConnected && <SampleDataBanner />}
 
-      {/* Stripe connected, no real data yet — sample data but show connected state */}
+      {/* Stripe connected, no real data yet - sample data but show connected state */}
       {stripeConnected && realTransactions !== null && realTransactions.length === 0 && (
         <div style={{ background:'#EFF6FF', border:'1.5px dashed #93C5FD', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#1D4ED8', display:'flex', alignItems:'center', gap:10 }}>
           <span style={{ fontSize:16 }}>👁️</span>
-          <div><strong>Sample data — preview only.</strong> Your Stripe is connected. Real payments will replace this preview automatically after your first session.</div>
+          <div><strong>Sample data - preview only.</strong> Your Stripe is connected. Real payments will replace this preview automatically after your first session.</div>
         </div>
       )}
 

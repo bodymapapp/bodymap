@@ -168,7 +168,7 @@ ${clientSummaries.join('\n')}
       // Welcome message
       setMessages([{
         role: 'assistant',
-        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm MyBodyMap AI. I have access to your full practice data — ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends.`,
+        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm MyBodyMap AI. I have access to your full practice data - ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends.`,
         timestamp: Date.now()
       }]);
     } catch (err) {
@@ -258,7 +258,7 @@ ${clientSummaries.join('\n')}
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
-          <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>Your personal practice intelligence — powered by your real client data</p>
+          <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
         </div>
         <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>
           🔄 New Chat

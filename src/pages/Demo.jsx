@@ -1,4 +1,4 @@
-// BodyMap v5.0 — Loyalty Program · 5-Dimension Review · AI Insights
+// BodyMap v5.0 - Loyalty Program · 5-Dimension Review · AI Insights
 import { useState, useEffect, useCallback } from "react";
 
 const C = {
@@ -56,7 +56,7 @@ const DEFAULT_PREFS = {
 const SYSTEM = `You are a wellness session preference observer for BodyMap. Notice patterns in self-reported preferences only.
 RULES: Never diagnose. Never use: diagnosis, condition, injury, treatment, syndrome, disorder, symptom, prognosis, risk.
 Frame everything as preference patterns: "you tend to prefer", "your sessions show a pattern of".
-End every response with: "✨ These are observations from your personal session preferences only — not medical advice."`;
+End every response with: "✨ These are observations from your personal session preferences only - not medical advice."`;
 
 async function callClaude(prompt) {
   try {
@@ -1756,7 +1756,7 @@ const Insights = ({ sessions, clientName }) => {
           marginBottom: 14,
         }}
       >
-        AI observations from your {sessions.length} sessions — not medical
+        AI observations from your {sessions.length} sessions - not medical
         advice
       </p>
       {!done && !loading && (
@@ -1884,7 +1884,7 @@ const PreFill = ({ sessions, onPreFill }) => {
           marginTop: 8,
         }}
       >
-        Pre-fills your map and preferences — modify anything
+        Pre-fills your map and preferences - modify anything
       </p>
     </AIC>
   );
@@ -2093,7 +2093,7 @@ const DIMS = [
     id: "atmosphere",
     icon: "🌿",
     label: "Atmosphere",
-    q: "Music, lighting, temperature — how was the setting?",
+    q: "Music, lighting, temperature - how was the setting?",
     opts: [
       { v: 1, e: "😩", l: "Distracting" },
       { v: 2, e: "😑", l: "Okay" },
@@ -2308,7 +2308,7 @@ const ReviewScreen = ({ clientInfo, onDone }) => {
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontSize: 20 }}>
-                    {d.opts.find((o) => o.v === ratings[d.id])?.e || "—"}
+                    {d.opts.find((o) => o.v === ratings[d.id])?.e || "-"}
                   </span>
                   <div
                     style={{
@@ -3979,8 +3979,8 @@ const BMScreen = ({
         }}
       >
         {mode === "focus"
-          ? "🟢 Tap areas where you want focus — tap again to clear"
-          : "🔴 Tap areas to avoid — tap again to clear"}
+          ? "🟢 Tap areas where you want focus - tap again to clear"
+          : "🔴 Tap areas to avoid - tap again to clear"}
       </p>
     </div>
     <Card style={{ padding: 14 }}>

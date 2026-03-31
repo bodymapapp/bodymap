@@ -48,16 +48,16 @@ function ClientCard() {
     return () => clearInterval(t);
   }, []);
   const zones = [
-    { color: '#1a6640', bg: 'rgba(82,183,136,0.12)', border: 'rgba(82,183,136,0.35)', text: '🟢 Upper back — focus' },
-    { color: '#1a6640', bg: 'rgba(82,183,136,0.12)', border: 'rgba(82,183,136,0.35)', text: '🟢 L. Shoulder — deep work' },
-    { color: '#b84040', bg: 'rgba(220,80,80,0.07)',  border: 'rgba(220,80,80,0.25)',  text: '🔴 Neck — avoid' },
+    { color: '#1a6640', bg: 'rgba(82,183,136,0.12)', border: 'rgba(82,183,136,0.35)', text: '🟢 Upper back - focus' },
+    { color: '#1a6640', bg: 'rgba(82,183,136,0.12)', border: 'rgba(82,183,136,0.35)', text: '🟢 L. Shoulder - deep work' },
+    { color: '#b84040', bg: 'rgba(220,80,80,0.07)',  border: 'rgba(220,80,80,0.25)',  text: '🔴 Neck - avoid' },
     { color: '#7a5f0a', bg: 'rgba(201,168,76,0.1)',  border: 'rgba(201,168,76,0.3)',  text: '🎵 Ambient music' },
     { color: '#7a5f0a', bg: 'rgba(201,168,76,0.1)',  border: 'rgba(201,168,76,0.3)',  text: '💆 Medium pressure' },
   ];
   return (
     <div style={{ background:'#fff', borderRadius:24, border:'1px solid #e8e4dd', boxShadow:'0 24px 64px rgba(0,0,0,0.10)', padding:'28px 28px 24px', maxWidth:480, width:'100%', textAlign:'left', position:'relative' }}>
       <div style={{ position:'absolute', top:-16, right:16, background: alertPulse ? '#c9a84c' : '#b8922a', color:'#fff', fontSize:12, fontWeight:700, padding:'6px 14px', borderRadius:100, boxShadow:'0 4px 14px rgba(185,139,30,0.35)', transition:'background 0.8s', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
-        <span>⚠️</span> Sarah has not booked in 6 weeks — follow up?
+        <span>⚠️</span> Sarah has not booked in 6 weeks - follow up?
       </div>
       <div style={{ fontSize:11, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:'#aaa', marginBottom:14 }}>CLIENT INTELLIGENCE</div>
       <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:20 }}>
@@ -76,8 +76,8 @@ function ClientCard() {
         </div>
       </div>
       {[
-        { icon:'📊', text:'L. shoulder recurring — 6 of 8 sessions', badge:'Pattern' },
-        { icon:'💬', text:'"Stress from work — go deeper today"', badge:null },
+        { icon:'📊', text:'L. shoulder recurring - 6 of 8 sessions', badge:'Pattern' },
+        { icon:'💬', text:'"Stress from work - go deeper today"', badge:null },
       ].map((p,i) => (
         <div key={i} style={{ display:'flex', alignItems:'center', gap:10, background:'#f5f3ef', borderRadius:10, padding:'9px 13px', fontSize:12, color:'#4a4a4a', marginBottom: i===0 ? 8 : 0 }}>
           <span>{p.icon}</span>
@@ -121,10 +121,10 @@ export default function Home() {
               Your client's full history,<br/>ready before every session.
             </h1>
             <p style={{ fontSize:'clamp(16px,2vw,20px)', color:G.mid2, lineHeight:1.6, margin:'0 0 36px', maxWidth:480 }}>
-              The only tool built around what every other app ignores — knowing your clients so well, they never need to find someone else.
+              The only tool built around what every other app ignores - knowing your clients so well, they never need to find someone else.
             </p>
             <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:32 }}>
-              <Link to="/signup" style={btnPrimary}>Start Free — No Card Needed →</Link>
+              <Link to="/signup" style={btnPrimary}>Start Free - No Card Needed →</Link>
               <Link to="/demo" style={btnGhost}>See How It Works</Link>
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:8, fontSize:13, color:G.light, flexWrap:'wrap' }}>
@@ -144,12 +144,12 @@ export default function Home() {
       <section style={{ background:G.deep, padding:'80px 24px', textAlign:'center' }}>
         <div style={{ fontSize:12, fontWeight:700, letterSpacing:'0.12em', textTransform:'uppercase', color:G.soft, marginBottom:16 }}>The Problem</div>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(22px,3.5vw,36px)', fontWeight:600, color:'#fff', margin:'0 auto 44px', maxWidth:620, lineHeight:1.35 }}>
-          You are losing clients you worked hard to earn.{' '}<em style={{ fontStyle:'italic', color:G.soft }}>Not because of your work — because they feel forgotten.</em>
+          You are losing clients you worked hard to earn.{' '}<em style={{ fontStyle:'italic', color:G.soft }}>Not because of your work - because they feel forgotten.</em>
         </h2>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:20, maxWidth:900, margin:'0 auto' }}>
           {[
             { icon:'🗂️', title:'Starting over every session',  desc:"Clients repeat their history. You take mental notes you will lose by next week. Nothing accumulates." },
-            { icon:'📅', title:'Lapsed clients, zero alerts',   desc:'Your best clients go quiet. Life happens. You had no way to notice — or reach back at the right moment.' },
+            { icon:'📅', title:'Lapsed clients, zero alerts',   desc:'Your best clients go quiet. Life happens. You had no way to notice - or reach back at the right moment.' },
             { icon:'💸', title:'Revenue walking out the door',  desc:"One lost monthly client equals $600 to $1,200 per year gone. Multiply that and you are running harder just to stay in place." },
           ].map(item => (
             <div key={item.title} style={{ background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:16, padding:'28px 24px', textAlign:'left' }}>
@@ -161,29 +161,34 @@ export default function Home() {
         </div>
       </section>
       <section style={{ padding:'88px 24px', background:G.white, textAlign:'center' }}>
-        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>The Math</div>
-        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,42px)', fontWeight:700, color:G.deep, margin:'0 auto 16px', maxWidth:600, lineHeight:1.2, textAlign:'center' }}>Free. Forever. No catch.</h2>
-        <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, maxWidth:500, margin:'0 auto 52px', textAlign:'center' }}>One client you almost lost — brought back by a single alert — pays for your entire year.</p>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:24, maxWidth:860, margin:'0 auto 36px', alignItems:'center' }}>
+        <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>Why BodyMap</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,42px)', fontWeight:700, color:G.deep, margin:'0 auto 20px', maxWidth:700, lineHeight:1.2, textAlign:'center' }}>Your practice runs itself. Your clients keep coming back.</h2>
+        <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, maxWidth:560, margin:'0 auto 52px', textAlign:'center' }}>BodyMap handles everything automatically so you can focus on what you do best. Every client feels known. Every session feels personal. And you never have to chase a booking again.</p>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))', gap:20, maxWidth:960, margin:'0 auto 48px' }}>
           {[
-            { val:'$0',  label:'Everything included. Free forever.',           hi:false },
-            { val:'0',   label:'Competitors with automated body intelligence',    hi:true, tag:'BodyMap is the only one' },
-            { val:'∞',   label:'Return on a free tool that retains clients',      hi:false },
+            { icon:'🤖', title:'Fully automated', desc:'Booking, intake, reminders, and AI session briefs run automatically. Set it up once and it works forever.' },
+            { icon:'🧠', title:'Intelligence that grows', desc:'BodyMap learns your clients over time. Tension patterns, retention risk, revenue trends - surfaced automatically.' },
+            { icon:'🔁', title:'Clients come back', desc:'Automated retention alerts catch drifting clients before they leave. One alert can recover a client worth $1,200 a year.' },
+            { icon:'📈', title:'Your practice grows', desc:'Smart scheduling fills gaps. Revenue forecasting shows what is coming. Business analytics show what is working.' },
           ].map(card => (
-            <div key={card.val} style={{ background:card.hi ? G.deep : G.card, border:`1px solid ${card.hi ? G.deep : G.border}`, borderRadius:20, padding:'32px 24px', textAlign:'center', transform:card.hi ? 'scale(1.05)' : 'scale(1)', boxShadow:card.hi ? '0 16px 40px rgba(26,61,43,0.2)' : 'none' }}>
-              {card.tag && <div style={{ fontSize:12, fontWeight:700, color:G.soft, marginBottom:8 }}>{card.tag}</div>}
-              <div style={{ fontSize:44, fontWeight:800, color:card.hi ? G.soft : G.mid, marginBottom:8 }}>{card.val}</div>
-              <div style={{ fontSize:14, color:card.hi ? 'rgba(255,255,255,0.6)' : G.light, lineHeight:1.4 }}>{card.label}</div>
+            <div key={card.title} style={{ background:G.card, border:`1px solid ${G.border}`, borderRadius:16, padding:'28px 24px', textAlign:'left' }}>
+              <div style={{ fontSize:28, marginBottom:12 }}>{card.icon}</div>
+              <div style={{ fontSize:15, fontWeight:700, color:G.deep, marginBottom:8 }}>{card.title}</div>
+              <div style={{ fontSize:14, color:G.light, lineHeight:1.6 }}>{card.desc}</div>
             </div>
           ))}
         </div>
-        <p style={{ fontSize:14, color:G.light, maxWidth:480, margin:'0 auto', lineHeight:1.6 }}>BodyMap automates your booking, intake, reminders, and AI session briefs. Your clients come back because you know them better than anyone. Your practice grows because the work happens while you sleep.</p>
+        <div style={{ background:G.deep, borderRadius:20, padding:'40px 32px', maxWidth:640, margin:'0 auto', textAlign:'center' }}>
+          <div style={{ fontSize:32, fontWeight:800, color:'#fff', fontFamily:'Georgia,serif', marginBottom:12 }}>Free forever on Bronze.</div>
+          <div style={{ fontSize:16, color:'rgba(255,255,255,0.7)', lineHeight:1.7, marginBottom:24 }}>Every tool on this page. No credit card. No trial. No upgrade required. Start today and your first client can book in the next 5 minutes.</div>
+          <a href="/signup" style={{ display:'inline-block', background:'#fff', color:G.deep, borderRadius:10, padding:'14px 32px', fontSize:15, fontWeight:700, textDecoration:'none' }}>Get Started Free</a>
+        </div>
       </section>
       <section style={{ background:'#f0f9f4', borderTop:'1px solid #c8ecd8', borderBottom:'1px solid #c8ecd8', padding:'64px 24px', textAlign:'center' }}>
         <div style={{ maxWidth:680, margin:'0 auto' }}>
           <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.mid, marginBottom:16 }}>See It In Action</div>
           <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(24px,3.5vw,38px)', fontWeight:700, color:G.deep, margin:'0 0 16px', lineHeight:1.25 }}>Experience Both Sides</h2>
-          <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, marginBottom:36 }}>No signup needed. See why clients love it — and why therapists never go back.</p>
+          <p style={{ fontSize:18, color:G.mid2, lineHeight:1.6, marginBottom:36 }}>No signup needed. See why clients love it - and why therapists never go back.</p>
           <div style={{ display:'flex', gap:14, justifyContent:'center', flexWrap:'wrap' }}>
             <Link to="/demo" style={btnPrimary}>Try the Demo</Link>
             <Link to="/features" style={btnGhost}>See All Features</Link>
@@ -198,9 +203,9 @@ export default function Home() {
           <p style={{ fontSize:18, color:G.light, maxWidth:460, margin:'0 auto', textAlign:'center' }}>What changes when you stop relying on memory.</p>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))', gap:24, maxWidth:1020, margin:'0 auto' }}>
-          <StoryCard initial="M" color="#52b788" name="Maya" since="Regular client · 3 years" headline="She was gone 8 weeks. One BodyMap alert brought her back." body="Life got busy — new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: Hey Maya, been thinking about you. Lower back still giving you trouble? She booked the next day." outcome="One text. Client retained." />
+          <StoryCard initial="M" color="#52b788" name="Maya" since="Regular client · 3 years" headline="She was gone 8 weeks. One BodyMap alert brought her back." body="Life got busy - new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: Hey Maya, been thinking about you. Lower back still giving you trouble? She booked the next day." outcome="One text. Client retained." />
           <StoryCard initial="J" color="#2d6a4f" name="James" since="Monthly client · 1 year" headline="Every visit, he repeated himself. Until she just knew." body="He hated deep pressure on his left shoulder. Every session he would wince and say it again. Third visit with BodyMap, his therapist just said I have got you before he even sat down. He told his wife that night. His wife booked the next morning." outcome="Loyalty earned. Referral earned." />
-          <StoryCard initial="P" color="#c9a84c" name="Priya" since="New client · found her person" headline="3 therapists in 2 years. BodyMap changed that." body="Good hands, all of them — but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She had found her person." outcome="Client stopped searching." />
+          <StoryCard initial="P" color="#c9a84c" name="Priya" since="New client · found her person" headline="3 therapists in 2 years. BodyMap changed that." body="Good hands, all of them - but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She had found her person." outcome="Client stopped searching." />
         </div>
       </section>
       <section style={{ background:G.white, padding:'64px 24px', textAlign:'center', borderTop:`1px solid ${G.border}` }}>
@@ -209,7 +214,7 @@ export default function Home() {
           {[
             { icon:'🔒', title:'Enterprise-grade encryption', desc:'All data encrypted at rest and in transit. Same infrastructure used by Fortune 500 companies.' },
             { icon:'🏛️', title:'Your data. Not ours.',        desc:"Your clients intake data belongs to you. We never sell it, share it, or use it for advertising." },
-            { icon:'📤', title:'Export anytime',              desc:'Your data is always yours to take. Export everything in one click — no holdbacks, no lock-in.' },
+            { icon:'📤', title:'Export anytime',              desc:'Your data is always yours to take. Export everything in one click - no holdbacks, no lock-in.' },
           ].map(item => (
             <div key={item.title} style={{ flex:'1 1 220px', maxWidth:260 }}>
               <div style={{ fontSize:32, marginBottom:12 }}>{item.icon}</div>
@@ -227,7 +232,7 @@ export default function Home() {
           </h2>
           <p style={{ fontSize:18, color:'rgba(255,255,255,0.65)', maxWidth:420, margin:'0 auto 40px', lineHeight:1.6 }}>Start free. Upgrade when you are ready. Your first 5 clients are always free.</p>
           <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
-            <Link to="/signup" style={{ ...btnPrimary, background:'#fff', color:G.deep }}>Start Free — No Card Needed</Link>
+            <Link to="/signup" style={{ ...btnPrimary, background:'#fff', color:G.deep }}>Start Free - No Card Needed</Link>
             <Link to="/demo" style={{ ...btnGhost, color:'rgba(255,255,255,0.85)', borderColor:'rgba(255,255,255,0.3)' }}>See How It Works</Link>
           </div>
           <p style={{ fontSize:13, color:'rgba(255,255,255,0.4)' }}>Free forever on Bronze. Upgrade to Silver when your data has something to tell you.</p>

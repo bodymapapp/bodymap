@@ -151,7 +151,7 @@ export default function PreSessionBrief() {
     <div style={{fontFamily:"system-ui,sans-serif",background:"white",minHeight:"100vh",color:"#1A1A2E"}}>
       <style>{"@media print{.no-print{display:none!important}body{margin:0}@page{size:A4;margin:12mm}}*{box-sizing:border-box}"}</style>
       <div className="no-print" style={{background:"#2A5741",padding:"12px 24px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{color:"white",fontWeight:"700",fontSize:"15px"}}>🌿 Pre-Session Brief — {client?.name}</span>
+        <span style={{color:"white",fontWeight:"700",fontSize:"15px"}}>🌿 Pre-Session Brief - {client?.name}</span>
         <button onClick={() => window.print()} style={{background:"white",color:"#2A5741",border:"none",padding:"8px 20px",borderRadius:"8px",fontWeight:"700",fontSize:"14px",cursor:"pointer"}}>🖨️ Save as PDF / Print</button>
       </div>
       <div style={{maxWidth:"740px",margin:"0 auto",padding:"24px"}}>
@@ -171,8 +171,8 @@ export default function PreSessionBrief() {
           <div style={{background:"#FEF2F2",border:"2px solid #EF4444",borderRadius:"8px",padding:"10px 16px",marginBottom:"14px",display:"flex",gap:"10px",alignItems:"flex-start"}}>
             <span style={{fontSize:"18px"}}>🚨</span>
             <div>
-              <div style={{fontSize:"11px",fontWeight:"800",color:"#991B1B",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"2px"}}>Medical Flag — Review Before Session</div>
-              <div style={{fontSize:"13px",fontWeight:"600",color:"#7F1D1D"}}>{medNote || "Medical condition flagged — ask client for details"}</div>
+              <div style={{fontSize:"11px",fontWeight:"800",color:"#991B1B",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:"2px"}}>Medical Flag - Review Before Session</div>
+              <div style={{fontSize:"13px",fontWeight:"600",color:"#7F1D1D"}}>{medNote || "Medical condition flagged - ask client for details"}</div>
             </div>
           </div>
         )}
@@ -224,7 +224,7 @@ export default function PreSessionBrief() {
           </div>
         )}
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap — mybodymap.app</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap - mybodymap.app</span>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""} · Confidential</span>
         </div>
       </div>

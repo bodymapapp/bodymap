@@ -34,7 +34,7 @@ export default function WhyBodyMap() {
             Your clients come back<br/>when they feel known
           </h1>
           <p style={{ fontSize: '22px', opacity: 0.95, maxWidth: '600px', margin: '0 auto' }}>
-            BodyMap gives every therapist the tools to make clients feel remembered — before they even walk in the door.
+            BodyMap gives every therapist the tools to make clients feel remembered - before they even walk in the door.
           </p>
         </div>
       </section>
@@ -70,7 +70,7 @@ export default function WhyBodyMap() {
               One month of BodyMap costs $9.
             </div>
             <div style={{ fontSize: '16px', color: '#374151', lineHeight: 1.6 }}>
-              One lapsed client who comes back monthly for a year is worth $1,200 — that is the $9 you spent in January still paying off in December. It happens again next month. And the month after that. Not a subscription. A revenue recovery engine that compounds.
+              One lapsed client who comes back monthly for a year is worth $1,200 - that is the $9 you spent in January still paying off in December. It happens again next month. And the month after that. Not a subscription. A revenue recovery engine that compounds.
             </div>
           </div>
         </div>
@@ -111,12 +111,12 @@ export default function WhyBodyMap() {
               {
                 emoji: '🛡️',
                 title: 'You remember everything',
-                desc: 'Every preference, every note, every session — documented and ready. Clients trust therapists who remember the details. That trust is what keeps them coming back to you and nobody else.'
+                desc: 'Every preference, every note, every session - documented and ready. Clients trust therapists who remember the details. That trust is what keeps them coming back to you and nobody else.'
               },
               {
                 emoji: '🧠',
                 title: 'Clarity going into every session',
-                desc: 'You are not trying to remember what Sarah said last time about her shoulder. It is right there. That mental clarity makes you a better therapist — and your clients feel the difference.'
+                desc: 'You are not trying to remember what Sarah said last time about her shoulder. It is right there. That mental clarity makes you a better therapist - and your clients feel the difference.'
               }
             ].map((item) => (
               <div key={item.title} style={{ background: 'white', borderRadius: '12px', border: '1px solid #E5E7EB', padding: '32px' }}>
@@ -162,7 +162,7 @@ export default function WhyBodyMap() {
                 </div>
               </div>
               <div style={{ background: '#DCF8C6', borderRadius: '12px', padding: '14px 18px', textAlign: 'left' }}>
-                <div style={{ fontSize: '13px', color: '#1F2937' }}>Hey Maria! It has been a while — would love to see you back. Here is a link to book 🌿</div>
+                <div style={{ fontSize: '13px', color: '#1F2937' }}>Hey Maria! It has been a while - would love to see you back. Here is a link to book 🌿</div>
               </div>
             </div>
           </div>
@@ -214,7 +214,7 @@ export default function WhyBodyMap() {
         </div>
       </section>
 
-      {/* Practice Sizes — retention framing */}
+      {/* Practice Sizes - retention framing */}
       <section style={{ overflowX: 'hidden', background: C.lavenderPale, padding: '80px 24px' }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
           <h2 style={{ fontSize: '42px', fontWeight: '700', textAlign: 'center', color: C.darkGray, marginBottom: '56px' }}>
@@ -240,7 +240,7 @@ export default function WhyBodyMap() {
                 value: '$3,600/year recovered. 16x ROI on Gold plan.',
                 impact: 'Consistent client experience across every therapist. Shared intake data. One professional brand.',
                 available: false,
-                waitlistLabel: 'Gold Plan — Launching Soon',
+                waitlistLabel: 'Gold Plan - Launching Soon',
                 waitlistSub: 'Join the waitlist to be first notified.'
               },
               {
@@ -251,7 +251,7 @@ export default function WhyBodyMap() {
                 value: 'Predictable revenue recovery at scale.',
                 impact: 'Brand consistency, training tool for new therapists, data-driven operations across every location.',
                 available: false,
-                waitlistLabel: 'Enterprise — Coming Soon',
+                waitlistLabel: 'Enterprise - Coming Soon',
                 waitlistSub: 'Express interest and we will reach out first.'
               }
             ].map((use) => (
