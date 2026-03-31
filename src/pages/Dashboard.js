@@ -17,8 +17,10 @@ const C = {
 };
 
 
-function ServicesAndAvailability({ therapist, setTherapist }) {
+function ServicesAndAvailability({ therapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+  const [depositEnabled, setDepositEnabled] = React.useState(therapist?.deposit_enabled || false);
+  const [depositPercent, setDepositPercent] = React.useState(therapist?.deposit_percent || 20);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -165,25 +167,25 @@ function ServicesAndAvailability({ therapist, setTherapist }) {
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <button onClick={() => {
-            const newVal = !therapist.deposit_enabled;
+            const newVal = !depositEnabled;
             supabase.from('therapists').update({ deposit_enabled: newVal }).eq('id', therapist.id);
-            setTherapist(t => ({ ...t, deposit_enabled: newVal }));
-          }} style={{ width:40, height:22, borderRadius:11, background:therapist?.deposit_enabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
-            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.deposit_enabled?21:3, transition:'left 0.2s' }}/>
+            setDepositEnabled(newVal);
+          }} style={{ width:40, height:22, borderRadius:11, background:depositEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:depositEnabled?21:3, transition:'left 0.2s' }}/>
           </button>
           <span style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>
-            {therapist?.deposit_enabled ? 'Deposit enabled' : 'Deposit disabled'}
+            {depositEnabled ? 'Deposit enabled' : 'Deposit disabled'}
           </span>
         </div>
-        {therapist?.deposit_enabled && (
+        {depositEnabled && (
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <div style={{ display:'flex', alignItems:'center', background:'#F9FAFB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'8px 14px', gap:6 }}>
               <input type="number" min="5" max="100"
-                defaultValue={therapist?.deposit_percent || 20}
+                defaultValue={depositPercent}
                 onBlur={e => {
                   const v = Math.min(100, Math.max(5, parseInt(e.target.value)||20));
                   supabase.from('therapists').update({ deposit_percent: v }).eq('id', therapist.id);
-                  setTherapist(t => ({ ...t, deposit_percent: v }));
+                  setDepositPercent(v);
                   e.target.value = v;
                 }}
                 style={{ width:50, border:'none', background:'transparent', fontSize:16, fontWeight:700, color:C2.forest, outline:'none', textAlign:'center' }}
@@ -232,7 +234,7 @@ function ServicesAndAvailability({ therapist, setTherapist }) {
   );
 }
 
-function SettingsPanel({ therapist, setTherapist, lapsedDays, setLapsedDays }) {
+function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
@@ -565,7 +567,7 @@ function SettingsPanel({ therapist, setTherapist, lapsedDays, setLapsedDays }) {
       </div>
 
       {/* Services + Availability */}
-      <ServicesAndAvailability therapist={therapist} setTherapist={setTherapist} />
+      <ServicesAndAvailability therapist={therapist} />
 
       {/* Plan */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
@@ -770,7 +772,7 @@ export default function Dashboard({ view }) {
             <AIDashboard therapist={therapist} />
           )}
           {view === 'settings' && (
-            <SettingsPanel therapist={therapist} setTherapist={setTherapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+            <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
           )}
         </div>
 
