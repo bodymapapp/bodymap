@@ -67,6 +67,15 @@ function DetailPanel({ appt, therapist, onClose }) {
             </div>
           )}
           {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
+          {!appt.preview && appt.deposit_required && (
+            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.deposit_paid?'#F0FDF4':'#FEF3C7',borderRadius:10,border:`1px solid ${appt.deposit_paid?'#86EFAC':'#FCD34D'}`}}>
+              <span style={{fontSize:16}}>{appt.deposit_paid?'💳':'⏳'}</span>
+              <div>
+                <div style={{fontSize:12,fontWeight:700,color:appt.deposit_paid?'#16A34A':'#D97706'}}>{appt.deposit_paid?'Deposit paid':'Deposit pending'}</div>
+                <div style={{fontSize:11,color:'#9CA3AF'}}>${((appt.deposit_amount||0)/100).toFixed(0)} deposit {appt.deposit_paid?'received':'not yet paid'}</div>
+              </div>
+            </div>
+          )}
           {!appt.preview && (
             <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.reminder_sent?'#F0FDF4':'#F9FAFB',borderRadius:10,border:`1px solid ${appt.reminder_sent?'#86EFAC':'#E5E7EB'}`}}>
               <span style={{fontSize:16}}>{appt.reminder_sent?'📧':'⏳'}</span>
@@ -427,7 +436,7 @@ export default function ScheduleDashboard({ therapist }) {
       if(!user){setLoading(false);return;}
       const past=new Date(TODAY);past.setDate(past.getDate()-30);
       const future=new Date(TODAY);future.setDate(future.getDate()+60);
-      const {data:bookings,error}=await supabase.from('bookings').select('*,services(name,duration,price),reminder_sent_at').eq('therapist_id',therapist.id).neq('status','cancelled').gte('booking_date',past.toISOString().split('T')[0]).lte('booking_date',future.toISOString().split('T')[0]).order('booking_date').order('start_time');
+      const {data:bookings,error}=await supabase.from('bookings').select('*,services(name,duration,price),reminder_sent_at,deposit_required,deposit_paid,deposit_amount').eq('therapist_id',therapist.id).neq('status','cancelled').gte('booking_date',past.toISOString().split('T')[0]).lte('booking_date',future.toISOString().split('T')[0]).order('booking_date').order('start_time');
       if(error||!bookings?.length){setRealBookings([]);setLoading(false);return;}
       const mapped=bookings.map(b=>{
         const bd=new Date(b.booking_date+'T12:00:00');bd.setHours(0,0,0,0);

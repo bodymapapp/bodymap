@@ -847,6 +847,7 @@ function SectionNav() {
   const sections = [
     { id:"pattern", label:"Pattern Intelligence" },
     { id:"booking", label:"Online Booking" },
+    { id:"deposits", label:"Deposits" },
     { id:"intake", label:"Client Intake" },
     { id:"schedule", label:"Schedule" },
     { id:"reminders", label:"Reminders" },
@@ -1057,6 +1058,39 @@ export default function Features() {
       {/* INTAKE */}
 
       {/* AUTOMATED REMINDERS */}
+      {/* DEPOSITS */}
+      <section id="deposits" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>New Client Deposits</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Protect Your Time.<br/>No-shows cost you.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                Require first-time clients to pay a deposit when booking. Repeat clients are never charged. One setting. Zero friction for loyal clients.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"💳", title:"Automatic deposit collection", desc:"Set your deposit percentage in Settings. BodyMap handles collection automatically at booking time." },
+                { icon:"🔁", title:"Repeat clients pay nothing extra", desc:"Clients who have booked before are never asked for a deposit. Loyalty is rewarded automatically." },
+                { icon:"⚙️", title:"You control the percentage", desc:"Set any percentage from 5% to 100%. Recommended 20-50%. For an $85 session, 20% is a $17 hold." },
+                { icon:"📊", title:"Deposit status on your schedule", desc:"See instantly which new clients have paid their deposit and which are still pending." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       <section id="reminders" style={{ padding:"80px 24px", background:C.beige }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>

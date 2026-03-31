@@ -99,6 +99,12 @@ export default function BookingPage() {
   const [form,setForm]=useState({name:'',email:'',phone:'',notes:''});
   const [errors,setErrors]=useState({});
   const [submitting,setSubmitting]=useState(false);
+  const [depositRequired,setDepositRequired]=useState(false);
+  const [depositAmount,setDepositAmount]=useState(0);
+  const [depositClientSecret,setDepositClientSecret]=useState(null);
+  const [depositPaid,setDepositPaid]=useState(false);
+  const [depositLoading,setDepositLoading]=useState(false);
+  const [isRepeatClient,setIsRepeatClient]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
 
   useEffect(()=>{load();},[slug]);
@@ -131,20 +137,40 @@ export default function BookingPage() {
   }
 
   async function submit() {
-    const errs={};
-    if(!form.name.trim()) errs.name='Required';
-    if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
-    if(Object.keys(errs).length){setErrors(errs);return;}
     setSubmitting(true);
-    const {error}=await supabase.from('bookings').insert({
+    // Insert booking as pending if deposit required, confirmed if not
+    const status = depositRequired && !depositPaid ? 'pending-deposit' : 'confirmed';
+    const {data:newBooking, error}=await supabase.from('bookings').insert({
       therapist_id:therapist.id, service_id:svc.id,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
       start_time:slot.start, end_time:slot.end,
-      notes:form.notes, status:'confirmed',
-    });
+      notes:form.notes, status,
+      deposit_required: depositRequired,
+      deposit_amount: depositRequired ? depositAmount : 0,
+      deposit_paid: depositPaid,
+    }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
+    if(depositRequired && !depositPaid) {
+      // Create Stripe Payment Intent
+      setDepositLoading(true);
+      const res = await supabase.functions.invoke('create-deposit', {
+        body: {
+          therapist_id: therapist.id,
+          booking_id: newBooking.id,
+          amount_cents: depositAmount,
+          client_email: form.email.trim().toLowerCase(),
+          client_name: form.name.trim(),
+          service_name: svc.name,
+        }
+      });
+      setDepositLoading(false);
+      if(res.data?.client_secret) {
+        setDepositClientSecret(res.data.client_secret);
+        return; // Stay on confirm page to show payment
+      }
+    }
     setConfirmed(true);
   }
 
@@ -347,6 +373,20 @@ export default function BookingPage() {
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(Object.keys(errs).length){setErrors(errs);return;}
+              // Check if repeat client
+              const { data: prior } = await supabase.from('bookings')
+                .select('id').eq('therapist_id',therapist.id)
+                .eq('client_email',form.email.trim().toLowerCase())
+                .neq('status','cancelled').limit(1);
+              const isRepeat = prior && prior.length > 0;
+              setIsRepeatClient(isRepeat);
+              // Check if deposit required
+              const needsDeposit = therapist.deposit_enabled && !isRepeat;
+              setDepositRequired(needsDeposit);
+              if(needsDeposit) {
+                const depositAmt = Math.round((svc.price * (therapist.deposit_percent||20) / 100) * 100);
+                setDepositAmount(depositAmt);
+              }
               setStep(4);
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>
               Review Booking →
@@ -379,9 +419,26 @@ export default function BookingPage() {
               style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
               {submitting?'Confirming..':'✓ Confirm Booking'}
             </button>
-            <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
-              No payment now. You'll fill your intake form right after booking.
-            </p>
+            {depositRequired && !depositPaid && (
+              <div style={{marginTop:12,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
+                <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:4}}>
+                  💳 A deposit of ${(depositAmount/100).toFixed(0)} is required
+                </div>
+                <div style={{fontSize:12,color:'#92400E'}}>
+                  {(therapist.deposit_percent||20)}% of ${svc.price} - as a first-time client. Repeat clients are never charged a deposit.
+                </div>
+              </div>
+            )}
+            {!depositRequired && (
+              <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
+                No payment now. You'll fill your intake form right after booking.
+              </p>
+            )}
+            {isRepeatClient && (
+              <p style={{fontSize:11,color:'#16A34A',textAlign:'center',marginTop:10,fontWeight:600}}>
+                Welcome back! No deposit needed for returning clients.
+              </p>
+            )}
           </div>
         )}
 
