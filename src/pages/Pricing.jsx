@@ -168,7 +168,7 @@ export default function Pricing() {
         {[
           { q:'Is Bronze really free forever?', a:"Yes. Every tool on this page is free on Bronze. No credit card, no trial, no hidden limits. We plan to keep Bronze free for everyone who signs up now. As BodyMap grows, we reserve the right to introduce pricing for new signups - but anyone on Bronze today will be grandfathered. We believe every therapist deserves professional tools, not just the ones who can afford $70 a month." },
           { q:'How can you afford to offer this for free?', a:"Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build and run - AI, automated emails, intelligent scheduling, body mapping - now cost a fraction of that. We built BodyMap lean and pass that directly to you. We make money when you grow into Silver. That only happens if Bronze genuinely helps you first. So we are fully aligned with your success." },
-          { q:'Why BodyMap and not the other scheduling tools?', a:"Fair question. Here is what we found after studying every major competitor. First, they charge for everything - reminders, SOAP notes, forms, and messaging are all paywalled add-ons. On BodyMap they are free on Bronze. Second, they require your clients to create accounts or download apps just to book - that friction kills bookings. BodyMap clients book in 2 taps, no account, no app. Third, they have no intelligence - they store your data but never tell you anything useful with it. Fourth, they are built for salons and spas, not massage therapists - you pay for inventory and loyalty points you will never use. Fifth, they push constant updates that break your workflow - multiple competitors have reviews about updates that caused missed bookings and dropped reminders. BodyMap is built for solo LMTs. Stable, focused, and fast." },
+          { q:'Why BodyMap and not the other scheduling tools?', bullets:['They charge for everything - reminders, SOAP notes, forms, and messaging are paywalled add-ons. On BodyMap they are all free on Bronze.','They require clients to create accounts or download an app just to book. That friction kills bookings. BodyMap clients book in 2 taps, no account, no app.','They have no intelligence. They store your data but never tell you anything useful with it. BodyMap surfaces patterns, flags retention risk, and forecasts revenue automatically.','They are built for salons and spas, not massage therapists. You pay for inventory management and loyalty points you will never use.','They push constant updates that break your workflow. Multiple competitors have reviews specifically about updates that caused missed bookings and dropped reminders. BodyMap is built for solo LMTs. Stable, focused, and fast.'] },
           { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets." },
           { q:'What does first 5 sessions mean for intelligence on Bronze?', a:"On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use BodyMap." },
           { q:'When is Gold launching?', a:"Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches." },
@@ -177,10 +177,20 @@ export default function Pricing() {
           { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets.' },
           { q:'When is Gold launching?', a:'Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches.' },
           { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
-        ].map(({ q, a }) => (
-          <div key={q} style={{ borderBottom:`1px solid ${C.border}`, padding:'20px 0' }}>
-            <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{q}</div>
-            <div style={{ fontSize:14, color:C.gray, lineHeight:1.7 }}>{a}</div>
+        ].map((item) => (
+          <div key={item.q} style={{ borderBottom:`1px solid ${C.border}`, padding:'20px 0' }}>
+            <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{item.q}</div>
+            {item.a && <div style={{ fontSize:14, color:C.gray, lineHeight:1.7 }}>{item.a}</div>}
+            {item.bullets && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
+                {item.bullets.map((b,i) => (
+                  <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
+                    <span style={{ color:'#2A5741', fontWeight:700, flexShrink:0, marginTop:1 }}>{i+1}.</span>
+                    <span style={{ fontSize:14, color:C.gray, lineHeight:1.6 }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </div>

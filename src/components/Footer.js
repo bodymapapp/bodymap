@@ -18,7 +18,7 @@ export default function Footer() {
               <span style={{ fontSize: "24px" }}>🌿</span>
               <span style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: "700" }}>BodyMap</span>
             </Link>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", maxWidth: "200px", lineHeight: 1.6 }}>Modern intake forms for massage therapists.</p>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", maxWidth: "200px", lineHeight: 1.6 }}>Retain every client. Automate your practice. Grow your income.</p>
           </div>
           <div>
             <p style={{ fontWeight: "700", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", color: "rgba(255,255,255,0.5)" }}>Product</p>
