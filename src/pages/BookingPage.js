@@ -368,7 +368,7 @@ export default function BookingPage() {
                   style={{width:'100%',padding:'12px 14px',border:`1.5px solid ${C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',resize:'vertical',outline:'none',fontFamily:'system-ui'}}/>
               </div>
             </div>
-            <button onClick={()=>{
+            <button onClick={async ()=>{
               const errs={};
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
