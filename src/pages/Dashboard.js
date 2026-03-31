@@ -17,7 +17,7 @@ const C = {
 };
 
 
-function ServicesAndAvailability({ therapist }) {
+function ServicesAndAvailability({ therapist, setTherapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -565,7 +565,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div>
 
       {/* Services + Availability */}
-      <ServicesAndAvailability therapist={therapist} />
+      <ServicesAndAvailability therapist={therapist} setTherapist={setTherapist} />
 
       {/* Plan */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
