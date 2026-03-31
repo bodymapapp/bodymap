@@ -2,12 +2,15 @@
 // Custom URL page - loads therapist, shows BodyMap, saves to Supabase
 
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { db, supabase } from '../lib/supabase';
 import Demo from './Demo';
 
 export default function ClientIntake() {
   const { customUrl } = useParams();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const bookingIdFromUrl = searchParams.get('booking_id');
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,6 +47,7 @@ export default function ClientIntake() {
       await db.createSession({
         therapist_id: therapist.id,
         client_id: client.id,
+        booking_id: bookingIdFromUrl || null,
         front_focus: intakeData.frontFocus || [],
         front_avoid: intakeData.frontAvoid || [],
         back_focus: intakeData.backFocus || [],
