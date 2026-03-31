@@ -232,7 +232,7 @@ function ServicesAndAvailability({ therapist, setTherapist }) {
   );
 }
 
-function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
+function SettingsPanel({ therapist, setTherapist, lapsedDays, setLapsedDays }) {
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
@@ -770,7 +770,7 @@ export default function Dashboard({ view }) {
             <AIDashboard therapist={therapist} />
           )}
           {view === 'settings' && (
-            <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+            <SettingsPanel therapist={therapist} setTherapist={setTherapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
           )}
         </div>
 
