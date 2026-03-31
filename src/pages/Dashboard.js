@@ -636,7 +636,7 @@ export default function Dashboard({ view }) {
             </p>
           </div>
           {(!therapist?.plan || therapist?.plan === 'free') && (
-            <a href="https://buy.stripe.com/9B6aEYaN4f9udN6eQ0eQM02" target="_blank" rel="noopener noreferrer"
+            <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
               style={{ background: '#C9A84C', color: '#fff', padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
               Upgrade to Silver →
             </a>

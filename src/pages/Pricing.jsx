@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 const STRIPE_SILVER = 'https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03';
+const STRIPE_SILVER_ANNUAL = 'https://buy.stripe.com/8x214obR89Pa4cw8rCeQM04';
 const STRIPE_GOLD   = 'REPLACE_WITH_NEW_STRIPE_LINK_49';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#F3F4F6', border:'#E5E7EB', gold:'#C9A84C' };
@@ -46,8 +47,8 @@ export default function Pricing() {
       name: 'Silver', emoji: '🥈', highlight: true, badge: 'Most Popular',
       price: { monthly: 19, annual: 15 },
       tagline: 'Your entire client history, working for you. Intelligence that compounds over time.',
-      cta: 'Start 30-Day Free Trial',
-      ctaAction: () => window.open(STRIPE_SILVER, '_blank'),
+      cta: 'Start 7-Day Free Trial',
+      ctaAction: () => window.open(billingCycle === 'annual' ? STRIPE_SILVER_ANNUAL : STRIPE_SILVER, '_blank'),
       features: [
         { text: 'Everything in Bronze — fully automated', on: true },
         { text: 'Full session history — unlimited, forever', on: true },

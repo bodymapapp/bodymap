@@ -1219,7 +1219,7 @@ export default function Features() {
           <FadeIn>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
               {[
-                { stat:"$9/mo", desc:"18¢ per session for 50 clients. Less than a paper form pad." },
+                { stat:"$0/mo", desc:"Everything included. Free forever. No credit card." },
                 { stat:"30 sec", desc:"Time for a client to complete their intake. No app, no login." },
                 { stat:"0", desc:"Competitors with visual body pattern tracking over time." },
               ].map((s,i)=>(
@@ -1241,7 +1241,7 @@ export default function Features() {
               Every massage therapist<br/>remembers every client,<br/>every time.
             </h2>
             <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", marginBottom:44 }}>
-              Free forever for up to 5 clients. Silver at $9/mo — that's 18¢ per session.
+              Free forever on Bronze. Every tool you need to retain clients and grow your practice.
             </p>
             <div style={{ display:"flex", gap:16, justifyContent:"center", flexWrap:"wrap", marginBottom:24 }}>
               <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"18px 44px", borderRadius:50, fontSize:18, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 32px rgba(201,168,76,0.4)" }}>
