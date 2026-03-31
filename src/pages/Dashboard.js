@@ -158,6 +158,45 @@ function ServicesAndAvailability({ therapist }) {
         </div>
       </div>
 
+
+      {/* Deposit Settings */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+          <button onClick={() => {
+            const newVal = !therapist.deposit_enabled;
+            supabase.from('therapists').update({ deposit_enabled: newVal }).eq('id', therapist.id);
+            setTherapist(t => ({ ...t, deposit_enabled: newVal }));
+          }} style={{ width:40, height:22, borderRadius:11, background:therapist?.deposit_enabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.deposit_enabled?21:3, transition:'left 0.2s' }}/>
+          </button>
+          <span style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>
+            {therapist?.deposit_enabled ? 'Deposit enabled' : 'Deposit disabled'}
+          </span>
+        </div>
+        {therapist?.deposit_enabled && (
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{ display:'flex', alignItems:'center', background:'#F9FAFB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'8px 14px', gap:6 }}>
+              <input type="number" min="5" max="100"
+                defaultValue={therapist?.deposit_percent || 20}
+                onBlur={e => {
+                  const v = Math.min(100, Math.max(5, parseInt(e.target.value)||20));
+                  supabase.from('therapists').update({ deposit_percent: v }).eq('id', therapist.id);
+                  setTherapist(t => ({ ...t, deposit_percent: v }));
+                  e.target.value = v;
+                }}
+                style={{ width:50, border:'none', background:'transparent', fontSize:16, fontWeight:700, color:C2.forest, outline:'none', textAlign:'center' }}
+              />
+              <span style={{ fontSize:14, color:C2.gray }}>%</span>
+            </div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5 }}>
+              Recommended: 20-50%. For a $85 session, 20% = $17 deposit.
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Working Hours */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
