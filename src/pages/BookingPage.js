@@ -110,19 +110,28 @@ export default function BookingPage() {
   const [paymentProcessing,setPaymentProcessing]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
   const [stripeReady,setStripeReady]=useState(false);
+  const [paymentDivReady,setPaymentDivReady]=useState(false);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
-  const paymentElementRef = useRef(null);
   const stripeRef = useRef(null);
   const elementsRef = useRef(null);
+
+  // Callback ref — called when payment div enters the DOM
+  const paymentElementRef = useRef(null);
+  const setPaymentDiv = useRef(node => {
+    paymentElementRef.current = node;
+    if(node) setPaymentDivReady(true);
+  }).current;
 
   useEffect(()=>{load();},[slug]);
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
 
-  // Mount Stripe Payment Element when client_secret is ready
+  // Mount Stripe only after BOTH client_secret AND the payment div are ready
   useEffect(()=>{
-    if(!depositClientSecret||!paymentElementRef.current) return;
+    const secret = depositClientSecret;
+    if(!secret||secret==='__failed__'||!paymentDivReady||!paymentElementRef.current) return;
+    let mounted=true;
     const mount = async () => {
       if(!window.Stripe){
         await new Promise(resolve=>{
@@ -132,19 +141,21 @@ export default function BookingPage() {
           document.head.appendChild(s);
         });
       }
+      if(!mounted) return;
       stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,{
         stripeAccount: therapist.stripe_account_id,
       });
       elementsRef.current = stripeRef.current.elements({
-        clientSecret: depositClientSecret,
-        appearance: { theme:'stripe', variables:{ colorPrimary:'#2A5741', borderRadius:'8px' } }
+        clientSecret: secret,
+        appearance:{ theme:'stripe', variables:{ colorPrimary:'#2A5741', borderRadius:'8px' } }
       });
       const pe = elementsRef.current.create('payment');
       pe.mount(paymentElementRef.current);
-      setStripeReady(true);
+      if(mounted) setStripeReady(true);
     };
     mount();
-  },[depositClientSecret]);
+    return ()=>{ mounted=false; };
+  },[depositClientSecret, paymentDivReady]);
 
   async function handlePayment(){
     if(!stripeRef.current||!elementsRef.current) return;
@@ -201,7 +212,6 @@ export default function BookingPage() {
 
   async function submit() {
     setSubmitting(true);
-    // Insert booking as pending if deposit required, confirmed if not
     const status = depositRequired && !depositPaid ? 'pending-deposit' : 'confirmed';
     const {data:newBooking, error}=await supabase.from('bookings').insert({
       therapist_id:therapist.id, service_id:svc.id,
@@ -215,14 +225,22 @@ export default function BookingPage() {
     }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
-    setBookingId(newBooking?.id||null);
+    const bid = newBooking?.id||null;
+    setBookingId(bid);
+
     if(depositRequired && !depositPaid) {
-      // Create Stripe Payment Intent
+      // Therapist must have Stripe connected to collect deposits
+      if(!therapist.stripe_account_id) {
+        // No Stripe — confirm without deposit and note it
+        await supabase.from('bookings').update({status:'confirmed'}).eq('id',bid);
+        setConfirmed(true);
+        return;
+      }
       setDepositLoading(true);
       const res = await supabase.functions.invoke('create-deposit', {
         body: {
           therapist_id: therapist.id,
-          booking_id: newBooking.id,
+          booking_id: bid,
           amount_cents: depositAmount,
           client_email: form.email.trim().toLowerCase(),
           client_name: form.name.trim(),
@@ -232,8 +250,15 @@ export default function BookingPage() {
       setDepositLoading(false);
       if(res.data?.client_secret) {
         setDepositClientSecret(res.data.client_secret);
-        return; // Stay on confirm page to show payment
+        return; // Payment screen renders — do not fall through
       }
+      // Edge function returned an error — surface it, do not confirm
+      const errMsg = res.data?.error || res.error?.message || 'Payment setup failed. Please try again.';
+      setPaymentError(errMsg);
+      // Revert booking to confirmed so therapist can still see it
+      await supabase.from('bookings').update({status:'confirmed',deposit_required:false}).eq('id',bid);
+      setDepositClientSecret('__failed__'); // triggers payment screen with error message
+      return;
     }
     setConfirmed(true);
   }
@@ -524,9 +549,11 @@ export default function BookingPage() {
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
               {depositLoading ? (
                 <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Setting up payment…</div>
+              ) : depositClientSecret==='__failed__' ? (
+                <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Your booking is confirmed. The deposit will be arranged directly with your therapist.</div>
               ) : (
                 <>
-                  <div ref={paymentElementRef} style={{minHeight:120}}/>
+                  <div ref={setPaymentDiv} style={{minHeight:120}}/>
                   {!stripeReady && <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Loading payment form…</div>}
                 </>
               )}
@@ -538,9 +565,10 @@ export default function BookingPage() {
               </div>
             )}
 
-            <button onClick={handlePayment} disabled={paymentProcessing||!stripeReady}
-              style={{width:'100%',background:paymentProcessing||!stripeReady?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:paymentProcessing||!stripeReady?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,0.25)`}}>
-              {paymentProcessing?'Processing payment…':`Pay $${(depositAmount/100).toFixed(0)} Deposit`}
+            <button onClick={depositClientSecret==='__failed__'?()=>setConfirmed(true):handlePayment}
+              disabled={depositClientSecret!=='__failed__'&&(paymentProcessing||!stripeReady)}
+              style={{width:'100%',background:paymentProcessing||(!stripeReady&&depositClientSecret!=='__failed__')?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,0.25)`}}>
+              {depositClientSecret==='__failed__'?'Continue to Intake Form →':paymentProcessing?'Processing payment…':`Pay $${(depositAmount/100).toFixed(0)} Deposit`}
             </button>
             <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
               🔒 Secured by Stripe. Your card details are never stored by us.
