@@ -66,7 +66,10 @@ function Cal({availability, selected, onSelect}) {
           if(!d) return <div key={i}/>;
           const dt=new Date(yr,mo,d); dt.setHours(0,0,0,0);
           const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-          const disabled=!avDows.includes(dt.getDay())||dt<today;
+          const nowTime = new Date();
+          const isToday2 = dt.toDateString() === today.toDateString();
+          const pastLastSlot = isToday2 && nowTime.getHours() >= 17; // past 5pm
+          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot;
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
             style={{padding:'9px 2px',borderRadius:8,border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
@@ -112,7 +115,7 @@ export default function BookingPage() {
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
 
   async function load() {
-    const {data:t}=await supabase.from('therapists').select('*').eq('custom_url',slug).single();
+    const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
     if(!t){setNotFound(true);setLoading(false);return;}
     setTherapist(t);
     const [{data:s},{data:a}]=await Promise.all([
@@ -132,7 +135,13 @@ export default function BookingPage() {
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
     const booked=existing||[];
     setExistingBooked(booked);
-    const raw=generateSlots(av.start_time.slice(0,5),av.end_time.slice(0,5),svc.duration,booked);
+    let raw=generateSlots(av.start_time.slice(0,5),av.end_time.slice(0,5),svc.duration,booked);
+    // Filter out past slots if today
+    const isToday=date===new Date().toISOString().split('T')[0];
+    if(isToday){
+      const nowMin=new Date().getHours()*60+new Date().getMinutes();
+      raw=raw.filter(s=>s.minutes>nowMin+30); // need at least 30min notice
+    }
     setSlots(scoreSlots(raw,booked,svc.duration));
     setLoadingSlots(false);
   }
