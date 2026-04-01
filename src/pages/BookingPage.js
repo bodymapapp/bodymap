@@ -217,7 +217,7 @@ export default function BookingPage() {
     </div>
   );
 
-  const pct=step===1?20:step===2?50:step===3?78:100;
+  const pct=step===1?16:step===2?40:step===3?64:step===4&&depositRequired?80:100;
 
   // Step labels
   const steps=[{n:1,l:'Service'},{n:2,l:'Date & Time'},{n:3,l:'Your Info'},{n:4,l:'Confirm'}];
@@ -400,13 +400,12 @@ export default function BookingPage() {
               }
               setStep(4);
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>
-              Review Booking →
+              {depositRequired ? 'Continue to Deposit →' : 'Review Booking →'}
             </button>
           </div>
         )}
 
         {/* STEP 4 - Confirm */}
-        {step===4&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Confirm your booking</h2>
