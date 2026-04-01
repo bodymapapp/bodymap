@@ -465,7 +465,6 @@ export default function ScheduleDashboard({ therapist }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      // Use local date strings to avoid timezone drift in filter
       const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const past = new Date(today); past.setDate(today.getDate() - 365);
       const future = new Date(today); future.setDate(today.getDate() + 60);
@@ -482,86 +481,32 @@ export default function ScheduleDashboard({ therapist }) {
 
       if (error || !bookings?.length) { setRealBookings([]); setLoading(false); return; }
 
-      // --- Pass 1: match sessions by booking_id (definitive) ---
+      // Single condition: a booking has intake done if and only if a session
+      // exists with booking_id = this booking's id. ClientIntake now always
+      // resolves booking_id at save time, so this is the only check needed.
       const bookingIds = bookings.map(b => b.id);
-      const { data: linkedSessions } = await supabase
+      const { data: sessions } = await supabase
         .from('sessions')
-        .select('id, booking_id, completed')
+        .select('id, booking_id')
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
 
-      const sessionMap = {}; // booking_id → { id, completed }
-      (linkedSessions || []).forEach(s => {
-        if (s.booking_id) sessionMap[s.booking_id] = { id: s.id, completed: !!s.completed };
+      // booking_id → session_id
+      const sessionMap = {};
+      (sessions || []).forEach(s => {
+        if (s.booking_id) sessionMap[s.booking_id] = s.id;
       });
 
-      // --- Pass 2: email fallback for sessions filled without booking_id ---
-      const unmatchedEmails = [...new Set(
-        bookings
-          .filter(b => !sessionMap[b.id])
-          .map(b => (b.client_email || '').toLowerCase().trim())
-          .filter(Boolean)
-      )];
-
-      const emailFallback = {}; // booking_id → { id, completed }
-      if (unmatchedEmails.length > 0) {
-        const { data: clients } = await supabase
-          .from('clients')
-          .select('id, email')
-          .eq('therapist_id', therapist.id)
-          .in('email', unmatchedEmails);
-
-        const emailToClientId = {};
-        (clients || []).forEach(c => {
-          if (c.email) emailToClientId[c.email.toLowerCase().trim()] = c.id;
-        });
-
-        const clientIds = Object.values(emailToClientId);
-        if (clientIds.length > 0) {
-          const { data: clientSessions } = await supabase
-            .from('sessions')
-            .select('id, client_id, completed, created_at')
-            .eq('therapist_id', therapist.id)
-            .in('client_id', clientIds)
-            .is('booking_id', null) // only sessions not already linked
-            .order('created_at', { ascending: false });
-
-          const byClient = {};
-          (clientSessions || []).forEach(s => {
-            if (!byClient[s.client_id]) byClient[s.client_id] = [];
-            byClient[s.client_id].push(s);
-          });
-
-          bookings.forEach(b => {
-            if (sessionMap[b.id]) return; // already matched
-            const email = (b.client_email || '').toLowerCase().trim();
-            const clientId = emailToClientId[email];
-            if (!clientId || !byClient[clientId]?.length) return;
-
-            // Session must be created on/after booking date and within 3 days
-            // This prevents old sessions from matching future bookings
-            const bookingStart = new Date(b.booking_date + 'T00:00:00').getTime();
-            const bookingEnd = bookingStart + 3 * 24 * 60 * 60 * 1000;
-            const match = byClient[clientId].find(s => {
-              const t = new Date(s.created_at).getTime();
-              return t >= bookingStart && t <= bookingEnd;
-            });
-            if (match) emailFallback[b.id] = { id: match.id, completed: !!match.completed };
-          });
-        }
-      }
-
-      // --- Map bookings to appointment objects ---
       const mapped = bookings.map(b => {
         const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
         const [h, m] = b.start_time.split(':').map(Number);
+        const sessionId = sessionMap[b.id] || null;
 
-        const sessionInfo = sessionMap[b.id] || emailFallback[b.id] || null;
-        const sessionId = sessionInfo?.id || null;
-
-        // Status: complete > intake-done > pending-intake
-        const isComplete = b.status === 'completed' || sessionInfo?.completed === true;
-        const status = isComplete ? 'complete' : sessionId ? 'intake-done' : 'pending-intake';
+        // Single condition for complete: bookings.status === 'completed'
+        // That is the only field the UI updates when marking a session done.
+        const status = b.status === 'completed' ? 'complete'
+                     : sessionId               ? 'intake-done'
+                     :                           'pending-intake';
 
         return {
           id: b.id,

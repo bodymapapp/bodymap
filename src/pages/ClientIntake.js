@@ -45,11 +45,31 @@ export default function ClientIntake() {
         email: intakeData.clientEmail || null
       });
 
-      // Step 2: Create session with all intake data
+      // Step 2: Resolve booking_id — use URL param if present, otherwise find
+      // the client's next upcoming booking for this therapist. This ensures
+      // sessions ALWAYS have booking_id set, so the schedule only needs one
+      // condition to determine intake status (no email fallback needed).
+      let resolvedBookingId = bookingIdFromUrl || null;
+      if (!resolvedBookingId && intakeData.clientEmail) {
+        const today = new Date().toISOString().split('T')[0];
+        const { data: nextBooking } = await supabase
+          .from('bookings')
+          .select('id')
+          .eq('therapist_id', therapist.id)
+          .eq('client_email', intakeData.clientEmail.toLowerCase().trim())
+          .neq('status', 'cancelled')
+          .gte('booking_date', today)
+          .order('booking_date', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (nextBooking) resolvedBookingId = nextBooking.id;
+      }
+
+      // Step 3: Create session with resolved booking_id
       await db.createSession({
         therapist_id: therapist.id,
         client_id: client.id,
-        booking_id: bookingIdFromUrl || null,
+        booking_id: resolvedBookingId,
         front_focus: intakeData.frontFocus || [],
         front_avoid: intakeData.frontAvoid || [],
         back_focus: intakeData.backFocus || [],
