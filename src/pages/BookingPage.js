@@ -372,12 +372,6 @@ export default function BookingPage() {
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>
               ))}
-              <div>
-                <label style={{fontSize:12,fontWeight:700,color:C.gray,display:'block',marginBottom:6}}>Notes for your therapist</label>
-                <textarea value={form.notes} placeholder="Areas to focus, injuries, preferences..." rows={3}
-                  onChange={e=>setForm(f=>({...f,notes:e.target.value}))}
-                  style={{width:'100%',padding:'12px 14px',border:`1.5px solid ${C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',resize:'vertical',outline:'none',fontFamily:'system-ui'}}/>
-              </div>
             </div>
             <button onClick={async ()=>{
               const errs={};
@@ -417,7 +411,6 @@ export default function BookingPage() {
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
                 ['Price',`$${svc.price} — pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
-                ...(form.notes?[['Notes',form.notes]]:[]),
               ].map(([l,v],i,arr)=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,
                   padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>

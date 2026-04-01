@@ -465,7 +465,8 @@ export default function ScheduleDashboard({ therapist }) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
 
-      // FIX: fetch 365 days of history so past sessions are visible
+      // Use local date strings to avoid timezone drift in filter
+      const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const past = new Date(today); past.setDate(today.getDate() - 365);
       const future = new Date(today); future.setDate(today.getDate() + 60);
 
@@ -474,31 +475,94 @@ export default function ScheduleDashboard({ therapist }) {
         .select('*, services(name, duration, price), reminder_sent_at, deposit_required, deposit_paid, deposit_amount')
         .eq('therapist_id', therapist.id)
         .neq('status', 'cancelled')
-        .gte('booking_date', past.toISOString().split('T')[0])
-        .lte('booking_date', future.toISOString().split('T')[0])
+        .gte('booking_date', toDateStr(past))
+        .lte('booking_date', toDateStr(future))
         .order('booking_date')
         .order('start_time');
 
       if (error || !bookings?.length) { setRealBookings([]); setLoading(false); return; }
 
-      // FIX: query sessions by booking_id to get real intake status
+      // --- Pass 1: match sessions by booking_id (definitive) ---
       const bookingIds = bookings.map(b => b.id);
-      const { data: sessions } = await supabase
+      const { data: linkedSessions } = await supabase
         .from('sessions')
-        .select('id, booking_id')
+        .select('id, booking_id, completed')
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
 
-      // Build lookup: booking_id → session_id
-      const sessionMap = {};
-      (sessions || []).forEach(s => {
-        if (s.booking_id) sessionMap[s.booking_id] = s.id;
+      const sessionMap = {}; // booking_id → { id, completed }
+      (linkedSessions || []).forEach(s => {
+        if (s.booking_id) sessionMap[s.booking_id] = { id: s.id, completed: !!s.completed };
       });
 
+      // --- Pass 2: email fallback for sessions filled without booking_id ---
+      const unmatchedEmails = [...new Set(
+        bookings
+          .filter(b => !sessionMap[b.id])
+          .map(b => (b.client_email || '').toLowerCase().trim())
+          .filter(Boolean)
+      )];
+
+      const emailFallback = {}; // booking_id → { id, completed }
+      if (unmatchedEmails.length > 0) {
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, email')
+          .eq('therapist_id', therapist.id)
+          .in('email', unmatchedEmails);
+
+        const emailToClientId = {};
+        (clients || []).forEach(c => {
+          if (c.email) emailToClientId[c.email.toLowerCase().trim()] = c.id;
+        });
+
+        const clientIds = Object.values(emailToClientId);
+        if (clientIds.length > 0) {
+          const { data: clientSessions } = await supabase
+            .from('sessions')
+            .select('id, client_id, completed, created_at')
+            .eq('therapist_id', therapist.id)
+            .in('client_id', clientIds)
+            .is('booking_id', null) // only sessions not already linked
+            .order('created_at', { ascending: false });
+
+          const byClient = {};
+          (clientSessions || []).forEach(s => {
+            if (!byClient[s.client_id]) byClient[s.client_id] = [];
+            byClient[s.client_id].push(s);
+          });
+
+          bookings.forEach(b => {
+            if (sessionMap[b.id]) return; // already matched
+            const email = (b.client_email || '').toLowerCase().trim();
+            const clientId = emailToClientId[email];
+            if (!clientId || !byClient[clientId]?.length) return;
+
+            // Session must be created on/after booking date and within 3 days
+            // This prevents old sessions from matching future bookings
+            const bookingStart = new Date(b.booking_date + 'T00:00:00').getTime();
+            const bookingEnd = bookingStart + 3 * 24 * 60 * 60 * 1000;
+            const match = byClient[clientId].find(s => {
+              const t = new Date(s.created_at).getTime();
+              return t >= bookingStart && t <= bookingEnd;
+            });
+            if (match) emailFallback[b.id] = { id: match.id, completed: !!match.completed };
+          });
+        }
+      }
+
+      // --- Map bookings to appointment objects ---
       const mapped = bookings.map(b => {
         const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
         const [h, m] = b.start_time.split(':').map(Number);
-        const sessionId = sessionMap[b.id] || null;
+
+        const sessionInfo = sessionMap[b.id] || emailFallback[b.id] || null;
+        const sessionId = sessionInfo?.id || null;
+
+        // Status: complete > intake-done > pending-intake
+        const isComplete = b.status === 'completed' || sessionInfo?.completed === true;
+        const status = isComplete ? 'complete' : sessionId ? 'intake-done' : 'pending-intake';
+
         return {
           id: b.id,
           client: b.client_name,
@@ -506,8 +570,7 @@ export default function ScheduleDashboard({ therapist }) {
           time: fmt12(`${h}:${m}`),
           duration: b.services?.duration || 60,
           date: bd,
-          // FIX: real intake status from sessions lookup
-          status: sessionId ? 'intake-done' : 'pending-intake',
+          status,
           sessionId,
           sessions: 0,
           service: b.services?.name || 'Session',
@@ -515,7 +578,6 @@ export default function ScheduleDashboard({ therapist }) {
           price: b.services?.price || 85,
           focus: [],
           preview: false,
-          // FIX: include all deposit and reminder fields
           reminder_sent: !!b.reminder_sent_at,
           deposit_required: b.deposit_required || false,
           deposit_paid: b.deposit_paid || false,
