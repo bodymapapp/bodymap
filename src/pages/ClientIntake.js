@@ -11,6 +11,8 @@ export default function ClientIntake() {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const bookingIdFromUrl = searchParams.get('booking_id');
+  const nameFromUrl = searchParams.get('name') || '';
+  const emailFromUrl = searchParams.get('email') || '';
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -197,6 +199,8 @@ export default function ClientIntake() {
   return (
     <Demo 
       therapistName={therapist.business_name}
+      initialName={nameFromUrl}
+      initialEmail={emailFromUrl}
       onSubmit={handleSubmit}
       getLastSession={getLastSession}
     />

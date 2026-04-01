@@ -4262,10 +4262,10 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
 };
 
 // Main App
-export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null }) {
-  const [screen, setScreen] = useState("welcome");
+export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null, initialName = "", initialEmail = "" }) {
+  const [screen, setScreen] = useState(initialName && initialEmail ? "intake" : "welcome");
   const [mode, setMode] = useState("focus");
-  const [clientInfo, setCI] = useState({ name: "", contact: "" });
+  const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "" });
   const [bodyMap, setBM] = useState({});
   const [prefs, setPrefs] = useState({ ...DEFAULT_PREFS });
   const [notes, setNotes] = useState("");
