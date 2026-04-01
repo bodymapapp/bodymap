@@ -207,7 +207,7 @@ export default function BookingPage() {
           <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
             Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
           </div>
-          <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}${bookingId?'&booking_id='+bookingId:''}`}
+          <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
             style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
             Fill My Intake Form →
           </a>

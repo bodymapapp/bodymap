@@ -13,6 +13,7 @@ export default function ClientIntake() {
   const bookingIdFromUrl = searchParams.get('booking_id');
   const nameFromUrl = searchParams.get('name') || '';
   const emailFromUrl = searchParams.get('email') || '';
+  const phoneFromUrl = searchParams.get('phone') || '';
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -221,6 +222,7 @@ export default function ClientIntake() {
       therapistName={therapist.business_name}
       initialName={nameFromUrl}
       initialEmail={emailFromUrl}
+      initialPhone={phoneFromUrl}
       onSubmit={handleSubmit}
       getLastSession={getLastSession}
     />

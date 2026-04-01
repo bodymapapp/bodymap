@@ -4262,10 +4262,10 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
 };
 
 // Main App
-export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null, initialName = "", initialEmail = "" }) {
-  const [screen, setScreen] = useState(initialName && initialEmail ? "intake" : "welcome");
+export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null, initialName = "", initialEmail = "", initialPhone = "" }) {
+  const [screen, setScreen] = useState(initialName && initialEmail ? "front" : "welcome");
   const [mode, setMode] = useState("focus");
-  const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "" });
+  const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "", phone: initialPhone || "" });
   const [bodyMap, setBM] = useState({});
   const [prefs, setPrefs] = useState({ ...DEFAULT_PREFS });
   const [notes, setNotes] = useState("");
@@ -4288,6 +4288,16 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
         document.head.removeChild(l);
       } catch {}
     };
+  }, []);
+
+  // When arriving from a booking confirmation (pre-filled name+email),
+  // load any previous session data so the body map pre-fills for returning clients
+  useEffect(() => {
+    if (initialName && initialEmail && getLastSession) {
+      getLastSession(initialEmail).then(last => {
+        if (last) setLastSession(last);
+      }).catch(() => {});
+    }
   }, []);
 
   const toggle = (id) =>
@@ -4372,10 +4382,12 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
       const backFocus = Object.keys(bodyMap).filter(k => k.startsWith('b-') && bodyMap[k] === 'focus');
       const backAvoid = Object.keys(bodyMap).filter(k => k.startsWith('b-') && bodyMap[k] === 'avoid');
       
+      // contact holds email when pre-filled from booking, phone when entered in welcome screen
+      const contactIsEmail = clientInfo.contact.includes('@');
       onSubmit({
         clientName: clientInfo.name,
-        clientPhone: clientInfo.contact,
-        clientEmail: null,
+        clientPhone: contactIsEmail ? (clientInfo.phone || '') : clientInfo.contact,
+        clientEmail: contactIsEmail ? clientInfo.contact : null,
         frontFocus,
         frontAvoid,
         backFocus,
