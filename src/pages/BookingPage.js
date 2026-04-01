@@ -353,7 +353,7 @@ export default function BookingPage() {
               {[
                 {k:'name',l:'Full name',p:'Jane Smith',r:true,t:'text'},
                 {k:'email',l:'Email address',p:'jane@example.com',r:true,t:'email'},
-                {k:'phone',l:'Phone number',p:'(512) 555-1234',t:'tel'},
+                {k:'phone',l:'Phone number',p:'(512) 555-1234',r:true,t:'tel'},
               ].map(({k,l,p,r,t})=>(
                 <div key={k}>
                   <label style={{fontSize:12,fontWeight:700,color:C.gray,display:'block',marginBottom:6}}>
@@ -377,6 +377,7 @@ export default function BookingPage() {
               const errs={};
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
+              if(!form.phone.trim()) errs.phone='Required';
               if(Object.keys(errs).length){setErrors(errs);return;}
               // Check if repeat client
               const { data: prior } = await supabase.from('bookings')

@@ -19,13 +19,21 @@ const C = {
 
 function ServicesAndAvailability({ therapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+  const { updateProfile } = useAuth();
   const [depositEnabled, setDepositEnabled] = React.useState(therapist?.deposit_enabled || false);
   const [depositPercent, setDepositPercent] = React.useState(therapist?.deposit_percent || 20);
+  const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(null);
+
+  // Re-sync local state whenever therapist reloads (e.g. page refresh)
+  React.useEffect(() => {
+    setDepositEnabled(therapist?.deposit_enabled || false);
+    setDepositPercent(therapist?.deposit_percent || 20);
+  }, [therapist?.deposit_enabled, therapist?.deposit_percent]);
 
   const PRESETS = [
     { name:'Swedish Massage', duration:60, price:85 },
@@ -166,15 +174,18 @@ function ServicesAndAvailability({ therapist }) {
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-          <button onClick={() => {
+          <button onClick={async () => {
             const newVal = !depositEnabled;
-            supabase.from('therapists').update({ deposit_enabled: newVal }).eq('id', therapist.id);
-            setDepositEnabled(newVal);
-          }} style={{ width:40, height:22, borderRadius:11, background:depositEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+            setDepositEnabled(newVal); // optimistic
+            setDepositSaving(true);
+            const result = await updateProfile({ deposit_enabled: newVal });
+            setDepositSaving(false);
+            if (!result.success) setDepositEnabled(!newVal); // revert if failed
+          }} style={{ width:40, height:22, borderRadius:11, background:depositEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s', opacity:depositSaving?0.6:1 }}>
             <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:depositEnabled?21:3, transition:'left 0.2s' }}/>
           </button>
           <span style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>
-            {depositEnabled ? 'Deposit enabled' : 'Deposit disabled'}
+            {depositSaving ? 'Saving…' : depositEnabled ? 'Deposit enabled' : 'Deposit disabled'}
           </span>
         </div>
         {depositEnabled && (
@@ -182,11 +193,11 @@ function ServicesAndAvailability({ therapist }) {
             <div style={{ display:'flex', alignItems:'center', background:'#F9FAFB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'8px 14px', gap:6 }}>
               <input type="number" min="5" max="100"
                 defaultValue={depositPercent}
-                onBlur={e => {
+                onBlur={async e => {
                   const v = Math.min(100, Math.max(5, parseInt(e.target.value)||20));
-                  supabase.from('therapists').update({ deposit_percent: v }).eq('id', therapist.id);
                   setDepositPercent(v);
                   e.target.value = v;
+                  await updateProfile({ deposit_percent: v });
                 }}
                 style={{ width:50, border:'none', background:'transparent', fontSize:16, fontWeight:700, color:C2.forest, outline:'none', textAlign:'center' }}
               />
