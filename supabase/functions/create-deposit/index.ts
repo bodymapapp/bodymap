@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Always return 200 — Supabase JS client swallows error body on non-2xx
 const ok  = (data) => new Response(JSON.stringify(data),           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 const err = (msg)  => new Response(JSON.stringify({ error: msg }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
@@ -14,29 +13,29 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { therapist_id, booking_id, amount_cents, client_email, client_name, service_name } = await req.json();
+    const { therapist_id, booking_id, amount_cents, client_email, service_name } = await req.json();
 
     const STRIPE_SECRET        = Deno.env.get('STRIPE_SECRET_KEY');
     const SUPABASE_URL         = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!STRIPE_SECRET)        return err('STRIPE_SECRET_KEY not configured in edge function');
+    if (!STRIPE_SECRET)        return err('STRIPE_SECRET_KEY not configured');
     if (!SUPABASE_URL)         return err('SUPABASE_URL not set');
     if (!SUPABASE_SERVICE_KEY) return err('SUPABASE_SERVICE_ROLE_KEY not set');
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
-    const { data: therapist, error: tErr } = await supabase
+    const { data: therapist } = await supabase
       .from('therapists')
       .select('stripe_account_id, full_name, business_name')
       .eq('id', therapist_id)
       .single();
 
-    if (tErr) return err(`DB error: ${tErr.message}`);
-    if (!therapist?.stripe_account_id) return err('Therapist has no Stripe account connected. Go to Settings and connect Stripe.');
+    if (!therapist?.stripe_account_id) {
+      return err('Stripe not connected. Go to Settings and connect your Stripe account.');
+    }
 
-    // Use explicit payment_method_types instead of automatic_payment_methods —
-    // automatic requires additional connected account configuration
+    // Payment Intent created directly on therapist's Stripe account via Connect
     const piRes = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
@@ -58,7 +57,7 @@ serve(async (req) => {
     const pi = await piRes.json();
 
     if (!piRes.ok) {
-      return err(`Stripe error: ${pi.error?.message || JSON.stringify(pi.error) || 'unknown'}`);
+      return err(`Stripe error: ${pi.error?.message || 'unknown'}`);
     }
 
     await supabase.from('bookings').update({
