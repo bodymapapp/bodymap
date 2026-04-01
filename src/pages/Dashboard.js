@@ -257,8 +257,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
-  const [sessionRate, setSessionRate] = React.useState(therapist?.session_rate || 85);
-  const [rateSaved, setRateSaved] = React.useState(false);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
   const [calSaved, setCalSaved] = React.useState(false);
   const [showCalKey, setShowCalKey] = React.useState(false);
@@ -453,38 +451,17 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div>
 
-      {/* Practice Settings Row - Session Rate + Lapsed Days side by side */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }}>
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>💰 Session Rate</p>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6, background:C2.beige, border:'1.5px solid #E8E4DC', borderRadius:8, padding:'8px 12px', flex:1 }}>
-              <span style={{ fontSize:'15px', fontWeight:'700', color:C2.darkGray }}>$</span>
-              <input type="number" value={sessionRate} onChange={e => setSessionRate(parseInt(e.target.value)||0)} min="0" max="999"
-                style={{ width:'60px', border:'none', background:'transparent', fontSize:'17px', fontWeight:'700', color:C2.forest, fontFamily:'Georgia, serif', outline:'none' }} />
-              <span style={{ fontSize:'12px', color:C2.gray }}>/ session</span>
-            </div>
-            <button onClick={async () => {
-              const { supabase: sb } = await import('../lib/supabase');
-              await sb.from('therapists').update({ session_rate: sessionRate }).eq('id', therapist.id);
-              setRateSaved(true); setTimeout(() => setRateSaved(false), 2000);
-            }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:'13px', fontWeight:'600', cursor:'pointer', whiteSpace:'nowrap' }}>
-              {rateSaved ? '✓' : 'Save'}
-            </button>
-          </div>
-          <p style={{ fontSize:'11px', color:C2.gray, margin:'8px 0 0' }}>Used for expected revenue in Billing</p>
-        </div>
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>🍂 Lapsed Threshold</p>
-          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <input type="number" min="1" max="365" value={lapsedDays}
-              onChange={e => { const v=parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
-              onBlur={e => { const v=parseInt(e.target.value); const c=Math.max(1,Math.min(365,isNaN(v)?60:v)); setLapsedDays(c); localStorage.setItem('bm_lapsed_days',c); setLapsedSaved(true); setTimeout(()=>setLapsedSaved(false),2000); }}
-              style={{ width:'70px', padding:'8px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:'17px', fontWeight:'700', color:C2.forest, background:C2.beige, textAlign:'center' }} />
-            <p style={{ fontSize:'13px', color:C2.darkGray, margin:0 }}>days</p>
-            {lapsedSaved && <p style={{ fontSize:'12px', color:C2.forest, fontWeight:'600', margin:0 }}>✓ Saved</p>}
-          </div>
-          <p style={{ fontSize:'11px', color:C2.gray, margin:'8px 0 0' }}>Clients flagged lapsed after this many days</p>
+
+      {/* Lapsed Threshold */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>🍂 Lapsed Threshold</p>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <input type="number" min="1" max="365" value={lapsedDays}
+            onChange={e => { const v=parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
+            onBlur={e => { const v=parseInt(e.target.value); const c=Math.max(1,Math.min(365,isNaN(v)?60:v)); setLapsedDays(c); localStorage.setItem('bm_lapsed_days',c); setLapsedSaved(true); setTimeout(()=>setLapsedSaved(false),2000); }}
+            style={{ width:'70px', padding:'8px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:'17px', fontWeight:'700', color:C2.forest, background:C2.beige, textAlign:'center' }} />
+          <p style={{ fontSize:'13px', color:C2.darkGray, margin:0 }}>days since last session before a client is flagged as lapsed</p>
+          {lapsedSaved && <p style={{ fontSize:'12px', color:C2.forest, fontWeight:'600', margin:0 }}>✓ Saved</p>}
         </div>
       </div>
 
