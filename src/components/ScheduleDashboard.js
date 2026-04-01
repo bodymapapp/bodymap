@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
-const TODAY = new Date(); TODAY.setHours(0,0,0,0);
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
 const fmt12 = t => { if(!t) return ''; const [h,m]=t.toString().split(':').map(Number); return `${h%12||12}:${String(m).padStart(2,'0')} ${h>=12?'PM':'AM'}`; };
@@ -12,6 +11,7 @@ const initials = n => n?.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,
 const COLORS = ['#2A5741','#3B6B8A','#7B5EA7','#C05621','#276749','#2C5282'];
 const ac = n => COLORS[(n?.charCodeAt(0)||0)%COLORS.length];
 const t2m = t => { if(!t) return 0; const m=t.match(/(\d+):(\d+)\s*(AM|PM)/i); if(!m) return 0; let h=parseInt(m[1]),mn=parseInt(m[2]); if(m[3].toUpperCase()==='PM'&&h!==12)h+=12; if(m[3].toUpperCase()==='AM'&&h===12)h=0; return h*60+mn; };
+const getToday = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
 
 const STATUS = {
   'intake-done':    {label:'Brief Ready', bg:'#DCFCE7', color:'#16A34A', dot:'#16A34A', icon:'🧭'},
@@ -19,14 +19,14 @@ const STATUS = {
   'complete':       {label:'Complete',    bg:'#F3F4F6', color:'#6B7280', dot:'#9CA3AF', icon:'✓'},
 };
 
-const SAMPLE = [
-  {id:'s1',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(TODAY,0),status:'intake-done',   sessions:4, preview:true,service:'Swedish Massage',focus:['Neck','Shoulders'],notes:'Prefers quiet session'},
-  {id:'s2',client:'Jess M.',   time:'10:30 AM',duration:90,date:addDays(TODAY,0),status:'pending-intake',sessions:1, preview:true,service:'Deep Tissue',    focus:[],              notes:''},
-  {id:'s3',client:'Maria L.',  time:'2:00 PM', duration:60,date:addDays(TODAY,0),status:'complete',      sessions:12,preview:true,service:'Hot Stone',      focus:['Lower Back'],  notes:'Monthly regular'},
-  {id:'s4',client:'Dana P.',   time:'9:00 AM', duration:90,date:addDays(TODAY,1),status:'pending-intake',sessions:3, preview:true,service:'Swedish Massage',focus:[],              notes:''},
-  {id:'s5',client:'Amy W.',    time:'11:00 AM',duration:60,date:addDays(TODAY,1),status:'intake-done',   sessions:5, preview:true,service:'Sports Massage', focus:['Legs','Feet'], notes:'Runner'},
-  {id:'s6',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(TODAY,3),status:'pending-intake',sessions:5, preview:true,service:'Swedish Massage',focus:[],              notes:''},
-  {id:'s7',client:'Jess M.',   time:'3:00 PM', duration:60,date:addDays(TODAY,4),status:'pending-intake',sessions:2, preview:true,service:'Deep Tissue',    focus:[],              notes:''},
+const makeSample = (today) => [
+  {id:'s1',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(today,0),status:'intake-done',   sessions:4, preview:true,service:'Swedish Massage',focus:[],notes:'Prefers quiet session'},
+  {id:'s2',client:'Jess M.',   time:'10:30 AM',duration:90,date:addDays(today,0),status:'pending-intake',sessions:1, preview:true,service:'Deep Tissue',    focus:[],notes:''},
+  {id:'s3',client:'Maria L.',  time:'2:00 PM', duration:60,date:addDays(today,0),status:'complete',      sessions:12,preview:true,service:'Hot Stone',      focus:[],notes:'Monthly regular'},
+  {id:'s4',client:'Dana P.',   time:'9:00 AM', duration:90,date:addDays(today,1),status:'pending-intake',sessions:3, preview:true,service:'Swedish Massage',focus:[],notes:''},
+  {id:'s5',client:'Amy W.',    time:'11:00 AM',duration:60,date:addDays(today,1),status:'intake-done',   sessions:5, preview:true,service:'Sports Massage', focus:[],notes:'Runner'},
+  {id:'s6',client:'Emma R.',   time:'9:00 AM', duration:60,date:addDays(today,3),status:'pending-intake',sessions:5, preview:true,service:'Swedish Massage',focus:[],notes:''},
+  {id:'s7',client:'Jess M.',   time:'3:00 PM', duration:60,date:addDays(today,4),status:'pending-intake',sessions:2, preview:true,service:'Deep Tissue',    focus:[],notes:''},
 ];
 
 function DetailPanel({ appt, therapist, onClose }) {
@@ -34,6 +34,7 @@ function DetailPanel({ appt, therapist, onClose }) {
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const [copied,setCopied] = useState(false);
   const firstName = appt.client?.split(' ')[0];
+  const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
@@ -44,7 +45,7 @@ function DetailPanel({ appt, therapist, onClose }) {
               <div style={{width:48,height:48,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700}}>{initials(appt.client)}</div>
               <div>
                 <div style={{fontSize:17,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{appt.client}</div>
-                <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions} sessions{appt.preview?' · Preview':''}</div>
+                <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
               </div>
             </div>
             <button onClick={onClose} style={{background:'#F3F4F6',border:'none',borderRadius:'50%',width:32,height:32,cursor:'pointer',fontSize:16,color:'#6B7280'}}>✕</button>
@@ -58,21 +59,12 @@ function DetailPanel({ appt, therapist, onClose }) {
           </div>
         </div>
         <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:14}}>
-          {appt.focus?.length>0 && (
-            <div>
-              <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:'#9CA3AF',marginBottom:8}}>Focus Areas</div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                {appt.focus.map(f=><span key={f} style={{background:'#DCFCE7',color:'#16A34A',borderRadius:20,padding:'4px 12px',fontSize:12,fontWeight:600}}>{f}</span>)}
-              </div>
-            </div>
-          )}
-          {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
           {!appt.preview && appt.deposit_required && (
             <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.deposit_paid?'#F0FDF4':'#FEF3C7',borderRadius:10,border:`1px solid ${appt.deposit_paid?'#86EFAC':'#FCD34D'}`}}>
               <span style={{fontSize:16}}>{appt.deposit_paid?'💳':'⏳'}</span>
               <div>
                 <div style={{fontSize:12,fontWeight:700,color:appt.deposit_paid?'#16A34A':'#D97706'}}>{appt.deposit_paid?'Deposit paid':'Deposit pending'}</div>
-                <div style={{fontSize:11,color:'#9CA3AF'}}>${((appt.deposit_amount||0)/100).toFixed(0)} deposit {appt.deposit_paid?'received':'not yet paid'}</div>
+                <div style={{fontSize:11,color:'#9CA3AF'}}>${((appt.deposit_amount||0)/100).toFixed(0)} deposit · new client</div>
               </div>
             </div>
           )}
@@ -85,33 +77,34 @@ function DetailPanel({ appt, therapist, onClose }) {
               </div>
             </div>
           )}
+          {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
             {appt.status==='intake-done' && appt.sessionId && (
               <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>🧭 Open Pre-Session Brief</a>
             )}
-            {appt.status==='pending-intake' && (
-              <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form: ${intakeUrl}`)}`} style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>💬 Send Intake via SMS</a>
+            {appt.status==='pending-intake' && !appt.preview && (
+              <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`} style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>💬 Send Intake via SMS</a>
             )}
-            <button onClick={()=>{navigator.clipboard.writeText(intakeUrl);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+            <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
               {copied?'✓ Copied!':'📋 Copy Intake Link'}
             </button>
           </div>
-          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card - real clients appear here after booking.</div>}
+          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card — real clients appear here after booking.</div>}
         </div>
       </div>
     </>
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today }) {
   const [selected,setSelected] = useState(null);
+  const scrollRef = useRef(null);
   const now = new Date();
   const nowMin = dayOffset===0 ? now.getHours()*60+now.getMinutes() : -1;
-  const viewDate = addDays(TODAY,dayOffset);
+  const viewDate = addDays(today,dayOffset);
   const dayAppts = allAppts.filter(a=>sameDay(a.date,viewDate));
   const sorted = [...dayAppts].sort((a,b)=>t2m(a.time)-t2m(b.time));
 
-  // Dynamic range
   const starts = dayAppts.map(a=>t2m(a.time));
   const ends = dayAppts.map(a=>t2m(a.time)+a.duration);
   const TL_START = starts.length ? Math.max(7*60, Math.min(...starts)-30) : 8*60;
@@ -120,20 +113,47 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
   const H = (TL_END-TL_START)*PX;
   const GUTTER = 48;
 
-  // Gap detection
   const gaps = [];
   for(let i=0;i<sorted.length-1;i++){
     const aEnd=t2m(sorted[i].time)+sorted[i].duration;
     const bStart=t2m(sorted[i+1].time);
     if(bStart-aEnd>90) gaps.push({start:aEnd,end:bStart,mins:bStart-aEnd});
   }
-
   const hourNums = [];
   for(let h=Math.floor(TL_START/60);h<=Math.ceil(TL_END/60);h++) hourNums.push(h);
 
+  const DAY_RANGE = [-7,-6,-5,-4,-3,-2,-1,0,1,2,3];
+
+  useEffect(()=>{
+    if(scrollRef.current){
+      const todayBtn = scrollRef.current.querySelector('[data-istoday="true"]');
+      if(todayBtn) todayBtn.scrollIntoView({behavior:'auto',block:'nearest',inline:'center'});
+    }
+  },[]);
+
   return (
     <div>
-      {/* Legend */}
+      <div ref={scrollRef} style={{display:'flex',gap:6,marginBottom:20,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+        {DAY_RANGE.map(i=>{
+          const d=addDays(today,i);
+          const count=allAppts.filter(a=>sameDay(a.date,d)&&!a.preview).length;
+          const isSel=i===dayOffset;
+          const isToday=i===0;
+          const isPast=i<0;
+          return (
+            <button key={i} data-istoday={isToday?'true':undefined} onClick={()=>setDayOffset(i)}
+              style={{flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:12,padding:'10px 14px',cursor:'pointer',minWidth:70,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.8:1}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2}}>
+                {i===0?'Today':i===-1?'Yest':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
+              </div>
+              <div style={{fontSize:17,fontWeight:700}}>{d.getDate()}</div>
+              {count>0&&<div style={{fontSize:10,marginTop:2,opacity:0.7}}>{count} appt{count!==1?'s':''}</div>}
+              {count===0&&<div style={{fontSize:10,marginTop:2,opacity:0.35}}>—</div>}
+            </button>
+          );
+        })}
+      </div>
+
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
         <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
         {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'}].map(({color,bg,label})=>(
@@ -149,7 +169,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
         <span style={{fontSize:10,color:'#9CA3AF',marginLeft:'auto'}}>Tap block for details</span>
       </div>
 
-      {/* Timeline */}
       <div style={{background:'#fff',borderRadius:16,padding:'16px 14px 20px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
         {dayAppts.length===0 ? (
           <div style={{textAlign:'center',padding:'32px 0'}}>
@@ -159,7 +178,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
           </div>
         ) : (
           <div style={{position:'relative',height:H,marginLeft:GUTTER}}>
-            {/* Hour lines */}
             {hourNums.map(h=>{
               const y=(h*60-TL_START)*PX;
               const label=h===12?'12 PM':h<12?`${h} AM`:`${h-12} PM`;
@@ -170,7 +188,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
                 </div>
               );
             })}
-            {/* Gap indicators */}
             {gaps.map((g,i)=>{
               const y=(g.start-TL_START)*PX;
               const gh=g.mins*PX;
@@ -182,14 +199,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
                 </div>
               );
             })}
-            {/* Now line */}
             {nowMin>=TL_START&&nowMin<=TL_END&&(
               <div style={{position:'absolute',top:(nowMin-TL_START)*PX,left:-6,right:0,zIndex:10,pointerEvents:'none',display:'flex',alignItems:'center'}}>
                 <div style={{width:8,height:8,borderRadius:'50%',background:'#EF4444',flexShrink:0}}/>
                 <div style={{flex:1,height:2,background:'#EF4444',opacity:0.6}}/>
               </div>
             )}
-            {/* Appointment blocks */}
             {sorted.map(appt=>{
               const y=(t2m(appt.time)-TL_START)*PX;
               const bh=Math.max(appt.duration*PX,36);
@@ -216,15 +231,15 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
                       <div style={{flexShrink:0,textAlign:'right'}}>
                         <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937'}}>{appt.time}</div>
                         <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
-                        {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Reminded</div>}
+                        {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Sent</div>}
                         {!appt.preview&&!appt.reminder_sent&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>📧 Pending</div>}
                       </div>
                     </div>
-                    {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>{appt.service}{appt.focus?.length>0?` · ${appt.focus.slice(0,2).join(', ')}`:''}
-                    </div>}
+                    {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>{appt.service}</div>}
                     {bh>72&&(
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                        <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {st.label}</div>
+                        <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
+                        {!appt.preview&&appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:9,fontWeight:700,color:'#D97706',background:'#FEF3C7',borderRadius:20,padding:'2px 8px'}}>💳 Deposit due</div>}
                         {!appt.preview&&appt.status==='intake-done'&&<div style={{fontSize:10,fontWeight:700,color:'#2A5741',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Brief ready →</div>}
                       </div>
                     )}
@@ -240,12 +255,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset }) {
   );
 }
 
-function WeeklyView({ therapist, appointments }) {
+function WeeklyView({ therapist, appointments, today }) {
   const APPTS=appointments||[];
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
   const getMonday=d=>{const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()+(day===0?-6:1-day));x.setHours(0,0,0,0);return x;};
-  const weekStart=addDays(getMonday(TODAY),weekOffset*7);
+  const weekStart=addDays(getMonday(today),weekOffset*7);
   const weekDays=[0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const weekAppts=APPTS.filter(a=>a.date>=weekStart&&a.date<addDays(weekStart,7));
@@ -265,7 +280,7 @@ function WeeklyView({ therapist, appointments }) {
       <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6}}>
         {weekDays.map((d,i)=>{
           const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
-          const isToday=sameDay(d,TODAY);
+          const isToday=sameDay(d,today);
           return (
             <div key={i} style={{minHeight:90}}>
               <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':'transparent',color:isToday?'#fff':'#6B7280'}}>
@@ -305,12 +320,12 @@ function WeeklyView({ therapist, appointments }) {
   );
 }
 
-function MonthlyView({ therapist, appointments }) {
+function MonthlyView({ therapist, appointments, today }) {
   const APPTS=appointments||[];
   const [monthOffset,setMonthOffset]=useState(0);
-  const [selDate,setSelDate]=useState(TODAY);
+  const [selDate,setSelDate]=useState(today);
   const [selected,setSelected]=useState(null);
-  const viewMonth=new Date(TODAY.getFullYear(),TODAY.getMonth()+monthOffset,1);
+  const viewMonth=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();
   const firstDay=new Date(viewMonth.getFullYear(),viewMonth.getMonth(),1).getDay();
   const offset=firstDay===0?6:firstDay-1;
@@ -331,7 +346,7 @@ function MonthlyView({ therapist, appointments }) {
           if(!d) return <div key={i}/>;
           const da=APPTS.filter(a=>sameDay(a.date,d));
           const ra=da.filter(a=>!a.preview);
-          const isToday=sameDay(d,TODAY),isSel=sameDay(d,selDate);
+          const isToday=sameDay(d,today),isSel=sameDay(d,selDate);
           return (
             <div key={i} onClick={()=>setSelDate(d)}
               style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:isSel?'#2A5741':isToday?'#F0FDF4':'#fff',border:`1.5px solid ${isSel?'#2A5741':isToday?'#86EFAC':'#F3F4F6'}`,transition:'all 0.1s'}}>
@@ -346,9 +361,9 @@ function MonthlyView({ therapist, appointments }) {
         })}
       </div>
       <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-        {fmtShort(selDate)} - {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
+        {fmtShort(selDate)} — {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
       </div>
-      {selAppts.length===0
+      {selAppts.filter(a=>!a.preview).length===0
         ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
         :<div style={{display:'flex',flexDirection:'column',gap:8}}>
           {selAppts.filter(a=>!a.preview).map(appt=>(
@@ -359,7 +374,10 @@ function MonthlyView({ therapist, appointments }) {
                 <div style={{fontSize:14,fontWeight:700,color:'#1F2937'}}>{appt.client}</div>
                 <div style={{fontSize:12,color:'#6B7280'}}>{appt.time} · {appt.duration}min · {appt.service||'Session'}</div>
               </div>
-              <div style={{fontSize:11,fontWeight:700,color:(STATUS[appt.status]||STATUS['pending-intake']).color}}>{(STATUS[appt.status]||STATUS['pending-intake']).icon} {(STATUS[appt.status]||STATUS['pending-intake']).label}</div>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4}}>
+                <div style={{fontSize:11,fontWeight:700,color:(STATUS[appt.status]||STATUS['pending-intake']).color}}>{(STATUS[appt.status]||STATUS['pending-intake']).icon} {(STATUS[appt.status]||STATUS['pending-intake']).label}</div>
+                {appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:10,fontWeight:700,color:'#D97706'}}>💳 Deposit due</div>}
+              </div>
             </div>
           ))}
         </div>
@@ -383,7 +401,9 @@ function InsightsView({ appointments }) {
   const maxDay=Math.max(...dayCounts.map(d=>d.count),1);
   const clientCounts={};APPTS.forEach(a=>{clientCounts[a.client]=(clientCounts[a.client]||0)+1;});
   const topClients=Object.entries(clientCounts).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const intakePct=Math.round((APPTS.filter(a=>a.status!=='pending-intake').length/APPTS.length)*100);
+  const total=APPTS.length;
+  const intakePct=total>0?Math.round((APPTS.filter(a=>a.status!=='pending-intake').length/total)*100):0;
+  const depositPending=APPTS.filter(a=>a.deposit_required&&!a.deposit_paid).length;
   return (
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
       <div style={{background:'#fff',borderRadius:12,padding:20,gridColumn:'1/-1'}}>
@@ -417,6 +437,13 @@ function InsightsView({ appointments }) {
           </div>
         ))}
       </div>
+      {depositPending>0&&(
+        <div style={{background:'#FFFBEB',borderRadius:12,padding:20,border:'1px solid #FCD34D'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:8}}>💳 Deposits Pending</div>
+          <div style={{fontSize:36,fontWeight:700,color:'#D97706',fontFamily:'Georgia,serif'}}>{depositPending}</div>
+          <div style={{fontSize:12,color:'#92400E',marginTop:4}}>new client deposits awaiting payment</div>
+        </div>
+      )}
     </div>
   );
 }
@@ -426,30 +453,89 @@ export default function ScheduleDashboard({ therapist }) {
   const [dayOffset,setDayOffset]=useState(0);
   const [realBookings,setRealBookings]=useState(null);
   const [loading,setLoading]=useState(true);
+  // FIX: compute today at component mount, not at module load time
+  const [today] = useState(getToday);
+  const SAMPLE = makeSample(today);
 
   useEffect(()=>{if(therapist?.id)fetchBookings();},[therapist?.id]);
 
   async function fetchBookings() {
     setLoading(true);
     try {
-      const {data:{user}}=await supabase.auth.getUser();
-      if(!user){setLoading(false);return;}
-      const past=new Date(TODAY);past.setDate(past.getDate()-30);
-      const future=new Date(TODAY);future.setDate(future.getDate()+60);
-      const {data:bookings,error}=await supabase.from('bookings').select('*,services(name,duration,price),reminder_sent_at,deposit_required,deposit_paid,deposit_amount').eq('therapist_id',therapist.id).neq('status','cancelled').gte('booking_date',past.toISOString().split('T')[0]).lte('booking_date',future.toISOString().split('T')[0]).order('booking_date').order('start_time');
-      if(error||!bookings?.length){setRealBookings([]);setLoading(false);return;}
-      const mapped=bookings.map(b=>{
-        const bd=new Date(b.booking_date+'T12:00:00');bd.setHours(0,0,0,0);
-        const [h,m]=b.start_time.split(':').map(Number);
-        return {id:b.id,client:b.client_name,email:b.client_email,time:fmt12(`${h}:${m}`),duration:b.services?.duration||60,date:bd,status:'pending-intake',sessions:0,service:b.services?.name||'Session',notes:b.notes||'',price:b.services?.price||85,focus:[],preview:false};
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setLoading(false); return; }
+
+      // FIX: fetch 365 days of history so past sessions are visible
+      const past = new Date(today); past.setDate(today.getDate() - 365);
+      const future = new Date(today); future.setDate(today.getDate() + 60);
+
+      const { data: bookings, error } = await supabase
+        .from('bookings')
+        .select('*, services(name, duration, price), reminder_sent_at, deposit_required, deposit_paid, deposit_amount')
+        .eq('therapist_id', therapist.id)
+        .neq('status', 'cancelled')
+        .gte('booking_date', past.toISOString().split('T')[0])
+        .lte('booking_date', future.toISOString().split('T')[0])
+        .order('booking_date')
+        .order('start_time');
+
+      if (error || !bookings?.length) { setRealBookings([]); setLoading(false); return; }
+
+      // FIX: query sessions by booking_id to get real intake status
+      const bookingIds = bookings.map(b => b.id);
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('id, booking_id')
+        .eq('therapist_id', therapist.id)
+        .in('booking_id', bookingIds);
+
+      // Build lookup: booking_id → session_id
+      const sessionMap = {};
+      (sessions || []).forEach(s => {
+        if (s.booking_id) sessionMap[s.booking_id] = s.id;
       });
+
+      const mapped = bookings.map(b => {
+        const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
+        const [h, m] = b.start_time.split(':').map(Number);
+        const sessionId = sessionMap[b.id] || null;
+        return {
+          id: b.id,
+          client: b.client_name,
+          email: (b.client_email || '').toLowerCase().trim(),
+          time: fmt12(`${h}:${m}`),
+          duration: b.services?.duration || 60,
+          date: bd,
+          // FIX: real intake status from sessions lookup
+          status: sessionId ? 'intake-done' : 'pending-intake',
+          sessionId,
+          sessions: 0,
+          service: b.services?.name || 'Session',
+          notes: b.notes || '',
+          price: b.services?.price || 85,
+          focus: [],
+          preview: false,
+          // FIX: include all deposit and reminder fields
+          reminder_sent: !!b.reminder_sent_at,
+          deposit_required: b.deposit_required || false,
+          deposit_paid: b.deposit_paid || false,
+          deposit_amount: b.deposit_amount || 0,
+        };
+      });
+
       setRealBookings(mapped);
-    } catch(err){console.error(err);}
+    } catch(err) {
+      console.error('fetchBookings error:', err);
+      setRealBookings([]);
+    }
     setLoading(false);
   }
 
-  const showSample=!realBookings||realBookings.length<5;
-  const allAppts=[...(realBookings||[]),...(showSample?SAMPLE:[])];
+  // FIX: only show sample when upcoming real bookings < 3 (not total)
+  const upcomingReal = (realBookings || []).filter(a => a.date >= today);
+  const showSample = !realBookings || upcomingReal.length < 3;
+  const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
+
   const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'insights',label:'Insights'}];
 
   return (
@@ -457,7 +543,7 @@ export default function ScheduleDashboard({ therapist }) {
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:10}}>
         <div>
           <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
-          <p style={{fontSize:13,color:'#6B7280',margin:0}}>{fmtDay(TODAY)}</p>
+          <p style={{fontSize:13,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
         </div>
         {realBookings?.length>0
           ?<div style={{display:'flex',alignItems:'center',gap:8,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#16A34A',fontWeight:600}}>
@@ -465,7 +551,7 @@ export default function ScheduleDashboard({ therapist }) {
             <button onClick={fetchBookings} style={{background:'transparent',border:'1px solid #16A34A',borderRadius:6,padding:'2px 8px',fontSize:11,color:'#16A34A',cursor:'pointer',marginLeft:4}}>↻</button>
           </div>
           :<div style={{background:'#FFF7ED',border:'1.5px dashed #F97316',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#9A3412',display:'flex',alignItems:'center',gap:6}}>
-            👁️ <span><strong>Preview mode</strong> - share your booking link to get real sessions</span>
+            👁️ <span><strong>Preview mode</strong> — share your booking link to get real sessions</span>
           </div>
         }
       </div>
@@ -473,10 +559,10 @@ export default function ScheduleDashboard({ therapist }) {
       {/* Stats */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
         {[
-          {val:allAppts.filter(a=>sameDay(a.date,TODAY)&&!a.preview).length,label:"Today",color:'#2A5741'},
-          {val:allAppts.filter(a=>sameDay(a.date,TODAY)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-          {val:allAppts.filter(a=>sameDay(a.date,TODAY)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
-          {val:allAppts.filter(a=>!a.preview&&a.date>=TODAY&&a.date<=addDays(TODAY,7)).length,label:'This week',color:'#6B9E80'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
+          {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
         ].map(s=>(
           <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
             <div style={{fontSize:24,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
@@ -484,25 +570,6 @@ export default function ScheduleDashboard({ therapist }) {
           </div>
         ))}
       </div>
-
-      {/* Day selector - only for today view */}
-      {subView==='today'&&(
-        <div style={{display:'flex',gap:6,marginBottom:20,overflowX:'auto',paddingBottom:2}}>
-          {[0,1,2,3,4].map(i=>{
-            const d=addDays(TODAY,i);
-            const count=allAppts.filter(a=>sameDay(a.date,d)&&!a.preview).length;
-            const isSel=i===dayOffset;
-            return (
-              <button key={i} onClick={()=>setDayOffset(i)}
-                style={{flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:12,padding:'10px 14px',cursor:'pointer',minWidth:70,textAlign:'center',transition:'all 0.15s'}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2}}>{i===0?'Today':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}</div>
-                <div style={{fontSize:17,fontWeight:700}}>{d.getDate()}</div>
-                {count>0&&<div style={{fontSize:10,marginTop:2,opacity:0.7}}>{count} appt{count!==1?'s':''}</div>}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Tab bar */}
       <div style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content'}}>
@@ -517,9 +584,9 @@ export default function ScheduleDashboard({ therapist }) {
       {loading
         ?<div style={{textAlign:'center',padding:'40px',color:'#9CA3AF',fontSize:14}}>Loading schedule...</div>
         :<>
-          {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset}/>}
-          {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts}/>}
-          {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts}/>}
+          {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today}/>}
+          {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today}/>}
+          {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today}/>}
           {subView==='insights'&&<InsightsView appointments={allAppts}/>}
         </>
       }

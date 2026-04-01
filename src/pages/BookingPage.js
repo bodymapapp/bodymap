@@ -406,6 +406,7 @@ export default function BookingPage() {
         )}
 
         {/* STEP 4 - Confirm */}
+        {step===4&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Confirm your booking</h2>
@@ -414,7 +415,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price',`$${svc.price} - pay at session`],['Name',form.name],['Email',form.email],
+                ['Price',`$${svc.price} — pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
                 ...(form.notes?[['Notes',form.notes]]:[]),
               ].map(([l,v],i,arr)=>(
@@ -425,28 +426,33 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            <button onClick={submit} disabled={submitting}
-              style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-              {submitting?'Confirming..':'✓ Confirm Booking'}
-            </button>
+            {/* DEPOSIT NOTICE — shown BEFORE confirm button so client sees it first */}
             {depositRequired && !depositPaid && (
-              <div style={{marginTop:12,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'14px 16px',textAlign:'center'}}>
-                <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:4}}>
-                  💳 A deposit of ${(depositAmount/100).toFixed(0)} is required
-                </div>
-                <div style={{fontSize:12,color:'#92400E'}}>
-                  {(therapist.deposit_percent||20)}% of ${svc.price} - as a first-time client. Repeat clients are never charged a deposit.
+              <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
+                <span style={{fontSize:22,flexShrink:0}}>💳</span>
+                <div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>
+                    Deposit required: ${(depositAmount/100).toFixed(0)}
+                  </div>
+                  <div style={{fontSize:12,color:'#92400E',lineHeight:1.5}}>
+                    {(therapist.deposit_percent||20)}% of ${svc.price} is required to hold your spot as a first-time client. Repeat clients are never charged a deposit.
+                  </div>
                 </div>
               </div>
             )}
-            {!depositRequired && (
+            {isRepeatClient && (
+              <div style={{marginBottom:14,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
+                <span style={{fontSize:16}}>✅</span>
+                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back — no deposit needed for returning clients.</span>
+              </div>
+            )}
+            <button onClick={submit} disabled={submitting}
+              style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
+              {submitting?'Confirming…':depositRequired&&!depositPaid?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'}
+            </button>
+            {!depositRequired && !isRepeatClient && (
               <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
                 No payment now. You'll fill your intake form right after booking.
-              </p>
-            )}
-            {isRepeatClient && (
-              <p style={{fontSize:11,color:'#16A34A',textAlign:'center',marginTop:10,fontWeight:600}}>
-                Welcome back! No deposit needed for returning clients.
               </p>
             )}
           </div>
