@@ -512,11 +512,21 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💳 Payments</p>
           <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Accept payments from clients and track real revenue in your Billing tab.</p>
           {therapist?.stripe_account_connected ? (
-            <div style={{ display:'flex', alignItems:'center', gap:8, background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
-              <span>✅</span>
-              <div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Payments Connected</div>
-                <div style={{ fontSize:'11px', color:'#6B7280' }}>Real revenue tracked in Billing</div>
+            <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span>✅</span>
+                  <div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Payments Connected</div>
+                    <div style={{ fontSize:'11px', color:'#6B7280' }}>Real revenue tracked in Billing</div>
+                  </div>
+                </div>
+                <button onClick={async () => {
+                  if (!window.confirm('Disconnect Stripe? Deposit collection will stop until you reconnect.')) return;
+                  await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
+                }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
+                  Disconnect
+                </button>
               </div>
             </div>
           ) : (
