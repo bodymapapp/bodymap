@@ -246,6 +246,7 @@ function ServicesAndAvailability({ therapist }) {
 }
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
+  const { updateProfile } = useAuth();
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
