@@ -110,29 +110,35 @@ export default function BookingPage() {
   const [paymentProcessing,setPaymentProcessing]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
   const [stripeReady,setStripeReady]=useState(false);
-  const [paymentDivReady,setPaymentDivReady]=useState(false);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
   const stripeRef = useRef(null);
   const elementsRef = useRef(null);
 
-  // Callback ref — called when payment div enters the DOM
-  const paymentElementRef = useRef(null);
-  const setPaymentDiv = useRef(node => {
-    paymentElementRef.current = node;
-    if(node) setPaymentDivReady(true);
-  }).current;
+  // Simple ref for the payment div — ID-based mount is more reliable than callback ref
+  const paymentDivId = 'stripe-payment-element';
 
   useEffect(()=>{load();},[slug]);
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
 
-  // Mount Stripe only after BOTH client_secret AND the payment div are ready
+  // Mount Stripe Payment Element once we have a client_secret
   useEffect(()=>{
     const secret = depositClientSecret;
-    if(!secret||secret==='__failed__'||!paymentDivReady||!paymentElementRef.current) return;
-    let mounted=true;
+    if(!secret || secret==='__failed__') return;
+    let pe = null;
+    let mounted = true;
+
     const mount = async () => {
+      // Wait for the div to be in the DOM
+      let el = null;
+      for(let i=0; i<20; i++){
+        el = document.getElementById(paymentDivId);
+        if(el) break;
+        await new Promise(r=>setTimeout(r,100));
+      }
+      if(!el || !mounted) return;
+
       if(!window.Stripe){
         await new Promise(resolve=>{
           const s=document.createElement('script');
@@ -142,6 +148,7 @@ export default function BookingPage() {
         });
       }
       if(!mounted) return;
+
       stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,{
         stripeAccount: therapist.stripe_account_id,
       });
@@ -149,13 +156,18 @@ export default function BookingPage() {
         clientSecret: secret,
         appearance:{ theme:'stripe', variables:{ colorPrimary:'#2A5741', borderRadius:'8px' } }
       });
-      const pe = elementsRef.current.create('payment');
-      pe.mount(paymentElementRef.current);
-      if(mounted) setStripeReady(true);
+      pe = elementsRef.current.create('payment');
+      // Only enable Pay button after Stripe signals the element is fully rendered
+      pe.on('ready', () => { if(mounted) setStripeReady(true); });
+      pe.mount(el);
     };
+
     mount();
-    return ()=>{ mounted=false; };
-  },[depositClientSecret, paymentDivReady]);
+    return ()=>{
+      mounted=false;
+      try{ if(pe) pe.destroy(); } catch(e){}
+    };
+  },[depositClientSecret]);
 
   async function handlePayment(){
     if(!stripeRef.current||!elementsRef.current) return;
@@ -553,7 +565,7 @@ export default function BookingPage() {
                 <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Your booking is confirmed. The deposit will be arranged directly with your therapist.</div>
               ) : (
                 <>
-                  <div ref={setPaymentDiv} style={{minHeight:120}}/>
+                  <div id="stripe-payment-element" style={{minHeight:120}}/>
                   {!stripeReady && <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Loading payment form…</div>}
                 </>
               )}
