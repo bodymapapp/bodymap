@@ -126,6 +126,17 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const [feedbackLink, setFeedbackLink] = useState("");
   const [linkCopied, setLinkCopied] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [soapTab, setSoapTab] = useState("soap"); // "soap" | "notes"
+
+  // Parse SOAP from therapist_notes if stored as JSON
+  const parseSoap = (raw) => {
+    try {
+      const p = JSON.parse(raw);
+      if (p && p.__soap) return p;
+    } catch(e) {}
+    return { __soap: true, S: "", O: "", A: "", P: "", legacy: raw };
+  };
+  const [soap, setSoap] = useState(() => parseSoap(session.therapist_notes || ""));
 
   useEffect(() => {
     loadHistory();
@@ -231,7 +242,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function saveNotes() {
     setSaving(true);
     try {
-      const { data } = await supabase.from("sessions").update({ therapist_notes: notes, public_notes: publicNotes }).eq("id", session.id).select().single();
+      const notesToSave = JSON.stringify(soap);
+      const { data } = await supabase.from("sessions").update({ therapist_notes: notesToSave, public_notes: publicNotes }).eq("id", session.id).select().single();
       setSaved(true); setTimeout(() => setSaved(false), 2000);
       if (onUpdate && data) onUpdate(data);
     } catch (err) { console.error(err); }
@@ -241,7 +253,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function markComplete() {
     setCompleting(true);
     try {
-      const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notes, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
+      const notesToSave = JSON.stringify(soap);
+      const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notesToSave, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
       onBack();
     } catch (err) { console.error(err); }
@@ -461,31 +474,100 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
       </div>
 
-      {/* Notes Row - full width, two equal cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginTop: "16px" }}>
-        <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-          <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Session Notes</h3>
-          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>🔒 Private - only visible to you, never shared</p>
-          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
-            style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
-          />
-          <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
-            <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
-              {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Notes"}
+      {/* SOAP Notes + Session Notes */}
+      <div style={{ background: C.white, borderRadius: "14px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", marginTop: "16px", overflow: "hidden" }}>
+        {/* Tab bar */}
+        <div style={{ display: "flex", borderBottom: "1px solid " + C.lightGray }}>
+          {[
+            { id: "soap", label: "📋 SOAP Notes" },
+            { id: "notes", label: "🔒 Private Notes" },
+            { id: "client", label: "💌 Message to Client" },
+          ].map(t => (
+            <button key={t.id} onClick={() => setSoapTab(t.id)}
+              style={{ flex: 1, padding: "12px 8px", border: "none", borderBottom: soapTab === t.id ? "2px solid " + C.forest : "2px solid transparent", background: "transparent", color: soapTab === t.id ? C.forest : C.gray, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "system-ui", transition: "all 0.15s" }}>
+              {t.label}
             </button>
-            {!session.completed && (
-              <button onClick={markComplete} disabled={completing} style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
-                {completing ? "..." : "✓ Mark Complete"}
-              </button>
-            )}
-          </div>
+          ))}
         </div>
-        <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-          <h3 style={{ fontFamily: "Georgia, serif", fontSize: "16px", fontWeight: "700", color: C.darkGray, marginBottom: "4px", letterSpacing: "-0.3px" }}>Message to Client</h3>
-          <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px", fontFamily: "system-ui" }}>💌 Appears on the Post-Session Brief you share with your client</p>
-          <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
-            style={{ width: "100%", minHeight: "130px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: "1.6" }}
-          />
+
+        <div style={{ padding: "20px 24px" }}>
+
+          {/* SOAP Tab */}
+          {soapTab === "soap" && (
+            <div>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes — private to you, never shared with clients.</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }} className="bm-session-grid">
+                {[
+                  { key: "S", label: "S — Subjective", hint: "What the client reports: pain level, area, sensation, changes since last visit..." },
+                  { key: "O", label: "O — Objective", hint: "What you observe and measure: tissue quality, ROM, postural findings..." },
+                  { key: "A", label: "A — Assessment", hint: "Your clinical interpretation: patterns, progress, response to treatment..." },
+                  { key: "P", label: "P — Plan", hint: "Next steps: techniques to use, areas to focus, frequency, referrals..." },
+                ].map(({ key, label, hint }) => (
+                  <div key={key}>
+                    <label style={{ fontSize: "12px", fontWeight: 700, color: C.darkGray, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
+                    <textarea
+                      value={soap[key] || ""}
+                      onChange={e => setSoap(s => ({ ...s, [key]: e.target.value }))}
+                      placeholder={hint}
+                      style={{ width: "100%", minHeight: "100px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                    />
+                  </div>
+                ))}
+              </div>
+              {soap.legacy && (
+                <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px", fontSize: "12px", color: "#92400E" }}>
+                  Previous note: {soap.legacy}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button onClick={saveNotes} disabled={saving}
+                  style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                  {saving ? "Saving..." : saved ? "✓ Saved!" : "Save SOAP Notes"}
+                </button>
+                {!session.completed && (
+                  <button onClick={markComplete} disabled={completing}
+                    style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                    {completing ? "..." : "✓ Mark Complete"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Private Notes Tab */}
+          {soapTab === "notes" && (
+            <div>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>🔒 Private — only visible to you, never shared with clients.</p>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
+                style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
+              />
+              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                <button onClick={saveNotes} disabled={saving}
+                  style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                  {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Notes"}
+                </button>
+                {!session.completed && (
+                  <button onClick={markComplete} disabled={completing}
+                    style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                    {completing ? "..." : "✓ Mark Complete"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Message to Client Tab */}
+          {soapTab === "client" && (
+            <div>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>💌 Appears on the Post-Session Brief you share with your client.</p>
+              <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
+                style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
+              />
+              <button onClick={saveNotes} disabled={saving} style={{ marginTop: "12px", background: C.sage, color: C.white, border: "none", padding: "11px 24px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Message"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
+import GiftCertificates from '../components/GiftCertificates';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -723,6 +724,12 @@ export default function Dashboard({ view }) {
             🤖 AI
           </button>
           <button
+            onClick={() => navigate('/dashboard/gifts')}
+            style={{ flex: 1, background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            🎁 Gifts
+          </button>
+          <button
             onClick={() => navigate('/dashboard/settings')}
             style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
@@ -772,6 +779,9 @@ export default function Dashboard({ view }) {
           )}
           {view === 'settings' && (
             <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+          )}
+          {view === 'gifts' && therapist && (
+            <GiftCertificates therapist={therapist} />
           )}
         </div>
 
