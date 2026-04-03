@@ -243,10 +243,13 @@ export default function BookingPage() {
       setDepositLoading(true);
       const res=await supabase.functions.invoke('create-deposit',{
         body:{
-          therapist_id:therapist.id, booking_id:bid,
-          amount_cents:depositAmount,
-          client_email:form.email.trim().toLowerCase(),
-          service_name:svc.name,
+          stripe_account_id: therapist.stripe_account_id,
+          therapist_id: therapist.id,
+          booking_id: bid,
+          amount_cents: depositAmount,
+          client_email: form.email.trim().toLowerCase(),
+          service_name: svc.name,
+          therapist_name: therapist.business_name || therapist.full_name,
         }
       });
       setDepositLoading(false);

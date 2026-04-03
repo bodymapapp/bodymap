@@ -1,80 +1,63 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
+const cors = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const ok  = (data) => new Response(JSON.stringify(data),           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-const err = (msg)  => new Response(JSON.stringify({ error: msg }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
+
+  const respond = (data) => new Response(JSON.stringify(data), {
+    status: 200,
+    headers: { ...cors, 'Content-Type': 'application/json' },
+  });
 
   try {
-    const { therapist_id, booking_id, amount_cents, client_email, service_name } = await req.json();
+    const {
+      stripe_account_id,
+      amount_cents,
+      client_email,
+      service_name,
+      therapist_name,
+      booking_id,
+      therapist_id,
+    } = await req.json();
 
-    const STRIPE_SECRET        = Deno.env.get('STRIPE_SECRET_KEY');
-    const SUPABASE_URL         = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!STRIPE_SECRET) return respond({ error: 'STRIPE_SECRET_KEY not set' });
+    if (!stripe_account_id) return respond({ error: 'No Stripe account connected' });
 
-    if (!STRIPE_SECRET)        return err('STRIPE_SECRET_KEY not configured');
-    if (!SUPABASE_URL)         return err('SUPABASE_URL not set');
-    if (!SUPABASE_SERVICE_KEY) return err('SUPABASE_SERVICE_ROLE_KEY not set');
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
-
-    const { data: therapist } = await supabase
-      .from('therapists')
-      .select('stripe_account_id, full_name, business_name')
-      .eq('id', therapist_id)
-      .single();
-
-    if (!therapist?.stripe_account_id) {
-      return err('Stripe not connected. Go to Settings and connect your Stripe account.');
-    }
-
-    const accountId = therapist.stripe_account_id;
-
-    // Create PI on the connected account directly
-    const piRes = await fetch('https://api.stripe.com/v1/payment_intents', {
+    const res = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${STRIPE_SECRET}`,
-        'Stripe-Account': accountId,
+        'Stripe-Account': stripe_account_id,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        amount: amount_cents.toString(),
+        amount: String(amount_cents),
         currency: 'usd',
         'payment_method_types[]': 'card',
-        'metadata[booking_id]': booking_id,
-        'metadata[therapist_id]': therapist_id,
-        description: `Deposit - ${service_name} with ${therapist.business_name || therapist.full_name}`,
+        description: `Deposit - ${service_name} with ${therapist_name}`,
         receipt_email: client_email,
+        'metadata[booking_id]': booking_id || '',
+        'metadata[therapist_id]': therapist_id || '',
       }),
     });
 
-    const pi = await piRes.json();
+    const pi = await res.json();
 
-    if (!piRes.ok) {
-      return err(`Stripe error: ${pi.error?.message || 'unknown'}`);
+    if (!res.ok) {
+      return respond({ error: `Stripe: ${pi.error?.message || JSON.stringify(pi.error)}` });
     }
 
-    await supabase.from('bookings').update({
-      deposit_payment_intent: pi.id,
-      deposit_amount: amount_cents,
-      deposit_required: true,
-    }).eq('id', booking_id);
-
-    // Return account_id so frontend uses THE SAME account to confirm
-    return ok({
+    return respond({
       client_secret: pi.client_secret,
-      account_id: accountId,
+      account_id: stripe_account_id,
     });
 
   } catch (e) {
-    return err(`Unexpected error: ${e?.message ?? String(e)}`);
+    return respond({ error: `Error: ${e?.message ?? String(e)}` });
   }
 });
