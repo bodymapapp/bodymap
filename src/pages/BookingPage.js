@@ -82,21 +82,19 @@ function Cal({availability, selected, onSelect}) {
   );
 }
 
-// Stripe Payment Element — mounted inside the page, no redirect
+// Stripe Card Element — reliable, battle-tested, single iframe
 function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) {
   const divRef = useRef(null);
   const stripeRef = useRef(null);
-  const elementsRef = useRef(null);
-  const peRef = useRef(null);
+  const cardRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
-    if (!clientSecret) return;
+    if (!clientSecret || !divRef.current) return;
     let alive = true;
 
     const init = async () => {
-      // Load Stripe.js if needed
       if (!window.Stripe) {
         await new Promise(resolve => {
           const s = document.createElement('script');
@@ -105,35 +103,38 @@ function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) 
           document.head.appendChild(s);
         });
       }
-      if (!alive) return;
+      if (!alive || !divRef.current) return;
 
-      // No stripeAccount — uses platform key directly (destination charge)
+      // Card element: no clientSecret needed at init — simpler, more reliable
       stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
-      elementsRef.current = stripeRef.current.elements({
-        clientSecret,
-        appearance: {
-          theme: 'stripe',
-          variables: { colorPrimary: '#2A5741', borderRadius: '8px', fontFamily: 'system-ui, sans-serif' }
-        }
+      const elements = stripeRef.current.elements();
+      cardRef.current = elements.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            fontFamily: 'system-ui, sans-serif',
+            color: '#1A1A2E',
+            '::placeholder': { color: '#9CA3AF' },
+          },
+          invalid: { color: '#EF4444' },
+        },
       });
-      peRef.current = elementsRef.current.create('payment');
-      peRef.current.on('ready', () => { if (alive) setReady(true); });
-      if (divRef.current) peRef.current.mount(divRef.current);
+      cardRef.current.on('ready', () => { if (alive) setReady(true); });
+      cardRef.current.mount(divRef.current);
     };
 
     init();
     return () => {
       alive = false;
-      try { if (peRef.current) peRef.current.destroy(); } catch(e) {}
+      try { if (cardRef.current) cardRef.current.destroy(); } catch(e) {}
     };
-  }, [clientSecret]);
+  }, []);
 
   const pay = async () => {
-    if (!stripeRef.current || !elementsRef.current) return;
+    if (!stripeRef.current || !cardRef.current) return;
     setProcessing(true);
-    const { error, paymentIntent } = await stripeRef.current.confirmPayment({
-      elements: elementsRef.current,
-      redirect: 'if_required',
+    const { error, paymentIntent } = await stripeRef.current.confirmCardPayment(clientSecret, {
+      payment_method: { card: cardRef.current },
     });
     if (error) { onError(error.message); setProcessing(false); return; }
     if (paymentIntent?.status === 'succeeded') onSuccess();
@@ -142,17 +143,14 @@ function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) 
 
   return (
     <div>
-      <div style={{background:C.white,borderRadius:14,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',minHeight:180}}>
-        <div ref={divRef} />
-        {!ready && (
-          <div style={{textAlign:'center',padding:'40px 0',color:C.gray,fontSize:13}}>
-            Loading payment form…
-          </div>
-        )}
+      <div style={{background:C.white,borderRadius:14,padding:'20px',marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray,marginBottom:12}}>CARD DETAILS</div>
+        <div ref={divRef} style={{padding:'14px',border:`1.5px solid ${C.light}`,borderRadius:10,background:'#FAFAFA'}}/>
+        {!ready && <div style={{textAlign:'center',padding:'12px 0 4px',color:C.gray,fontSize:13}}>Loading…</div>}
       </div>
       <button onClick={pay} disabled={!ready||processing}
         style={{width:'100%',background:!ready||processing?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:!ready||processing?'default':'pointer',transition:'background 0.2s',boxShadow:'0 4px 20px rgba(42,87,65,0.25)'}}>
-        {processing ? 'Processing…' : ready ? `Pay $${(depositAmount/100).toFixed(0)} Deposit` : 'Loading…'}
+        {processing?'Processing…':ready?`Pay $${(depositAmount/100).toFixed(0)} Deposit`:'Loading…'}
       </button>
       <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10}}>🔒 Secured by Stripe. Your card details are never stored by us.</p>
     </div>
