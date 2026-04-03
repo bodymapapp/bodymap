@@ -175,6 +175,10 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today }) {
           <div style={{width:12,height:12,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1'}}/>
           <span style={{fontSize:11,color:'#9CA3AF'}}>Preview</span>
         </div>
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
+          <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
+        </div>
         <span style={{fontSize:10,color:'#9CA3AF',marginLeft:'auto'}}>Tap block for details</span>
       </div>
 
@@ -276,6 +280,20 @@ function WeeklyView({ therapist, appointments, today }) {
   const realWeek=weekAppts.filter(a=>!a.preview);
   return (
     <div>
+      {/* Legend */}
+      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
+        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'}].map(({color,bg,label})=>(
+          <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
+            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+          </div>
+        ))}
+        <div style={{display:'flex',alignItems:'center',gap:4}}>
+          <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
+          <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
+        </div>
+      </div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
         <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
         <div style={{textAlign:'center'}}>
