@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -21,12 +21,10 @@ function generateSlots(start, end, dur, booked) {
   return slots;
 }
 
-// Smart slot scoring: prefer slots that create contiguous blocks (anti-gap)
 function scoreSlots(slots, existingBooked, dur) {
   return slots.map(slot => {
     let score = 0;
     const slotEnd = slot.minutes + dur;
-    // Bonus if adjacent to existing booking (fills gap)
     const adjacentBefore = existingBooked.some(b => {
       const be = b.end_time ? parseInt(b.end_time.split(':')[0])*60+parseInt(b.end_time.split(':')[1]) : 0;
       return Math.abs(be - slot.minutes) <= 30;
@@ -36,7 +34,6 @@ function scoreSlots(slots, existingBooked, dur) {
       return Math.abs(bs - slotEnd) <= 30;
     });
     if(adjacentBefore || adjacentAfter) score += 3;
-    // Prefer morning (before noon) slightly
     if(slot.minutes < 720) score += 1;
     return {...slot, score, recommended: adjacentBefore || adjacentAfter};
   }).sort((a,b) => b.score - a.score);
@@ -68,7 +65,7 @@ function Cal({availability, selected, onSelect}) {
           const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
           const nowTime = new Date();
           const isToday2 = dt.toDateString() === today.toDateString();
-          const pastLastSlot = isToday2 && nowTime.getHours() >= 17; // past 5pm
+          const pastLastSlot = isToday2 && nowTime.getHours() >= 17;
           const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot;
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
@@ -85,6 +82,83 @@ function Cal({availability, selected, onSelect}) {
   );
 }
 
+// Stripe Payment Element — mounted inside the page, no redirect
+function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) {
+  const divRef = useRef(null);
+  const stripeRef = useRef(null);
+  const elementsRef = useRef(null);
+  const peRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!clientSecret) return;
+    let alive = true;
+
+    const init = async () => {
+      // Load Stripe.js if needed
+      if (!window.Stripe) {
+        await new Promise(resolve => {
+          const s = document.createElement('script');
+          s.src = 'https://js.stripe.com/v3/';
+          s.onload = resolve;
+          document.head.appendChild(s);
+        });
+      }
+      if (!alive) return;
+
+      // No stripeAccount — uses platform key directly (destination charge)
+      stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+      elementsRef.current = stripeRef.current.elements({
+        clientSecret,
+        appearance: {
+          theme: 'stripe',
+          variables: { colorPrimary: '#2A5741', borderRadius: '8px', fontFamily: 'system-ui, sans-serif' }
+        }
+      });
+      peRef.current = elementsRef.current.create('payment');
+      peRef.current.on('ready', () => { if (alive) setReady(true); });
+      if (divRef.current) peRef.current.mount(divRef.current);
+    };
+
+    init();
+    return () => {
+      alive = false;
+      try { if (peRef.current) peRef.current.destroy(); } catch(e) {}
+    };
+  }, [clientSecret]);
+
+  const pay = async () => {
+    if (!stripeRef.current || !elementsRef.current) return;
+    setProcessing(true);
+    const { error, paymentIntent } = await stripeRef.current.confirmPayment({
+      elements: elementsRef.current,
+      redirect: 'if_required',
+    });
+    if (error) { onError(error.message); setProcessing(false); return; }
+    if (paymentIntent?.status === 'succeeded') onSuccess();
+    setProcessing(false);
+  };
+
+  return (
+    <div>
+      <div style={{background:C.white,borderRadius:14,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)',minHeight:180}}>
+        <div ref={divRef} />
+        {!ready && (
+          <div style={{textAlign:'center',padding:'40px 0',color:C.gray,fontSize:13}}>
+            Loading payment form…
+          </div>
+        )}
+      </div>
+      <button onClick={pay} disabled={!ready||processing}
+        style={{width:'100%',background:!ready||processing?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:!ready||processing?'default':'pointer',transition:'background 0.2s',boxShadow:'0 4px 20px rgba(42,87,65,0.25)'}}>
+        {processing ? 'Processing…' : ready ? `Pay $${(depositAmount/100).toFixed(0)} Deposit` : 'Loading…'}
+      </button>
+      <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10}}>🔒 Secured by Stripe. Your card details are never stored by us.</p>
+    </div>
+  );
+}
+
 export default function BookingPage() {
   const {slug}=useParams();
   const [therapist,setTherapist]=useState(null);
@@ -92,19 +166,19 @@ export default function BookingPage() {
   const [availability,setAvailability]=useState([]);
   const [loading,setLoading]=useState(true);
   const [notFound,setNotFound]=useState(false);
-  const [step,setStep]=useState(1); // 1=service, 2=datetime, 3=details, 4=confirm
+  const [step,setStep]=useState(1);
   const [svc,setSvc]=useState(null);
   const [date,setDate]=useState('');
   const [slots,setSlots]=useState([]);
   const [existingBooked,setExistingBooked]=useState([]);
   const [slot,setSlot]=useState(null);
   const [loadingSlots,setLoadingSlots]=useState(false);
-  const [form,setForm]=useState({name:'',email:'',phone:'',notes:''});
+  const [form,setForm]=useState({name:'',email:'',phone:''});
   const [errors,setErrors]=useState({});
   const [submitting,setSubmitting]=useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
-  const [depositPaid,setDepositPaid]=useState(false);
+  const [depositClientSecret,setDepositClientSecret]=useState(null);
   const [depositLoading,setDepositLoading]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
@@ -113,8 +187,6 @@ export default function BookingPage() {
 
   useEffect(()=>{load();},[slug]);
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
-
-
 
   async function load() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
@@ -138,11 +210,10 @@ export default function BookingPage() {
     const booked=existing||[];
     setExistingBooked(booked);
     let raw=generateSlots(av.start_time.slice(0,5),av.end_time.slice(0,5),svc.duration,booked);
-    // Filter out past slots if today
     const isToday=date===new Date().toISOString().split('T')[0];
     if(isToday){
       const nowMin=new Date().getHours()*60+new Date().getMinutes();
-      raw=raw.filter(s=>s.minutes>nowMin+30); // need at least 30min notice
+      raw=raw.filter(s=>s.minutes>nowMin+30);
     }
     setSlots(scoreSlots(raw,booked,svc.duration));
     setLoadingSlots(false);
@@ -150,56 +221,45 @@ export default function BookingPage() {
 
   async function submit() {
     setSubmitting(true);
-    const status = depositRequired && !depositPaid ? 'pending-deposit' : 'confirmed';
-    const {data:newBooking, error}=await supabase.from('bookings').insert({
+    const {data:newBooking,error}=await supabase.from('bookings').insert({
       therapist_id:therapist.id, service_id:svc.id,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
       start_time:slot.start, end_time:slot.end,
-      notes:form.notes, status,
+      notes:'', status: depositRequired ? 'pending-deposit' : 'confirmed',
       deposit_required: depositRequired,
       deposit_amount: depositRequired ? depositAmount : 0,
-      deposit_paid: depositPaid,
+      deposit_paid: false,
     }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
-    const bid = newBooking?.id||null;
+    const bid=newBooking?.id||null;
     setBookingId(bid);
 
-    if(depositRequired && !depositPaid) {
-      if(!therapist.stripe_account_id) {
-        await supabase.from('bookings').update({status:'confirmed'}).eq('id',bid);
-        setConfirmed(true);
-        return;
-      }
+    if(depositRequired && therapist.stripe_account_id) {
       setDepositLoading(true);
-      const base = 'https://mybodymap.app';
-      const successUrl = `${base}/deposit-success?booking_id=${bid}&slug=${therapist.custom_url}&name=${encodeURIComponent(form.name.trim())}&email=${encodeURIComponent(form.email.trim())}&phone=${encodeURIComponent(form.phone)}`;
-      const cancelUrl = `${base}/book/${therapist.custom_url}`;
-      const res = await supabase.functions.invoke('create-deposit', {
-        body: {
-          therapist_id: therapist.id,
-          booking_id: bid,
-          amount_cents: depositAmount,
-          client_email: form.email.trim().toLowerCase(),
-          client_name: form.name.trim(),
-          service_name: svc.name,
-          success_url: successUrl,
-          cancel_url: cancelUrl,
+      const res=await supabase.functions.invoke('create-deposit',{
+        body:{
+          therapist_id:therapist.id, booking_id:bid,
+          amount_cents:depositAmount,
+          client_email:form.email.trim().toLowerCase(),
+          service_name:svc.name,
         }
       });
       setDepositLoading(false);
-      if(res.data?.checkout_url) {
-        // Redirect to Stripe hosted checkout — no iframe, no mounting issues
-        window.location.href = res.data.checkout_url;
+      if(res.data?.client_secret){
+        setDepositClientSecret(res.data.client_secret);
         return;
       }
-      const errMsg = res.data?.error || res.error?.message || 'Payment setup failed.';
-      setPaymentError(errMsg);
+      // Edge function error — show it, still let them proceed
+      setPaymentError(res.data?.error || 'Deposit setup failed. Your booking is saved — contact your therapist about the deposit.');
       await supabase.from('bookings').update({status:'confirmed',deposit_required:false}).eq('id',bid);
-      setConfirmed(true);
-      return;
     }
+    setConfirmed(true);
+  }
+
+  async function onDepositSuccess() {
+    await supabase.from('bookings').update({deposit_paid:true,status:'confirmed'}).eq('id',bookingId);
     setConfirmed(true);
   }
 
@@ -210,7 +270,6 @@ export default function BookingPage() {
     </div>
   );
 
-  // Confirmed screen - immediately shows intake link
   if(confirmed) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:'system-ui'}}>
       <div style={{background:C.white,borderRadius:24,padding:'40px 32px',maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
@@ -219,9 +278,8 @@ export default function BookingPage() {
         <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 24px'}}>
           <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> with {therapist.business_name||therapist.full_name}.
         </p>
-        {/* Immediately prompt intake - same flow, no extra steps */}
-        <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px 20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing - takes 60 seconds</div>
+        <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing — takes 60 seconds</div>
           <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
             Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
           </div>
@@ -235,14 +293,11 @@ export default function BookingPage() {
     </div>
   );
 
-  const pct=step===1?16:step===2?40:step===3?64:step===4&&depositRequired?80:100;
-
-  // Step labels
+  const pct=step===1?16:step===2?40:step===3?64:depositClientSecret?90:100;
   const steps=[{n:1,l:'Service'},{n:2,l:'Date & Time'},{n:3,l:'Your Info'},{n:4,l:'Confirm'}];
 
   return (
     <div style={{minHeight:'100vh',background:C.beige,fontFamily:'system-ui,sans-serif'}}>
-      {/* Header */}
       <div style={{background:C.white,borderBottom:`1px solid ${C.light}`,padding:'14px 20px',position:'sticky',top:0,zIndex:10}}>
         <div style={{maxWidth:560,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
@@ -255,14 +310,10 @@ export default function BookingPage() {
               <div style={{fontSize:11,color:C.gray}}>Online booking · No account needed</div>
             </div>
           </div>
-          {/* Step pills */}
           <div style={{display:'flex',gap:4}}>
-            {steps.map(s=>(
-              <div key={s.n} style={{width:8,height:8,borderRadius:'50%',background:s.n<=step?C.forest:C.light,transition:'background 0.3s'}}/>
-            ))}
+            {steps.map(s=>(<div key={s.n} style={{width:8,height:8,borderRadius:'50%',background:s.n<=step?C.forest:C.light,transition:'background 0.3s'}}/>))}
           </div>
         </div>
-        {/* Progress bar */}
         <div style={{maxWidth:560,margin:'10px auto 0',height:2,background:C.light,borderRadius:2}}>
           <div style={{height:2,background:C.forest,width:`${pct}%`,borderRadius:2,transition:'width 0.4s ease'}}/>
         </div>
@@ -270,11 +321,11 @@ export default function BookingPage() {
 
       <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px 100px'}}>
 
-        {/* STEP 1 - Service selection */}
+        {/* STEP 1 */}
         {step===1&&(
           <div>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like - no account needed.</p>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like — no account needed.</p>
             {services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -303,17 +354,15 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 2 - Date + smart time slots */}
+        {/* STEP 2 */}
         {step===2&&(
           <div>
             <button onClick={()=>setStep(1)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Pick your time</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · {svc.duration} min · ${svc.price}</p>
-
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
               <Cal availability={availability} selected={date} onSelect={setDate}/>
             </div>
-
             {date&&(
               <div style={{background:C.white,borderRadius:16,padding:20}}>
                 <div style={{fontSize:12,fontWeight:700,color:C.gray,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:16}}>{fmtDate(date)}</div>
@@ -322,12 +371,9 @@ export default function BookingPage() {
                   :slots.length===0
                     ?<div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>No availability on this day. Try another date.</div>
                     :<div>
-                      {/* Show recommended slots first if any */}
                       {slots.some(s=>s.recommended)&&(
                         <div style={{marginBottom:12}}>
-                          <div style={{fontSize:11,fontWeight:700,color:C.amber,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8,display:'flex',alignItems:'center',gap:4}}>
-                            ⚡ Works best
-                          </div>
+                          <div style={{fontSize:11,fontWeight:700,color:C.amber,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:8}}>⚡ Works best</div>
                           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:12}}>
                             {slots.filter(s=>s.recommended).slice(0,3).map(s=>(
                               <button key={s.start} onClick={()=>setSlot(s)}
@@ -357,11 +403,11 @@ export default function BookingPage() {
                 }
               </div>
             )}
-            {slot&&<button onClick={()=>setStep(3)} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14,transition:'opacity 0.2s'}}>Continue →</button>}
+            {slot&&<button onClick={()=>setStep(3)} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>Continue →</button>}
           </div>
         )}
 
-        {/* STEP 3 - Client details */}
+        {/* STEP 3 */}
         {step===3&&(
           <div>
             <button onClick={()=>setStep(2)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
@@ -369,17 +415,17 @@ export default function BookingPage() {
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{fmtShort(date)} · {slot.display} · {svc.name}</p>
             <div style={{background:C.white,borderRadius:16,padding:22,display:'flex',flexDirection:'column',gap:14}}>
               {[
-                {k:'name',l:'Full name',p:'Jane Smith',r:true,t:'text'},
-                {k:'email',l:'Email address',p:'jane@example.com',r:true,t:'email'},
-                {k:'phone',l:'Phone number',p:'(512) 555-1234',r:true,t:'tel'},
-              ].map(({k,l,p,r,t})=>(
+                {k:'name',l:'Full name',p:'Jane Smith',t:'text'},
+                {k:'email',l:'Email address',p:'jane@example.com',t:'email'},
+                {k:'phone',l:'Phone number',p:'(512) 555-1234',t:'tel'},
+              ].map(({k,l,p,t})=>(
                 <div key={k}>
                   <label style={{fontSize:12,fontWeight:700,color:C.gray,display:'block',marginBottom:6}}>
-                    {l}{r&&<span style={{color:C.danger}}> *</span>}
+                    {l} <span style={{color:C.danger}}>*</span>
                   </label>
                   <input type={t} value={form[k]} placeholder={p} autoComplete={k==='name'?'name':k==='email'?'email':'tel'}
                     onChange={e=>{
-                      let val = e.target.value;
+                      let val=e.target.value;
                       if(k==='phone'){
                         const d=val.replace(/\D/g,'').slice(0,10);
                         val=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
@@ -397,29 +443,27 @@ export default function BookingPage() {
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(!form.phone.trim()) errs.phone='Required';
               if(Object.keys(errs).length){setErrors(errs);return;}
-              // Check if repeat client
-              const { data: prior } = await supabase.from('bookings')
+              const {data:prior}=await supabase.from('bookings')
                 .select('id').eq('therapist_id',therapist.id)
                 .eq('client_email',form.email.trim().toLowerCase())
                 .neq('status','cancelled').limit(1);
-              const isRepeat = prior && prior.length > 0;
+              const isRepeat=prior&&prior.length>0;
               setIsRepeatClient(isRepeat);
-              // Check if deposit required
-              const needsDeposit = therapist.deposit_enabled && !isRepeat;
+              const needsDeposit=therapist.deposit_enabled&&!isRepeat;
               setDepositRequired(needsDeposit);
-              if(needsDeposit) {
-                const depositAmt = Math.round((svc.price * (therapist.deposit_percent||20) / 100) * 100);
-                setDepositAmount(depositAmt);
+              if(needsDeposit){
+                const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
+                setDepositAmount(amt);
               }
               setStep(4);
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>
-              {depositRequired ? 'Continue to Deposit →' : 'Review Booking →'}
+              Review Booking →
             </button>
           </div>
         )}
 
-        {/* STEP 4 - Confirm */}
-        {step===4&&!depositLoading&&(
+        {/* STEP 4 — Confirm */}
+        {step===4&&!depositClientSecret&&!depositLoading&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Confirm your booking</h2>
@@ -431,56 +475,75 @@ export default function BookingPage() {
                 ['Price',`$${svc.price} — pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
               ].map(([l,v],i,arr)=>(
-                <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,
-                  padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
+                <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
                   <span style={{fontSize:13,color:C.gray,flexShrink:0,minWidth:70}}>{l}</span>
                   <span style={{fontSize:13,fontWeight:600,color:C.dark,textAlign:'right'}}>{v}</span>
                 </div>
               ))}
             </div>
-            {/* DEPOSIT NOTICE — shown BEFORE confirm button so client sees it first */}
-            {depositRequired && !depositPaid && (
+            {depositRequired&&(
               <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
                 <span style={{fontSize:22,flexShrink:0}}>💳</span>
                 <div>
-                  <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>
-                    Deposit required: ${(depositAmount/100).toFixed(0)}
-                  </div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>Deposit required: ${(depositAmount/100).toFixed(0)}</div>
                   <div style={{fontSize:12,color:'#92400E',lineHeight:1.5}}>
-                    {(therapist.deposit_percent||20)}% of ${svc.price} is required to hold your spot as a first-time client. Repeat clients are never charged a deposit.
+                    {therapist.deposit_percent||20}% of ${svc.price} to hold your spot. Remaining balance paid at your session.
                   </div>
                 </div>
               </div>
             )}
-            {isRepeatClient && (
+            {isRepeatClient&&(
               <div style={{marginBottom:14,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
-                <span style={{fontSize:16}}>✅</span>
+                <span>✅</span>
                 <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back — no deposit needed for returning clients.</span>
               </div>
             )}
             <button onClick={submit} disabled={submitting}
               style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-              {submitting?'Confirming…':depositRequired&&!depositPaid?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'}
+              {submitting?'Confirming…':depositRequired?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'}
             </button>
-            {!depositRequired && !isRepeatClient && (
+            {!depositRequired&&!isRepeatClient&&(
               <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
                 No payment now. You'll fill your intake form right after booking.
               </p>
             )}
-            {paymentError && (
-              <div style={{marginTop:12,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'12px 14px',fontSize:13,color:'#991B1B'}}>
-                ⚠️ {paymentError}
-              </div>
-            )}
           </div>
         )}
 
-        {/* REDIRECTING TO STRIPE CHECKOUT */}
-        {depositLoading && (
+        {/* DEPOSIT LOADING */}
+        {depositLoading&&(
           <div style={{textAlign:'center',padding:'60px 20px'}}>
-            <div style={{fontSize:36,marginBottom:16}}>💳</div>
-            <div style={{fontSize:16,fontWeight:600,color:C.dark,marginBottom:8}}>Redirecting to payment…</div>
-            <div style={{fontSize:13,color:C.gray}}>You'll be taken to Stripe's secure checkout to pay your deposit.</div>
+            <div style={{fontSize:32,marginBottom:12}}>💳</div>
+            <div style={{fontSize:15,fontWeight:600,color:C.dark,marginBottom:6}}>Setting up payment…</div>
+          </div>
+        )}
+
+        {/* DEPOSIT PAYMENT FORM — embedded, no redirect */}
+        {depositClientSecret&&!confirmed&&(
+          <div>
+            <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+                <div style={{width:44,height:44,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>💳</div>
+                <div>
+                  <div style={{fontSize:16,fontWeight:700,color:C.dark}}>Pay deposit</div>
+                  <div style={{fontSize:13,color:C.gray}}>${(depositAmount/100).toFixed(0)} · {svc?.name}</div>
+                </div>
+              </div>
+              <p style={{fontSize:12,color:C.gray,margin:'0 0 4px',lineHeight:1.5}}>
+                This holds your spot. The remaining ${svc.price-(depositAmount/100)} is paid at your session.
+              </p>
+            </div>
+            {paymentError&&(
+              <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'12px 14px',marginBottom:14,fontSize:13,color:'#991B1B'}}>
+                ⚠️ {paymentError}
+              </div>
+            )}
+            <StripePaymentForm
+              clientSecret={depositClientSecret}
+              depositAmount={depositAmount}
+              onSuccess={onDepositSuccess}
+              onError={msg=>setPaymentError(msg)}
+            />
           </div>
         )}
 
