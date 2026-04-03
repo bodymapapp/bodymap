@@ -468,11 +468,35 @@ export default function BookingPage() {
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(!form.phone.trim()) errs.phone='Required';
               if(Object.keys(errs).length){setErrors(errs);return;}
-              const {data:prior}=await supabase.from('bookings')
+              // Check repeat client by email OR phone OR name — any match = returning client
+              const email = form.email.trim().toLowerCase();
+              const phone = form.phone.replace(/\D/g,'').slice(-10);
+              const name = form.name.trim().toLowerCase();
+
+              let isRepeat = false;
+
+              // 1. Email match
+              const {data:byEmail} = await supabase.from('bookings')
                 .select('id').eq('therapist_id',therapist.id)
-                .eq('client_email',form.email.trim().toLowerCase())
-                .neq('status','cancelled').limit(1);
-              const isRepeat=prior&&prior.length>0;
+                .eq('client_email',email).neq('status','cancelled').limit(1);
+              if (byEmail?.length) isRepeat = true;
+
+              // 2. Phone match (if email didn't match)
+              if (!isRepeat && phone.length >= 7) {
+                const {data:allPhones} = await supabase.from('bookings')
+                  .select('client_phone').eq('therapist_id',therapist.id)
+                  .neq('status','cancelled').not('client_phone','is',null);
+                if ((allPhones||[]).some(b => b.client_phone?.replace(/\D/g,'').slice(-10) === phone))
+                  isRepeat = true;
+              }
+
+              // 3. Name match (if neither email nor phone matched)
+              if (!isRepeat) {
+                const {data:byName} = await supabase.from('bookings')
+                  .select('id').eq('therapist_id',therapist.id)
+                  .ilike('client_name',name).neq('status','cancelled').limit(1);
+                if (byName?.length) isRepeat = true;
+              }
               setIsRepeatClient(isRepeat);
               const needsDeposit=therapist.deposit_enabled&&!isRepeat;
               setDepositRequired(needsDeposit);
@@ -484,7 +508,6 @@ export default function BookingPage() {
                 isRepeat,
                 needsDeposit,
                 email: form.email.trim().toLowerCase(),
-                priorBookings: prior?.length
               });
               if(needsDeposit){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
