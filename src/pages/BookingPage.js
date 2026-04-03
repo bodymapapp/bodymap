@@ -82,8 +82,8 @@ function Cal({availability, selected, onSelect}) {
   );
 }
 
-// Stripe Card Element — reliable, battle-tested, single iframe
-function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) {
+// Stripe Card Element — uses connected account to match payment intent
+function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuccess, onError }) {
   const divRef = useRef(null);
   const stripeRef = useRef(null);
   const cardRef = useRef(null);
@@ -105,8 +105,11 @@ function StripePaymentForm({ clientSecret, depositAmount, onSuccess, onError }) 
       }
       if (!alive || !divRef.current) return;
 
-      // Card element: no clientSecret needed at init — simpler, more reliable
-      stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+      // Match the connected account the payment intent was created on
+      stripeRef.current = window.Stripe(
+        process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+        stripeAccountId ? { stripeAccount: stripeAccountId } : {}
+      );
       const elements = stripeRef.current.elements();
       cardRef.current = elements.create('card', {
         style: {
@@ -539,6 +542,7 @@ export default function BookingPage() {
             <StripePaymentForm
               clientSecret={depositClientSecret}
               depositAmount={depositAmount}
+              stripeAccountId={therapist?.stripe_account_id}
               onSuccess={onDepositSuccess}
               onError={msg=>setPaymentError(msg)}
             />
