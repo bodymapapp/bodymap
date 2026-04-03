@@ -167,74 +167,78 @@ export default function ClientIntake() {
 
   const getLastSession = async (contact) => {
     try {
+      // contact is email when pre-filled from booking, phone when typed on welcome screen
       const isEmail = contact.includes('@');
       const digits = contact.replace(/\D/g, '');
-      
+
+      // Fetch all clients for this therapist once — then match on email, phone, or name
+      const { data: allClients } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('therapist_id', therapist.id);
+
+      if (!allClients?.length) return null;
+
       let client = null;
 
       if (isEmail) {
-        // Try exact email match first
-        const { data } = await supabase.from('clients').select('*')
-          .eq('therapist_id', therapist.id)
-          .eq('email', contact)
-          .maybeSingle();
-        client = data;
-
-        // If no email match, try finding client via booking_id
-        // (booking links client_email to a client record created by phone)
-        if (!client && bookingIdFromUrl) {
-          const { data: session } = await supabase.from('sessions').select('client_id')
-            .eq('therapist_id', therapist.id)
-            .eq('booking_id', bookingIdFromUrl)
-            .maybeSingle();
-          if (session?.client_id) {
-            const { data: c } = await supabase.from('clients').select('*')
-              .eq('id', session.client_id).maybeSingle();
-            client = c;
-          }
-        }
-      } else if (digits.length >= 7) {
-        const { data: all } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
-        client = (all || []).find(c => c.phone && c.phone.replace(/\D/g, '').slice(-10) === digits.slice(-10));
+        // Match by email (case-insensitive)
+        client = allClients.find(c =>
+          c.email && c.email.toLowerCase().trim() === contact.toLowerCase().trim()
+        );
       }
-      
+
+      if (!client && digits.length >= 7) {
+        // Match by phone (last 10 digits)
+        client = allClients.find(c =>
+          c.phone && c.phone.replace(/\D/g, '').slice(-10) === digits.slice(-10)
+        );
+      }
+
+      if (!client && nameFromUrl) {
+        // Match by name (case-insensitive, trimmed)
+        const nameLower = nameFromUrl.toLowerCase().trim();
+        client = allClients.find(c =>
+          c.name && c.name.toLowerCase().trim() === nameLower
+        );
+      }
+
       if (!client) return null;
-      
-      // Get their PREVIOUS session (not the current booking's session)
-      // Exclude the session linked to the current booking so we show the one before
-      let query = supabase.from('sessions').select('*')
+
+      // Get their previous sessions — exclude the current booking's session
+      const { data: sessions } = await supabase
+        .from('sessions')
+        .select('*')
         .eq('client_id', client.id)
         .order('created_at', { ascending: false })
-        .limit(2);
-      
-      const { data: sessions } = await query;
+        .limit(5);
+
       if (!sessions?.length) return null;
-      
-      // Use the most recent session that isn't the current booking
+
+      // Use most recent session that isn't the current booking
       const prev = sessions.find(s => s.booking_id !== bookingIdFromUrl) || sessions[0];
-      
-      const s = prev;
+
       const bodyMap = {};
-      (s.front_focus || []).forEach(id => bodyMap[id] = 'focus');
-      (s.front_avoid || []).forEach(id => bodyMap[id] = 'avoid');
-      (s.back_focus || []).forEach(id => bodyMap[id] = 'focus');
-      (s.back_avoid || []).forEach(id => bodyMap[id] = 'avoid');
-      
+      (prev.front_focus || []).forEach(id => bodyMap[id] = 'focus');
+      (prev.front_avoid || []).forEach(id => bodyMap[id] = 'avoid');
+      (prev.back_focus  || []).forEach(id => bodyMap[id] = 'focus');
+      (prev.back_avoid  || []).forEach(id => bodyMap[id] = 'avoid');
+
       return {
         bodyMap,
         prefs: {
-          pressure: s.pressure || 3,
-          goal: s.goal || 'relax',
-          tableTemp: s.table_temp || 'warm',
-          roomTemp: s.room_temp || 'comfortable',
-          music: s.music || 'soft',
-          lighting: s.lighting || 'dim',
-          conversation: s.conversation || 'quiet',
-          draping: s.draping || 'standard',
-          oilPref: s.oil_pref || 'none',
-          medFlag: s.med_flag || 'none',
+          pressure:     prev.pressure     || 3,
+          goal:         prev.goal         || 'relax',
+          tableTemp:    prev.table_temp   || 'warm',
+          roomTemp:     prev.room_temp    || 'comfortable',
+          music:        prev.music        || 'soft',
+          lighting:     prev.lighting     || 'dim',
+          conversation: prev.conversation || 'quiet',
+          draping:      prev.draping      || 'standard',
+          oilPref:      prev.oil_pref     || 'none',
+          medFlag:      prev.med_flag     || 'none',
         },
-        date: s.created_at,
+        date: prev.created_at,
       };
     } catch (err) {
       console.error('Error fetching last session:', err);
