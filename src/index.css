@@ -133,3 +133,44 @@ body { overflow-x: hidden; }
   .bm-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .bm-sched-stats { grid-template-columns: repeat(2, 1fr) !important; }
 }
+
+/* ── HOME PAGE MOBILE (≤640px) ── */
+@media (max-width: 640px) {
+
+  /* Prevent ALL horizontal overflow site-wide */
+  html, body { overflow-x: hidden !important; max-width: 100vw !important; }
+  * { max-width: 100%; }
+
+  /* Hero: stack columns, hide decorative circle */
+  .bm-home-hero-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+  }
+  /* Hide the right-column hero card on mobile — text is enough */
+  .bm-home-hero-grid > div:nth-child(2) { display: none !important; }
+
+  /* Hero section padding */
+  .bm-home-hero-grid { padding: 0 !important; }
+
+  /* Feature showcase: stack columns */
+  .bm-home-feature-grid {
+    grid-template-columns: 1fr !important;
+    gap: 32px !important;
+    min-height: unset !important;
+  }
+
+  /* Comparison table: stack */
+  .bm-home-compare-grid {
+    grid-template-columns: 1fr !important;
+    gap: 3px !important;
+  }
+
+  /* Section padding reduced on mobile */
+  section { padding-left: 16px !important; padding-right: 16px !important; }
+
+  /* Pricing/feature cards that are auto-fit minmax — already responsive */
+  /* Testimonial cards — already auto-fit */
+
+  /* Nav section padding */
+  .bm-home-hero-grid h1 { font-size: 32px !important; }
+}

@@ -167,7 +167,7 @@ export default function Home() {
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
       <section style={{ minHeight:'92vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'linear-gradient(160deg,#eef8f2 0%,#fafaf8 65%)', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-80, right:-80, width:500, height:500, borderRadius:'50%', background:'rgba(107,158,128,0.07)', pointerEvents:'none' }}/>
-        <div style={{ maxWidth:1100, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }}>
+        <div style={{ maxWidth:1100, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="bm-home-hero-grid">
           <div>
             <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(42,87,65,0.08)', borderRadius:20, padding:'6px 14px', marginBottom:24 }}>
               <span style={{ fontSize:12, fontWeight:700, color:G.mid, textTransform:'uppercase', letterSpacing:'0.08em' }}>Built by therapists, for therapists</span>
@@ -269,7 +269,7 @@ export default function Home() {
           </div>
 
           {/* Slide content */}
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center', minHeight:360 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center', minHeight:360 }} className="bm-home-feature-grid">
             <div>
               <div style={{ fontSize:13, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>{SLIDES[slide].tag}</div>
               <h3 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(22px,3vw,34px)', fontWeight:700, color:G.deep, margin:'0 0 16px', lineHeight:1.2 }}>{SLIDES[slide].headline}</h3>
@@ -303,7 +303,7 @@ export default function Home() {
           <p style={{ fontSize:17, color:G.mid2, maxWidth:520, margin:'0 auto 48px', lineHeight:1.6 }}>
             Same skills. Same training. The difference is what happens between sessions.
           </p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, maxWidth:820, margin:'0 auto', borderRadius:16, overflow:'hidden' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, maxWidth:820, margin:'0 auto', borderRadius:16, overflow:'hidden' }} className="bm-home-compare-grid">
             <div style={{ background:'#FEF2F2', padding:'20px 24px' }}>
               <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.06em' }}>Without BodyMap</div>
               {[
