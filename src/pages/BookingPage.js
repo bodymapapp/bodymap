@@ -256,10 +256,13 @@ export default function BookingPage() {
         setDepositAccountId(res.data.account_id || null);
         return;
       }
-      // Edge function error — show it, still let them proceed
-      setPaymentError(res.data?.error || 'Deposit setup failed. Your booking is saved — contact your therapist about the deposit.');
-      await supabase.from('bookings').update({status:'confirmed',deposit_required:false}).eq('id',bid);
+      // Edge function failed — show the error, DO NOT confirm
+      const errMsg = res.data?.error || res.error?.message || 'Payment setup failed. Please try again.';
+      setPaymentError(errMsg);
+      // Stay on step 4 so the error is visible
+      return;
     }
+    // No deposit required — confirm directly
     setConfirmed(true);
   }
 
@@ -521,6 +524,11 @@ export default function BookingPage() {
               <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
                 No payment now. You'll fill your intake form right after booking.
               </p>
+            )}
+            {paymentError&&(
+              <div style={{marginTop:12,background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px',fontSize:13,color:'#991B1B',lineHeight:1.5}}>
+                ⚠️ <strong>Deposit error:</strong> {paymentError}
+              </div>
             )}
           </div>
         )}
