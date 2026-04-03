@@ -405,7 +405,7 @@ function InsightsView({ appointments }) {
   const intakePct=total>0?Math.round((APPTS.filter(a=>a.status!=='pending-intake').length/total)*100):0;
   const depositPending=APPTS.filter(a=>a.deposit_required&&!a.deposit_paid).length;
   return (
-    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
+    <div className="bm-insights-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
       <div style={{background:'#fff',borderRadius:12,padding:20,gridColumn:'1/-1'}}>
         <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:16}}>📊 Busiest Days</div>
         <div style={{display:'flex',alignItems:'flex-end',gap:10,height:90}}>
