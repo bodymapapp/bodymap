@@ -170,25 +170,50 @@ export default function ClientIntake() {
       const isEmail = contact.includes('@');
       const digits = contact.replace(/\D/g, '');
       
-      // Find client by phone or email
       let client = null;
-      if (!isEmail && digits.length >= 7) {
+
+      if (isEmail) {
+        // Try exact email match first
+        const { data } = await supabase.from('clients').select('*')
+          .eq('therapist_id', therapist.id)
+          .eq('email', contact)
+          .maybeSingle();
+        client = data;
+
+        // If no email match, try finding client via booking_id
+        // (booking links client_email to a client record created by phone)
+        if (!client && bookingIdFromUrl) {
+          const { data: session } = await supabase.from('sessions').select('client_id')
+            .eq('therapist_id', therapist.id)
+            .eq('booking_id', bookingIdFromUrl)
+            .maybeSingle();
+          if (session?.client_id) {
+            const { data: c } = await supabase.from('clients').select('*')
+              .eq('id', session.client_id).maybeSingle();
+            client = c;
+          }
+        }
+      } else if (digits.length >= 7) {
         const { data: all } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id);
         client = (all || []).find(c => c.phone && c.phone.replace(/\D/g, '').slice(-10) === digits.slice(-10));
-      } else if (isEmail) {
-        const { data } = await supabase.from('clients').select('*').eq('therapist_id', therapist.id).eq('email', contact).maybeSingle();
-        client = data;
       }
       
       if (!client) return null;
       
-      // Get their last session
-      const { data: sessions } = await supabase.from('sessions').select('*').eq('client_id', client.id).order('created_at', { ascending: false }).limit(1);
+      // Get their PREVIOUS session (not the current booking's session)
+      // Exclude the session linked to the current booking so we show the one before
+      let query = supabase.from('sessions').select('*')
+        .eq('client_id', client.id)
+        .order('created_at', { ascending: false })
+        .limit(2);
       
+      const { data: sessions } = await query;
       if (!sessions?.length) return null;
       
-      const s = sessions[0];
-      // Convert arrays back to bodyMap object format Demo expects
+      // Use the most recent session that isn't the current booking
+      const prev = sessions.find(s => s.booking_id !== bookingIdFromUrl) || sessions[0];
+      
+      const s = prev;
       const bodyMap = {};
       (s.front_focus || []).forEach(id => bodyMap[id] = 'focus');
       (s.front_avoid || []).forEach(id => bodyMap[id] = 'avoid');
