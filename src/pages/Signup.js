@@ -135,7 +135,7 @@ export default function Signup() {
           },
           body: JSON.stringify({
             from: 'BodyMap <notifications@mybodymap.app>',
-            to: ['hkumar@us.ibm.com'],
+            to: ['bodymap01@gmail.com'],
             subject: `🌿 New BodyMap Signup — ${formData.businessName || formData.fullName}`,
             html: `<div style="font-family:system-ui;max-width:480px;padding:24px">
               <h2 style="color:#2A5741">New therapist signed up!</h2>
