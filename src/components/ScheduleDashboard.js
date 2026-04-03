@@ -79,8 +79,17 @@ function DetailPanel({ appt, therapist, onClose }) {
           )}
           {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
           <div style={{display:'flex',flexDirection:'column',gap:8}}>
-            {appt.status==='intake-done' && appt.sessionId && (
-              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer" style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>🧭 Open Pre-Session Brief</a>
+            {appt.status==='intake-done' && appt.sessionId && appt.clientId && (
+              <a href={`/dashboard/clients/${appt.clientId}/sessions/${appt.sessionId}`}
+                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                📋 Open Session Record
+              </a>
+            )}
+            {appt.status==='intake-done' && appt.sessionId && appt.clientId && (
+              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
+                style={{display:'block',background:'transparent',color:'#2A5741',border:'1.5px solid #2A5741',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center'}}>
+                🧭 Open Pre-Session Brief
+              </a>
             )}
             {appt.status==='pending-intake' && !appt.preview && (
               <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`} style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>💬 Send Intake via SMS</a>
@@ -302,7 +311,10 @@ function WeeklyView({ therapist, appointments, today }) {
                           transition:'all 0.15s'}}
                         onMouseEnter={e=>{if(!appt.preview)e.currentTarget.style.transform='translateY(-1px)';}}
                         onMouseLeave={e=>{e.currentTarget.style.transform='none';}}>
-                        <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
+                        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
+                          <div style={{width:18,height:18,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                          <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
+                        </div>
                         <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
                         <div style={{fontSize:10,color:appt.preview?'#D1D5DB':'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.service||'Session'}</div>
                         <div style={{fontSize:9,fontWeight:600,color:appt.preview?'#D1D5DB':st.color,marginTop:1}}>{st.icon} {appt.preview?'Preview':st.label}</div>
@@ -487,20 +499,22 @@ export default function ScheduleDashboard({ therapist }) {
       const bookingIds = bookings.map(b => b.id);
       const { data: sessions } = await supabase
         .from('sessions')
-        .select('id, booking_id')
+        .select('id, booking_id, client_id')
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
 
       // booking_id → session_id
       const sessionMap = {};
       (sessions || []).forEach(s => {
-        if (s.booking_id) sessionMap[s.booking_id] = s.id;
+        if (s.booking_id) sessionMap[s.booking_id] = { id: s.id, client_id: s.client_id };
       });
 
       const mapped = bookings.map(b => {
         const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
         const [h, m] = b.start_time.split(':').map(Number);
-        const sessionId = sessionMap[b.id] || null;
+        const sessionInfo = sessionMap[b.id] || null;
+        const sessionId = sessionInfo?.id || null;
+        const clientId = sessionInfo?.client_id || null;
 
         // Single condition for complete: bookings.status === 'completed'
         // That is the only field the UI updates when marking a session done.
@@ -517,6 +531,7 @@ export default function ScheduleDashboard({ therapist }) {
           date: bd,
           status,
           sessionId,
+          clientId,
           sessions: 0,
           service: b.services?.name || 'Session',
           notes: b.notes || '',

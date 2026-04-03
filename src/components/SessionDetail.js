@@ -274,7 +274,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </button>
         <div style={{ flex: 1 }}>
           <h2 style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>{client.name}</h2>
-          <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>
+          <p style={{ fontSize: "13px", color: C.gray, margin: 0 }}>
+            <span style={{ fontWeight: 600, color: '#2A5741', marginRight: 8 }}>Session Record</span>
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
