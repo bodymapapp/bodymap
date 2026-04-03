@@ -241,17 +241,31 @@ export default function BookingPage() {
     if(depositRequired && therapist.stripe_account_id) {
       console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);
-      const res=await supabase.functions.invoke('create-deposit',{
-        body:{
-          stripe_account_id: therapist.stripe_account_id,
-          therapist_id: therapist.id,
-          booking_id: bid,
-          amount_cents: depositAmount,
-          client_email: form.email.trim().toLowerCase(),
-          service_name: svc.name,
-          therapist_name: therapist.business_name || therapist.full_name,
+      // Call edge function directly via fetch — supabase.functions.invoke()
+      // was failing at the gateway level before the function ran (no invocation logs)
+      const fnRes = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-deposit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            stripe_account_id: therapist.stripe_account_id,
+            therapist_id: therapist.id,
+            booking_id: bid,
+            amount_cents: depositAmount,
+            client_email: form.email.trim().toLowerCase(),
+            service_name: svc.name,
+            therapist_name: therapist.business_name || therapist.full_name,
+          }),
         }
-      });
+      );
+      const res = { data: fnRes.ok ? await fnRes.json() : null, error: fnRes.ok ? null : { message: `HTTP ${fnRes.status}` } };
+      if (!fnRes.ok) {
+        try { const errBody = await fnRes.clone().json(); res.data = errBody; } catch(e) {}
+      }
       setDepositLoading(false);
       console.log('EDGE FUNCTION RESPONSE:', JSON.stringify(res.data), 'error:', res.error);
       if(res.data?.client_secret){
