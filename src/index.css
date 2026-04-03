@@ -18,17 +18,118 @@ code {
     monospace;
 }
 
-/* BodyMap Mobile Fixes */
 * { box-sizing: border-box; }
 body { overflow-x: hidden; }
 
+/* ── MOBILE FIXES (≤640px) ── */
 @media (max-width: 640px) {
+
+  /* Dashboard outer padding */
+  .bm-dash-pad { padding: 12px 10px !important; }
+
+  /* Nav tabs — smaller text, less padding */
+  .bm-dash-pad > div:first-child button {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+  }
+
+  /* Stats row 4-col → 2x2 */
+  .bm-stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Any 2-col settings grid → stack */
+  .bm-2col { grid-template-columns: 1fr !important; }
+  .bm-profile-grid { grid-template-columns: 1fr !important; }
+
+  /* Integrations row (calendar + stripe) → stack */
+  .bm-integrations { grid-template-columns: 1fr !important; }
+
+  /* Weekly 7-col calendar → horizontal scroll */
+  .bm-weekly-grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    gap: 6px !important;
+    padding-bottom: 8px !important;
+    scrollbar-width: none !important;
+  }
+  .bm-weekly-grid > div {
+    min-width: 100px !important;
+    flex-shrink: 0 !important;
+  }
+
+  /* Monthly 7-col → keep but tighter */
+  .bm-monthly-grid {
+    gap: 2px !important;
+  }
+  .bm-monthly-grid > div {
+    min-height: 36px !important;
+    padding: 3px !important;
+    font-size: 10px !important;
+  }
+
+  /* Schedule stats 4-col → 2x2 */
+  .bm-sched-stats {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* Insights 2-col → stack */
+  .bm-insights-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* QR code section → stack */
+  .bm-qr-section {
+    flex-direction: column !important;
+    gap: 16px !important;
+  }
+
+  /* Billing charts 7-col → scroll */
+  .bm-billing-chart {
+    overflow-x: auto !important;
+  }
+
+  /* Client list cards — full width */
+  .bm-client-grid { grid-template-columns: 1fr !important; }
+
+  /* Tables → scroll */
+  .bm-table-wrap { overflow-x: auto !important; }
+
+  /* General: prevent any fixed-width element from overflowing */
   .bm-ref-grid { grid-template-columns: 1fr !important; }
   .bm-upgrade-banner { flex-direction: column !important; align-items: flex-start !important; }
   .bm-upgrade-banner a { width: 100% !important; text-align: center !important; }
-  .bm-dash-pad { padding: 16px 12px !important; }
-  .bm-profile-grid { grid-template-columns: 1fr !important; }
   .bm-session-grid { grid-template-columns: 1fr !important; }
   .bm-grid-3 { grid-template-columns: 1fr !important; }
-  .bm-table-wrap { overflow-x: auto !important; }
+
+  /* Home page */
+  .bm-home-hero h1 { font-size: 32px !important; }
+  .bm-home-grid { grid-template-columns: 1fr !important; }
+  .bm-comparison-table { font-size: 12px !important; }
+  .bm-comparison-table th, .bm-comparison-table td { padding: 8px 6px !important; }
+
+  /* Booking page already has maxWidth:560 so mostly fine */
+  /* Detail panel full width on mobile */
+  .bm-detail-panel {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* Session detail */
+  .bm-session-detail-grid { grid-template-columns: 1fr !important; }
+
+  /* Body map intake — already responsive via Demo.jsx media queries */
+
+  /* Pricing page */
+  .bm-pricing-grid { grid-template-columns: 1fr !important; }
+  .bm-pricing-cards { flex-direction: column !important; }
+}
+
+/* ── SMALL TABLET (641–900px) ── */
+@media (min-width: 641px) and (max-width: 900px) {
+  .bm-dash-pad { padding: 20px 16px !important; }
+  .bm-stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .bm-sched-stats { grid-template-columns: repeat(2, 1fr) !important; }
 }

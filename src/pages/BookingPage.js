@@ -239,6 +239,7 @@ export default function BookingPage() {
     setBookingId(bid);
 
     if(depositRequired && therapist.stripe_account_id) {
+      console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);
       const res=await supabase.functions.invoke('create-deposit',{
         body:{
@@ -249,6 +250,7 @@ export default function BookingPage() {
         }
       });
       setDepositLoading(false);
+      console.log('EDGE FUNCTION RESPONSE:', JSON.stringify(res.data), 'error:', res.error);
       if(res.data?.client_secret){
         setDepositClientSecret(res.data.client_secret);
         setDepositAccountId(res.data.account_id || null);
@@ -454,6 +456,16 @@ export default function BookingPage() {
               setIsRepeatClient(isRepeat);
               const needsDeposit=therapist.deposit_enabled&&!isRepeat;
               setDepositRequired(needsDeposit);
+              // DEBUG — remove after confirming deposit works
+              console.log('DEPOSIT DEBUG:', {
+                deposit_enabled: therapist.deposit_enabled,
+                deposit_percent: therapist.deposit_percent,
+                stripe_account_id: therapist.stripe_account_id,
+                isRepeat,
+                needsDeposit,
+                email: form.email.trim().toLowerCase(),
+                priorBookings: prior?.length
+              });
               if(needsDeposit){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
