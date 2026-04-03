@@ -125,6 +125,32 @@ export default function Signup() {
     setLoading(true);
     const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: formData.businessName, customUrl: formData.customUrl, phone: formData.phone });
     if (result.success) {
+      // Notify admin of new signup
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_RESEND_API_KEY}`,
+          },
+          body: JSON.stringify({
+            from: 'BodyMap <notifications@mybodymap.app>',
+            to: ['hkumar@us.ibm.com'],
+            subject: `🌿 New BodyMap Signup — ${formData.businessName || formData.fullName}`,
+            html: `<div style="font-family:system-ui;max-width:480px;padding:24px">
+              <h2 style="color:#2A5741">New therapist signed up!</h2>
+              <table style="width:100%;border-collapse:collapse">
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Name</td><td style="padding:8px 0;font-weight:600">${formData.fullName}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Business</td><td style="padding:8px 0;font-weight:600">${formData.businessName || '—'}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Email</td><td style="padding:8px 0;font-weight:600">${formData.email}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Phone</td><td style="padding:8px 0;font-weight:600">${formData.phone || '—'}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">URL</td><td style="padding:8px 0;font-weight:600">mybodymap.app/book/${formData.customUrl}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Time</td><td style="padding:8px 0;font-weight:600">${new Date().toLocaleString()}</td></tr>
+              </table>
+            </div>`,
+          }),
+        });
+      } catch(e) { /* non-blocking */ }
       const postRedirect = localStorage.getItem('postSignupRedirect');
       if (justPaid) {
         try {

@@ -801,7 +801,7 @@ function GrowthEngine() {
 
   return (
     <div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48 }}>
+      <div className="bm-features-testimonials" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:48 }}>
         <div>
           <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:24 }}>
             <div style={{ width:4, height:28, background:C.forest, borderRadius:99 }}/>
@@ -918,7 +918,7 @@ export default function Features() {
               {[
                 { label:"Patterns detected", value:12847, suffix:"+" },
                 { label:"Client retention rate", value:94, suffix:"%" },
-                { label:"Silver per month", prefix:"$", value:19, suffix:"/mo" },
+                { label:"Back office hours saved/mo", value:12, suffix:"hrs" },
               ].map((s,i)=>(
                 <div key={i} style={{ textAlign:"center" }}>
                   <div style={{ fontSize:"clamp(28px,3vw,42px)", fontWeight:700, color:"#fff", fontFamily:"Georgia, serif" }}>
@@ -932,34 +932,34 @@ export default function Features() {
         </div>
       </section>
 
-      {/* THE PROBLEM */}
+      {/* THE OPPORTUNITY */}
       <section style={{ background:"#fff", padding:"80px 24px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:"#DC2626", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>The problem</div>
-              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,3.5vw,48px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:16 }}>
-                Every Session, You Start From Scratch
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>The Opportunity</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,3.5vw,48px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:20 }}>
+                What Makes a Complete Therapist?
               </h2>
-              <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                Paper forms. Verbal check-ins. Clients repeating themselves every visit. Preferences forgotten. Patterns invisible. And 78% of clients switch therapists within 18 months - not because of skill, but because they felt forgotten.
+              <p style={{ fontSize:17, color:C.gray, maxWidth:680, margin:"0 auto", lineHeight:1.75 }}>
+                One who brings both exceptional technique <em>and</em> the technology to deliver an unforgettable experience. A client who feels their therapist remembers everything shared over two years. Who receives a perfectly-timed reminder to take care of themselves. Whose therapist walks in already knowing — so 99% of their energy goes to the work, not the back office. That therapist is you. BodyMap makes it possible.
               </p>
             </div>
           </FadeIn>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
+          <div className="bm-features-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
             {[
-              { before:"'Do you have any injuries?'", after:"Medical flags surface automatically. You already know.", icon:"🏥" },
-              { before:"'What pressure do you prefer?'", after:"Saved from session 1. Carried forward forever. Never asked again.", icon:"💆" },
-              { before:"'Where should I focus today?'", after:"Body map from last session opens on your phone. You walk in knowing.", icon:"🗺️" },
+              { before:"Do you have any injuries?", after:"Medical flags surface automatically. You walk in already knowing.", icon:"🏥" },
+              { before:"What pressure do you prefer?", after:"Saved from session 1. Carried forward forever. Never asked again.", icon:"💆" },
+              { before:"Where should I focus today?", after:"Body map from last session opens on your phone. You walk in knowing.", icon:"🗺️" },
             ].map((item,i)=>(
               <FadeIn key={i} delay={i*0.1}>
                 <div style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, boxShadow:"0 4px 16px rgba(0,0,0,0.06)" }}>
                   <div style={{ background:"#FEF2F2", padding:"20px 24px", borderBottom:`1px solid ${C.border}` }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#DC2626", textTransform:"uppercase", marginBottom:8 }}>Before BodyMap</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#DC2626", textTransform:"uppercase", marginBottom:8 }}>Without BodyMap</div>
                     <div style={{ fontSize:15, color:"#DC2626", fontStyle:"italic" }}>"{item.before}"</div>
                   </div>
                   <div style={{ background:"#F0FDF4", padding:"20px 24px" }}>
-                    <div style={{ fontSize:11, fontWeight:700, color:"#16A34A", textTransform:"uppercase", marginBottom:8 }}>After BodyMap</div>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#16A34A", textTransform:"uppercase", marginBottom:8 }}>With BodyMap</div>
                     <div style={{ fontSize:15, color:"#1F2937", fontWeight:600 }}>{item.after}</div>
                   </div>
                 </div>
@@ -987,7 +987,7 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
             <FadeIn delay={0.1}>
               <PatternDemo />
             </FadeIn>
@@ -1123,9 +1123,42 @@ export default function Features() {
         </div>
       </section>
 
+      {/* CLIENT INTAKE */}
+      <section id="intake" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Client Intake</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Your Client Fills In Their Body.<br/>You Walk In Knowing Everything.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                A visual body map sent right after booking. Clients tap exactly where they need work and what to avoid. Their preferences are saved — never asked again.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🗺️", title:"Visual body map", desc:"Front and back body diagram. Clients tap focus areas and avoid zones. Immediately visible in your dashboard before the session." },
+                { icon:"🔁", title:"Carried forward forever", desc:"Preferences from session 1 pre-fill every future intake. Returning clients confirm in one tap. New info layered on top." },
+                { icon:"🚨", title:"Medical flags surface automatically", desc:"Injuries, conditions, and contraindications are flagged immediately. You see them before you touch the client." },
+                { icon:"📲", title:"Sent automatically after booking", desc:"The intake link goes out the moment a booking is confirmed. No chasing. No paper. No verbal check-ins on the table." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* SCHEDULE */}
       <section id="schedule" style={{ padding:"100px 24px", background:C.beige }}>
-        <div style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
+        <div className="bm-feat-2col" style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
           <FadeIn>
             <div>
               <ScheduleDemo />
@@ -1158,6 +1191,37 @@ export default function Features() {
       </section>
 
       {/* BILLING */}
+      <section id="billing" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Billing</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Know Exactly Where Your<br/>Revenue Stands. Always.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                See expected vs collected revenue at a glance. Daily, weekly, and monthly views. Know which clients owe, which sessions are complete, and what's coming.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📈", title:"Expected vs collected", desc:"See your projected revenue from upcoming bookings and your collected revenue from completed sessions — side by side." },
+                { icon:"📅", title:"Daily, weekly, monthly views", desc:"Switch between views to see today's earnings, this week's performance, or the full month at a glance." },
+                { icon:"💳", title:"Deposit tracking", desc:"Deposits are automatically counted toward expected revenue. See which clients have paid and which are pending." },
+                { icon:"🔔", title:"Session rate drives everything", desc:"Set your hourly rate once in Settings. Every revenue projection across every view updates automatically." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
 
       {/* AI */}
       <section id="ai" style={{ padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
@@ -1173,7 +1237,7 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start" }}>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start" }}>
             <FadeIn delay={0.1}>
               <div>
                 <AIDemo />
@@ -1251,7 +1315,7 @@ export default function Features() {
       <section style={{ background:C.beige, padding:"60px 24px" }}>
         <div style={{ maxWidth:900, margin:"0 auto" }}>
           <FadeIn>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
+            <div className="bm-features-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
               {[
                 { stat:"$0/mo", desc:"Everything included. Free forever. No credit card." },
                 { stat:"30 sec", desc:"Time for a client to complete their intake. No app, no login." },
