@@ -563,9 +563,16 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
                 style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
               />
-              <button onClick={saveNotes} disabled={saving} style={{ marginTop: "12px", background: C.sage, color: C.white, border: "none", padding: "11px 24px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
-                {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Message"}
-              </button>
+              <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
+                <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                  {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Message"}
+                </button>
+                {!session.completed && (
+                  <button onClick={markComplete} disabled={completing} style={{ flex: 1, background: C.forest, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
+                    {completing ? "..." : "✓ Mark Complete"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

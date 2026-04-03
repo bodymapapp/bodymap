@@ -18,11 +18,22 @@ export default function GiftCertificates({ therapist }) {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState({ amount: '', recipient_name: '', recipient_email: '', purchaser_name: '', message: '' });
+  const [clients, setClients] = useState([]);
+  const [purchaserSuggestions, setPurchaserSuggestions] = useState([]);
+  const [recipientSuggestions, setRecipientSuggestions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(null);
 
-  useEffect(() => { load(); }, [therapist.id]);
+  useEffect(() => {
+    load();
+    loadClients();
+  }, [therapist.id]);
+
+  async function loadClients() {
+    const { data } = await supabase.from('clients').select('id,name,email,phone').eq('therapist_id', therapist.id).order('name');
+    setClients(data || []);
+  }
 
   async function load() {
     setLoading(true);
@@ -87,7 +98,7 @@ export default function GiftCertificates({ therapist }) {
         </div>
         <button onClick={() => setShowForm(!showForm)}
           style={{ background:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 18px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-          + Issue Certificate
+          + New Gift Certificate
         </button>
       </div>
 
@@ -108,22 +119,58 @@ export default function GiftCertificates({ therapist }) {
                 placeholder="e.g. 85"
                 style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
             </div>
-            <div>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Purchaser Name</label>
-              <input type="text" value={form.purchaser_name} onChange={e=>setForm(f=>({...f,purchaser_name:e.target.value}))}
-                placeholder="Who is buying this?"
+            <div style={{ position:'relative' }}>
+              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Purchaser Name <span style={{ fontWeight:400 }}>(who's buying)</span></label>
+              <input type="text" value={form.purchaser_name}
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(f=>({...f, purchaser_name:val}));
+                  setPurchaserSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0,5) : []);
+                }}
+                placeholder="Type to search clients…"
                 style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+              {purchaserSuggestions.length > 0 && (
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:C.white, border:`1.5px solid ${C.light}`, borderRadius:8, zIndex:10, boxShadow:'0 4px 16px rgba(0,0,0,0.1)', marginTop:2 }}>
+                  {purchaserSuggestions.map(c => (
+                    <div key={c.id} onClick={() => { setForm(f=>({...f, purchaser_name:c.name})); setPurchaserSuggestions([]); }}
+                      style={{ padding:'10px 14px', cursor:'pointer', fontSize:13, borderBottom:`1px solid ${C.light}` }}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.beige}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <div style={{ fontWeight:600, color:C.dark }}>{c.name}</div>
+                      {c.email && <div style={{ fontSize:11, color:C.gray }}>{c.email}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Recipient Name</label>
-              <input type="text" value={form.recipient_name} onChange={e=>setForm(f=>({...f,recipient_name:e.target.value}))}
-                placeholder="Who will receive this?"
+            <div style={{ position:'relative' }}>
+              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Recipient Name <span style={{ fontWeight:400 }}>(who receives it)</span></label>
+              <input type="text" value={form.recipient_name}
+                onChange={e => {
+                  const val = e.target.value;
+                  setForm(f=>({...f, recipient_name:val}));
+                  setRecipientSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0,5) : []);
+                }}
+                placeholder="Type to search clients…"
                 style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+              {recipientSuggestions.length > 0 && (
+                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:C.white, border:`1.5px solid ${C.light}`, borderRadius:8, zIndex:10, boxShadow:'0 4px 16px rgba(0,0,0,0.1)', marginTop:2 }}>
+                  {recipientSuggestions.map(c => (
+                    <div key={c.id} onClick={() => { setForm(f=>({...f, recipient_name:c.name, recipient_email:c.email||''})); setRecipientSuggestions([]); }}
+                      style={{ padding:'10px 14px', cursor:'pointer', fontSize:13, borderBottom:`1px solid ${C.light}` }}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.beige}
+                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
+                      <div style={{ fontWeight:600, color:C.dark }}>{c.name}</div>
+                      {c.email && <div style={{ fontSize:11, color:C.gray }}>{c.email}</div>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div>
               <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Recipient Email</label>
               <input type="email" value={form.recipient_email} onChange={e=>setForm(f=>({...f,recipient_email:e.target.value}))}
-                placeholder="Optional — to send the certificate"
+                placeholder="Auto-filled if client selected above"
                 style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
             </div>
           </div>
@@ -137,7 +184,7 @@ export default function GiftCertificates({ therapist }) {
           <div style={{ display:'flex', gap:10 }}>
             <button onClick={create} disabled={creating || !form.amount}
               style={{ background:creating||!form.amount?C.sage:C.forest, color:'#fff', border:'none', borderRadius:8, padding:'11px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-              {creating ? 'Creating…' : 'Create Certificate'}
+              {creating ? 'Generating code…' : 'Generate & Save Certificate'}
             </button>
             <button onClick={() => setShowForm(false)}
               style={{ background:'transparent', color:C.gray, border:`1.5px solid ${C.light}`, borderRadius:8, padding:'11px 20px', fontSize:14, cursor:'pointer' }}>
