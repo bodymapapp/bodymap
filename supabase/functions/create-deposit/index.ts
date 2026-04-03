@@ -35,21 +35,20 @@ serve(async (req) => {
       return err('Stripe not connected. Go to Settings and connect your Stripe account.');
     }
 
-    // Destination charge: platform creates the payment intent and routes
-    // funds to the therapist's connected account via transfer_data.
-    // This means NO stripeAccount header needed in the frontend Stripe.js call —
-    // the card form renders using the platform publishable key, no iframe issues.
+    const accountId = therapist.stripe_account_id;
+
+    // Create PI on the connected account directly
     const piRes = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${STRIPE_SECRET}`,
+        'Stripe-Account': accountId,
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         amount: amount_cents.toString(),
         currency: 'usd',
         'payment_method_types[]': 'card',
-        'transfer_data[destination]': therapist.stripe_account_id,
         'metadata[booking_id]': booking_id,
         'metadata[therapist_id]': therapist_id,
         description: `Deposit - ${service_name} with ${therapist.business_name || therapist.full_name}`,
@@ -69,10 +68,10 @@ serve(async (req) => {
       deposit_required: true,
     }).eq('id', booking_id);
 
+    // Return account_id so frontend uses THE SAME account to confirm
     return ok({
       client_secret: pi.client_secret,
-      payment_intent_id: pi.id,
-      amount: amount_cents,
+      account_id: accountId,
     });
 
   } catch (e) {

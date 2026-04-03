@@ -180,6 +180,7 @@ export default function BookingPage() {
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
   const [depositClientSecret,setDepositClientSecret]=useState(null);
+  const [depositAccountId,setDepositAccountId]=useState(null);
   const [depositLoading,setDepositLoading]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
@@ -250,6 +251,7 @@ export default function BookingPage() {
       setDepositLoading(false);
       if(res.data?.client_secret){
         setDepositClientSecret(res.data.client_secret);
+        setDepositAccountId(res.data.account_id || null);
         return;
       }
       // Edge function error — show it, still let them proceed
@@ -542,7 +544,7 @@ export default function BookingPage() {
             <StripePaymentForm
               clientSecret={depositClientSecret}
               depositAmount={depositAmount}
-              stripeAccountId={therapist?.stripe_account_id}
+              stripeAccountId={depositAccountId}
               onSuccess={onDepositSuccess}
               onError={msg=>setPaymentError(msg)}
             />
