@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
@@ -104,91 +104,17 @@ export default function BookingPage() {
   const [submitting,setSubmitting]=useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
-  const [depositClientSecret,setDepositClientSecret]=useState(null);
   const [depositPaid,setDepositPaid]=useState(false);
   const [depositLoading,setDepositLoading]=useState(false);
-  const [paymentProcessing,setPaymentProcessing]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
-  const [stripeReady,setStripeReady]=useState(false);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
-  const stripeRef = useRef(null);
-  const elementsRef = useRef(null);
-
-  // Simple ref for the payment div — ID-based mount is more reliable than callback ref
-  const paymentDivId = 'stripe-payment-element';
 
   useEffect(()=>{load();},[slug]);
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
 
-  // Mount Stripe Payment Element once we have a client_secret
-  useEffect(()=>{
-    const secret = depositClientSecret;
-    if(!secret || secret==='__failed__') return;
-    let pe = null;
-    let mounted = true;
 
-    const mount = async () => {
-      // Wait for the div to be in the DOM
-      let el = null;
-      for(let i=0; i<20; i++){
-        el = document.getElementById(paymentDivId);
-        if(el) break;
-        await new Promise(r=>setTimeout(r,100));
-      }
-      if(!el || !mounted) return;
-
-      if(!window.Stripe){
-        await new Promise(resolve=>{
-          const s=document.createElement('script');
-          s.src='https://js.stripe.com/v3/';
-          s.onload=resolve;
-          document.head.appendChild(s);
-        });
-      }
-      if(!mounted) return;
-
-      stripeRef.current = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,{
-        stripeAccount: therapist.stripe_account_id,
-      });
-      elementsRef.current = stripeRef.current.elements({
-        clientSecret: secret,
-        appearance:{ theme:'stripe', variables:{ colorPrimary:'#2A5741', borderRadius:'8px' } }
-      });
-      pe = elementsRef.current.create('payment');
-      // Only enable Pay button after Stripe signals the element is fully rendered
-      pe.on('ready', () => { if(mounted) setStripeReady(true); });
-      pe.mount(el);
-    };
-
-    mount();
-    return ()=>{
-      mounted=false;
-      try{ if(pe) pe.destroy(); } catch(e){}
-    };
-  },[depositClientSecret]);
-
-  async function handlePayment(){
-    if(!stripeRef.current||!elementsRef.current) return;
-    setPaymentProcessing(true);
-    setPaymentError(null);
-    const {error,paymentIntent} = await stripeRef.current.confirmPayment({
-      elements: elementsRef.current,
-      redirect: 'if_required',
-    });
-    if(error){
-      setPaymentError(error.message);
-      setPaymentProcessing(false);
-      return;
-    }
-    if(paymentIntent?.status==='succeeded'){
-      await supabase.from('bookings').update({deposit_paid:true,status:'confirmed'}).eq('id',bookingId);
-      setDepositPaid(true);
-      setConfirmed(true);
-    }
-    setPaymentProcessing(false);
-  }
 
   async function load() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
@@ -241,14 +167,15 @@ export default function BookingPage() {
     setBookingId(bid);
 
     if(depositRequired && !depositPaid) {
-      // Therapist must have Stripe connected to collect deposits
       if(!therapist.stripe_account_id) {
-        // No Stripe — confirm without deposit and note it
         await supabase.from('bookings').update({status:'confirmed'}).eq('id',bid);
         setConfirmed(true);
         return;
       }
       setDepositLoading(true);
+      const base = 'https://mybodymap.app';
+      const successUrl = `${base}/deposit-success?booking_id=${bid}&slug=${therapist.custom_url}&name=${encodeURIComponent(form.name.trim())}&email=${encodeURIComponent(form.email.trim())}&phone=${encodeURIComponent(form.phone)}`;
+      const cancelUrl = `${base}/book/${therapist.custom_url}`;
       const res = await supabase.functions.invoke('create-deposit', {
         body: {
           therapist_id: therapist.id,
@@ -257,19 +184,20 @@ export default function BookingPage() {
           client_email: form.email.trim().toLowerCase(),
           client_name: form.name.trim(),
           service_name: svc.name,
+          success_url: successUrl,
+          cancel_url: cancelUrl,
         }
       });
       setDepositLoading(false);
-      if(res.data?.client_secret) {
-        setDepositClientSecret(res.data.client_secret);
-        return; // Payment screen renders — do not fall through
+      if(res.data?.checkout_url) {
+        // Redirect to Stripe hosted checkout — no iframe, no mounting issues
+        window.location.href = res.data.checkout_url;
+        return;
       }
-      // Edge function returned an error — surface it, do not confirm
-      const errMsg = res.data?.error || res.error?.message || 'Payment setup failed. Please try again.';
+      const errMsg = res.data?.error || res.error?.message || 'Payment setup failed.';
       setPaymentError(errMsg);
-      // Revert booking to confirmed so therapist can still see it
       await supabase.from('bookings').update({status:'confirmed',deposit_required:false}).eq('id',bid);
-      setDepositClientSecret('__failed__'); // triggers payment screen with error message
+      setConfirmed(true);
       return;
     }
     setConfirmed(true);
@@ -491,7 +419,7 @@ export default function BookingPage() {
         )}
 
         {/* STEP 4 - Confirm */}
-        {step===4&&!depositClientSecret&&(
+        {step===4&&!depositLoading&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Confirm your booking</h2>
@@ -539,52 +467,20 @@ export default function BookingPage() {
                 No payment now. You'll fill your intake form right after booking.
               </p>
             )}
-          </div>
-        )}
-
-        {/* DEPOSIT PAYMENT SCREEN — shown after booking confirmed, before intake */}
-        {depositClientSecret && !confirmed && (
-          <div>
-            <div style={{marginBottom:20,background:C.white,borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
-                <div style={{width:44,height:44,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>💳</div>
-                <div>
-                  <div style={{fontSize:17,fontWeight:700,color:C.dark,fontFamily:'Georgia,serif'}}>Deposit Payment</div>
-                  <div style={{fontSize:13,color:C.gray}}>${(depositAmount/100).toFixed(0)} · {svc?.name} with {therapist?.business_name||therapist?.full_name}</div>
-                </div>
-              </div>
-              <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px',marginBottom:16,fontSize:12,color:C.gray,lineHeight:1.5}}>
-                This deposit holds your spot. The remaining balance is paid at your session.
-              </div>
-            </div>
-
-            <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-              {depositLoading ? (
-                <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Setting up payment…</div>
-              ) : depositClientSecret==='__failed__' ? (
-                <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Your booking is confirmed. The deposit will be arranged directly with your therapist.</div>
-              ) : (
-                <>
-                  <div id="stripe-payment-element" style={{minHeight:120}}/>
-                  {!stripeReady && <div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Loading payment form…</div>}
-                </>
-              )}
-            </div>
-
             {paymentError && (
-              <div style={{background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'12px 14px',marginBottom:14,fontSize:13,color:'#991B1B'}}>
+              <div style={{marginTop:12,background:'#FEF2F2',border:'1px solid #FECACA',borderRadius:10,padding:'12px 14px',fontSize:13,color:'#991B1B'}}>
                 ⚠️ {paymentError}
               </div>
             )}
+          </div>
+        )}
 
-            <button onClick={depositClientSecret==='__failed__'?()=>setConfirmed(true):handlePayment}
-              disabled={depositClientSecret!=='__failed__'&&(paymentProcessing||!stripeReady)}
-              style={{width:'100%',background:paymentProcessing||(!stripeReady&&depositClientSecret!=='__failed__')?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,0.25)`}}>
-              {depositClientSecret==='__failed__'?'Continue to Intake Form →':paymentProcessing?'Processing payment…':`Pay $${(depositAmount/100).toFixed(0)} Deposit`}
-            </button>
-            <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
-              🔒 Secured by Stripe. Your card details are never stored by us.
-            </p>
+        {/* REDIRECTING TO STRIPE CHECKOUT */}
+        {depositLoading && (
+          <div style={{textAlign:'center',padding:'60px 20px'}}>
+            <div style={{fontSize:36,marginBottom:16}}>💳</div>
+            <div style={{fontSize:16,fontWeight:600,color:C.dark,marginBottom:8}}>Redirecting to payment…</div>
+            <div style={{fontSize:13,color:C.gray}}>You'll be taken to Stripe's secure checkout to pay your deposit.</div>
           </div>
         )}
 

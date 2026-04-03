@@ -13,7 +13,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { therapist_id, booking_id, amount_cents, client_email, service_name } = await req.json();
+    const { therapist_id, booking_id, amount_cents, client_email, client_name, service_name, success_url, cancel_url } = await req.json();
 
     const STRIPE_SECRET        = Deno.env.get('STRIPE_SECRET_KEY');
     const SUPABASE_URL         = Deno.env.get('SUPABASE_URL');
@@ -35,8 +35,8 @@ serve(async (req) => {
       return err('Stripe not connected. Go to Settings and connect your Stripe account.');
     }
 
-    // Payment Intent created directly on therapist's Stripe account via Connect
-    const piRes = await fetch('https://api.stripe.com/v1/payment_intents', {
+    // Create Stripe Checkout Session — hosted by Stripe, no iframe needed
+    const csRes = await fetch('https://api.stripe.com/v1/checkout/sessions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${STRIPE_SECRET}`,
@@ -44,33 +44,35 @@ serve(async (req) => {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        amount: amount_cents.toString(),
-        currency: 'usd',
+        mode: 'payment',
         'payment_method_types[]': 'card',
+        'line_items[0][price_data][currency]': 'usd',
+        'line_items[0][price_data][product_data][name]': `Deposit – ${service_name}`,
+        'line_items[0][price_data][product_data][description]': `Session deposit with ${therapist.business_name || therapist.full_name}. Remaining balance paid at session.`,
+        'line_items[0][price_data][unit_amount]': amount_cents.toString(),
+        'line_items[0][quantity]': '1',
+        customer_email: client_email,
+        success_url: success_url,
+        cancel_url: cancel_url,
         'metadata[booking_id]': booking_id,
         'metadata[therapist_id]': therapist_id,
-        description: `Deposit - ${service_name} with ${therapist.business_name || therapist.full_name}`,
-        receipt_email: client_email,
       }),
     });
 
-    const pi = await piRes.json();
+    const cs = await csRes.json();
 
-    if (!piRes.ok) {
-      return err(`Stripe error: ${pi.error?.message || 'unknown'}`);
+    if (!csRes.ok) {
+      return err(`Stripe error: ${cs.error?.message || 'unknown'}`);
     }
 
+    // Store session ID on booking
     await supabase.from('bookings').update({
-      deposit_payment_intent: pi.id,
+      deposit_payment_intent: cs.id,
       deposit_amount: amount_cents,
       deposit_required: true,
     }).eq('id', booking_id);
 
-    return ok({
-      client_secret: pi.client_secret,
-      payment_intent_id: pi.id,
-      amount: amount_cents,
-    });
+    return ok({ checkout_url: cs.url });
 
   } catch (e) {
     return err(`Unexpected error: ${e?.message ?? String(e)}`);

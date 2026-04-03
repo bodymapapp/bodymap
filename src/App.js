@@ -23,6 +23,7 @@ import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
 import ClientIntake from './pages/ClientIntake';
 import BookingPage from './pages/BookingPage';
+import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
 import Feedback from './pages/Feedback';
 import CareSummary from './pages/CareSummary';
@@ -63,6 +64,7 @@ function App() {
           <Route path="/dashboard/cal-connect" element={<ProtectedRoute><CalConnect /></ProtectedRoute>} />
           <Route path="/dashboard/stripe-connect" element={<ProtectedRoute><StripeConnect /></ProtectedRoute>} />
           <Route path="/book/:slug" element={<BookingPage />} />
+          <Route path="/deposit-success" element={<DepositSuccess />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
         <Analytics />
