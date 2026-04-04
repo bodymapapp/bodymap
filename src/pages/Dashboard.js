@@ -102,12 +102,17 @@ function ServicesAndAvailability({ therapist }) {
   }
 
   async function updateHours(id, field, val) {
-    if (field === 'add_break') {
-      await supabase.from('availability').update({ break_start: '12:00', break_end: '13:00' }).eq('id', id);
-      setAvailability(a => a.map(x => x.id === id ? { ...x, break_start: '12:00', break_end: '13:00' } : x));
-    } else if (field === 'clear_break') {
-      await supabase.from('availability').update({ break_start: null, break_end: null }).eq('id', id);
-      setAvailability(a => a.map(x => x.id === id ? { ...x, break_start: null, break_end: null } : x));
+    if (field === 'break_preset') {
+      const presets = {
+        'none':  { break_start: null, break_end: null },
+        '11:30': { break_start: '11:30', break_end: '12:30' },
+        '12:00': { break_start: '12:00', break_end: '13:00' },
+        '12:30': { break_start: '12:30', break_end: '13:30' },
+        '13:00': { break_start: '13:00', break_end: '14:00' },
+      };
+      const update = presets[val] || { break_start: null, break_end: null };
+      await supabase.from('availability').update(update).eq('id', id);
+      setAvailability(a => a.map(x => x.id === id ? { ...x, ...update } : x));
     } else {
       await supabase.from('availability').update({ [field]: val }).eq('id', id);
       setAvailability(a => a.map(x => x.id === id ? { ...x, [field]: val } : x));
@@ -147,21 +152,21 @@ function ServicesAndAvailability({ therapist }) {
         {/* Add service - always visible inline */}
         <div style={{ background:'#F9FAFB', borderRadius:10, padding:14, border:`1.5px dashed ${C2.lightGray}` }}>
           <p style={{ fontSize:'11px', fontWeight:700, color:C2.gray, margin:'0 0 10px', textTransform:'uppercase', letterSpacing:'0.06em' }}>+ Add a service</p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr auto auto', gap:8, alignItems:'center' }}>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:8, alignItems:'center' }}>
             <select value={draft.preset} onChange={e => handlePreset(e.target.value)}
-              style={{ padding:'10px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:13, fontFamily:'system-ui', background:'#fff', color: draft.preset ? C2.darkGray : C2.gray, outline:'none', cursor:'pointer' }}>
+              style={{ flex:'1 1 180px', padding:'10px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:16, fontFamily:'system-ui', background:'#fff', color: draft.preset ? C2.darkGray : C2.gray, outline:'none', cursor:'pointer' }}>
               <option value="" disabled>Select a service type</option>
               {PRESETS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
-            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42 }}>
+            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42, flexShrink:0 }}>
               <input type="number" value={draft.duration} onChange={e => setDraft(d => ({...d, duration:parseInt(e.target.value)||60}))} min="15" max="240"
-                style={{ width:38, border:'none', fontSize:13, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
+                style={{ width:38, border:'none', fontSize:16, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
               <span style={{ fontSize:12, color:C2.gray }}>min</span>
             </div>
-            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42 }}>
+            <div style={{ display:'flex', alignItems:'center', background:'#fff', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'0 10px', height:42, flexShrink:0 }}>
               <span style={{ fontSize:13, color:C2.gray, marginRight:2 }}>$</span>
               <input type="number" value={draft.price} onChange={e => setDraft(d => ({...d, price:parseInt(e.target.value)||0}))} min="0"
-                style={{ width:46, border:'none', fontSize:13, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
+                style={{ width:52, border:'none', fontSize:16, fontWeight:700, color:C2.forest, background:'transparent', outline:'none', textAlign:'center' }} />
             </div>
           </div>
           {isCustom && (
@@ -222,46 +227,40 @@ function ServicesAndAvailability({ therapist }) {
       {/* Working Hours */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off, set your hours and optional break.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off, set your hours and lunch break.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
           {DAYS.map(({ id: dow, label }) => {
             const avail = availability.find(a => a.day_of_week === dow);
             const isOn = avail?.active;
-            const hasBreak = avail?.break_start && avail?.break_end;
+            const breakVal = avail?.break_start ? avail.break_start.slice(0,5) : 'none';
             return (
-              <div key={dow} style={{ background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, transition:'all 0.15s', overflow:'hidden' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px' }}>
+              <div key={dow} style={{ background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, padding:'10px 14px', transition:'all 0.15s' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
                   <button onClick={() => toggleDay(dow)}
                     style={{ width:38, height:20, borderRadius:10, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
                     <div style={{ width:14, height:14, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
                   </button>
-                  <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', width:32, flexShrink:0 }}>{label}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', width:30, flexShrink:0 }}>{label}</span>
                   {isOn && avail ? (
-                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                    <>
                       <input type="time" value={avail.start_time.slice(0,5)} onChange={e => updateHours(avail.id, 'start_time', e.target.value)}
-                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff' }} />
+                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', background:'#fff', flexShrink:0 }} />
                       <span style={{ fontSize:12, color:C2.gray }}>–</span>
                       <input type="time" value={avail.end_time.slice(0,5)} onChange={e => updateHours(avail.id, 'end_time', e.target.value)}
-                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff' }} />
-                      <button onClick={() => updateHours(avail.id, hasBreak ? 'clear_break' : 'add_break', null)}
-                        style={{ fontSize:10, fontWeight:700, color:hasBreak?'#DC2626':C2.sage, background:'transparent', border:`1px solid ${hasBreak?'#FECACA':C2.lightGray}`, borderRadius:6, padding:'4px 8px', cursor:'pointer', whiteSpace:'nowrap' }}>
-                        {hasBreak ? '✕ break' : '+ break'}
-                      </button>
-                    </div>
+                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', background:'#fff', flexShrink:0 }} />
+                      <select value={breakVal} onChange={e => updateHours(avail.id, 'break_preset', e.target.value)}
+                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff', color:C2.gray, flexShrink:0 }}>
+                        <option value="none">No break</option>
+                        <option value="11:30">11:30–12:30</option>
+                        <option value="12:00">12:00–1:00</option>
+                        <option value="12:30">12:30–1:30</option>
+                        <option value="13:00">1:00–2:00</option>
+                      </select>
+                    </>
                   ) : (
                     <span style={{ fontSize:12, color:'#D1D5DB' }}>Off</span>
                   )}
                 </div>
-                {isOn && avail && hasBreak && (
-                  <div style={{ display:'flex', alignItems:'center', gap:6, padding:'0 14px 10px 84px' }}>
-                    <span style={{ fontSize:11, color:C2.gray, fontWeight:600 }}>Break:</span>
-                    <input type="time" value={(avail.break_start||'').slice(0,5)} onChange={e => updateHours(avail.id, 'break_start', e.target.value)}
-                      style={{ padding:'4px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:6, fontSize:11, outline:'none', background:'#fff' }} />
-                    <span style={{ fontSize:11, color:C2.gray }}>–</span>
-                    <input type="time" value={(avail.break_end||'').slice(0,5)} onChange={e => updateHours(avail.id, 'break_end', e.target.value)}
-                      style={{ padding:'4px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:6, fontSize:11, outline:'none', background:'#fff' }} />
-                  </div>
-                )}
               </div>
             );
           })}
