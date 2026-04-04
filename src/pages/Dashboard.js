@@ -102,21 +102,46 @@ function ServicesAndAvailability({ therapist }) {
   }
 
   async function updateHours(id, field, val) {
-    if (field === 'break_preset') {
-      const presets = {
-        'none':  { break_start: null, break_end: null },
-        '11:30': { break_start: '11:30', break_end: '12:30' },
-        '12:00': { break_start: '12:00', break_end: '13:00' },
-        '12:30': { break_start: '12:30', break_end: '13:30' },
-        '13:00': { break_start: '13:00', break_end: '14:00' },
-      };
-      const update = presets[val] || { break_start: null, break_end: null };
-      await supabase.from('availability').update(update).eq('id', id);
-      setAvailability(a => a.map(x => x.id === id ? { ...x, ...update } : x));
-    } else {
-      await supabase.from('availability').update({ [field]: val }).eq('id', id);
-      setAvailability(a => a.map(x => x.id === id ? { ...x, [field]: val } : x));
-    }
+    await supabase.from('availability').update({ [field]: val }).eq('id', id);
+    setAvailability(a => a.map(x => x.id === id ? { ...x, [field]: val } : x));
+  }
+
+  // Time blocks helpers
+  function getBlocks(avail) {
+    if (avail.time_blocks && avail.time_blocks.length > 0) return avail.time_blocks;
+    // Migrate from old start/end format
+    return [{ start: avail.start_time?.slice(0,5) || '09:00', end: avail.end_time?.slice(0,5) || '17:00' }];
+  }
+
+  async function saveBlocks(id, blocks) {
+    const sorted = [...blocks].sort((a,b) => a.start.localeCompare(b.start));
+    await supabase.from('availability').update({
+      time_blocks: sorted,
+      start_time: sorted[0]?.start || '09:00',
+      end_time: sorted[sorted.length-1]?.end || '17:00',
+    }).eq('id', id);
+    setAvailability(a => a.map(x => x.id === id ? { ...x, time_blocks: sorted, start_time: sorted[0]?.start || '09:00', end_time: sorted[sorted.length-1]?.end || '17:00' } : x));
+  }
+
+  function addBlock(avail) {
+    const blocks = getBlocks(avail);
+    const last = blocks[blocks.length - 1];
+    // Suggest 1hr after last block ends
+    const [h, m] = (last?.end || '17:00').split(':').map(Number);
+    const newStart = `${String(h+1).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const newEnd = `${String(h+2).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    saveBlocks(avail.id, [...blocks, { start: newStart, end: newEnd }]);
+  }
+
+  function removeBlock(avail, idx) {
+    const blocks = getBlocks(avail).filter((_, i) => i !== idx);
+    if (blocks.length === 0) return; // keep at least one
+    saveBlocks(avail.id, blocks);
+  }
+
+  function updateBlock(avail, idx, field, val) {
+    const blocks = getBlocks(avail).map((b, i) => i === idx ? { ...b, [field]: val } : b);
+    saveBlocks(avail.id, blocks);
   }
 
   if (loading) return null;
@@ -224,43 +249,55 @@ function ServicesAndAvailability({ therapist }) {
         )}
       </div>
 
-      {/* Working Hours */}
+      {/* Working Hours - Time Blocks */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off, set your hours and lunch break.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off. Add blocks for each working period — e.g. 9–12 and 1–5 for a lunch break.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {DAYS.map(({ id: dow, label }) => {
             const avail = availability.find(a => a.day_of_week === dow);
             const isOn = avail?.active;
-            const breakVal = avail?.break_start ? avail.break_start.slice(0,5) : 'none';
+            const blocks = avail ? getBlocks(avail) : [];
             return (
-              <div key={dow} style={{ background:isOn?'#F9FAFB':'transparent', borderRadius:10, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, padding:'10px 14px', transition:'all 0.15s' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <div key={dow} style={{ background:isOn?'#F9FAFB':'transparent', borderRadius:12, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, padding:'10px 14px', transition:'all 0.15s' }}>
+                {/* Day toggle row */}
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom: isOn ? 10 : 0 }}>
                   <button onClick={() => toggleDay(dow)}
                     style={{ width:38, height:20, borderRadius:10, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
                     <div style={{ width:14, height:14, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
                   </button>
-                  <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', width:30, flexShrink:0 }}>{label}</span>
-                  {isOn && avail ? (
-                    <>
-                      <input type="time" value={avail.start_time.slice(0,5)} onChange={e => updateHours(avail.id, 'start_time', e.target.value)}
-                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', background:'#fff', flexShrink:0 }} />
-                      <span style={{ fontSize:12, color:C2.gray }}>–</span>
-                      <input type="time" value={avail.end_time.slice(0,5)} onChange={e => updateHours(avail.id, 'end_time', e.target.value)}
-                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', background:'#fff', flexShrink:0 }} />
-                      <select value={breakVal} onChange={e => updateHours(avail.id, 'break_preset', e.target.value)}
-                        style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, outline:'none', background:'#fff', color:C2.gray, flexShrink:0 }}>
-                        <option value="none">No break</option>
-                        <option value="11:30">11:30–12:30</option>
-                        <option value="12:00">12:00–1:00</option>
-                        <option value="12:30">12:30–1:30</option>
-                        <option value="13:00">1:00–2:00</option>
-                      </select>
-                    </>
-                  ) : (
-                    <span style={{ fontSize:12, color:'#D1D5DB' }}>Off</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', minWidth:30 }}>{label}</span>
+                  {!isOn && <span style={{ fontSize:12, color:'#D1D5DB' }}>Off</span>}
+                  {isOn && (
+                    <span style={{ fontSize:11, color:C2.gray, marginLeft:'auto' }}>
+                      {blocks.map(b => `${b.start}–${b.end}`).join('  ·  ')}
+                    </span>
                   )}
                 </div>
+                {/* Time blocks */}
+                {isOn && avail && (
+                  <div style={{ paddingLeft:48, display:'flex', flexDirection:'column', gap:6 }}>
+                    {blocks.map((block, idx) => (
+                      <div key={idx} style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                        <input type="time" value={block.start}
+                          onChange={e => updateBlock(avail, idx, 'start', e.target.value)}
+                          style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff', flexShrink:0 }} />
+                        <span style={{ fontSize:13, color:C2.gray }}>–</span>
+                        <input type="time" value={block.end}
+                          onChange={e => updateBlock(avail, idx, 'end', e.target.value)}
+                          style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff', flexShrink:0 }} />
+                        {blocks.length > 1 && (
+                          <button onClick={() => removeBlock(avail, idx)}
+                            style={{ background:'transparent', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16, padding:'0 4px', lineHeight:1, flexShrink:0 }}>×</button>
+                        )}
+                      </div>
+                    ))}
+                    <button onClick={() => addBlock(avail)}
+                      style={{ alignSelf:'flex-start', background:'transparent', border:`1.5px dashed ${C2.lightGray}`, borderRadius:8, padding:'5px 12px', fontSize:12, fontWeight:600, color:C2.sage, cursor:'pointer', marginTop:2 }}>
+                      + Add block
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -8,18 +8,14 @@ const fmt12 = t => { const [h,m]=t.split(':').map(Number); return `${h%12||12}:$
 const fmtDate = s => new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 const fmtShort = s => new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
-function generateSlots(start, end, dur, booked, breakStart, breakEnd) {
+function generateSlots(start, end, dur, booked) {
   const slots=[], [sh,sm]=start.split(':').map(Number), [eh,em]=end.split(':').map(Number);
   let cur=sh*60+sm; const endMin=eh*60+em;
-  const bkStart = breakStart ? breakStart.split(':').map(Number).reduce((h,m,i)=>i===0?h*60:h+m,0) : null;
-  const bkEnd   = breakEnd   ? breakEnd.split(':').map(Number).reduce((h,m,i)=>i===0?h*60:h+m,0) : null;
   while(cur+dur<=endMin){
     const hh=String(Math.floor(cur/60)).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
     const se=`${String(Math.floor((cur+dur)/60)).padStart(2,'0')}:${String((cur+dur)%60).padStart(2,'0')}`;
     const conflict=booked.some(b=>!(se<=b.start_time.slice(0,5)||`${hh}:${mm}`>=b.end_time.slice(0,5)));
-    // Skip slots that overlap with break time
-    const duringBreak = bkStart !== null && bkEnd !== null && cur < bkEnd && (cur+dur) > bkStart;
-    if(!conflict && !duringBreak) slots.push({start:`${hh}:${mm}`,end:se,display:fmt12(`${hh}:${mm}`),minutes:cur});
+    if(!conflict) slots.push({start:`${hh}:${mm}`,end:se,display:fmt12(`${hh}:${mm}`),minutes:cur});
     cur+=30;
   }
   return slots;
@@ -215,12 +211,20 @@ export default function BookingPage() {
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
     const booked=existing||[];
     setExistingBooked(booked);
-    let raw=generateSlots(av.start_time.slice(0,5),av.end_time.slice(0,5),svc.duration,booked, av.break_start?.slice(0,5), av.break_end?.slice(0,5));
     const isToday=date===new Date().toISOString().split('T')[0];
-    if(isToday){
-      const nowMin=new Date().getHours()*60+new Date().getMinutes();
-      raw=raw.filter(s=>s.minutes>nowMin+30);
+    const nowMin=isToday?new Date().getHours()*60+new Date().getMinutes():0;
+
+    // Use time_blocks if available, else fall back to start/end
+    const blocks = (av.time_blocks && av.time_blocks.length > 0)
+      ? av.time_blocks
+      : [{ start: av.start_time?.slice(0,5)||'09:00', end: av.end_time?.slice(0,5)||'17:00' }];
+
+    let raw = [];
+    for (const block of blocks) {
+      const blockSlots = generateSlots(block.start, block.end, svc.duration, booked);
+      raw = [...raw, ...blockSlots];
     }
+    if (isToday) raw = raw.filter(s => s.minutes > nowMin + 30);
     setSlots(scoreSlots(raw,booked,svc.duration));
     setLoadingSlots(false);
   }
