@@ -340,8 +340,8 @@ export default function BookingPage() {
         </p>
         {giftCert && (
           <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',marginBottom:16,textAlign:'center'}}>
-            <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate applied</div>
-            <div style={{fontSize:12,color:'#374151',marginTop:2}}>${giftCert.remaining?.toFixed(0)} credit from code {giftCert.code}</div>
+            <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate confirmed</div>
+            <div style={{fontSize:12,color:'#374151',marginTop:2}}>Your ${giftCert.remaining?.toFixed(0)} credit has been reserved. Mention code {giftCert.code} to your therapist at the session.</div>
           </div>
         )}
         <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
@@ -558,7 +558,7 @@ export default function BookingPage() {
                       type="text"
                       value={giftCode}
                       onChange={e=>{setGiftCode(e.target.value.toUpperCase());setGiftError('');}}
-                      placeholder="Gift certificate code (e.g. ABCD-EFGH-JKLM)"
+                      placeholder="Have a gift certificate? Enter your code here"
                       style={{flex:1,padding:'10px 12px',border:`1.5px solid ${giftError?C.danger:C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
                     />
                     <button onClick={checkGiftCode} disabled={giftChecking||!giftCode.trim()}
@@ -604,9 +604,9 @@ export default function BookingPage() {
               <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
                 <span style={{fontSize:22,flexShrink:0}}>💳</span>
                 <div>
-                  <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>Deposit required: ${(depositAmount/100).toFixed(0)}</div>
+                  <div style={{fontSize:14,fontWeight:700,color:'#92400E',marginBottom:4}}>A deposit of ${(depositAmount/100).toFixed(0)} is required to confirm your spot</div>
                   <div style={{fontSize:12,color:'#92400E',lineHeight:1.5}}>
-                    {therapist.deposit_percent||20}% of ${svc.price} to hold your spot. Remaining balance paid at your session.
+                    As a new client, {therapist.deposit_percent||20}% of the ${svc.price} session fee is collected now to reserve your appointment. The remaining ${svc.price - Math.round(svc.price*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
                   </div>
                 </div>
               </div>
@@ -614,7 +614,7 @@ export default function BookingPage() {
             {isRepeatClient&&(
               <div style={{marginBottom:14,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
                 <span>✅</span>
-                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back — no deposit needed for returning clients.</span>
+                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>✅ Welcome back! As a returning client, no deposit is required — your booking is confirmed instantly.</span>
               </div>
             )}
             <button onClick={submit} disabled={submitting}
@@ -654,7 +654,7 @@ export default function BookingPage() {
                 </div>
               </div>
               <p style={{fontSize:12,color:C.gray,margin:'0 0 4px',lineHeight:1.5}}>
-                This holds your spot. The remaining ${svc.price-(depositAmount/100)} is paid at your session.
+                This secures your appointment. The remaining ${svc.price - (depositAmount/100)} session fee is paid directly to your therapist when you arrive.
               </p>
             </div>
             {paymentError&&(
