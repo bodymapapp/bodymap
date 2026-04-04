@@ -240,7 +240,8 @@ export default function BookingPage() {
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
       start_time:slot.start, end_time:slot.end,
-      notes:'', status: depositRequired ? 'pending-deposit' : 'confirmed',
+      notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
+      status: depositRequired ? 'pending-deposit' : 'confirmed',
       deposit_required: depositRequired,
       deposit_amount: depositRequired ? depositAmount : 0,
       deposit_paid: false,
@@ -337,6 +338,12 @@ export default function BookingPage() {
         <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 24px'}}>
           <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> with {therapist.business_name||therapist.full_name}.
         </p>
+        {giftCert && (
+          <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',marginBottom:16,textAlign:'center'}}>
+            <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate applied</div>
+            <div style={{fontSize:12,color:'#374151',marginTop:2}}>${giftCert.remaining?.toFixed(0)} credit from code {giftCert.code}</div>
+          </div>
+        )}
         <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
           <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing — takes 60 seconds</div>
           <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
