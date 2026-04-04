@@ -10,6 +10,7 @@ import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
 import GiftCertificates from '../components/GiftCertificates';
+import OnboardingChecklist from '../components/OnboardingChecklist';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -692,7 +693,9 @@ export default function Dashboard({ view }) {
     try {
       const clients = await db.getTherapistClients(therapist.id);
       const { data: sessions } = await supabase.from('sessions').select('id').eq('therapist_id', therapist.id);
-      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0 });
+      const { data: services } = await supabase.from('services').select('id').eq('therapist_id', therapist.id).eq('active', true);
+      const { data: availability } = await supabase.from('availability').select('id,active').eq('therapist_id', therapist.id);
+      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0, services: services || [], availability: availability || [] });
     } catch (err) { console.error(err); }
   }
 
@@ -800,12 +803,20 @@ export default function Dashboard({ view }) {
 
         <div style={{ background: C.white, borderRadius: '12px', padding: '32px', minHeight: '400px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           {view === 'clients' && (
-            <ClientList
-              therapistId={therapist?.id}
-              onSelectClient={(c) => navigate(`/dashboard/clients/${c.id}`)}
-              lapsedDays={lapsedDays}
-              customUrl={therapist?.custom_url || ''}
-            />
+            <>
+              <OnboardingChecklist
+                therapist={therapist}
+                services={stats?.services || []}
+                availability={stats?.availability || []}
+                onNavigate={(v) => navigate(`/dashboard/${v}`)}
+              />
+              <ClientList
+                therapistId={therapist?.id}
+                onSelectClient={(c) => navigate(`/dashboard/clients/${c.id}`)}
+                lapsedDays={lapsedDays}
+                customUrl={therapist?.custom_url || ''}
+              />
+            </>
           )}
           {view === 'sessions' && client && (
             <SessionList

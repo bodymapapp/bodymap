@@ -179,6 +179,10 @@ export default function BookingPage() {
   const [submitting,setSubmitting]=useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
+  const [giftCode,setGiftCode]=useState('');
+  const [giftCert,setGiftCert]=useState(null);
+  const [giftError,setGiftError]=useState('');
+  const [giftChecking,setGiftChecking]=useState(false);
   const [depositClientSecret,setDepositClientSecret]=useState(null);
   const [depositAccountId,setDepositAccountId]=useState(null);
   const [depositLoading,setDepositLoading]=useState(false);
@@ -246,6 +250,17 @@ export default function BookingPage() {
     const bid=newBooking?.id||null;
     setBookingId(bid);
 
+    // Apply gift certificate if present
+    if (giftCert) {
+      const newRemaining = Math.max(0, giftCert.remaining - svc.price);
+      await supabase.from('gift_certificates').update({
+        remaining: newRemaining,
+        status: newRemaining <= 0 ? 'redeemed' : 'active',
+        redeemed_at: new Date().toISOString(),
+        redeemed_by_booking_id: bid,
+      }).eq('id', giftCert.id);
+    }
+
     if(depositRequired && therapist.stripe_account_id) {
       console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);
@@ -289,6 +304,17 @@ export default function BookingPage() {
     }
     // No deposit required — confirm directly
     setConfirmed(true);
+  }
+
+  async function checkGiftCode() {
+    if (!giftCode.trim()) return;
+    setGiftChecking(true); setGiftError(''); setGiftCert(null);
+    const code = giftCode.trim().toUpperCase();
+    const { data } = await supabase.from('gift_certificates')
+      .select('*').eq('code', code).eq('therapist_id', therapist.id).eq('status','active').maybeSingle();
+    setGiftChecking(false);
+    if (!data) { setGiftError('Code not found or already used.'); return; }
+    setGiftCert(data);
   }
 
   async function onDepositSuccess() {
@@ -475,8 +501,7 @@ export default function BookingPage() {
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(!form.phone.trim()) errs.phone='Required';
-              if(Object.keys(errs).length){setErrors(errs);return;}
-              // Check repeat client by email OR phone OR name — any match = returning client
+              if(Object.keys(errs).length){setErrors(errs);return;}              // Check repeat client by email OR phone OR name — any match = returning client
               const email = form.email.trim().toLowerCase();
               const phone = form.phone.replace(/\D/g,'').slice(-10);
               const name = form.name.trim().toLowerCase();
@@ -506,17 +531,8 @@ export default function BookingPage() {
                 if (byName?.length) isRepeat = true;
               }
               setIsRepeatClient(isRepeat);
-              const needsDeposit=therapist.deposit_enabled&&!isRepeat;
+              const needsDeposit=therapist.deposit_enabled&&!isRepeat&&!giftCert;
               setDepositRequired(needsDeposit);
-              // DEBUG — remove after confirming deposit works
-              console.log('DEPOSIT DEBUG:', {
-                deposit_enabled: therapist.deposit_enabled,
-                deposit_percent: therapist.deposit_percent,
-                stripe_account_id: therapist.stripe_account_id,
-                isRepeat,
-                needsDeposit,
-                email: form.email.trim().toLowerCase(),
-              });
               if(needsDeposit){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
@@ -525,6 +541,36 @@ export default function BookingPage() {
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>
               Review Booking →
             </button>
+
+            {/* Gift certificate */}
+            <div style={{marginTop:12}}>
+              {!giftCert ? (
+                <div>
+                  <div style={{display:'flex',gap:8,marginTop:4}}>
+                    <input
+                      type="text"
+                      value={giftCode}
+                      onChange={e=>{setGiftCode(e.target.value.toUpperCase());setGiftError('');}}
+                      placeholder="Gift certificate code (e.g. ABCD-EFGH-JKLM)"
+                      style={{flex:1,padding:'10px 12px',border:`1.5px solid ${giftError?C.danger:C.light}`,borderRadius:10,fontSize:14,boxSizing:'border-box',outline:'none',fontFamily:'system-ui',letterSpacing:'0.05em'}}
+                    />
+                    <button onClick={checkGiftCode} disabled={giftChecking||!giftCode.trim()}
+                      style={{background:C.sage,color:'#fff',border:'none',borderRadius:10,padding:'10px 16px',fontSize:13,fontWeight:700,cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>
+                      {giftChecking?'…':'Apply'}
+                    </button>
+                  </div>
+                  {giftError && <div style={{fontSize:12,color:C.danger,marginTop:4}}>{giftError}</div>}
+                </div>
+              ) : (
+                <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'10px 14px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate applied!</div>
+                    <div style={{fontSize:12,color:'#374151'}}>${giftCert.remaining?.toFixed(0)} credit · Code: {giftCert.code}</div>
+                  </div>
+                  <button onClick={()=>{setGiftCert(null);setGiftCode('');}} style={{background:'transparent',border:'none',color:C.gray,cursor:'pointer',fontSize:16}}>×</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
