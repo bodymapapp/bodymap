@@ -542,8 +542,7 @@ export default function BookingPage() {
               Review Booking →
             </button>
 
-            {/* Gift certificate - only show if therapist collects deposits */}
-            {therapist.deposit_enabled && (
+            {/* Gift certificate */}
             <div style={{marginTop:12}}>
               {!giftCert ? (
                 <div>
@@ -572,7 +571,6 @@ export default function BookingPage() {
                 </div>
               )}
             </div>
-            )}
           </div>
         )}
 
