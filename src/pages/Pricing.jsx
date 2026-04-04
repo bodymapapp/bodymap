@@ -22,7 +22,7 @@ export default function Pricing() {
     {
       name: 'Bronze', emoji: '🥉', highlight: false,
       price: { monthly: 0, annual: 0 },
-      tagline: 'Automate your practice. Retain every client. Free forever.',
+      tagline: 'Everything to run your practice — automated. Free to start for a limited time.',
       cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free - No Card',
       ctaAction: () => isAuthenticated ? navigate('/dashboard') : navigate('/signup'),
       features: [
@@ -87,13 +87,16 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🥉 Bronze is free forever - no credit card needed
+          🌿 Free to start — for a limited time
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
-          Simple pricing.<br/>Serious intelligence.
+          Retain and Grow Your Client Base.<br/>Automate the Rest.
         </h1>
-        <p style={{ fontSize:17, color:C.gray, maxWidth:520, margin:'0 0 32px auto', lineHeight:1.7 }}>
-          Start free. Upgrade when your data has something to tell you.
+        <p style={{ fontSize:17, color:C.gray, maxWidth:560, margin:'0 auto 12px', lineHeight:1.7 }}>
+          Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
+        </p>
+        <p style={{ fontSize:14, color:C.sage, fontWeight:600, maxWidth:480, margin:'0 auto 32px', lineHeight:1.6 }}>
+          Bronze is free for a limited time — start today, no card needed.
         </p>
         <div style={{ display:'inline-flex', background:'#fff', borderRadius:10, padding:4, border:`1px solid ${C.border}`, gap:4 }}>
           {['monthly','annual'].map(c => (
