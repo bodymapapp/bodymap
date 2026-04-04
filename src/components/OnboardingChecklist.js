@@ -1,51 +1,56 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
 
-const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', gold:'#D4A843' };
+const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const STEPS = [
-  { id:'service',  icon:'🛁', label:'Add your first service',   desc:'Tell clients what you offer and at what price.',            action:'Go to Settings', view:'settings' },
-  { id:'hours',    icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',        action:'Go to Settings', view:'settings' },
-  { id:'stripe',   icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.',    action:'Go to Settings', view:'settings' },
-  { id:'link',     icon:'🔗', label:'Share your booking link',   desc:'Copy your link and send it to your first client.',          action:'Go to Settings', view:'settings' },
-  { id:'intake',   icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form.',              action:'Go to Clients',  view:'clients'  },
+  { id:'service', icon:'🛁', label:'Add your first service',   desc:'Tell clients what you offer and at what price.',         action:'Go to Settings', view:'settings' },
+  { id:'hours',   icon:'🕐', label:'Set your working hours',   desc:'Clients can only book during your available times.',     action:'Go to Settings', view:'settings' },
+  { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)',desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings' },
+  { id:'link',    icon:'🔗', label:'Share your booking link',  desc:'Copy your link and send it to your first client.',       action:'Go to Settings', view:'settings' },
+  { id:'intake',  icon:'📋', label:'Send your first intake',   desc:'Book a client and send them the intake form.',           action:'Go to Clients',  view:'clients'  },
 ];
 
-export default function OnboardingChecklist({ therapist, services, availability, onNavigate, onDismiss }) {
-  const [dismissed, setDismissed] = useState(false);
+export default function OnboardingChecklist({ therapist, services, availability, onNavigate }) {
+  const [collapsed, setCollapsed] = useState(false);
 
-  const hasService  = services?.length > 0;
-  const hasHours    = availability?.some(a => a.active);
-  const hasStripe   = !!therapist?.stripe_account_id;
-  const hasLink     = hasService && hasHours; // link is usable once service+hours set
-  // intake: we'll check if any sessions exist — passed as prop or always false to start
-  const hasIntake   = false; // simplified — disappears once they've done it manually
+  const hasService = services?.length > 0;
+  const hasHours   = availability?.some(a => a.active);
+  const hasStripe  = !!therapist?.stripe_account_id;
+  const hasLink    = hasService && hasHours;
+  const hasIntake  = false;
 
-  const checks = {
-    service: hasService,
-    hours:   hasHours,
-    stripe:  hasStripe,
-    link:    hasLink,
-    intake:  hasIntake,
-  };
-
-  const done = Object.values(checks).filter(Boolean).length;
+  const checks = { service:hasService, hours:hasHours, stripe:hasStripe, link:hasLink, intake:hasIntake };
+  const done  = Object.values(checks).filter(Boolean).length;
   const total = STEPS.length;
   const allDone = done === total;
 
+  // Auto-collapse on mount if everything done
   useEffect(() => {
-    const key = `bm_onboarding_dismissed_${therapist?.id}`;
-    if (localStorage.getItem(key)) setDismissed(true);
+    const key = `bm_onboarding_collapsed_${therapist?.id}`;
+    if (localStorage.getItem(key)) setCollapsed(true);
   }, [therapist?.id]);
 
-  function dismiss() {
-    const key = `bm_onboarding_dismissed_${therapist?.id}`;
-    localStorage.setItem(key, '1');
-    setDismissed(true);
-    if (onDismiss) onDismiss();
+  function toggleCollapse() {
+    const key = `bm_onboarding_collapsed_${therapist?.id}`;
+    const next = !collapsed;
+    if (next) localStorage.setItem(key, '1');
+    else localStorage.removeItem(key);
+    setCollapsed(next);
   }
 
-  if (dismissed) return null;
+  // Collapsed pill — always visible so therapist can bring it back
+  if (collapsed) {
+    return (
+      <button onClick={toggleCollapse}
+        style={{ display:'flex', alignItems:'center', gap:10, background:C.white, border:`1.5px solid ${C.light}`, borderRadius:12, padding:'10px 16px', marginBottom:16, cursor:'pointer', boxShadow:'0 1px 4px rgba(0,0,0,0.06)', width:'100%', textAlign:'left' }}>
+        <div style={{ height:6, flex:1, background:C.light, borderRadius:3, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${(done/total)*100}%`, background:`linear-gradient(90deg,${C.sage},${C.forest})`, borderRadius:3 }} />
+        </div>
+        <span style={{ fontSize:12, fontWeight:700, color:C.forest, whiteSpace:'nowrap' }}>{allDone ? '✅ Setup complete' : `Setup ${done}/${total}`}</span>
+        <span style={{ fontSize:12, color:C.gray }}>▼ show</span>
+      </button>
+    );
+  }
 
   return (
     <div style={{ background:C.white, border:`1.5px solid ${C.light}`, borderRadius:16, padding:24, marginBottom:24, boxShadow:'0 2px 12px rgba(42,87,65,0.08)' }}>
@@ -58,12 +63,14 @@ export default function OnboardingChecklist({ therapist, services, availability,
           </h3>
           {!allDone && <p style={{ fontSize:13, color:C.gray, margin:0 }}>Complete these steps to start accepting clients.</p>}
         </div>
-        <button onClick={dismiss} style={{ background:'transparent', border:'none', color:C.gray, cursor:'pointer', fontSize:18, padding:'0 0 0 12px', lineHeight:1 }}>×</button>
+        <button onClick={toggleCollapse} style={{ background:'transparent', border:'none', color:C.gray, cursor:'pointer', fontSize:13, fontWeight:600, padding:'0 0 0 12px', whiteSpace:'nowrap' }}>
+          ▲ hide
+        </button>
       </div>
 
       {/* Progress bar */}
       <div style={{ height:6, background:C.light, borderRadius:3, marginBottom:20, overflow:'hidden' }}>
-        <div style={{ height:'100%', width:`${(done/total)*100}%`, background:`linear-gradient(90deg, ${C.sage}, ${C.forest})`, borderRadius:3, transition:'width 0.4s ease' }} />
+        <div style={{ height:'100%', width:`${(done/total)*100}%`, background:`linear-gradient(90deg,${C.sage},${C.forest})`, borderRadius:3, transition:'width 0.4s ease' }} />
       </div>
 
       {/* Steps */}
@@ -89,14 +96,6 @@ export default function OnboardingChecklist({ therapist, services, availability,
           );
         })}
       </div>
-
-      {allDone && (
-        <div style={{ textAlign:'center', marginTop:16 }}>
-          <button onClick={dismiss} style={{ background:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 24px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-            Done — hide this
-          </button>
-        </div>
-      )}
     </div>
   );
 }

@@ -140,8 +140,38 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today }) {
     }
   },[]);
 
+  const fmtDayLabel = (offset) => {
+    const d = addDays(today, offset);
+    if (offset === 0) return 'Today';
+    if (offset === -1) return 'Yesterday';
+    if (offset === 1) return 'Tomorrow';
+    return d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+  };
+
   return (
     <div>
+      {/* Date navigation header with prev/next arrows */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
+        <button onClick={()=>setDayOffset(d=>d-1)}
+          style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 14px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937',flexShrink:0}}>
+          ← Prev
+        </button>
+        <div style={{textAlign:'center',flex:1}}>
+          <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{fmtDayLabel(dayOffset)}</div>
+          {dayOffset !== 0 && (
+            <button onClick={()=>setDayOffset(0)}
+              style={{background:'none',border:'none',fontSize:11,color:'#6B9E80',fontWeight:600,cursor:'pointer',padding:'2px 0'}}>
+              Back to Today
+            </button>
+          )}
+        </div>
+        <button onClick={()=>setDayOffset(d=>d+1)}
+          style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 14px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937',flexShrink:0}}>
+          Next →
+        </button>
+      </div>
+
+      {/* Scrollable day picker */}
       <div ref={scrollRef} style={{display:'flex',gap:6,marginBottom:20,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
         {DAY_RANGE.map(i=>{
           const d=addDays(today,i);
