@@ -42,7 +42,6 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />

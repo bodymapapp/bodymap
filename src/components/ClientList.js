@@ -23,7 +23,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
-  const isPaid = plan === "pro" || plan === "clinic";
+  const isPaid = true; // All clients visible on all tiers - only pattern depth is tier-limited
 
   useEffect(() => {
     if (therapistId) loadClients();
@@ -181,16 +181,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
       </details>
 
       {/* Upgrade banner */}
-      {!isPaid && clients.length > FREE_LIMIT && (
-        <div className="bm-upgrade-banner" style={{ background: "linear-gradient(135deg, #2A5741, #4A8B6B)", borderRadius: "14px", padding: "18px 20px", marginBottom: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <div>
-            <p style={{ fontFamily: "Georgia, serif", fontSize: "15px", fontWeight: "700", color: "#fff", margin: "0 0 3px 0" }}>🎉 Your practice is growing!</p>
-            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.8)", margin: 0 }}>You have {clients.length} clients - upgrade to Silver for unlimited clients + pattern intelligence.</p>
-          </div>
-
-        </div>
-      )}
-
+      
       {/* Zone 1: Today's Focus */}
       {todayFocus.length > 0 && (
         <div style={{ marginBottom: "32px" }}>
@@ -269,12 +260,9 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
-            {filtered.map((client, idx) => {
-              const isLocked = !isPaid && clients.indexOf(client) >= FREE_LIMIT;
-              return isLocked
-                ? <LockedClientCard key={client.id} client={client} initials={initials} avatarColor={avatarColor} />
-                : <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} lapsedDays={lapsedDays} customUrl={customUrl} />;
-            })}
+            {filtered.map((client) => (
+              <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} lapsedDays={lapsedDays} customUrl={customUrl} />
+            ))}
           </div>
         )}
       </div>

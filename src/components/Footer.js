@@ -25,7 +25,6 @@ export default function Footer() {
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <a href="/#features" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Features</a>
               <Link to="/pricing" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Pricing</Link>
-              <Link to="/why-bodymap" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Why BodyMap</Link>
             </div>
           </div>
           <div>

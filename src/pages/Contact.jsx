@@ -24,9 +24,9 @@ export default function Contact() {
       `}</style>
       <Nav />
 
-      <section className="bm-contact-section" style={{ padding: '80px 24px', background: C.lightGray, minHeight: '70vh' }}>
+      <section className="bm-contact-section" style={{ padding: '60px 20px', background: C.lightGray, minHeight: '70vh' }}>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
-          <h1 style={{ fontSize: '48px', fontWeight: '700', color: C.darkGray, marginBottom: '16px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: 'clamp(32px,6vw,48px)', fontWeight: '700', color: C.darkGray, marginBottom: '16px', textAlign: 'center' }}>
             Get in Touch
           </h1>
           <p style={{ fontSize: '18px', color: C.gray, textAlign: 'center', marginBottom: '48px' }}>

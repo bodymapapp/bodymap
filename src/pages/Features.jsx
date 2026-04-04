@@ -865,9 +865,9 @@ function SectionNav() {
   }, []);
   return (
     <div style={{ position:"sticky", top:64, zIndex:90, background:"rgba(255,255,255,0.96)", backdropFilter:"blur(10px)", borderBottom:`1px solid ${C.border}` }}>
-      <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 24px" }}>
+      <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 16px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
         {sections.map(s=>(
-          <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)} style={{ padding:"13px 18px", fontSize:13, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0 }}>{s.label}</a>
+          <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)} style={{ padding:"11px 14px", fontSize:12, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0 }}>{s.label}</a>
         ))}
       </div>
     </div>
