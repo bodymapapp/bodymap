@@ -10,7 +10,7 @@ const STEPS = [
   { id:'intake',  icon:'📋', label:'Send your first intake',   desc:'Book a client and send them the intake form.',           action:'Go to Clients',  view:'clients'  },
 ];
 
-export default function OnboardingChecklist({ therapist, services, availability, onNavigate }) {
+export default function OnboardingChecklist({ therapist, services, availability, sessions, onNavigate }) {
   const [collapsed, setCollapsed] = useState(false);
 
   const hasService = services?.length > 0;

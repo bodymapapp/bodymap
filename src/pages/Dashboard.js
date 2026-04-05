@@ -212,7 +212,10 @@ function ServicesAndAvailability({ therapist }) {
       {/* Deposit Settings */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
+        <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 16px', lineHeight:1.5 }}>
+          💡 Prefer Square or cash? Keep deposits off — clients pay you directly at the session. BodyMap handles scheduling, intake, and reminders regardless.
+        </p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <button onClick={async () => {
             const newVal = !depositEnabled;
@@ -808,6 +811,7 @@ export default function Dashboard({ view }) {
                 therapist={therapist}
                 services={stats?.services || []}
                 availability={stats?.availability || []}
+                sessions={stats?.sessions || 0}
                 onNavigate={(v) => navigate(`/dashboard/${v}`)}
               />
               <ClientList
