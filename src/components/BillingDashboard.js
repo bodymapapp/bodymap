@@ -422,7 +422,7 @@ export default function BillingDashboard({ therapist }) {
         .eq('id', therapist.id)
         .single()
         .then(async ({ data }) => {
-          const connected = !!(data?.stripe_account_id);
+          const connected = !!(data?.stripe_account_id && data?.stripe_account_connected);
           setStripeConnected(connected);
           if (data?.session_rate && data.session_rate > 0) setSessionRate(data.session_rate);
 

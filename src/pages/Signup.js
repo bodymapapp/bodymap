@@ -310,17 +310,32 @@ export default function Signup() {
         </div>
 
         {/* Row 3: Password + Confirm */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>\
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
-              <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Min 8 characters" value={formData.password} onChange={handleChange}
+              <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Create a password" value={formData.password} onChange={handleChange}
                 style={{ ...inputStyle, paddingRight: '28px' }} />
               <button type="button" onClick={() => setShowPassword(p => !p)}
                 style={{ position: 'absolute', right: '0', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '2px', color: C.gray }}>
                 {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
+            {formData.password && (
+              <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                {[
+                  { label: 'At least 8 characters', ok: formData.password.length >= 8 },
+                  { label: 'One uppercase letter', ok: /[A-Z]/.test(formData.password) },
+                  { label: 'One number', ok: /[0-9]/.test(formData.password) },
+                  { label: 'One special character (!@#$...)', ok: /[^A-Za-z0-9]/.test(formData.password) },
+                ].map(({ label, ok }) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 11, color: ok ? '#16A34A' : '#9CA3AF', fontWeight: 700 }}>{ok ? '✓' : '○'}</span>
+                    <span style={{ fontSize: 11, color: ok ? '#16A34A' : '#9CA3AF' }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Confirm Password</label>
@@ -328,6 +343,9 @@ export default function Signup() {
               style={{ ...inputStyle, borderBottomColor: formData.confirmPassword && formData.confirmPassword !== formData.password ? '#EF4444' : '#D1D5DB' }} />
             {formData.confirmPassword && formData.confirmPassword !== formData.password && (
               <p style={{ fontSize: '10px', color: '#EF4444', margin: '2px 0 0 0' }}>Passwords don't match</p>
+            )}
+            {formData.confirmPassword && formData.confirmPassword === formData.password && (
+              <p style={{ fontSize: '10px', color: '#16A34A', margin: '2px 0 0 0' }}>✓ Passwords match</p>
             )}
           </div>
         </div>

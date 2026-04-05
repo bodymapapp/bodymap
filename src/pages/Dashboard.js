@@ -533,14 +533,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }} className="bm-integrations">
         {/* Cal.com */}
         <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>📅 Calendar</p>
-          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Sync your bookings so clients appear in your Schedule tab automatically.</p>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>📅 External Calendar (Optional)</p>
+          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Already using Cal.com for scheduling? Connect it here to sync bookings automatically. If you're using BodyMap's built-in booking, you don't need this.</p>
           {(therapist?.cal_connected || therapist?.cal_api_key) ? (
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                 <span>✅</span>
                 <div>
-                  <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Calendar Connected</div>
+                  <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Cal.com Connected</div>
                   <div style={{ fontSize:'11px', color:'#6B7280' }}>Syncing automatically</div>
                 </div>
               </div>
@@ -554,7 +554,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           ) : (
             <div style={{ background:C2.beige, borderRadius:10, padding:12 }}>
               <p style={{ fontSize:'11px', color:C2.gray, margin:'0 0 8px 0', lineHeight:1.5 }}>
-                Using Cal.com? Find your API key at <strong>cal.com → Settings → Developer → API Keys</strong>
+                <strong>Cal.com users only:</strong> Find your API key at cal.com → Settings → Developer → API Keys
               </p>
               <div style={{ display:'flex', gap:6 }}>
                 <input type="password" value={calKey} onChange={e => setCalKey(e.target.value)} placeholder="cal_live_..."

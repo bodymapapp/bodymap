@@ -15,7 +15,7 @@ export default function OnboardingChecklist({ therapist, services, availability,
 
   const hasService = services?.length > 0;
   const hasHours   = availability?.some(a => a.active);
-  const hasStripe  = !!therapist?.stripe_account_id;
+  const hasStripe  = !!therapist?.stripe_account_connected;
   const hasLink    = hasService && hasHours;
   const hasIntake  = false;
 

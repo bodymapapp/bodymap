@@ -600,7 +600,7 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            {depositRequired&&(
+            {depositRequired&&!giftCert&&(
               <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
                 <span style={{fontSize:22,flexShrink:0}}>💳</span>
                 <div>
@@ -611,10 +611,19 @@ export default function BookingPage() {
                 </div>
               </div>
             )}
-            {isRepeatClient&&(
+            {giftCert&&(
+              <div style={{marginBottom:14,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
+                <span style={{fontSize:18}}>🎁</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>Gift certificate applied — no deposit required</div>
+                  <div style={{fontSize:12,color:'#374151',marginTop:2}}>${giftCert.remaining?.toFixed(0)} credit · Code: {giftCert.code}</div>
+                </div>
+              </div>
+            )}
+            {isRepeatClient&&!giftCert&&(
               <div style={{marginBottom:14,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
                 <span>✅</span>
-                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>✅ Welcome back! As a returning client, no deposit is required — your booking is confirmed instantly.</span>
+                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back! As a returning client, no deposit is required — your booking is confirmed instantly.</span>
               </div>
             )}
             <button onClick={submit} disabled={submitting}
@@ -645,6 +654,10 @@ export default function BookingPage() {
         {/* DEPOSIT PAYMENT FORM — embedded, no redirect */}
         {depositClientSecret&&!confirmed&&(
           <div>
+            <button onClick={()=>{setDepositClientSecret(null);setDepositAccountId(null);setStep(4);}}
+              style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>
+              ‹ Back
+            </button>
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
               <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
                 <div style={{width:44,height:44,borderRadius:'50%',background:'#FEF3C7',display:'flex',alignItems:'center',justifyContent:'center',fontSize:22,flexShrink:0}}>💳</div>
