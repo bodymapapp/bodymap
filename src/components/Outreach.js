@@ -31,6 +31,7 @@ const OPERATORS = [
 ];
 
 export default function Outreach({ therapist, lapsedDays = 60 }) {
+  const twilioReady = !!therapist?.twilio_phone_number;
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [segment, setSegment] = useState('lapsed');
@@ -187,8 +188,13 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
       </div>
 
       {channel === 'sms' && (
-        <div style={{ background:'#FEF3C7', border:'1.5px solid #FCD34D', borderRadius:10, padding:'12px 14px', marginBottom:16, fontSize:13, color:'#92400E', lineHeight:1.5 }}>
-          <strong>SMS setup required.</strong> You need a Twilio account to send texts. Takes about 10 minutes — ask me to walk you through it when ready.
+        <div style={{ background:C.beige, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'14px 16px', marginBottom:16, fontSize:13, color:C.gray, lineHeight:1.6 }}>
+          <div style={{ fontWeight:700, color:C.dark, marginBottom:6 }}>📱 How SMS works in BodyMap</div>
+          Your clients will receive texts from a dedicated phone number assigned to your practice — not your personal number.
+          When setting up, pick a number with your local area code so it feels familiar.
+          <div style={{ marginTop:8, padding:'8px 12px', background:C.white, borderRadius:8, fontSize:12, color:C.forest, fontWeight:600 }}>
+            💡 Tip: Save your BodyMap number in your own phone as "My Practice SMS" so you recognize it if clients reply.
+          </div>
         </div>
       )}
 
@@ -335,8 +341,8 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
 
         <button onClick={sendAll}
           disabled={sending || !message.trim() || (!testMode && segmentClients.length===0) || (testMode && channel==='email' && !testEmail) || (testMode && channel==='sms' && !testPhone) || (channel==='sms')}
-          style={{ width:'100%', background:sending?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:sending||channel==='sms'?'not-allowed':'pointer', opacity:channel==='sms'?0.5:1 }}>
-          {channel==='sms' ? 'SMS requires Twilio setup — coming soon' :
+          style={{ width:'100%', background:sending?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:(sending||(channel==='sms'&&!twilioReady))?'not-allowed':'pointer', opacity:(channel==='sms'&&!twilioReady)?0.5:1 }}>
+          {channel==='sms' && !twilioReady ? 'Connect your SMS number in Settings →' :
            sending ? `Sending…` :
            testMode ? `Send test ${channel === 'email' ? 'email' : 'text'} to me` :
            `Send to ${segmentClients.length} client${segmentClients.length!==1?'s':''} →`}

@@ -327,6 +327,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [saved, setSaved] = React.useState(false);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
   const [calSaved, setCalSaved] = React.useState(false);
+  const [twilioSid, setTwilioSid] = React.useState(therapist?.twilio_account_sid || '');
+  const [twilioToken, setTwilioToken] = React.useState('');
+  const [twilioPhone, setTwilioPhone] = React.useState(therapist?.twilio_phone_number || '');
+  const [twilioSaved, setTwilioSaved] = React.useState(false);
   const [showCalKey, setShowCalKey] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
@@ -634,6 +638,51 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Services + Availability */}
       <ServicesAndAvailability therapist={therapist} />
+
+      {/* SMS / Twilio */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💬 SMS Outreach (via Twilio)</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 6px 0', lineHeight:1.5 }}>Send text messages to lapsed or due clients from a dedicated practice number. Your clients see a local number — not your personal phone.</p>
+        <div style={{ background:C2.beige, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:C2.gray, lineHeight:1.6 }}>
+          <strong>Setup takes about 10 minutes:</strong><br/>
+          1. Go to <a href="https://twilio.com" target="_blank" rel="noreferrer" style={{ color:C2.forest }}>twilio.com</a> → create a free account ($15 trial credit included)<br/>
+          2. Get a phone number — pick your local area code<br/>
+          3. Go to Console → Account Info → copy your Account SID, Auth Token, and phone number<br/>
+          4. Paste them below and save
+        </div>
+        {therapist?.twilio_phone_number ? (
+          <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:'#2A5741' }}>✅ SMS Connected</div>
+              <div style={{ fontSize:11, color:C2.gray }}>Sending from {therapist.twilio_phone_number}</div>
+            </div>
+            <button onClick={async () => {
+              await supabase.from('therapists').update({ twilio_account_sid:null, twilio_auth_token:null, twilio_phone_number:null }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ background:'transparent', border:'1px solid #DC2626', color:'#DC2626', borderRadius:6, padding:'4px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+              Disconnect
+            </button>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <input type="text" value={twilioSid} onChange={e => setTwilioSid(e.target.value)} placeholder="Account SID (ACxxxxxxxxxxxxxxx)"
+              style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
+            <input type="password" value={twilioToken} onChange={e => setTwilioToken(e.target.value)} placeholder="Auth Token"
+              style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
+            <div style={{ display:'flex', gap:8 }}>
+              <input type="text" value={twilioPhone} onChange={e => setTwilioPhone(e.target.value)} placeholder="+15551234567"
+                style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
+              <button onClick={async () => {
+                if (!twilioSid || !twilioToken || !twilioPhone) return;
+                await supabase.from('therapists').update({ twilio_account_sid: twilioSid, twilio_auth_token: twilioToken, twilio_phone_number: twilioPhone }).eq('id', therapist.id);
+                setTwilioSaved(true); setTimeout(() => { setTwilioSaved(false); window.location.reload(); }, 1500);
+              }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+                {twilioSaved ? '✓ Saved!' : 'Save & Connect'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Plan */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
