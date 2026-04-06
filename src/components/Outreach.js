@@ -132,12 +132,14 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
   <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">Sent via BodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
 </div></body></html>`;
 
-        const res = await fetch('https://api.resend.com/emails', {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        const res = await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {
           method:'POST',
-          headers:{ 'Authorization':`Bearer ${process.env.REACT_APP_RESEND_API_KEY}`, 'Content-Type':'application/json' },
+          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey': anonKey },
           body: JSON.stringify({
             from:`${therapistName} <outreach@mybodymap.app>`,
-            to:[email],
+            to: email,
             subject:`A note from ${therapistName}`,
             html: emailHtml,
           }),
