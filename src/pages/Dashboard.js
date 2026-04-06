@@ -11,6 +11,7 @@ import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
 import GiftCertificates from '../components/GiftCertificates';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import Outreach from '../components/Outreach';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -791,6 +792,12 @@ export default function Dashboard({ view }) {
             🤖 AI
           </button>
           <button
+            onClick={() => navigate('/dashboard/outreach')}
+            style={{ flex: 1, background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+          >
+            📣 Outreach
+          </button>
+          <button
             onClick={() => navigate('/dashboard/gifts')}
             style={{ flex: 1, background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
@@ -850,8 +857,11 @@ export default function Dashboard({ view }) {
           {view === 'billing' && (
             <BillingDashboard therapist={therapist} />
           )}
-          {view === 'ai' && (
+          {view === 'ai' && therapist && (
             <AIDashboard therapist={therapist} />
+          )}
+          {view === 'outreach' && therapist && (
+            <Outreach therapist={therapist} lapsedDays={lapsedDays} />
           )}
           {view === 'settings' && (
             <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />

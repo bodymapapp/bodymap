@@ -50,6 +50,7 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard view="clients" /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
+          <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Dashboard view="billing" /></ProtectedRoute>} />
           <Route path="/dashboard/ai" element={<ProtectedRoute><Dashboard view="ai" /></ProtectedRoute>} />
