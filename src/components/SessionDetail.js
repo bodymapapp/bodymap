@@ -256,6 +256,16 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       const notesToSave = JSON.stringify(soap);
       const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notesToSave, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
+
+      // Fire post-session email (non-blocking — don't wait)
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      fetch(`${supabaseUrl}/functions/v1/send-post-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+        body: JSON.stringify({ session_id: session.id }),
+      }).catch(e => console.warn('Post-session email failed silently:', e));
+
       onBack();
     } catch (err) { console.error(err); }
     finally { setCompleting(false); }
