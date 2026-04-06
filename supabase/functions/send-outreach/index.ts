@@ -10,16 +10,19 @@ serve(async (req) => {
 
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
 
-  const { to, subject, html, from } = await req.json();
+  const { to, subject, html, from, reply_to } = await req.json();
 
   if (!to || !html) return new Response(JSON.stringify({ error: 'missing fields' }), {
     status: 400, headers: { ...cors, 'Content-Type': 'application/json' }
   });
 
+  const body: Record<string, unknown> = { from, to: [to], subject, html };
+  if (reply_to) body.reply_to = reply_to;
+
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from, to: [to], subject, html }),
+    body: JSON.stringify(body),
   });
 
   const data = await res.json();

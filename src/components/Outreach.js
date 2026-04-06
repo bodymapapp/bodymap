@@ -142,6 +142,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
             to: email,
             subject:`A note from ${therapistName}`,
             html: emailHtml,
+            reply_to: therapist.email || undefined,
           }),
         });
         if (res.ok) results.success++; else results.failed++;

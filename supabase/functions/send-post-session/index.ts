@@ -94,8 +94,9 @@ serve(async (req) => {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'BodyMap <sessions@mybodymap.app>',
+      from: `${therapistName} <sessions@mybodymap.app>`,
       to: [clientEmail],
+      reply_to: therapist?.email || undefined,
       subject: `Your session summary from ${therapistName}`,
       html: emailHtml,
     }),
