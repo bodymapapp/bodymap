@@ -771,43 +771,43 @@ export default function Dashboard({ view }) {
             onClick={() => navigate('/dashboard')}
             style={{ flex: 1, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            📋 Clients
+            Clients
           </button>
           <button
             onClick={() => navigate('/dashboard/schedule')}
             style={{ flex: 1, background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            📅 Schedule
+            Schedule
           </button>
           <button
             onClick={() => navigate('/dashboard/billing')}
             style={{ flex: 1, background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            💰 Billing
+            Billing
           </button>
           <button
             onClick={() => navigate('/dashboard/ai')}
             style={{ flex: 1, background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            🤖 AI
+            AI
           </button>
           <button
             onClick={() => navigate('/dashboard/outreach')}
             style={{ flex: 1, background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            📣 Outreach
+            Outreach
           </button>
           <button
             onClick={() => navigate('/dashboard/gifts')}
             style={{ flex: 1, background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            🎁 Gifts
+            Gifts
           </button>
           <button
             onClick={() => navigate('/dashboard/settings')}
             style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
           >
-            ⚙️ Settings
+            Settings
           </button>
         </div>
 
