@@ -31,7 +31,7 @@ const OPERATORS = [
 ];
 
 export default function Outreach({ therapist, lapsedDays = 60 }) {
-  const twilioReady = !!therapist?.twilio_phone_number;
+  const twilioReady = !!freshTherapist?.twilio_phone_number;
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [segment, setSegment] = useState('lapsed');
@@ -46,7 +46,14 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
   const [customLapsed, setCustomLapsed] = useState(lapsedDays);
   const [conditions, setConditions] = useState([{ field:'days_since', op:'gt', value:60 }]);
 
-  useEffect(() => { load(); }, [therapist.id]);
+  const [freshTherapist, setFreshTherapist] = useState(therapist);
+
+  useEffect(() => { load(); loadTherapist(); }, [therapist.id]);
+
+  async function loadTherapist() {
+    const { data } = await supabase.from('therapists').select('*').eq('id', therapist.id).single();
+    if (data) setFreshTherapist(data);
+  }
 
   async function load() {
     setLoading(true);
@@ -91,7 +98,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
   }
 
   const segmentClients = getSegment();
-  const bookingLink = `https://mybodymap.app/book/${therapist.custom_url}`;
+  const bookingLink = `https://mybodymap.app/book/${freshTherapist.custom_url || therapist.custom_url}`;
 
   function buildMessage(client) {
     const firstName = client.name?.split(' ')[0] || 'there';
@@ -118,7 +125,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
         if (!email) { results.skipped++; continue; }
 
         const firstName = client.name?.split(' ')[0] || 'there';
-        const therapistName = therapist.business_name || therapist.full_name;
+        const therapistName = freshTherapist.business_name || freshTherapist.full_name || therapist.business_name || therapist.full_name;
         const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#F5F0E8;font-family:system-ui,sans-serif;">
 <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
@@ -143,7 +150,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
             to: email,
             subject:`A note from ${therapistName}`,
             html: emailHtml,
-            reply_to: therapist.email || undefined,
+            reply_to: freshTherapist.email || therapist.email || undefined,
           }),
         });
         if (res.ok) results.success++; else results.failed++;
@@ -161,9 +168,9 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
           body: JSON.stringify({
             to: phone,
             message: msg,
-            account_sid: therapist.twilio_account_sid,
-            auth_token: therapist.twilio_auth_token,
-            from_number: therapist.twilio_phone_number,
+            account_sid: freshTherapist.twilio_account_sid,
+            auth_token: freshTherapist.twilio_auth_token,
+            from_number: freshTherapist.twilio_phone_number,
           }),
         });
         if (res.ok) results.success++; else results.failed++;
