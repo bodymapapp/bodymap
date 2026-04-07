@@ -337,9 +337,13 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
           <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 14px', marginBottom:14, border:`1px solid ${C.light}` }}>
             <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW — as a client sees it:</div>
             <div style={{ fontSize:14, color:C.dark, lineHeight:1.7 }}>
-              {message.replace(/{name}/gi, 'Sarah').split(/{link}/gi).map((part, i, arr) => (
-                <span key={i}>{part}{i < arr.length-1 && <a href={bookingLink} target="_blank" rel="noreferrer" style={{ color:C.forest, fontWeight:600 }}>{bookingLink}</a>}</span>
-              ))}
+              {(() => {
+                const preview = message.replace(/{name}/gi, 'Sarah');
+                const parts = preview.split('{link}');
+                return parts.map((part, i) => (
+                  <span key={i}>{part}{i < parts.length-1 && <a href={bookingLink} target="_blank" rel="noreferrer" style={{ color:C.forest, fontWeight:600, wordBreak:'break-all' }}>{bookingLink}</a>}</span>
+                ));
+              })()}
             </div>
           </div>
         )}
