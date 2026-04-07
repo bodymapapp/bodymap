@@ -323,6 +323,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [saving, setSaving] = React.useState(false);
   const [photoUrl, setPhotoUrl] = React.useState(therapist?.photo_url || '');
   const [pulseEnabled, setPulseEnabled] = React.useState(therapist?.practice_pulse_enabled !== false);
+  const [pulseEmail, setPulseEmail] = React.useState(therapist?.practice_pulse_email || '');
+  const [pulseEmailSaved, setPulseEmailSaved] = React.useState(false);
   const [pulseSending, setPulseSending] = React.useState(false);
   const [pulseSent, setPulseSent] = React.useState(false);
 
@@ -330,6 +332,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     const newVal = !pulseEnabled;
     setPulseEnabled(newVal);
     await supabase.from('therapists').update({ practice_pulse_enabled: newVal }).eq('id', therapist.id);
+  }
+
+  async function savePulseEmail() {
+    await supabase.from('therapists').update({ practice_pulse_email: pulseEmail || null }).eq('id', therapist.id);
+    setPulseEmailSaved(true);
+    setTimeout(() => setPulseEmailSaved(false), 2000);
   }
 
   async function sendTestPulse() {
@@ -718,6 +726,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </button>
             <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON — sent at 6pm' : 'Daily Pulse OFF'}</span>
           </div>
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:C2.gray, display:'block', marginBottom:6 }}>Also send to (optional)</label>
+          <div style={{ display:'flex', gap:8 }}>
+            <input type="email" value={pulseEmail} onChange={e => setPulseEmail(e.target.value)}
+              placeholder="e.g. bodymap01@gmail.com"
+              style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff' }} />
+            <button onClick={savePulseEmail}
+              style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+              {pulseEmailSaved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
+          <p style={{ fontSize:11, color:C2.gray, margin:'6px 0 0' }}>The Pulse always goes to your account email. Add a second address here if you check another inbox more often.</p>
         </div>
         <button onClick={sendTestPulse} disabled={pulseSending}
           style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>

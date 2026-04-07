@@ -19,7 +19,7 @@ serve(async (req) => {
   const singleTherapistId = body?.therapist_id || null;
 
   // Fetch therapists (all or single)
-  let therapistQuery = supabase.from('therapists').select('id, full_name, business_name, email, custom_url, lapsed_days');
+  let therapistQuery = supabase.from('therapists').select('id, full_name, business_name, email, custom_url, lapsed_days, practice_pulse_enabled, practice_pulse_email');
   if (singleTherapistId) therapistQuery = therapistQuery.eq('id', singleTherapistId);
   const { data: therapists } = await therapistQuery;
 
@@ -32,6 +32,7 @@ serve(async (req) => {
 
   for (const therapist of therapists || []) {
     if (!therapist.email) continue;
+    if (therapist.practice_pulse_enabled === false) continue;
 
     const therapistName = therapist.business_name || therapist.full_name || 'Your Practice';
     const lapsedDays = therapist.lapsed_days || 60;
@@ -179,7 +180,7 @@ serve(async (req) => {
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         from: 'Practice Pulse <pulse@mybodymap.app>',
-        to: [therapist.email],
+        to: therapist.practice_pulse_email ? [therapist.email, therapist.practice_pulse_email] : [therapist.email],
         reply_to: therapist.email,
         subject: `Your Practice Pulse — ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
         html: emailHtml,
