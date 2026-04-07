@@ -322,7 +322,29 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [nameError, setNameError] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const [photoUrl, setPhotoUrl] = React.useState(therapist?.photo_url || '');
+  const [pulseEnabled, setPulseEnabled] = React.useState(therapist?.practice_pulse_enabled !== false);
+  const [pulseSending, setPulseSending] = React.useState(false);
+  const [pulseSent, setPulseSent] = React.useState(false);
 
+  async function togglePulse() {
+    const newVal = !pulseEnabled;
+    setPulseEnabled(newVal);
+    await supabase.from('therapists').update({ practice_pulse_enabled: newVal }).eq('id', therapist.id);
+  }
+
+  async function sendTestPulse() {
+    setPulseSending(true);
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+    await fetch(`${supabaseUrl}/functions/v1/practice-pulse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+      body: JSON.stringify({ therapist_id: therapist.id }),
+    });
+    setPulseSending(false);
+    setPulseSent(true);
+    setTimeout(() => setPulseSent(false), 3000);
+  }
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
@@ -682,6 +704,25 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Practice Pulse */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 Practice Pulse</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening — sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={togglePulse}
+              style={{ width:40, height:22, borderRadius:11, background:pulseEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:pulseEnabled?21:3, transition:'left 0.2s' }} />
+            </button>
+            <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON — sent at 6pm' : 'Daily Pulse OFF'}</span>
+          </div>
+        </div>
+        <button onClick={sendTestPulse} disabled={pulseSending}
+          style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
+        </button>
       </div>
 
       {/* Plan */}
