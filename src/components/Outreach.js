@@ -31,7 +31,7 @@ const OPERATORS = [
 ];
 
 export default function Outreach({ therapist, lapsedDays = 60 }) {
-  const twilioReady = !!freshTherapist?.twilio_phone_number;
+  const twilioReady = !!therapist?.twilio_phone_number;
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [segment, setSegment] = useState('lapsed');
@@ -168,9 +168,9 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
           body: JSON.stringify({
             to: phone,
             message: msg,
-            account_sid: freshTherapist.twilio_account_sid,
-            auth_token: freshTherapist.twilio_auth_token,
-            from_number: freshTherapist.twilio_phone_number,
+            account_sid: therapist.twilio_account_sid,
+            auth_token: therapist.twilio_auth_token,
+            from_number: therapist.twilio_phone_number,
           }),
         });
         if (res.ok) results.success++; else results.failed++;
@@ -359,7 +359,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
         )}
 
         <button onClick={sendAll}
-          disabled={sending || !message.trim() || (!testMode && segmentClients.length===0) || (testMode && channel==='email' && !testEmail) || (testMode && channel==='sms' && !testPhone) || (channel==='sms')}
+          disabled={sending || !message.trim() || (!testMode && segmentClients.length===0) || (testMode && channel==='email' && !testEmail) || (testMode && channel==='sms' && !testPhone) || (channel==='sms' && !twilioReady)}
           style={{ width:'100%', background:sending?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:(sending||(channel==='sms'&&!twilioReady))?'not-allowed':'pointer', opacity:(channel==='sms'&&!twilioReady)?0.5:1 }}>
           {channel==='sms' && !twilioReady ? 'Connect your SMS number in Settings →' :
            sending ? `Sending…` :
