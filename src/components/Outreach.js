@@ -158,7 +158,13 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
         const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
           method:'POST',
           headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey': anonKey },
-          body: JSON.stringify({ to: phone, message: msg }),
+          body: JSON.stringify({
+            to: phone,
+            message: msg,
+            account_sid: therapist.twilio_account_sid,
+            auth_token: therapist.twilio_auth_token,
+            from_number: therapist.twilio_phone_number,
+          }),
         });
         if (res.ok) results.success++; else results.failed++;
       }
