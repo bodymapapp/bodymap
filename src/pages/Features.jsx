@@ -848,11 +848,13 @@ function SectionNav() {
     { id:"pattern", label:"Pattern Intelligence" },
     { id:"booking", label:"Online Booking" },
     { id:"deposits", label:"Deposits" },
-    { id:"intake", label:"Client Intake" },
-    { id:"schedule", label:"Schedule" },
+    { id:"intake",    label:"Client Intake" },
+    { id:"schedule",  label:"Schedule" },
     { id:"reminders", label:"Reminders" },
-    { id:"billing", label:"Billing" },
-    { id:"ai", label:"BodyMap AI" },
+    { id:"outreach",  label:"Smart Outreach" },
+    { id:"postsession", label:"Post-Session" },
+    { id:"billing",   label:"Billing" },
+    { id:"ai",        label:"BodyMap AI" },
     { id:"automation", label:"Automation" },
     { id:"growth", label:"Growth Engine" },
   ];
@@ -1185,6 +1187,66 @@ export default function Features() {
               <Link to="/signup" style={{ display:"inline-block", background:C.forest, color:"#fff", padding:"14px 28px", borderRadius:50, fontSize:15, fontWeight:600, textDecoration:"none" }}>
                 Get Started Free →
               </Link>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* SMART OUTREACH */}
+      <section id="outreach" style={{ padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Smart Outreach</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                Fill your calendar without the awkward follow-up
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                Send a personal message to your lapsed clients, your regulars, or anyone past their usual visit interval — in one tap. Each client gets their own message with their name. You set it and forget it.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
+              {[
+                { icon:"🍂", title:"Smart segments", desc:"Lapsed clients. Due for a visit. Never rebooked. Your regulars. Or build your own filter with custom conditions." },
+                { icon:"💬", title:"Email and SMS", desc:"Send by email or text. Each message is personalized with the client's first name and your direct booking link." },
+                { icon:"🧪", title:"Test before you send", desc:"Preview exactly what a client will see and send a test to yourself before it goes to anyone on your list." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:16 }}>{icon}</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:15, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* POST-SESSION BRIEF */}
+      <section id="postsession" style={{ padding:"80px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Post-Session Brief</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                The session doesn't end when the client leaves
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                The moment you mark a session complete, your client receives a beautifully formatted summary — your personal message, session notes, a self-care tip, and a direct link to book their next visit.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
+              {[
+                { icon:"✉️", title:"Automatic delivery", desc:"Fires the instant you mark a session complete. No extra steps. Your client hears from you while the session is still fresh." },
+                { icon:"📋", title:"Your words, their inbox", desc:"Write a personal message in the Session Record — stretches to try, what improved, what to focus on next time. It goes straight to them." },
+                { icon:"📅", title:"Book next session button", desc:"Every brief includes a direct link to book their next appointment. The best time to rebook is right after a great session." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.white, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:16 }}>{icon}</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:15, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
             </div>
           </FadeIn>
         </div>
