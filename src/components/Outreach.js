@@ -4,25 +4,25 @@ import { db, supabase } from '../lib/supabase';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const SEGMENTS = [
-  { id:'lapsed',   label:'Lapsed clients',    desc:'Haven\'t visited in X days' },
-  { id:'due',      label:'Due for a visit',   desc:'Past their usual booking interval' },
-  { id:'onetimer', label:'Never rebooked',    desc:'Came once, never returned' },
-  { id:'frequent', label:'Your regulars',     desc:'4+ visits' },
-  { id:'all',      label:'All clients',       desc:'Everyone with at least one visit' },
-  { id:'custom',   label:'Custom filter',     desc:'You define the conditions' },
+  { id:'lapsed',   label:'Lapsed clients',   desc:'Haven\'t visited in X days' },
+  { id:'due',      label:'Due for a visit',  desc:'Past their usual booking interval' },
+  { id:'onetimer', label:'Never rebooked',   desc:'Came once, never returned' },
+  { id:'frequent', label:'Your regulars',    desc:'4+ visits' },
+  { id:'all',      label:'All clients',      desc:'Everyone with at least one visit' },
+  { id:'custom',   label:'Custom filter',    desc:'You define the conditions' },
 ];
 
 const TEMPLATES = [
   { id:'opening',  label:'You have an opening', text:'Hi {name}, I have an opening this week and thought of you. Would love to see you — grab a spot here: {link}' },
   { id:'checkin',  label:'Gentle check-in',     text:'Hi {name}, just checking in! It\'s been a while since your last visit. How are you feeling? I\'d love to help: {link}' },
   { id:'selfcare', label:'Self-care reminder',  text:'Hi {name}, a gentle reminder that taking care of yourself matters. I have some availability if you\'d like to book: {link}' },
-  { id:'custom',   label:'Write my own',         text:'' },
+  { id:'custom',   label:'Write my own',        text:'' },
 ];
 
 const CONDITION_FIELDS = [
-  { id:'days_since', label:'Days since last visit' },
+  { id:'days_since',     label:'Days since last visit' },
   { id:'total_sessions', label:'Total sessions' },
-  { id:'avg_interval', label:'Avg days between visits' },
+  { id:'avg_interval',   label:'Avg days between visits' },
 ];
 const OPERATORS = [
   { id:'gt', label:'more than' },
@@ -30,35 +30,37 @@ const OPERATORS = [
   { id:'eq', label:'exactly' },
 ];
 
-export default function Outreach({ therapist, lapsedDays = 60 }) {
-  const twilioReady = !!therapist?.twilio_phone_number;
-  const [clients, setClients] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [segment, setSegment] = useState('lapsed');
-  const [template, setTemplate] = useState('opening');
-  const [message, setMessage] = useState(TEMPLATES[0].text);
-  const [channel, setChannel] = useState('email'); // 'email' | 'sms'
-  const [testMode, setTestMode] = useState(false);
+export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) {
+  const [therapist, setTherapist] = useState(therapistProp);
+  const [clients, setClients]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [segment, setSegment]     = useState('lapsed');
+  const [template, setTemplate]   = useState('opening');
+  const [message, setMessage]     = useState(TEMPLATES[0].text);
+  const [channel, setChannel]     = useState('email');
+  const [testMode, setTestMode]   = useState(false);
   const [testEmail, setTestEmail] = useState('');
   const [testPhone, setTestPhone] = useState('');
-  const [sending, setSending] = useState(false);
-  const [sent, setSent] = useState(null);
+  const [sending, setSending]     = useState(false);
+  const [sent, setSent]           = useState(null);
   const [customLapsed, setCustomLapsed] = useState(lapsedDays);
-  const [conditions, setConditions] = useState([{ field:'days_since', op:'gt', value:60 }]);
+  const [conditions, setConditions]     = useState([{ field:'days_since', op:'gt', value:60 }]);
 
-  const [freshTherapist, setFreshTherapist] = useState(therapist);
+  const twilioReady  = !!therapist?.twilio_phone_number;
+  const bookingLink  = `https://mybodymap.app/book/${therapist?.custom_url || ''}`;
+  const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
 
-  useEffect(() => { load(); loadTherapist(); }, [therapist.id]);
+  useEffect(() => {
+    loadClients();
+    // Re-fetch therapist to get latest Twilio credentials
+    supabase.from('therapists').select('*').eq('id', therapistProp.id).single()
+      .then(({ data }) => { if (data) setTherapist(data); });
+  }, [therapistProp.id]);
 
-  async function loadTherapist() {
-    const { data } = await supabase.from('therapists').select('*').eq('id', therapist.id).single();
-    if (data) setFreshTherapist(data);
-  }
-
-  async function load() {
+  async function loadClients() {
     setLoading(true);
-    try { setClients(await db.getTherapistClients(therapist.id) || []); }
-    catch(e) {}
+    try { setClients(await db.getTherapistClients(therapistProp.id) || []); }
+    catch(e) { console.error(e); }
     setLoading(false);
   }
 
@@ -70,10 +72,10 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
     return Math.round(total/(sessions.length-1));
   }
 
-  function getClientValue(client, field) {
-    if (field === 'days_since') return client.days_since_visit;
-    if (field === 'total_sessions') return client.total_sessions;
-    if (field === 'avg_interval') return avgInterval(client);
+  function getClientValue(c, field) {
+    if (field === 'days_since')     return c.days_since_visit;
+    if (field === 'total_sessions') return c.total_sessions;
+    if (field === 'avg_interval')   return avgInterval(c);
     return null;
   }
 
@@ -98,7 +100,6 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
   }
 
   const segmentClients = getSegment();
-  const bookingLink = `https://mybodymap.app/book/${freshTherapist.custom_url || therapist.custom_url}`;
 
   function buildMessage(client) {
     const firstName = client.name?.split(' ')[0] || 'there';
@@ -110,23 +111,24 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
     setSending(true); setSent(null);
 
     const targets = testMode
-      ? [{ name:'Test Client', email: testEmail, phone: testPhone, id:'test' }]
+      ? [{ name:'Sarah Test', email:testEmail, phone:testPhone, id:'test' }]
       : segmentClients;
 
     const results = { success:0, failed:0, skipped:0 };
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey     = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
     for (const client of targets) {
       const msg = testMode
         ? message.replace(/{name}/gi, 'Sarah').replace(/{link}/gi, bookingLink)
         : buildMessage(client);
 
-      if (channel === 'email') {
-        const email = client.email;
-        if (!email) { results.skipped++; continue; }
+      try {
+        if (channel === 'email') {
+          const email = client.email;
+          if (!email) { results.skipped++; continue; }
 
-        const firstName = client.name?.split(' ')[0] || 'there';
-        const therapistName = freshTherapist.business_name || freshTherapist.full_name || therapist.business_name || therapist.full_name;
-        const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
+          const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#F5F0E8;font-family:system-ui,sans-serif;">
 <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
   <div style="text-align:center;margin-bottom:20px;">
@@ -140,41 +142,26 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
   <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">Sent via BodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
 </div></body></html>`;
 
-        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-        const res = await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey': anonKey },
-          body: JSON.stringify({
-            from:`${therapistName} <outreach@mybodymap.app>`,
-            to: email,
-            subject:`A note from ${therapistName}`,
-            html: emailHtml,
-            reply_to: freshTherapist.email || therapist.email || undefined,
-          }),
-        });
-        if (res.ok) results.success++; else results.failed++;
+          const res = await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey':anonKey },
+            body: JSON.stringify({ from:`${therapistName} <outreach@mybodymap.app>`, to:email, subject:`A note from ${therapistName}`, html:emailHtml, reply_to:therapist?.email }),
+          });
+          if (res.ok) results.success++; else results.failed++;
 
-      } else {
-        // SMS via edge function
-        const phone = client.phone;
-        if (!phone) { results.skipped++; continue; }
+        } else {
+          // SMS
+          const phone = client.phone;
+          if (!phone) { results.skipped++; continue; }
 
-        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-        const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey': anonKey },
-          body: JSON.stringify({
-            to: phone,
-            message: msg,
-            account_sid: therapist.twilio_account_sid,
-            auth_token: therapist.twilio_auth_token,
-            from_number: therapist.twilio_phone_number,
-          }),
-        });
-        if (res.ok) results.success++; else results.failed++;
-      }
+          const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
+            method:'POST',
+            headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey':anonKey },
+            body: JSON.stringify({ to:phone, message:msg, account_sid:therapist?.twilio_account_sid, auth_token:therapist?.twilio_auth_token, from_number:therapist?.twilio_phone_number }),
+          });
+          if (res.ok) results.success++; else results.failed++;
+        }
+      } catch(e) { results.failed++; }
 
       await new Promise(r => setTimeout(r, 150));
     }
@@ -182,6 +169,11 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
     setSent(results);
     setSending(false);
   }
+
+  const canSend = !sending && message.trim() &&
+    (testMode
+      ? (channel === 'email' ? !!testEmail : !!testPhone && twilioReady)
+      : segmentClients.length > 0 && (channel === 'email' || twilioReady));
 
   return (
     <div>
@@ -202,16 +194,13 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
 
       {channel === 'sms' && (
         <div style={{ background:C.beige, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'14px 16px', marginBottom:16, fontSize:13, color:C.gray, lineHeight:1.6 }}>
-          <div style={{ fontWeight:700, color:C.dark, marginBottom:6 }}>📱 How SMS works in BodyMap</div>
-          Your clients will receive texts from a dedicated phone number assigned to your practice — not your personal number.
-          When setting up, pick a number with your local area code so it feels familiar.
-          <div style={{ marginTop:8, padding:'8px 12px', background:C.white, borderRadius:8, fontSize:12, color:C.forest, fontWeight:600 }}>
-            💡 Tip: Save your BodyMap number in your own phone as "My Practice SMS" so you recognize it if clients reply.
-          </div>
+          <div style={{ fontWeight:700, color:C.dark, marginBottom:4 }}>📱 How SMS works</div>
+          Your clients receive texts from your dedicated practice number {therapist?.twilio_phone_number ? `(${therapist.twilio_phone_number})` : ''}. It is not your personal number — it is a number assigned to your practice via Twilio.
+          {!twilioReady && <div style={{ marginTop:8, color:'#92400E', fontWeight:600 }}>⚠️ Set up your SMS number in Settings to enable this.</div>}
         </div>
       )}
 
-      {/* Step 1 - Segment */}
+      {/* Step 1 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginBottom:16 }}>
         <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 1 — Who to reach</div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
@@ -223,7 +212,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
                 <div style={{ fontSize:11, color:C.gray }}>{seg.desc}</div>
               </div>
               {segment === seg.id && !loading && (
-                <div style={{ fontSize:13, fontWeight:700, color:C.forest, flexShrink:0 }}>{segmentClients.length} clients</div>
+                <span style={{ fontSize:13, fontWeight:700, color:C.forest }}>{segmentClients.length} clients</span>
               )}
             </button>
           ))}
@@ -234,7 +223,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
             <span style={{ fontSize:13, color:C.gray }}>Lapsed after</span>
             <input type="number" value={customLapsed} min={7} max={365} onChange={e => setCustomLapsed(parseInt(e.target.value)||60)}
               style={{ width:60, padding:'6px 8px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, fontWeight:700, color:C.forest, outline:'none', textAlign:'center' }} />
-            <span style={{ fontSize:13, color:C.gray }}>days without a visit</span>
+            <span style={{ fontSize:13, color:C.gray }}>days</span>
           </div>
         )}
 
@@ -254,7 +243,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
                   style={{ width:70, padding:'7px 8px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:13, outline:'none', textAlign:'center' }} />
                 {conditions.length > 1 && (
                   <button onClick={() => setConditions(cs => cs.filter((_,j) => j!==i))}
-                    style={{ background:'transparent', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16 }}>×</button>
+                    style={{ background:'transparent', border:'none', color:'#EF4444', cursor:'pointer', fontSize:18, lineHeight:1 }}>×</button>
                 )}
               </div>
             ))}
@@ -266,7 +255,7 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
         )}
       </div>
 
-      {/* Step 2 - Message */}
+      {/* Step 2 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginBottom:16 }}>
         <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 2 — Your message</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
@@ -277,17 +266,16 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
             </button>
           ))}
         </div>
-        <textarea value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }}
-          rows={channel==='sms'?3:4}
-          placeholder={`Write your message... Use {name} for the client's first name and {link} for your booking link.${channel==='sms'?' Keep it under 160 characters for a single text.':''}`}
+        <textarea value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }} rows={channel==='sms'?3:4}
+          placeholder="Write your message... Use {name} for client's first name and {link} for your booking link."
           style={{ width:'100%', padding:'12px', border:`1.5px solid ${C.light}`, borderRadius:10, fontSize:14, fontFamily:'system-ui', resize:'vertical', boxSizing:'border-box', outline:'none', lineHeight:1.6 }} />
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
-          <span style={{ fontSize:11, color:C.gray }}><strong>{'{name}'}</strong> → first name &nbsp;·&nbsp; <strong>{'{link}'}</strong> → booking link</span>
+          <span style={{ fontSize:11, color:C.gray }}><strong>{'{name}'}</strong> → first name · <strong>{'{link}'}</strong> → booking link</span>
           {channel==='sms' && <span style={{ fontSize:11, color:message.length>160?'#EF4444':C.gray }}>{message.length}/160</span>}
         </div>
       </div>
 
-      {/* Step 3 - Send */}
+      {/* Step 3 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}` }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
           <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Step 3 — Review & send</div>
@@ -299,51 +287,42 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
 
         {testMode && (
           <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:8 }}>Test mode — sends only to you, not to clients</div>
-            {channel === 'email' ? (
-              <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)}
-                placeholder="Your email address" style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
-            ) : (
-              <input type="tel" value={testPhone} onChange={e => setTestPhone(e.target.value)}
-                placeholder="Your phone number" style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
-            )}
+            <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:8 }}>Sends only to you — not to any clients</div>
+            {channel === 'email'
+              ? <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="Your email address"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+              : <input type="tel" value={testPhone} onChange={e => setTestPhone(e.target.value)} placeholder="Your phone number e.g. +15139099004"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+            }
           </div>
         )}
 
-        {!testMode && (
-          <>
-            {segmentClients.length === 0 ? (
-              <div style={{ textAlign:'center', padding:'20px 0', color:C.gray, fontSize:13 }}>No clients match this filter yet.</div>
-            ) : (
-              <div style={{ background:C.beige, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
-                <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:6 }}>
-                  {segmentClients.length} client{segmentClients.length!==1?'s':''} will receive this message
-                </div>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                  {segmentClients.slice(0,15).map(c => (
-                    <span key={c.id} style={{ fontSize:11, background:C.white, border:`1px solid ${C.light}`, borderRadius:20, padding:'3px 10px', color:C.dark }}>
-                      {c.name?.split(' ')[0]}
-                    </span>
-                  ))}
-                  {segmentClients.length > 15 && <span style={{ fontSize:11, color:C.gray }}>+{segmentClients.length-15} more</span>}
-                </div>
-              </div>
-            )}
-          </>
+        {!testMode && segmentClients.length > 0 && (
+          <div style={{ background:C.beige, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+            <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:6 }}>
+              {segmentClients.length} client{segmentClients.length!==1?'s':''} will receive this
+            </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+              {segmentClients.slice(0,15).map(c => (
+                <span key={c.id} style={{ fontSize:11, background:C.white, border:`1px solid ${C.light}`, borderRadius:20, padding:'3px 10px' }}>
+                  {c.name?.split(' ')[0]}
+                </span>
+              ))}
+              {segmentClients.length > 15 && <span style={{ fontSize:11, color:C.gray }}>+{segmentClients.length-15} more</span>}
+            </div>
+          </div>
+        )}
+
+        {!testMode && segmentClients.length === 0 && !loading && (
+          <div style={{ textAlign:'center', padding:'16px 0', color:C.gray, fontSize:13, marginBottom:12 }}>No clients match this filter.</div>
         )}
 
         {/* Preview */}
-        {message && (
+        {message.trim() && (
           <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 14px', marginBottom:14, border:`1px solid ${C.light}` }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW — as a client sees it:</div>
-            <div style={{ fontSize:14, color:C.dark, lineHeight:1.7 }}>
-              {(() => {
-                const preview = message.replace(/{name}/gi, 'Sarah');
-                const parts = preview.split('{link}');
-                return parts.map((part, i) => (
-                  <span key={i}>{part}{i < parts.length-1 && <a href={bookingLink} target="_blank" rel="noreferrer" style={{ color:C.forest, fontWeight:600, wordBreak:'break-all' }}>{bookingLink}</a>}</span>
-                ));
-              })()}
+            <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW — as Sarah would see it:</div>
+            <div style={{ fontSize:14, color:C.dark, lineHeight:1.7, wordBreak:'break-word' }}>
+              {message.replace(/{name}/gi, 'Sarah').replace(/{link}/gi, bookingLink)}
             </div>
           </div>
         )}
@@ -358,15 +337,14 @@ export default function Outreach({ therapist, lapsedDays = 60 }) {
           </div>
         )}
 
-        <button onClick={sendAll}
-          disabled={sending || !message.trim() || (!testMode && segmentClients.length===0) || (testMode && channel==='email' && !testEmail) || (testMode && channel==='sms' && !testPhone) || (channel==='sms' && !twilioReady)}
-          style={{ width:'100%', background:sending?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:(sending||(channel==='sms'&&!twilioReady))?'not-allowed':'pointer', opacity:(channel==='sms'&&!twilioReady)?0.5:1 }}>
-          {channel==='sms' && !twilioReady ? 'Connect your SMS number in Settings →' :
-           sending ? `Sending…` :
+        <button onClick={sendAll} disabled={!canSend}
+          style={{ width:'100%', background:!canSend?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:canSend?'pointer':'not-allowed', opacity:canSend?1:0.7 }}>
+          {sending ? 'Sending…' :
+           !twilioReady && channel==='sms' ? 'Set up SMS in Settings first' :
            testMode ? `Send test ${channel === 'email' ? 'email' : 'text'} to me` :
            `Send to ${segmentClients.length} client${segmentClients.length!==1?'s':''} →`}
         </button>
-        {!testMode && channel==='email' && <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>Each client gets a personal email. Clients without an email address are skipped.</p>}
+        {!testMode && <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>Clients without a {channel==='sms'?'phone number':'email address'} are automatically skipped.</p>}
       </div>
     </div>
   );
