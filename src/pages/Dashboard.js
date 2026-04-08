@@ -25,6 +25,8 @@ function ServicesAndAvailability({ therapist }) {
   const { updateProfile } = useAuth();
   const [depositEnabled, setDepositEnabled] = React.useState(therapist?.deposit_enabled || false);
   const [depositPercent, setDepositPercent] = React.useState(therapist?.deposit_percent || 20);
+  const [bufferEnabled, setBufferEnabled] = React.useState(therapist?.buffer_enabled || false);
+  const [bufferMinutes, setBufferMinutes] = React.useState(therapist?.buffer_minutes || 15);
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -250,6 +252,43 @@ function ServicesAndAvailability({ therapist }) {
             <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5 }}>
               Recommended: 20-50%. For a $85 session, 20% = $17 deposit.
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Buffer Time Between Sessions */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>⏱️ Buffer Time</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
+          Add time after each session for room turnover, notes, or a break. Clients won't see available slots during this window.
+        </p>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+          <button onClick={async () => {
+            const newVal = !bufferEnabled;
+            setBufferEnabled(newVal);
+            await supabase.from('therapists').update({ buffer_enabled: newVal }).eq('id', therapist.id);
+          }} style={{ width:40, height:22, borderRadius:11, background:bufferEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
+            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:bufferEnabled?21:3, transition:'left 0.2s' }} />
+          </button>
+          <span style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>
+            {bufferEnabled ? `Buffer ON — ${bufferMinutes} min after each session` : 'Buffer OFF'}
+          </span>
+        </div>
+        {bufferEnabled && (
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:13, color:C2.gray }}>Block</span>
+            <div style={{ display:'flex', alignItems:'center', background:'#F9FAFB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'6px 12px', gap:4 }}>
+              <input type="number" min="5" max="60" step="5" value={bufferMinutes}
+                onChange={e => setBufferMinutes(parseInt(e.target.value)||15)}
+                onBlur={async e => {
+                  const v = Math.min(60, Math.max(5, parseInt(e.target.value)||15));
+                  setBufferMinutes(v);
+                  await supabase.from('therapists').update({ buffer_minutes: v }).eq('id', therapist.id);
+                }}
+                style={{ width:46, border:'none', background:'transparent', fontSize:16, fontWeight:700, color:C2.forest, outline:'none', textAlign:'center' }} />
+              <span style={{ fontSize:13, color:C2.gray }}>min</span>
+            </div>
+            <span style={{ fontSize:13, color:C2.gray }}>after each session</span>
           </div>
         )}
       </div>

@@ -8,13 +8,22 @@ const fmt12 = t => { const [h,m]=t.split(':').map(Number); return `${h%12||12}:$
 const fmtDate = s => new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 const fmtShort = s => new Date(s+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 
-function generateSlots(start, end, dur, booked) {
+function generateSlots(start, end, dur, booked, bufferMins = 0) {
   const slots=[], [sh,sm]=start.split(':').map(Number), [eh,em]=end.split(':').map(Number);
   let cur=sh*60+sm; const endMin=eh*60+em;
   while(cur+dur<=endMin){
     const hh=String(Math.floor(cur/60)).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
     const se=`${String(Math.floor((cur+dur)/60)).padStart(2,'0')}:${String((cur+dur)%60).padStart(2,'0')}`;
-    const conflict=booked.some(b=>!(se<=b.start_time.slice(0,5)||`${hh}:${mm}`>=b.end_time.slice(0,5)));
+    // Check conflict including buffer: a slot conflicts if it overlaps with any booked slot + their buffer
+    const conflict=booked.some(b=>{
+      const bookedStart = b.start_time.slice(0,5);
+      const bookedEndMins = b.end_time ? 
+        (parseInt(b.end_time.slice(0,2))*60 + parseInt(b.end_time.slice(3,5))) :
+        (parseInt(b.start_time.slice(0,2))*60 + parseInt(b.start_time.slice(3,5)) + dur);
+      const bookedEndWithBuffer = bookedEndMins + bufferMins;
+      const bookedEndStr = `${String(Math.floor(bookedEndWithBuffer/60)).padStart(2,'0')}:${String(bookedEndWithBuffer%60).padStart(2,'0')}`;
+      return !(se <= bookedStart || `${hh}:${mm}` >= bookedEndStr);
+    });
     if(!conflict) slots.push({start:`${hh}:${mm}`,end:se,display:fmt12(`${hh}:${mm}`),minutes:cur});
     cur+=30;
   }
@@ -225,7 +234,7 @@ export default function BookingPage() {
 
     let raw = [];
     for (const block of blocks) {
-      const blockSlots = generateSlots(block.start, block.end, svc.duration, booked);
+      const blockSlots = generateSlots(block.start, block.end, svc.duration, booked, therapist.buffer_enabled ? (therapist.buffer_minutes || 15) : 0);
       raw = [...raw, ...blockSlots];
     }
     if (isToday) raw = raw.filter(s => s.minutes > nowMin + 30);
