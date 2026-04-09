@@ -54,7 +54,8 @@ function parseCSV(text) {
 }
 
 export default function ImportClients({ therapist, onComplete }) {
-  const [step, setStep] = useState(1); // 1=select platform, 2=upload, 3=preview, 4=done
+  const [step, setStep] = useState(1);
+  const [importTab, setImportTab] = useState('clients'); // 'clients' | 'appointments'
   const [platform, setPlatform] = useState(null);
   const [headers, setHeaders] = useState([]);
   const [rows, setRows] = useState([]);
@@ -167,7 +168,19 @@ export default function ImportClients({ therapist, onComplete }) {
         <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:0 }}>Transfer your client list from MassageBook, Vagaro, GlossGenius, Mindbody, or any CSV file.</p>
       </div>
 
+      {/* Tab bar */}
+      <div style={{ display:'flex', borderBottom:`1px solid ${C.light}` }}>
+        {[{id:'clients',label:'👥 Import Clients'},{id:'appointments',label:'📅 Import Appointments'}].map(t => (
+          <button key={t.id} onClick={() => setImportTab(t.id)}
+            style={{ flex:1, padding:'12px', border:'none', borderBottom:importTab===t.id?`2px solid ${C.forest}`:'2px solid transparent', background:'transparent', color:importTab===t.id?C.forest:C.gray, fontSize:13, fontWeight:700, cursor:'pointer' }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div style={{ padding:24 }}>
+        {importTab === 'appointments' && <ImportBookings therapist={therapist} onComplete={onComplete} />}
+        {importTab === 'clients' && <>
 
         {/* STEP 1 — Select platform */}
         {step === 1 && (
@@ -318,7 +331,184 @@ export default function ImportClients({ therapist, onComplete }) {
             </button>
           </div>
         )}
+        </>}
       </div>
+    </div>
+  );
+}
+
+// ─── Appointment Import Component ────────────────────────────────────────────
+export function ImportBookings({ therapist, onComplete }) {
+  const [headers, setHeaders] = useState([]);
+  const [rows, setRows] = useState([]);
+  const [mapping, setMapping] = useState({});
+  const [importing, setImporting] = useState(false);
+  const [results, setResults] = useState(null);
+  const [error, setError] = useState('');
+  const fileRef = useRef();
+
+  function detectBookingMapping(headers) {
+    const h = headers.map(x => x.toLowerCase().trim());
+    const find = (...terms) => {
+      for (const t of terms) {
+        const i = h.findIndex(x => x.includes(t));
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    return {
+      clientName:  find('client name', 'name', 'client'),
+      clientEmail: find('email'),
+      clientPhone: find('phone', 'mobile'),
+      service:     find('service', 'treatment', 'appointment type'),
+      date:        find('date'),
+      startTime:   find('start time', 'time', 'start'),
+      duration:    find('duration', 'length', 'minutes'),
+      price:       find('price', 'amount', 'cost'),
+      notes:       find('notes', 'note', 'comments'),
+    };
+  }
+
+  function handleFile(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const { headers, rows } = parseCSV(ev.target.result);
+      if (!headers.length) { setError('Could not read CSV.'); return; }
+      setHeaders(headers);
+      setRows(rows);
+      setMapping(detectBookingMapping(headers));
+      setError('');
+    };
+    reader.readAsText(file);
+  }
+
+  async function runImport() {
+    setImporting(true);
+    let created = 0, skipped = 0, failed = 0;
+    const get = (row, idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
+
+    for (const row of rows) {
+      const clientName  = get(row, mapping.clientName);
+      const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
+      const clientPhone = get(row, mapping.clientPhone) || null;
+      const service     = get(row, mapping.service) || 'Session';
+      const dateStr     = get(row, mapping.date);
+      const timeStr     = get(row, mapping.startTime) || '09:00';
+      const duration    = parseInt(get(row, mapping.duration)) || 60;
+      const price       = parseFloat(get(row, mapping.price)) || 0;
+      const notes       = get(row, mapping.notes) || '';
+
+      if (!clientName || !dateStr) { skipped++; continue; }
+
+      try {
+        // Parse date
+        const d = new Date(dateStr);
+        if (isNaN(d)) { skipped++; continue; }
+        const bookingDate = d.toISOString().split('T')[0];
+
+        // Parse start time
+        const timeParsed = timeStr.match(/(\d+):(\d+)/);
+        const startTime = timeParsed ? `${String(parseInt(timeParsed[1])).padStart(2,'0')}:${timeParsed[2]}` : '09:00';
+        const [sh, sm] = startTime.split(':').map(Number);
+        const endMin = sh * 60 + sm + duration;
+        const endTime = `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
+
+        // Upsert client first
+        const { data: client } = await supabase.from('clients')
+          .upsert({ therapist_id: therapist.id, name: clientName, email: clientEmail, phone: clientPhone, imported_from: 'Appointment Import' },
+            { onConflict: 'therapist_id,email', ignoreDuplicates: false })
+          .select().single();
+
+        // Create booking
+        await supabase.from('bookings').insert({
+          therapist_id:  therapist.id,
+          client_name:   clientName,
+          client_email:  clientEmail,
+          client_phone:  clientPhone,
+          client_id:     client?.id || null,
+          booking_date:  bookingDate,
+          start_time:    startTime,
+          end_time:      endTime,
+          duration,
+          price,
+          service_name:  service,
+          status:        'confirmed',
+          notes,
+          imported:      true,
+        });
+
+        created++;
+      } catch(e) { failed++; }
+    }
+
+    setResults({ created, skipped, failed });
+    setImporting(false);
+    if (onComplete) onComplete();
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize:12, color:C.gray, marginBottom:14, lineHeight:1.5 }}>
+        Import upcoming appointments from your previous platform. Each booking will appear in your Schedule tab. Reminder emails will only fire for future bookings within 24–48 hours.
+      </p>
+
+      {!rows.length ? (
+        <div>
+          <div onClick={() => fileRef.current?.click()}
+            style={{ border:`2px dashed ${C.light}`, borderRadius:12, padding:'32px 24px', textAlign:'center', cursor:'pointer', background:'#FAFAF9' }}
+            onMouseEnter={e => e.currentTarget.style.borderColor = C.sage}
+            onMouseLeave={e => e.currentTarget.style.borderColor = C.light}>
+            <div style={{ fontSize:32, marginBottom:8 }}>📅</div>
+            <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:4 }}>Upload appointments CSV</div>
+            <div style={{ fontSize:12, color:C.gray }}>Columns needed: Client Name, Date, Start Time, Service, Duration</div>
+            <input ref={fileRef} type="file" accept=".csv" onChange={handleFile} style={{ display:'none' }} />
+          </div>
+          {error && <div style={{ color:'#EF4444', fontSize:13, marginTop:8 }}>{error}</div>}
+        </div>
+      ) : results ? (
+        <div style={{ textAlign:'center', padding:'16px 0' }}>
+          <div style={{ fontSize:36, marginBottom:10 }}>📅</div>
+          <div style={{ fontSize:16, fontWeight:700, color:C.dark, marginBottom:4 }}>Appointments imported!</div>
+          <div style={{ fontSize:13, color:C.gray }}>{results.created} added · {results.skipped} skipped · {results.failed} failed</div>
+          <p style={{ fontSize:12, color:C.gray, marginTop:10 }}>Check your Schedule tab to see them.</p>
+        </div>
+      ) : (
+        <div>
+          <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px', marginBottom:14, fontSize:13, color:'#16A34A', fontWeight:600 }}>
+            Found {rows.length} appointments
+          </div>
+          <div style={{ overflowX:'auto', marginBottom:16 }}>
+            <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+              <thead><tr style={{ background:C.beige }}>
+                {['Client','Service','Date','Time','Duration'].map(h => (
+                  <th key={h} style={{ padding:'7px 10px', textAlign:'left', fontWeight:700, color:C.gray, borderBottom:`1px solid ${C.light}` }}>{h}</th>
+                ))}
+              </tr></thead>
+              <tbody>
+                {rows.slice(0,5).map((row, i) => {
+                  const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '—';
+                  return (
+                    <tr key={i} style={{ borderBottom:`1px solid ${C.light}` }}>
+                      <td style={{ padding:'7px 10px' }}>{get(mapping.clientName)}</td>
+                      <td style={{ padding:'7px 10px', color:C.gray }}>{get(mapping.service)}</td>
+                      <td style={{ padding:'7px 10px', color:C.gray }}>{get(mapping.date)}</td>
+                      <td style={{ padding:'7px 10px', color:C.gray }}>{get(mapping.startTime)}</td>
+                      <td style={{ padding:'7px 10px', color:C.gray }}>{get(mapping.duration)} min</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {rows.length > 5 && <div style={{ fontSize:11, color:C.gray, marginTop:4 }}>...and {rows.length - 5} more</div>}
+          </div>
+          <button onClick={runImport} disabled={importing}
+            style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'12px', fontSize:14, fontWeight:700, cursor:importing?'wait':'pointer' }}>
+            {importing ? `Importing ${rows.length} appointments…` : `Import ${rows.length} Appointments →`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
