@@ -182,9 +182,9 @@ export default function Home() {
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                 Start Free - No Card Needed
               </Link>
-              <Link to="/features" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
-                See How It Works
-              </Link>
+              <a href="https://mybodymap.app/book/hk5" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+                See How It Works →
+              </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
               {['Free forever on Bronze', 'Live in 30 seconds', 'No credit card'].map(t => (
@@ -274,9 +274,14 @@ export default function Home() {
               <div style={{ fontSize:13, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>{SLIDES[slide].tag}</div>
               <h3 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(22px,3vw,34px)', fontWeight:700, color:G.deep, margin:'0 0 16px', lineHeight:1.2 }}>{SLIDES[slide].headline}</h3>
               <p style={{ fontSize:16, color:G.mid2, lineHeight:1.7, margin:'0 0 28px' }}>{SLIDES[slide].sub}</p>
-              <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:10, padding:'13px 24px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
-                Start Free Today
-              </Link>
+              <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
+                <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:10, padding:'13px 24px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+                  Start Free Today
+                </Link>
+                <a href="https://mybodymap.app/book/hk5" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:10, padding:'13px 20px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+                  Try Live Demo →
+                </a>
+              </div>
             </div>
             <div style={{ display:'flex', justifyContent:'center' }}>
               {SLIDES[slide].visual}
