@@ -879,29 +879,28 @@ export default function Dashboard({ view }) {
           <p style={{ fontSize: '13px', color: '#047857', margin: 0 }}>Unlimited clients and sessions are now unlocked. Let's get to work!</p>
         </div>
       )}
-      <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-        <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-          <span style={{ fontSize: '32px' }}>🌿</span>
+      <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <span style={{ fontSize: '24px' }}>🌿</span>
           <div>
-            <h1 style={{ fontSize: '20px', fontWeight: '700', color: C.forest, margin: 0 }}>BodyMap</h1>
-            <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
+            <h1 style={{ fontSize: '16px', fontWeight: '700', color: C.forest, margin: 0 }}>BodyMap</h1>
+            <p style={{ fontSize: '11px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '14px', fontWeight: '600', color: C.darkGray, margin: 0 }}>{therapist?.full_name}</p>
-            <p style={{ fontSize: '12px', color: C.gray, margin: 0 }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver Plan ✓' : 'Gold Plan ✓'}
-            </p>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {(!therapist?.plan || therapist?.plan === 'free') && (
             <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-              style={{ background: '#C9A84C', color: '#fff', padding: '7px 14px', borderRadius: '6px', fontSize: '13px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              Upgrade to Silver →
+              style={{ background: '#C9A84C', color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              Upgrade ↑
             </a>
           )}
-          <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '8px 16px', borderRadius: '6px', fontSize: '14px', cursor: 'pointer' }}>
-            Logout
+          {(therapist?.plan === 'silver' || therapist?.plan === 'gold') && (
+            <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', padding: '4px 8px', borderRadius: '6px' }}>
+              {therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
+            </span>
+          )}
+          <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            Out
           </button>
         </div>
       </header>
