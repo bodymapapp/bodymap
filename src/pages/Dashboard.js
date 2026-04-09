@@ -12,6 +12,7 @@ import AIDashboard from '../components/AIDashboard';
 import GiftCertificates from '../components/GiftCertificates';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
+import ImportClients from '../components/ImportClients';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -1013,7 +1014,12 @@ export default function Dashboard({ view }) {
             <Outreach therapist={therapist} lapsedDays={lapsedDays} />
           )}
           {view === 'settings' && (
-            <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+            <div>
+              <div style={{ marginBottom:24 }}>
+                <ImportClients therapist={therapist} onComplete={() => {}} />
+              </div>
+              <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+            </div>
           )}
           {view === 'gifts' && therapist && (
             <GiftCertificates therapist={therapist} />
