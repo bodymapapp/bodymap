@@ -857,6 +857,7 @@ function SectionNav() {
     { id:"ai",        label:"BodyMap AI" },
     { id:"automation", label:"Automation" },
     { id:"growth", label:"Growth Engine" },
+    { id:"portability", label:"Switching" },
   ];
   useEffect(() => {
     const obs = new IntersectionObserver(entries => {
@@ -1411,6 +1412,46 @@ export default function Features() {
               </Link>
             </div>
             <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>No credit card · Setup in 30 seconds · Cancel anytime</div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* PORTABILITY */}
+      <section id="portability" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Switching is Easy</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                Bring your entire client history with you
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                Already using MassageBook, Vagaro, GlossGenius, or Mindbody? Import your full client list in under 5 minutes. Your history, your patterns, your relationships — all carry over.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:24, marginBottom:40 }}>
+              {[
+                { icon:"📋", title:"Client list import", desc:"Upload a CSV from any platform. Names, emails, phones, notes — all mapped automatically. Duplicates are detected and merged." },
+                { icon:"📅", title:"Appointment history", desc:"Import past sessions so lapsed detection and pattern intelligence work from day one — not after months of building new data." },
+                { icon:"📆", title:"Upcoming bookings", desc:"Import your upcoming appointment schedule so your calendar isn't empty on day one. Clients are notified via your new BodyMap link." },
+                { icon:"🔗", title:"Supported platforms", desc:"MassageBook, Vagaro, GlossGenius, Mindbody, Square, or any CSV file. If it exports a spreadsheet, BodyMap can import it." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:14 }}>{icon}</div>
+                  <div style={{ fontSize:17, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:14, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:C.forest, borderRadius:16, padding:"28px 32px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+              <div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:4 }}>Ready to make the switch?</div>
+                <div style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Takes 5 minutes. We walk you through every step inside the app.</div>
+              </div>
+              <Link to="/signup" style={{ background:"#fff", color:C.forest, borderRadius:10, padding:"12px 24px", fontSize:14, fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>
+                Start Free — Import Today →
+              </Link>
+            </div>
           </FadeIn>
         </div>
       </section>

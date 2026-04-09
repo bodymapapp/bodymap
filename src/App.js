@@ -9,7 +9,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Features from './pages/Features';
 import Pricing from './pages/Pricing';
-import WhyBodyMap from './pages/WhyBodyMap';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
@@ -23,6 +22,7 @@ import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
 import ClientIntake from './pages/ClientIntake';
 import Demo from './pages/Demo';
+import WhyBodyMap from './pages/WhyBodyMap';
 import BookingPage from './pages/BookingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
@@ -67,6 +67,7 @@ function App() {
           <Route path="/dashboard/stripe-connect" element={<ProtectedRoute><StripeConnect /></ProtectedRoute>} />
           <Route path="/book/:slug" element={<BookingPage />} />
           <Route path="/demo" element={<Demo />} />
+          <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>

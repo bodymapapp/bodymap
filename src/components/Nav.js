@@ -12,6 +12,7 @@ export default function Nav() {
   const links = [
     { to: "/", label: "Home" },
     { to: "/features", label: "Features" },
+    { to: "/why-bodymap", label: "Why BodyMap" },
     { to: "/pricing", label: "Pricing" },
     { to: "/contact", label: "Contact" },
   ];
