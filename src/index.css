@@ -253,3 +253,11 @@ input, textarea, select {
     font-size: 14px !important;
   }
 }
+
+/* ── Features page section nav fix ── */
+html {
+  scroll-behavior: smooth;
+}
+section[id] {
+  scroll-margin-top: 48px;
+}

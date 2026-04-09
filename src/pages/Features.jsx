@@ -866,7 +866,7 @@ function SectionNav() {
     return () => obs.disconnect();
   }, []);
   return (
-    <div style={{ position:"sticky", top:64, zIndex:90, background:"rgba(255,255,255,0.96)", backdropFilter:"blur(10px)", borderBottom:`1px solid ${C.border}` }}>
+    <div style={{ position:"sticky", top:0, zIndex:90, background:"rgba(255,255,255,0.98)", backdropFilter:"blur(10px)", borderBottom:`1px solid ${C.border}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
       <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 16px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
         {sections.map(s=>(
           <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)} style={{ padding:"11px 14px", fontSize:12, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0 }}>{s.label}</a>
@@ -974,7 +974,7 @@ export default function Features() {
       <SectionNav />
 
       {/* PATTERN INTELLIGENCE */}
-      <section id="pattern" style={{ background:`linear-gradient(180deg, #0D1F17 0%, #1A3A28 100%)`, padding:"100px 24px" }}>
+      <section id="pattern" style={{ scrollMarginTop:"48px", background:`linear-gradient(180deg, #0D1F17 0%, #1A3A28 100%)`, padding:"100px 24px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
@@ -1024,7 +1024,7 @@ export default function Features() {
         </div>
       </section>
       {/* ONLINE BOOKING */}
-      <section id="booking" style={{ padding:"80px 24px", background:"#fff" }}>
+      <section id="booking" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1061,7 +1061,7 @@ export default function Features() {
 
       {/* AUTOMATED REMINDERS */}
       {/* DEPOSITS */}
-      <section id="deposits" style={{ padding:"80px 24px", background:"#fff" }}>
+      <section id="deposits" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1093,7 +1093,7 @@ export default function Features() {
         </div>
       </section>
 
-      <section id="reminders" style={{ padding:"80px 24px", background:C.beige }}>
+      <section id="reminders" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:C.beige }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1126,7 +1126,7 @@ export default function Features() {
       </section>
 
       {/* CLIENT INTAKE */}
-      <section id="intake" style={{ padding:"80px 24px", background:"#fff" }}>
+      <section id="intake" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1159,7 +1159,7 @@ export default function Features() {
       </section>
 
       {/* SCHEDULE */}
-      <section id="schedule" style={{ padding:"100px 24px", background:C.beige }}>
+      <section id="schedule" style={{ scrollMarginTop:"48px", padding:"100px 24px", background:C.beige }}>
         <div className="bm-feat-2col" style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
           <FadeIn>
             <div>
@@ -1193,7 +1193,7 @@ export default function Features() {
       </section>
 
       {/* SMART OUTREACH */}
-      <section id="outreach" style={{ padding:"80px 24px", background:"#fff" }}>
+      <section id="outreach" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
@@ -1223,7 +1223,7 @@ export default function Features() {
       </section>
 
       {/* POST-SESSION BRIEF */}
-      <section id="postsession" style={{ padding:"80px 24px", background:C.beige }}>
+      <section id="postsession" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:C.beige }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
@@ -1253,7 +1253,7 @@ export default function Features() {
       </section>
 
       {/* BILLING */}
-      <section id="billing" style={{ padding:"80px 24px", background:"#fff" }}>
+      <section id="billing" style={{ scrollMarginTop:"48px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
@@ -1286,7 +1286,7 @@ export default function Features() {
       </section>
 
       {/* AI */}
-      <section id="ai" style={{ padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
+      <section id="ai" style={{ scrollMarginTop:"48px", padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
@@ -1334,7 +1334,7 @@ export default function Features() {
       </section>
 
       {/* AUTOMATION */}
-      <section id="automation" style={{ padding:"100px 24px", background:C.beige }}>
+      <section id="automation" style={{ scrollMarginTop:"48px", padding:"100px 24px", background:C.beige }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
@@ -1354,7 +1354,7 @@ export default function Features() {
       </section>
 
       {/* GROWTH */}
-      <section id="growth" style={{ padding:"100px 24px", background:"#fff" }}>
+      <section id="growth" style={{ scrollMarginTop:"48px", padding:"100px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
