@@ -182,7 +182,7 @@ export default function Home() {
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                 Start Free - No Card Needed
               </Link>
-              <a href="https://mybodymap.app/book/hk5" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+              <a href="https://mybodymap.app/book/demo" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                 See How It Works →
               </a>
             </div>
@@ -278,7 +278,7 @@ export default function Home() {
                 <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:10, padding:'13px 24px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                   Start Free Today
                 </Link>
-                <a href="https://mybodymap.app/book/hk5" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:10, padding:'13px 20px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+                <a href="https://mybodymap.app/book/demo" target="_blank" rel="noreferrer" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:10, padding:'13px 20px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                   Try Live Demo →
                 </a>
               </div>
