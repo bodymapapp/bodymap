@@ -916,46 +916,46 @@ export default function Dashboard({ view }) {
         </div>
       )}
       <div className="bm-dash-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-        <div style={{ background: C.white, borderRadius: '12px', padding: '8px', marginBottom: '24px', display: 'flex', gap: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div style={{ background: C.white, borderRadius: '12px', padding: '6px', marginBottom: '24px', display: 'flex', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
           <button
             onClick={() => navigate('/dashboard')}
-            style={{ flex: 1, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ flexShrink:0, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
           >
             Clients
           </button>
           <button
             onClick={() => navigate('/dashboard/schedule')}
-            style={{ flex: 1, background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             Schedule
           </button>
           <button
             onClick={() => navigate('/dashboard/billing')}
-            style={{ flex: 1, background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             Billing
           </button>
           <button
             onClick={() => navigate('/dashboard/ai')}
-            style={{ flex: 1, background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             AI
           </button>
           <button
             onClick={() => navigate('/dashboard/outreach')}
-            style={{ flex: 1, background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             Outreach
           </button>
           <button
             onClick={() => navigate('/dashboard/gifts')}
-            style={{ flex: 1, background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             Gifts
           </button>
           <button
             onClick={() => navigate('/dashboard/settings')}
-            style={{ flex: 1, background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' }}
+            style={{ background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
           >
             Settings
           </button>
