@@ -844,33 +844,47 @@ function GrowthEngine() {
 // ── SECTION NAV ───────────────────────────────────────────────────────────────
 function SectionNav() {
   const [active, setActive] = useState("pattern");
+  const [visible, setVisible] = useState(false);
   const sections = [
-    { id:"pattern", label:"Pattern Intelligence" },
-    { id:"booking", label:"Online Booking" },
-    { id:"deposits", label:"Deposits" },
-    { id:"intake",    label:"Client Intake" },
-    { id:"schedule",  label:"Schedule" },
-    { id:"reminders", label:"Reminders" },
-    { id:"outreach",  label:"Smart Outreach" },
-    { id:"postsession", label:"Post-Session" },
-    { id:"billing",   label:"Billing" },
-    { id:"ai",        label:"BodyMap AI" },
-    { id:"automation", label:"Automation" },
-    { id:"growth", label:"Growth Engine" },
-    { id:"portability", label:"Switching" },
+    { id:"pattern",     label:"Pattern Intelligence",  n:1  },
+    { id:"booking",     label:"Online Booking",         n:2  },
+    { id:"deposits",    label:"Deposits",               n:3  },
+    { id:"intake",      label:"Client Intake",          n:4  },
+    { id:"schedule",    label:"Schedule",               n:5  },
+    { id:"reminders",   label:"Reminders",              n:6  },
+    { id:"outreach",    label:"Smart Outreach",         n:7  },
+    { id:"postsession", label:"Post-Session",           n:8  },
+    { id:"billing",     label:"Billing",                n:9  },
+    { id:"ai",          label:"BodyMap AI",             n:10 },
+    { id:"automation",  label:"Automation",             n:11 },
+    { id:"growth",      label:"Growth Engine",          n:12 },
+    { id:"portability", label:"Switching",              n:13 },
   ];
   useEffect(() => {
+    const onScroll = () => setVisible(window.scrollY > 280);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
     const obs = new IntersectionObserver(entries => {
       entries.forEach(e => { if(e.isIntersecting) setActive(e.target.id); });
-    }, { rootMargin:"-35% 0px -35% 0px" });
+    }, { rootMargin:"-30% 0px -60% 0px" });
     sections.forEach(s => { const el=document.getElementById(s.id); if(el) obs.observe(el); });
-    return () => obs.disconnect();
+    return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
   }, []);
   return (
-    <div style={{ position:"sticky", top:64, zIndex:90, background:"rgba(255,255,255,0.98)", backdropFilter:"blur(10px)", borderBottom:`1px solid ${C.border}`, boxShadow:'0 1px 4px rgba(0,0,0,0.06)' }}>
+    <div style={{
+      position:"fixed", top:64, left:0, right:0, zIndex:89,
+      background:"rgba(255,255,255,0.98)", backdropFilter:"blur(12px)",
+      borderBottom:`1px solid ${C.border}`, boxShadow:'0 2px 8px rgba(0,0,0,0.07)',
+      transform: visible ? 'translateY(0)' : 'translateY(-100%)',
+      transition: 'transform 0.25s ease',
+    }}>
       <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 16px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
         {sections.map(s=>(
-          <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)} style={{ padding:"11px 14px", fontSize:12, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0 }}>{s.label}</a>
+          <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)}
+            style={{ padding:"10px 12px", fontSize:11, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0, display:"flex", alignItems:"center", gap:5 }}>
+            <span style={{ fontSize:10, color:active===s.id?C.sage:"#D1D5DB", minWidth:14 }}>{s.n}</span>
+            {s.label}
+          </a>
         ))}
       </div>
     </div>
