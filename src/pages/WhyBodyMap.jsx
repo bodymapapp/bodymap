@@ -133,76 +133,103 @@ export default function WhyBodyMap() {
               ))}
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:24, alignItems:'stretch' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
 
             {/* ── Bar Chart ── */}
-            <div style={{ background:C.white, borderRadius:16, padding:'32px 32px 28px', boxShadow:'0 2px 16px rgba(0,0,0,0.07)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:32 }}>
+            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:28 }}>
                 {billing === 'monthly' ? 'Monthly platform cost' : 'Annual plan — monthly equivalent'}
               </div>
-              <div style={{ display:'flex', alignItems:'flex-end', gap:20 }}>
-                {[
-                  { key:'gg', name:'GlossGenius', fill:'#FCE7F3', border:'#EC4899' },
-                  { key:'mb', name:'MassageBook',  fill:'#DBEAFE', border:'#3B82F6' },
-                  { key:'vg', name:'Vagaro',        fill:'#EDE9FE', border:'#8B5CF6' },
-                  { key:'bm', name:'BodyMap',        fill:C.forest,  border:C.forest  },
-                ].map(({ key, name, fill, border }) => {
-                  const price = PRICING[key][billing];
-                  const h = price === 0 ? 6 : Math.round((price / 60) * 280);
-                  const isBM = key === 'bm';
-                  return (
-                    <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                      <div style={{ fontSize:15, fontWeight:700, color:isBM ? C.forest : C.dark, marginBottom:10, lineHeight:1 }}>
-                        {isBM ? 'Free' : `$${price}/mo`}
+              {/* Chart: bars grow from bottom baseline */}
+              <div style={{ position:'relative' }}>
+                {/* Baseline */}
+                <div style={{ position:'absolute', bottom:44, left:0, right:0, height:2, background:'#D5CFC8' }} />
+                {/* Bars row */}
+                <div style={{ display:'flex', alignItems:'flex-end', gap:16, paddingBottom:44 }}>
+                  {[
+                    { key:'gg', name:'GlossGenius' },
+                    { key:'mb', name:'MassageBook'  },
+                    { key:'vg', name:'Vagaro'        },
+                    { key:'bm', name:'BodyMap'       },
+                  ].map(({ key, name }) => {
+                    const price = PRICING[key][billing];
+                    const isBM  = key === 'bm';
+                    const h     = isBM ? 6 : Math.round((price / 60) * 200);
+                    return (
+                      <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
+                        <div style={{ fontSize:14, fontWeight:700, color:isBM ? C.forest : C.dark, marginBottom:8, lineHeight:1 }}>
+                          {isBM ? '' : `$${price}/mo`}
+                        </div>
+                        <div style={{
+                          width:'78%', height:h,
+                          background: isBM ? C.forest : '#DDD8D2',
+                          border: `2px solid ${isBM ? C.forest : '#B8B2AA'}`,
+                          borderRadius:'6px 6px 0 0',
+                          transition:'height 0.4s ease',
+                        }} />
                       </div>
-                      <div style={{ width:'82%', height:h, background:fill, border:`2px solid ${border}`, borderRadius:'7px 7px 0 0', transition:'height 0.4s ease' }} />
-                      <div style={{ width:'82%', height:3, background:'#C9C4BE', flexShrink:0 }} />
-                      <div style={{ fontSize:13, lineHeight:1.4, textAlign:'center', marginTop:14, fontWeight:isBM ? 700 : 500, color:isBM ? C.forest : C.dark }}>
-                        {name}
+                    );
+                  })}
+                </div>
+                {/* Name labels sit below baseline */}
+                <div style={{ display:'flex', gap:16, marginTop:0 }}>
+                  {[
+                    { key:'gg', name:'GlossGenius' },
+                    { key:'mb', name:'MassageBook'  },
+                    { key:'vg', name:'Vagaro'        },
+                    { key:'bm', name:'BodyMap'       },
+                  ].map(({ key, name }) => {
+                    const isBM = key === 'bm';
+                    return (
+                      <div key={key} style={{ flex:1, textAlign:'center' }}>
+                        {isBM && (
+                          <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:3 }}>Free</div>
+                        )}
+                        <div style={{ fontSize:12, fontWeight:isBM ? 700 : 500, color:isBM ? C.forest : C.dark, lineHeight:1.3 }}>
+                          {name}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {/* ── Math Panel ── */}
             <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
-              {/* Saved */}
-              <div style={{ flex:1, background:C.white, borderRadius:16, padding:'36px 28px', boxShadow:'0 2px 16px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>
+              {/* Saved card */}
+              <div style={{ flex:1, background:C.white, borderRadius:20, padding:'32px 24px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:14 }}>
                   {billing === 'monthly' ? 'You save per month' : 'You save per year'}
                 </div>
-                <div style={{ lineHeight:1, display:'flex', alignItems:'baseline', gap:4 }}>
-                  <span style={{ fontFamily:'Georgia,serif', fontSize:64, fontWeight:700, color:C.forest }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:3, lineHeight:1 }}>
+                  <span style={{ fontFamily:'Georgia,serif', fontSize:62, fontWeight:700, color:C.forest }}>
                     ${billing === 'monthly' ? savings.gg : annualSavings.gg}
                   </span>
-                  <span style={{ fontSize:22, fontWeight:600, color:C.sage }}>
+                  <span style={{ fontSize:20, fontWeight:600, color:C.sage }}>
                     {billing === 'monthly' ? '/mo' : '/yr'}
                   </span>
                 </div>
-                <div style={{ fontSize:13, color:C.gray, marginTop:12 }}>
+                <div style={{ fontSize:13, color:C.gray, marginTop:10 }}>
                   switching from GlossGenius
                 </div>
-                <div style={{ marginTop:20, display:'inline-block', padding:'7px 20px', background:'#F0FDF4', borderRadius:24, fontSize:12, color:'#16A34A', fontWeight:700 }}>
-                  BodyMap Bronze is $0 forever
+                <div style={{ marginTop:18, display:'inline-block', padding:'6px 18px', background:'#F0FDF4', borderRadius:24, fontSize:12, color:'#16A34A', fontWeight:700 }}>
+                  Free to start — limited time
                 </div>
               </div>
 
-              {/* Revenue */}
-              <div style={{ flex:1, background:C.forest, borderRadius:16, padding:'36px 28px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
-                <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>
-                  Revenue you can add
+              {/* Revenue card */}
+              <div style={{ flex:1, background:C.forest, borderRadius:20, padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.55)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:14 }}>
+                  Keep one more client
                 </div>
-                <div style={{ fontFamily:'Georgia,serif', fontSize:40, fontWeight:700, color:'#fff', lineHeight:1.15 }}>
-                  $3,600 — $12,000
+                <div style={{ display:'flex', alignItems:'baseline', gap:3, lineHeight:1 }}>
+                  <span style={{ fontFamily:'Georgia,serif', fontSize:62, fontWeight:700, color:'#fff' }}>$100</span>
+                  <span style={{ fontSize:20, fontWeight:600, color:'rgba(255,255,255,0.6)' }}>/mo more</span>
                 </div>
-                <div style={{ fontSize:14, color:'rgba(255,255,255,0.75)', marginTop:14, lineHeight:1.7 }}>
-                  per year from better<br/>client retention
-                </div>
-                <div style={{ marginTop:18, fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.9 }}>
-                  2–5 retained clients × $85 × 12 sessions/yr<br/>Pattern intelligence + smart outreach
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:10, lineHeight:1.7 }}>
+                  One retained client.<br/>One monthly session.<br/>That's the math.
                 </div>
               </div>
 
