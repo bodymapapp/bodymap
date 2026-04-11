@@ -136,62 +136,65 @@ export default function WhyBodyMap() {
           <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
 
             {/* ── Bar Chart ── */}
-            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
+            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 24px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
               <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:28 }}>
-                {billing === 'monthly' ? 'Monthly platform cost' : 'Annual plan — monthly equivalent'}
+                {billing === 'monthly' ? 'Monthly platform cost' : 'Annual platform cost — total per year'}
               </div>
-              {/* Chart: bars grow from bottom baseline */}
-              <div style={{ position:'relative' }}>
-                {/* Baseline */}
-                <div style={{ position:'absolute', bottom:44, left:0, right:0, height:2, background:'#D5CFC8' }} />
-                {/* Bars row */}
-                <div style={{ display:'flex', alignItems:'flex-end', gap:16, paddingBottom:44 }}>
-                  {[
-                    { key:'gg', name:'GlossGenius' },
-                    { key:'mb', name:'MassageBook'  },
-                    { key:'vg', name:'Vagaro'        },
-                    { key:'bm', name:'BodyMap'       },
-                  ].map(({ key, name }) => {
-                    const price = PRICING[key][billing];
-                    const isBM  = key === 'bm';
-                    const h     = isBM ? 6 : Math.round((price / 60) * 200);
-                    return (
-                      <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                        <div style={{ fontSize:14, fontWeight:700, color:isBM ? C.forest : C.dark, marginBottom:8, lineHeight:1 }}>
-                          {isBM ? '' : `$${price}/mo`}
-                        </div>
-                        <div style={{
-                          width:'78%', height:h,
-                          background: isBM ? C.forest : '#DDD8D2',
-                          border: `2px solid ${isBM ? C.forest : '#B8B2AA'}`,
-                          borderRadius:'6px 6px 0 0',
-                          transition:'height 0.4s ease',
-                        }} />
+
+              {/* borderBottom IS the baseline — bars sit flush on it */}
+              <div style={{ display:'flex', alignItems:'flex-end', gap:16, borderBottom:'2.5px solid #C4BEB7' }}>
+                {[
+                  { key:'gg', name:'GlossGenius' },
+                  { key:'mb', name:'MassageBook'  },
+                  { key:'vg', name:'Vagaro'       },
+                  { key:'bm', name:'BodyMap'      },
+                ].map(({ key, name }) => {
+                  const price  = PRICING[key][billing];
+                  const isBM   = key === 'bm';
+                  const h      = isBM ? 8 : Math.round((price / 60) * 210);
+                  const label  = isBM
+                    ? ''
+                    : billing === 'annual'
+                      ? `$${price * 12}/yr`
+                      : `$${price}/mo`;
+                  return (
+                    <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:9, minHeight:20, textAlign:'center', lineHeight:1 }}>
+                        {label}
                       </div>
-                    );
-                  })}
-                </div>
-                {/* Name labels sit below baseline */}
-                <div style={{ display:'flex', gap:16, marginTop:0 }}>
-                  {[
-                    { key:'gg', name:'GlossGenius' },
-                    { key:'mb', name:'MassageBook'  },
-                    { key:'vg', name:'Vagaro'        },
-                    { key:'bm', name:'BodyMap'       },
-                  ].map(({ key, name }) => {
-                    const isBM = key === 'bm';
-                    return (
-                      <div key={key} style={{ flex:1, textAlign:'center' }}>
-                        {isBM && (
-                          <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:3 }}>Free</div>
-                        )}
-                        <div style={{ fontSize:12, fontWeight:isBM ? 700 : 500, color:isBM ? C.forest : C.dark, lineHeight:1.3 }}>
-                          {name}
-                        </div>
+                      <div style={{
+                        width:'76%', height:h,
+                        background: isBM ? C.forest : '#DDD8D2',
+                        border:     `2px solid ${isBM ? C.forest : '#B0A9A1'}`,
+                        borderBottom: 'none',
+                        borderRadius:'6px 6px 0 0',
+                        transition:'height 0.4s ease',
+                      }} />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Name labels */}
+              <div style={{ display:'flex', gap:16, marginTop:12 }}>
+                {[
+                  { key:'gg', name:'GlossGenius' },
+                  { key:'mb', name:'MassageBook'  },
+                  { key:'vg', name:'Vagaro'       },
+                  { key:'bm', name:'BodyMap'      },
+                ].map(({ key, name }) => {
+                  const isBM = key === 'bm';
+                  return (
+                    <div key={key} style={{ flex:1, textAlign:'center' }}>
+                      {isBM && (
+                        <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:3 }}>Free</div>
+                      )}
+                      <div style={{ fontSize:12, fontWeight:isBM ? 700 : 500, color:isBM ? C.forest : C.dark, lineHeight:1.35 }}>
+                        {name}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -222,14 +225,14 @@ export default function WhyBodyMap() {
               {/* Revenue card */}
               <div style={{ flex:1, background:C.forest, borderRadius:20, padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
                 <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.55)', textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:14 }}>
-                  Keep one more client
+                  1 more retained client/day
                 </div>
-                <div style={{ display:'flex', alignItems:'baseline', gap:3, lineHeight:1 }}>
-                  <span style={{ fontFamily:'Georgia,serif', fontSize:62, fontWeight:700, color:'#fff' }}>$100</span>
-                  <span style={{ fontSize:20, fontWeight:600, color:'rgba(255,255,255,0.6)' }}>/mo more</span>
+                <div style={{ fontFamily:'Georgia,serif', fontSize:58, fontWeight:700, color:'#fff', lineHeight:1 }}>
+                  $20,000
                 </div>
-                <div style={{ fontSize:13, color:'rgba(255,255,255,0.7)', marginTop:10, lineHeight:1.7 }}>
-                  One retained client.<br/>One monthly session.<br/>That's the math.
+                <div style={{ fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.65)', marginTop:6 }}>per year</div>
+                <div style={{ marginTop:16, fontSize:12, color:'rgba(255,255,255,0.5)', lineHeight:1.9 }}>
+                  200 sessions × $100<br/>That's the math.
                 </div>
               </div>
 
