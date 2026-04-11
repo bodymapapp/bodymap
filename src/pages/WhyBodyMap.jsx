@@ -133,31 +133,31 @@ export default function WhyBodyMap() {
               ))}
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:24, alignItems:'stretch' }}>
 
             {/* ── Bar Chart ── */}
-            <div style={{ background:C.white, borderRadius:16, padding:'28px 24px 24px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
-              <div style={{ fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:24 }}>
+            <div style={{ background:C.white, borderRadius:16, padding:'32px 32px 28px', boxShadow:'0 2px 16px rgba(0,0,0,0.07)' }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:32 }}>
                 {billing === 'monthly' ? 'Monthly platform cost' : 'Annual plan — monthly equivalent'}
               </div>
-              <div style={{ display:'flex', alignItems:'flex-end', gap:12 }}>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:20 }}>
                 {[
-                  { key:'gg', name:'GlossGenius', fill:'#FBCFE8', border:'#F9A8D4' },
-                  { key:'mb', name:'MassageBook',  fill:'#BFDBFE', border:'#93C5FD' },
-                  { key:'vg', name:'Vagaro',        fill:'#DDD6FE', border:'#C4B5FD' },
+                  { key:'gg', name:'GlossGenius', fill:'#FCE7F3', border:'#EC4899' },
+                  { key:'mb', name:'MassageBook',  fill:'#DBEAFE', border:'#3B82F6' },
+                  { key:'vg', name:'Vagaro',        fill:'#EDE9FE', border:'#8B5CF6' },
                   { key:'bm', name:'BodyMap',        fill:C.forest,  border:C.forest  },
                 ].map(({ key, name, fill, border }) => {
                   const price = PRICING[key][billing];
-                  const h = price === 0 ? 5 : Math.round((price / 60) * 170);
+                  const h = price === 0 ? 6 : Math.round((price / 60) * 280);
                   const isBM = key === 'bm';
                   return (
                     <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
-                      <div style={{ fontSize:13, fontWeight:700, color:isBM ? C.forest : '#3A3A3A', marginBottom:6, lineHeight:1 }}>
+                      <div style={{ fontSize:15, fontWeight:700, color:isBM ? C.forest : C.dark, marginBottom:10, lineHeight:1 }}>
                         {isBM ? 'Free' : `$${price}/mo`}
                       </div>
-                      <div style={{ width:'64%', height:h, background:fill, border:`1.5px solid ${border}`, borderRadius:'5px 5px 0 0', transition:'height 0.35s ease' }} />
-                      <div style={{ width:'64%', height:2, background:'#DDD8D2', flexShrink:0 }} />
-                      <div style={{ fontSize:11, lineHeight:1.35, textAlign:'center', marginTop:10, fontWeight:isBM ? 700 : 400, color:isBM ? C.forest : C.gray }}>
+                      <div style={{ width:'82%', height:h, background:fill, border:`2px solid ${border}`, borderRadius:'7px 7px 0 0', transition:'height 0.4s ease' }} />
+                      <div style={{ width:'82%', height:3, background:'#C9C4BE', flexShrink:0 }} />
+                      <div style={{ fontSize:13, lineHeight:1.4, textAlign:'center', marginTop:14, fontWeight:isBM ? 700 : 500, color:isBM ? C.forest : C.dark }}>
                         {name}
                       </div>
                     </div>
@@ -167,37 +167,42 @@ export default function WhyBodyMap() {
             </div>
 
             {/* ── Math Panel ── */}
-            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
 
               {/* Saved */}
-              <div style={{ flex:1, background:C.white, borderRadius:16, padding:'28px 20px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
-                  Total saved per year
+              <div style={{ flex:1, background:C.white, borderRadius:16, padding:'36px 28px', boxShadow:'0 2px 16px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>
+                  {billing === 'monthly' ? 'You save per month' : 'You save per year'}
                 </div>
-                <div style={{ fontFamily:'Georgia,serif', fontSize:52, fontWeight:700, color:C.forest, lineHeight:1 }}>
-                  ${annualSavings.gg}
+                <div style={{ lineHeight:1, display:'flex', alignItems:'baseline', gap:4 }}>
+                  <span style={{ fontFamily:'Georgia,serif', fontSize:64, fontWeight:700, color:C.forest }}>
+                    ${billing === 'monthly' ? savings.gg : annualSavings.gg}
+                  </span>
+                  <span style={{ fontSize:22, fontWeight:600, color:C.sage }}>
+                    {billing === 'monthly' ? '/mo' : '/yr'}
+                  </span>
                 </div>
-                <div style={{ fontSize:12, color:C.gray, marginTop:7 }}>
-                  vs GlossGenius at ${PRICING.gg[billing]}/mo
+                <div style={{ fontSize:13, color:C.gray, marginTop:12 }}>
+                  switching from GlossGenius
                 </div>
-                <div style={{ marginTop:16, display:'inline-block', padding:'5px 16px', background:'#F0FDF4', borderRadius:20, fontSize:11, color:'#16A34A', fontWeight:700 }}>
+                <div style={{ marginTop:20, display:'inline-block', padding:'7px 20px', background:'#F0FDF4', borderRadius:24, fontSize:12, color:'#16A34A', fontWeight:700 }}>
                   BodyMap Bronze is $0 forever
                 </div>
               </div>
 
               {/* Revenue */}
-              <div style={{ flex:1, background:C.forest, borderRadius:16, padding:'28px 20px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
-                <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+              <div style={{ flex:1, background:C.forest, borderRadius:16, padding:'36px 28px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:11, fontWeight:700, color:'rgba(255,255,255,0.6)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:16 }}>
                   Revenue you can add
                 </div>
-                <div style={{ fontFamily:'Georgia,serif', fontSize:34, fontWeight:700, color:'#fff', lineHeight:1.2 }}>
-                  $3,600<br/>—<br/>$12,000
+                <div style={{ fontFamily:'Georgia,serif', fontSize:40, fontWeight:700, color:'#fff', lineHeight:1.15 }}>
+                  $3,600 — $12,000
                 </div>
-                <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:8, lineHeight:1.6 }}>
+                <div style={{ fontSize:14, color:'rgba(255,255,255,0.75)', marginTop:14, lineHeight:1.7 }}>
                   per year from better<br/>client retention
                 </div>
-                <div style={{ marginTop:14, fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.8 }}>
-                  2–5 retained clients × $85 × 12/yr<br/>Pattern intelligence + smart outreach
+                <div style={{ marginTop:18, fontSize:11, color:'rgba(255,255,255,0.45)', lineHeight:1.9 }}>
+                  2–5 retained clients × $85 × 12 sessions/yr<br/>Pattern intelligence + smart outreach
                 </div>
               </div>
 
