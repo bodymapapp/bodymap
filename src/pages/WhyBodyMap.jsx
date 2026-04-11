@@ -133,30 +133,74 @@ export default function WhyBodyMap() {
               ))}
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))', gap:16 }}>
-            {[
-              { key:'mb', name:'MassageBook', color:'#3B82F6' },
-              { key:'vg', name:'Vagaro',      color:'#8B5CF6' },
-              { key:'gg', name:'GlossGenius', color:'#EC4899' },
-            ].map(({ key, name, color }) => (
-              <div key={key} style={{ background:C.white, borderRadius:16, padding:28, boxShadow:'0 2px 12px rgba(0,0,0,0.06)', textAlign:'center' }}>
-                <div style={{ fontSize:14, fontWeight:700, color, marginBottom:4 }}>{name}</div>
-                <div style={{ fontSize:13, color:C.gray, marginBottom:16 }}>${PRICING[key][billing]}/mo</div>
-                <div style={{ fontSize:36, fontWeight:700, color:C.forest, lineHeight:1, marginBottom:4 }}>
-                  ${annualSavings[key]}
+          <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
+
+            {/* ── Bar Chart ── */}
+            <div style={{ background:C.white, borderRadius:16, padding:'28px 24px 24px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
+              <div style={{ fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:24 }}>
+                {billing === 'monthly' ? 'Monthly platform cost' : 'Annual plan — monthly equivalent'}
+              </div>
+              <div style={{ display:'flex', alignItems:'flex-end', gap:12 }}>
+                {[
+                  { key:'gg', name:'GlossGenius', fill:'#FBCFE8', border:'#F9A8D4' },
+                  { key:'mb', name:'MassageBook',  fill:'#BFDBFE', border:'#93C5FD' },
+                  { key:'vg', name:'Vagaro',        fill:'#DDD6FE', border:'#C4B5FD' },
+                  { key:'bm', name:'BodyMap',        fill:C.forest,  border:C.forest  },
+                ].map(({ key, name, fill, border }) => {
+                  const price = PRICING[key][billing];
+                  const h = price === 0 ? 5 : Math.round((price / 60) * 170);
+                  const isBM = key === 'bm';
+                  return (
+                    <div key={key} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center' }}>
+                      <div style={{ fontSize:13, fontWeight:700, color:isBM ? C.forest : '#3A3A3A', marginBottom:6, lineHeight:1 }}>
+                        {isBM ? 'Free' : `$${price}/mo`}
+                      </div>
+                      <div style={{ width:'64%', height:h, background:fill, border:`1.5px solid ${border}`, borderRadius:'5px 5px 0 0', transition:'height 0.35s ease' }} />
+                      <div style={{ width:'64%', height:2, background:'#DDD8D2', flexShrink:0 }} />
+                      <div style={{ fontSize:11, lineHeight:1.35, textAlign:'center', marginTop:10, fontWeight:isBM ? 700 : 400, color:isBM ? C.forest : C.gray }}>
+                        {name}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Math Panel ── */}
+            <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+
+              {/* Saved */}
+              <div style={{ flex:1, background:C.white, borderRadius:16, padding:'28px 20px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+                  Total saved per year
                 </div>
-                <div style={{ fontSize:13, color:C.gray }}>saved per year</div>
-                <div style={{ marginTop:16, background:'#F0FDF4', borderRadius:8, padding:'8px 12px', fontSize:12, color:'#16A34A', fontWeight:600 }}>
-                  ${savings[key]}/mo less than {name}
+                <div style={{ fontFamily:'Georgia,serif', fontSize:52, fontWeight:700, color:C.forest, lineHeight:1 }}>
+                  ${annualSavings.gg}
+                </div>
+                <div style={{ fontSize:12, color:C.gray, marginTop:7 }}>
+                  vs GlossGenius at ${PRICING.gg[billing]}/mo
+                </div>
+                <div style={{ marginTop:16, display:'inline-block', padding:'5px 16px', background:'#F0FDF4', borderRadius:20, fontSize:11, color:'#16A34A', fontWeight:700 }}>
+                  BodyMap Bronze is $0 forever
                 </div>
               </div>
-            ))}
-          </div>
-          <div style={{ marginTop:24, background:C.white, borderRadius:16, padding:24, textAlign:'center', border:`1.5px solid #86EFAC` }}>
-            <div style={{ fontSize:13, color:C.gray, marginBottom:8 }}>Potential additional revenue from better client retention</div>
-            <div style={{ fontSize:28, fontWeight:700, color:C.forest }}>$3,600 — $12,000/year</div>
-            <div style={{ fontSize:13, color:C.gray, marginTop:4 }}>
-              Based on retaining 2–5 additional clients per month at $85/session × 12 sessions/year. Pattern intelligence and automated outreach are the primary drivers.
+
+              {/* Revenue */}
+              <div style={{ flex:1, background:C.forest, borderRadius:16, padding:'28px 20px', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+                <div style={{ fontSize:10, fontWeight:700, color:'rgba(255,255,255,0.5)', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>
+                  Revenue you can add
+                </div>
+                <div style={{ fontFamily:'Georgia,serif', fontSize:34, fontWeight:700, color:'#fff', lineHeight:1.2 }}>
+                  $3,600<br/>—<br/>$12,000
+                </div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.65)', marginTop:8, lineHeight:1.6 }}>
+                  per year from better<br/>client retention
+                </div>
+                <div style={{ marginTop:14, fontSize:10, color:'rgba(255,255,255,0.35)', lineHeight:1.8 }}>
+                  2–5 retained clients × $85 × 12/yr<br/>Pattern intelligence + smart outreach
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
