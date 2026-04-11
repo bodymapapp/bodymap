@@ -136,7 +136,7 @@ export default function WhyBodyMap() {
           <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
 
             {/* ── Bar Chart ── */}
-            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 24px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)' }}>
+            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
               <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:28 }}>
                 {billing === 'monthly' ? 'Monthly platform cost' : 'Annual platform cost — total per year'}
               </div>
@@ -151,7 +151,7 @@ export default function WhyBodyMap() {
                 ].map(({ key, name }) => {
                   const price  = PRICING[key][billing];
                   const isBM   = key === 'bm';
-                  const h      = isBM ? 8 : Math.round((price / 60) * 210);
+                  const h      = isBM ? 8 : Math.round((price / 60) * 260);
                   const label  = isBM
                     ? ''
                     : billing === 'annual'
