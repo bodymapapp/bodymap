@@ -224,11 +224,23 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section style={{padding:'60px 24px',background:'#f7f9f4',textAlign:'center'}}>
-        <h2 style={{fontSize:'28px',fontWeight:'700',color:'#162E09',marginBottom:'8px'}}>See BodyMap in action</h2>
-        <p style={{fontSize:'16px',color:'#555',marginBottom:'32px'}}>Click through a real session — from client intake to post-session summary.</p>
-        <div style={{maxWidth:'900px',margin:'0 auto',borderRadius:'16px',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.12)'}}>
-          <iframe src="https://app.supademo.com/embed/cmnunkrud0wsz4bj5c0yp7liy" frameBorder="0" loading="lazy" allowFullScreen allow="clipboard-write" style={{width:'100%',height:'600px',display:'block'}} title="BodyMap Interactive Demo" />
+      <section style={{padding:'80px 24px',background:'#162E09',textAlign:'center'}}>
+        <p style={{fontSize:'13px',fontWeight:'700',letterSpacing:'2px',color:'#7db96e',textTransform:'uppercase',marginBottom:'12px'}}>See It In Action</p>
+        <h2 style={{fontSize:'36px',fontWeight:'800',color:'#fff',marginBottom:'12px',lineHeight:1.2}}>From intake to post-session summary.</h2>
+        <p style={{fontSize:'18px',color:'rgba(255,255,255,0.7)',marginBottom:'40px',maxWidth:'600px',margin:'0 auto 40px'}}>Click through a real BodyMap session — exactly what you and your clients experience.</p>
+        <div style={{maxWidth:'1100px',margin:'0 auto',position:'relative'}}>
+          <div style={{borderRadius:'20px',overflow:'hidden',boxShadow:'0 20px 80px rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.1)'}}>
+            <iframe
+              src="https://app.supademo.com/embed/cmnunkrud0wsz4bj5c0yp7liy"
+              frameBorder="0"
+              loading="lazy"
+              allowFullScreen
+              allow="clipboard-write"
+              style={{width:'100%',height:'700px',display:'block'}}
+              title="BodyMap Interactive Demo"
+            />
+          </div>
+          <p style={{marginTop:'20px',fontSize:'14px',color:'rgba(255,255,255,0.5)'}}>↑ Interactive — click the arrows to explore each feature</p>
         </div>
       </section>
 
