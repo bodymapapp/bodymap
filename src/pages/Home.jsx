@@ -224,6 +224,13 @@ export default function Home() {
           </div>
         </div>
       </section>
+      <section style={{padding:'60px 24px',background:'#f7f9f4',textAlign:'center'}}>
+        <h2 style={{fontSize:'28px',fontWeight:'700',color:'#162E09',marginBottom:'8px'}}>See BodyMap in action</h2>
+        <p style={{fontSize:'16px',color:'#555',marginBottom:'32px'}}>Click through a real session — from client intake to post-session summary.</p>
+        <div style={{maxWidth:'900px',margin:'0 auto',borderRadius:'16px',overflow:'hidden',boxShadow:'0 8px 40px rgba(0,0,0,0.12)'}}>
+          <iframe src="https://app.supademo.com/embed/cmnunkrud0wsz4bj5c0yp7liy" frameBorder="0" loading="lazy" allowFullScreen allow="clipboard-write" style={{width:'100%',height:'600px',display:'block'}} title="BodyMap Interactive Demo" />
+        </div>
+      </section>
 
       {/* ── THREE PAIN POINTS ─────────────────────────────────────────────── */}
       <section style={{ background:G.deep, padding:'80px 24px', textAlign:'center' }}>
