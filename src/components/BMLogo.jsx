@@ -64,17 +64,17 @@ export default function BMLogo({ size = 32, variant = 'dark', showWordmark = tru
         aria-hidden="true"
       >
         {/* Stem */}
-        <path d="M14 84 Q14 56 14 8" stroke={c.stem} strokeWidth="2.6" strokeLinecap="round"/>
+        <path d="M14 84 Q14 56 14 8" stroke={c.stem} strokeWidth="3.2" strokeLinecap="round"/>
         {/* Lower left leaf */}
-        <path d="M14 72 Q1 58 4 40 Q16 47 14 68" fill={c.l1}/>
+        <path d="M14 72 Q-2 56 2 36 Q17 44 14 68" fill={c.l1}/>
         {/* Lower right leaf */}
-        <path d="M14 72 Q27 58 24 40 Q12 47 14 68" fill={c.l2}/>
+        <path d="M14 72 Q30 56 26 36 Q11 44 14 68" fill={c.l2}/>
         {/* Upper left leaf */}
-        <path d="M14 46 Q1 32 4 14 Q16 21 14 42" fill={c.l3}/>
+        <path d="M14 46 Q-2 30 2 10 Q17 18 14 42" fill={c.l3}/>
         {/* Upper right leaf */}
-        <path d="M14 46 Q27 32 24 14 Q12 21 14 42" fill={c.l4}/>
+        <path d="M14 46 Q30 30 26 10 Q11 18 14 42" fill={c.l4}/>
         {/* Top bud */}
-        <ellipse cx="14" cy="8" rx="5" ry="7" fill={c.bud}/>
+        <ellipse cx="14" cy="8" rx="6" ry="7.5" fill={c.bud}/>
       </svg>
 
       {/* Wordmark + tagline */}
