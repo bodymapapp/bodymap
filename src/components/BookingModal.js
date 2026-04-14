@@ -265,20 +265,47 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
               </label>
               {loadingSlots ? (
                 <div style={{ fontSize: 13, color: C.gray }}>Loading slots…</div>
-              ) : slots.length === 0 ? (
-                <div style={{ fontSize: 13, color: C.gray }}>No available slots on this day.</div>
               ) : (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {slots.map(s => (
-                    <button key={s.start} onClick={() => setSlot(s)}
-                      style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${slot?.start === s.start ? C.forest : C.border}`,
-                        background: slot?.start === s.start ? C.forest : '#fff',
-                        color: slot?.start === s.start ? '#fff' : C.dark,
-                        fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                      {fmt12(s.start)}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  {slots.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+                      {slots.map(s => (
+                        <button key={s.start} onClick={() => setSlot(s)}
+                          style={{ padding: '8px 14px', borderRadius: 10, border: `1.5px solid ${slot?.start === s.start ? C.forest : C.border}`,
+                            background: slot?.start === s.start ? C.forest : '#fff',
+                            color: slot?.start === s.start ? '#fff' : C.dark,
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                          {fmt12(s.start)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {slots.length === 0 && (
+                    <div style={{ fontSize: 13, color: C.gray, marginBottom: 10 }}>No standard slots on this day.</div>
+                  )}
+                  {/* Custom time override */}
+                  <div style={{ borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
+                    <div style={{ fontSize: 11, color: C.gray, marginBottom: 6, fontWeight: 600 }}>
+                      Set a custom time — after hours or special scheduling
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      <input type="time"
+                        onChange={e => {
+                          const t = e.target.value;
+                          if (!t) return;
+                          setSlot({ start: t, end: addMins(t, svc?.duration || 60) });
+                        }}
+                        style={{ padding: '8px 10px', border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: 'none', flex: 1 }}
+                      />
+                      {svc && <span style={{ fontSize: 12, color: C.gray, whiteSpace: 'nowrap' }}>{svc.duration} min</span>}
+                    </div>
+                    {slot && !slots.find(s => s.start === slot.start) && (
+                      <div style={{ fontSize: 12, color: '#D97706', marginTop: 6, fontWeight: 600 }}>
+                        ⚠ Custom time — outside normal hours
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
           )}
