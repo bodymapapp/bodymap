@@ -90,14 +90,19 @@ export default function ImportClients({ therapist, onComplete }) {
 
       const firstName = get(mapping.firstName);
       const lastName  = get(mapping.lastName);
-      const name = [firstName, lastName].filter(Boolean).join(' ');
-      if (!name) { skipped++; continue; }
-
       const email     = get(mapping.email)?.toLowerCase() || null;
       const phone     = get(mapping.phone) || null;
       const notes     = get(mapping.notes) || null;
       const lastVisit = get(mapping.lastVisit) || null;
       const visitCount = parseInt(get(mapping.visitCount)) || null;
+
+      // Build best possible name — fall back to email or phone if name missing
+      let name = [firstName, lastName].filter(Boolean).join(' ');
+      if (!name && email) name = email.split('@')[0].replace(/[._]/g, ' ');
+      if (!name && phone) name = `Client ${phone.replace(/\D/g,'').slice(-4)}`;
+      
+      // Nothing at all — truly skip
+      if (!name && !email && !phone) { skipped++; continue; }
 
       try {
         let client = null;
@@ -325,7 +330,7 @@ export default function ImportClients({ therapist, onComplete }) {
               {importing ? `Importing ${rows.length} clients…` : `Import ${rows.length} Clients →`}
             </button>
             <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>
-              Existing clients matched by email will be updated, not duplicated. This may take a minute for large lists.
+              Any row with a name, phone, or email gets imported. Missing info can be filled in later from each client's profile.
             </p>
           </div>
         )}
@@ -335,7 +340,11 @@ export default function ImportClients({ therapist, onComplete }) {
           <div style={{ textAlign:'center', padding:'20px 0' }}>
             <div style={{ fontSize:48, marginBottom:16 }}>🎉</div>
             <h3 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 8px' }}>Import complete!</h3>
-            <p style={{ fontSize:15, color:C.gray, margin:'0 0 24px' }}>Your clients from {platform?.label} are now in BodyMap.</p>
+            <p style={{ fontSize:15, color:C.gray, margin:'0 0 24px' }}>
+              {results.created > 0
+                ? `${results.created} client${results.created !== 1 ? 's' : ''} from ${platform?.label} are now in BodyMap.`
+                : `All clients from ${platform?.label} were already in BodyMap.`}
+            </p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
               {[
                 { label:'Imported', value:results.created, color:C.forest },
