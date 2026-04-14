@@ -574,7 +574,37 @@ export default function ScheduleDashboard({ therapist }) {
   const [showCreate, setShowCreate] = useState(false);
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
 
-  useEffect(()=>{if(therapist?.id)fetchBookings();},[therapist?.id]);
+  // Blocked days state
+  const [blockedDays, setBlockedDays] = useState([]);
+  const [showBlockPanel, setShowBlockPanel] = useState(false);
+  const [blockDate, setBlockDate] = useState('');
+  const [blockNote, setBlockNote] = useState('');
+  const [blockSaving, setBlockSaving] = useState(false);
+
+  useEffect(()=>{if(therapist?.id){ fetchBookings(); loadBlockedDays(); }},[therapist?.id]);
+
+  async function loadBlockedDays() {
+    const { data } = await supabase.from('blocked_days').select('*')
+      .eq('therapist_id', therapist.id)
+      .gte('date', new Date().toISOString().slice(0,10))
+      .order('date');
+    setBlockedDays(data || []);
+  }
+
+  async function addBlockedDay() {
+    if (!blockDate) return;
+    setBlockSaving(true);
+    const { data } = await supabase.from('blocked_days')
+      .insert({ therapist_id: therapist.id, date: blockDate, note: blockNote.trim() || null })
+      .select().single();
+    if (data) setBlockedDays(prev => [...prev, data].sort((a,b)=>a.date.localeCompare(b.date)));
+    setBlockDate(''); setBlockNote(''); setBlockSaving(false);
+  }
+
+  async function removeBlockedDay(id) {
+    await supabase.from('blocked_days').delete().eq('id', id);
+    setBlockedDays(prev => prev.filter(d => d.id !== id));
+  }
 
   async function fetchBookings() {
     setLoading(true);
@@ -693,6 +723,56 @@ export default function ScheduleDashboard({ therapist }) {
             </div>
           }
         </div>
+      </div>
+
+      {/* Block Days Off panel */}
+      <div style={{marginBottom:16}}>
+        <button onClick={()=>setShowBlockPanel(v=>!v)}
+          style={{display:'flex',alignItems:'center',gap:8,background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:10,padding:'8px 14px',fontSize:12,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
+          🚫 Block Days Off
+          {blockedDays.length > 0 && (
+            <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'1px 8px',fontSize:11,fontWeight:700}}>
+              {blockedDays.length} blocked
+            </span>
+          )}
+          <span style={{fontSize:10}}>{showBlockPanel ? '▲' : '▼'}</span>
+        </button>
+
+        {showBlockPanel && (
+          <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginTop:8}}>
+            <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+              <input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}
+                min={new Date().toISOString().slice(0,10)}
+                style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'1',minWidth:140}} />
+              <input type="text" value={blockNote} onChange={e=>setBlockNote(e.target.value)}
+                placeholder="Reason (vacation, personal day…)"
+                style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'2',minWidth:160}} />
+              <button onClick={addBlockedDay} disabled={!blockDate||blockSaving}
+                style={{background:blockDate?'#2A5741':'#D1D5DB',color:'#fff',border:'none',padding:'8px 16px',borderRadius:8,fontSize:13,fontWeight:700,cursor:blockDate?'pointer':'not-allowed',whiteSpace:'nowrap'}}>
+                {blockSaving ? '…' : '+ Block Day'}
+              </button>
+            </div>
+            {blockedDays.length === 0
+              ? <div style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>No days blocked. Clients can book any available date up to a year out.</div>
+              : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {blockedDays.map(d=>(
+                    <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#F9FAFB',borderRadius:8,padding:'8px 12px'}}>
+                      <div>
+                        <span style={{fontSize:13,fontWeight:700,color:'#1F2937'}}>
+                          {new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}
+                        </span>
+                        {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8}}>— {d.note}</span>}
+                      </div>
+                      <button onClick={()=>removeBlockedDay(d.id)}
+                        style={{background:'#FEE2E2',color:'#DC2626',border:'none',borderRadius:6,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+            }
+          </div>
+        )}
       </div>
 
       {/* Stats */}
