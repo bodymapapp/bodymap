@@ -182,9 +182,9 @@ export default function Home() {
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                 Start Free - No Card Needed
               </Link>
-              <Link to="/demo" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+              <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                 See How It Works →
-              </Link>
+              </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
               {['Free forever on Bronze', 'Live in 30 seconds', 'No credit card'].map(t => (
@@ -351,9 +351,9 @@ export default function Home() {
                 <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:10, padding:'13px 24px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                   Start Free Today
                 </Link>
-                <Link to="/demo" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:10, padding:'13px 20px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+                <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:10, padding:'13px 20px', fontSize:14, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
                   Try Live Demo →
-                </Link>
+                </a>
               </div>
             </div>
             <div style={{ display:'flex', justifyContent:'center' }}>
