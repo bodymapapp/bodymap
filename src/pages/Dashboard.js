@@ -934,8 +934,8 @@ export default function Dashboard({ view }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {(!therapist?.plan || therapist?.plan === 'free') && (
             <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-              style={{ background: '#C9A84C', color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              Upgrade ↑
+              style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+              Upgrade to Silver →
             </a>
           )}
           {(therapist?.plan === 'silver' || therapist?.plan === 'gold') && (
@@ -943,8 +943,8 @@ export default function Dashboard({ view }) {
               {therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
             </span>
           )}
-          <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
-            Out
+          <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            Sign Out
           </button>
         </div>
       </header>
@@ -1012,6 +1012,7 @@ export default function Dashboard({ view }) {
                 services={stats?.services || []}
                 availability={stats?.availability || []}
                 sessions={stats?.sessions || 0}
+                clients={stats?.clients || 0}
                 onNavigate={(v) => navigate(`/dashboard/${v}`)}
               />
               <ClientList

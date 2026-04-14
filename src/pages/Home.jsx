@@ -244,6 +244,60 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── SWITCH IN 5 MINUTES ───────────────────────────────────────────── */}
+      <section style={{ background:'#fff', padding:'72px 24px' }}>
+        <div style={{ maxWidth:900, margin:'0 auto' }}>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center' }}>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:14 }}>
+                Zero friction switch
+              </div>
+              <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,3.5vw,40px)', fontWeight:700, color:G.deep, lineHeight:1.2, margin:'0 0 20px' }}>
+                Move your clients over in 5 minutes. Start saving money the same day.
+              </h2>
+              <p style={{ fontSize:16, color:G.mid2, lineHeight:1.75, margin:'0 0 28px' }}>
+                Import from Square, MassageBook, Vagaro, or GlossGenius in two clicks. Every client, every phone number, every visit history — in BodyMap before your next session. No re-entering. No confusion. No ads.
+              </p>
+              <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:32 }}>
+                {[
+                  { icon:'📥', text:'Upload your existing client list — any platform, any CSV' },
+                  { icon:'⚡', text:'Clients appear instantly with their history intact' },
+                  { icon:'💰', text:'Stop paying $45–$70/mo for tools that don\'t know your clients\' bodies' },
+                ].map(item => (
+                  <div key={item.text} style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+                    <span style={{ fontSize:18, flexShrink:0, marginTop:1 }}>{item.icon}</span>
+                    <span style={{ fontSize:15, color:G.deep, lineHeight:1.5 }}>{item.text}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/signup" style={{ display:'inline-block', background:G.mid, color:'#fff', borderRadius:50, padding:'14px 28px', fontSize:15, fontWeight:700, textDecoration:'none' }}>
+                Import my clients free →
+              </Link>
+            </div>
+            <div style={{ background:G.beige, borderRadius:20, padding:32 }}>
+              <div style={{ fontSize:12, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:20 }}>What you're paying now</div>
+              {[
+                { name:'MassageBook', price:'$45/mo', annual:'$540/yr' },
+                { name:'Vagaro',      price:'$25/mo', annual:'$300/yr' },
+                { name:'GlossGenius', price:'$48/mo', annual:'$576/yr' },
+              ].map(p => (
+                <div key={p.name} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 0', borderBottom:'1px solid #E5DFD7' }}>
+                  <div>
+                    <div style={{ fontSize:14, fontWeight:600, color:G.deep }}>{p.name}</div>
+                    <div style={{ fontSize:12, color:G.light }}>{p.price}</div>
+                  </div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'#DC2626' }}>{p.annual}</div>
+                </div>
+              ))}
+              <div style={{ marginTop:16, background:G.mid, borderRadius:12, padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>BodyMap Bronze</div>
+                <div style={{ fontSize:16, fontWeight:800, color:'#86EFAC' }}>$0/yr</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── THREE PAIN POINTS ─────────────────────────────────────────────── */}
       <section style={{ background:G.deep, padding:'80px 24px', textAlign:'center' }}>
         <div style={{ maxWidth:1000, margin:'0 auto' }}>

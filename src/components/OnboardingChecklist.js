@@ -3,23 +3,23 @@ import React, { useState, useEffect } from 'react';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const STEPS = [
+  { id:'import',  icon:'📥', label:'Move your clients over',   desc:'Import from Square, MassageBook, Vagaro or any CSV. Takes 2 minutes — no client left behind.', action:'Import Clients', view:'import'   },
   { id:'service', icon:'🛁', label:'Add your first service',   desc:'Tell clients what you offer and at what price.',         action:'Go to Settings', view:'settings' },
   { id:'hours',   icon:'🕐', label:'Set your working hours',   desc:'Clients can only book during your available times.',     action:'Go to Settings', view:'settings' },
   { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)',desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings' },
-  { id:'link',    icon:'🔗', label:'Share your booking link',  desc:'Copy your link and send it to your first client.',       action:'Go to Settings', view:'settings' },
   { id:'intake',  icon:'📋', label:'Send your first intake',   desc:'Book a client and send them the intake form.',           action:'Go to Clients',  view:'clients'  },
 ];
 
-export default function OnboardingChecklist({ therapist, services, availability, sessions, onNavigate }) {
+export default function OnboardingChecklist({ therapist, services, availability, sessions, clients, onNavigate }) {
   const [collapsed, setCollapsed] = useState(false);
 
+  const hasImport = (clients || 0) > 0;
   const hasService = services?.length > 0;
   const hasHours   = availability?.some(a => a.active);
   const hasStripe  = !!therapist?.stripe_account_connected;
-  const hasLink    = hasService && hasHours;
-  const hasIntake  = false;
+  const hasIntake  = sessions > 0;
 
-  const checks = { service:hasService, hours:hasHours, stripe:hasStripe, link:hasLink, intake:hasIntake };
+  const checks = { import:hasImport, service:hasService, hours:hasHours, stripe:hasStripe, intake:hasIntake };
   const done  = Object.values(checks).filter(Boolean).length;
   const total = STEPS.length;
   const allDone = done === total;
