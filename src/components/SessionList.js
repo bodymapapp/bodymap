@@ -11,6 +11,30 @@ const C = {
 export default function SessionList({ client, therapistId, onBack, onSelectSession }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isArchived, setIsArchived] = useState(client?.do_not_rebook || false);
+  const [dnrReason, setDnrReason] = useState(client?.dnr_reason || "");
+  const [showArchiveMenu, setShowArchiveMenu] = useState(false);
+  const [archiveSaving, setArchiveSaving] = useState(false);
+
+  const DNR_REASONS = [
+    "Do not rebook",
+    "Deceased",
+    "Moved away",
+    "Requested removal",
+    "Other",
+  ];
+
+  async function toggleArchive(reason) {
+    setArchiveSaving(true);
+    const newVal = !isArchived;
+    await supabase.from("clients")
+      .update({ do_not_rebook: newVal, dnr_reason: newVal ? reason : null })
+      .eq("id", client.id);
+    setIsArchived(newVal);
+    setDnrReason(newVal ? reason : "");
+    setShowArchiveMenu(false);
+    setArchiveSaving(false);
+  }
 
   useEffect(() => {
     if (client?.id) loadSessions();
@@ -30,15 +54,50 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px", flexWrap: "wrap" }}>
         <button onClick={onBack} style={{ background: "transparent", border: `1.5px solid ${C.lightGray}`, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer", fontFamily: "system-ui" }}>
           ← All Clients
         </button>
-        <div>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>
-            {client.name}
-          </h2>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: "700", color: isArchived ? "#6B7280" : C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>
+              {client.name}
+            </h2>
+            {isArchived && (
+              <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>
+                ⛔ {dnrReason || "Archived"}
+              </span>
+            )}
+          </div>
           <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
+        </div>
+
+        {/* Archive toggle */}
+        <div style={{ position: "relative" }}>
+          {isArchived ? (
+            <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
+              style={{ background: "#F3F4F6", border: "1.5px solid #D1D5DB", color: "#6B7280", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              {archiveSaving ? "Restoring…" : "↩ Restore Client"}
+            </button>
+          ) : (
+            <button onClick={() => setShowArchiveMenu(v => !v)}
+              style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              ⛔ Archive Client
+            </button>
+          )}
+          {showArchiveMenu && (
+            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 200 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: "#991B1B", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 6px" }}>Reason</p>
+              {DNR_REASONS.map(r => (
+                <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
+                  style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "8px 10px", borderRadius: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500 }}
+                  onMouseEnter={e => e.target.style.background = "#FEF2F2"}
+                  onMouseLeave={e => e.target.style.background = "transparent"}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -11,6 +11,7 @@ const C = {
 const FREE_LIMIT = 5;
 
 function getStatus(client, lapsedDays = 60) {
+  if (client.do_not_rebook) return { label: "Archived", color: "#991B1B", bg: "#FEE2E2", icon: "⛔" };
   const days = client.days_since_visit;
   if (days === null || client.total_sessions === 0) return { label: "New", color: "#7C3AED", bg: "#F5F3FF", icon: "🌸" };
   if (days > lapsedDays) return { label: "Lapsed", color: "#92400E", bg: "#FEF3C7", icon: "🍂" };
@@ -44,11 +45,13 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
     return colors[(name?.charCodeAt(0) || 0) % colors.length];
   };
 
-  // Today's focus: clients with pending sessions
-  const todayFocus = clients.filter(c => c.has_pending);
+  // Today's focus: clients with pending sessions (exclude archived)
+  const todayFocus = clients.filter(c => c.has_pending && !c.do_not_rebook);
 
   // All clients sorted: active first, then by last visit
   const sortedClients = [...clients].sort((a, b) => {
+    if (a.do_not_rebook && !b.do_not_rebook) return 1;
+    if (!a.do_not_rebook && b.do_not_rebook) return -1;
     if (a.has_pending && !b.has_pending) return -1;
     if (!a.has_pending && b.has_pending) return 1;
     if (a.days_since_visit === null) return 1;
@@ -57,10 +60,11 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
   });
 
   const filterFns = {
-    all: () => true,
-    active: c => c.days_since_visit !== null && c.days_since_visit <= lapsedDays,
-    lapsed: c => c.days_since_visit !== null && c.days_since_visit > lapsedDays,
-    new: c => c.days_since_visit === null || c.total_sessions === 0,
+    all: c => !c.do_not_rebook,
+    active: c => !c.do_not_rebook && c.days_since_visit !== null && c.days_since_visit <= lapsedDays,
+    lapsed: c => !c.do_not_rebook && c.days_since_visit !== null && c.days_since_visit > lapsedDays,
+    new: c => !c.do_not_rebook && (c.days_since_visit === null || c.total_sessions === 0),
+    archived: c => c.do_not_rebook === true,
   };
 
   const filtered = sortedClients.filter(c =>
@@ -79,7 +83,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
     </div>
   );
 
-  const lapsedClients = clients.filter(c => c.days_since_visit !== null && c.days_since_visit > lapsedDays).sort((a,b) => b.days_since_visit - a.days_since_visit);
+  const lapsedClients = clients.filter(c => !c.do_not_rebook && c.days_since_visit !== null && c.days_since_visit > lapsedDays).sort((a,b) => b.days_since_visit - a.days_since_visit);
 
   return (
     <div>
@@ -203,7 +207,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px", flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
             <h2 style={{ fontFamily: "Georgia, serif", fontSize: "22px", fontWeight: "700", color: C.darkGray, margin: 0 }}>Your Clients</h2>
-            <span style={{ fontSize: "14px", color: C.gray }}>{clients.length} total</span>
+            <span style={{ fontSize: "14px", color: C.gray }}>{clients.filter(c => !c.do_not_rebook).length} active</span>
           </div>
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clients..."
             style={{ padding: "8px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: "8px", fontSize: "13px", width: "200px", outline: "none", background: C.beige }} />
@@ -211,12 +215,13 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
 
         {/* Filter tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-          {[["all","All"], ["active","🌱 Active"], ["lapsed","🍂 Lapsed"], ["new","🌸 New"]].map(([key, label]) => (
+          {[["all","All"], ["active","🌱 Active"], ["lapsed","🍂 Lapsed"], ["new","🌸 New"], ["archived","⛔ Archived"]].map(([key, label]) => (
             <button key={key} onClick={() => setFilter(key)}
-              style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${filter === key ? C.forest : C.lightGray}`,
-                background: filter === key ? C.forest : C.white, color: filter === key ? "#fff" : C.gray,
+              style={{ padding: "6px 14px", borderRadius: "20px", border: `1.5px solid ${filter === key ? (key === "archived" ? "#991B1B" : C.forest) : C.lightGray}`,
+                background: filter === key ? (key === "archived" ? "#991B1B" : C.forest) : C.white,
+                color: filter === key ? "#fff" : key === "archived" ? "#991B1B" : C.gray,
                 fontSize: "12px", fontWeight: "600", cursor: "pointer" }}>
-              {label}
+              {label}{key === "archived" && clients.filter(c => c.do_not_rebook).length > 0 ? ` (${clients.filter(c => c.do_not_rebook).length})` : ""}
             </button>
           ))}
         </div>
@@ -315,28 +320,32 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
   const [hovered, setHovered] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const status = getStatus(client, lapsedDays);
+  const isArchived = client.do_not_rebook;
 
   return (
     <div onClick={() => onSelect(client)} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
-      style={{ background: C.white, borderRadius: "14px", padding: "16px 18px",
-        border: `1.5px solid ${highlight ? C.forest : hovered ? C.sage : C.lightGray}`,
+      style={{ background: isArchived ? "#FFF5F5" : C.white, borderRadius: "14px", padding: "16px 18px",
+        border: isArchived ? "1.5px solid #FECACA" : `1.5px solid ${highlight ? C.forest : hovered ? C.sage : C.lightGray}`,
+        borderLeft: isArchived ? "4px solid #DC2626" : undefined,
         cursor: "pointer", transition: "all 0.2s ease",
         boxShadow: hovered ? "0 8px 24px rgba(42,87,65,0.12)" : "0 1px 4px rgba(0,0,0,0.06)",
-        transform: hovered ? "translateY(-2px)" : "none" }}>
+        transform: hovered ? "translateY(-2px)" : "none",
+        opacity: isArchived ? 0.75 : 1 }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
-        <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: avatarColor(client.name),
+        <div style={{ width: "40px", height: "40px", borderRadius: "50%",
+          background: isArchived ? "#9CA3AF" : avatarColor(client.name),
           color: C.white, display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: "15px", fontWeight: "700", flexShrink: 0 }}>
           {initials(client.name)}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: "15px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0",
+          <p style={{ fontSize: "15px", fontWeight: "700", color: isArchived ? "#6B7280" : C.darkGray, margin: "0 0 2px 0",
             fontFamily: "Georgia, serif", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {client.name}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "-"}</p>
-            {client.phone && (
+            {client.phone && !isArchived && (
               <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(client.phone); setCopiedPhone(true); setTimeout(() => setCopiedPhone(false), 2000); }}
                 style={{ background: copiedPhone ? "#2A5741" : "#F3F4F6", border: "none", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: "600", color: copiedPhone ? "white" : "#6B7280", cursor: "pointer", flexShrink: 0 }}>
                 {copiedPhone ? "✓" : "📋"}
@@ -359,9 +368,14 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
           )}
         </div>
       </div>
+      {isArchived && client.dnr_reason && (
+        <div style={{ marginBottom: 10, background: "#FEE2E2", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#991B1B" }}>
+          {client.dnr_reason}
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", paddingTop: "10px", borderTop: `1px solid ${C.lightGray}` }}>
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: "17px", fontWeight: "700", color: C.forest, margin: "0 0 1px 0" }}>{client.total_sessions || 0}</p>
+          <p style={{ fontSize: "17px", fontWeight: "700", color: isArchived ? C.gray : C.forest, margin: "0 0 1px 0" }}>{client.total_sessions || 0}</p>
           <p style={{ fontSize: "10px", color: C.gray, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>Sessions</p>
         </div>
         <div style={{ textAlign: "center" }}>
@@ -377,17 +391,17 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
           <p style={{ fontSize: "10px", color: C.gray, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>Member</p>
         </div>
       </div>
-      {client.has_pending && (
+      {!isArchived && client.has_pending && (
         <div style={{ marginTop: 10, background: "#E8F5EE", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 700, color: "#2A5741" }}>
           🧭 Intake done - tap to review session
         </div>
       )}
-      {client.has_old_pending && !client.has_pending && (
+      {!isArchived && client.has_old_pending && !client.has_pending && (
         <div style={{ marginTop: 10, background: "#F3F4F6", borderRadius: 8, padding: "5px 10px", fontSize: 11, fontWeight: 600, color: "#6B7280" }}>
           ⚠️ Old incomplete session
         </div>
       )}
-      {client.last_session_at && (
+      {!isArchived && client.last_session_at && (
         <div style={{ marginTop: 8, fontSize: 11, color: "#6B9E80", fontStyle: "italic" }}>
           📋 Last intake: {formatIntakeDate(client.last_session_at)}
         </div>
