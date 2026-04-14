@@ -4295,14 +4295,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
   useEffect(() => {
     if (initialName && initialEmail && getLastSession) {
       getLastSession(initialEmail).then(last => {
-        if (last) {
-          setLastSession(last);
-          // Auto-apply if zones exist — client can still update anything
-          if (last.bodyMap && Object.keys(last.bodyMap).length > 0) {
-            setBM(last.bodyMap);
-            setPrefs(prev => ({ ...prev, ...(last.prefs || {}) }));
-          }
-        }
+        if (last) setLastSession(last);
       }).catch(() => {});
     }
   }, []);
