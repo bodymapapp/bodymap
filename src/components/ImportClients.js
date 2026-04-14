@@ -100,21 +100,48 @@ export default function ImportClients({ therapist, onComplete }) {
       const visitCount = parseInt(get(mapping.visitCount)) || null;
 
       try {
-        // Upsert client
-        const { data: client, error: clientErr } = await supabase
-          .from('clients')
-          .upsert({
-            therapist_id: therapist.id,
-            name,
-            email,
-            phone,
-            notes,
-            imported_from: platform?.label || 'CSV Import',
-            created_at: new Date().toISOString(),
-          }, { onConflict: 'therapist_id,email', ignoreDuplicates: false })
-          .select().single();
+        let client = null;
 
-        if (clientErr) { failed++; continue; }
+        // Check for existing client by email (only if email present) or name+phone
+        let existingQuery = supabase.from('clients').select('id').eq('therapist_id', therapist.id);
+        if (email) {
+          const { data: byEmail } = await existingQuery.eq('email', email).maybeSingle();
+          if (byEmail) client = byEmail;
+        }
+        if (!client && phone) {
+          const { data: byPhone } = await supabase.from('clients').select('id')
+            .eq('therapist_id', therapist.id).eq('phone', phone).maybeSingle();
+          if (byPhone) client = byPhone;
+        }
+        if (!client) {
+          const { data: byName } = await supabase.from('clients').select('id')
+            .eq('therapist_id', therapist.id).ilike('name', name).maybeSingle();
+          if (byName) client = byName;
+        }
+
+        if (client) {
+          // Update existing with any new info
+          const updates = {};
+          if (email && !client.email) updates.email = email;
+          if (phone && !client.phone) updates.phone = phone;
+          if (Object.keys(updates).length) {
+            await supabase.from('clients').update(updates).eq('id', client.id);
+          }
+          skipped++; // already exists — count as skipped not failed
+        } else {
+          // Insert new client
+          const payload = { therapist_id: therapist.id, name };
+          if (email) payload.email = email;
+          if (phone) payload.phone = phone;
+          if (notes) payload.notes = notes;
+
+          const { data: newClient, error: insertErr } = await supabase
+            .from('clients').insert(payload).select('id').single();
+
+          if (insertErr) { failed++; continue; }
+          client = newClient;
+          created++;
+        }
 
         // If we have visit history, create a synthetic session to preserve last visit date
         if (lastVisit && client?.id) {
@@ -148,8 +175,7 @@ export default function ImportClients({ therapist, onComplete }) {
           }
         }
 
-        created++;
-      } catch(e) { failed++; }
+      } catch(e) { console.error('Import row error:', e, row); failed++; }
     }
 
     setResults({ created, skipped, failed, total: rows.length });
@@ -310,11 +336,11 @@ export default function ImportClients({ therapist, onComplete }) {
             <div style={{ fontSize:48, marginBottom:16 }}>🎉</div>
             <h3 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 8px' }}>Import complete!</h3>
             <p style={{ fontSize:15, color:C.gray, margin:'0 0 24px' }}>Your clients from {platform?.label} are now in BodyMap.</p>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:24 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
               {[
                 { label:'Imported', value:results.created, color:C.forest },
-                { label:'Skipped', value:results.skipped, color:C.gray },
-                { label:'Failed', value:results.failed, color:'#EF4444' },
+                { label:'Already existed', value:results.skipped, color:C.gray },
+                { label:'Failed', value:results.failed, color: results.failed > 0 ? '#EF4444' : C.gray },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ background:C.beige, borderRadius:10, padding:'16px 8px' }}>
                   <div style={{ fontSize:28, fontWeight:700, color }}>{value}</div>
@@ -322,6 +348,16 @@ export default function ImportClients({ therapist, onComplete }) {
                 </div>
               ))}
             </div>
+            {results.failed > 0 && (
+              <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#991B1B', textAlign:'left', lineHeight:1.6 }}>
+                <strong>{results.failed} rows failed.</strong> Most common cause: rows missing both a name and email. Open your CSV, make sure every client has at least a first name, then try again.
+              </div>
+            )}
+            {results.created === 0 && results.skipped > 0 && (
+              <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#1D4ED8', textAlign:'left', lineHeight:1.6 }}>
+                All clients already exist in BodyMap — no duplicates were created.
+              </div>
+            )}
             <p style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>
               Visit history has been preserved where available — lapsed detection and pattern intelligence will work immediately for imported clients.
             </p>
