@@ -13,6 +13,7 @@ import GiftCertificates from '../components/GiftCertificates';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
+import BMLogo from '../components/BMLogo';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -990,7 +991,7 @@ export default function Dashboard({ view }) {
       )}
       <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-          <span style={{ fontSize: '24px' }}>🌿</span>
+          <BMLogo size={30} variant="dark" showWordmark={false} />
           <div>
             <h1 style={{ fontSize: '16px', fontWeight: '700', color: C.forest, margin: 0 }}>BodyMap</h1>
             <p style={{ fontSize: '11px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>

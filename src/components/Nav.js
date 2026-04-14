@@ -1,6 +1,7 @@
 // src/components/Nav.js
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import BMLogo from "./BMLogo";
 
 const C = { sage: "#6B9E80", forest: "#2A5741", gray: "#6B7280", white: "#FFFFFF" };
 
@@ -59,9 +60,8 @@ export default function Nav() {
 
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {/* Logo - always goes to top of home */}
-        <a href="/" onClick={goHome} style={{ display: "flex", alignItems: "center", gap: "8px", textDecoration: "none" }}>
-          <span style={{ fontSize: "24px" }}>🌿</span>
-          <span style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: "700", color: C.forest }}>BodyMap</span>
+        <a href="/" onClick={goHome} style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+          <BMLogo size={34} variant="dark" showWordmark={true} />
         </a>
 
         {/* Desktop links */}

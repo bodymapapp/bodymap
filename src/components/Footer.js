@@ -1,6 +1,7 @@
 // src/components/Footer.js
 import React from "react";
 import { Link } from "react-router-dom";
+import BMLogo from "./BMLogo";
 
 export default function Footer() {
   return (
@@ -14,9 +15,8 @@ export default function Footer() {
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
         <div className="bm-footer-grid" style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "32px", marginBottom: "40px" }}>
           <div>
-            <Link to="/" onClick={() => window.scrollTo(0,0)} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px", textDecoration: "none", color: "white" }}>
-              <span style={{ fontSize: "24px" }}>🌿</span>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: "20px", fontWeight: "700" }}>BodyMap</span>
+            <Link to="/" onClick={() => window.scrollTo(0,0)} style={{ display: "flex", alignItems: "center", marginBottom: "12px", textDecoration: "none" }}>
+              <BMLogo size={30} variant="white" showWordmark={true} />
             </Link>
             <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", maxWidth: "200px", lineHeight: 1.6 }}>Retain every client. Automate your practice. Grow your income.</p>
           </div>

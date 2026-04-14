@@ -1,4 +1,5 @@
 // src/pages/CareSummary.js
+import BMLogo from '../components/BMLogo';
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -232,7 +233,7 @@ export default function CareSummary() {
         {/* Footer */}
         <div style={{ textAlign:"center" }}>
           <p style={{ fontSize:"12px", color:C.gray, margin:"0 0 8px 0" }}>Powered by</p>
-          <a href="https://www.mybodymap.app" style={{ fontFamily:"Georgia, serif", fontSize:"16px", fontWeight:"700", color:C.forest, textDecoration:"none" }}>🌿 BodyMap</a>
+          <a href="https://www.mybodymap.app" style={{ textDecoration:"none", display:"inline-flex", alignItems:"center" }}><BMLogo size={24} variant="dark" showWordmark={true} /></a>
           <p style={{ fontSize:"11px", color:C.gray, margin:"8px 0 0 0" }}>Professional intake & pattern intelligence for massage therapists</p>
         </div>
       </div>
