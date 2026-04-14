@@ -1025,6 +1025,7 @@ export default function Dashboard({ view }) {
           {view === 'sessions' && client && (
             <SessionList
               client={client}
+              therapist={therapist}
               therapistId={therapist?.id}
               onBack={() => navigate('/dashboard')}
               onSelectSession={(s) => navigate(`/dashboard/clients/${clientId}/sessions/${s.id}`)}

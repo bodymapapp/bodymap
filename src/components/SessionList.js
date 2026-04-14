@@ -1,6 +1,7 @@
 // src/components/SessionList.js
 import React, { useState, useEffect } from "react";
 import { db, supabase } from "../lib/supabase";
+import BookingModal from "./BookingModal";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -8,13 +9,14 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, onBack, onSelectSession }) {
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isArchived, setIsArchived] = useState(client?.do_not_rebook || false);
   const [dnrReason, setDnrReason] = useState(client?.dnr_reason || "");
   const [showArchiveMenu, setShowArchiveMenu] = useState(false);
   const [archiveSaving, setArchiveSaving] = useState(false);
+  const [showRebook, setShowRebook] = useState(false);
 
   // Merge state
   const [showMerge, setShowMerge] = useState(false);
@@ -109,7 +111,18 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
 
   return (
     <div>
-      {/* ── Merge Modal ── */}
+      {/* Rebook modal */}
+      {showRebook && therapist && (
+        <BookingModal
+          therapist={therapist}
+          mode="rebook"
+          prefillClient={{ name: client.name, email: client.email, phone: client.phone }}
+          onClose={() => setShowRebook(false)}
+          onSuccess={() => setShowRebook(false)}
+        />
+      )}
+
+      {/* Merge Modal */}
       {showMerge && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 24 }}
           onClick={e => { if (e.target === e.currentTarget) { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}}>
@@ -193,6 +206,14 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
           </div>
           <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
         </div>
+
+        {/* Book Next Appointment */}
+        {!isArchived && (
+          <button onClick={() => setShowRebook(true)}
+            style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", color: "#16A34A", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+            📅 Book Next
+          </button>
+        )}
 
         {/* Merge button */}
         <button onClick={() => setShowMerge(true)}
