@@ -16,6 +16,14 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
   const [showArchiveMenu, setShowArchiveMenu] = useState(false);
   const [archiveSaving, setArchiveSaving] = useState(false);
 
+  // Merge state
+  const [showMerge, setShowMerge] = useState(false);
+  const [mergeSearch, setMergeSearch] = useState("");
+  const [mergeResults, setMergeResults] = useState([]);
+  const [mergeTarget, setMergeTarget] = useState(null); // the duplicate to absorb
+  const [mergeSaving, setMergeSaving] = useState(false);
+  const [mergeError, setMergeError] = useState("");
+
   const DNR_REASONS = [
     "Do not rebook",
     "Deceased",
@@ -36,6 +44,53 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
     setArchiveSaving(false);
   }
 
+  async function searchClients(q) {
+    setMergeSearch(q);
+    if (q.trim().length < 2) { setMergeResults([]); return; }
+    const { data } = await supabase.from("clients")
+      .select("id, name, email, phone, created_at")
+      .eq("therapist_id", therapistId)
+      .neq("id", client.id)
+      .ilike("name", `%${q}%`)
+      .limit(8);
+    setMergeResults(data || []);
+  }
+
+  async function executeMerge() {
+    if (!mergeTarget) return;
+    setMergeSaving(true);
+    setMergeError("");
+    try {
+      // Move all sessions from duplicate to primary (this client)
+      const { error: sessErr } = await supabase.from("sessions")
+        .update({ client_id: client.id })
+        .eq("client_id", mergeTarget.id);
+      if (sessErr) throw sessErr;
+
+      // Move any bookings from duplicate to primary
+      await supabase.from("bookings")
+        .update({ client_id: client.id })
+        .eq("client_id", mergeTarget.id);
+
+      // Delete the duplicate client
+      const { error: delErr } = await supabase.from("clients")
+        .delete()
+        .eq("id", mergeTarget.id);
+      if (delErr) throw delErr;
+
+      // Reload sessions to reflect merged data
+      await loadSessions();
+      setShowMerge(false);
+      setMergeTarget(null);
+      setMergeSearch("");
+      setMergeResults([]);
+    } catch (err) {
+      setMergeError("Merge failed: " + (err.message || "unknown error"));
+    } finally {
+      setMergeSaving(false);
+    }
+  }
+
   useEffect(() => {
     if (client?.id) loadSessions();
   }, [client?.id]);
@@ -54,7 +109,74 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
 
   return (
     <div>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px", marginBottom: "28px", flexWrap: "wrap" }}>
+      {/* ── Merge Modal ── */}
+      {showMerge && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 24 }}
+          onClick={e => { if (e.target === e.currentTarget) { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h3 style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: 700, color: C.darkGray, margin: "0 0 4px" }}>Merge Duplicate Client</h3>
+                <p style={{ fontSize: 12, color: C.gray, margin: 0 }}>All sessions from the duplicate will move to <strong>{client.name}</strong>, then the duplicate is deleted.</p>
+              </div>
+              <button onClick={() => { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}
+                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.gray, padding: 4 }}>✕</button>
+            </div>
+
+            {/* Primary client */}
+            <div style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Keep this record (primary)</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: C.darkGray }}>{client.name}</div>
+              <div style={{ fontSize: 12, color: C.gray }}>{client.email || client.phone || "No contact on file"}</div>
+            </div>
+
+            {/* Search for duplicate */}
+            <input
+              autoFocus
+              value={mergeSearch}
+              onChange={e => searchClients(e.target.value)}
+              placeholder="Search for the duplicate by name…"
+              style={{ width: "100%", padding: "10px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+            />
+
+            {mergeResults.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
+                {mergeResults.map(r => (
+                  <div key={r.id} onClick={() => setMergeTarget(r)}
+                    style={{ padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${mergeTarget?.id === r.id ? "#DC2626" : C.lightGray}`,
+                      background: mergeTarget?.id === r.id ? "#FEF2F2" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: mergeTarget?.id === r.id ? "#DC2626" : C.darkGray }}>{r.name}</div>
+                    <div style={{ fontSize: 12, color: C.gray }}>{r.email || r.phone || "No contact"} · Added {new Date(r.created_at).toLocaleDateString()}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {mergeTarget && (
+              <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Duplicate to delete after merge</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "#991B1B" }}>{mergeTarget.name}</div>
+                <div style={{ fontSize: 12, color: "#DC2626" }}>{mergeTarget.email || mergeTarget.phone || "No contact on file"}</div>
+              </div>
+            )}
+
+            {mergeError && <div style={{ fontSize: 13, color: "#DC2626", marginBottom: 12, fontWeight: 600 }}>⚠ {mergeError}</div>}
+
+            <div style={{ display: "flex", gap: 10 }}>
+              <button onClick={() => { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}
+                style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: `1.5px solid ${C.lightGray}`, background: "#fff", color: C.gray, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={executeMerge} disabled={!mergeTarget || mergeSaving}
+                style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: mergeTarget ? "#DC2626" : "#E5E7EB", color: "#fff", fontSize: 14, fontWeight: 700, cursor: mergeTarget ? "pointer" : "not-allowed", opacity: mergeSaving ? 0.6 : 1 }}>
+                {mergeSaving ? "Merging…" : "Merge & Delete Duplicate"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
         <button onClick={onBack} style={{ background: "transparent", border: `1.5px solid ${C.lightGray}`, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer", fontFamily: "system-ui" }}>
           ← All Clients
         </button>
@@ -72,21 +194,27 @@ export default function SessionList({ client, therapistId, onBack, onSelectSessi
           <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
         </div>
 
+        {/* Merge button */}
+        <button onClick={() => setShowMerge(true)}
+          style={{ background: "#F5F3FF", border: "1.5px solid #C4B5FD", color: "#7C3AED", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+          ⟵⟶ Merge
+        </button>
+
         {/* Archive toggle */}
         <div style={{ position: "relative" }}>
           {isArchived ? (
             <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
               style={{ background: "#F3F4F6", border: "1.5px solid #D1D5DB", color: "#6B7280", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-              {archiveSaving ? "Restoring…" : "↩ Restore Client"}
+              {archiveSaving ? "Restoring…" : "↩ Restore"}
             </button>
           ) : (
             <button onClick={() => setShowArchiveMenu(v => !v)}
-              style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-              ⛔ Archive Client
+              style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              ⛔ Archive
             </button>
           )}
           {showArchiveMenu && (
-            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 200 }}>
+            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 190 }}>
               <p style={{ fontSize: 11, fontWeight: 700, color: "#991B1B", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 6px" }}>Reason</p>
               {DNR_REASONS.map(r => (
                 <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
