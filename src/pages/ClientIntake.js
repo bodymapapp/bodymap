@@ -218,11 +218,22 @@ export default function ClientIntake() {
       // Use most recent session that isn't the current booking
       const prev = sessions.find(s => s.booking_id !== bookingIdFromUrl) || sessions[0];
 
+      // jsonb columns may return as array OR as JSON string — handle both
+      const parseZones = (field) => {
+        if (!field) return [];
+        if (Array.isArray(field)) return field;
+        if (typeof field === 'string') {
+          try { const p = JSON.parse(field); return Array.isArray(p) ? p : []; }
+          catch { return []; }
+        }
+        return [];
+      };
+
       const bodyMap = {};
-      (prev.front_focus || []).forEach(id => bodyMap[id] = 'focus');
-      (prev.front_avoid || []).forEach(id => bodyMap[id] = 'avoid');
-      (prev.back_focus  || []).forEach(id => bodyMap[id] = 'focus');
-      (prev.back_avoid  || []).forEach(id => bodyMap[id] = 'avoid');
+      parseZones(prev.front_focus).forEach(id => bodyMap[id] = 'focus');
+      parseZones(prev.front_avoid).forEach(id => bodyMap[id] = 'avoid');
+      parseZones(prev.back_focus ).forEach(id => bodyMap[id] = 'focus');
+      parseZones(prev.back_avoid ).forEach(id => bodyMap[id] = 'avoid');
 
       return {
         bodyMap,
