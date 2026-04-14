@@ -404,6 +404,24 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [showCalKey, setShowCalKey] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
 
+  const [pwCurrent, setPwCurrent] = React.useState('');
+  const [pwNew, setPwNew] = React.useState('');
+  const [pwConfirm, setPwConfirm] = React.useState('');
+  const [pwSaving, setPwSaving] = React.useState(false);
+  const [pwMsg, setPwMsg] = React.useState(null); // { type: 'ok'|'err', text }
+
+  async function changePassword() {
+    setPwMsg(null);
+    if (!pwNew || pwNew.length < 8) { setPwMsg({ type:'err', text:'New password must be at least 8 characters.' }); return; }
+    if (pwNew !== pwConfirm) { setPwMsg({ type:'err', text:'New passwords do not match.' }); return; }
+    setPwSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pwNew });
+    setPwSaving(false);
+    if (error) { setPwMsg({ type:'err', text: error.message }); }
+    else { setPwMsg({ type:'ok', text:'Password updated.' }); setPwCurrent(''); setPwNew(''); setPwConfirm(''); }
+    setTimeout(() => setPwMsg(null), 4000);
+  }
+
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(intakeUrl)}`;
 
@@ -786,6 +804,32 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </button>
       </div>
 
+      {/* Change Password */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 14px 0' }}>🔒 Change Password</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:10, maxWidth:360 }}>
+          <input
+            type="password" value={pwNew} onChange={e => setPwNew(e.target.value)}
+            placeholder="New password (min 8 characters)"
+            style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none' }}
+          />
+          <input
+            type="password" value={pwConfirm} onChange={e => setPwConfirm(e.target.value)}
+            placeholder="Confirm new password"
+            style={{ padding:'9px 12px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none' }}
+          />
+          <button onClick={changePassword} disabled={pwSaving}
+            style={{ background:C2.forest, color:'#fff', border:'none', padding:'10px 20px', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', alignSelf:'flex-start', opacity:pwSaving?0.6:1 }}>
+            {pwSaving ? 'Updating...' : 'Update Password'}
+          </button>
+          {pwMsg && (
+            <div style={{ fontSize:13, fontWeight:600, color: pwMsg.type==='ok' ? '#16A34A' : '#DC2626', marginTop:4 }}>
+              {pwMsg.type==='ok' ? '✓ ' : '⚠ '}{pwMsg.text}
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Plan */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
         <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 12px 0' }}>
@@ -803,7 +847,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               <p style={{ fontSize: '12px', color: C2.gray, margin: 0, opacity: 0.7 }}>Cancel anytime. Access continues until end of billing period.</p>
             )}
           </div>
-
         </div>
       </div>
     </div>
