@@ -30,12 +30,22 @@ const makeSample = (today) => [
   {id:'s7',client:'Jess M.',   time:'3:00 PM', duration:60,date:addDays(today,4),status:'pending-intake',sessions:2, preview:true,service:'Deep Tissue',    focus:[],notes:''},
 ];
 
-function DetailPanel({ appt, therapist, onClose, onReschedule }) {
+function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const st = STATUS[appt.status]||STATUS['pending-intake'];
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const [copied,setCopied] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
+
+  async function cancelAppointment() {
+    setCancelling(true);
+    await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', appt.id);
+    setCancelling(false);
+    onCancelled?.();
+    onClose();
+  }
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
@@ -104,6 +114,30 @@ function DetailPanel({ appt, therapist, onClose, onReschedule }) {
                 📅 Reschedule
               </button>
             )}
+            {!appt.preview && !confirmCancel && (
+              <button onClick={() => setConfirmCancel(true)}
+                style={{background:'transparent',color:'#DC2626',border:'1.5px solid #FECACA',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                🗑 Cancel Appointment
+              </button>
+            )}
+            {!appt.preview && confirmCancel && (
+              <div style={{background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px 16px'}}>
+                <div style={{fontSize:13,fontWeight:700,color:'#991B1B',marginBottom:10}}>Cancel this appointment?</div>
+                <div style={{fontSize:12,color:'#DC2626',marginBottom:14,lineHeight:1.5}}>
+                  {appt.client} · {appt.time} on {appt.date?.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}
+                </div>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={() => setConfirmCancel(false)}
+                    style={{flex:1,padding:'9px 0',borderRadius:8,border:'1.5px solid #D1D5DB',background:'#fff',color:'#6B7280',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                    Keep it
+                  </button>
+                  <button onClick={cancelAppointment} disabled={cancelling}
+                    style={{flex:1,padding:'9px 0',borderRadius:8,border:'none',background:'#DC2626',color:'#fff',fontSize:13,fontWeight:700,cursor:'pointer',opacity:cancelling?0.6:1}}>
+                    {cancelling ? 'Cancelling…' : 'Yes, cancel'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
           {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card — real clients appear here after booking.</div>}
         </div>
@@ -112,7 +146,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule }) {
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh }) {
   const [selected,setSelected] = useState(null);
   const scrollRef = useRef(null);
   const now = new Date();
@@ -300,12 +334,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           </div>
         )}
       </div>
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh }) {
   const APPTS=appointments||[];
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
@@ -382,12 +416,12 @@ function WeeklyView({ therapist, appointments, today, onReschedule }) {
           );
         })}
       </div>
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }) {
   const APPTS=appointments||[];
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
@@ -464,7 +498,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule }) {
           ))}
         </div>
       }
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
 }
@@ -689,9 +723,9 @@ export default function ScheduleDashboard({ therapist }) {
       {loading
         ?<div style={{textAlign:'center',padding:'40px',color:'#9CA3AF',fontSize:14}}>Loading schedule...</div>
         :<>
-          {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt}/>}
-          {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt}/>}
-          {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt}/>}
+          {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+          {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+          {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
           {subView==='insights'&&<InsightsView appointments={allAppts}/>}
         </>
       }
