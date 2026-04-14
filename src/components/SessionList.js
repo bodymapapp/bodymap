@@ -18,6 +18,29 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   const [archiveSaving, setArchiveSaving] = useState(false);
   const [showRebook, setShowRebook] = useState(false);
 
+  // Edit client
+  const [showEdit, setShowEdit] = useState(false);
+  const [editName, setEditName] = useState(client?.name || "");
+  const [editEmail, setEditEmail] = useState(client?.email || "");
+  const [editPhone, setEditPhone] = useState(client?.phone || "");
+  const [editNotes, setEditNotes] = useState(client?.notes || "");
+  const [editSaving, setEditSaving] = useState(false);
+  const [editMsg, setEditMsg] = useState("");
+
+  async function saveClient() {
+    if (!editName.trim()) { setEditMsg("Name is required."); return; }
+    setEditSaving(true);
+    const { error } = await supabase.from("clients").update({
+      name:  editName.trim(),
+      email: editEmail.trim().toLowerCase() || null,
+      phone: editPhone.trim() || null,
+      notes: editNotes.trim() || null,
+    }).eq("id", client.id);
+    setEditSaving(false);
+    if (error) { setEditMsg("Save failed: " + error.message); }
+    else { setEditMsg("✓ Saved"); setTimeout(() => { setEditMsg(""); setShowEdit(false); }, 1200); }
+  }
+
   // Merge state
   const [showMerge, setShowMerge] = useState(false);
   const [mergeSearch, setMergeSearch] = useState("");
@@ -111,7 +134,53 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
   return (
     <div>
-      {/* Rebook modal */}
+      {/* Edit client modal */}
+      {showEdit && (
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3000, padding:20 }}
+          onClick={e => { if (e.target===e.currentTarget) setShowEdit(false); }}>
+          <div style={{ background:"#fff", borderRadius:20, width:"100%", maxWidth:440, boxShadow:"0 24px 64px rgba(0,0,0,0.25)", overflow:"hidden" }}>
+            <div style={{ padding:"24px 24px 16px", borderBottom:"1px solid #E8E4DC", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+              <h3 style={{ fontFamily:"Georgia, serif", fontSize:20, fontWeight:700, color:C.darkGray, margin:0 }}>Edit Client</h3>
+              <button onClick={() => setShowEdit(false)} style={{ background:"#F3F4F6", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16, color:C.gray }}>✕</button>
+            </div>
+            <div style={{ padding:24, display:"flex", flexDirection:"column", gap:12 }}>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Name *</label>
+                <input value={editName} onChange={e=>setEditName(e.target.value)} placeholder="Full name"
+                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Email</label>
+                <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} placeholder="email@example.com" type="email"
+                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Phone</label>
+                <input value={editPhone} onChange={e=>setEditPhone(e.target.value)} placeholder="(512) 555-1234" type="tel"
+                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+              </div>
+              <div>
+                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Notes</label>
+                <textarea value={editNotes} onChange={e=>setEditNotes(e.target.value)} rows={2} placeholder="Internal notes about this client…"
+                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", resize:"vertical", boxSizing:"border-box", fontFamily:"system-ui" }} />
+              </div>
+              {editMsg && (
+                <div style={{ fontSize:13, fontWeight:600, color: editMsg.startsWith("✓") ? "#16A34A" : "#DC2626" }}>{editMsg}</div>
+              )}
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => setShowEdit(false)}
+                  style={{ flex:1, padding:"11px 0", borderRadius:10, border:"1.5px solid #E8E4DC", background:"#fff", color:C.gray, fontSize:14, fontWeight:600, cursor:"pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={saveClient} disabled={editSaving}
+                  style={{ flex:1, padding:"11px 0", borderRadius:10, border:"none", background:C.forest, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", opacity:editSaving?0.6:1 }}>
+                  {editSaving ? "Saving…" : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showRebook && therapist && (
         <BookingModal
           therapist={therapist}
@@ -206,6 +275,12 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           </div>
           <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
         </div>
+
+        {/* Edit client */}
+        <button onClick={() => setShowEdit(true)}
+          style={{ background:"#F9FAFB", border:"1.5px solid #E5E7EB", color:C.dark, padding:"8px 14px", borderRadius:"8px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
+          ✏️ Edit
+        </button>
 
         {/* Book Next Appointment */}
         {!isArchived && (
