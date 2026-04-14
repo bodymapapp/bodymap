@@ -50,16 +50,19 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [blockedDates, setBlockedDates] = useState(new Set());
 
-  // Load services + availability
+  // Load services + availability + blocked days
   useEffect(() => {
     async function load() {
-      const [{ data: svcs }, { data: avail }] = await Promise.all([
+      const [{ data: svcs }, { data: avail }, { data: blocked }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).order('price'),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
+        supabase.from('blocked_days').select('date').eq('therapist_id', therapist.id),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
+      setBlockedDates(new Set((blocked || []).map(b => b.date)));
       if (svcs?.length) {
         // Pre-select service if reschedule
         const existing = svcs.find(s => s.name === existingBooking?.service) || svcs[0];
@@ -171,13 +174,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const svc = services.find(s => s.id === serviceId);
   const title = isReschedule ? 'Reschedule Appointment' : isRebook ? 'Book Next Appointment' : 'Create Booking';
 
-  // Build available dates: next 60 days that have availability
+  // Build available dates: next 365 days, exclude blocked dates
   const avDows = availability.map(a => a.day_of_week);
   const availDates = [];
   const base = new Date(); base.setHours(0,0,0,0);
-  for (let i = 0; i < 60 && availDates.length < 30; i++) {
+  for (let i = 0; i < 365 && availDates.length < 300; i++) {
     const d = new Date(base); d.setDate(base.getDate() + i);
-    if (avDows.includes(d.getDay())) availDates.push(toDateStr(d));
+    const ds = toDateStr(d);
+    if (avDows.includes(d.getDay()) && !blockedDates.has(ds)) availDates.push(ds);
   }
 
   return (
@@ -240,8 +244,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             {availDates.length === 0 ? (
               <div style={{ fontSize: 13, color: C.gray, padding: '10px 0' }}>No availability set up yet. Add your working hours in Settings.</div>
             ) : (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                {availDates.slice(0, 14).map(d => (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 220, overflowY: 'auto', paddingRight: 4 }}>
+                {availDates.map(d => (
                   <button key={d} onClick={() => setDate(d)}
                     style={{ padding: '8px 12px', borderRadius: 10, border: `1.5px solid ${date === d ? C.forest : C.border}`,
                       background: date === d ? C.forest : '#fff', color: date === d ? '#fff' : C.dark,

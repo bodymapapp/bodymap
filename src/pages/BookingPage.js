@@ -48,7 +48,7 @@ function scoreSlots(slots, existingBooked, dur) {
   }).sort((a,b) => b.score - a.score);
 }
 
-function Cal({availability, selected, onSelect}) {
+function Cal({availability, selected, onSelect, blockedDates=new Set()}) {
   const today=new Date(); today.setHours(0,0,0,0);
   const [yr,setYr]=useState(today.getFullYear());
   const [mo,setMo]=useState(today.getMonth());
@@ -75,7 +75,7 @@ function Cal({availability, selected, onSelect}) {
           const nowTime = new Date();
           const isToday2 = dt.toDateString() === today.toDateString();
           const pastLastSlot = isToday2 && nowTime.getHours() >= 17;
-          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot;
+          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds);
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
             style={{padding:'9px 2px',borderRadius:8,border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
@@ -199,6 +199,7 @@ export default function BookingPage() {
   const [isRepeatClient,setIsRepeatClient]=useState(false);
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
+  const [blockedDates,setBlockedDates]=useState(new Set());
 
   useEffect(()=>{load();},[slug]);
   useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
@@ -207,12 +208,14 @@ export default function BookingPage() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
     if(!t){setNotFound(true);setLoading(false);return;}
     setTherapist(t);
-    const [{data:s},{data:a}]=await Promise.all([
+    const [{data:s},{data:a},{data:bd}]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
+      supabase.from('blocked_days').select('date').eq('therapist_id',t.id),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
+    setBlockedDates(new Set((bd||[]).map(b=>b.date)));
     setLoading(false);
   }
 
@@ -436,7 +439,7 @@ export default function BookingPage() {
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Pick your time</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · {svc.duration} min · ${svc.price}</p>
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
-              <Cal availability={availability} selected={date} onSelect={setDate}/>
+              <Cal availability={availability} selected={date} onSelect={setDate} blockedDates={blockedDates}/>
             </div>
             {date&&(
               <div style={{background:C.white,borderRadius:16,padding:20}}>

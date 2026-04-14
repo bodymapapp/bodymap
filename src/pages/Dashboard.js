@@ -396,6 +396,34 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
+
+  // Blocked days
+  const [blockedDays, setBlockedDays] = React.useState([]);
+  const [blockDate, setBlockDate] = React.useState('');
+  const [blockNote, setBlockNote] = React.useState('');
+  const [blockSaving, setBlockSaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    supabase.from('blocked_days').select('*').eq('therapist_id', therapist.id)
+      .gte('date', new Date().toISOString().slice(0,10))
+      .order('date').then(({ data }) => setBlockedDays(data || []));
+  }, [therapist?.id]);
+
+  async function addBlockedDay() {
+    if (!blockDate) return;
+    setBlockSaving(true);
+    const { data } = await supabase.from('blocked_days').insert({
+      therapist_id: therapist.id, date: blockDate, note: blockNote.trim() || null
+    }).select().single();
+    if (data) setBlockedDays(prev => [...prev, data].sort((a,b) => a.date.localeCompare(b.date)));
+    setBlockDate(''); setBlockNote(''); setBlockSaving(false);
+  }
+
+  async function removeBlockedDay(id) {
+    await supabase.from('blocked_days').delete().eq('id', id);
+    setBlockedDays(prev => prev.filter(d => d.id !== id));
+  }
   const [calSaved, setCalSaved] = React.useState(false);
   const [twilioSid, setTwilioSid] = React.useState(therapist?.twilio_account_sid || '');
   const [twilioToken, setTwilioToken] = React.useState('');
@@ -802,6 +830,43 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
           {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
         </button>
+      </div>
+
+      {/* Block Days Off */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🚫 Block Days Off</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
+        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+          <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
+            min={new Date().toISOString().slice(0,10)}
+            style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', flex:'1', minWidth:140 }} />
+          <input type="text" value={blockNote} onChange={e => setBlockNote(e.target.value)}
+            placeholder="Reason (optional)"
+            style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', flex:'2', minWidth:160 }} />
+          <button onClick={addBlockedDay} disabled={!blockDate || blockSaving}
+            style={{ background:blockDate ? C2.forest : '#D1D5DB', color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:13, fontWeight:700, cursor:blockDate ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
+            {blockSaving ? '...' : '+ Block Day'}
+          </button>
+        </div>
+        {blockedDays.length === 0
+          ? <div style={{ fontSize:12, color:C2.gray, fontStyle:'italic' }}>No days blocked. Clients can book any available date up to a year out.</div>
+          : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {blockedDays.map(d => (
+                <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C2.beige, borderRadius:8, padding:'8px 12px' }}>
+                  <div>
+                    <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
+                      {new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
+                    </span>
+                    {d.note && <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>— {d.note}</span>}
+                  </div>
+                  <button onClick={() => removeBlockedDay(d.id)}
+                    style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+        }
       </div>
 
       {/* Change Password */}
