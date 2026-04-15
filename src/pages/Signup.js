@@ -162,7 +162,7 @@ export default function Signup() {
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.REACT_APP_RESEND_API_KEY}` },
           body: JSON.stringify({
             from: 'The BodyMap Team <reminders@mybodymap.app>',
-            to: ['hk5@email.com'], // TEST — swap to formData.email when ready
+            to: ['bodymapdemo@gmail.com'], // TEST — swap to formData.email when ready
             subject: `Welcome to BodyMap, ${firstName} - here's how to get started`,
             html: `<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
               <div style="margin-bottom:28px;">
