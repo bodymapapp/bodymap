@@ -161,7 +161,7 @@ export default function Signup() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.REACT_APP_RESEND_API_KEY}` },
           body: JSON.stringify({
-            from: 'BodyMap <reminders@mybodymap.app>',
+            from: 'The BodyMap Team <reminders@mybodymap.app>',
             to: ['hk5@email.com'], // TEST — swap to formData.email when ready
             subject: `Welcome to BodyMap, ${firstName} - here's how to get started`,
             html: `<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
@@ -193,7 +193,7 @@ export default function Signup() {
               </div>
 
               <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.6;">
-                Bo Ma · BodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a><br/>
+                The BodyMap Team · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a><br/>
                 Built for massage therapists, by a massage therapist.
               </p>
             </div>`,
