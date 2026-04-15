@@ -184,6 +184,8 @@ export default function BookingPage() {
   const [slot,setSlot]=useState(null);
   const [loadingSlots,setLoadingSlots]=useState(false);
   const [form,setForm]=useState({name:'',email:'',phone:''});
+  const [partner,setPartner]=useState({name:'',email:''});
+  const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
   const [submitting,setSubmitting]=useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
@@ -251,6 +253,8 @@ export default function BookingPage() {
       therapist_id:therapist.id, service_id:svc.id,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
+      partner_name: svc?.is_couples ? partner.name.trim() : null,
+      partner_email: svc?.is_couples ? partner.email.trim().toLowerCase() : null,
       start_time:slot.start, end_time:slot.end,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
       status: depositRequired ? 'pending-deposit' : 'confirmed',
@@ -316,6 +320,30 @@ export default function BookingPage() {
       return;
     }
     // No deposit required — confirm directly
+    // If couples booking, send partner their intake link
+    if (svc?.is_couples && partner.email && partner.name && bookingId) {
+      const intakeUrl = `${window.location.origin}/${therapist.custom_url}?name=${encodeURIComponent(partner.name)}&email=${encodeURIComponent(partner.email)}&booking_id=${bookingId}`;
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+          body: JSON.stringify({
+            to: partner.email,
+            subject: `${form.name.split(' ')[0]} booked a couples massage - please fill your intake form`,
+            html: `<div style="font-family:system-ui;max-width:480px;padding:24px;">
+              <h2 style="color:#2A5741;font-family:Georgia,serif;">Hi ${partner.name.split(' ')[0]},</h2>
+              <p style="color:#4B5563;line-height:1.7;">${form.name.split(' ')[0]} has booked a couples massage session. Please fill out your personal preferences so your therapist can prepare for your visit.</p>
+              <p style="text-align:center;margin:28px 0;">
+                <a href="${intakeUrl}" style="background:#2A5741;color:#fff;padding:14px 28px;border-radius:10px;text-decoration:none;font-weight:700;font-size:15px;">Fill My Intake Form</a>
+              </p>
+              <p style="color:#9CA3AF;font-size:12px;">Takes about 2 minutes. Your preferences stay private.</p>
+            </div>`,
+          }),
+        });
+      } catch(e) { /* non-blocking */ }
+    }
     setConfirmed(true);
   }
 
@@ -515,12 +543,35 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
+            {svc?.is_couples && (
+              <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'16px',marginBottom:8}}>
+                <div style={{fontSize:12,fontWeight:700,color:'#2A5741',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:12}}>
+                  💑 Partner's Info
+                </div>
+                {[{k:'name',l:'Partner full name',p:'Alex Smith',t:'text'},{k:'email',l:'Partner email',p:'alex@example.com',t:'email'}].map(({k,l,p,t})=>(
+                  <div key={k} style={{marginBottom:10}}>
+                    <label style={{fontSize:12,fontWeight:700,color:C.gray,display:'block',marginBottom:6}}>{l} <span style={{color:C.danger}}>*</span></label>
+                    <input type={t} value={partner[k]} placeholder={p}
+                      onChange={e=>{setPartner(f=>({...f,[k]:e.target.value}));setPartnerErrors(er=>({...er,[k]:''}));}}
+                      style={{width:'100%',padding:'13px 14px',border:`1.5px solid ${partnerErrors[k]?C.danger:C.light}`,borderRadius:10,fontSize:15,boxSizing:'border-box',outline:'none',fontFamily:'system-ui'}}/>
+                    {partnerErrors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{partnerErrors[k]}</div>}
+                  </div>
+                ))}
+                <div style={{fontSize:12,color:'#6B7280',marginTop:4}}>Your partner will receive their own intake link to fill out their preferences.</div>
+              </div>
+            )}
             <button onClick={async ()=>{
               const errs={};
               if(!form.name.trim()) errs.name='Required';
               if(!form.email.trim()||!/\S+@\S+\.\S+/.test(form.email)) errs.email='Valid email required';
               if(!form.phone.trim()) errs.phone='Required';
-              if(Object.keys(errs).length){setErrors(errs);return;}              // Check repeat client by email OR phone OR name — any match = returning client
+              if(Object.keys(errs).length){setErrors(errs);return;}
+              if(svc?.is_couples){
+                const perrs={};
+                if(!partner.name.trim()) perrs.name='Required';
+                if(!partner.email.trim()||!/\S+@\S+\.\S+/.test(partner.email)) perrs.email='Valid email required';
+                if(Object.keys(perrs).length){setPartnerErrors(perrs);return;}
+              }              // Check repeat client by email OR phone OR name — any match = returning client
               const email = form.email.trim().toLowerCase();
               const phone = form.phone.replace(/\D/g,'').slice(-10);
               const name = form.name.trim().toLowerCase();

@@ -56,6 +56,11 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               <div style={{width:48,height:48,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700}}>{initials(appt.client)}</div>
               <div>
                 <div style={{fontSize:17,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{appt.client}</div>
+              {appt.is_couples && appt.partner_name && (
+                <div style={{fontSize:13,color:'#6B9E80',fontWeight:600,marginTop:2}}>
+                  💑 with {appt.partner_name}
+                </div>
+              )}
                 <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
               </div>
             </div>
@@ -108,6 +113,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
               {copied?'✓ Copied!':'📋 Copy Intake Link'}
             </button>
+            {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (
+              <button onClick={()=>{
+                const partnerLink=`${window.location.origin}/${therapist?.custom_url}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
+                navigator.clipboard.writeText(partnerLink);
+                setCopied(true); setTimeout(()=>setCopied(false),2000);
+              }} style={{background:'#F0FDF4',color:'#2A5741',border:'1.5px solid #86EFAC',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                💑 Copy {appt.partner_name.split(' ')[0]}'s Intake Link
+              </button>
+            )}
             {!appt.preview && (
               <button onClick={() => onReschedule(appt)}
                 style={{background:'transparent',color:'#7C3AED',border:'1.5px solid #C4B5FD',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
@@ -618,7 +632,7 @@ export default function ScheduleDashboard({ therapist }) {
 
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('*, services(name, duration, price), reminder_sent_at, deposit_required, deposit_paid, deposit_amount')
+        .select('*, services(name, duration, price, is_couples), reminder_sent_at, deposit_required, deposit_paid, deposit_amount, partner_name, partner_email')
         .eq('therapist_id', therapist.id)
         .neq('status', 'cancelled')
         .gte('booking_date', toDateStr(past))
@@ -677,6 +691,9 @@ export default function ScheduleDashboard({ therapist }) {
           deposit_required: b.deposit_required || false,
           deposit_paid: b.deposit_paid || false,
           deposit_amount: b.deposit_amount || 0,
+          is_couples: b.services?.is_couples || false,
+          partner_name: b.partner_name || null,
+          partner_email: b.partner_email || null,
         };
       });
 

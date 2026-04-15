@@ -50,10 +50,11 @@ function ServicesAndAvailability({ therapist }) {
     { name:'Prenatal Massage', duration:60, price:90 },
     { name:'Relaxation Massage', duration:60, price:80 },
     { name:'Chair Massage', duration:30, price:45 },
+    { name:'Couples Massage', duration:90, price:180, is_couples:true },
     { name:'Custom...', duration:60, price:85 },
   ];
 
-  const [draft, setDraft] = React.useState({ preset:'', name:'', duration:60, price:85 });
+  const [draft, setDraft] = React.useState({ preset:'', name:'', duration:60, price:85, is_couples:false });
   const DAYS = [{id:1,label:'Mon'},{id:2,label:'Tue'},{id:3,label:'Wed'},{id:4,label:'Thu'},{id:5,label:'Fri'},{id:6,label:'Sat'},{id:0,label:'Sun'}];
 
   React.useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
@@ -73,14 +74,14 @@ function ServicesAndAvailability({ therapist }) {
       setDraft(d => ({ ...d, preset: val, name: '' }));
     } else {
       const p = PRESETS.find(x => x.name === val);
-      if (p) setDraft({ preset: val, name: p.name, duration: p.duration, price: p.price });
+      if (p) setDraft({ preset: val, name: p.name, duration: p.duration, price: p.price, is_couples: p.is_couples || false });
     }
   }
 
   async function addService() {
     if (!draft.name.trim()) return;
     setSaving('add');
-    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true }).select().single();
+    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true, is_couples: draft.is_couples || false }).select().single();
     setServices(s => [...s, data]);
     setDraft({ preset:'', name:'', duration:60, price:85 });
     setSaving(false);
