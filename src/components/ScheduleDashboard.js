@@ -113,6 +113,24 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
               {copied?'✓ Copied!':'📋 Copy Intake Link'}
             </button>
+            {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (() => {
+              const partnerLink = `${intakeUrl}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
+              return (
+                <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'12px 14px'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:8}}>💑 Partner: {appt.partner_name}</div>
+                  <div style={{display:'flex',gap:8}}>
+                    <a href={`sms:&body=${encodeURIComponent(`Hi ${appt.partner_name.split(' ')[0]}! Please fill your intake form: ${partnerLink}`)}`}
+                      style={{flex:1,display:'block',background:'#2A5741',color:'#fff',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+                      💬 SMS Partner
+                    </a>
+                    <button onClick={()=>{navigator.clipboard.writeText(partnerLink);}}
+                      style={{flex:1,background:'transparent',color:'#2A5741',border:'1.5px solid #2A5741',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                      📋 Copy Partner Link
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
             {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (
               <button onClick={()=>{
                 const partnerLink=`${window.location.origin}/${therapist?.custom_url}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
