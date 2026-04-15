@@ -61,7 +61,7 @@ export default function Nav() {
       <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {/* Logo - always goes to top of home */}
         <a href="/" onClick={goHome} style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
-          <BMLogo size={38} variant="dark" showWordmark={true} showTagline={true} />
+          <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />
         </a>
 
         {/* Desktop links */}
