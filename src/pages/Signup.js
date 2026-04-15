@@ -136,14 +136,14 @@ export default function Signup() {
           body: JSON.stringify({
             from: 'BodyMap <notifications@mybodymap.app>',
             to: ['bodymap01@gmail.com'],
-            subject: `🌿 New BodyMap Signup — ${formData.businessName || formData.fullName}`,
+            subject: `New BodyMap Signup: ${formData.businessName || formData.fullName}`,
             html: `<div style="font-family:system-ui;max-width:480px;padding:24px">
               <h2 style="color:#2A5741">New therapist signed up!</h2>
               <table style="width:100%;border-collapse:collapse">
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Name</td><td style="padding:8px 0;font-weight:600">${formData.fullName}</td></tr>
-                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Business</td><td style="padding:8px 0;font-weight:600">${formData.businessName || '—'}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Business</td><td style="padding:8px 0;font-weight:600">${formData.businessName || 'N/A'}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Email</td><td style="padding:8px 0;font-weight:600">${formData.email}</td></tr>
-                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Phone</td><td style="padding:8px 0;font-weight:600">${formData.phone || '—'}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Phone</td><td style="padding:8px 0;font-weight:600">${formData.phone || 'N/A'}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">URL</td><td style="padding:8px 0;font-weight:600">mybodymap.app/book/${formData.customUrl}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Time</td><td style="padding:8px 0;font-weight:600">${new Date().toLocaleString()}</td></tr>
               </table>
@@ -161,23 +161,23 @@ export default function Signup() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${process.env.REACT_APP_RESEND_API_KEY}` },
           body: JSON.stringify({
-            from: 'Bo at BodyMap <bo@mybodymap.app>',
-            to: [formData.email],
-            subject: `Welcome to BodyMap, ${firstName} — here's how to get started`,
+            from: 'BodyMap <reminders@mybodymap.app>',
+            to: ['hk5@email.com'], // TEST — swap to formData.email when ready
+            subject: `Welcome to BodyMap, ${firstName} - here's how to get started`,
             html: `<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
               <div style="margin-bottom:28px;">
                 <span style="font-size:22px;font-weight:700;color:#1A3A28;">BodyMap</span>
                 <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
               </div>
               <h1 style="font-size:26px;font-weight:700;color:#1A3A28;margin:0 0 8px;">Welcome, ${firstName}.</h1>
-              <p style="font-family:system-ui;font-size:15px;color:#6B7280;line-height:1.7;margin:0 0 32px;">Your BodyMap practice is ready. Here are your first 5 steps — each takes under 2 minutes.</p>
+              <p style="font-family:system-ui;font-size:15px;color:#6B7280;line-height:1.7;margin:0 0 32px;">Your BodyMap practice is ready. Here are your first 5 steps. Five steps, each under 2 minutes.</p>
 
               ${[
-                { n:'1', title:'Move your clients over', body:`Import from Square, MassageBook, Vagaro, or any CSV in two clicks. Go to <b>Clients → Import Clients</b> and upload your export file. Any row with a name, phone, or email comes in — missing info can be added later.`, link: dashLink, cta:'Import clients' },
+                { n:'1', title:'Move your clients over', body:`Import from Square, MassageBook, Vagaro, or any CSV in two clicks. Go to <b>Clients → Import Clients</b> and upload your export file. Any row with a name, phone, or email comes in. Missing info can be added later.`, link: dashLink, cta:'Import clients' },
                 { n:'2', title:'Add your first service', body:`Tell clients what you offer and at what price. Go to <b>Settings → Services</b> and add your massage types (Swedish, Deep Tissue, etc.), duration, and price. This is what shows on your booking page.`, link: dashLink, cta:'Go to Settings' },
                 { n:'3', title:'Set your working hours', body:`Clients can only book during your available times. Go to <b>Settings → Availability</b> and toggle on your working days and set your start/end times. Clients booking after hours can be handled manually.`, link: dashLink, cta:'Set hours' },
                 { n:'4', title:'Share your booking link', body:`Your personal booking page is live at <a href="${bookingLink}" style="color:#2A5741;">${bookingLink}</a>. Share it in your email signature, your Instagram bio, or text it directly to clients. They book, pay a deposit if required, and their intake form is sent automatically.`, link: bookingLink, cta:'View your booking page' },
-                { n:'5', title:'Send your first intake', body:`Go to <b>Clients → Send Intake</b> and send the body map link to your first client. They tap their focus zones, pressure preference, and any areas to avoid — and it's waiting in your dashboard before they arrive. After their first session, BodyMap remembers everything for next time.`, link: dashLink, cta:'Send an intake' },
+                { n:'5', title:'Send your first intake', body:`Go to <b>Clients → Send Intake</b> and send the body map link to your first client. They tap their focus zones, pressure preference, and any areas to avoid. It will be waiting in your dashboard before they arrive. After their first session, BodyMap remembers everything for next time.`, link: dashLink, cta:'Send an intake' },
               ].map(s => `
                 <div style="border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:20px;background:#F9FAF9;border-radius:0 8px 8px 0;">
                   <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Step ${s.n}</div>
@@ -188,7 +188,7 @@ export default function Signup() {
               `).join('')}
 
               <div style="background:#2A5741;border-radius:12px;padding:24px;margin-top:32px;text-align:center;">
-                <p style="font-family:system-ui;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 16px;">Questions? Just reply to this email — I read every one.</p>
+                <p style="font-family:system-ui;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 16px;">Questions? Just reply to this email. I read every one.</p>
                 <a href="${dashLink}" style="display:inline-block;background:#fff;color:#2A5741;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
               </div>
 
