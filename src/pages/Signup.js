@@ -359,7 +359,7 @@ export default function Signup() {
         </div>
 
         {/* Row 3: Password + Confirm */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>\
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
