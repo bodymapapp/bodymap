@@ -37,18 +37,23 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [editTime, setEditTime] = useState(false);
+  const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
   const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
   const [savingTime, setSavingTime] = useState(false);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
 
   async function saveEndTime() {
-    if (!newEndTime) return;
     setSavingTime(true);
-    await supabase.from('bookings').update({ end_time: newEndTime }).eq('id', appt.id);
+    const updates = {};
+    if (newStartTime) updates.start_time = newStartTime;
+    if (newEndTime) updates.end_time = newEndTime;
+    if (Object.keys(updates).length) {
+      await supabase.from('bookings').update(updates).eq('id', appt.id);
+    }
     setSavingTime(false);
     setEditTime(false);
-    onCancelled?.(); // reuse refresh callback
+    onCancelled?.();
   }
 
   async function cancelAppointment() {
@@ -95,16 +100,23 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           </div>
           {editTime && !appt.preview && (
             <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'14px 16px',margin:'0 0 0 0'}}>
-              <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:6}}>Actual end time</div>
-              <div style={{fontSize:12,color:'#6B7280',marginBottom:10}}>Session started at {appt.time}. Update if it ran longer.</div>
-              <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                <input type="time" value={newEndTime} onChange={e=>setNewEndTime(e.target.value)}
-                  style={{flex:1,padding:'9px 12px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none'}}/>
-                <button onClick={saveEndTime} disabled={savingTime||!newEndTime}
-                  style={{padding:'9px 16px',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
-                  {savingTime ? 'Saving...' : 'Save'}
-                </button>
+              <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:10}}>Edit session times</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:12}}>
+                <div>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Start time</label>
+                  <input type="time" value={newStartTime} onChange={e=>setNewStartTime(e.target.value)}
+                    style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
+                </div>
+                <div>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>End time</label>
+                  <input type="time" value={newEndTime} onChange={e=>setNewEndTime(e.target.value)}
+                    style={{width:'100%',padding:'9px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none',boxSizing:'border-box'}}/>
+                </div>
               </div>
+              <button onClick={saveEndTime} disabled={savingTime}
+                style={{width:'100%',padding:'9px 0',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
+                {savingTime ? 'Saving...' : 'Save times'}
+              </button>
             </div>
           )}
         </div>
@@ -747,6 +759,7 @@ export default function ScheduleDashboard({ therapist }) {
           partner_name: b.partner_name || null,
           partner_email: b.partner_email || null,
           endTime: b.end_time || '',
+          startTime: b.start_time || '',
         };
       });
 
