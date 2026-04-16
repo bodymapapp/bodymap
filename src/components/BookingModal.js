@@ -19,6 +19,10 @@ const toDateStr = d => {
   const date = d instanceof Date ? d : new Date(d);
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 };
+const snapTime = hhmm => {
+  const [h,m] = (hhmm||'00:00').slice(0,5).split(':').map(Number);
+  return `${String(h).padStart(2,'0')}:${String(Math.round(m/5)*5%60).padStart(2,'0')}`;
+};
 
 const addMins = (hhmm, mins) => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -90,8 +94,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     const av = availability.find(a => a.day_of_week === dow);
     if (!av) { setLoadingSlots(false); return; }
 
-    const start = av.start_time?.slice(0, 5) || '09:00';
-    const end   = av.end_time?.slice(0, 5)   || '17:00';
+    const start = snapTime(av.start_time || '09:00');
+    const end   = snapTime(av.end_time   || '17:00');
 
     // Fetch existing bookings on that date to avoid conflicts
     const { data: booked } = await supabase

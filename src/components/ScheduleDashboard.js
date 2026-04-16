@@ -724,7 +724,7 @@ export default function ScheduleDashboard({ therapist }) {
 
       const mapped = bookings.map(b => {
         const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
-        const [h, m] = b.start_time.split(':').map(Number);
+        const [h, m] = (b.start_time || '00:00').slice(0,5).split(':').map(Number);
         const sessionInfo = sessionMap[b.id] || null;
         const sessionId = sessionInfo?.id || null;
         const clientId = sessionInfo?.client_id || null;
@@ -758,8 +758,8 @@ export default function ScheduleDashboard({ therapist }) {
           is_couples: b.services?.is_couples || false,
           partner_name: b.partner_name || null,
           partner_email: b.partner_email || null,
-          endTime: b.end_time || '',
-          startTime: b.start_time || '',
+          endTime: (b.end_time || '').slice(0,5),
+          startTime: (b.start_time || '').slice(0,5),
         };
       });
 
