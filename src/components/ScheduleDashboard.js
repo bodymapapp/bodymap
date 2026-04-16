@@ -36,8 +36,20 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [copied,setCopied] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [editTime, setEditTime] = useState(false);
+  const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
+  const [savingTime, setSavingTime] = useState(false);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
+
+  async function saveEndTime() {
+    if (!newEndTime) return;
+    setSavingTime(true);
+    await supabase.from('bookings').update({ end_time: newEndTime }).eq('id', appt.id);
+    setSavingTime(false);
+    setEditTime(false);
+    onCancelled?.(); // reuse refresh callback
+  }
 
   async function cancelAppointment() {
     setCancelling(true);
@@ -71,8 +83,30 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
               <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'}</div>
             </div>
-            <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
+              {!appt.preview && (
+                <button onClick={()=>setEditTime(v=>!v)}
+                  style={{background:'transparent',border:'1px solid #D1D5DB',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
+                  {editTime ? 'Cancel' : '✏️ Edit'}
+                </button>
+              )}
+            </div>
           </div>
+          {editTime && !appt.preview && (
+            <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'14px 16px',margin:'0 0 0 0'}}>
+              <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:6}}>Actual end time</div>
+              <div style={{fontSize:12,color:'#6B7280',marginBottom:10}}>Session started at {appt.time}. Update if it ran longer.</div>
+              <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                <input type="time" value={newEndTime} onChange={e=>setNewEndTime(e.target.value)}
+                  style={{flex:1,padding:'9px 12px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:14,outline:'none'}}/>
+                <button onClick={saveEndTime} disabled={savingTime||!newEndTime}
+                  style={{padding:'9px 16px',background:'#2A5741',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',opacity:savingTime?0.6:1}}>
+                  {savingTime ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:14}}>
           {!appt.preview && appt.deposit_required && (
@@ -712,6 +746,7 @@ export default function ScheduleDashboard({ therapist }) {
           is_couples: b.services?.is_couples || false,
           partner_name: b.partner_name || null,
           partner_email: b.partner_email || null,
+          endTime: b.end_time || '',
         };
       });
 
