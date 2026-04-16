@@ -851,15 +851,16 @@ function SectionNav() {
     { id:"booking",     label:"Online Booking",         n:3  },
     { id:"deposits",    label:"Deposits",               n:4  },
     { id:"intake",      label:"Client Intake",          n:5  },
-    { id:"schedule",    label:"Schedule",               n:6  },
-    { id:"reminders",   label:"Reminders",              n:7  },
-    { id:"outreach",    label:"Smart Outreach",         n:8  },
-    { id:"postsession", label:"Post-Session",           n:9  },
-    { id:"billing",     label:"Billing",                n:10 },
-    { id:"ai",          label:"BodyMap AI",             n:11 },
-    { id:"automation",  label:"Automation",             n:12 },
-    { id:"growth",      label:"Growth Engine",          n:13 },
-    { id:"portability", label:"Switching",              n:14 },
+    { id:"returning",   label:"Returning Clients",      n:6  },
+    { id:"schedule",    label:"Schedule",               n:7  },
+    { id:"reminders",   label:"Reminders",              n:8  },
+    { id:"outreach",    label:"Smart Outreach",         n:9  },
+    { id:"postsession", label:"Post-Session",           n:10 },
+    { id:"billing",     label:"Billing",                n:11 },
+    { id:"ai",          label:"BodyMap AI",             n:12 },
+    { id:"automation",  label:"Automation",             n:13 },
+    { id:"growth",      label:"Growth Engine",          n:14 },
+    { id:"portability", label:"Switching",              n:15 },
   ];
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 280);
@@ -1251,6 +1252,94 @@ export default function Features() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* RETURNING CLIENT PRE-FILL */}
+      <section id="returning" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:`linear-gradient(160deg, #0D1F17 0%, #1A3A28 100%)` }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Returning Clients</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:16 }}>
+                After Session One,<br/>They Never Start From Scratch.
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(255,255,255,0.65)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                BodyMap remembers every client's preferences — zones, pressure, music, lighting, what to avoid. When they book again, their intake arrives pre-filled. One tap to confirm. Done in 10 seconds.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:72, alignItems:"center" }}>
+            {/* Phone mockup of welcome back banner */}
+            <FadeIn delay={0.1}>
+              <div style={{ display:"flex", justifyContent:"center" }}>
+                <div style={{ width:300, background:"#F0EAD9", borderRadius:32, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", border:"8px solid #1A1A2E" }}>
+                  {/* Welcome back banner */}
+                  <div style={{ background:"#FDF6E8", borderBottom:"1.5px solid #D4B070", padding:"14px 18px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+                    <div>
+                      <div style={{ fontFamily:"system-ui", fontSize:13, fontWeight:800, color:"#B87840" }}>✦ Welcome back, Sarah!</div>
+                      <div style={{ fontFamily:"system-ui", fontSize:11, color:"#7A9485", marginTop:2 }}>Tap to pre-fill your preferences</div>
+                    </div>
+                    <div style={{ background:"#B87840", color:"#fff", borderRadius:20, padding:"7px 13px", fontFamily:"system-ui", fontSize:11, fontWeight:800, whiteSpace:"nowrap", flexShrink:0 }}>
+                      Use Last Session
+                    </div>
+                  </div>
+                  {/* Body map preview */}
+                  <div style={{ padding:"16px 18px" }}>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:18, fontWeight:700, color:"#1A3A28", marginBottom:4 }}>Front of Body</div>
+                    <div style={{ fontFamily:"system-ui", fontSize:11, color:"#6B7280", marginBottom:12 }}>Your zones from last session, pre-filled</div>
+                    {/* Simplified body zones */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:10 }}>
+                      {[
+                        {label:"Neck",color:"#2A5741",text:"#fff"},
+                        {label:"L. Shoulder",color:"#2A5741",text:"#fff"},
+                        {label:"R. Shoulder",color:"#2A5741",text:"#fff"},
+                        {label:"Chest",color:"#4A7A5C",text:"#fff"},
+                        {label:"Abdomen",color:"#4A7A5C",text:"#fff"},
+                        {label:"Arms",color:"#E5E7EB",text:"#9CA3AF"},
+                        {label:"L. Knee",color:"#DC2626",text:"#fff"},
+                        {label:"R. Knee",color:"#DC2626",text:"#fff"},
+                        {label:"Feet",color:"#E5E7EB",text:"#9CA3AF"},
+                      ].map(z => (
+                        <div key={z.label} style={{ background:z.color, borderRadius:8, padding:"7px 4px", textAlign:"center", fontFamily:"system-ui", fontSize:9, fontWeight:700, color:z.text }}>
+                          {z.label}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:"flex", gap:10, fontFamily:"system-ui", fontSize:10, color:"#6B7280" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#2A5741" }}/> Focus</div>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#DC2626" }}/> Avoid</div>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#E5E7EB" }}/> Neutral</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.15}>
+              <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+                {[
+                  { icon:"🧠", title:"Remembers everything", desc:"Zones, pressure level, music preference, lighting, draping, medical flags — all stored from session one and carried forward automatically." },
+                  { icon:"⚡", title:"10-second intake for returning clients", desc:"The welcome back banner appears the moment they open the link. One tap and they are done. No re-entering anything they already told you." },
+                  { icon:"📈", title:"Every session adds a layer", desc:"If something changes — a new injury, a different pressure preference — they update just that field. Everything else stays. The record gets richer over time." },
+                  { icon:"🔒", title:"No competitor has this", desc:"Vagaro, MassageBook, and Acuity send a blank intake every time. BodyMap is the only platform that treats returning clients as the individuals they are." },
+                ].map(({icon,title,desc}) => (
+                  <div key={title} style={{ display:"flex", gap:14 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:4 }}>{title}</div>
+                      <div style={{ fontSize:13, color:"rgba(255,255,255,0.6)", lineHeight:1.65 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+                <a href={`/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test`}
+                  style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.sage, color:"#fff", padding:"13px 24px", borderRadius:12, textDecoration:"none", fontFamily:"system-ui", fontSize:14, fontWeight:700, width:"fit-content", marginTop:8 }}>
+                  See it live — open Sarah's intake →
+                </a>
               </div>
             </FadeIn>
           </div>

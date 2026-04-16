@@ -21,6 +21,8 @@ const FEATURES = [
     { name:'Automated 24h email reminders',          bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
     { name:'Buffer time between sessions',           bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
     { name:'Calendar sync (Cal.com)',                bm:true,  mb:false, vg:true,  gg:false, ac:true  },
+    { name:'Book up to 1 year in advance',            bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Couples massage with dual client intake', bm:true,  mb:false, vg:false, gg:false, ac:false },
   ]},
   { category:'Client Intake', items:[
     { name:'Digital intake forms',                   bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
@@ -28,12 +30,14 @@ const FEATURES = [
     { name:'Focus zones, avoid areas, pressure',     bm:true,  mb:false, vg:false, gg:false, ac:false },
     { name:'Medical flags & preferences',            bm:true,  mb:false, vg:false, gg:false, ac:false },
     { name:'Auto-sent with every booking',           bm:true,  mb:false, vg:true,  gg:false, ac:true  },
+    { name:'Returning client preferences pre-filled', bm:true,  mb:false, vg:false, gg:false, ac:false },
   ]},
   { category:'SOAP Notes & Documentation', items:[
     { name:'SOAP notes (S/O/A/P)',                   bm:true,  mb:'$',   vg:'$',   gg:false, ac:false },
     { name:'Private therapist notes',                bm:true,  mb:'$',   vg:'$',   gg:true,  ac:false },
     { name:'Post-session brief to client',           bm:true,  mb:false, vg:false, gg:false, ac:false },
     { name:'Session history per client',             bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'Edit session duration after the fact',    bm:true,  mb:false, vg:false, gg:false, ac:false },
   ]},
   { category:'Intelligence & Retention', items:[
     { name:'Pattern intelligence (recurring areas)', bm:true,  mb:false, vg:false, gg:false, ac:false },
