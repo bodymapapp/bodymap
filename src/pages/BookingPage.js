@@ -235,7 +235,7 @@ export default function BookingPage() {
     // Use time_blocks if available, else fall back to start/end
     const blocks = (av.time_blocks && av.time_blocks.length > 0)
       ? av.time_blocks
-      : [{ start: (()=>{const t=(av.start_time||'09:00').slice(0,5);const [h,m]=t.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String(Math.round(m/5)*5%60).padStart(2,'0')}`;})(), end: (()=>{const t=(av.end_time||'17:00').slice(0,5);const [h,m]=t.split(':').map(Number);return `${String(h).padStart(2,'0')}:${String(Math.round(m/5)*5%60).padStart(2,'0')}`;})() }];
+      : [{ start: (av.start_time||'09:00').slice(0,5), end: (av.end_time||'17:00').slice(0,5) }];
 
     let raw = [];
     for (const block of blocks) {

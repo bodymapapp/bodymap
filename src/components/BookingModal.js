@@ -19,10 +19,6 @@ const toDateStr = d => {
   const date = d instanceof Date ? d : new Date(d);
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 };
-const snapTime = hhmm => {
-  const [h,m] = (hhmm||'00:00').slice(0,5).split(':').map(Number);
-  return `${String(h).padStart(2,'0')}:${String(Math.round(m/5)*5%60).padStart(2,'0')}`;
-};
 
 const addMins = (hhmm, mins) => {
   const [h, m] = hhmm.split(':').map(Number);
@@ -44,6 +40,30 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [name,  setName]  = useState(existingBooking?.client || prefillClient?.name  || '');
   const [email, setEmail] = useState(existingBooking?.email  || prefillClient?.email || '');
   const [phone, setPhone] = useState(prefillClient?.phone || '');
+  const [clientSuggestions, setClientSuggestions] = useState([]);
+  const [allClients, setAllClients] = useState([]);
+
+  // Load client list for autocomplete
+  useEffect(() => {
+    if (!therapist?.id) return;
+    supabase.from('clients').select('name, email, phone').eq('therapist_id', therapist.id)
+      .eq('do_not_rebook', false).order('name')
+      .then(({ data }) => setAllClients(data || []));
+  }, [therapist?.id]);
+
+  function handleNameChange(val) {
+    setName(val);
+    if (val.length < 2) { setClientSuggestions([]); return; }
+    const q = val.toLowerCase();
+    setClientSuggestions(allClients.filter(c => c.name?.toLowerCase().includes(q)).slice(0, 5));
+  }
+
+  function selectClient(c) {
+    setName(c.name);
+    setEmail(c.email || '');
+    setPhone(c.phone || '');
+    setClientSuggestions([]);
+  }
   const [serviceId, setServiceId] = useState('');
   const [services, setServices]   = useState([]);
   const [availability, setAvail]  = useState([]);
@@ -94,8 +114,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     const av = availability.find(a => a.day_of_week === dow);
     if (!av) { setLoadingSlots(false); return; }
 
-    const start = snapTime(av.start_time || '09:00');
-    const end   = snapTime(av.end_time   || '17:00');
+    const start = (av.start_time || '09:00').slice(0, 5);
+    const end   = (av.end_time   || '17:00').slice(0, 5);
 
     // Fetch existing bookings on that date to avoid conflicts
     const { data: booked } = await supabase
@@ -207,8 +227,23 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           {!isReschedule && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Client</label>
-              <input value={name} onChange={e => setName(e.target.value)} placeholder="Full name *"
-                style={{ padding: '10px 12px', border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: 'none' }} />
+              <div style={{ position: 'relative' }}>
+                <input value={name} onChange={e => handleNameChange(e.target.value)} placeholder="Full name *"
+                  style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                {clientSuggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 10, zIndex: 100, overflow: 'hidden', boxShadow: '0 4px 16px rgba(0,0,0,0.12)' }}>
+                    {clientSuggestions.map((c, i) => (
+                      <div key={i} onClick={() => selectClient(c)}
+                        style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 14, borderBottom: i < clientSuggestions.length - 1 ? `1px solid ${C.border}` : 'none' }}
+                        onMouseEnter={e => e.currentTarget.style.background = '#F0FDF4'}
+                        onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                        <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
+                        {c.email && <div style={{ fontSize: 12, color: C.gray }}>{c.email}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input value={email} onChange={e => setEmail(e.target.value)} placeholder="Email (for intake link)"
                 style={{ padding: '10px 12px', border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, outline: 'none' }} />
               <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="Phone (optional)"
@@ -335,8 +370,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
           <button onClick={save} disabled={saving || !date || !slot}
             style={{ padding: '14px', borderRadius: 12, border: 'none', background: (date && slot) ? C.forest : '#D1D5DB',
-              color: '#fff', fontSize: 15, fontWeight: 700, cursor: (date && slot) ? 'pointer' : 'not-allowed', opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Saving…' : isReschedule ? 'Confirm Reschedule' : 'Confirm Booking'}
+              color: '#fff', fontSize: 15, fontWeight: 700, cursor: (date && slot) ? 'pointer' : 'not-allowed', opacity: saving ? 0.7 : 1, marginTop: 8 }}>
+            {saving ? 'Saving…' : !date ? 'Select a date above' : !slot ? 'Select a time above' : isReschedule ? 'Confirm Reschedule' : 'Confirm Booking'}
           </button>
 
         </div>
