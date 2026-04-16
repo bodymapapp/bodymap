@@ -16,48 +16,48 @@ const FREE   = () => <span style={{ color:'#16A34A', fontSize:12, fontWeight:700
 
 const FEATURES = [
   { category:'Core Booking & Scheduling', items:[
-    { name:'Online client booking',                  bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'No client app or account required',      bm:true,  mb:false, vg:false, gg:false },
-    { name:'Automated 24h email reminders',          bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'Buffer time between sessions',           bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'Calendar sync (Cal.com)',                bm:true,  mb:false, vg:true,  gg:false },
+    { name:'Online client booking',                  bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'No client app or account required',      bm:true,  mb:false, vg:false, gg:false, ac:true  },
+    { name:'Automated 24h email reminders',          bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'Buffer time between sessions',           bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'Calendar sync (Cal.com)',                bm:true,  mb:false, vg:true,  gg:false, ac:true  },
   ]},
   { category:'Client Intake', items:[
-    { name:'Digital intake forms',                   bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'Visual body map (front & back)',         bm:true,  mb:false, vg:false, gg:false },
-    { name:'Focus zones, avoid areas, pressure',     bm:true,  mb:false, vg:false, gg:false },
-    { name:'Medical flags & preferences',            bm:true,  mb:false, vg:false, gg:false },
-    { name:'Auto-sent with every booking',           bm:true,  mb:false, vg:true,  gg:false },
+    { name:'Digital intake forms',                   bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'Visual body map (front & back)',         bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Focus zones, avoid areas, pressure',     bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Medical flags & preferences',            bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Auto-sent with every booking',           bm:true,  mb:false, vg:true,  gg:false, ac:true  },
   ]},
   { category:'SOAP Notes & Documentation', items:[
-    { name:'SOAP notes (S/O/A/P)',                   bm:true,  mb:'$',   vg:'$',   gg:false },
-    { name:'Private therapist notes',                bm:true,  mb:'$',   vg:'$',   gg:true  },
-    { name:'Post-session brief to client',           bm:true,  mb:false, vg:false, gg:false },
-    { name:'Session history per client',             bm:true,  mb:true,  vg:true,  gg:true  },
+    { name:'SOAP notes (S/O/A/P)',                   bm:true,  mb:'$',   vg:'$',   gg:false, ac:false },
+    { name:'Private therapist notes',                bm:true,  mb:'$',   vg:'$',   gg:true,  ac:false },
+    { name:'Post-session brief to client',           bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Session history per client',             bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
   ]},
   { category:'Intelligence & Retention', items:[
-    { name:'Pattern intelligence (recurring areas)', bm:true,  mb:false, vg:false, gg:false },
-    { name:'Lapsed client alerts',                   bm:true,  mb:false, vg:false, gg:false },
-    { name:'AI pre-session brief',                   bm:true,  mb:false, vg:false, gg:false },
-    { name:'Revenue forecasting',                    bm:true,  mb:false, vg:'$',   gg:false },
-    { name:'Client retention dashboard',             bm:true,  mb:false, vg:false, gg:false },
+    { name:'Pattern intelligence (recurring areas)', bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Lapsed client alerts',                   bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'AI pre-session brief',                   bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Revenue forecasting',                    bm:true,  mb:false, vg:'$',   gg:false, ac:false },
+    { name:'Client retention dashboard',             bm:true,  mb:false, vg:false, gg:false, ac:false },
   ]},
   { category:'Outreach & Marketing', items:[
-    { name:'Email broadcast to client segments',     bm:true,  mb:false, vg:'$',   gg:false },
-    { name:'SMS outreach to lapsed clients',         bm:true,  mb:false, vg:'$',   gg:false },
-    { name:'Smart segments (due, lapsed, regulars)', bm:true,  mb:false, vg:false, gg:false },
-    { name:'Practice Pulse daily digest',            bm:true,  mb:false, vg:false, gg:false },
+    { name:'Email broadcast to client segments',     bm:true,  mb:false, vg:'$',   gg:false, ac:false },
+    { name:'SMS outreach to lapsed clients',         bm:true,  mb:false, vg:'$',   gg:false, ac:'$'   },
+    { name:'Smart segments (due, lapsed, regulars)', bm:true,  mb:false, vg:false, gg:false, ac:false },
+    { name:'Practice Pulse daily digest',            bm:true,  mb:false, vg:false, gg:false, ac:false },
   ]},
   { category:'Payments & Deposits', items:[
-    { name:'New client deposit collection',          bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'Gift certificates',                      bm:true,  mb:true,  vg:true,  gg:true  },
-    { name:'Billing dashboard',                      bm:true,  mb:'$',   vg:true,  gg:'$'   },
-    { name:'No platform transaction fee',            bm:true,  mb:false, vg:false, gg:false },
+    { name:'New client deposit collection',          bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
+    { name:'Gift certificates',                      bm:true,  mb:true,  vg:true,  gg:true,  ac:'$'   },
+    { name:'Billing dashboard',                      bm:true,  mb:'$',   vg:true,  gg:'$',   ac:true  },
+    { name:'No platform transaction fee',            bm:true,  mb:false, vg:false, gg:false, ac:true  },
   ]},
   { category:'Switching & Data', items:[
-    { name:'Import from MassageBook / Vagaro / GlossGenius', bm:true, mb:true, vg:true, gg:false },
-    { name:'Client history preserved on import',     bm:true,  mb:true,  vg:false, gg:false },
-    { name:'CSV export your data anytime',           bm:true,  mb:true,  vg:true,  gg:true  },
+    { name:'Import from MassageBook / Vagaro / GlossGenius', bm:true, mb:true, vg:true, gg:false, ac:false },
+    { name:'Client history preserved on import',     bm:true,  mb:true,  vg:false, gg:false, ac:false },
+    { name:'CSV export your data anytime',           bm:true,  mb:true,  vg:true,  gg:true,  ac:true  },
   ]},
 ];
 
@@ -66,6 +66,7 @@ const PRICING = {
   mb: { monthly: 45, annual: 39, name:'MassageBook' },
   vg: { monthly: 25, annual: 20, name:'Vagaro' },
   gg: { monthly: 48, annual: 40, name:'GlossGenius' },
+  ac: { monthly: 20, annual: 16, name:'Acuity' },
 };
 
 function CellValue({ val }) {
@@ -147,6 +148,7 @@ export default function WhyBodyMap() {
                   { key:'gg', name:'GlossGenius' },
                   { key:'mb', name:'MassageBook'  },
                   { key:'vg', name:'Vagaro'       },
+                  { key:'ac', name:'Acuity'       },
                   { key:'bm', name:'BodyMap'      },
                 ].map(({ key, name }) => {
                   const price  = PRICING[key][billing];
@@ -181,6 +183,7 @@ export default function WhyBodyMap() {
                   { key:'gg', name:'GlossGenius' },
                   { key:'mb', name:'MassageBook'  },
                   { key:'vg', name:'Vagaro'       },
+                  { key:'ac', name:'Acuity'       },
                   { key:'bm', name:'BodyMap'      },
                 ].map(({ key, name }) => {
                   const isBM = key === 'bm';
@@ -263,6 +266,7 @@ export default function WhyBodyMap() {
                     { key:'mb', name:'MassageBook',  sub:'From $45/mo' },
                     { key:'vg', name:'Vagaro',       sub:'From $25/mo' },
                     { key:'gg', name:'GlossGenius',  sub:'From $48/mo' },
+                    { key:'ac', name:'Acuity',       sub:'From $20/mo' },
                   ].map(({ key, name, sub, highlight }) => (
                     <th key={key} style={{ textAlign:'center', padding:'12px 8px', fontSize:13, fontWeight:700, borderBottom:`2px solid ${highlight?C.forest:C.border}`, color:highlight?C.forest:C.dark, background:highlight?'#F0FDF4':'transparent', borderRadius:highlight?'8px 8px 0 0':0, minWidth:110 }}>
                       <div>{name}</div>
@@ -275,7 +279,7 @@ export default function WhyBodyMap() {
                 {FEATURES.map((group, gi) => (
                   <>
                     <tr key={`cat-${gi}`}>
-                      <td colSpan={5} style={{ padding:'16px 16px 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', background:C.light }}>
+                      <td colSpan={6} style={{ padding:'16px 16px 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', background:C.light }}>
                         {group.category}
                       </td>
                     </tr>
@@ -288,6 +292,7 @@ export default function WhyBodyMap() {
                         <td style={{ textAlign:'center', padding:'11px 8px' }}><CellValue val={item.mb} /></td>
                         <td style={{ textAlign:'center', padding:'11px 8px' }}><CellValue val={item.vg} /></td>
                         <td style={{ textAlign:'center', padding:'11px 8px' }}><CellValue val={item.gg} /></td>
+                        <td style={{ textAlign:'center', padding:'11px 8px' }}><CellValue val={item.ac} /></td>
                       </tr>
                     ))}
                   </>
@@ -300,6 +305,7 @@ export default function WhyBodyMap() {
                   <td style={{ textAlign:'center', padding:'16px', fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>$45/mo</td>
                   <td style={{ textAlign:'center', padding:'16px', fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>$25/mo</td>
                   <td style={{ textAlign:'center', padding:'16px', fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>$48/mo</td>
+                  <td style={{ textAlign:'center', padding:'16px', fontSize:14, fontWeight:600, color:'rgba(255,255,255,0.7)' }}>$20/mo</td>
                 </tr>
               </tfoot>
             </table>
