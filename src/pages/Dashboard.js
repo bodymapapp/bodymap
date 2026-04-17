@@ -1025,8 +1025,8 @@ export default function Dashboard({ view }) {
               </a>
             );
             return (
-              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', padding: '4px 8px', borderRadius: '6px' }}>
-                {therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
+              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+                {therapist?.plan === 'silver' && !therapist?.trial_ends_at ? '🌿 Founding Therapist · Silver for Life' : therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
               </span>
             );
           })()}
