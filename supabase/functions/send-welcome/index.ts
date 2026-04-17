@@ -82,6 +82,7 @@ serve(async (req) => {
       body: JSON.stringify({
         from: 'The BodyMap Team <reminders@mybodymap.app>',
         to: [recipient],
+        bcc: ['bodymapdemo@gmail.com'],
         subject: `Welcome to BodyMap, ${firstName} - here's how to get started`,
         html,
       }),
