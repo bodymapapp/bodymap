@@ -1,3 +1,4 @@
+import BMLogo from '../components/BMLogo';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -203,9 +204,8 @@ export default function Signup() {
         <div style={{ width: '420px', flexShrink: 0, background: 'linear-gradient(160deg, #1e3d2d 0%, #2A5741 60%, #1e3d2d 100%)', display: 'flex', flexDirection: 'column', padding: '28px 28px 24px', overflow: 'hidden' }}>
 
           {/* Logo */}
-          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '24px' }}>🌿</span>
-            <span style={{ fontSize: '20px', fontWeight: '800', color: '#fff', letterSpacing: '-0.3px' }}>BodyMap</span>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', textDecoration: 'none' }}>
+            <BMLogo size={36} variant="white" showWordmark={true} showTagline={true} />
           </a>
 
           {/* Headline */}
@@ -246,9 +246,8 @@ export default function Signup() {
 
         {/* Mobile logo */}
         {!isDesktop && (
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', marginBottom: '20px', textDecoration: 'none' }}>
-            <span style={{ fontSize: '28px' }}>🌿</span>
-            <span style={{ fontSize: '22px', fontWeight: '800', color: C.forest }}>BodyMap</span>
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', textDecoration: 'none' }}>
+            <BMLogo size={36} variant="dark" showWordmark={true} showTagline={true} />
           </Link>
         )}
 
