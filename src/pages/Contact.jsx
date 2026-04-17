@@ -38,13 +38,13 @@ export default function Contact() {
               <h3 style={{ fontSize: '20px', fontWeight: '700', color: C.darkGray, marginBottom: '16px' }}>
                 Email Us
               </h3>
-              <a href="mailto:bodymapdemo@gmail.com" style={{ 
+              <a href="mailto:hello@mybodymap.app" style={{ 
                 fontSize: '18px', 
                 color: C.sage, 
                 textDecoration: 'none',
                 fontWeight: '600'
               }}>
-                bodymapdemo@gmail.com
+                hello@mybodymap.app
               </a>
             </div>
 
