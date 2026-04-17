@@ -25,7 +25,7 @@ serve(async (req) => {
       {
         n: '2', title: 'Add your first service',
         body: 'Tell clients what you offer and at what price. Go to <b>Settings &gt; Services</b> and add your massage types, duration, and price. This is what shows on your booking page.',
-        link: dashLink, cta: 'Go to Settings'
+        link: dashLink, cta: 'Settings'
       },
       {
         n: '3', title: 'Set your working hours',
@@ -74,7 +74,7 @@ serve(async (req) => {
     `;
 
     // Send to test address while in test mode
-    const recipient = 'bodymapdemo@gmail.com'; // swap to: email
+    const recipient = email; // sends to the new therapist
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
