@@ -66,7 +66,6 @@ export default function Login() {
           textDecoration: 'none'
         }}>
           <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />
-          <span style={{ fontSize: '32px', fontWeight: '700', color: C.forest }}>BodyMap</span>
         </Link>
 
         {/* Login Card */}
