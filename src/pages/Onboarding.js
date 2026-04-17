@@ -1,3 +1,4 @@
+import BMLogo from '../components/BMLogo';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,7 +59,7 @@ export default function Onboarding() {
     <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui' }}>
       <div style={{ maxWidth: '480px', width: '100%', background: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ fontSize: '40px', marginBottom: '8px' }}>🌿</div>
+          <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />
           <h1 style={{ fontSize: '24px', fontWeight: '700', color: C.darkGray, margin: '0 0 8px 0' }}>One last step</h1>
           <p style={{ fontSize: '14px', color: C.gray, margin: 0 }}>Set up your practice profile</p>
         </div>

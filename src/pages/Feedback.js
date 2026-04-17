@@ -1,4 +1,5 @@
 // src/pages/Feedback.js
+import BMLogo from '../components/BMLogo';
 import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
@@ -78,7 +79,7 @@ export default function Feedback() {
   return (
     <div style={{ minHeight:"100vh", background:C.bg }}>
       <div style={{ background:"linear-gradient(155deg,#2A5741,#1E4230)", padding:"28px 20px 24px", textAlign:"center" }}>
-        <div style={{ fontSize:28, marginBottom:4 }}>🌿</div>
+        <BMLogo size={32} variant="dark" showWordmark={true} />
         <h1 style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:600, color:"#fff", margin:0 }}>{therapist.business_name || "BodyMap"}</h1>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.75)", marginTop:4 }}>Session Feedback</p>
       </div>

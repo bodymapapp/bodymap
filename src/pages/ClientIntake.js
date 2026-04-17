@@ -1,6 +1,7 @@
 // src/pages/ClientIntake.js
 // Custom URL page - loads therapist, shows BodyMap, saves to Supabase
 
+import BMLogo from '../components/BMLogo';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { db, supabase } from '../lib/supabase';
@@ -114,7 +115,7 @@ export default function ClientIntake() {
         background: '#F0EAD9'
       }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
+          <BMLogo size={44} variant="dark" showWordmark={true} />
           <div style={{ fontSize: '18px', color: '#6B7280' }}>Loading...</div>
         </div>
       </div>

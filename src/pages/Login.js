@@ -1,3 +1,4 @@
+import BMLogo from '../components/BMLogo';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -64,7 +65,7 @@ export default function Login() {
           marginBottom: '32px',
           textDecoration: 'none'
         }}>
-          <span style={{ fontSize: '40px' }}>🌿</span>
+          <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />
           <span style={{ fontSize: '32px', fontWeight: '700', color: C.forest }}>BodyMap</span>
         </Link>
 

@@ -1,3 +1,4 @@
+import BMLogo from '../components/BMLogo';
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 
@@ -52,7 +53,7 @@ export default function WaitlistModal({ isOpen, onClose, interest }) {
 
         {status === 'success' ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '48px', marginBottom: '16px' }}>🌿</div>
+            <BMLogo size={44} variant="dark" showWordmark={true} />
             <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '700', color: C.forest, marginBottom: '12px' }}>You are on the list.</h2>
             <p style={{ fontSize: '16px', color: C.gray, lineHeight: '1.7', marginBottom: '32px' }}>
               We will reach out to you personally when {interest} is ready. Thank you for believing in what we are building.
