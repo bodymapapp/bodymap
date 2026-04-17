@@ -999,17 +999,37 @@ export default function Dashboard({ view }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {(!therapist?.plan || therapist?.plan === 'free') && (
-            <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-              style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-              Upgrade to Silver →
-            </a>
-          )}
-          {(therapist?.plan === 'silver' || therapist?.plan === 'gold') && (
-            <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', padding: '4px 8px', borderRadius: '6px' }}>
-              {therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
-            </span>
-          )}
+          {(() => {
+            const trialEnd = therapist?.trial_ends_at ? new Date(therapist.trial_ends_at) : null;
+            const now = new Date();
+            const daysLeft = trialEnd ? Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)) : null;
+            const trialActive = daysLeft !== null && daysLeft > 0;
+            const trialExpired = daysLeft !== null && daysLeft <= 0;
+
+            if (trialActive) return (
+              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
+                style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                {daysLeft === 1 ? 'Trial ends today — upgrade' : `${daysLeft} days left — upgrade to keep Silver`}
+              </a>
+            );
+            if (trialExpired) return (
+              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
+                style={{ background: '#DC2626', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                Trial ended — upgrade to keep your data
+              </a>
+            );
+            if (!therapist?.plan || therapist?.plan === 'free') return (
+              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
+                style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                Upgrade to Silver →
+              </a>
+            );
+            return (
+              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', padding: '4px 8px', borderRadius: '6px' }}>
+                {therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
+              </span>
+            );
+          })()}
           <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
             Sign Out
           </button>

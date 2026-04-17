@@ -42,7 +42,8 @@ export const AuthProvider = ({ children }) => {
                   full_name: name, business_name: name,
                   custom_url: urlSlug,
                   password_hash: 'managed_by_supabase_auth',
-                  plan: 'silver'
+                  plan: 'silver',
+                  trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 }]);
                 window.location.href = '/dashboard?upgraded=true';
               } else {
@@ -100,7 +101,8 @@ export const AuthProvider = ({ children }) => {
         phone: metadata.phone,
         custom_url: metadata.customUrl,
         password_hash: 'managed_by_supabase_auth',
-        plan: 'free'
+        plan: 'silver',
+        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       }]);
       if (dbError) throw dbError;
       // Fetch back to confirm insert and set state
