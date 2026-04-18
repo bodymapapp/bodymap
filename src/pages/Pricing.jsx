@@ -95,18 +95,9 @@ export default function Pricing() {
         <p style={{ fontSize:17, color:C.gray, maxWidth:560, margin:'0 auto 12px', lineHeight:1.7 }}>
           Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
         </p>
-        <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 32px', lineHeight:1.6 }}>
+        <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 40px', lineHeight:1.6 }}>
           We're giving the first 100 therapists full Silver access — free for life. No credit card, no trial, no catch.
         </p>
-        <div style={{ display:'inline-flex', background:'#fff', borderRadius:10, padding:4, border:`1px solid ${C.border}`, gap:4 }}>
-          {['monthly','annual'].map(c => (
-            <button key={c} onClick={() => setBillingCycle(c)}
-              style={{ padding:'8px 20px', borderRadius:8, border:'none', cursor:'pointer', fontSize:13, fontWeight:600,
-                background:billingCycle===c?C.forest:'transparent', color:billingCycle===c?'#fff':C.gray, transition:'all 0.15s' }}>
-              {c === 'monthly' ? 'Monthly' : 'Annual - save 20%'}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px 80px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', gap:24, alignItems:'start' }}>
@@ -126,15 +117,15 @@ export default function Pricing() {
             <div style={{ fontSize:13, color:tier.highlight?'rgba(255,255,255,0.7)':C.gray, lineHeight:1.5, marginBottom:20 }}>{tier.tagline}</div>
             <div style={{ display:'flex', alignItems:'flex-end', gap:4, marginBottom:4 }}>
               <span style={{ fontSize:44, fontWeight:700, color:tier.highlight?'#fff':C.dark, lineHeight:1, fontFamily:'Georgia,serif' }}>
-                ${billingCycle==='annual' ? tier.price.annual : tier.price.monthly}
+                {tier.price.monthly === 0 ? 'Free' : `$${tier.price.monthly}`}
               </span>
               {tier.price.monthly > 0 && <span style={{ fontSize:14, color:tier.highlight?'rgba(255,255,255,0.6)':C.gray, marginBottom:6 }}>/mo</span>}
             </div>
-            {tier.price.monthly === 0
+            {tier.price.monthly === 0 && tier.highlight
+              ? <div style={{ fontSize:13, fontWeight:700, color:'#86EFAC', marginBottom:20 }}>🌿 For founding therapists — Silver for life</div>
+              : tier.price.monthly === 0
               ? <div style={{ fontSize:13, fontWeight:700, color:C.sage, marginBottom:20 }}>Free forever</div>
-              : <div style={{ fontSize:12, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:20 }}>
-                  {billingCycle==='annual' ? `billed $${tier.price.annual*12}/year` : 'billed monthly'}
-                </div>
+              : <div style={{ fontSize:12, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:20 }}>billed monthly</div>
             }
             {tier.comingSoon
               ? <div style={{ background:'rgba(0,0,0,0.08)', borderRadius:12, padding:14, textAlign:'center', fontSize:14, fontWeight:600, color:C.gray, marginBottom:24 }}>Coming Soon</div>

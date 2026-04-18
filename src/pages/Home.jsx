@@ -183,18 +183,18 @@ export default function Home() {
               Your client's full history,<br/>ready before<br/><em style={{ fontStyle:'italic', color:G.soft }}>every session.</em>
             </h1>
             <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
-              The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free forever on Bronze.
+              The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free Silver for the first 100 therapists.
             </p>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
-                Start Free - No Card Needed
+                Join free — founding therapist
               </Link>
               <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
                 See How It Works →
               </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-              {['Free forever on Bronze', 'Live in 30 seconds', 'No credit card'].map(t => (
+              {['🌿 Silver free for founding therapists', 'Live in 30 seconds', 'No credit card ever'].map(t => (
                 <span key={t} style={{ fontSize:13, color:G.soft, display:'flex', alignItems:'center', gap:4 }}>
                   <span style={{ color:G.soft }}>✓</span> {t}
                 </span>
@@ -463,18 +463,18 @@ export default function Home() {
             Your practice deserves<br/>better tools. Free ones.
           </h2>
           <p style={{ fontSize:17, color:'rgba(255,255,255,0.65)', margin:'0 0 36px', lineHeight:1.7 }}>
-            Every tool on this page is free on Bronze. No credit card. No trial. No upgrade required. Start today and your first client can book in the next 5 minutes.
+            We're giving the first 100 therapists full Silver access — free for life. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
             <Link to="/signup" style={{ background:'#fff', color:G.deep, borderRadius:12, padding:'16px 32px', fontSize:16, fontWeight:700, textDecoration:'none' }}>
-              Start Free - No Card Needed
+              Join free — founding therapist
             </Link>
             <Link to="/pricing" style={{ background:'transparent', color:'rgba(255,255,255,0.8)', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:12, padding:'16px 28px', fontSize:15, fontWeight:600, textDecoration:'none' }}>
               See Pricing
             </Link>
           </div>
           <p style={{ fontSize:13, color:'rgba(255,255,255,0.35)', margin:0 }}>
-            Free forever on Bronze. Upgrade to Silver when your data has something to tell you.
+            Free Silver for life — for founding therapists. You're early. That means something.
           </p>
         </div>
       </section>

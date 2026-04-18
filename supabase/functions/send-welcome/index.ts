@@ -59,11 +59,16 @@ serve(async (req) => {
           <span style="font-size:22px;font-weight:700;color:#1A3A28;">BodyMap</span>
           <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
         </div>
-        <h1 style="font-size:26px;font-weight:700;color:#1A3A28;margin:0 0 8px;">Welcome, ${firstName}.</h1>
-        <p style="font-family:system-ui;font-size:15px;color:#6B7280;line-height:1.7;margin:0 0 32px;">Your BodyMap practice is ready. Here are your first 5 steps. Each takes under 2 minutes.</p>
+        <div style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 14px;margin-bottom:16px;">
+          <span style="font-family:system-ui;font-size:12px;font-weight:700;color:#2A5741;">🌿 Founding Therapist · Silver for Life</span>
+        </div>
+        <h1 style="font-size:26px;font-weight:700;color:#1A3A28;margin:0 0 8px;">Welcome, ${firstName}. You made it.</h1>
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 8px;">You're one of the first 100 therapists on BodyMap — which means you get <strong>Silver for life, free.</strong> No trial. No credit card. No catch.</p>
+        <p style="font-family:system-ui;font-size:15px;color:#6B7280;line-height:1.7;margin:0 0 28px;">Your practice is ready. Here are 5 steps to get your first client booked. Each takes under 2 minutes.</p>
         ${stepsHtml}
         <div style="background:#2A5741;border-radius:12px;padding:24px;margin-top:32px;text-align:center;">
-          <p style="font-family:system-ui;font-size:14px;color:rgba(255,255,255,0.8);margin:0 0 16px;">Questions? Just reply to this email. We read every one.</p>
+          <p style="font-family:system-ui;font-size:15px;font-weight:700;color:#fff;margin:0 0 4px;">You are a Founding Therapist. 🌿</p>
+          <p style="font-family:system-ui;font-size:13px;color:rgba(255,255,255,0.75);margin:0 0 20px;line-height:1.6;">That means Silver is yours for life — no payment ever required. Questions? Just reply to this email. We read every one.</p>
           <a href="${dashLink}" style="display:inline-block;background:#fff;color:#2A5741;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard &rarr;</a>
         </div>
         <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.6;">
@@ -83,7 +88,7 @@ serve(async (req) => {
         from: 'The BodyMap Team <reminders@mybodymap.app>',
         to: [recipient],
         bcc: ['bodymapdemo@gmail.com'],
-        subject: `Welcome to BodyMap, ${firstName} - here's how to get started`,
+        subject: `${firstName}, you're a BodyMap Founding Therapist 🌿`,
         html,
       }),
     });
