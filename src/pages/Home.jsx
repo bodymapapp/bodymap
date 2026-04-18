@@ -154,10 +154,17 @@ function StoryCard({ initial, color, name, since, headline, body, outcome }) {
 export default function Home() {
   const [slide, setSlide] = useState(0);
   const [waitlistOpen, setWaitlistOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
   useEffect(() => {
     const t = setInterval(() => setSlide(s => (s+1) % SLIDES.length), 4000);
     return () => clearInterval(t);
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handler);
+    return () => window.removeEventListener('resize', handler);
   }, []);
 
   return (
@@ -178,11 +185,11 @@ export default function Home() {
             <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
               The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free forever on Bronze.
             </p>
-            <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20 }}>
-              <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
+              <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
                 Start Free - No Card Needed
               </Link>
-              <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block' }}>
+              <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
                 See How It Works →
               </a>
             </div>
@@ -224,30 +231,46 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <section style={{padding:'80px 24px',background:'#162E09',textAlign:'center'}}>
-        <p style={{fontSize:'13px',fontWeight:'700',letterSpacing:'2px',color:'#7db96e',textTransform:'uppercase',marginBottom:'12px'}}>See It In Action</p>
-        <h2 style={{fontSize:'36px',fontWeight:'800',color:'#fff',marginBottom:'12px',lineHeight:1.2}}>From intake to post-session summary.</h2>
-        <p style={{fontSize:'18px',color:'rgba(255,255,255,0.7)',marginBottom:'40px',maxWidth:'600px',margin:'0 auto 40px'}}>Click through a real BodyMap session — exactly what you and your clients experience.</p>
-        <div style={{maxWidth:'1100px',margin:'0 auto',position:'relative'}}>
-          <div style={{borderRadius:'20px',overflow:'hidden',boxShadow:'0 20px 80px rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.1)'}}>
-            <iframe
-              src="https://app.supademo.com/embed/cmnunkrud0wsz4bj5c0yp7liy"
-              frameBorder="0"
-              loading="lazy"
-              allowFullScreen
-              allow="clipboard-write"
-              style={{width:'100%',height:'700px',display:'block'}}
-              title="BodyMap Interactive Demo"
-            />
-          </div>
-          <p style={{marginTop:'20px',fontSize:'14px',color:'rgba(255,255,255,0.5)'}}>↑ Interactive — click the arrows to explore each feature</p>
+      <section style={{padding: isMobile ? '56px 20px' : '80px 24px', background:'#0D1F17', textAlign:'center'}}>
+        <p style={{fontSize:'12px', fontWeight:'700', letterSpacing:'2px', color:'#6B9E80', textTransform:'uppercase', marginBottom:'12px'}}>See It In Action</p>
+        <h2 style={{fontFamily:'Georgia,serif', fontSize: isMobile ? '28px' : '36px', fontWeight:'800', color:'#fff', marginBottom:'12px', lineHeight:1.2}}>
+          From intake to post-session summary.
+        </h2>
+        <p style={{fontSize: isMobile ? '15px' : '18px', color:'rgba(255,255,255,0.65)', marginBottom:'40px', maxWidth:'560px', margin:'0 auto 40px', lineHeight:1.65}}>
+          Everything your clients experience, and everything you see — before they arrive.
+        </p>
+
+        {/* Mobile: card-based feature flow instead of iframe */}
+        <div style={{maxWidth:'560px', margin:'0 auto', display:'flex', flexDirection:'column', gap:16}}>
+          {[
+            { step:'1', icon:'📅', title:'Client books online', desc:'No app. No account. They pick a time in 2 taps. Your schedule updates instantly.', color:'#1A3A28' },
+            { step:'2', icon:'🗺️', title:'They fill their body map', desc:'Focus zones, pressure, music, what to avoid. Sent automatically. Arrives in 60 seconds.', color:'#1A3A28' },
+            { step:'3', icon:'✨', title:'You walk in knowing everything', desc:'Their full intake, past session patterns, and AI brief — waiting before you touch them.', color:'#1A3A28' },
+            { step:'4', icon:'🔁', title:'Next visit? 10 seconds', desc:'The welcome back banner pre-fills everything from last time. They just confirm and done.', color:'#1A3A28' },
+          ].map(({step, icon, title, desc, color}) => (
+            <div key={step} style={{background:color, border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'20px 24px', textAlign:'left', display:'flex', gap:16, alignItems:'flex-start'}}>
+              <div style={{width:40, height:40, borderRadius:10, background:'rgba(107,158,128,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:20, flexShrink:0}}>{icon}</div>
+              <div>
+                <div style={{fontSize:11, fontWeight:700, color:'#6B9E80', letterSpacing:'0.08em', textTransform:'uppercase', marginBottom:4}}>Step {step}</div>
+                <div style={{fontSize:16, fontWeight:700, color:'#fff', marginBottom:6}}>{title}</div>
+                <div style={{fontSize:14, color:'rgba(255,255,255,0.6)', lineHeight:1.6}}>{desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div style={{marginTop:32}}>
+          <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test"
+            style={{display:'inline-block', background:'#6B9E80', color:'#fff', borderRadius:12, padding:'14px 28px', fontSize:15, fontWeight:700, textDecoration:'none'}}>
+            See the live demo →
+          </a>
         </div>
       </section>
 
       {/* ── SWITCH IN 5 MINUTES ───────────────────────────────────────────── */}
-      <section style={{ background:'#fff', padding:'72px 24px' }}>
+      <section style={{ background:'#fff', padding: isMobile ? '56px 20px' : '72px 24px' }}>
         <div style={{ maxWidth:900, margin:'0 auto' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 32 : 48, alignItems:'center' }}>
             <div>
               <div style={{ fontSize:12, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:14 }}>
                 Zero friction switch

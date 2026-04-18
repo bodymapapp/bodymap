@@ -261,3 +261,61 @@ html {
 section[id] {
   scroll-margin-top: 112px;
 }
+
+/* ── MOBILE HOME PAGE DEEP FIXES ── */
+@media (max-width: 767px) {
+
+  /* Hero: single column, no decorative card */
+  .bm-home-hero-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .bm-home-hero-grid > div:nth-child(2) {
+    display: none !important;
+  }
+
+  /* Feature carousel: stack */
+  .bm-home-feature-grid {
+    grid-template-columns: 1fr !important;
+    min-height: unset !important;
+  }
+
+  /* Comparison grid: stack */
+  .bm-home-compare-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Sound familiar pain cards — keep 1 col, reduce font */
+  .bm-pain-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Section headings — prevent oversized text */
+  h1 { font-size: clamp(28px, 8vw, 40px) !important; line-height: 1.15 !important; }
+  h2 { font-size: clamp(22px, 6vw, 32px) !important; }
+  h3 { font-size: clamp(18px, 5vw, 24px) !important; }
+
+  /* Section padding */
+  section { padding-left: 20px !important; padding-right: 20px !important; }
+
+  /* CTA buttons full width on mobile */
+  .bm-cta-row { flex-direction: column !important; }
+  .bm-cta-row a, .bm-cta-row button { width: 100% !important; text-align: center !important; }
+
+  /* Testimonials — single column */
+  .bm-testimonial-grid { grid-template-columns: 1fr !important; }
+
+  /* WhyBodyMap comparison table — horizontal scroll */
+  .bm-comparison-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+
+  /* Nav - tighten */
+  nav { padding: 12px 16px !important; }
+
+  /* Features page all 2-col → stack */
+  .bm-feat-2col { grid-template-columns: 1fr !important; }
+
+  /* Hide heavy decorative elements on mobile */
+  .bm-decorative { display: none !important; }
+
+  /* PWA bottom nav clearance */
+  body { padding-bottom: 0 !important; }
+}
