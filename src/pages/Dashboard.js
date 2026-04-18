@@ -483,14 +483,27 @@ function PushNotificationsCard({ therapist, C2 }) {
     setTestStatus(null);
     const result = await sendTest();
     setTestSending(false);
+
+    // Build a clear diagnostic based on what came back
     if (result.ok && result.data?.sent > 0) {
       setTestStatus({ ok: true, msg: `Test sent to ${result.data.sent} device${result.data.sent > 1 ? 's' : ''}. Check your notifications.` });
-    } else if (result.ok && result.data?.sent === 0) {
-      setTestStatus({ ok: false, msg: 'No devices subscribed yet. Turn on notifications above first.' });
+    } else if (result.ok && result.data?.sent === 0 && result.data?.reason === 'no subscriptions') {
+      setTestStatus({ ok: false, msg: 'No devices subscribed yet. Turn on notifications above first, then try again.' });
+    } else if (result.status === 404) {
+      setTestStatus({ ok: false, msg: 'send-push edge function not deployed. From your terminal: npx supabase functions deploy send-push --project-ref rmnqfrljoknmellbnpiy' });
+    } else if (result.data?.error && /VAPID/i.test(result.data.error)) {
+      setTestStatus({ ok: false, msg: 'VAPID secrets missing in Supabase. Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT under Project Settings -> Edge Functions -> Secrets.' });
+    } else if (result.data?.error) {
+      setTestStatus({ ok: false, msg: `Edge function error: ${result.data.error}` });
+    } else if (result.data?.errors?.length > 0) {
+      const e = result.data.errors[0];
+      setTestStatus({ ok: false, msg: `Push service rejected (${e.statusCode || '?'}) from ${e.endpoint_host || 'endpoint'}: ${e.message || e.body || 'unknown'}` });
+    } else if (result.reason) {
+      setTestStatus({ ok: false, msg: result.reason });
     } else {
-      setTestStatus({ ok: false, msg: result.data?.error || result.reason || 'Could not send test.' });
+      setTestStatus({ ok: false, msg: `HTTP ${result.status || '?'}: ${JSON.stringify(result.data).slice(0, 200)}` });
     }
-    setTimeout(() => setTestStatus(null), 6000);
+    setTimeout(() => setTestStatus(null), 12000);
   };
 
   return (

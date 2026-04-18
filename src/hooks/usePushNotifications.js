@@ -93,9 +93,14 @@ export default function usePushNotifications(therapistId) {
         }, { onConflict: 'endpoint' });
 
       if (upsertErr) {
-        setError(upsertErr.message);
+        // 42P01 = relation does not exist (table missing)
+        let friendlyMsg = upsertErr.message;
+        if (upsertErr.code === '42P01' || /relation.*does not exist/i.test(upsertErr.message || '')) {
+          friendlyMsg = 'push_subscriptions table is missing. Run the migration in Supabase SQL Editor (see setup step 1).';
+        }
+        setError(friendlyMsg);
         setLoading(false);
-        return { ok: false, reason: upsertErr.message };
+        return { ok: false, reason: friendlyMsg };
       }
 
       setSubscribed(true);
@@ -127,7 +132,7 @@ export default function usePushNotifications(therapistId) {
   }, [supported]);
 
   const sendTest = useCallback(async () => {
-    if (!therapistId) return { ok: false };
+    if (!therapistId) return { ok: false, reason: 'no therapist' };
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
@@ -145,10 +150,12 @@ export default function usePushNotifications(therapistId) {
           tag: 'bodymap-test',
         }),
       });
-      const data = await res.json();
-      return { ok: res.ok, data };
+      const text = await res.text();
+      let data: any = {};
+      try { data = JSON.parse(text); } catch { data = { raw: text }; }
+      return { ok: res.ok, status: res.status, data };
     } catch (e) {
-      return { ok: false, reason: e?.message };
+      return { ok: false, reason: e?.message || 'fetch failed' };
     }
   }, [therapistId]);
 

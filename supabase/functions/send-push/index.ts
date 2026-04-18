@@ -4,8 +4,8 @@
 // Also accepts { user_id } as alias for therapist_id.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import webpush from "https://esm.sh/web-push@3.6.7";
+import { createClient } from "npm:@supabase/supabase-js@2";
+import webpush from "npm:web-push@3.6.7";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +78,7 @@ serve(async (req) => {
       tag: body.tag || 'bodymap',
     });
 
-    const results = { sent: 0, failed: 0, removed: 0 };
+    const results = { sent: 0, failed: 0, removed: 0, errors: [] as any[] };
 
     for (const sub of subs) {
       const subscription = {
@@ -100,7 +100,14 @@ serve(async (req) => {
           results.removed++;
         } else {
           results.failed++;
-          console.error('push send failed:', statusCode, err?.body || err?.message);
+          const errInfo = {
+            statusCode,
+            body: err?.body,
+            message: err?.message,
+            endpoint_host: (() => { try { return new URL(sub.endpoint).host; } catch { return null; } })(),
+          };
+          results.errors.push(errInfo);
+          console.error('push send failed:', JSON.stringify(errInfo));
         }
       }
     }
@@ -109,7 +116,8 @@ serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err?.message || String(err) }), {
+    console.error('send-push fatal error:', err?.message, err?.stack);
+    return new Response(JSON.stringify({ error: err?.message || String(err), stack: err?.stack?.split('\n').slice(0, 3) }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
