@@ -1495,7 +1495,7 @@ export default function Dashboard({ view }) {
       )}
 
       {/* PWA install banner */}
-      <PWAInstallBanner />
+      <PWAInstallBanner therapist={therapist} />
     </div>
   );
 }
