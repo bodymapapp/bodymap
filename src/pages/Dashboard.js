@@ -14,6 +14,9 @@ import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
 import BMLogo from '../components/BMLogo';
+import MobileBottomNav from '../components/MobileBottomNav';
+import PWAInstallBanner from '../components/PWAInstallBanner';
+import { useMobile } from '../hooks/useMobile';
 
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -970,6 +973,7 @@ export default function Dashboard({ view }) {
   const { therapist, signOut } = useAuth();
   const navigate = useNavigate();
   const { clientId, sessionId } = useParams();
+  const isMobile = useMobile();
   const [stats, setStats] = useState({ clients: 0, sessions: 0 });
   const [client, setClient] = useState(null);
   const [session, setSession] = useState(null);
@@ -1082,62 +1086,44 @@ export default function Dashboard({ view }) {
         </div>
       </header>
 
-      {showBookmarkNudge && (
+      {showBookmarkNudge && !isMobile && (
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>📲</span>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant 3-second access - bookmark this page or use Share → Add to Home Screen</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant access — use Share → Add to Home Screen</p>
           </div>
           <button onClick={() => setShowBookmarkNudge(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>Got it ✓</button>
         </div>
       )}
-      <div className="bm-dash-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px' }}>
-        <div style={{ background: C.white, borderRadius: '12px', padding: '6px', marginBottom: '24px', display: 'flex', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
-          <button
-            onClick={() => navigate('/dashboard')}
-            style={{ flexShrink:0, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
-          >
-            Clients
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/schedule')}
-            style={{ background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            Schedule
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/billing')}
-            style={{ background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            Billing
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/ai')}
-            style={{ background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            AI
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/outreach')}
-            style={{ background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            Outreach
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/gifts')}
-            style={{ background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            Gifts
-          </button>
-          <button
-            onClick={() => navigate('/dashboard/settings')}
-            style={{ background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer' , flexShrink: 0 }}
-          >
-            Settings
-          </button>
-        </div>
 
-        <div style={{ background: C.white, borderRadius: '12px', padding: '32px', minHeight: '400px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      {/* Desktop tab nav — hidden on mobile */}
+      {!isMobile && (
+        <div className="bm-dash-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px 0' }}>
+          <div style={{ background: C.white, borderRadius: '12px', padding: '6px', marginBottom: '24px', display: 'flex', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto', scrollbarWidth: 'none' }}>
+            <button onClick={() => navigate('/dashboard')} style={{ flexShrink:0, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Clients</button>
+            <button onClick={() => navigate('/dashboard/schedule')} style={{ background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Schedule</button>
+            <button onClick={() => navigate('/dashboard/billing')} style={{ background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Billing</button>
+            <button onClick={() => navigate('/dashboard/ai')} style={{ background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>AI</button>
+            <button onClick={() => navigate('/dashboard/outreach')} style={{ background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Outreach</button>
+            <button onClick={() => navigate('/dashboard/gifts')} style={{ background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Gifts</button>
+            <button onClick={() => navigate('/dashboard/settings')} style={{ background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Settings</button>
+          </div>
+        </div>
+      )}
+
+      {/* Content area */}
+      <div className="bm-dash-pad" style={{
+        maxWidth: isMobile ? '100%' : '1200px',
+        margin: '0 auto',
+        padding: isMobile ? '12px 12px 90px' : '0 16px 32px',
+      }}>
+        <div style={{
+          background: C.white,
+          borderRadius: isMobile ? '16px' : '12px',
+          padding: isMobile ? '16px' : '32px',
+          minHeight: '400px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        }}>
           {view === 'clients' && (
             <>
               <OnboardingChecklist
@@ -1204,7 +1190,7 @@ export default function Dashboard({ view }) {
           )}
         </div>
 
-        <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
+        <div className="no-print" style={{ display: isMobile ? 'none' : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginTop: '24px' }}>
           <div style={{ background: C.white, borderRadius: '12px', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
             <p style={{ fontSize: '14px', color: C.gray, margin: '0 0 8px 0' }}>Total Clients</p>
             <p style={{ fontSize: '32px', fontWeight: '700', color: C.forest, margin: 0 }}>{stats.clients}</p>
@@ -1222,7 +1208,8 @@ export default function Dashboard({ view }) {
         </div>
       </div>
       {(view === 'clients' || view === 'sessions' || view === 'session-detail') && (
-        <button onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }} style={{ position: 'fixed', bottom: '32px', right: '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: '16px 28px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 1000 }}>
+        <button onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
+          style={{ position: 'fixed', bottom: isMobile ? '80px' : '32px', right: isMobile ? '16px' : '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? '14px' : '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999 }}>
           📤 Send Intake
         </button>
       )}
@@ -1256,6 +1243,26 @@ export default function Dashboard({ view }) {
           </div>
         </div>
       )}
+
+      {/* Mobile bottom nav */}
+      {isMobile && (
+        <MobileBottomNav
+          active={view === 'clients' || view === 'sessions' || view === 'session-detail' ? 'clients' : view || 'clients'}
+          onChange={(tab) => {
+            const routes = {
+              clients: '/dashboard',
+              schedule: '/dashboard/schedule',
+              billing: '/dashboard/billing',
+              outreach: '/dashboard/outreach',
+              settings: '/dashboard/settings',
+            };
+            navigate(routes[tab] || '/dashboard');
+          }}
+        />
+      )}
+
+      {/* PWA install banner */}
+      <PWAInstallBanner />
     </div>
   );
 }
