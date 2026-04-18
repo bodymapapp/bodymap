@@ -268,7 +268,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   };
 
   return (
-    <div>
+    <div style={{ paddingBottom: window.innerWidth < 768 ? 100 : 0 }}>
       {/* Date navigation header with prev/next arrows */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
         <button onClick={()=>setDayOffset(d=>d-1)}

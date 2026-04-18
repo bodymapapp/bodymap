@@ -176,7 +176,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       : segmentClients.length > 0 && (channel === 'email' || twilioReady));
 
   return (
-    <div>
+    <div style={{ paddingBottom: window.innerWidth < 768 ? 120 : 0 }}>
       <div style={{ marginBottom:24 }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>Smart Outreach</h2>
         <p style={{ fontSize:13, color:C.gray, margin:0 }}>Send a personal message to a group of clients in one shot. Each one is addressed by name.</p>

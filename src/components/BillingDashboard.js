@@ -489,7 +489,7 @@ export default function BillingDashboard({ therapist }) {
 
 
   return (
-    <div style={{ width:'100%' }}>
+    <div style={{ width:'100%', paddingBottom: window.innerWidth < 768 ? 100 : 0 }}>
       <div style={{ marginBottom:20 }}>
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>

@@ -40,7 +40,7 @@ export default function PWAInstallBanner() {
   };
 
   return (
-    <div style={{
+    <div className="bm-pwa-banner" style={{
       position: 'fixed', bottom: 80, left: 16, right: 16, zIndex: 9000,
       background: '#1A3A28', borderRadius: 16, padding: '16px 20px',
       boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
@@ -53,10 +53,10 @@ export default function PWAInstallBanner() {
       </div>
       <div style={{ flex: 1 }}>
         <div style={{ color: '#fff', fontSize: 14, fontWeight: 700, fontFamily: 'system-ui', marginBottom: 2 }}>
-          Add BodyMap to your home screen
+          Save BodyMap to your phone
         </div>
         <div style={{ color: '#A8C5B5', fontSize: 12, fontFamily: 'system-ui' }}>
-          {isIOS ? 'Tap Share → Add to Home Screen' : 'One tap — works like a native app'}
+          {isIOS ? 'Tap ⬆ Share at bottom → Add to Home Screen' : 'Tap Install — works like a real app'}
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

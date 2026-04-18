@@ -1040,15 +1040,18 @@ export default function Dashboard({ view }) {
           <p style={{ fontSize: '13px', color: '#047857', margin: 0 }}>Unlimited clients and sessions are now unlocked. Let's get to work!</p>
         </div>
       )}
-      <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: isMobile ? '10px 14px' : '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-          <BMLogo size={30} variant="dark" showWordmark={false} />
-          <div>
+          <BMLogo size={isMobile ? 24 : 30} variant="dark" showWordmark={false} />
+          {!isMobile && <div>
             <h1 style={{ fontSize: '16px', fontWeight: '700', color: C.forest, margin: 0 }}>BodyMap</h1>
             <p style={{ fontSize: '11px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
-          </div>
+          </div>}
+          {isMobile && <div>
+            <div style={{ fontSize: '14px', fontWeight: '700', color: C.forest, lineHeight: 1.1 }}>{therapist?.business_name || 'BodyMap'}</div>
+          </div>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           {(() => {
             const trialEnd = therapist?.trial_ends_at ? new Date(therapist.trial_ends_at) : null;
             const now = new Date();
@@ -1058,31 +1061,36 @@ export default function Dashboard({ view }) {
 
             if (trialActive) return (
               <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                {daysLeft === 1 ? 'Trial ends today — upgrade' : `${daysLeft} days left — upgrade to keep Silver`}
+                style={{ background: '#C9A84C', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                {isMobile ? `${daysLeft}d left` : daysLeft === 1 ? 'Trial ends today' : `${daysLeft} days left`}
               </a>
             );
             if (trialExpired) return (
               <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#DC2626', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                Trial ended — upgrade to keep your data
+                style={{ background: '#DC2626', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                {isMobile ? 'Upgrade' : 'Trial ended — upgrade'}
               </a>
             );
             if (!therapist?.plan || therapist?.plan === 'free') return (
               <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#C9A84C', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                Upgrade to Silver →
+                style={{ background: '#C9A84C', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                {isMobile ? 'Upgrade' : 'Upgrade to Silver →'}
               </a>
             );
+            if (therapist?.plan === 'silver' && !therapist?.trial_ends_at) return (
+              <span style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+                🌿 {isMobile ? 'Founding' : 'Founding Therapist · Silver for Life'}
+              </span>
+            );
             return (
-              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
-                {therapist?.plan === 'silver' && !therapist?.trial_ends_at ? '🌿 Founding Therapist · Silver for Life' : therapist?.plan === 'silver' ? '✓ Silver' : '✓ Gold'}
+              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px' }}>
+                ✓ {therapist?.plan === 'silver' ? 'Silver' : 'Gold'}
               </span>
             );
           })()}
-          <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
+          {!isMobile && <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
             Sign Out
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -1255,9 +1263,13 @@ export default function Dashboard({ view }) {
               billing: '/dashboard/billing',
               outreach: '/dashboard/outreach',
               settings: '/dashboard/settings',
+              ai: '/dashboard/ai',
+              gifts: '/dashboard/gifts',
             };
             navigate(routes[tab] || '/dashboard');
           }}
+          onSignOut={handleLogout}
+          therapist={therapist}
         />
       )}
 

@@ -64,6 +64,7 @@ export default function ImportClients({ therapist, onComplete }) {
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const fileRef = useRef();
+  const isMobile = window.innerWidth < 768;
 
   function handleFile(e) {
     const file = e.target.files[0];
@@ -198,6 +199,22 @@ export default function ImportClients({ therapist, onComplete }) {
         <h3 style={{ fontFamily:'Georgia,serif', fontSize:18, fontWeight:700, color:'#fff', margin:'0 0 4px' }}>Import Clients from Another Platform</h3>
         <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:0 }}>Transfer your client list from MassageBook, Vagaro, GlossGenius, Mindbody, or any CSV file.</p>
       </div>
+
+      {/* Mobile notice */}
+      {isMobile && (
+        <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', margin:16, borderRadius:10, padding:'14px 16px' }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'#92400E', marginBottom:4 }}>📱 Best done on a computer</div>
+          <div style={{ fontSize:13, color:'#78350F', lineHeight:1.5 }}>
+            Importing clients requires uploading a CSV file. To do this:
+            <ol style={{ margin:'8px 0 0 16px', padding:0 }}>
+              <li>Export your client list from your current platform</li>
+              <li>Open mybodymap.app on your computer</li>
+              <li>Go to Settings → Import Clients</li>
+            </ol>
+          </div>
+          <div style={{ fontSize:12, color:'#92400E', marginTop:8, fontStyle:'italic' }}>Your clients will sync instantly once imported.</div>
+        </div>
+      )}
 
       {/* Tab bar */}
       <div style={{ display:'flex', borderBottom:`1px solid ${C.light}` }}>

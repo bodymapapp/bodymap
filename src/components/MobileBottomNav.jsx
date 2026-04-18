@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const C = { forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8', gray: '#9CA3AF' };
 
@@ -7,59 +7,100 @@ const TABS = [
   { id: 'schedule',  label: 'Schedule',  icon: ScheduleIcon },
   { id: 'billing',   label: 'Billing',   icon: BillingIcon  },
   { id: 'outreach',  label: 'Outreach',  icon: OutreachIcon },
-  { id: 'settings',  label: 'Settings',  icon: SettingsIcon },
+  { id: 'more',      label: 'More',      icon: MoreIcon     },
 ];
 
-export default function MobileBottomNav({ active, onChange, unreadCount }) {
+export default function MobileBottomNav({ active, onChange, unreadCount, onSignOut, therapist }) {
+  const [showMore, setShowMore] = useState(false);
+
+  const handleTab = (id) => {
+    if (id === 'more') { setShowMore(v => !v); return; }
+    setShowMore(false);
+    onChange(id);
+  };
+
+  const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
+
   return (
-    <div className="bm-bottom-nav" style={{
-      position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000,
-      background: '#fff',
-      borderTop: '1px solid #E8E4DC',
-      display: 'flex', alignItems: 'stretch',
-      boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
-    }}>
-      {TABS.map(tab => {
-        const isActive = active === tab.id;
-        const Icon = tab.icon;
-        return (
-          <button key={tab.id} onClick={() => onChange(tab.id)}
-            style={{
-              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', padding: '10px 4px 8px',
-              background: 'none', border: 'none', cursor: 'pointer',
-              position: 'relative', gap: 4,
-              transition: 'all 0.15s ease',
-            }}>
-            <div style={{ position: 'relative' }}>
-              <Icon color={isActive ? C.forest : C.gray} size={22} />
-              {tab.id === 'outreach' && unreadCount > 0 && (
-                <div style={{
-                  position: 'absolute', top: -4, right: -6,
-                  background: '#DC2626', color: '#fff',
-                  borderRadius: 10, minWidth: 16, height: 16,
-                  fontSize: 9, fontWeight: 800, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  padding: '0 4px', fontFamily: 'system-ui',
-                }}>{unreadCount}</div>
-              )}
-            </div>
-            <span style={{
-              fontSize: 10, fontWeight: isActive ? 700 : 500,
-              color: isActive ? C.forest : C.gray,
-              fontFamily: 'system-ui', letterSpacing: isActive ? '-0.01em' : 0,
-              transition: 'all 0.15s ease',
-            }}>{tab.label}</span>
-            {isActive && (
-              <div style={{
-                position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                width: 28, height: 2, background: C.forest, borderRadius: '0 0 2px 2px',
-              }} />
-            )}
+    <>
+      {/* More drawer */}
+      {showMore && (
+        <div style={{
+          position: 'fixed', bottom: 66, left: 0, right: 0, zIndex: 999,
+          background: '#fff', borderTop: '1px solid #E8E4DC',
+          boxShadow: '0 -8px 24px rgba(0,0,0,0.1)',
+          borderRadius: '16px 16px 0 0',
+          padding: '8px 0 4px',
+        }}>
+          {[
+            { id: 'settings', label: 'Settings', emoji: '⚙️' },
+            { id: 'ai',       label: 'AI Briefs', emoji: '🧠' },
+            { id: 'gifts',    label: 'Gift Cards', emoji: '🎁' },
+          ].map(item => (
+            <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}
+              style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: active === item.id ? '#F0FDF4' : 'none', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: active === item.id ? 700 : 500, color: active === item.id ? C.forest : '#374151', textAlign: 'left' }}>
+              <span style={{ fontSize: 20 }}>{item.emoji}</span>
+              {item.label}
+              {active === item.id && <span style={{ marginLeft: 'auto', color: C.forest }}>✓</span>}
+            </button>
+          ))}
+          <div style={{ height: 1, background: '#E8E4DC', margin: '4px 20px' }} />
+          <button onClick={onSignOut}
+            style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#EF4444', textAlign: 'left' }}>
+            <span style={{ fontSize: 20 }}>🚪</span>
+            Sign Out
           </button>
-        );
-      })}
-    </div>
+        </div>
+      )}
+
+      {/* Bottom bar */}
+      <div className="bm-bottom-nav" style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000,
+        background: '#fff',
+        borderTop: '1px solid #E8E4DC',
+        display: 'flex', alignItems: 'stretch',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+      }}>
+        {TABS.map(tab => {
+          const isActive = activeTab === tab.id || (tab.id === 'more' && showMore);
+          const Icon = tab.icon;
+          return (
+            <button key={tab.id} onClick={() => handleTab(tab.id)}
+              style={{
+                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                justifyContent: 'center', padding: '10px 4px 8px',
+                background: 'none', border: 'none', cursor: 'pointer',
+                position: 'relative', gap: 4,
+              }}>
+              <div style={{ position: 'relative' }}>
+                <Icon color={isActive ? C.forest : C.gray} size={22} />
+                {tab.id === 'outreach' && unreadCount > 0 && (
+                  <div style={{
+                    position: 'absolute', top: -4, right: -6,
+                    background: '#DC2626', color: '#fff',
+                    borderRadius: 10, minWidth: 16, height: 16,
+                    fontSize: 9, fontWeight: 800, display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                    padding: '0 4px', fontFamily: 'system-ui',
+                  }}>{unreadCount}</div>
+                )}
+              </div>
+              <span style={{
+                fontSize: 10, fontWeight: isActive ? 700 : 500,
+                color: isActive ? C.forest : C.gray,
+                fontFamily: 'system-ui',
+              }}>{tab.label}</span>
+              {isActive && (
+                <div style={{
+                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
+                  width: 28, height: 2, background: C.forest, borderRadius: '0 0 2px 2px',
+                }} />
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
 
@@ -106,11 +147,12 @@ function OutreachIcon({ color, size }) {
   );
 }
 
-function SettingsIcon({ color, size }) {
+function MoreIcon({ color, size }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="3" stroke={color} strokeWidth="1.8"/>
-      <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke={color} strokeWidth="1.8" strokeLinecap="round"/>
+      <circle cx="5" cy="12" r="1.5" fill={color}/>
+      <circle cx="12" cy="12" r="1.5" fill={color}/>
+      <circle cx="19" cy="12" r="1.5" fill={color}/>
     </svg>
   );
 }

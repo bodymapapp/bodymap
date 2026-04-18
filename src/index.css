@@ -319,3 +319,39 @@ section[id] {
   /* PWA bottom nav clearance */
   body { padding-bottom: 0 !important; }
 }
+
+/* ── CRITICAL MOBILE SCROLL FIX ── */
+@media (max-width: 767px) {
+  /* Main page wrapper needs to scroll properly */
+  body { overflow-y: auto !important; }
+
+  /* All scrollable containers must clear the bottom nav */
+  .bm-dash-pad { padding-bottom: 100px !important; }
+
+  /* Schedule dashboard inner content */
+  [class*="schedule"], [class*="Schedule"] { padding-bottom: 100px; }
+
+  /* Any fixed-height container that might trap scroll */
+  .bm-weekly-grid { padding-bottom: 20px !important; }
+
+  /* Force all content areas to be scrollable and clear nav */
+  #root > div > div:last-of-type { padding-bottom: 100px; }
+
+  /* Import clients — mobile message */
+  .bm-import-mobile-only { display: block !important; }
+  .bm-import-desktop-only { display: none !important; }
+
+  /* Client modal fix — prevent name/avatar overlap */
+  .bm-appt-header { flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; }
+
+  /* PWA install banner — position above bottom nav */
+  .bm-pwa-banner { bottom: 76px !important; }
+
+  /* Outreach — scroll fix */
+  .bm-outreach-wrap { padding-bottom: 120px !important; }
+}
+
+@media (min-width: 768px) {
+  .bm-import-mobile-only { display: none !important; }
+  .bm-import-desktop-only { display: block !important; }
+}
