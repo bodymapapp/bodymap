@@ -18,6 +18,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import { useMobile } from '../hooks/useMobile';
+import usePushNotifications from '../hooks/usePushNotifications';
 
 // Mobile page-end indicator
 function PageEnd() {
@@ -467,6 +468,115 @@ function BookingEmbedPanel({ customUrl }) {
             <strong style={{ color: '#6B7280' }}>Tip:</strong> On Wix, use <em>Embed HTML</em>. On Squarespace, use <em>Code Block</em>. On WordPress, use the <em>Custom HTML</em> block.
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+function PushNotificationsCard({ therapist, C2 }) {
+  const { supported, permission, subscribed, loading, error, subscribe, unsubscribe, sendTest } = usePushNotifications(therapist?.id);
+  const [testStatus, setTestStatus] = React.useState(null);
+  const [testSending, setTestSending] = React.useState(false);
+
+  const doTest = async () => {
+    setTestSending(true);
+    setTestStatus(null);
+    const result = await sendTest();
+    setTestSending(false);
+    if (result.ok && result.data?.sent > 0) {
+      setTestStatus({ ok: true, msg: `Test sent to ${result.data.sent} device${result.data.sent > 1 ? 's' : ''}. Check your notifications.` });
+    } else if (result.ok && result.data?.sent === 0) {
+      setTestStatus({ ok: false, msg: 'No devices subscribed yet. Turn on notifications above first.' });
+    } else {
+      setTestStatus({ ok: false, msg: result.data?.error || result.reason || 'Could not send test.' });
+    }
+    setTimeout(() => setTestStatus(null), 6000);
+  };
+
+  return (
+    <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
+      <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>
+        🔔 Push Notifications
+      </p>
+      <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
+        Get a tap on your phone when something matters — a new booking, a client reply, a gift card redemption. Works on your iPhone after you install BodyMap to your home screen.
+      </p>
+
+      {!supported && (
+        <div style={{ background: '#FFF7ED', border: '1.5px solid #FED7AA', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#9A3412', lineHeight: 1.5 }}>
+          <strong>Not supported in this browser.</strong><br/>
+          On iPhone, open mybodymap.app in Safari, tap Share → Add to Home Screen, then open from the home screen. Notifications will work from there.
+        </div>
+      )}
+
+      {supported && permission === 'denied' && (
+        <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#991B1B', lineHeight: 1.5 }}>
+          <strong>Notifications blocked.</strong> Open your device Settings → Notifications → BodyMap, and allow notifications.
+        </div>
+      )}
+
+      {supported && permission !== 'denied' && (
+        <>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={subscribed ? unsubscribe : subscribe}
+                disabled={loading}
+                style={{
+                  width: 40, height: 22, borderRadius: 11,
+                  background: subscribed ? C2.forest : '#D1D5DB',
+                  border: 'none', cursor: loading ? 'wait' : 'pointer',
+                  position: 'relative', transition: 'background 0.2s', flexShrink: 0,
+                  opacity: loading ? 0.6 : 1,
+                }}>
+                <div style={{
+                  width: 16, height: 16, borderRadius: '50%', background: '#fff',
+                  position: 'absolute', top: 3,
+                  left: subscribed ? 21 : 3,
+                  transition: 'left 0.2s',
+                }} />
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 600, color: subscribed ? C2.forest : C2.gray }}>
+                {loading ? 'Working…' : subscribed ? 'Notifications ON' : 'Notifications OFF'}
+              </span>
+            </div>
+          </div>
+
+          {subscribed && (
+            <button
+              onClick={doTest}
+              disabled={testSending}
+              style={{
+                background: testSending ? C2.sage : C2.beige,
+                color: C2.forest,
+                border: `1.5px solid ${C2.lightGray}`,
+                borderRadius: 8,
+                padding: '8px 16px',
+                fontSize: 12, fontWeight: 700,
+                cursor: testSending ? 'wait' : 'pointer',
+                marginBottom: testStatus ? 10 : 0,
+              }}>
+              {testSending ? 'Sending…' : 'Send me a test notification'}
+            </button>
+          )}
+
+          {testStatus && (
+            <div style={{
+              background: testStatus.ok ? '#F0FDF4' : '#FEF2F2',
+              border: `1px solid ${testStatus.ok ? '#86EFAC' : '#FECACA'}`,
+              color: testStatus.ok ? '#166534' : '#991B1B',
+              borderRadius: 8, padding: '8px 12px', fontSize: 12, lineHeight: 1.5,
+            }}>
+              {testStatus.ok ? '✓ ' : '⚠ '}{testStatus.msg}
+            </div>
+          )}
+
+          {error && !testStatus && (
+            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#991B1B', borderRadius: 8, padding: '8px 12px', fontSize: 12, marginTop: 10 }}>
+              {error}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1000,6 +1110,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
         </button>
       </div>
+
+      {/* Push Notifications */}
+      <PushNotificationsCard therapist={therapist} C2={C2} />
 
       {/* Block Days Off */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>

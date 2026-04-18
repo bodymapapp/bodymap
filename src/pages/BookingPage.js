@@ -278,6 +278,28 @@ export default function BookingPage() {
       }).eq('id', giftCert.id);
     }
 
+    // Ping therapist with a push notification about the new booking (best-effort)
+    try {
+      const bookingDateFmt = new Date(date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+      fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/send-push`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            title: `New booking · ${form.name.trim().split(' ')[0]} 🌿`,
+            body: `${bookingDateFmt} at ${slot.start} · ${svc.name} (${svc.duration} min)`,
+            url: '/dashboard/schedule',
+            tag: `new-booking-${bid}`,
+          }),
+        }
+      ).catch(() => {}); // fire-and-forget
+    } catch (e) { /* never block booking on push failure */ }
+
     if(depositRequired && therapist.stripe_account_id) {
       console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);

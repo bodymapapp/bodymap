@@ -131,6 +131,28 @@ serve(async (req) => {
         reminder_email_id: resendData.id,
       }).eq('id', booking.id);
       results.push({ booking_id: booking.id, client: booking.client_name, status: 'sent', email_id: resendData.id });
+
+      // Also ping therapist via push notification (best-effort, don't block)
+      try {
+        if (booking.therapist_id) {
+          await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              therapist_id: booking.therapist_id,
+              title: `Session tomorrow at ${timeStr}`,
+              body: `${booking.client_name} · ${service?.name || 'Session'} · ${service?.duration || 60} min`,
+              url: '/dashboard/schedule',
+              tag: `reminder-${booking.id}`,
+            }),
+          });
+        }
+      } catch (pushErr) {
+        console.log('Push notify failed (non-blocking):', pushErr?.message);
+      }
     } else {
       results.push({ booking_id: booking.id, client: booking.client_name, status: 'failed', error: resendData });
     }
