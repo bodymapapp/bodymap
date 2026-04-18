@@ -1,2 +1,4 @@
 .vercel
 .env*.local
+build/
+node_modules/.cache/
