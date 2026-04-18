@@ -857,10 +857,12 @@ function SectionNav() {
     { id:"outreach",    label:"Smart Outreach",         n:9  },
     { id:"postsession", label:"Post-Session",           n:10 },
     { id:"billing",     label:"Billing",                n:11 },
-    { id:"ai",          label:"BodyMap AI",             n:12 },
-    { id:"automation",  label:"Automation",             n:13 },
-    { id:"growth",      label:"Growth Engine",          n:14 },
-    { id:"portability", label:"Switching",              n:15 },
+    { id:"gifts",       label:"Gift Cards",             n:12 },
+    { id:"ai",          label:"BodyMap AI",             n:13 },
+    { id:"mobile",      label:"On Your Phone",          n:14 },
+    { id:"automation",  label:"Automation",             n:15 },
+    { id:"growth",      label:"Growth Engine",          n:16 },
+    { id:"portability", label:"Switching",              n:17 },
   ];
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 280);
@@ -1473,6 +1475,39 @@ export default function Features() {
         </div>
       </section>
 
+      {/* GIFT CARDS */}
+      <section id="gifts" style={{ scrollMarginTop:"112px", padding:"90px 24px", background:"linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FFF9F3 100%)", position:"relative", overflow:"hidden" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:52 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#E85C79", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>♡ Gift Cards</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Give the gift of <em style={{ color:"#E85C79", fontStyle:"italic" }}>feeling good.</em>
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                For the mother who gives everything. The friend in a hard season. The partner who deserves to be cared for. Gift cards travel where flowers can't — and they bring clients back through your door.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🌸", title:"Beautiful by default", desc:"Every card comes with a rose-and-cream design, botanical flourishes, and space for a personal note. Nothing feels transactional." },
+                { icon:"💌", title:"Live preview as you create", desc:"See the gift card build in real time as you fill in the recipient, amount, and message. What you see is what they'll receive." },
+                { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200 — or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
+                { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. BodyMap makes it as easy as texting your booking link — and each redemption brings a new client." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"rgba(255,255,255,0.75)", backdropFilter:"blur(6px)", borderRadius:16, padding:24, border:"1.5px solid rgba(251,207,232,0.6)" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8, fontFamily:"Georgia, serif" }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* AI */}
       <section id="ai" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
@@ -1518,6 +1553,39 @@ export default function Features() {
               </div>
             </FadeIn>
           </div>
+        </div>
+      </section>
+
+      {/* MOBILE · PWA · PUSH */}
+      <section id="mobile" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:"linear-gradient(160deg, #0D1F17 0%, #1B3A28 60%, #2A5741 100%)", position:"relative", overflow:"hidden" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#86EFAC", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>On Your Phone</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:20 }}>
+                Your Practice,<br/>In Your Pocket.
+              </h2>
+              <p style={{ fontSize:17, color:"rgba(255,255,255,0.75)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                Install BodyMap to your home screen in two taps. No app store. No download. Just a tap on the Safari share button and you're in. Then when a client books, replies, or goes quiet — a gentle tap on your phone tells you.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📲", title:"Install to home screen", desc:"Tap Share in Safari, then Add to Home Screen. BodyMap opens like any native app — full screen, no browser bar." },
+                { icon:"🔔", title:"Push notifications", desc:"Know the moment a client books, a gift card is redeemed, or a lapsed client replies. No need to check email or refresh." },
+                { icon:"🌿", title:"Built for thumbs", desc:"Every screen rebuilt for one-handed use. Bottom nav, large tap targets, sliding panels. Runs smoothly on iPhone SE and up." },
+                { icon:"⚡", title:"Works when Wi-Fi doesn't", desc:"Session notes, schedule, and client profiles load instantly from cache. Come back online and everything syncs." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"rgba(255,255,255,0.06)", backdropFilter:"blur(8px)", borderRadius:16, padding:24, border:"1px solid rgba(134,239,172,0.2)" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:8, fontFamily:"Georgia, serif" }}>{title}</div>
+                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.7)", lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
         </div>
       </section>
 
