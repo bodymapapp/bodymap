@@ -44,11 +44,11 @@ export default function Pricing() {
       ],
     },
     {
-      name: 'Silver', emoji: '🥈', highlight: true, badge: 'Most Popular',
-      price: { monthly: 19, annual: 15 },
+      name: 'Silver', emoji: '🥈', highlight: true, badge: '🌿 Free for Founding Therapists',
+      price: { monthly: 0, annual: 0 },
       tagline: 'Your entire client history, working for you. Intelligence that compounds over time.',
-      cta: 'Start 7-Day Free Trial',
-      ctaAction: () => window.open(billingCycle === 'annual' ? STRIPE_SILVER_ANNUAL : STRIPE_SILVER, '_blank'),
+      cta: 'Join free — founding therapist',
+      ctaAction: () => window.location.href = '/signup',
       features: [
         { text: 'Everything in Bronze - fully automated', on: true },
         { text: 'Full session history - unlimited, forever', on: true },
@@ -87,7 +87,7 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🌿 Free to start — for a limited time
+          🌿 First 100 therapists · Silver for free
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
           Retain and Grow Your Client Base.<br/>Automate the Rest.
@@ -95,8 +95,8 @@ export default function Pricing() {
         <p style={{ fontSize:17, color:C.gray, maxWidth:560, margin:'0 auto 12px', lineHeight:1.7 }}>
           Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
         </p>
-        <p style={{ fontSize:14, color:C.sage, fontWeight:600, maxWidth:480, margin:'0 auto 32px', lineHeight:1.6 }}>
-          Bronze is free for a limited time — start today, no card needed.
+        <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 32px', lineHeight:1.6 }}>
+          We're giving the first 100 therapists full Silver access — free for life. No credit card, no trial, no catch.
         </p>
         <div style={{ display:'inline-flex', background:'#fff', borderRadius:10, padding:4, border:`1px solid ${C.border}`, gap:4 }}>
           {['monthly','annual'].map(c => (

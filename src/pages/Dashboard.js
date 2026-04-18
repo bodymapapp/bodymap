@@ -1056,42 +1056,10 @@ export default function Dashboard({ view }) {
           </div>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {(() => {
-            const trialEnd = therapist?.trial_ends_at ? new Date(therapist.trial_ends_at) : null;
-            const now = new Date();
-            const daysLeft = trialEnd ? Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)) : null;
-            const trialActive = daysLeft !== null && daysLeft > 0;
-            const trialExpired = daysLeft !== null && daysLeft <= 0;
-
-            if (trialActive) return (
-              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#C9A84C', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                {isMobile ? `${daysLeft}d left` : daysLeft === 1 ? 'Trial ends today' : `${daysLeft} days left`}
-              </a>
-            );
-            if (trialExpired) return (
-              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#DC2626', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                {isMobile ? 'Upgrade' : 'Trial ended — upgrade'}
-              </a>
-            );
-            if (!therapist?.plan || therapist?.plan === 'free') return (
-              <a href="https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03" target="_blank" rel="noopener noreferrer"
-                style={{ background: '#C9A84C', color: '#fff', padding: isMobile ? '5px 10px' : '6px 12px', borderRadius: '6px', fontSize: isMobile ? '10px' : '11px', fontWeight: '700', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                {isMobile ? 'Upgrade' : 'Upgrade to Silver →'}
-              </a>
-            );
-            if (therapist?.plan === 'silver' && !therapist?.trial_ends_at) return (
-              <span style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
-                🌿 {isMobile ? 'Founding' : 'Founding Therapist · Silver for Life'}
-              </span>
-            );
-            return (
-              <span style={{ fontSize: '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px' }}>
-                ✓ {therapist?.plan === 'silver' ? 'Silver' : 'Gold'}
-              </span>
-            );
-          })()}
+          {/* Step 0: everyone gets founding therapist — no upgrade pressure */}
+          <span style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
+            🌿 {isMobile ? 'Founding' : 'Founding Therapist'}
+          </span>
           {!isMobile && <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
             Sign Out
           </button>}
