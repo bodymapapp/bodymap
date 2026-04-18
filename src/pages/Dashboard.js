@@ -16,6 +16,7 @@ import ImportClients from '../components/ImportClients';
 import BMLogo from '../components/BMLogo';
 import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
+import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import { useMobile } from '../hooks/useMobile';
 
 const C = {
@@ -1010,7 +1011,10 @@ export default function Dashboard({ view }) {
       const { data: sessions } = await supabase.from('sessions').select('id').eq('therapist_id', therapist.id);
       const { data: services } = await supabase.from('services').select('id').eq('therapist_id', therapist.id).eq('active', true);
       const { data: availability } = await supabase.from('availability').select('id,active').eq('therapist_id', therapist.id);
-      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0, services: services || [], availability: availability || [] });
+      // Lapsed clients for nudge
+      const lapsedMs = (lapsedDays || 60) * 24 * 60 * 60 * 1000;
+      const lapsedClients = (clients || []).filter(c => c.last_session_date && (Date.now() - new Date(c.last_session_date).getTime()) >= lapsedMs);
+      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0, services: services || [], availability: availability || [], lapsedClients });
     } catch (err) { console.error(err); }
   }
 
@@ -1141,6 +1145,15 @@ export default function Dashboard({ view }) {
                 sessions={stats?.sessions || 0}
                 clients={stats?.clients || 0}
                 onNavigate={(v) => navigate(`/dashboard/${v}`)}
+              />
+              <ActivationNudge sessions={stats?.sessions || 0} />
+              <LapsedClientAlert
+                clients={stats?.lapsedClients || []}
+                onNavigate={(v) => navigate(`/dashboard/${v}`)}
+              />
+              <BookingLinkNudge
+                therapist={therapist}
+                bookings={stats?.sessions || 0}
               />
               <ClientList
                 therapistId={therapist?.id}

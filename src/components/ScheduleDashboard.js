@@ -67,35 +67,35 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
       <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'92vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column'}}>
-        <div style={{padding:'20px 20px 16px',borderBottom:'1px solid #F3F4F6'}}>
-          <div style={{display:'flex',justifyContent:'space-between',marginBottom:14}}>
-            <div style={{display:'flex',gap:12,alignItems:'center'}}>
-              <div style={{width:48,height:48,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,fontWeight:700}}>{initials(appt.client)}</div>
-              <div>
-                <div style={{fontSize:17,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{appt.client}</div>
+        <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
+          {/* Top row: avatar + name + close */}
+          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
+            <div style={{width:42,height:42,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</div>
               {appt.is_couples && appt.partner_name && (
-                <div style={{fontSize:13,color:'#6B9E80',fontWeight:600,marginTop:2}}>
-                  💑 with {appt.partner_name}
-                </div>
+                <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {appt.partner_name}</div>
               )}
-                <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
-              </div>
+              <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
             </div>
-            <button onClick={onClose} style={{background:'#F3F4F6',border:'none',borderRadius:'50%',width:32,height:32,cursor:'pointer',fontSize:16,color:'#6B7280'}}>✕</button>
+            <button onClick={onClose} style={{background:'#F3F4F6',border:'none',borderRadius:'50%',width:32,height:32,cursor:'pointer',fontSize:16,color:'#6B7280',flexShrink:0}}>✕</button>
           </div>
-          <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-            <div>
-              <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
-              <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'}</div>
-            </div>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 12px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
-              {!appt.preview && (
-                <button onClick={()=>setEditTime(v=>!v)}
-                  style={{background:'transparent',border:'1px solid #D1D5DB',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
-                  {editTime ? 'Cancel' : '✏️ Edit'}
-                </button>
-              )}
+          {/* Time + status row */}
+          <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+                <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'}</div>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+                <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
+                {!appt.preview && (
+                  <button onClick={()=>setEditTime(v=>!v)}
+                    style={{background:'transparent',border:'1px solid #D1D5DB',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
+                    {editTime ? 'Cancel' : '✏️ Edit'}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           {editTime && !appt.preview && (
@@ -858,20 +858,36 @@ export default function ScheduleDashboard({ therapist }) {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="bm-sched-stats" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
-        {[
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
-          {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
-        ].map(s=>(
-          <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-            <div style={{fontSize:24,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
-            <div style={{fontSize:11,color:'#9CA3AF',marginTop:3}}>{s.label}</div>
-          </div>
-        ))}
-      </div>
+      {/* Stats — compact on mobile */}
+      {window.innerWidth < 768 ? (
+        <div style={{display:'flex',gap:8,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
+          {[
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
+            {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
+          ].map(s=>(
+            <div key={s.label} style={{background:'#fff',borderRadius:10,padding:'8px 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.06)',flexShrink:0,minWidth:72,textAlign:'center'}}>
+              <div style={{fontSize:20,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
+              <div style={{fontSize:10,color:'#9CA3AF',marginTop:2,whiteSpace:'nowrap'}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="bm-sched-stats" style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:20}}>
+          {[
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
+            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
+            {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
+          ].map(s=>(
+            <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+              <div style={{fontSize:24,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
+              <div style={{fontSize:11,color:'#9CA3AF',marginTop:3}}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tab bar */}
       <div style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content'}}>
