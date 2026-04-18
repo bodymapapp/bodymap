@@ -56,7 +56,21 @@ serve(async (req) => {
     square_connected: true,
   }).eq('id', therapistId);
 
-  return new Response(`<html><body><script>window.opener?.postMessage({type:'square-oauth-success'},'*');window.close();</script></body></html>`, {
-    headers: { 'Content-Type': 'text/html' }
-  });
+  return new Response(`
+    <html>
+      <body>
+        <p style="font-family:system-ui;text-align:center;margin-top:40px;color:#2A5741;font-size:16px;">
+          Square connected. Closing...
+        </p>
+        <script>
+          if (window.opener) {
+            window.opener.postMessage({type:'square-oauth-success'},'*');
+            setTimeout(() => window.close(), 500);
+          } else {
+            window.location.href = 'https://mybodymap.app/dashboard?square=connected';
+          }
+        </script>
+      </body>
+    </html>
+  `, { headers: { 'Content-Type': 'text/html' } });
 });
