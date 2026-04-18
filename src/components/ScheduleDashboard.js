@@ -421,10 +421,12 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
   const APPTS=appointments||[];
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
+  const isMobile=window.innerWidth<640;
   const getMonday=d=>{const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()+(day===0?-6:1-day));x.setHours(0,0,0,0);return x;};
   const weekStart=addDays(getMonday(today),weekOffset*7);
   const weekDays=[0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  const DAY_NAMES_FULL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const weekAppts=APPTS.filter(a=>a.date>=weekStart&&a.date<addDays(weekStart,7));
   const realWeek=weekAppts.filter(a=>!a.preview);
   return (
@@ -438,10 +440,12 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
             <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
           </div>
         ))}
-        <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
-          <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
-        </div>
+        {!isMobile && (
+          <div style={{display:'flex',alignItems:'center',gap:4}}>
+            <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
+            <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
+          </div>
+        )}
       </div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
         <button onClick={()=>setWeekOffset(w=>w-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← Prev</button>
@@ -453,47 +457,106 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
         </div>
         <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
-      <div className="bm-weekly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6}}>
-        {weekDays.map((d,i)=>{
-          const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
-          const isToday=sameDay(d,today);
-          return (
-            <div key={i} style={{minHeight:90}}>
-              <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':'transparent',color:isToday?'#fff':'#6B7280'}}>
-                <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{DAY_NAMES[i]}</div>
-                <div style={{fontSize:13,fontWeight:600}}>{d.getDate()}</div>
-              </div>
-              {dayAppts.length===0
-                ?<div style={{height:40,border:'1.5px dashed #E5E7EB',borderRadius:8}}/>
-                :<div style={{display:'flex',flexDirection:'column',gap:3}}>
-                  {dayAppts.map(appt=>{
-                    const st=STATUS[appt.status]||STATUS['pending-intake'];
-                    return (
-                      <div key={appt.id} onClick={()=>setSelected(appt)}
-                        style={{background:appt.preview?'#F9FAFB':st.bg,
-                          borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,
-                          borderRadius:6,padding:'5px 7px',cursor:'pointer',
-                          opacity:appt.preview?0.45:1,
-                          boxShadow:appt.preview?'none':'0 1px 3px rgba(0,0,0,0.06)',
-                          transition:'all 0.15s'}}
-                        onMouseEnter={e=>{if(!appt.preview)e.currentTarget.style.transform='translateY(-1px)';}}
-                        onMouseLeave={e=>{e.currentTarget.style.transform='none';}}>
-                        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
-                          <div style={{width:18,height:18,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
-                          <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
-                        </div>
-                        <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
-                        <div style={{fontSize:10,color:appt.preview?'#D1D5DB':'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.service||'Session'}</div>
-                        <div style={{fontSize:9,fontWeight:600,color:appt.preview?'#D1D5DB':st.color,marginTop:1}}>{st.icon} {appt.preview?'Preview':st.label}</div>
-                      </div>
-                    );
-                  })}
+
+      {/* MOBILE: vertical day list — full-width rows, no truncation */}
+      {isMobile ? (
+        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+          {weekDays.map((d,i)=>{
+            const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
+            const realDayAppts=dayAppts.filter(a=>!a.preview);
+            const isToday=sameDay(d,today);
+            return (
+              <div key={i} style={{background:'#fff',borderRadius:12,overflow:'hidden',border:`1.5px solid ${isToday?'#86EFAC':'#F3F4F6'}`,boxShadow:isToday?'0 1px 3px rgba(22,163,74,0.08)':'none'}}>
+                {/* Day header row */}
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:isToday?'#F0FDF4':'#FAFAF7',borderBottom:dayAppts.length>0?`1px solid ${isToday?'#BBF7D0':'#F3F4F6'}`:'none'}}>
+                  <div style={{display:'flex',alignItems:'baseline',gap:8}}>
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:isToday?'#16A34A':'#6B7280'}}>{DAY_NAMES_FULL[i]}</div>
+                    <div style={{fontSize:15,fontWeight:700,color:isToday?'#16A34A':'#1F2937'}}>{d.getMonth()+1}/{d.getDate()}</div>
+                    {isToday && <div style={{fontSize:10,fontWeight:700,color:'#16A34A',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Today</div>}
+                  </div>
+                  <div style={{fontSize:11,color:isToday?'#16A34A':'#9CA3AF',fontWeight:600}}>
+                    {realDayAppts.length===0?'No sessions':`${realDayAppts.length} ${realDayAppts.length===1?'session':'sessions'}`}
+                  </div>
                 </div>
-              }
-            </div>
-          );
-        })}
-      </div>
+                {/* Appointment rows */}
+                {dayAppts.length===0
+                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#B4B4B4',fontStyle:'italic',textAlign:'center'}}>Open day</div>
+                  : <div style={{display:'flex',flexDirection:'column'}}>
+                      {dayAppts.map((appt,idx)=>{
+                        const st=STATUS[appt.status]||STATUS['pending-intake'];
+                        return (
+                          <div key={appt.id} onClick={()=>!appt.preview&&setSelected(appt)}
+                            style={{display:'flex',alignItems:'center',gap:12,padding:'12px 14px',cursor:appt.preview?'default':'pointer',borderTop:idx>0?'1px solid #F3F4F6':'none',opacity:appt.preview?0.5:1,background:appt.preview?'#FAFAFA':'transparent'}}>
+                            <div style={{width:36,height:36,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:2}}>
+                                <div style={{fontSize:14,fontWeight:700,color:appt.preview?'#9CA3AF':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</div>
+                              </div>
+                              <div style={{fontSize:12,color:'#6B7280',display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+                                <span style={{fontWeight:600,color:appt.preview?'#9CA3AF':st.color}}>{appt.time}</span>
+                                <span>·</span>
+                                <span>{appt.service||'Session'}</span>
+                              </div>
+                            </div>
+                            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:3,flexShrink:0}}>
+                              <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#9CA3AF':st.color,background:appt.preview?'#F3F4F6':st.bg,padding:'3px 8px',borderRadius:20,whiteSpace:'nowrap'}}>
+                                {st.icon} {appt.preview?'Preview':st.label}
+                              </div>
+                              {!appt.preview && <div style={{fontSize:16,color:'#D1D5DB',lineHeight:1}}>›</div>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                }
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* DESKTOP: 7-col grid */
+        <div className="bm-weekly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6}}>
+          {weekDays.map((d,i)=>{
+            const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
+            const isToday=sameDay(d,today);
+            return (
+              <div key={i} style={{minHeight:90}}>
+                <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':'transparent',color:isToday?'#fff':'#6B7280'}}>
+                  <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{DAY_NAMES[i]}</div>
+                  <div style={{fontSize:13,fontWeight:600}}>{d.getDate()}</div>
+                </div>
+                {dayAppts.length===0
+                  ?<div style={{height:40,border:'1.5px dashed #E5E7EB',borderRadius:8}}/>
+                  :<div style={{display:'flex',flexDirection:'column',gap:3}}>
+                    {dayAppts.map(appt=>{
+                      const st=STATUS[appt.status]||STATUS['pending-intake'];
+                      return (
+                        <div key={appt.id} onClick={()=>setSelected(appt)}
+                          style={{background:appt.preview?'#F9FAFB':st.bg,
+                            borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,
+                            borderRadius:6,padding:'5px 7px',cursor:'pointer',
+                            opacity:appt.preview?0.45:1,
+                            boxShadow:appt.preview?'none':'0 1px 3px rgba(0,0,0,0.06)',
+                            transition:'all 0.15s'}}
+                          onMouseEnter={e=>{if(!appt.preview)e.currentTarget.style.transform='translateY(-1px)';}}
+                          onMouseLeave={e=>{e.currentTarget.style.transform='none';}}>
+                          <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
+                            <div style={{width:18,height:18,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+                            <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
+                          </div>
+                          <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
+                          <div style={{fontSize:10,color:appt.preview?'#D1D5DB':'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.service||'Session'}</div>
+                          <div style={{fontSize:9,fontWeight:600,color:appt.preview?'#D1D5DB':st.color,marginTop:1}}>{st.icon} {appt.preview?'Preview':st.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                }
+              </div>
+            );
+          })}
+        </div>
+      )}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
@@ -545,7 +608,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
             <div key={i} onClick={()=>setSelDate(d)}
               style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:isSel?'#2A5741':isToday?'#F0FDF4':'#fff',border:`1.5px solid ${isSel?'#2A5741':isToday?'#86EFAC':'#F3F4F6'}`,transition:'all 0.1s'}}>
               <div style={{fontSize:11,fontWeight:600,color:isSel?'#fff':isToday?'#16A34A':'#6B7280',marginBottom:2}}>{d.getDate()}</div>
-              {ra.length>0&&<div style={{fontSize:11,fontWeight:700,color:isSel?'#fff':'#1F2937'}}>{ra.length} appt{ra.length>1?'s':''}</div>}
+              {ra.length>0&&<div style={{fontSize:11,fontWeight:700,color:isSel?'#fff':'#1F2937'}}>{window.innerWidth<640?`${ra.length}×`:`${ra.length} appt${ra.length>1?'s':''}`}</div>}
               <div style={{display:'flex',gap:2,marginTop:2}}>
                 {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
                 {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
@@ -778,8 +841,9 @@ export default function ScheduleDashboard({ therapist }) {
 
   const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'insights',label:'Insights'}];
 
+  const isMobileW = window.innerWidth < 768;
   return (
-    <div style={{width:'100%'}}>
+    <div style={{width:'100%', paddingBottom: isMobileW ? 120 : 0}}>
       {showCreate && (
         <BookingModal therapist={therapist} mode="create" onClose={() => setShowCreate(false)} onSuccess={fetchBookings} />
       )}

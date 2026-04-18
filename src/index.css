@@ -58,14 +58,24 @@ body { overflow-x: hidden; }
     flex-shrink: 0 !important;
   }
 
-  /* Monthly 7-col → keep but tighter */
+  /* Monthly 7-col — keep grid, but give cells room to breathe on iPhone SE */
   .bm-monthly-grid {
-    gap: 2px !important;
+    gap: 3px !important;
   }
   .bm-monthly-grid > div {
-    min-height: 36px !important;
-    padding: 3px !important;
-    font-size: 10px !important;
+    min-height: 54px !important;
+    padding: 5px 4px !important;
+  }
+  /* Override cascade — day number must stay readable */
+  .bm-monthly-grid > div > div:first-child {
+    font-size: 13px !important;
+    font-weight: 700 !important;
+  }
+  /* "2 appts" label — shorten to just the number on very tight screens */
+  .bm-monthly-grid > div > div:nth-child(2) {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    line-height: 1.2 !important;
   }
 
   /* Schedule stats 4-col → 2x2 */

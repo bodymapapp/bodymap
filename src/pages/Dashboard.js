@@ -369,6 +369,109 @@ function ServicesAndAvailability({ therapist }) {
   );
 }
 
+function BookingEmbedPanel({ customUrl }) {
+  const [open, setOpen] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  if (!customUrl) return null;
+  const bookingUrl = `${window.location.origin}/book/${customUrl}`;
+  const embedCode = `<iframe
+  src="${bookingUrl}"
+  width="100%"
+  height="780"
+  frameborder="0"
+  style="border:0;max-width:560px;display:block;margin:0 auto;"
+  title="Book a session"
+  loading="lazy"
+></iframe>`;
+  const onCopy = () => {
+    navigator.clipboard.writeText(embedCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div style={{ marginTop: 12 }}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#2A5741',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          padding: '4px 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+        }}>
+        <span style={{ fontSize: 10, transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.15s', display: 'inline-block' }}>▶</span>
+        Embed on your website
+      </button>
+      {open && (
+        <div style={{ marginTop: 10, background: '#fff', border: '1.5px solid #E8E4DC', borderRadius: 10, padding: 14 }}>
+          <p style={{ fontSize: 12, color: '#6B7280', margin: '0 0 10px', lineHeight: 1.5 }}>
+            Paste this snippet into your website's HTML where you want the booking form to appear. Works on Wix, Squarespace, WordPress, or any site that accepts HTML embeds.
+          </p>
+          <textarea
+            readOnly
+            value={embedCode}
+            onClick={e => e.target.select()}
+            style={{
+              width: '100%',
+              minHeight: 120,
+              padding: 10,
+              border: '1.5px solid #E8E4DC',
+              borderRadius: 8,
+              fontSize: 11,
+              fontFamily: 'monospace',
+              color: '#1F2937',
+              background: '#FAFAF7',
+              resize: 'vertical',
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <button
+              onClick={onCopy}
+              style={{
+                background: copied ? '#16A34A' : '#2A5741',
+                color: '#fff',
+                border: 'none',
+                padding: '8px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+              {copied ? '✓ Copied' : 'Copy embed code'}
+            </button>
+            <a
+              href={bookingUrl}
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                background: '#fff',
+                border: '1.5px solid #E8E4DC',
+                color: '#6B7280',
+                padding: '8px 14px',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                textDecoration: 'none',
+              }}>
+              Test the booking form →
+            </a>
+          </div>
+          <div style={{ marginTop: 10, fontSize: 11, color: '#9CA3AF', lineHeight: 1.5 }}>
+            <strong style={{ color: '#6B7280' }}>Tip:</strong> On Wix, use <em>Embed HTML</em>. On Squarespace, use <em>Code Block</em>. On WordPress, use the <em>Custom HTML</em> block.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const { updateProfile } = useAuth();
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
@@ -802,7 +905,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       <div style={{ background:`linear-gradient(135deg,${C2.forest}08,${C2.sage}15)`, border:`1.5px solid ${C2.sage}40`, borderRadius:14, padding:20, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.sage, margin:'0 0 6px' }}>📅 Your Booking Link</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
-        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+        <div className="bm-settings-btn-row" style={{ display:'flex', gap:8, alignItems:'center' }}>
           <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
             {window.location.origin}/book/{therapist?.custom_url}
           </div>
@@ -813,6 +916,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             Preview →
           </a>
         </div>
+
+        {/* Embed on your website */}
+        <BookingEmbedPanel customUrl={therapist?.custom_url} />
       </div>
 
       {/* Services + Availability */}
@@ -1162,13 +1268,13 @@ export default function Dashboard({ view }) {
             <div style={{ textAlign: 'center', padding: '40px', color: C.gray }}>Loading session...</div>
           )}
           {view === 'schedule' && (
-            <ScheduleDashboard therapist={therapist} />
+            <><ScheduleDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
           {view === 'billing' && (
             <><BillingDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
           {view === 'ai' && therapist && (
-            <AIDashboard therapist={therapist} />
+            <><AIDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
           {view === 'outreach' && therapist && (
             <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>
