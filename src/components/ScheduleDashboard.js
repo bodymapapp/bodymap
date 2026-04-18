@@ -66,7 +66,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
-      <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'92vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column'}}>
+      <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'100vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column',paddingTop:'env(safe-area-inset-top, 0px)'}}>
         <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
           {/* Top row: avatar + name + close */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>

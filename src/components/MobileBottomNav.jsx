@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 
-const C = { forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8', gray: '#9CA3AF' };
+const C = { forest: '#2A5741', sage: '#6B9E80', gray: '#9CA3AF' };
 
 const TABS = [
-  { id: 'clients',   label: 'Clients',   icon: ClientsIcon  },
-  { id: 'schedule',  label: 'Schedule',  icon: ScheduleIcon },
-  { id: 'billing',   label: 'Billing',   icon: BillingIcon  },
-  { id: 'outreach',  label: 'Outreach',  icon: OutreachIcon },
-  { id: 'more',      label: 'More',      icon: MoreIcon     },
+  { id: 'clients',  label: 'Clients',  icon: ClientsIcon  },
+  { id: 'schedule', label: 'Schedule', icon: ScheduleIcon },
+  { id: 'billing',  label: 'Billing',  icon: BillingIcon  },
+  { id: 'outreach', label: 'Outreach', icon: OutreachIcon },
+  { id: 'more',     label: 'More',     icon: MoreIcon     },
 ];
 
 export default function MobileBottomNav({ active, onChange, unreadCount, onSignOut, therapist }) {
   const [showMore, setShowMore] = useState(false);
+  const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
 
   const handleTab = (id) => {
     if (id === 'more') { setShowMore(v => !v); return; }
@@ -19,47 +20,72 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
     onChange(id);
   };
 
-  const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
-
   return (
     <>
-      {/* More drawer */}
+      {/* Overlay to close More drawer */}
       {showMore && (
-        <div style={{
-          position: 'fixed', bottom: 66, left: 0, right: 0, zIndex: 999,
-          background: '#fff', borderTop: '1px solid #E8E4DC',
-          boxShadow: '0 -8px 24px rgba(0,0,0,0.1)',
-          borderRadius: '16px 16px 0 0',
-          padding: '8px 0 4px',
-        }}>
+        <div onClick={() => setShowMore(false)}
+          style={{ position:'fixed', inset:0, zIndex:998, background:'rgba(0,0,0,0.2)' }} />
+      )}
+
+      {/* More drawer — slides up */}
+      <div style={{
+        position: 'fixed',
+        bottom: 66,
+        left: 0, right: 0,
+        zIndex: 999,
+        background: '#fff',
+        borderRadius: '16px 16px 0 0',
+        borderTop: '1px solid #E8E4DC',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.12)',
+        maxHeight: showMore ? '50vh' : 0,
+        overflow: 'hidden',
+        transition: 'max-height 0.25s ease',
+      }}>
+        <div style={{ overflowY: 'auto', maxHeight: '50vh', paddingBottom: 8 }}>
           {[
-            { id: 'settings', label: 'Settings', emoji: '⚙️' },
-            { id: 'ai',       label: 'AI Briefs', emoji: '🧠' },
+            { id: 'settings', label: 'Settings',   emoji: '⚙️' },
+            { id: 'ai',       label: 'AI Briefs',  emoji: '🧠' },
             { id: 'gifts',    label: 'Gift Cards', emoji: '🎁' },
           ].map(item => (
             <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}
-              style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: active === item.id ? '#F0FDF4' : 'none', border: 'none', cursor: 'pointer', fontSize: 15, fontWeight: active === item.id ? 700 : 500, color: active === item.id ? C.forest : '#374151', textAlign: 'left' }}>
-              <span style={{ fontSize: 20 }}>{item.emoji}</span>
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                width: '100%', padding: '15px 20px',
+                background: active === item.id ? '#F0FDF4' : 'none',
+                border: 'none', cursor: 'pointer',
+                fontSize: 15, fontWeight: active === item.id ? 700 : 500,
+                color: active === item.id ? C.forest : '#374151',
+                textAlign: 'left',
+              }}>
+              <span style={{ fontSize: 22, width: 28, textAlign: 'center' }}>{item.emoji}</span>
               {item.label}
-              {active === item.id && <span style={{ marginLeft: 'auto', color: C.forest }}>✓</span>}
+              {active === item.id && <span style={{ marginLeft: 'auto', color: C.forest, fontSize: 16 }}>✓</span>}
             </button>
           ))}
-          <div style={{ height: 1, background: '#E8E4DC', margin: '4px 20px' }} />
-          <button onClick={onSignOut}
-            style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: 'none', border: 'none', cursor: 'pointer', fontSize: 15, color: '#EF4444', textAlign: 'left' }}>
-            <span style={{ fontSize: 20 }}>🚪</span>
+          <div style={{ height: 1, background: '#F3F4F6', margin: '4px 20px' }} />
+          <button onClick={() => { onSignOut?.(); setShowMore(false); }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              width: '100%', padding: '15px 20px',
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: 15, color: '#EF4444', textAlign: 'left',
+            }}>
+            <span style={{ fontSize: 22, width: 28, textAlign: 'center' }}>🚪</span>
             Sign Out
           </button>
         </div>
-      )}
+      </div>
 
-      {/* Bottom bar */}
-      <div className="bm-bottom-nav" style={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1000,
+      {/* Bottom nav bar */}
+      <div style={{
+        position: 'fixed', bottom: 0, left: 0, right: 0,
+        zIndex: 1000,
         background: '#fff',
         borderTop: '1px solid #E8E4DC',
-        display: 'flex', alignItems: 'stretch',
-        boxShadow: '0 -4px 20px rgba(0,0,0,0.06)',
+        boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+        display: 'flex',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.id || (tab.id === 'more' && showMore);
@@ -67,10 +93,11 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
           return (
             <button key={tab.id} onClick={() => handleTab(tab.id)}
               style={{
-                flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
-                justifyContent: 'center', padding: '10px 4px 8px',
+                flex: 1, display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                padding: '10px 2px 8px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                position: 'relative', gap: 4,
+                position: 'relative', gap: 3, minWidth: 0,
               }}>
               <div style={{ position: 'relative' }}>
                 <Icon color={isActive ? C.forest : C.gray} size={22} />
@@ -79,21 +106,25 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
                     position: 'absolute', top: -4, right: -6,
                     background: '#DC2626', color: '#fff',
                     borderRadius: 10, minWidth: 16, height: 16,
-                    fontSize: 9, fontWeight: 800, display: 'flex',
-                    alignItems: 'center', justifyContent: 'center',
-                    padding: '0 4px', fontFamily: 'system-ui',
+                    fontSize: 9, fontWeight: 800,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '0 3px',
                   }}>{unreadCount}</div>
                 )}
               </div>
               <span style={{
-                fontSize: 10, fontWeight: isActive ? 700 : 500,
+                fontSize: 10, fontWeight: isActive ? 700 : 400,
                 color: isActive ? C.forest : C.gray,
-                fontFamily: 'system-ui',
+                fontFamily: 'system-ui', whiteSpace: 'nowrap',
+                overflow: 'hidden', maxWidth: '100%',
               }}>{tab.label}</span>
               {isActive && (
                 <div style={{
-                  position: 'absolute', top: 0, left: '50%', transform: 'translateX(-50%)',
-                  width: 28, height: 2, background: C.forest, borderRadius: '0 0 2px 2px',
+                  position: 'absolute', top: 0, left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 24, height: 2,
+                  background: C.forest,
+                  borderRadius: '0 0 2px 2px',
                 }} />
               )}
             </button>
@@ -114,7 +145,6 @@ function ClientsIcon({ color, size }) {
     </svg>
   );
 }
-
 function ScheduleIcon({ color, size }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -127,7 +157,6 @@ function ScheduleIcon({ color, size }) {
     </svg>
   );
 }
-
 function BillingIcon({ color, size }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -137,7 +166,6 @@ function BillingIcon({ color, size }) {
     </svg>
   );
 }
-
 function OutreachIcon({ color, size }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -146,7 +174,6 @@ function OutreachIcon({ color, size }) {
     </svg>
   );
 }
-
 function MoreIcon({ color, size }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">

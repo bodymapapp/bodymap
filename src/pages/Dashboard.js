@@ -19,6 +19,17 @@ import PWAInstallBanner from '../components/PWAInstallBanner';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import { useMobile } from '../hooks/useMobile';
 
+// Mobile page-end indicator
+function PageEnd() {
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'28px 0 12px', opacity:0.25 }}>
+      <div style={{ flex:1, height:1, background:'#9CA3AF' }} />
+      <div style={{ width:4, height:4, borderRadius:'50%', background:'#9CA3AF' }} />
+      <div style={{ flex:1, height:1, background:'#9CA3AF' }} />
+    </div>
+  );
+}
+
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
   lightBeige: '#F9FAFB', darkGray: '#1F2937', gray: '#6B7280',
@@ -837,14 +848,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
             <input type="password" value={twilioToken} onChange={e => setTwilioToken(e.target.value)} placeholder="Auth Token"
               style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
-            <div style={{ display:'flex', gap:8 }}>
+            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
               <input type="text" value={twilioPhone} onChange={e => setTwilioPhone(e.target.value)} placeholder="+15551234567"
-                style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
+                style={{ flex:1, minWidth:120, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:12, fontFamily:'monospace', outline:'none' }} />
               <button onClick={async () => {
                 if (!twilioSid || !twilioToken || !twilioPhone) return;
                 await supabase.from('therapists').update({ twilio_account_sid: twilioSid, twilio_auth_token: twilioToken, twilio_phone_number: twilioPhone }).eq('id', therapist.id);
                 setTwilioSaved(true); setTimeout(() => { setTwilioSaved(false); window.location.reload(); }, 1500);
-              }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+              }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 14px', borderRadius:8, fontSize:12, fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
                 {twilioSaved ? '✓ Saved!' : 'Save & Connect'}
               </button>
             </div>
@@ -1046,19 +1057,15 @@ export default function Dashboard({ view }) {
       )}
       <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: isMobile ? '10px 14px' : '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-          <BMLogo size={isMobile ? 24 : 30} variant="dark" showWordmark={false} />
-          {!isMobile && <div>
-            <h1 style={{ fontSize: '16px', fontWeight: '700', color: C.forest, margin: 0 }}>BodyMap</h1>
-            <p style={{ fontSize: '11px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
-          </div>}
-          {isMobile && <div>
-            <div style={{ fontSize: '14px', fontWeight: '700', color: C.forest, lineHeight: 1.1 }}>{therapist?.business_name || 'BodyMap'}</div>
-          </div>}
+          <BMLogo size={isMobile ? 26 : 30} variant="dark" showWordmark={false} />
+          <div>
+            <h1 style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '700', color: C.forest, margin: 0, lineHeight: 1.1 }}>BodyMap</h1>
+            <p style={{ fontSize: '10px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          {/* Step 0: everyone gets founding therapist — no upgrade pressure */}
-          <span style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '4px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>
-            🌿 {isMobile ? 'Founding' : 'Founding Therapist'}
+          <span style={{ fontSize: '10px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
+            🌿 Silver · Free
           </span>
           {!isMobile && <button onClick={handleLogout} style={{ background: C.white, border: `1px solid ${C.lightGray}`, color: C.gray, padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}>
             Sign Out
@@ -1158,24 +1165,25 @@ export default function Dashboard({ view }) {
             <ScheduleDashboard therapist={therapist} />
           )}
           {view === 'billing' && (
-            <BillingDashboard therapist={therapist} />
+            <><BillingDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
           {view === 'ai' && therapist && (
             <AIDashboard therapist={therapist} />
           )}
           {view === 'outreach' && therapist && (
-            <Outreach therapist={therapist} lapsedDays={lapsedDays} />
+            <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>
           )}
           {view === 'settings' && (
-            <div>
+            <div style={{ paddingBottom: isMobile ? 120 : 0 }}>
               <div style={{ marginBottom:24 }}>
                 <ImportClients therapist={therapist} onComplete={() => {}} />
               </div>
               <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+              {isMobile && <PageEnd />}
             </div>
           )}
           {view === 'gifts' && therapist && (
-            <GiftCertificates therapist={therapist} />
+            <><GiftCertificates therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
         </div>
 

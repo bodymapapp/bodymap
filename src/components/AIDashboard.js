@@ -252,21 +252,23 @@ ${clientSummaries.join('\n')}
 
   const showSuggested = messages.length <= 1;
 
+  const isMobile = window.innerWidth < 768;
+
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '70vh', minHeight: 500 }}>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100svh - 180px)' : '70vh', minHeight: isMobile ? 0 : 500 }}>
       {/* Header */}
-      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
-          <p style={{ fontSize: 13, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
+          <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
         </div>
-        <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer' }}>
+        <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
           🔄 New Chat
         </button>
       </div>
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', marginBottom: 8 }}>
+      {/* Messages — scrollable middle */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0', marginBottom: 8, minHeight: 0 }}>
         {messages.map((msg, i) => <Message key={i} msg={msg} />)}
         {loading && (
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16 }}>
@@ -278,15 +280,14 @@ ${clientSummaries.join('\n')}
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggested prompts */}
+      {/* Suggested prompts — always visible, horizontal scroll on mobile */}
       {showSuggested && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Suggested questions</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ marginBottom: 10, flexShrink: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Suggested questions</div>
+          <div style={{ display: 'flex', gap: 6, overflowX: isMobile ? 'auto' : 'hidden', flexWrap: isMobile ? 'nowrap' : 'wrap', paddingBottom: isMobile ? 4 : 0, scrollbarWidth: 'none' }}>
             {SUGGESTED_PROMPTS.map((p, i) => (
-              <button key={i} onClick={() => sendMessage(p.text)} style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', borderRadius: 20, padding: '7px 14px', fontSize: 13, color: '#1F2937', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = '#F0FDF4'; e.currentTarget.style.borderColor = '#6B9E80'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = '#F9FAFB'; e.currentTarget.style.borderColor = '#E5E7EB'; }}>
+              <button key={i} onClick={() => sendMessage(p.text)}
+                style={{ background: '#F9FAFB', border: '1.5px solid #E5E7EB', borderRadius: 20, padding: '6px 12px', fontSize: isMobile ? 12 : 13, color: '#1F2937', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {p.icon} {p.text}
               </button>
             ))}
@@ -294,26 +295,28 @@ ${clientSummaries.join('\n')}
         </div>
       )}
 
-      {/* Input */}
-      <div style={{ display: 'flex', gap: 10, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask anything about your practice, clients, revenue, or schedule..."
-          rows={1}
-          style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: '#1F2937', background: 'transparent', fontFamily: 'system-ui', lineHeight: 1.5 }}
-        />
-        <button
-          onClick={() => sendMessage()}
-          disabled={!input.trim() || loading}
-          style={{ background: input.trim() && !loading ? '#2A5741' : '#E5E7EB', color: input.trim() && !loading ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 14, fontWeight: 600, cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
-          {loading ? '...' : '↑ Send'}
-        </button>
-      </div>
-      <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 8 }}>
-        Press Enter to send · Shift+Enter for new line · Powered by Claude AI
+      {/* Input — sticky at bottom */}
+      <div style={{ flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything about your practice..."
+            rows={1}
+            style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: '#1F2937', background: 'transparent', fontFamily: 'system-ui', lineHeight: 1.5 }}
+          />
+          <button
+            onClick={() => sendMessage()}
+            disabled={!input.trim() || loading}
+            style={{ background: input.trim() && !loading ? '#2A5741' : '#E5E7EB', color: input.trim() && !loading ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+            {loading ? '...' : '↑ Send'}
+          </button>
+        </div>
+        {!isMobile && <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 6 }}>
+          Press Enter to send · Shift+Enter for new line · Powered by Claude AI
+        </div>}
       </div>
     </div>
   );

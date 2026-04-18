@@ -355,3 +355,68 @@ section[id] {
   .bm-import-mobile-only { display: none !important; }
   .bm-import-desktop-only { display: block !important; }
 }
+
+/* ── MOBILE DEEP FIXES ── */
+@media (max-width: 767px) {
+
+  /* Safe area for appointment panel */
+  .bm-appt-panel { padding-top: env(safe-area-inset-top, 44px) !important; }
+
+  /* Aggressive bottom padding on ALL content — clears bottom nav */
+  .bm-dash-pad,
+  .bm-dash-pad > div,
+  [class*="Dashboard"],
+  [class*="dashboard"] {
+    padding-bottom: 120px !important;
+  }
+
+  /* Settings — fix Save and connect overflow */
+  .bm-settings-btn-row {
+    flex-direction: column !important;
+    gap: 10px !important;
+  }
+  .bm-settings-btn-row button,
+  .bm-settings-btn-row a {
+    width: 100% !important;
+    text-align: center !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  /* AI chat — keyboard fix */
+  .bm-ai-wrap {
+    position: relative !important;
+    height: calc(100vh - 180px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+  .bm-ai-messages {
+    flex: 1 !important;
+    overflow-y: auto !important;
+    min-height: 0 !important;
+  }
+  .bm-ai-input {
+    flex-shrink: 0 !important;
+    position: sticky !important;
+    bottom: 0 !important;
+    background: #fff !important;
+    padding-bottom: 8px !important;
+  }
+
+  /* Page end indicator */
+  .bm-page-end {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 24px 0 8px !important;
+    opacity: 0.3 !important;
+  }
+  .bm-page-end::before,
+  .bm-page-end::after {
+    content: '' !important;
+    flex: 1 !important;
+    height: 1px !important;
+    background: #9CA3AF !important;
+    margin: 0 12px !important;
+  }
+}
