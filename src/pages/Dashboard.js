@@ -700,14 +700,16 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         {/* Stripe */}
         <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
           <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💳 Payments</p>
-          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Accept payments from clients and track real revenue in your Billing tab.</p>
+          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Connect Stripe or Square to save cards on file and charge clients directly from the Clients tab.</p>
+
+          {/* Stripe */}
           {therapist?.stripe_account_connected ? (
-            <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+            <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span>✅</span>
                   <div>
-                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Payments Connected</div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Stripe Connected</div>
                     <div style={{ fontSize:'11px', color:'#6B7280' }}>Real revenue tracked in Billing</div>
                   </div>
                 </div>
@@ -730,8 +732,52 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               const data = await res.json();
               if (data.url) window.open(data.url, '_blank');
               else alert('Error: ' + JSON.stringify(data));
-            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
-              💳 Connect Payments
+            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:10 }}>
+              💳 Connect Stripe
+            </button>
+          )}
+
+          {/* Square */}
+          {therapist?.square_connected ? (
+            <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                  <span>✅</span>
+                  <div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square Connected</div>
+                    <div style={{ fontSize:'11px', color:'#6B7280' }}>Card on file ready for your clients</div>
+                  </div>
+                </div>
+                <button onClick={async () => {
+                  if (!window.confirm('Disconnect Square?')) return;
+                  await updateProfile({ square_access_token: null, square_merchant_id: null, square_location_id: null, square_connected: false });
+                }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={async () => {
+              const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+              const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth', {
+                method:'POST',
+                headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey': anonKey },
+                body: JSON.stringify({ therapist_id: therapist.id }),
+              });
+              const data = await res.json();
+              if (data.url) {
+                const popup = window.open(data.url, 'square-oauth', 'width=600,height=700');
+                window.addEventListener('message', async (e) => {
+                  if (e.data?.type === 'square-oauth-success') {
+                    popup?.close();
+                    const { data: t } = await supabase.from('therapists').select('*').eq('id', therapist.id).single();
+                    if (t) await updateProfile(t);
+                    window.location.reload();
+                  }
+                }, { once: true });
+              } else alert('Error: ' + JSON.stringify(data));
+            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#000', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
+              ⬛ Connect Square
             </button>
           )}
         </div>

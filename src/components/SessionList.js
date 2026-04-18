@@ -96,19 +96,34 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     setCharging(true); setChargeMsg(null);
     const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
     const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-    const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
+
+    const isSquare = therapist?.square_connected && client?.square_card_id;
+    const endpoint = isSquare ? 'square-charge-card' : 'charge-card';
+
+    const body = isSquare ? {
+      therapist_id: therapistId,
+      square_card_id: client.square_card_id,
+      square_customer_id: client.square_customer_id,
+      amount_cents: Math.round(parseFloat(chargeAmount) * 100),
+      tip_cents: tipAmount ? Math.round(parseFloat(tipAmount) * 100) : 0,
+      description: `Session with ${therapist.business_name || therapist.full_name}`,
+      client_email: client.email,
+      send_receipt: sendReceipt,
+    } : {
+      stripe_account_id: therapist.stripe_account_id,
+      customer_id: client.stripe_customer_id,
+      payment_method_id: cardOnFile.payment_method_id,
+      amount_cents: Math.round(parseFloat(chargeAmount) * 100),
+      tip_cents: tipAmount ? Math.round(parseFloat(tipAmount) * 100) : 0,
+      description: `Session with ${therapist.business_name || therapist.full_name}`,
+      client_email: client.email,
+      send_receipt: sendReceipt,
+    };
+
+    const res = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
-      body: JSON.stringify({
-        stripe_account_id: therapist.stripe_account_id,
-        customer_id: client.stripe_customer_id,
-        payment_method_id: cardOnFile.payment_method_id,
-        amount_cents: Math.round(parseFloat(chargeAmount) * 100),
-        tip_cents: tipAmount ? Math.round(parseFloat(tipAmount) * 100) : 0,
-        description: `Session with ${therapist.business_name || therapist.full_name}`,
-        client_email: client.email,
-        send_receipt: sendReceipt,
-      }),
+      body: JSON.stringify(body),
     });
     const data = await res.json();
     setCharging(false);
@@ -440,7 +455,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
 
       {/* Card on File */}
-      {therapist?.stripe_account_connected && (
+      {(therapist?.stripe_account_connected || therapist?.square_connected) && (
         <div style={{ background: C.white, border: `1.5px solid ${C.lightGray}`, borderRadius: 14, padding: 20, marginBottom: 4 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: chargeMsg ? 12 : 0 }}>
             <div>
