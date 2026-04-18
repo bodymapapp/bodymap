@@ -18,6 +18,106 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   const [archiveSaving, setArchiveSaving] = useState(false);
   const [showRebook, setShowRebook] = useState(false);
 
+  // Card on file
+  const [cardOnFile, setCardOnFile] = useState(client?.card_last4 ? { last4: client.card_last4, brand: client.card_brand, payment_method_id: client.payment_method_id } : null);
+  const [showSaveCard, setShowSaveCard] = useState(false);
+  const [showCharge, setShowCharge] = useState(false);
+  const [chargeAmount, setChargeAmount] = useState('');
+  const [tipAmount, setTipAmount] = useState('');
+  const [sendReceipt, setSendReceipt] = useState(true);
+  const [charging, setCharging] = useState(false);
+  const [chargeMsg, setChargeMsg] = useState(null);
+  const [savingCard, setSavingCard] = useState(false);
+
+  async function saveCard() {
+    if (!therapist?.stripe_account_id) { alert('Connect Stripe in Settings first.'); return; }
+    setSavingCard(true);
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+    const res = await fetch(`${supabaseUrl}/functions/v1/save-card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+      body: JSON.stringify({
+        stripe_account_id: therapist.stripe_account_id,
+        client_id: client.id,
+        client_email: client.email,
+        client_name: client.name,
+        therapist_id: therapistId,
+      }),
+    });
+    const data = await res.json();
+    setSavingCard(false);
+    if (data.error) { alert(data.error); return; }
+    // Load Stripe.js and collect card
+    if (!window.Stripe) {
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'https://js.stripe.com/v3/';
+        s.onload = resolve;
+        document.head.appendChild(s);
+      });
+    }
+    const stripe = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY, { stripeAccount: therapist.stripe_account_id });
+    const elements = stripe.elements({ clientSecret: data.client_secret });
+    const cardEl = elements.create('card', { style: { base: { fontSize: '16px', color: '#1A3A28' } } });
+    const mountDiv = document.getElementById('bm-card-mount');
+    if (mountDiv) cardEl.mount('#bm-card-mount');
+    window._bmStripe = stripe;
+    window._bmElements = elements;
+    window._bmCardEl = cardEl;
+    window._bmClientSecret = data.client_secret;
+    window._bmCustomerId = data.customer_id;
+  }
+
+  async function confirmSaveCard() {
+    setSavingCard(true);
+    const { setupIntent, error } = await window._bmStripe.confirmCardSetup(window._bmClientSecret, {
+      payment_method: { card: window._bmCardEl }
+    });
+    if (error) { alert(error.message); setSavingCard(false); return; }
+    // Save card details to client record
+    const pmId = setupIntent.payment_method;
+    const pmRes = await fetch(`https://api.stripe.com/v1/payment_methods/${pmId}`, {
+      headers: { 'Authorization': `Bearer ${process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY}`, 'Stripe-Account': therapist.stripe_account_id }
+    });
+    // Store payment_method_id + last4 + brand on client
+    await supabase.from('clients').update({
+      payment_method_id: pmId,
+      stripe_customer_id: window._bmCustomerId,
+    }).eq('id', client.id);
+    setCardOnFile({ last4: '••••', brand: 'Card', payment_method_id: pmId });
+    setShowSaveCard(false);
+    setSavingCard(false);
+    setChargeMsg({ type: 'ok', text: 'Card saved successfully.' });
+  }
+
+  async function chargeCard() {
+    if (!chargeAmount || parseFloat(chargeAmount) <= 0) { setChargeMsg({ type: 'err', text: 'Enter an amount.' }); return; }
+    setCharging(true); setChargeMsg(null);
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+    const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+      body: JSON.stringify({
+        stripe_account_id: therapist.stripe_account_id,
+        customer_id: client.stripe_customer_id,
+        payment_method_id: cardOnFile.payment_method_id,
+        amount_cents: Math.round(parseFloat(chargeAmount) * 100),
+        tip_cents: tipAmount ? Math.round(parseFloat(tipAmount) * 100) : 0,
+        description: `Session with ${therapist.business_name || therapist.full_name}`,
+        client_email: client.email,
+        send_receipt: sendReceipt,
+      }),
+    });
+    const data = await res.json();
+    setCharging(false);
+    if (data.error) { setChargeMsg({ type: 'err', text: data.error }); return; }
+    const total = (parseFloat(chargeAmount) + (parseFloat(tipAmount) || 0)).toFixed(2);
+    setChargeMsg({ type: 'ok', text: `Charged $${total} successfully.` });
+    setChargeAmount(''); setTipAmount(''); setShowCharge(false);
+  }
+
   // Edit client
   const [showEdit, setShowEdit] = useState(false);
   const [editName, setEditName] = useState(client?.name || "");
@@ -337,6 +437,81 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           </div>
         ))}
       </div>
+
+
+      {/* Card on File */}
+      {therapist?.stripe_account_connected && (
+        <div style={{ background: C.white, border: `1.5px solid ${C.lightGray}`, borderRadius: 14, padding: 20, marginBottom: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: chargeMsg ? 12 : 0 }}>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C.darkGray }}>
+                💳 {cardOnFile ? `Card on file: ${cardOnFile.brand} ••••${cardOnFile.last4}` : 'No card on file'}
+              </div>
+              {!cardOnFile && <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>Save a card to enable one-tap checkout</div>}
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {cardOnFile && (
+                <button onClick={() => { setShowCharge(v => !v); setChargeMsg(null); }}
+                  style={{ background: '#2A5741', color: '#fff', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  {showCharge ? 'Cancel' : '💵 Charge'}
+                </button>
+              )}
+              <button onClick={() => { setShowSaveCard(v => !v); if (!showSaveCard) saveCard(); }}
+                style={{ background: '#F9FAFB', border: `1.5px solid ${C.lightGray}`, color: C.gray, borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                {cardOnFile ? '🔄 Update card' : '+ Save card'}
+              </button>
+            </div>
+          </div>
+
+          {/* Charge panel */}
+          {showCharge && cardOnFile && (
+            <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 10, padding: 16, marginTop: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount ($)</label>
+                  <input type="number" min="0" step="0.01" value={chargeAmount} onChange={e => setChargeAmount(e.target.value)}
+                    placeholder="0.00" style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tip ($)</label>
+                  <input type="number" min="0" step="0.01" value={tipAmount} onChange={e => setTipAmount(e.target.value)}
+                    placeholder="0.00" style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                <input type="checkbox" id="send-receipt" checked={sendReceipt} onChange={e => setSendReceipt(e.target.checked)} />
+                <label htmlFor="send-receipt" style={{ fontSize: 13, color: C.gray, cursor: 'pointer' }}>Email receipt to {client.email || 'client'}</label>
+              </div>
+              {chargeAmount && (
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#2A5741', marginBottom: 12 }}>
+                  Total: ${(parseFloat(chargeAmount || 0) + parseFloat(tipAmount || 0)).toFixed(2)}
+                </div>
+              )}
+              <button onClick={chargeCard} disabled={charging || !chargeAmount}
+                style={{ width: '100%', padding: '11px 0', background: charging || !chargeAmount ? '#D1D5DB' : '#2A5741', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: charging || !chargeAmount ? 'not-allowed' : 'pointer' }}>
+                {charging ? 'Charging...' : `Charge ${cardOnFile.brand} ••••${cardOnFile.last4}`}
+              </button>
+            </div>
+          )}
+
+          {/* Save card panel */}
+          {showSaveCard && (
+            <div style={{ marginTop: 12 }}>
+              <div id="bm-card-mount" style={{ border: `1.5px solid ${C.lightGray}`, borderRadius: 8, padding: '12px 14px', background: '#fff', marginBottom: 10 }} />
+              <button onClick={confirmSaveCard} disabled={savingCard}
+                style={{ width: '100%', padding: '11px 0', background: savingCard ? '#D1D5DB' : '#2A5741', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                {savingCard ? 'Saving...' : 'Save card'}
+              </button>
+            </div>
+          )}
+
+          {chargeMsg && (
+            <div style={{ fontSize: 13, fontWeight: 600, color: chargeMsg.type === 'ok' ? '#16A34A' : '#DC2626', marginTop: 10 }}>
+              {chargeMsg.type === 'ok' ? '✓' : '⚠'} {chargeMsg.text}
+            </div>
+          )}
+        </div>
+      )}
 
       {loading ? (
         <div style={{ textAlign: "center", padding: "40px", color: C.gray }}>
