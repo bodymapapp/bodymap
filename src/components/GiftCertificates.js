@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
-const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444' };
+const C = { forest:'#2A5741', sage:'#6B9E80', blush:'#F9A8B4', rose:'#E85C79', rosePale:'#FCE7F3', cream:'#FFF9F3', white:'#FFFFFF', dark:'#1F2937', gray:'#6B7280', light:'#E8E4DC' };
 
 function genCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -10,7 +10,117 @@ function genCode() {
     if (i > 0 && i % 4 === 0) code += '-';
     code += chars[Math.floor(Math.random() * chars.length)];
   }
-  return code; // e.g. ABCD-EFGH-JKLM
+  return code;
+}
+
+// Botanical decoration SVG - subtle leaves & flowers
+function BotanicalFlourish({ style, color = '#F9A8B4', opacity = 0.5 }) {
+  return (
+    <svg width="100" height="100" viewBox="0 0 100 100" style={style} fill="none">
+      <g opacity={opacity}>
+        <path d="M20 80 Q 30 50, 50 40 Q 70 50, 80 80" stroke="#6B9E80" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+        <ellipse cx="30" cy="55" rx="5" ry="9" fill="#6B9E80" opacity="0.5" transform="rotate(-35 30 55)"/>
+        <ellipse cx="70" cy="55" rx="5" ry="9" fill="#6B9E80" opacity="0.5" transform="rotate(35 70 55)"/>
+        <circle cx="50" cy="38" r="4" fill={color}/>
+        <circle cx="50" cy="38" r="2" fill="#fff"/>
+        <circle cx="38" cy="30" r="2.5" fill={color} opacity="0.7"/>
+        <circle cx="62" cy="30" r="2.5" fill={color} opacity="0.7"/>
+      </g>
+    </svg>
+  );
+}
+
+// Visual gift card preview - the actual "card" recipients would feel excited to receive
+function GiftCardPreview({ amount, recipient, purchaser, message, code, compact = false }) {
+  return (
+    <div style={{
+      position: 'relative',
+      background: 'linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FEF3F2 100%)',
+      borderRadius: 20,
+      padding: compact ? '20px 22px' : '28px 26px',
+      border: '1.5px solid #FBCFE8',
+      overflow: 'hidden',
+      boxShadow: '0 4px 20px rgba(249,168,180,0.18), 0 1px 3px rgba(0,0,0,0.04)',
+    }}>
+      {/* Decorative corner flourish */}
+      <BotanicalFlourish style={{ position: 'absolute', top: -18, right: -18, transform: 'rotate(25deg)' }} opacity={0.4} />
+      <BotanicalFlourish style={{ position: 'absolute', bottom: -22, left: -22, transform: 'rotate(-145deg) scale(0.7)' }} opacity={0.3} />
+
+      {/* Little flag / ribbon marker */}
+      <div style={{
+        position: 'absolute', top: 0, left: 24,
+        width: 32, height: compact ? 36 : 42,
+        background: 'linear-gradient(180deg, #E85C79, #D14560)',
+        clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%)',
+        boxShadow: '0 2px 6px rgba(232,92,121,0.3)',
+      }}/>
+
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        {/* Top: "A gift for you" */}
+        <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, fontWeight: 400, color: C.rose, letterSpacing: '0.24em', textTransform: 'uppercase', marginBottom: 4, marginLeft: compact ? 44 : 48 }}>
+          ♡ A gift for you
+        </div>
+
+        {/* Recipient name */}
+        {recipient && (
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 20 : 26, fontWeight: 700, color: C.dark, marginBottom: compact ? 4 : 8, fontStyle: 'italic', letterSpacing: '-0.01em' }}>
+            Dear {recipient},
+          </div>
+        )}
+
+        {/* Amount - big and proud */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: compact ? 8 : 14 }}>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 14 : 16, color: C.gray, fontStyle: 'italic' }}>Worth</span>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 34 : 44, fontWeight: 700, color: C.forest, letterSpacing: '-0.02em' }}>
+            ${amount}
+          </span>
+          <span style={{ fontSize: compact ? 11 : 12, color: C.gray, fontWeight: 600 }}>of care</span>
+        </div>
+
+        {/* Message */}
+        {message && (
+          <div style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: compact ? 13 : 14,
+            color: '#4B5563',
+            fontStyle: 'italic',
+            lineHeight: 1.55,
+            padding: '10px 14px',
+            background: 'rgba(255,255,255,0.55)',
+            borderLeft: `2.5px solid ${C.blush}`,
+            borderRadius: '4px 12px 12px 4px',
+            marginBottom: compact ? 8 : 14,
+          }}>
+            "{message}"
+          </div>
+        )}
+
+        {/* From */}
+        {purchaser && (
+          <div style={{ fontSize: compact ? 12 : 13, color: C.gray, marginBottom: compact ? 10 : 14 }}>
+            With love, <span style={{ fontFamily: 'Georgia,serif', fontStyle: 'italic', fontWeight: 600, color: C.dark }}>{purchaser}</span>
+          </div>
+        )}
+
+        {/* Code */}
+        <div style={{
+          marginTop: compact ? 10 : 16,
+          paddingTop: compact ? 10 : 14,
+          borderTop: '1px dashed rgba(232,92,121,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          flexWrap: 'wrap',
+        }}>
+          <div>
+            <div style={{ fontSize: 9, color: C.gray, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 2 }}>Redemption code</div>
+            <code style={{ fontSize: compact ? 13 : 15, fontWeight: 700, color: C.forest, letterSpacing: '0.08em', fontFamily: 'ui-monospace, Menlo, monospace' }}>{code}</code>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function GiftCertificates({ therapist }) {
@@ -24,6 +134,7 @@ export default function GiftCertificates({ therapist }) {
   const [showForm, setShowForm] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(null);
+  const [previewCert, setPreviewCert] = useState(null);
 
   useEffect(() => {
     load();
@@ -82,203 +193,329 @@ export default function GiftCertificates({ therapist }) {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  const statusColor = s => s === 'active' ? '#16A34A' : s === 'redeemed' ? '#6B7280' : '#DC2626';
-  const statusBg = s => s === 'active' ? '#F0FDF4' : s === 'redeemed' ? '#F9FAFB' : '#FEF2F2';
-
   const active = certs.filter(c => c.status === 'active');
   const past = certs.filter(c => c.status !== 'active');
 
-  return (
-    <div>
-      {/* Hero header — warm and celebratory */}
-      <div style={{
-        background: 'linear-gradient(135deg, #FFF1F5 0%, #FFF7ED 50%, #F0FDF4 100%)',
-        borderRadius: 20, padding: '24px 20px', marginBottom: 20,
-        border: '1.5px solid #FCE7F3', position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Decorative circles */}
-        <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(251,207,232,0.3)' }} />
-        <div style={{ position:'absolute', bottom:-10, left:10, width:60, height:60, borderRadius:'50%', background:'rgba(167,243,208,0.3)' }} />
+  const presetAmounts = [65, 85, 120, 150, 200];
 
-        <div style={{ fontSize:36, marginBottom:8 }}>🎁</div>
-        <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:'#1F2937', margin:'0 0 6px' }}>
-          Send a little love
-        </h2>
-        <p style={{ fontSize:13, color:'#6B7280', margin:'0 0 16px', lineHeight:1.6 }}>
-          Gift certificates for the people in your clients' lives who deserve care. Perfect for birthdays, Mother's Day, anniversaries — or just because.
-        </p>
-        <button onClick={() => setShowForm(!showForm)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'linear-gradient(135deg, #2A5741, #4B8A6A)',
-            color: '#fff', border: 'none', borderRadius: 20,
-            padding: '11px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(42,87,65,0.3)',
-          }}>
-          <span style={{ fontSize: 16 }}>✨</span>
-          Create a gift certificate
-        </button>
+  return (
+    <div style={{ maxWidth: 820, margin: '0 auto' }}>
+      {/* Hero header — warm, storytelling, feminine */}
+      <div style={{
+        position: 'relative',
+        background: 'linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 35%, #FFF9F3 100%)',
+        borderRadius: 24,
+        padding: '28px 24px',
+        marginBottom: 24,
+        border: '1.5px solid #FBCFE8',
+        overflow: 'hidden',
+        boxShadow: '0 2px 14px rgba(249,168,180,0.15)',
+      }}>
+        {/* Botanical decorations */}
+        <BotanicalFlourish style={{ position: 'absolute', top: -20, right: -10, transform: 'rotate(15deg)' }} />
+        <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: -20, transform: 'rotate(-160deg) scale(0.8)' }} opacity={0.35} />
+
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: 540 }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, color: C.rose, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
+            ♡ Gift Cards
+          </div>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 700, color: C.dark, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+            Give the gift of <em style={{ color: C.rose, fontStyle: 'italic' }}>feeling good.</em>
+          </h2>
+          <p style={{ fontSize: 14, color: '#5B6470', margin: '0 0 22px', lineHeight: 1.65 }}>
+            For the mother who gives everything. The friend going through a hard season. The partner who deserves to be cared for. A gift card from you is an hour of peace, wrapped in kindness.
+          </p>
+          <button onClick={() => setShowForm(!showForm)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: showForm ? 'rgba(255,255,255,0.7)' : 'linear-gradient(135deg, #E85C79, #D14560)',
+              color: showForm ? C.rose : '#fff',
+              border: showForm ? `1.5px solid ${C.blush}` : 'none',
+              borderRadius: 24,
+              padding: '12px 22px',
+              fontSize: 14, fontWeight: 700, cursor: 'pointer',
+              boxShadow: showForm ? 'none' : '0 4px 14px rgba(232,92,121,0.35)',
+              fontFamily: 'Georgia, serif',
+              letterSpacing: '0.01em',
+              transition: 'all 0.15s',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            {showForm ? '× Close' : <>
+              <span style={{ fontSize: 16 }}>♡</span>
+              Create a gift card
+            </>}
+          </button>
+        </div>
       </div>
 
+      {/* Success toast */}
       {saved && (
-        <div style={{ background:'linear-gradient(135deg,#F0FDF4,#ECFDF5)', border:'1px solid #86EFAC', borderRadius:12, padding:'14px 18px', marginBottom:16, fontSize:13, color:'#16A34A', fontWeight:600, display:'flex', alignItems:'center', gap:8 }}>
-          🎉 Gift certificate created! Your client is going to love this.
+        <div style={{
+          background: 'linear-gradient(135deg, #FFF1F5, #ECFDF5)',
+          border: '1.5px solid #BBF7D0',
+          borderRadius: 14,
+          padding: '14px 18px',
+          marginBottom: 18,
+          fontSize: 14, color: C.forest, fontWeight: 600,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <span style={{ fontSize: 20 }}>🌸</span>
+          <div>
+            <div style={{ fontFamily: 'Georgia, serif', fontWeight: 700, marginBottom: 1 }}>Beautifully done.</div>
+            <div style={{ fontSize: 12, color: C.gray, fontWeight: 500 }}>Your gift card is ready to share.</div>
+          </div>
         </div>
       )}
 
-      {/* Create Form */}
+      {/* Create form — warm, gentle */}
       {showForm && (
-        <div style={{ background:'linear-gradient(135deg,#FFF1F5,#FFF7ED)', borderRadius:14, padding:24, border:`1.5px solid #FCE7F3`, marginBottom:20, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontFamily:'Georgia,serif', fontSize:18, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ New Gift Certificate</h3>
-          <p style={{ fontSize:13, color:C.gray, margin:'0 0 20px' }}>Someone on your list is going to feel very cared for.</p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }} className="bm-2col">
-            <div>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Amount ($) *</label>
-              <input type="number" min="1" value={form.amount} onChange={e=>setForm(f=>({...f,amount:e.target.value}))}
-                placeholder="e.g. 85"
-                style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+        <div style={{
+          background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF9F3 100%)',
+          borderRadius: 18,
+          padding: 24,
+          border: '1.5px solid #FBCFE8',
+          marginBottom: 22,
+          boxShadow: '0 4px 20px rgba(249,168,180,0.1)',
+        }}>
+          <div style={{ marginBottom: 20 }}>
+            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.dark, margin: '0 0 4px', fontStyle: 'italic' }}>A new gift, with care</h3>
+            <p style={{ fontSize: 13, color: C.gray, margin: 0, lineHeight: 1.5 }}>Fill in a few details. Someone on your list is about to feel very loved.</p>
+          </div>
+
+          {/* Live preview at top - so they see what they're creating */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ fontSize: 10, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>Preview</div>
+            <GiftCardPreview
+              amount={form.amount || '___'}
+              recipient={form.recipient_name || 'friend'}
+              purchaser={form.purchaser_name || therapist?.full_name?.split(' ')[0]}
+              message={form.message || 'An hour of peace, just for you.'}
+              code="XXXX-XXXX-XXXX"
+              compact
+            />
+          </div>
+
+          {/* Amount presets */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, color: C.dark, display:'block', marginBottom: 8, fontFamily: 'Georgia, serif' }}>Choose an amount</label>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              {presetAmounts.map(amt => (
+                <button key={amt} onClick={() => setForm(f => ({ ...f, amount: String(amt) }))}
+                  style={{
+                    background: form.amount == amt ? 'linear-gradient(135deg, #E85C79, #D14560)' : '#fff',
+                    color: form.amount == amt ? '#fff' : C.dark,
+                    border: form.amount == amt ? 'none' : `1.5px solid ${C.light}`,
+                    borderRadius: 22,
+                    padding: '9px 18px',
+                    fontSize: 14, fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'Georgia, serif',
+                    boxShadow: form.amount == amt ? '0 2px 8px rgba(232,92,121,0.3)' : 'none',
+                    transition: 'all 0.15s',
+                  }}>
+                  ${amt}
+                </button>
+              ))}
             </div>
-            <div style={{ position:'relative' }}>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Purchaser Name <span style={{ fontWeight:400 }}>(who's buying)</span></label>
+            <input type="number" min="1" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+              placeholder="or enter a custom amount"
+              style={{ width: '100%', padding: '12px 14px', border: `1.5px solid ${C.light}`, borderRadius: 12, fontSize: 15, boxSizing: 'border-box', outline: 'none', fontFamily: 'Georgia, serif' }} />
+          </div>
+
+          {/* Names */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }} className="bm-2col">
+            <div style={{ position: 'relative' }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>From</label>
               <input type="text" value={form.purchaser_name}
                 onChange={e => {
                   const val = e.target.value;
-                  setForm(f=>({...f, purchaser_name:val}));
-                  setPurchaserSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0,5) : []);
+                  setForm(f => ({ ...f, purchaser_name: val }));
+                  setPurchaserSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0, 5) : []);
                 }}
-                placeholder="Type to search clients…"
-                style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+                placeholder="Who's giving?"
+                style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
               {purchaserSuggestions.length > 0 && (
-                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:C.white, border:`1.5px solid ${C.light}`, borderRadius:8, zIndex:10, boxShadow:'0 4px 16px rgba(0,0,0,0.1)', marginTop:2 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 10, zIndex: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginTop: 4, overflow: 'hidden' }}>
                   {purchaserSuggestions.map(c => (
-                    <div key={c.id} onClick={() => { setForm(f=>({...f, purchaser_name:c.name})); setPurchaserSuggestions([]); }}
-                      style={{ padding:'10px 14px', cursor:'pointer', fontSize:13, borderBottom:`1px solid ${C.light}` }}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.beige}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <div style={{ fontWeight:600, color:C.dark }}>{c.name}</div>
-                      {c.email && <div style={{ fontSize:11, color:C.gray }}>{c.email}</div>}
+                    <div key={c.id} onClick={() => { setForm(f => ({ ...f, purchaser_name: c.name })); setPurchaserSuggestions([]); }}
+                      style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, borderBottom: `1px solid ${C.light}` }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#FFF9F3'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                      <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div style={{ position:'relative' }}>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Recipient Name <span style={{ fontWeight:400 }}>(who receives it)</span></label>
+            <div style={{ position: 'relative' }}>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>To</label>
               <input type="text" value={form.recipient_name}
                 onChange={e => {
                   const val = e.target.value;
-                  setForm(f=>({...f, recipient_name:val}));
-                  setRecipientSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0,5) : []);
+                  setForm(f => ({ ...f, recipient_name: val }));
+                  setRecipientSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0, 5) : []);
                 }}
-                placeholder="Type to search clients…"
-                style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
+                placeholder="Who's receiving?"
+                style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
               {recipientSuggestions.length > 0 && (
-                <div style={{ position:'absolute', top:'100%', left:0, right:0, background:C.white, border:`1.5px solid ${C.light}`, borderRadius:8, zIndex:10, boxShadow:'0 4px 16px rgba(0,0,0,0.1)', marginTop:2 }}>
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 10, zIndex: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginTop: 4, overflow: 'hidden' }}>
                   {recipientSuggestions.map(c => (
-                    <div key={c.id} onClick={() => { setForm(f=>({...f, recipient_name:c.name, recipient_email:c.email||''})); setRecipientSuggestions([]); }}
-                      style={{ padding:'10px 14px', cursor:'pointer', fontSize:13, borderBottom:`1px solid ${C.light}` }}
-                      onMouseEnter={e=>e.currentTarget.style.background=C.beige}
-                      onMouseLeave={e=>e.currentTarget.style.background='transparent'}>
-                      <div style={{ fontWeight:600, color:C.dark }}>{c.name}</div>
-                      {c.email && <div style={{ fontSize:11, color:C.gray }}>{c.email}</div>}
+                    <div key={c.id} onClick={() => { setForm(f => ({ ...f, recipient_name: c.name, recipient_email: c.email || '' })); setRecipientSuggestions([]); }}
+                      style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, borderBottom: `1px solid ${C.light}` }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#FFF9F3'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                      <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
+                      {c.email && <div style={{ fontSize: 11, color: C.gray }}>{c.email}</div>}
                     </div>
                   ))}
                 </div>
               )}
             </div>
-            <div>
-              <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Recipient Email</label>
-              <input type="email" value={form.recipient_email} onChange={e=>setForm(f=>({...f,recipient_email:e.target.value}))}
-                placeholder="Auto-filled if client selected above"
-                style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
-            </div>
           </div>
-          <div style={{ marginBottom:14 }}>
-            <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Personal Message</label>
-            <textarea value={form.message} onChange={e=>setForm(f=>({...f,message:e.target.value}))}
-              placeholder="Optional message to include with the certificate..."
-              rows={3}
-              style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none', resize:'vertical', fontFamily:'system-ui' }} />
+
+          <div style={{ marginBottom: 14 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Recipient Email</label>
+            <input type="email" value={form.recipient_email} onChange={e => setForm(f => ({ ...f, recipient_email: e.target.value }))}
+              placeholder="So we can send her the beautiful card"
+              style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
           </div>
-          <div style={{ display:'flex', gap:10 }}>
+
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>A little note</label>
+            <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+              placeholder="Thinking of you. You deserve this..."
+              rows={2}
+              style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'Georgia, serif', fontStyle: 'italic', lineHeight: 1.5 }} />
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
             <button onClick={create} disabled={creating || !form.amount}
-              style={{ background:creating||!form.amount?C.sage:C.forest, color:'#fff', border:'none', borderRadius:8, padding:'11px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-              {creating ? 'Generating code…' : 'Generate & Save Certificate'}
+              style={{
+                flex: 1, minWidth: 180,
+                background: creating || !form.amount ? '#E5E1D8' : 'linear-gradient(135deg, #E85C79, #D14560)',
+                color: creating || !form.amount ? '#9CA3AF' : '#fff',
+                border: 'none', borderRadius: 12,
+                padding: '13px 22px',
+                fontSize: 14, fontWeight: 700, cursor: creating || !form.amount ? 'not-allowed' : 'pointer',
+                fontFamily: 'Georgia, serif',
+                boxShadow: creating || !form.amount ? 'none' : '0 4px 14px rgba(232,92,121,0.3)',
+              }}>
+              {creating ? 'Creating with love...' : '♡ Create this gift'}
             </button>
             <button onClick={() => setShowForm(false)}
-              style={{ background:'transparent', color:C.gray, border:`1.5px solid ${C.light}`, borderRadius:8, padding:'11px 20px', fontSize:14, cursor:'pointer' }}>
+              style={{ background: 'transparent', color: C.gray, border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '13px 22px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
               Cancel
             </button>
           </div>
-          <p style={{ fontSize:11, color:C.gray, marginTop:10 }}>A unique code will be generated. The client presents this code when booking or at the session to apply the credit.</p>
         </div>
       )}
 
-      {/* Active Certificates */}
+      {/* Active cards */}
       {loading ? (
-        <div style={{ textAlign:'center', padding:'40px 0', color:C.gray, fontSize:14 }}>Loading…</div>
+        <div style={{ textAlign: 'center', padding: '40px 0', color: C.gray, fontSize: 14 }}>Loading your gift cards...</div>
       ) : (
         <>
           {active.length > 0 && (
-            <div style={{ marginBottom:24 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>💌 Active ({active.length})</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+            <div style={{ marginBottom: 28 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, fontWeight: 700, color: C.dark, fontStyle: 'italic' }}>
+                  Gifts, waiting to be opened
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, fontWeight: 600 }}>{active.length} active</div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {active.map(cert => (
-                  <div key={cert.id} style={{ background:'linear-gradient(135deg,#FFF1F5,#FFF7ED)', borderRadius:16, padding:'18px 20px', border:'1.5px solid #FCE7F3', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 2px 10px rgba(251,207,232,0.2)' }}>
-                    <div style={{ flex:1, minWidth:200 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                        <code style={{ fontSize:15, fontWeight:800, color:C.forest, letterSpacing:'0.05em' }}>{cert.code}</code>
-                        <button onClick={() => copy(cert.code)}
-                          style={{ background:'transparent', border:'none', cursor:'pointer', fontSize:12, color:C.gray }}>
-                          {copied === cert.code ? '✅ Copied' : '📋'}
-                        </button>
-                      </div>
-                      <div style={{ fontSize:13, color:C.gray }}>
-                        {cert.recipient_name && <span style={{ marginRight:12 }}>🌸 To <strong>{cert.recipient_name}</strong></span>}
-                        {cert.purchaser_name && <span>From: <strong>{cert.purchaser_name}</strong></span>}
-                      </div>
-                      {cert.message && <div style={{ fontSize:12, color:C.gray, marginTop:4, fontStyle:'italic' }}>"{cert.message}"</div>}
-                    </div>
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontSize:20, fontWeight:800, color:C.forest }}>${cert.remaining?.toFixed(0)}</div>
+                  <div key={cert.id} style={{ position: 'relative' }}>
+                    <GiftCardPreview
+                      amount={cert.amount?.toFixed(0)}
+                      recipient={cert.recipient_name}
+                      purchaser={cert.purchaser_name}
+                      message={cert.message}
+                      code={cert.code}
+                    />
+                    {/* Actions row below the card */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button onClick={() => copy(cert.code)}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: copied === cert.code ? '#F0FDF4' : '#fff',
+                          border: `1.5px solid ${copied === cert.code ? '#86EFAC' : C.light}`,
+                          color: copied === cert.code ? C.forest : C.gray,
+                          borderRadius: 20,
+                          padding: '7px 14px',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}>
+                        {copied === cert.code ? '✓ Code copied' : '📋 Copy code'}
+                      </button>
                       {cert.remaining < cert.amount && (
-                        <div style={{ fontSize:11, color:C.gray }}>of ${cert.amount?.toFixed(0)}</div>
+                        <div style={{ fontSize: 12, color: C.gray, fontStyle: 'italic' }}>
+                          ${cert.remaining?.toFixed(0)} of ${cert.amount?.toFixed(0)} remaining
+                        </div>
                       )}
-                      <div style={{ background:statusBg(cert.status), color:statusColor(cert.status), borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700, marginTop:4, display:'inline-block' }}>
-                        {cert.status}
-                      </div>
+                      <button onClick={() => deactivate(cert.id)}
+                        style={{ marginLeft: 'auto', background: 'transparent', color: '#DC2626', border: '1.5px solid #FECACA', borderRadius: 20, padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
+                        Cancel
+                      </button>
                     </div>
-                    <button onClick={() => deactivate(cert.id)}
-                      style={{ background:'transparent', color:'#DC2626', border:'1px solid #FECACA', borderRadius:8, padding:'6px 12px', fontSize:12, cursor:'pointer', flexShrink:0 }}>
-                      Cancel
-                    </button>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {active.length === 0 && !showForm && (
-            <div style={{ background:C.white, borderRadius:14, padding:'40px 24px', textAlign:'center', border:`1.5px dashed ${C.light}` }}>
-              <div style={{ fontSize:40, marginBottom:12 }}>💝</div>
-              <div style={{ fontSize:16, fontWeight:700, color:C.dark, marginBottom:6 }}>Give the gift of feeling good</div>
-              <div style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>Create a gift certificate your clients can share with someone they love.</div>
-              <button onClick={() => setShowForm(true)}
-                style={{ background:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-                Issue First Certificate
-              </button>
+          {/* Empty state */}
+          {active.length === 0 && !showForm && !loading && (
+            <div style={{
+              position: 'relative',
+              background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF9F3 100%)',
+              borderRadius: 18,
+              padding: '48px 28px',
+              textAlign: 'center',
+              border: `1.5px dashed ${C.blush}`,
+              overflow: 'hidden',
+            }}>
+              <BotanicalFlourish style={{ position: 'absolute', top: -25, right: 10, transform: 'rotate(20deg)' }} opacity={0.3} />
+              <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: 10, transform: 'rotate(-150deg)' }} opacity={0.25} />
+
+              <div style={{ position: 'relative', zIndex: 2 }}>
+                <div style={{ fontSize: 44, marginBottom: 10 }}>💝</div>
+                <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.dark, margin: '0 0 8px', fontStyle: 'italic' }}>
+                  Your first gift awaits
+                </h3>
+                <p style={{ fontSize: 14, color: C.gray, marginBottom: 22, lineHeight: 1.6, maxWidth: 360, margin: '0 auto 22px' }}>
+                  Someone on your list is having a hard week. A birthday. An anniversary. A "just because." Gift cards travel where flowers can't.
+                </p>
+                <button onClick={() => setShowForm(true)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'linear-gradient(135deg, #E85C79, #D14560)',
+                    color: '#fff', border: 'none',
+                    borderRadius: 24,
+                    padding: '12px 24px',
+                    fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                    boxShadow: '0 4px 14px rgba(232,92,121,0.3)',
+                    fontFamily: 'Georgia, serif',
+                  }}>
+                  ♡ Create your first gift
+                </button>
+              </div>
             </div>
           )}
 
+          {/* Past / redeemed — smaller, humble */}
           {past.length > 0 && (
-            <div>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Past</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            <div style={{ marginTop: 32 }}>
+              <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: C.gray, fontStyle: 'italic', marginBottom: 12 }}>
+                Already opened ({past.length})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {past.map(cert => (
-                  <div key={cert.id} style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 16px', border:`1px solid ${C.light}`, display:'flex', alignItems:'center', gap:12, opacity:0.7 }}>
-                    <code style={{ fontSize:14, fontWeight:700, color:C.gray, letterSpacing:'0.05em', flex:1 }}>{cert.code}</code>
-                    <div style={{ fontSize:13, color:C.gray }}>${cert.amount?.toFixed(0)}</div>
-                    <div style={{ background:statusBg(cert.status), color:statusColor(cert.status), borderRadius:20, padding:'2px 10px', fontSize:11, fontWeight:700 }}>
+                  <div key={cert.id} style={{ background: '#FAFAF7', borderRadius: 12, padding: '12px 16px', border: `1px solid ${C.light}`, display: 'flex', alignItems: 'center', gap: 12, opacity: 0.75 }}>
+                    <span style={{ fontSize: 14 }}>{cert.status === 'redeemed' ? '✨' : '🗂'}</span>
+                    <code style={{ fontSize: 13, fontWeight: 700, color: C.gray, letterSpacing: '0.06em', flex: 1, fontFamily: 'ui-monospace, Menlo, monospace' }}>{cert.code}</code>
+                    {cert.recipient_name && <span style={{ fontSize: 12, color: C.gray, fontStyle: 'italic' }}>for {cert.recipient_name}</span>}
+                    <div style={{ fontSize: 13, color: C.gray, fontWeight: 600 }}>${cert.amount?.toFixed(0)}</div>
+                    <div style={{ background: cert.status === 'redeemed' ? '#F3F4F6' : '#FEF2F2', color: cert.status === 'redeemed' ? C.gray : '#DC2626', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
                       {cert.status}
                     </div>
                   </div>

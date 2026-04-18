@@ -472,11 +472,11 @@ export default function BillingDashboard({ therapist }) {
   }, [stripeConnected, realTransactions, sessionRate]);
 
   const TABS = [
-    { id:'daily',    label:'📋 Daily' },
-    { id:'weekly',   label:'📅 Weekly' },
-    { id:'monthly',  label:'🗓 Monthly' },
-    { id:'yearly',   label:'📆 Yearly' },
-    { id:'insights', label:'📊 Insights' },
+    { id:'daily',    label:'Daily' },
+    { id:'weekly',   label:'Weekly' },
+    { id:'monthly',  label:'Monthly' },
+    { id:'yearly',   label:'Yearly' },
+    { id:'insights', label:'Insights' },
   ];
 
   if (isLoading) {
@@ -489,7 +489,7 @@ export default function BillingDashboard({ therapist }) {
 
 
   return (
-    <div style={{ width:'100%', paddingBottom: window.innerWidth < 768 ? 100 : 0 }}>
+    <div style={{ width:'100%', paddingBottom: window.innerWidth < 768 ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0 }}>
       <div style={{ marginBottom:20 }}>
         <h2 style={{ fontFamily:'Georgia, serif', fontSize:26, fontWeight:700, color:'#1F2937', margin:'0 0 4px 0' }}>Billing</h2>
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
@@ -519,10 +519,10 @@ export default function BillingDashboard({ therapist }) {
         </div>
       )}
 
-      <div style={{ display:'flex', gap:2, background:'#F3F4F6', borderRadius:12, padding:4, marginBottom:20, overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch' }}>
+      <div className="bm-tabbar" style={{ display:'flex', gap:2, background:'#F3F4F6', borderRadius:12, padding:4, marginBottom:20, width:'fit-content', maxWidth:'100%', overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch', flexWrap:'nowrap' }}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setSubView(t.id)}
-            style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 14px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0 }}>
+            style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0 }}>
             {t.label}
           </button>
         ))}

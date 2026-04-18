@@ -268,7 +268,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   };
 
   return (
-    <div style={{ paddingBottom: window.innerWidth < 768 ? 100 : 0 }}>
+    <div style={{ paddingBottom: window.innerWidth < 768 ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0 }}>
       {/* Date navigation header with prev/next arrows */}
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12,gap:8}}>
         <button onClick={()=>setDayOffset(d=>d-1)}
@@ -843,7 +843,7 @@ export default function ScheduleDashboard({ therapist }) {
 
   const isMobileW = window.innerWidth < 768;
   return (
-    <div style={{width:'100%', paddingBottom: isMobileW ? 120 : 0}}>
+    <div style={{width:'100%', paddingBottom: isMobileW ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0}}>
       {showCreate && (
         <BookingModal therapist={therapist} mode="create" onClose={() => setShowCreate(false)} onSuccess={fetchBookings} />
       )}
@@ -855,30 +855,36 @@ export default function ScheduleDashboard({ therapist }) {
           <h2 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
           <p style={{fontSize:12,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
         </div>
-        {/* Action row — consistent pill buttons */}
+        {/* Action row — unified pill buttons, consistent heights */}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          {/* Primary: Book Appointment */}
           <button onClick={() => setShowCreate(true)}
-            style={{display:'flex',alignItems:'center',gap:6,background:'#2A5741',color:'#fff',border:'none',borderRadius:20,padding:'9px 16px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
-            <span style={{fontSize:16,lineHeight:1}}>+</span> Book Appointment
+            style={{display:'inline-flex',alignItems:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+            <span style={{fontSize:16,lineHeight:1,marginTop:-1}}>+</span>
+            <span>Book Appointment</span>
           </button>
 
+          {/* Secondary: status pill (non-interactive visual, tap refreshes) */}
           {realBookings?.length > 0
-            ? <div style={{display:'flex',alignItems:'center',gap:6,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:20,padding:'8px 14px',fontSize:12,color:'#16A34A',fontWeight:600,whiteSpace:'nowrap'}}>
-                <span>✅ Bookings live</span>
-                <button onClick={fetchBookings} title="Refresh" style={{background:'transparent',border:'none',color:'#16A34A',cursor:'pointer',fontSize:14,padding:'0 0 0 2px',lineHeight:1}}>↻</button>
-              </div>
-            : <div style={{display:'flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:20,padding:'8px 14px',fontSize:12,color:'#9A3412',whiteSpace:'nowrap'}}>
-                👁️ Preview mode
+            ? <button onClick={fetchBookings} title="Refresh bookings"
+                style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#16A34A',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+                <span style={{width:6,height:6,borderRadius:'50%',background:'#16A34A',boxShadow:'0 0 0 3px rgba(22,163,74,0.2)'}}/>
+                <span>Live</span>
+                <span style={{fontSize:12,opacity:0.7,marginLeft:2}}>↻</span>
+              </button>
+            : <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1}}>
+                <span>👁️</span> Preview
               </div>
           }
 
+          {/* Secondary: Time off toggle */}
           <button onClick={()=>setShowBlockPanel(v=>!v)}
-            style={{display:'flex',alignItems:'center',gap:6,background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:20,padding:'8px 14px',fontSize:12,fontWeight:600,color:'#6B7280',cursor:'pointer',whiteSpace:'nowrap'}}>
-            🚫 Time off
+            style={{display:'inline-flex',alignItems:'center',gap:6,background:showBlockPanel?'#F3F4F6':'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,fontWeight:700,color:'#4B5563',cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+            <span>🌿</span>
+            <span>Time off</span>
             {blockedDays.length > 0 && (
-              <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'1px 6px',fontSize:11,fontWeight:700}}>{blockedDays.length}</span>
+              <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'2px 7px',fontSize:11,fontWeight:700,lineHeight:1}}>{blockedDays.length}</span>
             )}
-            <span style={{fontSize:10,opacity:0.6}}>{showBlockPanel ? '▲' : '▼'}</span>
           </button>
         </div>
       </div>
@@ -952,10 +958,10 @@ export default function ScheduleDashboard({ therapist }) {
       )}
 
       {/* Tab bar */}
-      <div style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content'}}>
+      <div className="bm-tabbar" style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content',maxWidth:'100%',overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',flexWrap:'nowrap'}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setSubView(t.id)}
-            style={{background:subView===t.id?'#fff':'transparent',color:subView===t.id?'#1F2937':'#6B7280',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:subView===t.id?'0 1px 4px rgba(0,0,0,0.1)':'none',transition:'all 0.15s'}}>
+            style={{background:subView===t.id?'#fff':'transparent',color:subView===t.id?'#1F2937':'#6B7280',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:subView===t.id?'0 1px 4px rgba(0,0,0,0.1)':'none',transition:'all 0.15s',whiteSpace:'nowrap',flexShrink:0}}>
             {t.label}
           </button>
         ))}

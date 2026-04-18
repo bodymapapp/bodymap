@@ -94,6 +94,8 @@ export default function AIDashboard({ therapist }) {
   const [contextLoading, setContextLoading] = useState(true);
   const [practiceContext, setPracticeContext] = useState('');
   const [error, setError] = useState(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -105,6 +107,24 @@ export default function AIDashboard({ therapist }) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
+
+  // Track keyboard open/close via visualViewport API (iOS Safari / Android Chrome)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.visualViewport) return;
+    const vv = window.visualViewport;
+    const handler = () => {
+      setViewportHeight(vv.height);
+      // Keyboard considered open when viewport shrinks by more than 150px from window height
+      setKeyboardOpen(window.innerHeight - vv.height > 150);
+    };
+    vv.addEventListener('resize', handler);
+    vv.addEventListener('scroll', handler);
+    handler();
+    return () => {
+      vv.removeEventListener('resize', handler);
+      vv.removeEventListener('scroll', handler);
+    };
+  }, []);
 
   const buildContext = async () => {
     try {
@@ -250,22 +270,41 @@ ${clientSummaries.join('\n')}
     );
   }
 
-  const showSuggested = messages.length <= 1;
+  const showSuggested = messages.length <= 1 && !keyboardOpen;
 
   const isMobile = window.innerWidth < 768;
+  // Use actual visual viewport height on mobile so keyboard doesn't eat the scroll area
+  const containerHeight = isMobile
+    ? (keyboardOpen ? `${viewportHeight - 90}px` : 'calc(100svh - 180px)')
+    : '70vh';
 
   return (
-    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: isMobile ? 'calc(100svh - 180px)' : '70vh', minHeight: isMobile ? 0 : 500 }}>
-      {/* Header */}
-      <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-        <div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
-          <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
+    <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: containerHeight, minHeight: isMobile ? 0 : 500, transition: 'height 0.2s ease' }}>
+      {/* Header — collapsed when keyboard open to give chat space */}
+      {!keyboardOpen && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+          <div>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
+            <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
+          </div>
+          <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
+            🔄 New Chat
+          </button>
         </div>
-        <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
-          🔄 New Chat
-        </button>
-      </div>
+      )}
+
+      {/* Compact header when keyboard is open */}
+      {keyboardOpen && isMobile && (
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '4px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#2A5741', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🌿</div>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>MyBodyMap AI</span>
+          </div>
+          <button onClick={() => inputRef.current?.blur()} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
+            Done
+          </button>
+        </div>
+      )}
 
       {/* Messages — scrollable middle */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0', marginBottom: 8, minHeight: 0 }}>

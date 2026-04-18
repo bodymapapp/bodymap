@@ -11,9 +11,9 @@ const TABS = [
 ];
 
 const MORE_ITEMS = [
-  { id: 'settings', label: 'Settings',    sub: 'Hours, services, integrations', emoji: '⚙️', color: '#F3F4F6' },
-  { id: 'ai',       label: 'AI Briefs',   sub: 'Ask anything about your practice', emoji: '🧠', color: '#F0FDF4' },
-  { id: 'gifts',    label: 'Gift Cards',  sub: 'Send joy to your clients',         emoji: '🎁', color: '#FFF7ED' },
+  { id: 'settings', label: 'Settings',    sub: 'Hours, services, integrations',     emoji: '⚙️', gradient: 'linear-gradient(135deg,#EEF2FF,#E0E7FF)', border: '#C7D2FE' },
+  { id: 'ai',       label: 'MyBodyMap AI', sub: 'Ask anything about your practice', emoji: '🌿', gradient: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '#86EFAC' },
+  { id: 'gifts',    label: 'Gift Cards',  sub: 'Send joy to your clients',          emoji: '💝', gradient: 'linear-gradient(135deg,#FFF1F5,#FCE7F3)', border: '#FBCFE8' },
 ];
 
 export default function MobileBottomNav({ active, onChange, unreadCount, onSignOut, therapist }) {
@@ -27,115 +27,151 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
+  // Lock body scroll when drawer open
+  useEffect(() => {
+    if (showMore) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [showMore]);
+
   const handleTab = (id) => {
     if (id === 'more') { setShowMore(v => !v); return; }
     setShowMore(false);
     onChange(id);
   };
 
-  const navHeight = 66;
+  const navHeight = 74;
 
   return (
     <>
       {/* Overlay */}
       {showMore && (
         <div onClick={() => setShowMore(false)}
-          style={{ position:'fixed', inset:0, zIndex:998, background:'rgba(0,0,0,0.3)', backdropFilter:'blur(2px)' }} />
+          style={{ position:'fixed', inset:0, zIndex:998, background:'rgba(26,26,46,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', animation:'bmFadeIn 0.25s ease' }} />
       )}
 
-      {/* Modern More Sheet */}
+      {/* Premium More Sheet */}
       <div style={{
         position: 'fixed',
-        bottom: navHeight,
+        bottom: showMore ? navHeight : -600,
         left: 0, right: 0,
         zIndex: 999,
-        background: '#FAFAF8',
-        borderRadius: showMore ? '20px 20px 0 0' : '0',
-        borderTop: showMore ? '1px solid #E8E4DC' : 'none',
-        boxShadow: showMore ? '0 -12px 40px rgba(0,0,0,0.15)' : 'none',
-        maxHeight: showMore ? '70vh' : 0,
+        background: 'linear-gradient(180deg, #FFFFFF 0%, #FAFAF7 100%)',
+        borderRadius: '24px 24px 0 0',
+        borderTop: '1px solid #E8E4DC',
+        boxShadow: '0 -16px 48px rgba(42,87,65,0.12), 0 -2px 8px rgba(0,0,0,0.04)',
+        maxHeight: '78vh',
         overflow: 'hidden',
-        transition: 'max-height 0.3s cubic-bezier(0.4,0,0.2,1), border-radius 0.3s ease',
+        transition: 'bottom 0.35s cubic-bezier(0.32, 0.72, 0, 1)',
       }}>
-        <div style={{ padding: '16px 16px 8px', overflowY: 'auto', maxHeight: '70vh' }}>
+        <div style={{ padding: '12px 18px 20px', overflowY: 'auto', maxHeight: '78vh' }}>
           {/* Handle bar */}
-          <div style={{ width: 36, height: 4, background: '#D1D5DB', borderRadius: 2, margin: '0 auto 20px' }} />
+          <div style={{ width: 44, height: 5, background: '#E5E1D8', borderRadius: 3, margin: '0 auto 18px' }} />
+
+          {/* Therapist header card */}
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 12,
+            padding: '12px 14px', marginBottom: 16,
+            background: 'linear-gradient(135deg, #F0FDF4, #ECFDF5)',
+            borderRadius: 14,
+            border: '1px solid #BBF7D0',
+          }}>
+            <div style={{
+              width: 42, height: 42, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #2A5741, #4B8A6A)',
+              color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, fontWeight: 700, fontFamily: 'Georgia,serif',
+              flexShrink: 0,
+              boxShadow: '0 2px 8px rgba(42,87,65,0.25)',
+            }}>
+              {(therapist?.full_name || 'B')[0]?.toUpperCase()}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {therapist?.business_name || therapist?.full_name || 'Your Practice'}
+              </div>
+              <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span>🌿</span> Silver · Founding Therapist
+              </div>
+            </div>
+          </div>
 
           {/* Menu cards */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
-            {MORE_ITEMS.map(item => (
-              <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 14,
-                  width: '100%', padding: '14px 16px',
-                  background: active === item.id ? '#F0FDF4' : '#fff',
-                  border: active === item.id ? '1.5px solid #86EFAC' : '1.5px solid #F3F4F6',
-                  borderRadius: 14, cursor: 'pointer', textAlign: 'left',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.04)',
-                  transition: 'all 0.15s',
-                }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12,
-                  background: item.color, display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontSize: 22, flexShrink: 0,
-                }}>
-                  {item.emoji}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: active === item.id ? C.forest : '#1F2937', marginBottom: 1 }}>
-                    {item.label}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
+            {MORE_ITEMS.map(item => {
+              const isActive = active === item.id;
+              return (
+                <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    width: '100%', padding: '14px 16px',
+                    background: isActive ? item.gradient : '#fff',
+                    border: `1.5px solid ${isActive ? item.border : '#F3F4F6'}`,
+                    borderRadius: 16, cursor: 'pointer', textAlign: 'left',
+                    boxShadow: isActive ? '0 3px 12px rgba(0,0,0,0.06)' : '0 1px 3px rgba(0,0,0,0.03)',
+                    transition: 'transform 0.12s ease, box-shadow 0.12s ease',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                  onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.98)'; }}
+                  onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
+                  <div style={{
+                    width: 48, height: 48, borderRadius: 14,
+                    background: item.gradient,
+                    border: `1px solid ${item.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 24, flexShrink: 0,
+                  }}>
+                    {item.emoji}
                   </div>
-                  <div style={{ fontSize: 12, color: C.gray }}>{item.sub}</div>
-                </div>
-                {active === item.id
-                  ? <span style={{ color: C.forest, fontSize: 16, fontWeight: 700 }}>✓</span>
-                  : <span style={{ color: '#D1D5DB', fontSize: 16 }}>›</span>
-                }
-              </button>
-            ))}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#1F2937', marginBottom: 2, fontFamily: 'Georgia, serif', letterSpacing: '-0.01em' }}>
+                      {item.label}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.3 }}>{item.sub}</div>
+                  </div>
+                  <span style={{ color: isActive ? C.forest : '#D1D5DB', fontSize: 20, fontWeight: 300, flexShrink: 0 }}>
+                    {isActive ? '●' : '›'}
+                  </span>
+                </button>
+              );
+            })}
           </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: '#E8E4DC', margin: '8px 0 12px' }} />
-
-          {/* Sign out */}
+          {/* Sign out — clean row, not loud */}
           <button onClick={() => { onSignOut?.(); setShowMore(false); }}
             style={{
-              display: 'flex', alignItems: 'center', gap: 12,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               width: '100%', padding: '14px 16px',
-              background: '#FFF1F2', border: '1.5px solid #FFE4E6',
-              borderRadius: 14, cursor: 'pointer', textAlign: 'left',
-              marginBottom: 8,
+              background: '#fff',
+              border: '1.5px solid #F3F4F6',
+              borderRadius: 14, cursor: 'pointer',
+              marginBottom: 12,
+              WebkitTapHighlightColor: 'transparent',
             }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FFE4E6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
-              🚪
-            </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#DC2626' }}>Sign Out</div>
-              <div style={{ fontSize: 12, color: '#F87171' }}>See you soon</div>
-            </div>
+            <span style={{ fontSize: 15 }}>👋</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#6B7280' }}>Sign out</span>
           </button>
 
-          {/* Therapist tag at bottom */}
-          <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-            <span style={{ fontSize: 11, color: C.gray }}>
-              {therapist?.business_name || 'BodyMap'} · 🌿 Silver · Free
-            </span>
-          </div>
+          {/* Safe area spacer — ensures Sign Out never gets cut off on iPhone */}
+          <div style={{ height: 'max(env(safe-area-inset-bottom, 0px), 8px)' }} />
         </div>
       </div>
 
-      {/* Bottom nav bar */}
+      {/* Modern bottom nav bar */}
       <div style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         zIndex: 1000,
-        background: '#fff',
-        borderTop: '1px solid #E8E4DC',
-        boxShadow: '0 -2px 12px rgba(0,0,0,0.06)',
+        background: 'rgba(255,255,255,0.96)',
+        backdropFilter: 'saturate(180%) blur(20px)',
+        WebkitBackdropFilter: 'saturate(180%) blur(20px)',
+        borderTop: '0.5px solid rgba(0,0,0,0.08)',
+        boxShadow: '0 -4px 20px rgba(42,87,65,0.06)',
         display: 'flex',
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        height: navHeight,
+        height: `calc(${navHeight}px + env(safe-area-inset-bottom, 0px))`,
       }}>
         {TABS.map(tab => {
           const isActive = activeTab === tab.id || (tab.id === 'more' && showMore);
@@ -145,37 +181,53 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
               style={{
                 flex: 1, display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                padding: '8px 2px 6px',
+                padding: '10px 2px 8px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                position: 'relative', gap: 3, minWidth: 0,
-                transition: 'opacity 0.1s',
+                position: 'relative', gap: 4, minWidth: 0,
+                WebkitTapHighlightColor: 'transparent',
               }}>
               <div style={{
-                width: 36, height: 36, borderRadius: 10,
-                background: isActive ? '#F0FDF4' : 'transparent',
+                width: 44, height: 32, borderRadius: 16,
+                background: isActive
+                  ? 'linear-gradient(135deg, #DCFCE7, #BBF7D0)'
+                  : 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.15s',
+                transition: 'background 0.2s ease, transform 0.2s ease',
+                transform: isActive ? 'translateY(-1px)' : 'none',
                 position: 'relative',
+                boxShadow: isActive ? '0 2px 6px rgba(42,87,65,0.15)' : 'none',
               }}>
-                <Icon color={isActive ? C.forest : C.gray} size={20} />
+                <Icon color={isActive ? C.forest : '#9CA3AF'} size={22} />
                 {tab.id === 'outreach' && unreadCount > 0 && (
                   <div style={{
-                    position: 'absolute', top: 2, right: 2,
-                    width: 8, height: 8,
-                    background: '#DC2626', borderRadius: '50%',
-                    border: '1.5px solid #fff',
-                  }} />
+                    position: 'absolute', top: -2, right: 6,
+                    minWidth: 18, height: 18,
+                    padding: '0 5px',
+                    background: '#EF4444', borderRadius: 20,
+                    border: '2px solid #fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 10, fontWeight: 700, color: '#fff',
+                    lineHeight: 1,
+                  }}>
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </div>
                 )}
               </div>
               <span style={{
-                fontSize: 10, fontWeight: isActive ? 700 : 400,
-                color: isActive ? C.forest : C.gray,
-                fontFamily: 'system-ui',
+                fontSize: 11, fontWeight: isActive ? 700 : 500,
+                color: isActive ? C.forest : '#6B7280',
+                fontFamily: '-apple-system, system-ui',
+                letterSpacing: '-0.01em',
+                transition: 'color 0.15s ease, font-weight 0.15s ease',
               }}>{tab.label}</span>
             </button>
           );
         })}
       </div>
+
+      <style>{`
+        @keyframes bmFadeIn { from { opacity: 0; } to { opacity: 1; } }
+      `}</style>
     </>
   );
 }
@@ -213,8 +265,8 @@ function OutreachIcon({ color, size }) {
 }
 function MoreIcon({ color, size }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <circle cx="5" cy="12" r="1.5" fill={color}/>
-    <circle cx="12" cy="12" r="1.5" fill={color}/>
-    <circle cx="19" cy="12" r="1.5" fill={color}/>
+    <circle cx="5" cy="12" r="1.8" fill={color}/>
+    <circle cx="12" cy="12" r="1.8" fill={color}/>
+    <circle cx="19" cy="12" r="1.8" fill={color}/>
   </svg>;
 }
