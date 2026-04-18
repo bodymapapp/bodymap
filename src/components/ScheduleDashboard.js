@@ -786,44 +786,43 @@ export default function ScheduleDashboard({ therapist }) {
       {rescheduleAppt && (
         <BookingModal therapist={therapist} mode="reschedule" existingBooking={rescheduleAppt} onClose={() => setRescheduleAppt(null)} onSuccess={fetchBookings} />
       )}
-      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20,flexWrap:'wrap',gap:10}}>
-        <div>
-          <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
-          <p style={{fontSize:13,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
+      <div style={{marginBottom:16}}>
+        <div style={{marginBottom:8}}>
+          <h2 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
+          <p style={{fontSize:12,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
         </div>
-        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        {/* Action row — consistent pill buttons */}
+        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
           <button onClick={() => setShowCreate(true)}
-            style={{background:'#2A5741',color:'#fff',border:'none',borderRadius:10,padding:'9px 18px',fontSize:13,fontWeight:700,cursor:'pointer'}}>
-            + Book Appointment
+            style={{display:'flex',alignItems:'center',gap:6,background:'#2A5741',color:'#fff',border:'none',borderRadius:20,padding:'9px 16px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>
+            <span style={{fontSize:16,lineHeight:1}}>+</span> Book Appointment
           </button>
-          {realBookings?.length>0
-            ?<div style={{display:'flex',alignItems:'center',gap:8,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#16A34A',fontWeight:600}}>
-              ✅ Live bookings active
-              <button onClick={fetchBookings} style={{background:'transparent',border:'1px solid #16A34A',borderRadius:6,padding:'2px 8px',fontSize:11,color:'#16A34A',cursor:'pointer',marginLeft:4}}>↻</button>
-            </div>
-            :<div style={{background:'#FFF7ED',border:'1.5px dashed #F97316',borderRadius:10,padding:'8px 14px',fontSize:12,color:'#9A3412',display:'flex',alignItems:'center',gap:6}}>
-              👁️ <span><strong>Preview mode</strong> — share your booking link to get real sessions</span>
-            </div>
+
+          {realBookings?.length > 0
+            ? <div style={{display:'flex',alignItems:'center',gap:6,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:20,padding:'8px 14px',fontSize:12,color:'#16A34A',fontWeight:600,whiteSpace:'nowrap'}}>
+                <span>✅ Bookings live</span>
+                <button onClick={fetchBookings} title="Refresh" style={{background:'transparent',border:'none',color:'#16A34A',cursor:'pointer',fontSize:14,padding:'0 0 0 2px',lineHeight:1}}>↻</button>
+              </div>
+            : <div style={{display:'flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:20,padding:'8px 14px',fontSize:12,color:'#9A3412',whiteSpace:'nowrap'}}>
+                👁️ Preview mode
+              </div>
           }
+
+          <button onClick={()=>setShowBlockPanel(v=>!v)}
+            style={{display:'flex',alignItems:'center',gap:6,background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:20,padding:'8px 14px',fontSize:12,fontWeight:600,color:'#6B7280',cursor:'pointer',whiteSpace:'nowrap'}}>
+            🚫 Time off
+            {blockedDays.length > 0 && (
+              <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'1px 6px',fontSize:11,fontWeight:700}}>{blockedDays.length}</span>
+            )}
+            <span style={{fontSize:10,opacity:0.6}}>{showBlockPanel ? '▲' : '▼'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Block Days Off panel */}
-      <div style={{marginBottom:16}}>
-        <button onClick={()=>setShowBlockPanel(v=>!v)}
-          style={{display:'flex',alignItems:'center',gap:8,background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:10,padding:'8px 14px',fontSize:12,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
-          🚫 Block Days Off
-          {blockedDays.length > 0 && (
-            <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'1px 8px',fontSize:11,fontWeight:700}}>
-              {blockedDays.length} blocked
-            </span>
-          )}
-          <span style={{fontSize:10}}>{showBlockPanel ? '▲' : '▼'}</span>
-        </button>
-
-        {showBlockPanel && (
-          <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginTop:8}}>
-            <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
+      {/* Block panel — expands below action row */}
+      {showBlockPanel && (
+        <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginBottom:12}}>
+          <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
               <input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}
                 min={new Date().toISOString().slice(0,10)}
                 style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'1',minWidth:140}} />
@@ -856,7 +855,6 @@ export default function ScheduleDashboard({ therapist }) {
             }
           </div>
         )}
-      </div>
 
       {/* Stats — compact on mobile */}
       {window.innerWidth < 768 ? (

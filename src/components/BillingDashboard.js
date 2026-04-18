@@ -519,9 +519,10 @@ export default function BillingDashboard({ therapist }) {
         </div>
       )}
 
-      <div style={{ display:'flex', gap:4, background:'#F3F4F6', borderRadius:10, padding:4, marginBottom:24, width:'fit-content', flexWrap:'wrap' }}>
+      <div style={{ display:'flex', gap:2, background:'#F3F4F6', borderRadius:12, padding:4, marginBottom:20, overflowX:'auto', scrollbarWidth:'none', WebkitOverflowScrolling:'touch' }}>
         {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setSubView(t.id)} style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s' }}>
+          <button key={t.id} onClick={()=>setSubView(t.id)}
+            style={{ background:subView===t.id?'#FFFFFF':'transparent', color:subView===t.id?'#1F2937':'#6B7280', border:'none', borderRadius:8, padding:'8px 14px', fontSize:13, fontWeight:600, cursor:'pointer', boxShadow:subView===t.id?'0 1px 3px rgba(0,0,0,0.1)':'none', transition:'all 0.15s', whiteSpace:'nowrap', flexShrink:0 }}>
             {t.label}
           </button>
         ))}

@@ -90,28 +90,47 @@ export default function GiftCertificates({ therapist }) {
 
   return (
     <div>
-      {/* Header */}
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-        <div>
-          <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:0 }}>Gift Certificates</h2>
-          <p style={{ fontSize:13, color:C.gray, margin:'4px 0 0' }}>Issue and track gift certificates for your practice</p>
-        </div>
+      {/* Hero header — warm and celebratory */}
+      <div style={{
+        background: 'linear-gradient(135deg, #FFF1F5 0%, #FFF7ED 50%, #F0FDF4 100%)',
+        borderRadius: 20, padding: '24px 20px', marginBottom: 20,
+        border: '1.5px solid #FCE7F3', position: 'relative', overflow: 'hidden',
+      }}>
+        {/* Decorative circles */}
+        <div style={{ position:'absolute', top:-20, right:-20, width:100, height:100, borderRadius:'50%', background:'rgba(251,207,232,0.3)' }} />
+        <div style={{ position:'absolute', bottom:-10, left:10, width:60, height:60, borderRadius:'50%', background:'rgba(167,243,208,0.3)' }} />
+
+        <div style={{ fontSize:36, marginBottom:8 }}>🎁</div>
+        <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:'#1F2937', margin:'0 0 6px' }}>
+          Send a little love
+        </h2>
+        <p style={{ fontSize:13, color:'#6B7280', margin:'0 0 16px', lineHeight:1.6 }}>
+          Gift certificates for the people in your clients' lives who deserve care. Perfect for birthdays, Mother's Day, anniversaries — or just because.
+        </p>
         <button onClick={() => setShowForm(!showForm)}
-          style={{ background:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 18px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
-          + New Gift Certificate
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'linear-gradient(135deg, #2A5741, #4B8A6A)',
+            color: '#fff', border: 'none', borderRadius: 20,
+            padding: '11px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(42,87,65,0.3)',
+          }}>
+          <span style={{ fontSize: 16 }}>✨</span>
+          Create a gift certificate
         </button>
       </div>
 
       {saved && (
-        <div style={{ background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#16A34A', fontWeight:600 }}>
-          ✅ Gift certificate created successfully!
+        <div style={{ background:'linear-gradient(135deg,#F0FDF4,#ECFDF5)', border:'1px solid #86EFAC', borderRadius:12, padding:'14px 18px', marginBottom:16, fontSize:13, color:'#16A34A', fontWeight:600, display:'flex', alignItems:'center', gap:8 }}>
+          🎉 Gift certificate created! Your client is going to love this.
         </div>
       )}
 
       {/* Create Form */}
       {showForm && (
-        <div style={{ background:C.white, borderRadius:14, padding:24, border:`1.5px solid ${C.light}`, marginBottom:20, boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
-          <h3 style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:700, color:C.dark, margin:'0 0 16px' }}>New Gift Certificate</h3>
+        <div style={{ background:'linear-gradient(135deg,#FFF1F5,#FFF7ED)', borderRadius:14, padding:24, border:`1.5px solid #FCE7F3`, marginBottom:20, boxShadow:'0 2px 12px rgba(0,0,0,0.04)' }}>
+          <h3 style={{ fontFamily:'Georgia,serif', fontSize:18, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ New Gift Certificate</h3>
+          <p style={{ fontSize:13, color:C.gray, margin:'0 0 20px' }}>Someone on your list is going to feel very cared for.</p>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14, marginBottom:14 }} className="bm-2col">
             <div>
               <label style={{ fontSize:12, fontWeight:700, color:C.gray, display:'block', marginBottom:6 }}>Amount ($) *</label>
@@ -202,10 +221,10 @@ export default function GiftCertificates({ therapist }) {
         <>
           {active.length > 0 && (
             <div style={{ marginBottom:24 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>Active ({active.length})</div>
+              <div style={{ fontSize:12, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:10 }}>💌 Active ({active.length})</div>
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {active.map(cert => (
-                  <div key={cert.id} style={{ background:C.white, borderRadius:12, padding:'16px 20px', border:`1.5px solid ${C.light}`, display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                  <div key={cert.id} style={{ background:'linear-gradient(135deg,#FFF1F5,#FFF7ED)', borderRadius:16, padding:'18px 20px', border:'1.5px solid #FCE7F3', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap', boxShadow:'0 2px 10px rgba(251,207,232,0.2)' }}>
                     <div style={{ flex:1, minWidth:200 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                         <code style={{ fontSize:15, fontWeight:800, color:C.forest, letterSpacing:'0.05em' }}>{cert.code}</code>
@@ -215,7 +234,7 @@ export default function GiftCertificates({ therapist }) {
                         </button>
                       </div>
                       <div style={{ fontSize:13, color:C.gray }}>
-                        {cert.recipient_name && <span style={{ marginRight:12 }}>To: <strong>{cert.recipient_name}</strong></span>}
+                        {cert.recipient_name && <span style={{ marginRight:12 }}>🌸 To <strong>{cert.recipient_name}</strong></span>}
                         {cert.purchaser_name && <span>From: <strong>{cert.purchaser_name}</strong></span>}
                       </div>
                       {cert.message && <div style={{ fontSize:12, color:C.gray, marginTop:4, fontStyle:'italic' }}>"{cert.message}"</div>}
@@ -241,9 +260,9 @@ export default function GiftCertificates({ therapist }) {
 
           {active.length === 0 && !showForm && (
             <div style={{ background:C.white, borderRadius:14, padding:'40px 24px', textAlign:'center', border:`1.5px dashed ${C.light}` }}>
-              <div style={{ fontSize:36, marginBottom:12 }}>🎁</div>
-              <div style={{ fontSize:15, fontWeight:600, color:C.dark, marginBottom:6 }}>No active gift certificates</div>
-              <div style={{ fontSize:13, color:C.gray, marginBottom:20 }}>Issue one when a client wants to give the gift of massage.</div>
+              <div style={{ fontSize:40, marginBottom:12 }}>💝</div>
+              <div style={{ fontSize:16, fontWeight:700, color:C.dark, marginBottom:6 }}>Give the gift of feeling good</div>
+              <div style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>Create a gift certificate your clients can share with someone they love.</div>
               <button onClick={() => setShowForm(true)}
                 style={{ background:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'10px 20px', fontSize:14, fontWeight:700, cursor:'pointer' }}>
                 Issue First Certificate
