@@ -61,7 +61,7 @@ export default function Onboarding() {
       phone: phone,
       custom_url: customUrl,
       password_hash: 'managed_by_supabase_auth',
-      plan: 'free'
+      plan: 'silver'
     }, { onConflict: 'id' }).select().single();
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
