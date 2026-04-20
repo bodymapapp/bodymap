@@ -14,8 +14,25 @@ export default function Onboarding() {
     if (localStorage.getItem('justPaid') === 'true') {
       localStorage.removeItem('justPaid');
       navigate('/dashboard?upgraded=true');
+      return;
     }
-  }, [navigate]);
+    // If the signed-in user already has a therapist row, they shouldn't be on this page.
+    // Send them straight to the dashboard. This prevents the "duplicate key" error
+    // on re-login for existing accounts (like the demo).
+    let cancelled = false;
+    (async () => {
+      if (!user?.id) return;
+      const { data: existing } = await supabase
+        .from('therapists')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (!cancelled && existing) {
+        navigate('/dashboard');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [navigate, user?.id]);
   const [businessName, setBusinessName] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [phone, setPhone] = useState('');
@@ -33,7 +50,10 @@ export default function Onboarding() {
     setLoading(true);
     setError('');
     const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
-    const { data, error: dbError } = await supabase.from('therapists').insert([{
+    // Use upsert so re-submitting (or a signed-in user who somehow reaches this page)
+    // updates their existing row instead of throwing "duplicate key value violates
+    // unique constraint therapists_pkey".
+    const { data, error: dbError } = await supabase.from('therapists').upsert({
       id: user.id,
       email: user.email,
       full_name: fullName,
@@ -42,7 +62,7 @@ export default function Onboarding() {
       custom_url: customUrl,
       password_hash: 'managed_by_supabase_auth',
       plan: 'free'
-    }]).select().single();
+    }, { onConflict: 'id' }).select().single();
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
       // Update auth context
