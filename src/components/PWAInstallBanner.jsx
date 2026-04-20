@@ -38,15 +38,91 @@ function BouncyArrow({ color = '#E85C79' }) {
   );
 }
 
-// ── PWA INSTALL GUIDE (iOS Safari, not yet installed) ──────────────
+// ── PWA INSTALL GUIDE (iOS Safari or Chrome, not yet installed) ──────────────
 function InstallGuideModal({ onDismiss }) {
   const [step, setStep] = useState(0);
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isIOS = /iphone|ipad|ipod/i.test(ua);
+  // Chrome on iOS identifies as "CriOS", Edge as "EdgiOS", Firefox as "FxiOS"
+  const isIOSChrome = /CriOS|EdgiOS|FxiOS/.test(ua);
+
+  // Chrome-on-iOS step 1: Share button is in the TOP-RIGHT corner next to address bar
+  const chromeStep1 = {
+    title: "Step 1 — Tap the Share button at the top.",
+    body: "Look at the top-right corner of your screen, right next to the address bar. You'll see a small box with an arrow pointing up. Tap it.",
+    visual: (
+      <div style={{ padding: '16px 0 10px' }}>
+        {/* Mini Chrome mockup */}
+        <div style={{ background: '#F2F2F7', borderRadius: 16, padding: 12, boxShadow: '0 6px 20px rgba(0,0,0,0.1)', marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: '#fff', borderRadius: 10 }}>
+            {/* Back arrow */}
+            <span style={{ fontSize: 16, color: '#C7C7CC' }}>‹</span>
+            {/* URL pill */}
+            <div style={{ flex: 1, background: '#EFEFF4', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#1F2937', textAlign: 'center' }}>mybodymap.app</div>
+            {/* Share button — pulsing */}
+            <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '2.5px solid #007AFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,122,255,0.3)', animation: 'bmPulse 1.8s ease-in-out infinite', flexShrink: 0 }}>
+              <ShareIcon size={20} />
+            </div>
+            <div style={{ width: 24, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+              <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#8E8E93' }}/>
+              <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#8E8E93' }}/>
+              <div style={{ width: 3, height: 3, borderRadius: '50%', background: '#8E8E93' }}/>
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: 'center', fontSize: 13, color: C.gray, fontStyle: 'italic' }}>
+          Tap the pulsing blue box in the top-right corner.
+        </div>
+        <style>{`@keyframes bmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }`}</style>
+      </div>
+    ),
+    cta: "Got it — what's next?",
+  };
+
+  // Safari step 1: Share button is at the BOTTOM, OR three-dots menu
+  const safariStep1 = {
+    title: "Step 1 — Find the menu button at the bottom.",
+    body: "Look at the very bottom of your screen. Depending on your iPhone, you'll see ONE of these two buttons. Tap whichever one you see.",
+    visual: (
+      <div style={{ padding: '16px 0 10px' }}>
+        <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'stretch', marginBottom: 16 }}>
+          {/* Option A: Share button */}
+          <div style={{ flex: 1, maxWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '14px 10px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 14 }}>
+            <div style={{ width: 64, height: 64, borderRadius: 14, background: '#fff', border: '2.5px solid #007AFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,122,255,0.25)', animation: 'bmPulse 1.8s ease-in-out infinite' }}>
+              <ShareIcon size={34} />
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, textAlign: 'center' }}>The Share button</div>
+            <div style={{ fontSize: 11, color: C.gray, textAlign: 'center', lineHeight: 1.4 }}>A box with an arrow pointing up.</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.12em' }}>OR</div>
+          {/* Option B: Three dots */}
+          <div style={{ flex: 1, maxWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '14px 10px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 14 }}>
+            <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F2F2F7', border: '2.5px solid #E85C79', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(232,92,121,0.25)', animation: 'bmPulse 1.8s ease-in-out infinite' }}>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
+                <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, textAlign: 'center' }}>Three dots</div>
+            <div style={{ fontSize: 11, color: C.gray, textAlign: 'center', lineHeight: 1.4 }}>A circle with three dots inside.</div>
+          </div>
+        </div>
+        <div style={{ background: '#FEF3C7', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#92400E', lineHeight: 1.5 }}>
+          <strong>If you tap the three dots:</strong> a menu will open. Scroll until you see "Share" and tap it.
+        </div>
+        <style>{`@keyframes bmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
+      </div>
+    ),
+    cta: "Got it — what's next?",
+  };
 
   const steps = isIOS ? [
     {
-      title: "Welcome! Let's make BodyMap easy to open.",
-      body: "In 20 seconds, we'll put a BodyMap icon right on your home screen — so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
+      title: isIOSChrome ? "Welcome! Let's put BodyMap on your home screen." : "Welcome! Let's make BodyMap easy to open.",
+      body: isIOSChrome
+        ? "In 20 seconds, we'll add a BodyMap icon to your home screen — so it opens in one tap, like any other app. You can use Chrome to install it. No app store needed."
+        : "In 20 seconds, we'll put a BodyMap icon right on your home screen — so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
       visual: (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '30px 0' }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, boxShadow: '0 10px 32px rgba(42,87,65,0.35)' }}>🌿</div>
@@ -56,43 +132,7 @@ function InstallGuideModal({ onDismiss }) {
       ),
       cta: "Let's do it",
     },
-    {
-      title: "Step 1 — Find the menu button at the bottom.",
-      body: "Look at the very bottom of your screen. Depending on your iPhone, you'll see ONE of these two buttons. Tap whichever one you see.",
-      visual: (
-        <div style={{ padding: '16px 0 10px' }}>
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', alignItems: 'stretch', marginBottom: 16 }}>
-            {/* Option A: Share button */}
-            <div style={{ flex: 1, maxWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '14px 10px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 14 }}>
-              <div style={{ width: 64, height: 64, borderRadius: 14, background: '#fff', border: '2.5px solid #007AFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,122,255,0.25)', animation: 'bmPulse 1.8s ease-in-out infinite' }}>
-                <ShareIcon size={34} />
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, textAlign: 'center' }}>The Share button</div>
-              <div style={{ fontSize: 11, color: C.gray, textAlign: 'center', lineHeight: 1.4 }}>A box with an arrow pointing up.</div>
-            </div>
-            {/* OR divider */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.12em' }}>OR</div>
-            {/* Option B: Three dots */}
-            <div style={{ flex: 1, maxWidth: 160, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '14px 10px', background: '#fff', border: '1.5px solid #E5E7EB', borderRadius: 14 }}>
-              <div style={{ width: 64, height: 64, borderRadius: '50%', background: '#F2F2F7', border: '2.5px solid #E85C79', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(232,92,121,0.25)', animation: 'bmPulse 1.8s ease-in-out infinite' }}>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#1F2937' }}/>
-                </div>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: C.dark, textAlign: 'center' }}>Three dots</div>
-              <div style={{ fontSize: 11, color: C.gray, textAlign: 'center', lineHeight: 1.4 }}>A circle with three dots inside.</div>
-            </div>
-          </div>
-          <div style={{ background: '#FEF3C7', border: '1.5px solid #FDE68A', borderRadius: 12, padding: '10px 14px', fontSize: 13, color: '#92400E', lineHeight: 1.5 }}>
-            <strong>If you tap the three dots:</strong> a menu will open. Scroll until you see "Share" and tap it.
-          </div>
-          <style>{`@keyframes bmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
-        </div>
-      ),
-      cta: "Got it — what's next?",
-    },
+    isIOSChrome ? chromeStep1 : safariStep1,
     {
       title: "Step 2 — Tap \"Add to Home Screen\".",
       body: "A menu just opened. Look for a row that says \"Add to Home Screen\" with a small plus-in-a-square icon. You may need to scroll down a little to find it. Tap that row.",
