@@ -27,15 +27,10 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
     return () => window.removeEventListener('popstate', handler);
   }, []);
 
-  // Lock body scroll when drawer open
-  useEffect(() => {
-    if (showMore) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => { document.body.style.overflow = ''; };
-  }, [showMore]);
+  // NOTE: we intentionally do NOT lock body scroll. iOS Safari has a known
+  // issue where document.body.style.overflow='hidden' can get stuck after
+  // navigation or animation races, leaving the whole app un-scrollable.
+  // The overlay div (zIndex 998) already blocks taps to content behind it.
 
   const handleTab = (id) => {
     if (id === 'more') { setShowMore(v => !v); return; }
