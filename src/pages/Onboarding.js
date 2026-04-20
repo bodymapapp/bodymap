@@ -65,6 +65,18 @@ export default function Onboarding() {
     }, { onConflict: 'id' }).select().single();
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
+      // Fire welcome email (server-side edge function handles BCC to bodymapdemo@gmail.com).
+      // Non-blocking — don't make the dashboard redirect wait.
+      try {
+        const firstName = fullName?.split(' ')[0] || 'there';
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/send-welcome`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+          body: JSON.stringify({ email: user.email, firstName, customUrl }),
+        }).catch(() => {});
+      } catch (e) { /* non-blocking */ }
       // Update auth context
       const postRedirect = localStorage.getItem('postSignupRedirect');
       if (postRedirect) {

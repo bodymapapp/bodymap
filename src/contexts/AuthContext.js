@@ -45,6 +45,16 @@ export const AuthProvider = ({ children }) => {
                   plan: 'silver',
                   trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 }]);
+                // Welcome email (non-blocking) — edge function BCCs bodymapdemo@gmail.com
+                try {
+                  const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+                  const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+                  fetch(`${supabaseUrl}/functions/v1/send-welcome`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+                    body: JSON.stringify({ email: u.email, firstName: name.split(' ')[0] || 'there', customUrl: urlSlug }),
+                  }).catch(() => {});
+                } catch (e) { /* non-blocking */ }
                 window.location.href = '/dashboard?upgraded=true';
               } else {
                 const provider = session.user?.app_metadata?.provider;
