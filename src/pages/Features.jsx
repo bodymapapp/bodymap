@@ -882,14 +882,36 @@ function SectionNav() {
       transform: visible ? 'translateY(0)' : 'translateY(-100%)',
       transition: 'transform 0.25s ease',
     }}>
-      <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 16px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
-        {sections.map(s=>(
-          <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)}
-            style={{ padding:"10px 12px", fontSize:11, fontWeight:600, color:active===s.id?C.forest:C.gray, borderBottom:active===s.id?`2px solid ${C.forest}`:"2px solid transparent", textDecoration:"none", whiteSpace:"nowrap", transition:"all 0.15s", flexShrink:0, display:"flex", alignItems:"center", gap:5 }}>
-            <span style={{ fontSize:10, color:active===s.id?C.sage:"#D1D5DB", minWidth:14 }}>{s.n}</span>
-            {s.label}
-          </a>
-        ))}
+      <div style={{ maxWidth:1200, margin:"0 auto", display:"flex", overflowX:"auto", padding:"0 20px", scrollbarWidth:"none", msOverflowStyle:"none" }}>
+        <style>{`.bm-secnav-scroll::-webkit-scrollbar{display:none}`}</style>
+        <div className="bm-secnav-scroll" style={{ display:"flex", gap:2, padding:"14px 0" }}>
+          {sections.map(s=>(
+            <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)}
+              style={{
+                padding:"8px 14px",
+                fontSize:13,
+                fontWeight:600,
+                color:active===s.id?"#fff":C.gray,
+                background: active===s.id ? C.forest : 'transparent',
+                borderRadius:20,
+                textDecoration:"none",
+                whiteSpace:"nowrap",
+                transition:"all 0.18s",
+                flexShrink:0,
+                display:"flex",
+                alignItems:"center",
+                gap:7,
+              }}>
+              <span style={{
+                fontSize:10,
+                fontWeight:700,
+                color: active===s.id ? 'rgba(255,255,255,0.7)' : '#C7C7CC',
+                minWidth:12,
+              }}>{s.n}</span>
+              {s.label}
+            </a>
+          ))}
+        </div>
       </div>
     </div>
   );
