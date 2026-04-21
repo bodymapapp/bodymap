@@ -109,7 +109,25 @@
         window.addEventListener('load', async () => {
           try {
             const regs = await navigator.serviceWorker.getRegistrations();
-            // Force update check on any existing registration so new sw.js takes over
+            // Self-heal: if any registration is from the broken v1/v2 SW,
+            // unregister it entirely and wipe old caches. New SW will install
+            // fresh on the next page view. This fixes users who had the bad
+            // SW cached without them needing to do anything.
+            let hadOldCache = false;
+            try {
+              const cacheKeys = await caches.keys();
+              hadOldCache = cacheKeys.some(k => k === 'bodymap-v1' || k === 'bodymap-v2');
+              if (hadOldCache) {
+                await Promise.all(cacheKeys.map(k => caches.delete(k)));
+              }
+            } catch (e) {}
+            if (hadOldCache && regs.length) {
+              await Promise.all(regs.map(r => r.unregister().catch(() => {})));
+              // After unregister, register fresh v3 SW.
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+              return;
+            }
+            // Normal path: update existing registrations so new SW takes over.
             await Promise.all(regs.map(r => r.update().catch(() => {})));
             if (!regs.length) {
               navigator.serviceWorker.register('/sw.js').catch(() => {});
