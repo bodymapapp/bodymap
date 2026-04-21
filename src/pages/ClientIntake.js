@@ -68,7 +68,7 @@ export default function ClientIntake() {
       }
 
       // Step 3: Create session with resolved booking_id
-      await db.createSession({
+      const newSession = await db.createSession({
         therapist_id: therapist.id,
         client_id: client.id,
         booking_id: resolvedBookingId,
@@ -91,7 +91,25 @@ export default function ClientIntake() {
         completed: false
       });
 
-      // Step 3: Redirect to thank you page
+      // Step 4: Record waiver signature if therapist has waiver enabled.
+      // This is non-blocking — a signature failure should never prevent intake submission.
+      if (therapist.waiver_enabled !== false && therapist.waiver_text) {
+        try {
+          await supabase.from('waiver_signatures').insert({
+            therapist_id: therapist.id,
+            client_id: client.id,
+            session_id: newSession?.id || null,
+            typed_name: intakeData.clientName,
+            client_email: intakeData.clientEmail || null,
+            waiver_text_snapshot: therapist.waiver_text,
+            user_agent: (navigator.userAgent || '').slice(0, 300),
+            // ip_address populated server-side via edge function in a future pass;
+            // browser cannot see its own public IP without an external service.
+          });
+        } catch (e) { /* non-blocking */ }
+      }
+
+      // Step 5: Redirect to thank you page
       navigate('/thank-you', { 
         state: { 
           therapistName: therapist.business_name,
@@ -260,7 +278,10 @@ export default function ClientIntake() {
 
   return (
     <Demo 
-      therapistName={therapist.business_name}
+      therapistName={therapist.full_name || therapist.business_name}
+      businessName={therapist.business_name}
+      waiverEnabled={therapist.waiver_enabled !== false}
+      waiverText={therapist.waiver_text || ''}
       initialName={nameFromUrl}
       initialEmail={emailFromUrl}
       initialPhone={phoneFromUrl}

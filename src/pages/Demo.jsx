@@ -2515,7 +2515,12 @@ const PrefScreen = ({
   setConsent,
   onNext,
   onBack,
+  waiverEnabled = false,
+  waiverText = '',
+  therapistName = '',
+  businessName = '',
 }) => {
+  const [showWaiver, setShowWaiver] = useState(false);
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
   return (
     <div
@@ -2757,10 +2762,64 @@ const PrefScreen = ({
             style={{ width: 18, height: 18, marginTop: 2, accentColor: C.green, cursor: "pointer", flexShrink: 0 }}
           />
           <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
-            I agree to share this information with my therapist for session planning purposes.
+            {waiverEnabled ? (
+              <>
+                I confirm my information is accurate and I agree to{therapistName ? ` ${therapistName}'s` : ''} <button
+                  type="button"
+                  onClick={() => setShowWaiver(true)}
+                  style={{ background: 'transparent', border: 'none', padding: 0, color: C.green, textDecoration: 'underline', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                >
+                  treatment waiver
+                </button>.
+              </>
+            ) : (
+              'I agree to share this information with my therapist for session planning purposes.'
+            )}
           </p>
         </div>
       </Card>
+
+      {/* Waiver modal */}
+      {showWaiver && waiverEnabled && (
+        <div
+          onClick={() => setShowWaiver(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            background: 'rgba(13, 31, 23, 0.72)',
+            backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff',
+              borderRadius: 16,
+              maxWidth: 540, width: '100%',
+              maxHeight: '85vh',
+              display: 'flex', flexDirection: 'column',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+            }}
+          >
+            <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #E8E4DC' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B9E80', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Treatment Waiver</div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: '#1A3A28', fontFamily: 'Georgia, serif' }}>{businessName || therapistName || 'Your therapist'}</div>
+            </div>
+            <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1, fontSize: 14, color: '#374151', lineHeight: 1.7, fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>
+              {waiverText}
+            </div>
+            <div style={{ padding: '14px 22px', borderTop: '1px solid #E8E4DC', textAlign: 'right' }}>
+              <button
+                onClick={() => setShowWaiver(false)}
+                style={{ background: '#2A5741', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'system-ui' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
         <Btn ghost onClick={onBack}>
           ← Back
@@ -4262,7 +4321,7 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
 };
 
 // Main App
-export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit = null, getLastSession = null, initialName = "", initialEmail = "", initialPhone = "" }) {
+export default function BodyMapApp({ therapistName = "Your Therapist", businessName = "", waiverEnabled = false, waiverText = '', onSubmit = null, getLastSession = null, initialName = "", initialEmail = "", initialPhone = "" }) {
   const [screen, setScreen] = useState(initialName && initialEmail ? "front" : "welcome");
   const [mode, setMode] = useState("focus");
   const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "", phone: initialPhone || "" });
@@ -4509,6 +4568,10 @@ export default function BodyMapApp({ therapistName = "Your Therapist", onSubmit 
           setConsent={setConsent}
           onNext={handleSend}
           onBack={() => setScreen("back")}
+          waiverEnabled={waiverEnabled}
+          waiverText={waiverText}
+          therapistName={therapistName}
+          businessName={businessName}
         />
       </div>
     ),

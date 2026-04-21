@@ -10,7 +10,7 @@ export const db = {
   async getTherapistByUrl(customUrl) {
     const { data, error } = await supabase
       .from('therapists')
-      .select('id, business_name, full_name')
+      .select('id, business_name, full_name, waiver_enabled, waiver_text')
       .eq('custom_url', customUrl)
       .single();
     if (error) throw error;

@@ -19,6 +19,7 @@ import PWAInstallBanner from '../components/PWAInstallBanner';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
+import WaiverCard from '../components/WaiverCard';
 
 // Mobile page-end indicator
 function PageEnd() {
@@ -1192,6 +1193,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Referral */}
       <ReferralCard therapist={therapist} C2={C2} />
+
+      {/* Waiver */}
+      <WaiverCard therapist={therapist} C2={C2} />
 
       {/* Block Days Off */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
