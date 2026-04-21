@@ -1516,13 +1516,16 @@ function TaxonomyNav() {
 // ── Main export ──────────────────────────────────────────────────────────
 export default function Features() {
   useEffect(() => {
-    window.scrollTo(0, 0);
+    // Use instant (not smooth) to avoid behavior chains
+    try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
     // Defensive: ensure no prior page left scroll locked
     try {
       document.body.style.overflow = '';
       document.documentElement.style.overflow = '';
       document.body.style.position = '';
       document.body.style.height = '';
+      document.documentElement.style.overflowY = 'auto';
+      document.body.style.overflowY = 'auto';
     } catch (e) {}
   }, []);
 
