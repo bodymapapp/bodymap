@@ -896,702 +896,819 @@ function SectionNav() {
 }
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
-
-// ── MAIN (new taxonomy-based Features page) ────────────────────────────────
-// 7 top-level categories, each a carousel with an overview slide + sub-feature
-// slides. Sub-feature IDs (1.1, 2.3 etc.) are hidden from users in carousels
-// but visible in the taxonomy reference at page bottom.
-
-// ── Taxonomy source of truth ─────────────────────────────────────────────
-// Update this when new features ship. Order determines display order.
-// `visual` is a React node or () => node. When null, a default placeholder is rendered.
-// `value` is the one-line automation/outcome callout shown next to each sub-feature.
-const TAXONOMY = [
-  {
-    id: '1', name: 'Find & Book',
-    tagline: 'How new clients discover you and schedule their first session.',
-    color: '#2A5741',
-    subs: [
-      { id: '1.1', name: 'Your custom booking page', desc: 'A beautiful page at mybodymap.app/yourname that clients can book from in three taps. Services, prices, and availability visible at a glance.', value: 'Replaces your Calendly, Square, or SimplePractice link.' },
-      { id: '1.2', name: 'Services catalog', desc: 'Add your massage types, durations, and prices once. Offer couples sessions, add-ons, and session-length options without touching code.', value: 'Live on your booking page the moment you save.' },
-      { id: '1.3', name: 'Availability & working hours', desc: 'Set which days and times you work. Clients only see slots when you are actually free. Change hours anytime without breaking existing bookings.', value: 'No double bookings. No off-hour confusion.' },
-      { id: '1.4', name: 'Deposits at booking', desc: 'Optional deposit held when a client books. Reduces no-shows dramatically for new clients or long sessions. Full session cost charged on the day.', value: 'No-shows drop to near-zero for deposit-protected slots.' },
-      { id: '1.5', name: 'Cal.com sync', desc: 'Plug in your Cal.com account and your schedule lights up with real bookings. Change one, it updates everywhere.', value: 'Keeps your existing Cal setup. Zero rebuild required.' },
-      { id: '1.6', name: 'Blocked days & vacations', desc: 'Block off holidays, vacations, sick days, personal days. Clients see them as unavailable automatically.', value: 'Never explain a closure by text again.' },
-      { id: '1.7', name: 'Website embed', desc: 'Drop a single snippet onto your Wix, Squarespace, or WordPress site and your booking page lives inside it. Fully branded.', value: 'One booking flow, wherever clients find you.' },
-    ],
-  },
-  {
-    id: '2', name: 'Know Your Client',
-    tagline: 'Everything between when someone books and when they walk in.',
-    color: '#4B8A6A',
-    subs: [
-      { id: '2.1', name: 'Visual body map intake', desc: 'Clients tap front and back body diagrams to show their focus zones, areas to avoid, and pressure preferences. Takes them 90 seconds, not five minutes.', value: 'Higher completion than any form ever will.' },
-      { id: '2.2', name: 'Session preferences', desc: 'Pressure, table temp, room temp, music, lighting, conversation, draping, oil preference. All captured once and remembered forever.', value: 'Your client never has to tell you twice.' },
-      { id: '2.3', name: 'Signed waiver, bundled in', desc: 'A legally enforceable treatment waiver auto-signs when your client submits intake. No separate form. No extra clicks. Full audit trail with typed name, timestamp, and agreed text locked in.', value: 'Zero extra steps for clients. ESIGN Act compliant.' },
-      { id: '2.4', name: 'Smart pre-fill on return', desc: 'Returning clients see a warm "Welcome back" banner with everything pre-filled. Just confirm anything changed. Done in ten seconds.', value: 'Your regulars feel remembered. Because they are.' },
-      { id: '2.5', name: 'Client notes & medical flags', desc: 'Conditions, allergies, medications, and any note you want to remember forever stay attached to the client, not the session.', value: 'Red flags surface on your client card every visit.' },
-    ],
-  },
-  {
-    id: '3', name: 'Client Intelligence',
-    tagline: 'Pattern recognition across visits that no one else offers.',
-    color: '#1A3A28',
-    dark: true,
-    subs: [
-      { id: '3.1', name: 'Longitudinal heatmaps', desc: 'See where a client focuses across every visit as a warm heatmap on a body diagram. Suddenly the pattern is obvious: same shoulder, every time, for six months.', value: 'The only tool that shows this. Full stop.' },
-      { id: '3.2', name: 'Full session history per client', desc: 'Every visit, every intake, every note in a single timeline. Scroll back months or years and see how someone has evolved.', value: 'Perfect recall, no notebooks.' },
-      { id: '3.3', name: 'BodyMap AI chat', desc: 'Ask questions in plain English: "Which of my regulars haven\'t booked in 30 days?" "What\'s the pattern for Sarah?" Get instant, contextual answers.', value: 'Your client database becomes a conversation.' },
-      { id: '3.4', name: 'Pattern detection', desc: 'The platform flags when something is new: a zone that keeps appearing, a pressure preference that\'s shifted, a client who\'s changed.', value: 'You notice what matters, automatically.' },
-      { id: '3.5', name: 'Practice Pulse', desc: 'A weekly health report on your whole practice: retention, rebooking rates, top clients, who is drifting. Delivered to your inbox every Monday.', value: 'Run your practice like a pro, five minutes a week.' },
-    ],
-  },
-  {
-    id: '4', name: 'Day-of-Session',
-    tagline: 'What the platform does during the hour you\'re working.',
-    color: '#6B9E80',
-    subs: [
-      { id: '4.1', name: 'Today\'s schedule', desc: 'Your day at a glance on your phone or desktop. Next appointment, intake status, client context — all one tap away.', value: 'Walk into every session prepared.' },
-      { id: '4.2', name: 'Pre-session brief', desc: 'Before each client, see their focus zones, pressure preference, any flags, and what changed since last time. Thirty seconds of prep.', value: 'Your client thinks you memorized them. You just read.' },
-      { id: '4.3', name: 'Post-session SOAP notes', desc: 'Structured subjective, objective, assessment, and plan notes captured right after the session. Links to the intake automatically.', value: 'Compliant documentation, zero extra effort.' },
-      { id: '4.4', name: 'Quick client lookup', desc: 'Find any client in two taps. See their full history, notes, and pattern instantly. On your phone between sessions.', value: 'Everything, everywhere, no typing.' },
-      { id: '4.5', name: 'Mobile-first design', desc: 'Install to your home screen and BodyMap becomes an app. No app store. No slow browser. Fast, offline-friendly, thumb-optimized.', value: 'Built for the phone in your pocket.' },
-    ],
-  },
-  {
-    id: '5', name: 'Relationships & Retention',
-    tagline: 'Turn first-time clients into regulars. Keep regulars coming back.',
-    color: '#C9A84C',
-    subs: [
-      { id: '5.1', name: 'Automated reminders', desc: 'Text and email reminders fire on their own the day before. No more manually sending "see you tomorrow" at 9pm.', value: 'Hours saved weekly. Fewer no-shows.' },
-      { id: '5.2', name: 'Post-session follow-up', desc: 'An automatic thank-you after the session with a gentle rebooking nudge. Warm, not salesy. In your voice.', value: 'Rebooking rates go up without you doing anything.' },
-      { id: '5.3', name: 'Lapsed client re-engagement', desc: 'The platform spots clients whose rebooking window has stretched. Surfaces them for a quick personal outreach before they\'re gone.', value: 'Save clients that would quietly disappear.' },
-      { id: '5.4', name: 'Loyalty rewards', desc: 'Track free-session earning automatically. Every 10th visit on the house. Clients love it, you don\'t have to remember.', value: 'Built-in loyalty, zero bookkeeping.' },
-      { id: '5.5', name: '5-dimension feedback', desc: 'After each session, clients can rate across five clean dimensions: pressure, environment, communication, technique, overall. Feedback you can actually use.', value: 'Know what\'s working. Fix what isn\'t.' },
-    ],
-  },
-  {
-    id: '6', name: 'Money & Protection',
-    tagline: 'Get paid. Stay protected. Run a real business.',
-    color: '#2A5741',
-    subs: [
-      { id: '6.1', name: 'Billing dashboard', desc: 'See revenue, top clients, and payment status in one place. Export at tax time with one click.', value: 'Your books, without the spreadsheet.' },
-      { id: '6.2', name: 'Gift cards', desc: 'Beautiful, warm gift cards clients can purchase and send in 60 seconds. Branded, trackable, redeemable on your booking page.', value: 'Instant holiday revenue. Zero setup.' },
-      { id: '6.3', name: 'Legally signed waivers', desc: 'Every client signs a real treatment waiver on intake submit. Immutable record, full audit trail, ESIGN Act compliant. Same legal standing as Rumiform or JotForm — without the monthly fee or extra platform.', value: 'First line of legal defense, always current.' },
-      { id: '6.4', name: 'Privacy & security', desc: 'Row-level security on every table, encrypted storage, rate-limited signup, bot protection. Your client data is not sold, not mined, not shared.', value: 'Their trust is your business. We protect it.' },
-    ],
-  },
-  {
-    id: '7', name: 'On Your Phone, By Your Side',
-    tagline: 'The platform lives with you, quietly, everywhere.',
-    color: '#4B8A6A',
-    dark: true,
-    subs: [
-      { id: '7.1', name: 'Install to home screen', desc: 'A guided walkthrough puts BodyMap on your home screen in under a minute. Works on iPhone Safari, iPhone Chrome, and Android. Built for anyone, any tech comfort level.', value: 'Opens in one tap, like a real app.' },
-      { id: '7.2', name: 'Push notifications', desc: 'A gentle tap on your phone when a client books, fills an intake, or redeems a gift card. Everything that matters, nothing that doesn\'t.', value: 'Stay in the loop without staring at a dashboard.' },
-      { id: '7.3', name: 'Founding Therapist emails', desc: 'Weekly tips, retention playbooks, and real examples from therapists using the platform. Short, useful, opt-out anytime.', value: 'A running masterclass on growing your practice.' },
-      { id: '7.4', name: 'Refer and reward', desc: 'Every therapist has a personal referral link. Share it with a colleague, and if they join, you get a shoutout on our Features page and a swag kit.', value: 'The best practices grow the best networks.' },
-      { id: '7.5', name: 'Switch in minutes', desc: 'One-click import from Square, MassageBook, Vagaro, GlossGenius, or any CSV. Bring your clients, their history, and their preferences without re-entering a single row.', value: 'No data left behind.' },
-    ],
-  },
-];
-
-// ── Helper: Feature Carousel ─────────────────────────────────────────────
-function FeatureCarousel({ category, renderVisual }) {
-  const [slide, setSlide] = useState(0);
-  // Slides: index 0 = overview; 1..N = sub-features
-  const slides = [null, ...category.subs]; // null = overview placeholder
-  const total = slides.length;
-  const isOverview = slide === 0;
-  const sub = !isOverview ? slides[slide] : null;
-  const isDark = !!category.dark;
-
-  const next = () => setSlide(s => Math.min(s + 1, total - 1));
-  const prev = () => setSlide(s => Math.max(s - 1, 0));
-
-  const textColor = isDark ? '#fff' : C.dark;
-  const mutedColor = isDark ? 'rgba(255,255,255,0.75)' : C.muted;
-  const chipBg = isDark ? 'rgba(255,255,255,0.08)' : '#F5F0E8';
-  const chipActive = isDark ? 'rgba(255,255,255,0.18)' : C.forest;
-  const chipActiveText = isDark ? '#fff' : '#fff';
-  const dotBg = isDark ? 'rgba(255,255,255,0.25)' : '#E8E4DC';
-  const dotActive = isDark ? '#fff' : category.color;
-  const bg = isDark
-    ? `linear-gradient(160deg, #0D1F17 0%, ${category.color} 100%)`
-    : '#FFFFFF';
-
-  return (
-    <section
-      id={`cat-${category.id}`}
-      style={{
-        scrollMarginTop: 112,
-        padding: '80px 24px',
-        background: bg,
-        color: textColor,
-      }}
-    >
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        {/* Category header */}
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.6)' : '#6B9E80', marginBottom: 10 }}>
-            Category {category.id}
-          </div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(30px, 4.5vw, 46px)', fontWeight: 700, color: textColor, margin: '0 0 10px', lineHeight: 1.15 }}>
-            {category.name}
-          </h2>
-          <p style={{ fontSize: 16, color: mutedColor, lineHeight: 1.6, margin: '0 auto', maxWidth: 560 }}>
-            {category.tagline}
-          </p>
-        </div>
-
-        {/* Carousel body */}
-        <div style={{
-          background: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAF9',
-          border: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid #E8E4DC',
-          borderRadius: 20,
-          padding: 'clamp(20px, 3vw, 40px)',
-          minHeight: 440,
-          position: 'relative',
-        }}>
-          {isOverview ? (
-            // ── Overview slide ──
-            <div>
-              <div style={{ textAlign: 'center', marginBottom: 28 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: isDark ? 'rgba(255,255,255,0.55)' : '#6B9E80', marginBottom: 8 }}>
-                  What's inside
-                </div>
-                <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(22px, 3vw, 28px)', fontWeight: 700, margin: 0, color: textColor }}>
-                  {category.subs.length} capabilities work together in this area
-                </h3>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
-                {category.subs.map((s, i) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setSlide(i + 1)}
-                    style={{
-                      textAlign: 'left',
-                      background: chipBg,
-                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : '#E8E4DC'}`,
-                      borderRadius: 14,
-                      padding: '14px 16px',
-                      cursor: 'pointer',
-                      color: textColor,
-                      transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = chipActive + (isDark ? '' : '20')}
-                    onMouseLeave={e => e.currentTarget.style.background = chipBg}
-                  >
-                    <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 3, fontFamily: 'Georgia, serif' }}>
-                      {s.name}
-                    </div>
-                    <div style={{ fontSize: 12, color: mutedColor, lineHeight: 1.5 }}>
-                      {s.value}
-                    </div>
-                  </button>
-                ))}
-              </div>
-              <div style={{ textAlign: 'center', marginTop: 28 }}>
-                <button
-                  onClick={() => setSlide(1)}
-                  style={{
-                    background: category.color,
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: 10,
-                    padding: '12px 28px',
-                    fontSize: 14,
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                    boxShadow: '0 4px 14px rgba(0,0,0,0.15)',
-                  }}
-                >
-                  Start the tour →
-                </button>
-              </div>
-            </div>
-          ) : (
-            // ── Sub-feature slide ──
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 28 }}
-                 className="bm-feat-slide">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32, alignItems: 'center' }}>
-                {/* Visual */}
-                <div style={{ order: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 240 }}>
-                  {renderVisual(sub.id)}
-                </div>
-                {/* Text */}
-                <div style={{ order: 2 }}>
-                  <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(24px, 3.4vw, 34px)', fontWeight: 700, margin: '0 0 14px', lineHeight: 1.2, color: textColor }}>
-                    {sub.name}
-                  </h3>
-                  <p style={{ fontSize: 15, lineHeight: 1.75, color: mutedColor, margin: '0 0 20px' }}>
-                    {sub.desc}
-                  </p>
-                  <div style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    background: isDark ? 'rgba(201,168,76,0.18)' : '#FFFBEB',
-                    border: `1.5px solid ${isDark ? 'rgba(201,168,76,0.5)' : '#FDE68A'}`,
-                    borderRadius: 10,
-                    padding: '8px 14px',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: isDark ? '#F5D77A' : '#92400E',
-                  }}>
-                    <span>✨</span>
-                    <span>{sub.value}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Carousel controls */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
-          <button
-            onClick={prev}
-            disabled={slide === 0}
-            aria-label="Previous"
-            style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
-              border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#E8E4DC'}`,
-              color: textColor,
-              cursor: slide === 0 ? 'not-allowed' : 'pointer',
-              opacity: slide === 0 ? 0.4 : 1,
-              fontSize: 18,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            ←
-          </button>
-          {/* Dots */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-            {slides.map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setSlide(i)}
-                aria-label={`Go to slide ${i}`}
-                style={{
-                  width: i === slide ? 28 : 8,
-                  height: 8,
-                  borderRadius: 4,
-                  background: i === slide ? dotActive : dotBg,
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s',
-                  padding: 0,
-                }}
-              />
-            ))}
-          </div>
-          <button
-            onClick={next}
-            disabled={slide === total - 1}
-            aria-label="Next"
-            style={{
-              width: 40, height: 40, borderRadius: '50%',
-              background: isDark ? 'rgba(255,255,255,0.08)' : '#fff',
-              border: `1.5px solid ${isDark ? 'rgba(255,255,255,0.2)' : '#E8E4DC'}`,
-              color: textColor,
-              cursor: slide === total - 1 ? 'not-allowed' : 'pointer',
-              opacity: slide === total - 1 ? 0.4 : 1,
-              fontSize: 18,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            →
-          </button>
-        </div>
-        {/* Slide counter */}
-        <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: mutedColor }}>
-          {slide === 0 ? 'Overview' : `${slide} of ${total - 1}`}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Visual renderer — map sub-feature IDs to existing or new visuals ─────
-function VisualForSub({ id }) {
-  // Reuse existing heavy visual components where they fit
-  if (id === '2.1') return <BodyMapDemo />;
-  if (id === '3.1') return <PatternDemo />;
-  if (id === '4.1') return <ScheduleDemo />;
-  if (id === '6.1') return <BillingDemo />;
-  if (id === '3.3') return <AIDemo />;
-
-  // Specific visuals for new/updated features
-  if (id === '2.3' || id === '6.3') return <WaiverVisual />;
-  if (id === '7.2') return <PushVisual />;
-  if (id === '7.3') return <DripVisual />;
-  if (id === '7.4') return <ReferralVisual />;
-  if (id === '6.4') return <PrivacyVisual />;
-  if (id === '6.2') return <GiftCardVisual />;
-  if (id === '2.4') return <ReturningVisual />;
-  if (id === '4.5' || id === '7.1') return <PhoneVisual />;
-  if (id === '7.5') return <SwitchingVisual />;
-
-  // Generic fallback — subtle illustration placeholder
-  return <GenericVisual id={id} />;
-}
-
-// ── New lightweight SVG visuals ──────────────────────────────────────────
-
-function WaiverVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 340 }}>
-      <div style={{ background: '#fff', borderRadius: 16, padding: 20, boxShadow: '0 10px 28px rgba(0,0,0,0.12)', border: '1px solid #E8E4DC', fontFamily: 'Georgia, serif' }}>
-        <div style={{ fontSize: 11, color: '#6B9E80', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Treatment Waiver</div>
-        <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, marginBottom: 14 }}>
-          I understand massage therapy is provided for stress reduction and relief from muscular tension. I have completed the intake to the best of my knowledge…
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 10 }}>
-          <div style={{ width: 18, height: 18, borderRadius: 4, background: '#2A5741', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>✓</div>
-          <div style={{ fontSize: 12, color: '#166534', fontFamily: 'system-ui' }}>
-            <div style={{ fontWeight: 700 }}>Agreed & signed</div>
-            <div style={{ fontSize: 11, color: '#4B5563' }}>Sarah Mitchell · Apr 21, 2026 · 2:14 PM</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PushVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 320 }}>
-      <div style={{ background: 'linear-gradient(160deg, #1a1a2e 0%, #16213e 100%)', borderRadius: 28, padding: 16, boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
-        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 11, marginBottom: 4 }}>9:41 AM</div>
-        <div style={{ textAlign: 'center', color: '#fff', fontSize: 13, fontWeight: 600, marginBottom: 20, fontFamily: 'system-ui' }}>Tuesday, April 21</div>
-        <div style={{ background: 'rgba(255,255,255,0.92)', borderRadius: 16, padding: 12, backdropFilter: 'blur(20px)', animation: 'bmPulseSlow 2.2s ease-in-out infinite' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <div style={{ width: 22, height: 22, borderRadius: 5, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>🌿</div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: '#1A3A28', fontFamily: 'system-ui' }}>BODYMAP</div>
-            <div style={{ marginLeft: 'auto', fontSize: 10, color: '#6B7280' }}>now</div>
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#1A3A28', fontFamily: 'system-ui', marginBottom: 2 }}>New booking · Sarah 🌿</div>
-          <div style={{ fontSize: 12, color: '#4B5563', fontFamily: 'system-ui' }}>Fri Apr 24 at 3:00 PM · Deep Tissue</div>
-        </div>
-      </div>
-      <style>{`@keyframes bmPulseSlow { 0%,100%{transform:translateY(0);opacity:1} 50%{transform:translateY(-4px);opacity:0.92} }`}</style>
-    </div>
-  );
-}
-
-function DripVisual() {
-  const emails = [
-    { day: 'Day 2', subject: '5 signs a regular is about to ghost you', color: '#FDE68A' },
-    { day: 'Day 5', subject: 'Send yourself the body map — 60 seconds', color: '#86EFAC' },
-    { day: 'Day 10', subject: 'How Jamie got a 18% rebooking lift', color: '#FECACA' },
-  ];
-  return (
-    <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {emails.map((e, i) => (
-        <div key={i} style={{
-          background: '#fff',
-          borderLeft: `4px solid ${e.color}`,
-          borderRadius: '0 12px 12px 0',
-          padding: '12px 16px',
-          boxShadow: '0 4px 14px rgba(0,0,0,0.08)',
-          transform: `translateX(${i * 12}px)`,
-          opacity: 1 - i * 0.08,
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B9E80', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>{e.day}</div>
-          <div style={{ fontSize: 13, color: '#1A3A28', fontFamily: 'Georgia, serif', fontWeight: 700 }}>{e.subject}</div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ReferralVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 320 }}>
-      <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #FFFBEB)', border: '1.5px solid #86EFAC', borderRadius: 16, padding: 22 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#166534', letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>🌿 Your referral link</div>
-        <div style={{ background: '#fff', border: '1.5px solid #E8E4DC', borderRadius: 10, padding: '10px 12px', fontFamily: 'monospace', fontSize: 13, color: '#2A5741', fontWeight: 700, marginBottom: 14, wordBreak: 'break-all' }}>
-          mybodymap.app/signup?ref=jamie-r
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ fontSize: 32 }}>🎁</div>
-          <div style={{ fontSize: 12, color: '#4B5563', lineHeight: 1.5, fontFamily: 'Georgia, serif' }}>
-            <b>3 therapists</b> signed up through you. Swag kit on its way.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function PrivacyVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 320, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {[
-        { icon: '🔒', label: 'Row-level security', desc: 'Every table. Every query.' },
-        { icon: '🛡️', label: 'Bot protection', desc: 'Rate limits. Signup guard.' },
-        { icon: '💾', label: 'Encrypted storage', desc: 'Never sold. Never mined.' },
-        { icon: '✅', label: 'ESIGN Act compliant', desc: 'Legally signed, locked records.' },
-      ].map((x, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fff', border: '1px solid #E8E4DC', borderRadius: 12, padding: '10px 14px' }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>{x.icon}</div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#1A3A28' }}>{x.label}</div>
-            <div style={{ fontSize: 11, color: '#6B7280' }}>{x.desc}</div>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function GiftCardVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 320 }}>
-      <div style={{ background: 'linear-gradient(135deg, #FFF1F5, #FFE4E6)', border: '1px solid #FFB5C0', borderRadius: 16, padding: 22, boxShadow: '0 8px 24px rgba(232,92,121,0.18)' }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#BE185D', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 8 }}>🎁 Gift Card</div>
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 28, fontWeight: 700, color: '#1A3A28', marginBottom: 4 }}>$120</div>
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, fontStyle: 'italic', color: '#78350F', marginBottom: 14 }}>For my sister — enjoy your day.</div>
-        <div style={{ borderTop: '1px dashed #FFB5C0', paddingTop: 12, fontSize: 11, color: '#6B7280', fontFamily: 'system-ui' }}>
-          To: Anna · From: Kate · Redeemable at Serenity Studio
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ReturningVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 320 }}>
-      <div style={{ background: 'linear-gradient(135deg, #FFFBEB, #FEF3C7)', border: '1.5px solid #FDE68A', borderRadius: 14, padding: 18, marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-          <div style={{ fontSize: 22 }}>🌿</div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#92400E', letterSpacing: '0.12em', textTransform: 'uppercase' }}>Welcome back</div>
-        </div>
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: '#1A3A28' }}>Hi Sarah, ready for your usual?</div>
-      </div>
-      <div style={{ background: '#fff', border: '1px solid #E8E4DC', borderRadius: 10, padding: 14, fontSize: 12, color: '#4B5563', lineHeight: 1.7 }}>
-        <div><span style={{ color: '#6B7280' }}>Focus:</span> <b style={{ color: '#1A3A28' }}>Upper back, shoulders</b></div>
-        <div><span style={{ color: '#6B7280' }}>Pressure:</span> <b style={{ color: '#1A3A28' }}>Firm (4/5)</b></div>
-        <div><span style={{ color: '#6B7280' }}>Music:</span> <b style={{ color: '#1A3A28' }}>Soft</b></div>
-        <div style={{ marginTop: 8, fontStyle: 'italic', color: '#6B9E80' }}>All pre-filled. Tap confirm to submit.</div>
-      </div>
-    </div>
-  );
-}
-
-function PhoneVisual() {
-  return (
-    <div style={{ width: '100%', maxWidth: 200, margin: '0 auto' }}>
-      <div style={{ background: '#1F2937', borderRadius: 30, padding: 10, boxShadow: '0 18px 48px rgba(0,0,0,0.3)' }}>
-        <div style={{ background: 'linear-gradient(180deg, #F0FDF4 0%, #FFF9F3 100%)', borderRadius: 22, minHeight: 320, padding: 18, position: 'relative' }}>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#374151', marginBottom: 14 }}>9:41</div>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
-            <div style={{ width: 64, height: 64, borderRadius: 14, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32, boxShadow: '0 6px 20px rgba(42,87,65,0.4)' }}>🌿</div>
-          </div>
-          <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 700, color: '#1A3A28', fontFamily: 'Georgia, serif' }}>BodyMap</div>
-          <div style={{ textAlign: 'center', fontSize: 11, color: '#6B7280', marginTop: 2 }}>On your home screen</div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function SwitchingVisual() {
-  const logos = ['Square', 'MassageBook', 'Vagaro', 'GlossGenius'];
-  return (
-    <div style={{ width: '100%', maxWidth: 340 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
-        {logos.map((l, i) => (
-          <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 10, background: '#fff', border: '1px solid #E8E4DC', borderRadius: 10, padding: '10px 14px' }}>
-            <div style={{ width: 28, height: 28, borderRadius: 7, background: '#F5F0E8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, color: '#6B7280', fontWeight: 700 }}>📊</div>
-            <div style={{ flex: 1, fontSize: 13, color: '#1A3A28', fontWeight: 600 }}>{l} export</div>
-            <div style={{ fontSize: 11, color: '#059669', fontWeight: 700 }}>✓ Imported</div>
-          </div>
-        ))}
-      </div>
-      <div style={{ textAlign: 'center', fontSize: 12, color: '#6B9E80', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-        412 clients moved over in 3 minutes.
-      </div>
-    </div>
-  );
-}
-
-function GenericVisual({ id }) {
-  return (
-    <div style={{ width: '100%', maxWidth: 280, minHeight: 220, background: '#F9FAF9', border: '1px dashed #E8E4DC', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontFamily: 'Georgia, serif', fontStyle: 'italic', fontSize: 14, padding: 20, textAlign: 'center' }}>
-      🌿 Preview coming
-    </div>
-  );
-}
-
-// ── Taxonomy table at page bottom ─────────────────────────────────────────
-function TaxonomyTable() {
-  return (
-    <section style={{ background: '#FFFBEB', padding: '80px 24px', borderTop: '1px solid #FDE68A' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 36 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 10 }}>The full map</div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(28px, 4vw, 40px)', fontWeight: 700, color: '#1A3A28', margin: '0 0 10px' }}>Every feature, at a glance</h2>
-          <p style={{ fontSize: 15, color: '#78350F', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
-            Seven categories. Every capability mapped. Bookmark this page — it's always up to date.
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 18 }}>
-          {TAXONOMY.map(cat => (
-            <div key={cat.id} style={{ background: '#fff', border: '1px solid #FDE68A', borderRadius: 14, padding: 20, boxShadow: '0 4px 14px rgba(0,0,0,0.04)' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 6 }}>
-                <span style={{ fontFamily: 'Georgia, serif', fontSize: 32, fontWeight: 700, color: cat.color, lineHeight: 1 }}>{cat.id}</span>
-                <span style={{ fontFamily: 'Georgia, serif', fontSize: 18, fontWeight: 700, color: '#1A3A28' }}>{cat.name}</span>
-              </div>
-              <div style={{ fontSize: 12, color: '#92400E', fontStyle: 'italic', marginBottom: 14, lineHeight: 1.5 }}>{cat.tagline}</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {cat.subs.map(s => (
-                  <a key={s.id} href={`#cat-${cat.id}`} style={{ display: 'flex', alignItems: 'baseline', gap: 10, textDecoration: 'none', padding: '6px 0', borderBottom: '1px dashed #FEF3C7' }}>
-                    <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#92400E', fontWeight: 700, flexShrink: 0, minWidth: 26 }}>{s.id}</span>
-                    <span style={{ fontSize: 13, color: '#1A3A28', fontWeight: 500 }}>{s.name}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ── Taxonomy-based section nav ───────────────────────────────────────────
-function TaxonomyNav() {
-  const [active, setActive] = useState('cat-1');
-  const [visible, setVisible] = useState(false);
-  useEffect(() => {
-    const onScroll = () => setVisible(window.scrollY > 280);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    const obs = new IntersectionObserver(entries => {
-      entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
-    }, { rootMargin: '-30% 0px -60% 0px' });
-    TAXONOMY.forEach(cat => { const el = document.getElementById(`cat-${cat.id}`); if (el) obs.observe(el); });
-    return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
-  }, []);
-  return (
-    <div style={{
-      position: 'fixed', top: 64, left: 0, right: 0, zIndex: 89,
-      background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(12px)',
-      borderBottom: '1px solid #E8E4DC', boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-      transform: visible ? 'translateY(0)' : 'translateY(-100%)',
-      transition: 'transform 0.25s ease',
-    }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', overflowX: 'auto', padding: '0 16px', scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-        <style>{`.bm-taxnav::-webkit-scrollbar{display:none}`}</style>
-        <div className="bm-taxnav" style={{ display: 'flex', gap: 4, padding: '12px 0' }}>
-          {TAXONOMY.map(cat => {
-            const isActive = active === `cat-${cat.id}`;
-            return (
-              <a key={cat.id} href={`#cat-${cat.id}`} style={{
-                padding: '8px 14px',
-                borderRadius: 20,
-                fontSize: 13,
-                fontWeight: 700,
-                textDecoration: 'none',
-                whiteSpace: 'nowrap',
-                background: isActive ? '#2A5741' : 'transparent',
-                color: isActive ? '#fff' : '#4B5563',
-                transition: 'all 0.2s',
-              }}>
-                {cat.id}. {cat.name}
-              </a>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Main export ──────────────────────────────────────────────────────────
 export default function Features() {
-  useEffect(() => {
-    try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
-    // Defensive: ensure no prior page left scroll locked. We explicitly CLEAR
-    // inline overflow/position/height — never set them to values. Setting
-    // overflowY:auto on both html+body creates nested scroll containers that
-    // break wheel scroll in Chrome.
-    try {
-      document.body.style.overflow = '';
-      document.body.style.overflowY = '';
-      document.body.style.overflowX = '';
-      document.body.style.position = '';
-      document.body.style.height = '';
-      document.documentElement.style.overflow = '';
-      document.documentElement.style.overflowY = '';
-      document.documentElement.style.overflowX = '';
-    } catch (e) {}
-  }, []);
+  useEffect(() => { window.scrollTo(0, 0); }, []);
 
   return (
-    <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: C.dark, paddingTop: 64 }}>
+    <div style={{ fontFamily:"system-ui, -apple-system, sans-serif", color:C.dark, paddingTop:64 }}>
       <Nav />
-      <TaxonomyNav />
+      <SectionNav />
 
       {/* HERO */}
-      <section style={{ background: `linear-gradient(160deg, #0D1F17 0%, #1A3A28 50%, #2A5741 100%)`, padding: '100px 24px 90px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 0%, rgba(107,158,128,0.15) 0%, transparent 70%)' }} />
-        <div style={{ maxWidth: 860, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+      <section style={{ background:`linear-gradient(160deg, #0D1F17 0%, #1A3A28 50%, #2A5741 100%)`, padding:"100px 24px 90px", textAlign:"center", position:"relative", overflow:"hidden" }}>
+        <div style={{ position:"absolute", inset:0, background:"radial-gradient(ellipse at 50% 0%, rgba(107,158,128,0.15) 0%, transparent 70%)" }}/>
+        <div style={{ maxWidth:860, margin:"0 auto", position:"relative", zIndex:1 }}>
           <FadeIn>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(107,158,128,0.15)', border: '1px solid rgba(107,158,128,0.3)', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, color: 'rgba(255,255,255,0.8)', marginBottom: 28 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#6B9E80', display: 'inline-block' }} />
+            <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(107,158,128,0.15)", border:"1px solid rgba(107,158,128,0.3)", borderRadius:20, padding:"6px 16px", fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)", marginBottom:28 }}>
+              <span style={{ width:6, height:6, borderRadius:"50%", background:"#6B9E80", display:"inline-block" }}/>
               Built exclusively for massage therapists
             </div>
           </FadeIn>
           <FadeIn delay={0.1}>
-            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(36px,5.5vw,68px)', fontWeight: 700, color: '#FFFFFF', lineHeight: 1.15, marginBottom: 24, letterSpacing: '-0.02em' }}>
-              Everything You Need,<br />
-              <span style={{ color: C.gold }}>Across 7 Parts of Your Practice</span>
+            <h1 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(36px,5.5vw,68px)", fontWeight:700, color:"#FFFFFF", lineHeight:1.15, marginBottom:24, letterSpacing:"-0.02em" }}>
+              The Only Tool That<br/>
+              <span style={{ color:C.gold }}>Understands Your Clients' Bodies</span>
             </h1>
           </FadeIn>
           <FadeIn delay={0.2}>
-            <p style={{ fontSize: 'clamp(16px,2vw,20px)', color: 'rgba(255,255,255,0.8)', lineHeight: 1.6, marginBottom: 40, maxWidth: 640, margin: '0 auto 40px' }}>
-              From the moment a client books to the moment they become a regular — everything handled, automated, and in your pocket.
+            <p style={{ fontSize:"clamp(16px,2vw,20px)", color:"rgba(255,255,255,0.7)", lineHeight:1.65, marginBottom:44, maxWidth:640, margin:"0 auto 44px" }}>
+              Visual body map tracking. Pattern intelligence. AI memory. Automation that runs your practice. Built for the therapist who refuses to lose a client to being forgotten.
             </p>
           </FadeIn>
           <FadeIn delay={0.3}>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link to="/signup" style={{ background: '#fff', color: C.forest, borderRadius: 10, padding: '14px 32px', fontSize: 15, fontWeight: 700, textDecoration: 'none', boxShadow: '0 4px 14px rgba(0,0,0,0.2)' }}>
-                Start free →
+            <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:52 }}>
+              <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 24px rgba(201,168,76,0.4)" }}>
+                Start Free - No Card Needed →
               </Link>
-              <a href="#cat-1" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1.5px solid rgba(255,255,255,0.3)', borderRadius: 10, padding: '14px 28px', fontSize: 15, fontWeight: 700, textDecoration: 'none' }}>
-                Explore features
-              </a>
+              <Link to="/pricing" style={{ background:"rgba(255,255,255,0.08)", color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:600, textDecoration:"none", border:"1.5px solid rgba(255,255,255,0.2)" }}>
+                View Pricing
+              </Link>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.4}>
+            <div style={{ display:"flex", gap:48, justifyContent:"center", flexWrap:"wrap" }}>
+              {[
+                { label:"Patterns detected", value:12847, suffix:"+" },
+                { label:"Client retention rate", value:94, suffix:"%" },
+                { label:"Back office hours saved/mo", value:12, suffix:"hrs" },
+              ].map((s,i)=>(
+                <div key={i} style={{ textAlign:"center" }}>
+                  <div style={{ fontSize:"clamp(28px,3vw,42px)", fontWeight:700, color:"#fff", fontFamily:"Georgia, serif" }}>
+                    <AnimatedCounter target={s.value} suffix={s.suffix} prefix={s.prefix||""}/>
+                  </div>
+                  <div style={{ fontSize:12, color:"rgba(255,255,255,0.5)", marginTop:4 }}>{s.label}</div>
+                </div>
+              ))}
             </div>
           </FadeIn>
         </div>
       </section>
 
-      {/* 7 category carousels */}
-      {TAXONOMY.map(cat => (
-        <FeatureCarousel key={cat.id} category={cat} renderVisual={(id) => <VisualForSub id={id} />} />
-      ))}
+      {/* THE OPPORTUNITY */}
+      <section style={{ background:"#fff", padding:"80px 24px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>The Opportunity</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,3.5vw,48px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:20 }}>
+                What Makes a Complete Therapist?
+              </h2>
+              <p style={{ fontSize:17, color:C.gray, maxWidth:680, margin:"0 auto", lineHeight:1.75 }}>
+                One who brings both exceptional technique <em>and</em> the technology to deliver an unforgettable experience. A client who feels their therapist remembers everything shared over two years. Who receives a perfectly-timed reminder to take care of themselves. Whose therapist walks in already knowing — so 99% of their energy goes to the work, not the back office. That therapist is you. BodyMap makes it possible.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="bm-features-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
+            {[
+              { before:"Do you have any injuries?", after:"Medical flags surface automatically. You walk in already knowing.", icon:"🏥" },
+              { before:"What pressure do you prefer?", after:"Saved from session 1. Carried forward forever. Never asked again.", icon:"💆" },
+              { before:"Where should I focus today?", after:"Body map from last session opens on your phone. You walk in knowing.", icon:"🗺️" },
+            ].map((item,i)=>(
+              <FadeIn key={i} delay={i*0.1}>
+                <div style={{ borderRadius:16, overflow:"hidden", border:`1px solid ${C.border}`, boxShadow:"0 4px 16px rgba(0,0,0,0.06)" }}>
+                  <div style={{ background:"#FEF2F2", padding:"20px 24px", borderBottom:`1px solid ${C.border}` }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#DC2626", textTransform:"uppercase", marginBottom:8 }}>Without BodyMap</div>
+                    <div style={{ fontSize:15, color:"#DC2626", fontStyle:"italic" }}>"{item.before}"</div>
+                  </div>
+                  <div style={{ background:"#F0FDF4", padding:"20px 24px" }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:"#16A34A", textTransform:"uppercase", marginBottom:8 }}>With BodyMap</div>
+                    <div style={{ fontSize:15, color:"#1F2937", fontWeight:600 }}>{item.after}</div>
+                  </div>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
 
-      {/* Full taxonomy table */}
-      <TaxonomyTable />
+      {/* BODY MAP — Section 1, The Core Moat */}
+      <section id="bodymap" style={{ scrollMarginTop:"112px", background:`linear-gradient(160deg,#0D1F17 0%,#1B3A28 60%,#2A5741 100%)`, padding:"100px 24px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:60 }}>
+              <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(201,168,76,0.15)", border:"1px solid rgba(201,168,76,0.35)", borderRadius:20, padding:"6px 18px", fontSize:12, fontWeight:700, color:C.gold, letterSpacing:"0.08em", marginBottom:20 }}>
+                ✦ NO COMPETITOR HAS THIS
+              </div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(32px,4.5vw,58px)", fontWeight:700, color:"#fff", lineHeight:1.12, marginBottom:20 }}>
+                The Visual Body Map
+              </h2>
+              <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                Every client maps their body before they arrive. Focus zones, avoid areas, pressure, medical flags — all captured visually, not verbally. Nothing else in the market does this.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:72, alignItems:"center" }}>
+            <FadeIn delay={0.1}>
+              <div>
+                <BodyMapDemo />
+                <div style={{ textAlign:"center", marginTop:12, fontSize:12, color:"rgba(255,255,255,0.35)" }}>
+                  ↑ Live demo — tap zones, switch front/back
+                </div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div>
+                <div style={{ display:"flex", flexDirection:"column", gap:22, marginBottom:32 }}>
+                  {[
+                    { icon:"🖐️", title:"Tap-to-select, not type-to-explain", desc:"Clients tap exactly where they want work and what to avoid on a front/back body diagram. No forms. No free-text. Precise, visual, instant." },
+                    { icon:"🔄", title:"Carries forward every session", desc:"After session 1, every future intake is pre-filled. Clients confirm or update in one tap. You never ask the same question twice." },
+                    { icon:"🚨", title:"Medical flags surface automatically", desc:"Injuries, contraindications, and sensitivities are flagged before you walk in — not discovered mid-session." },
+                    { icon:"📲", title:"Sent automatically after booking", desc:"The body map link fires the moment a booking is confirmed. No chasing. No paper. It's in your dashboard before the client arrives." },
+                  ].map((f,i) => (
+                    <div key={i} style={{ display:"flex", gap:16 }}>
+                      <div style={{ width:42, height:42, borderRadius:11, background:"rgba(107,158,128,0.18)", border:"1px solid rgba(107,158,128,0.25)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:20, flexShrink:0 }}>
+                        {f.icon}
+                      </div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:5 }}>{f.title}</div>
+                        <div style={{ fontSize:13, color:"rgba(255,255,255,0.55)", lineHeight:1.6 }}>{f.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:32 }}>
+                  <div style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:12, padding:"14px 16px" }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:"rgba(255,255,255,0.4)", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Bronze · Free</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)", lineHeight:1.5 }}>Full body map intake every session</div>
+                  </div>
+                  <div style={{ background:"rgba(201,168,76,0.1)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:12, padding:"14px 16px" }}>
+                    <div style={{ fontSize:10, fontWeight:700, color:C.gold, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>Silver · $19/mo</div>
+                    <div style={{ fontSize:13, fontWeight:600, color:"rgba(255,255,255,0.8)", lineHeight:1.5 }}>+ Pattern intelligence across all sessions</div>
+                  </div>
+                </div>
+                <Link to="/signup" style={{ display:"inline-block", background:C.gold, color:"#fff", padding:"14px 32px", borderRadius:50, fontSize:15, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif" }}>
+                  Start with the Body Map →
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
 
-      {/* Final CTA */}
-      <section style={{ background: '#2A5741', padding: '80px 24px', textAlign: 'center' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: '#fff', margin: '0 0 14px' }}>
-            Ready to see it running on your practice?
-          </h2>
-          <p style={{ fontSize: 16, color: 'rgba(255,255,255,0.85)', lineHeight: 1.6, margin: '0 0 28px' }}>
-            Takes 5 minutes to set up. Free forever for the first 100 therapists.
-          </p>
-          <Link to="/signup" style={{ background: '#fff', color: '#2A5741', borderRadius: 10, padding: '16px 36px', fontSize: 16, fontWeight: 700, textDecoration: 'none', display: 'inline-block', boxShadow: '0 4px 14px rgba(0,0,0,0.2)' }}>
-            Start free — 5 minutes →
-          </Link>
+      {/* PATTERN INTELLIGENCE */}
+      <section id="pattern" style={{ scrollMarginTop:"112px", background:`linear-gradient(180deg, #0D1F17 0%, #1A3A28 100%)`, padding:"100px 24px" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:60 }}>
+              <div style={{ display:"inline-block", background:"rgba(201,168,76,0.15)", border:"1px solid rgba(201,168,76,0.3)", borderRadius:20, padding:"5px 16px", fontSize:12, fontWeight:700, color:C.gold, letterSpacing:"0.08em", marginBottom:16 }}>
+                EXCLUSIVE TO BODYMAP - NO COMPETITOR HAS THIS
+              </div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(32px,4vw,56px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:20 }}>
+                Pattern Intelligence
+              </h2>
+              <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", maxWidth:620, margin:"0 auto" }}>
+                After a few sessions, BodyMap reveals what this client always needs - patterns memory alone would miss. This is the intelligence layer that makes you irreplaceable.
+              </p>
+              <div style={{ display:"inline-flex", gap:12, marginTop:28, flexWrap:"wrap", justifyContent:"center" }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(255,255,255,0.07)", border:"1px solid rgba(255,255,255,0.12)", borderRadius:24, padding:"8px 18px" }}>
+                  <span style={{ width:8, height:8, borderRadius:"50%", background:"#9CA3AF", display:"inline-block" }}/>
+                  <span style={{ fontSize:12, color:"rgba(255,255,255,0.6)", fontWeight:600 }}>Bronze: last 5 sessions</span>
+                </div>
+                <div style={{ display:"flex", alignItems:"center", gap:8, background:"rgba(201,168,76,0.12)", border:"1px solid rgba(201,168,76,0.35)", borderRadius:24, padding:"8px 18px" }}>
+                  <span style={{ width:8, height:8, borderRadius:"50%", background:C.gold, display:"inline-block" }}/>
+                  <span style={{ fontSize:12, color:C.gold, fontWeight:700 }}>Silver: unlimited session history</span>
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
+            <FadeIn delay={0.1}>
+              <PatternDemo />
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div>
+                <div style={{ display:"flex", flexDirection:"column", gap:20, marginBottom:32 }}>
+                  {[
+                    { icon:"📍", title:"Body Area Frequency", desc:"Track exactly which areas clients focus on across every session. Lower back 9 of 10 visits isn't a preference - it's a chronic condition. Treat it accordingly." },
+                    { icon:"📈", title:"Pressure Trend Tracking", desc:"When a client's pressure tolerance escalates from 3 to 5 over 8 sessions, BodyMap shows you the trend. You adapt before they have to ask." },
+                    { icon:"⚠️", title:"Avoid Area Memory", desc:"A client avoided their knees every single session. Do you remember that after 6 months? BodyMap does. Permanently." },
+                    { icon:"🤖", title:"AI Pattern Summary", desc:"After each session, BodyMap AI summarizes what's changing in this client's body - in plain language, without you asking." },
+                  ].map((f,i)=>(
+                    <div key={i} style={{ display:"flex", gap:14 }}>
+                      <div style={{ width:40, height:40, borderRadius:10, background:"rgba(107,158,128,0.15)", border:"1px solid rgba(107,158,128,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{f.icon}</div>
+                      <div>
+                        <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:4 }}>{f.title}</div>
+                        <div style={{ fontSize:13, color:"rgba(255,255,255,0.55)", lineHeight:1.55 }}>{f.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background:"rgba(255,255,255,0.05)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:14, padding:"18px 22px", marginBottom:28 }}>
+                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.5)", marginBottom:8 }}>From a real therapist</div>
+                  <div style={{ fontSize:15, color:"rgba(255,255,255,0.85)", fontStyle:"italic", lineHeight:1.6 }}>"Pattern intelligence is what makes BodyMap irreplaceable. After 6 sessions, it knows my client better than I do."</div>
+                </div>
+                <Link to="/signup" style={{ display:"inline-block", background:C.gold, color:"#fff", padding:"14px 28px", borderRadius:50, fontSize:15, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif" }}>
+                  Unlock Pattern Intelligence →
+                </Link>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+      {/* ONLINE BOOKING */}
+      <section id="booking" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Online Booking</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Book in 2 Taps.<br/>No Account. No App.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                One link. Clients pick a service, choose a time, confirm. Smart recommendations fill gaps in your day automatically.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🔗", title:"One shareable link", desc:"Share mybodymap.app/book/yourname anywhere. Instagram, text, email." },
+                { icon:"⚡", title:"Smart gap filling", desc:"Recommended slots fill holes in your day. No more 9 AM and 3 PM with nothing in between." },
+                { icon:"📋", title:"Intake flows immediately", desc:"After booking, clients fill their body map in the same session. Zero extra steps." },
+                { icon:"📧", title:"Auto confirmations", desc:"Clients get a confirmation instantly. No manual follow-up needed." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+
+      {/* INTAKE */}
+
+      {/* AUTOMATED REMINDERS */}
+      {/* DEPOSITS */}
+      <section id="deposits" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>New Client Deposits</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Protect Your Time.<br/>No-shows cost you.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                Require first-time clients to pay a deposit when booking. Repeat clients are never charged. One setting. Zero friction for loyal clients.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"💳", title:"Automatic deposit collection", desc:"Set your deposit percentage in Settings. BodyMap handles collection automatically at booking time." },
+                { icon:"🔁", title:"Repeat clients pay nothing extra", desc:"Clients who have booked before are never asked for a deposit. Loyalty is rewarded automatically." },
+                { icon:"⚙️", title:"You control the percentage", desc:"Set any percentage from 5% to 100%. Recommended 20-50%. For an $85 session, 20% is a $17 hold." },
+                { icon:"📊", title:"Deposit status on your schedule", desc:"See instantly which new clients have paid their deposit and which are still pending." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      <section id="reminders" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Automated Reminders</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Never Chase a Client Again.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                BodyMap sends every client a reminder 24 hours before their session - with their intake form link included. Automatic. Every day.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📧", title:"24h automatic email", desc:"Sent from your domain every morning. Branded and personal - not generic spam." },
+                { icon:"📋", title:"Intake link included", desc:"Every reminder links directly to the client body map. More completions, better sessions." },
+                { icon:"✅", title:"Delivery status visible", desc:"See which clients got their reminder and who still needs intake. No guessing." },
+                { icon:"🔄", title:"Zero configuration", desc:"Set up once. Runs every day automatically. Nothing to remember." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"#fff", borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* CLIENT INTAKE */}
+      <section id="intake" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Client Intake</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Your Client Fills In Their Body.<br/>You Walk In Knowing Everything.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                A visual body map sent automatically after every booking. Clients tap exactly where they need work and what to avoid. Preferences are saved permanently — never asked again.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:72, alignItems:"center" }}>
+            <FadeIn delay={0.1}>
+              <div>
+                <BodyMapDemo />
+                <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Try it — tap zones, switch front/back, toggle focus/avoid</div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.15}>
+              <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
+                {[
+                  { icon:"🗺️", title:"Visual body map", desc:"Front and back body diagram. Clients tap focus areas and avoid zones. Immediately visible in your dashboard before the session." },
+                  { icon:"🔁", title:"Carried forward forever", desc:"Preferences from session 1 pre-fill every future intake. Returning clients confirm in one tap. New info layers on top." },
+                  { icon:"🚨", title:"Medical flags surface automatically", desc:"Injuries, conditions, and contraindications are flagged immediately. You see them before you walk in." },
+                  { icon:"📲", title:"Sent automatically after booking", desc:"The intake link fires the moment a booking is confirmed. No chasing. No paper. No verbal check-ins on the table." },
+                ].map(({icon,title,desc}) => (
+                  <div key={title} style={{ display:"flex", gap:14 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:C.beige, display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:4 }}>{title}</div>
+                      <div style={{ fontSize:13, color:C.gray, lineHeight:1.65 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* RETURNING CLIENT PRE-FILL */}
+      <section id="returning" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:`linear-gradient(160deg, #0D1F17 0%, #1A3A28 100%)` }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Returning Clients</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:16 }}>
+                After Session One,<br/>They Never Start From Scratch.
+              </h2>
+              <p style={{ fontSize:16, color:"rgba(255,255,255,0.65)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                BodyMap remembers every client's preferences — zones, pressure, music, lighting, what to avoid. When they book again, their intake arrives pre-filled. One tap to confirm. Done in 10 seconds.
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:72, alignItems:"center" }}>
+            {/* Phone mockup of welcome back banner */}
+            <FadeIn delay={0.1}>
+              <div style={{ display:"flex", justifyContent:"center" }}>
+                <div style={{ width:300, background:"#F0EAD9", borderRadius:32, overflow:"hidden", boxShadow:"0 32px 80px rgba(0,0,0,0.5)", border:"8px solid #1A1A2E" }}>
+                  {/* Welcome back banner */}
+                  <div style={{ background:"#FDF6E8", borderBottom:"1.5px solid #D4B070", padding:"14px 18px", display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
+                    <div>
+                      <div style={{ fontFamily:"system-ui", fontSize:13, fontWeight:800, color:"#B87840" }}>✦ Welcome back, Sarah!</div>
+                      <div style={{ fontFamily:"system-ui", fontSize:11, color:"#7A9485", marginTop:2 }}>Tap to pre-fill your preferences</div>
+                    </div>
+                    <div style={{ background:"#B87840", color:"#fff", borderRadius:20, padding:"7px 13px", fontFamily:"system-ui", fontSize:11, fontWeight:800, whiteSpace:"nowrap", flexShrink:0 }}>
+                      Use Last Session
+                    </div>
+                  </div>
+                  {/* Body map preview */}
+                  <div style={{ padding:"16px 18px" }}>
+                    <div style={{ fontFamily:"Georgia, serif", fontSize:18, fontWeight:700, color:"#1A3A28", marginBottom:4 }}>Front of Body</div>
+                    <div style={{ fontFamily:"system-ui", fontSize:11, color:"#6B7280", marginBottom:12 }}>Your zones from last session, pre-filled</div>
+                    {/* Simplified body zones */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:6, marginBottom:10 }}>
+                      {[
+                        {label:"Neck",color:"#2A5741",text:"#fff"},
+                        {label:"L. Shoulder",color:"#2A5741",text:"#fff"},
+                        {label:"R. Shoulder",color:"#2A5741",text:"#fff"},
+                        {label:"Chest",color:"#4A7A5C",text:"#fff"},
+                        {label:"Abdomen",color:"#4A7A5C",text:"#fff"},
+                        {label:"Arms",color:"#E5E7EB",text:"#9CA3AF"},
+                        {label:"L. Knee",color:"#DC2626",text:"#fff"},
+                        {label:"R. Knee",color:"#DC2626",text:"#fff"},
+                        {label:"Feet",color:"#E5E7EB",text:"#9CA3AF"},
+                      ].map(z => (
+                        <div key={z.label} style={{ background:z.color, borderRadius:8, padding:"7px 4px", textAlign:"center", fontFamily:"system-ui", fontSize:9, fontWeight:700, color:z.text }}>
+                          {z.label}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display:"flex", gap:10, fontFamily:"system-ui", fontSize:10, color:"#6B7280" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#2A5741" }}/> Focus</div>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#DC2626" }}/> Avoid</div>
+                      <div style={{ display:"flex", alignItems:"center", gap:4 }}><div style={{ width:10, height:10, borderRadius:3, background:"#E5E7EB" }}/> Neutral</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </FadeIn>
+
+            <FadeIn delay={0.15}>
+              <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+                {[
+                  { icon:"🧠", title:"Remembers everything", desc:"Zones, pressure level, music preference, lighting, draping, medical flags — all stored from session one and carried forward automatically." },
+                  { icon:"⚡", title:"10-second intake for returning clients", desc:"The welcome back banner appears the moment they open the link. One tap and they are done. No re-entering anything they already told you." },
+                  { icon:"📈", title:"Every session adds a layer", desc:"If something changes — a new injury, a different pressure preference — they update just that field. Everything else stays. The record gets richer over time." },
+                  { icon:"🔒", title:"No competitor has this", desc:"Vagaro, MassageBook, and Acuity send a blank intake every time. BodyMap is the only platform that treats returning clients as the individuals they are." },
+                ].map(({icon,title,desc}) => (
+                  <div key={title} style={{ display:"flex", gap:14 }}>
+                    <div style={{ width:40, height:40, borderRadius:10, background:"rgba(255,255,255,0.1)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{icon}</div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:4 }}>{title}</div>
+                      <div style={{ fontSize:13, color:"rgba(255,255,255,0.6)", lineHeight:1.65 }}>{desc}</div>
+                    </div>
+                  </div>
+                ))}
+                <a href={`/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test`}
+                  style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.sage, color:"#fff", padding:"13px 24px", borderRadius:12, textDecoration:"none", fontFamily:"system-ui", fontSize:14, fontWeight:700, width:"fit-content", marginTop:8 }}>
+                  See it live — open Sarah's intake →
+                </a>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* SCHEDULE */}
+      <section id="schedule" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:C.beige }}>
+        <div className="bm-feat-2col" style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
+          <FadeIn>
+            <div>
+              <ScheduleDemo />
+              <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Click tabs and appointments to explore</div>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.15}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Schedule</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,3vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:20 }}>
+                Your Entire Day.<br/>Every Client's Status.<br/>One Screen.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, lineHeight:1.7, marginBottom:32 }}>
+                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment - their body map history, focus areas, and session count appear instantly.
+              </p>
+              <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:32 }}>
+                {["Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Action hub: send intake, open brief, view profile - all from schedule","Cal.com integration coming for automatic sync"].map((f,i)=>(
+                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, fontSize:15, color:C.dark }}>
+                    <div style={{ width:20, height:20, borderRadius:"50%", background:"#DCFCE7", color:"#16A34A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, marginTop:1 }}>✓</div>
+                    {f}
+                  </div>
+                ))}
+              </div>
+              <Link to="/signup" style={{ display:"inline-block", background:C.forest, color:"#fff", padding:"14px 28px", borderRadius:50, fontSize:15, fontWeight:600, textDecoration:"none" }}>
+                Get Started Free →
+              </Link>
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* SMART OUTREACH */}
+      <section id="outreach" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Smart Outreach</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                Fill your calendar without the awkward follow-up
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                Send a personal message to your lapsed clients, your regulars, or anyone past their usual visit interval — in one tap. Each client gets their own message with their name. You set it and forget it.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
+              {[
+                { icon:"🍂", title:"Smart segments", desc:"Lapsed clients. Due for a visit. Never rebooked. Your regulars. Or build your own filter with custom conditions." },
+                { icon:"💬", title:"Email and SMS", desc:"Send by email or text. Each message is personalized with the client's first name and your direct booking link." },
+                { icon:"🧪", title:"Test before you send", desc:"Preview exactly what a client will see and send a test to yourself before it goes to anyone on your list." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:16 }}>{icon}</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:15, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* POST-SESSION BRIEF */}
+      <section id="postsession" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Post-Session Brief</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                The session doesn't end when the client leaves
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                The moment you mark a session complete, your client receives a beautifully formatted summary — your personal message, session notes, a self-care tip, and a direct link to book their next visit.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
+              {[
+                { icon:"✉️", title:"Automatic delivery", desc:"Fires the instant you mark a session complete. No extra steps. Your client hears from you while the session is still fresh." },
+                { icon:"📋", title:"Your words, their inbox", desc:"Write a personal message in the Session Record — stretches to try, what improved, what to focus on next time. It goes straight to them." },
+                { icon:"📅", title:"Book next session button", desc:"Every brief includes a direct link to book their next appointment. The best time to rebook is right after a great session." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.white, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:16 }}>{icon}</div>
+                  <div style={{ fontSize:18, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:15, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* BILLING */}
+      <section id="billing" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Billing</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Know Exactly Where Your<br/>Revenue Stands. Always.
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
+                See expected vs collected revenue at a glance. Daily, weekly, and monthly views. Know which clients owe, which sessions are complete, and what's coming.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📈", title:"Expected vs collected", desc:"See your projected revenue from upcoming bookings and your collected revenue from completed sessions — side by side." },
+                { icon:"📅", title:"Daily, weekly, monthly views", desc:"Switch between views to see today's earnings, this week's performance, or the full month at a glance." },
+                { icon:"💳", title:"Deposit tracking", desc:"Deposits are automatically counted toward expected revenue. See which clients have paid and which are pending." },
+                { icon:"🔔", title:"Session rate drives everything", desc:"Set your hourly rate once in Settings. Every revenue projection across every view updates automatically." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:24 }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* GIFT CARDS */}
+      <section id="gifts" style={{ scrollMarginTop:"112px", padding:"90px 24px", background:"linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FFF9F3 100%)", position:"relative", overflow:"hidden" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:52 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#E85C79", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>♡ Gift Cards</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Give the gift of <em style={{ color:"#E85C79", fontStyle:"italic" }}>feeling good.</em>
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                For the mother who gives everything. The friend in a hard season. The partner who deserves to be cared for. Gift cards travel where flowers can't — and they bring clients back through your door.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🌸", title:"Beautiful by default", desc:"Every card comes with a rose-and-cream design, botanical flourishes, and space for a personal note. Nothing feels transactional." },
+                { icon:"💌", title:"Live preview as you create", desc:"See the gift card build in real time as you fill in the recipient, amount, and message. What you see is what they'll receive." },
+                { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200 — or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
+                { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. BodyMap makes it as easy as texting your booking link — and each redemption brings a new client." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"rgba(255,255,255,0.75)", backdropFilter:"blur(6px)", borderRadius:16, padding:24, border:"1.5px solid rgba(251,207,232,0.6)" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8, fontFamily:"Georgia, serif" }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* AI */}
+      <section id="ai" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:60 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>BodyMap AI</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:20 }}>
+                An AI That Knows Your Clients.<br/>Not Just Massage in General.
+              </h2>
+              <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
+                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. BodyMap AI does.
+              </p>
+            </div>
+          </FadeIn>
+          <div className="bm-feat-2col" style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:60, alignItems:"start" }}>
+            <FadeIn delay={0.1}>
+              <div>
+                <AIDemo />
+                <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Try the suggested questions to see real-data responses</div>
+              </div>
+            </FadeIn>
+            <FadeIn delay={0.2}>
+              <div>
+                <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:24 }}>
+                  {[
+                    { q:"Which clients need re-engagement?", a:"Flags lapsed clients by name, with days since last visit and pattern context", tag:"Retention" },
+                    { q:"Draft an SMS for Monica", a:"Writes a personalized message using her body history, not a generic template", tag:"Automation" },
+                    { q:"How is my revenue trending?", a:"Compares 30-day collected vs expected, highlights your best clients", tag:"Billing" },
+                    { q:"What patterns does Sarah have?", a:"Surfaces her body area frequency, pressure trend, and AI insight in seconds", tag:"Patterns" },
+                  ].map(({q,a,tag})=>(
+                    <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}` }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                        <div style={{ background:"#DCFCE7", color:"#16A34A", borderRadius:20, padding:"2px 10px", fontSize:10, fontWeight:700 }}>{tag}</div>
+                      </div>
+                      <div style={{ fontSize:14, fontWeight:700, color:C.dark, marginBottom:4 }}>"{q}"</div>
+                      <div style={{ fontSize:13, color:C.gray }}>{a}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ background:"#FEF3C7", borderRadius:12, padding:"14px 18px", fontSize:13, color:"#92400E", lineHeight:1.5 }}>
+                  💡 The demo uses sample data. When you're logged in, BodyMap AI has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
+      {/* MOBILE · PWA · PUSH */}
+      <section id="mobile" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:"linear-gradient(160deg, #0D1F17 0%, #1B3A28 60%, #2A5741 100%)", position:"relative", overflow:"hidden" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:"#86EFAC", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>On Your Phone</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:20 }}>
+                Your Practice,<br/>In Your Pocket.
+              </h2>
+              <p style={{ fontSize:17, color:"rgba(255,255,255,0.75)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                Install BodyMap to your home screen in two taps. No app store. No download. Just a tap on the Safari share button and you're in. Then when a client books, replies, or goes quiet — a gentle tap on your phone tells you.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"📲", title:"Install to home screen", desc:"Tap Share in Safari, then Add to Home Screen. BodyMap opens like any native app — full screen, no browser bar." },
+                { icon:"🔔", title:"Push notifications", desc:"Know the moment a client books, a gift card is redeemed, or a lapsed client replies. No need to check email or refresh." },
+                { icon:"🌿", title:"Built for thumbs", desc:"Every screen rebuilt for one-handed use. Bottom nav, large tap targets, sliding panels. Runs smoothly on iPhone SE and up." },
+                { icon:"⚡", title:"Works when Wi-Fi doesn't", desc:"Session notes, schedule, and client profiles load instantly from cache. Come back online and everything syncs." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"rgba(255,255,255,0.06)", backdropFilter:"blur(8px)", borderRadius:16, padding:24, border:"1px solid rgba(134,239,172,0.2)" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:"#fff", marginBottom:8, fontFamily:"Georgia, serif" }}>{title}</div>
+                  <div style={{ fontSize:13, color:"rgba(255,255,255,0.7)", lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* AUTOMATION */}
+      <section id="automation" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:C.beige }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Automation Hub</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:20 }}>
+                Set It Once.<br/>BodyMap Runs Your Practice.
+              </h2>
+              <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
+                Don't send that re-engagement text. Don't assemble that pre-session brief. Don't remember to follow up. BodyMap detects, drafts, and acts - you approve in one tap.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <AutomationHub />
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* GROWTH */}
+      <section id="growth" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Growth Engine</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:20 }}>
+                Retain Every Client.<br/>Attract New Ones.
+              </h2>
+              <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
+                Other tools help you manage clients. BodyMap helps you grow. Built-in retention intelligence catches churn before it happens. Natural referral loops bring new clients in without advertising.
+              </p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <GrowthEngine />
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* SOCIAL PROOF */}
+      <section style={{ background:C.beige, padding:"60px 24px" }}>
+        <div style={{ maxWidth:900, margin:"0 auto" }}>
+          <FadeIn>
+            <div className="bm-features-3col" style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:24 }}>
+              {[
+                { stat:"$0/mo", desc:"Everything included. Free forever. No credit card." },
+                { stat:"30 sec", desc:"Time for a client to complete their intake. No app, no login." },
+                { stat:"0", desc:"Competitors with visual body pattern tracking over time." },
+              ].map((s,i)=>(
+                <div key={i} style={{ background:"#fff", borderRadius:16, padding:"28px 24px", textAlign:"center", boxShadow:"0 2px 8px rgba(0,0,0,0.05)" }}>
+                  <div style={{ fontFamily:"Georgia, serif", fontSize:42, fontWeight:700, color:C.forest, marginBottom:8 }}>{s.stat}</div>
+                  <div style={{ fontSize:14, color:C.gray, lineHeight:1.5 }}>{s.desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* FINAL CTA */}
+      <section style={{ background:`linear-gradient(160deg, #0D1F17 0%, #1A3A28 50%, #2A5741 100%)`, padding:"100px 24px", textAlign:"center" }}>
+        <div style={{ maxWidth:700, margin:"0 auto" }}>
+          <FadeIn>
+            <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(32px,4.5vw,56px)", fontWeight:700, color:"#fff", lineHeight:1.15, marginBottom:20 }}>
+              Every massage therapist<br/>remembers every client,<br/>every time.
+            </h2>
+            <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", marginBottom:44 }}>
+              Free forever on Bronze. Every tool you need to retain clients and grow your practice.
+            </p>
+            <div style={{ display:"flex", gap:16, justifyContent:"center", flexWrap:"wrap", marginBottom:24 }}>
+              <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"18px 44px", borderRadius:50, fontSize:18, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 32px rgba(201,168,76,0.4)" }}>
+                Start Free - No Card Needed →
+              </Link>
+              <Link to="/pricing" style={{ background:"rgba(255,255,255,0.08)", color:"#fff", padding:"18px 44px", borderRadius:50, fontSize:18, fontWeight:600, textDecoration:"none", border:"1.5px solid rgba(255,255,255,0.2)" }}>
+                View Pricing
+              </Link>
+            </div>
+            <div style={{ fontSize:13, color:"rgba(255,255,255,0.35)" }}>No credit card · Setup in 30 seconds · Cancel anytime</div>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* PORTABILITY */}
+      <section id="portability" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Switching is Easy</div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,4vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 20px", lineHeight:1.2 }}>
+                Bring your entire client history with you
+              </h2>
+              <p style={{ fontSize:18, color:C.textLight, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
+                Already using MassageBook, Vagaro, GlossGenius, or Mindbody? Import your full client list in under 5 minutes. Your history, your patterns, your relationships — all carry over.
+              </p>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:24, marginBottom:40 }}>
+              {[
+                { icon:"📋", title:"Client list import", desc:"Upload a CSV from any platform. Names, emails, phones, notes — all mapped automatically. Duplicates are detected and merged." },
+                { icon:"📅", title:"Appointment history", desc:"Import past sessions so lapsed detection and pattern intelligence work from day one — not after months of building new data." },
+                { icon:"📆", title:"Upcoming bookings", desc:"Import your upcoming appointment schedule so your calendar isn't empty on day one. Clients are notified via your new BodyMap link." },
+                { icon:"🔗", title:"Supported platforms", desc:"MassageBook, Vagaro, GlossGenius, Mindbody, Square, or any CSV file. If it exports a spreadsheet, BodyMap can import it." },
+              ].map(({ icon, title, desc }) => (
+                <div key={title} style={{ background:C.beige, borderRadius:16, padding:28 }}>
+                  <div style={{ fontSize:32, marginBottom:14 }}>{icon}</div>
+                  <div style={{ fontSize:17, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:14, color:C.textLight, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ background:C.forest, borderRadius:16, padding:"28px 32px", display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:16 }}>
+              <div>
+                <div style={{ fontSize:18, fontWeight:700, color:"#fff", marginBottom:4 }}>Ready to make the switch?</div>
+                <div style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Takes 5 minutes. We walk you through every step inside the app.</div>
+              </div>
+              <Link to="/signup" style={{ background:"#fff", color:C.forest, borderRadius:10, padding:"12px 24px", fontSize:14, fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>
+                Start Free — Import Today →
+              </Link>
+            </div>
+          </FadeIn>
         </div>
       </section>
 
