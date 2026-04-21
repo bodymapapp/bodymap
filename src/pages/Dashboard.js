@@ -101,6 +101,13 @@ function ServicesAndAvailability({ therapist }) {
     setServices(s => [...s, data]);
     setDraft({ preset:'', name:'', duration:60, price:85 });
     setSaving(false);
+    // Activation: first service added
+    if (therapist?.id) {
+      try {
+        const { trackActivation } = await import('../lib/activation');
+        trackActivation(therapist.id, 'added_service');
+      } catch {}
+    }
   }
 
   async function toggleService(svc) {
@@ -121,6 +128,13 @@ function ServicesAndAvailability({ therapist }) {
     } else {
       const { data } = await supabase.from('availability').insert({ therapist_id: therapist.id, day_of_week: dow, start_time: '09:00', end_time: '17:00', active: true }).select().single();
       setAvailability(a => [...a, data]);
+    }
+    // Activation: set availability for at least one day
+    if (therapist?.id) {
+      try {
+        const { trackActivation } = await import('../lib/activation');
+        trackActivation(therapist.id, 'set_availability');
+      } catch {}
     }
   }
 
@@ -595,6 +609,50 @@ function PushNotificationsCard({ therapist, C2 }) {
   );
 }
 
+function ReferralCard({ therapist, C2 }) {
+  const [copied, setCopied] = React.useState(false);
+  const [count, setCount] = React.useState(null);
+  const referralUrl = therapist?.custom_url
+    ? `${window.location.origin}/signup?ref=${therapist.custom_url}`
+    : '';
+
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    supabase.from('referrals').select('id', { count: 'exact', head: true })
+      .eq('referrer_therapist_id', therapist.id)
+      .then(({ count }) => setCount(count || 0))
+      .catch(() => {});
+  }, [therapist?.id]);
+
+  function copy() {
+    navigator.clipboard.writeText(referralUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  if (!referralUrl) return null;
+
+  return (
+    <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #FFFBEB)', border: '1.5px solid #86EFAC', borderRadius: 14, padding: 24, marginBottom: 20 }}>
+      <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.forest, margin: '0 0 6px 0' }}>🌿 Refer a therapist</p>
+      <p style={{ fontSize: 14, color: C2.darkGray, lineHeight: 1.6, margin: '0 0 14px 0', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+        Know another therapist who'd love BodyMap? Share your link. They get Silver free for life. You get a shoutout and swag.
+      </p>
+      <div style={{ background: '#fff', border: `1.5px solid ${C2.lightGray}`, borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 13, color: C2.forest, fontWeight: 700, wordBreak: 'break-all' }}>
+        {referralUrl}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <button onClick={copy} style={{ background: copied ? '#E8F5EE' : C2.forest, color: copied ? C2.forest : '#fff', border: copied ? '1.5px solid #86EFAC' : 'none', padding: '10px 18px', borderRadius: 10, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          {copied ? '✓ Copied!' : '📋 Copy link'}
+        </button>
+        {count !== null && count > 0 && (
+          <span style={{ fontSize: 12, color: C2.gray }}>{count} {count === 1 ? 'therapist' : 'therapists'} signed up through you</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const { updateProfile } = useAuth();
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
@@ -707,6 +765,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+    if (therapist?.id) {
+      import('../lib/activation').then(({ trackActivation }) => {
+        trackActivation(therapist.id, 'shared_booking_link');
+      }).catch(() => {});
+    }
   };
 
   return (
@@ -1127,6 +1190,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       {/* Push Notifications */}
       <PushNotificationsCard therapist={therapist} C2={C2} />
 
+      {/* Referral */}
+      <ReferralCard therapist={therapist} C2={C2} />
+
       {/* Block Days Off */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🚫 Block Days Off</p>
@@ -1486,10 +1552,10 @@ export default function Dashboard({ view }) {
               <input type="tel" value={sendPhone} onChange={e => { const d=e.target.value.replace(/\D/g,'').slice(0,10); const f=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; setSendPhone(f); }} placeholder="(512) 555-1234" autoFocus style={{ width: '100%', padding: '12px 16px', border: '2px solid #E8E4DC', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Please fill out my quick intake form before your session: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) e.preventDefault(); else setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
+              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Please fill out my quick intake form before your session: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) { e.preventDefault(); return; } if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
                 💬 Open in Messages →
               </a>
-              <button onClick={() => { navigator.clipboard.writeText(window.location.origin + '/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); }} style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+              <button onClick={() => { navigator.clipboard.writeText(window.location.origin + '/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } }} style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
                 {sendCopied ? '✓ Copied!' : '📋 Copy Link Only'}
               </button>
             </div>

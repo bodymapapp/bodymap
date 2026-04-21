@@ -99,6 +99,15 @@ export default function Signup() {
 
   useEffect(() => { if (user && justPaid) navigate('/dashboard?upgraded=true'); }, [user, justPaid, navigate]);
 
+  // Capture referral code from URL on mount (e.g. mybodymap.app/signup?ref=jamie-r)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+      try { localStorage.setItem('bm_referrer', ref); } catch {}
+    }
+  }, []);
+
   const formatPhone = (d) => {
     d = d.replace(/\D/g, '').substring(0, 10);
     if (d.length <= 3) return d;
@@ -164,6 +173,24 @@ export default function Signup() {
               signup_flag_reasons: guardFlags,
             }).eq('id', user.id);
           }
+          // Record referral if present
+          try {
+            const referrer = localStorage.getItem('bm_referrer');
+            if (referrer && user) {
+              const { data: refRow } = await supabase
+                .from('therapists')
+                .select('id')
+                .eq('custom_url', referrer)
+                .maybeSingle();
+              await supabase.from('referrals').insert({
+                referrer_custom_url: referrer,
+                referrer_therapist_id: refRow?.id || null,
+                referee_therapist_id: user.id,
+                referee_email: formData.email,
+              });
+              localStorage.removeItem('bm_referrer');
+            }
+          } catch (e) { /* non-blocking */ }
         } catch(e) { /* non-blocking */ }
       }
       // Notify admin of new signup

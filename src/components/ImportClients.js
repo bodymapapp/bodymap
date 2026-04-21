@@ -187,6 +187,13 @@ export default function ImportClients({ therapist, onComplete }) {
     setResults({ created, skipped, failed, total: rows.length });
     setImporting(false);
     setStep(4);
+    // Log activation (imported at least one client)
+    if (created > 0 && therapist?.id) {
+      try {
+        const { trackActivation } = await import('../lib/activation');
+        trackActivation(therapist.id, 'imported_clients', { count: created });
+      } catch {}
+    }
     if (onComplete) onComplete();
   }
 

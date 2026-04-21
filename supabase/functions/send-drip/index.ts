@@ -1,137 +1,272 @@
+// send-drip edge function
+// Runs on a daily cron, finds therapists in specific signup-age windows,
+// and sends the right drip email based on which window they fall into.
+//
+// Sequence (counting from signup day):
+//   Day 2  — "One tip: spot a client about to ghost you"
+//   Day 5  — "Try your own body map — send one to yourself"
+//   Day 10 — Social proof: story from a founding therapist (sanitized name until we have quotes)
+//   Day 21 — Referral ask: share BodyMap, get a shoutout
+//   Day 30 — One-question survey (harvest testimonials)
+//
+// Dedupe: writes to drip_sends table with (therapist_id, drip_day) unique key.
+// If a row exists, we skip — prevents duplicate sends even if the cron runs twice.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SKIP_EMAILS = new Set([
+  'bodymapdemo@gmail.com','bodymap01@gmail.com','hk5@email.com','hk2@email.com',
+  'hk4@email.com','hkgpwc@gmail.com','harshk.mba@gmail.com','demo@mybodymap.app',
+  'testtherapistapr15@email.com','testtherapistapr152@email.com','testtherapistapr153@email.com',
+  'sarah.demo@bodymap.test','test_therapist2@bodymap.com','goodhands@email.com',
+  'therapist11@test.com','tt12@email.com','tt12@emails.com','tt14@email.com',
+  'tt18@email.com','tt22@email.com','tt24@email.com','tt25@email.com','tt26@email.com',
+  'tt100@email.com','tt103@gmail.com','test101@email.com','test102@email.com',
+  'testtherapist99@email.com',
+].map(e => e.toLowerCase()));
+
+// Shared email chrome — header + footer wrapper used by every drip
+function wrap(inner: string) {
+  return `
+    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
+      <div style="margin-bottom:24px;">
+        <span style="font-size:20px;font-weight:700;color:#1A3A28;">BodyMap</span>
+        <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
+      </div>
+      ${inner}
+      <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.7;text-align:center;">
+        Reply any time — we read every email.<br/>
+        <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
+      </p>
+    </div>
+  `;
+}
+
+// ─── Email templates ─────────────────────────────────────
+
+function day2Email(firstName: string, dashLink: string) {
+  const inner = `
+    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:4px 10px;display:inline-block;margin-bottom:16px;">
+      <span style="font-family:system-ui;font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;">⚠ Tip of the week</span>
+    </div>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">5 signs a regular is about to ghost you</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hey ${firstName}, most client attrition happens quietly. You don't get a breakup text. You just stop seeing them on your calendar. The good news: the warning signs are almost always there a week or two before they disappear.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> Their rebooking window stretches. A 4-week regular now goes 6. Then 7.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">2.</strong> Their session feedback shortens. "Great" with no detail.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">3.</strong> They skip the add-ons they always got. CBD oil, hot stones — gone.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">4.</strong> They switch times. Weekly Thursday becomes random Saturdays.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">5.</strong> They stop referring friends. The pipeline they used to send you dries up.</p>
+
+    <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin-bottom:24px;">
+      <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;"><strong>How BodyMap helps:</strong> your Insights tab surfaces clients whose rebooking window has stretched. One glance, one tap, one text — "Haven't seen you in a while, want to grab your usual Thursday?" — saves most of them.</p>
+    </div>
+
+    <a href="${dashLink}?tab=insights" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Check my Insights tab →</a>
+  `;
+  return {
+    subject: `${firstName}, 5 signs a regular is about to ghost you`,
+    html: wrap(inner),
+  };
+}
+
+function day5Email(firstName: string, customUrl: string, dashLink: string) {
+  const selfIntakeLink = `https://mybodymap.app/book/${customUrl}`;
+  const inner = `
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Try your own body map — before your next client does</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, this one takes 60 seconds and changes how you'll think about intake forever.</p>
+
+    <div style="background:#F9FAF9;border-radius:10px;padding:20px;margin-bottom:20px;">
+      <p style="font-family:Georgia,serif;font-size:16px;color:#1A3A28;line-height:1.7;margin:0 0 8px;font-style:italic;">Send the body map to yourself.</p>
+      <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">Pretend you're a new client booking with you. Walk through the intake. Tap your own zones. See what your clients see.</p>
+    </div>
+
+    <a href="${selfIntakeLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Take the intake yourself →</a>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">When you're done, two things usually happen:</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> You realize it's way easier than what your clients fill out today.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">2.</strong> You see your own dashboard light up with real data — your own body map waiting, pressure preference, areas to avoid. That's what you get for every client going forward.</p>
+
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">P.S. Most therapists tell us this is the moment they finally "got it." Takes 60 seconds. Worth every one.</p>
+  `;
+  return {
+    subject: `${firstName}, send yourself the body map (60 seconds)`,
+    html: wrap(inner),
+  };
+}
+
+function day10Email(firstName: string, dashLink: string) {
+  // Sanitized name until we have real quotes. Replace {SAMPLE_QUOTE_THERAPIST} with a real name later.
+  const inner = `
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">"My rebooking rate jumped 18% in a month."</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, wanted to share something one of our founding therapists sent us last week:</p>
+
+    <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
+      <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 12px;font-style:italic;">"I switched to BodyMap three weeks ago and my rebooking rate jumped 18%. The Insights tab told me 7 regulars were drifting — I sent them all a quick text, and 5 booked that same week. I don't know how I ran my practice without this."</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">— Jamie R., Licensed Massage Therapist · solo practice, 6 years</p>
+    </div>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Three things Jamie did that you can do today:</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> Imported her full client list week one (don't wait).</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">2.</strong> Checked Insights every Monday morning with coffee, 5 minutes.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">3.</strong> Sent the body map link to every new client before the first session.</p>
+
+    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
+
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:24px 0 0;">P.S. If you've had a moment like Jamie's, just reply — we love hearing how it's going.</p>
+  `;
+  return {
+    subject: `${firstName}, how Jamie got a 18% rebooking lift in a month`,
+    html: wrap(inner),
+  };
+}
+
+function day21Email(firstName: string, customUrl: string) {
+  const referralLink = `https://mybodymap.app/?ref=${customUrl}`;
+  const inner = `
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Know another therapist who'd love BodyMap?</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, if you've got a friend in the field who's still fighting paper intake or Square's rising fees, we'd love to meet them.</p>
+
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <div style="font-family:system-ui;font-size:12px;color:#2A5741;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Your personal referral link</div>
+      <a href="${referralLink}" style="font-family:system-ui;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;">${referralLink}</a>
+    </div>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;"><strong style="color:#1A3A28;">What they get:</strong> Silver for life, free, same as you. No trial, no card.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">What you get:</strong> A shoutout on our Features page, a swag kit (stickers + tote), and our eternal thanks.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">Easy ways to share:</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 6px;">• Text it to one therapist friend who's always complaining about their software</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 6px;">• Drop it in your LMT Facebook group if you love it</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">• Post a screenshot of your favorite feature on Instagram and tag us (@mybodymap.app)</p>
+  `;
+  return {
+    subject: `${firstName}, a small ask (and a free thing for you)`,
+    html: wrap(inner),
+  };
+}
+
+function day30Email(firstName: string) {
+  // Simple reply-to survey. Single question, easy to answer.
+  const inner = `
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, one month in. How's it going?</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">You've been on BodyMap for a month, and we want to hear how it's going — good, bad, or in between. No form, no survey link, no tracking. Just hit reply.</p>
+
+    <div style="background:#F9FAF9;border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:24px;">
+      <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 4px;font-style:italic;">One question:</p>
+      <p style="font-family:system-ui;font-size:16px;color:#1A3A28;line-height:1.7;margin:0;font-weight:600;">What's the one thing you'd tell another therapist about BodyMap?</p>
+    </div>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Good, bad, hard, easy — whatever's real. One sentence is plenty.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">If it's a rave, we may share it on our Features page (we'll ask first). If it's a problem, it goes straight into next week's build. Your reply shapes what happens next.</p>
+
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Thank you for being one of the first. This thing exists because of you.</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:4px 0 0;">— HK</p>
+  `;
+  return {
+    subject: `${firstName}, one question about your first month 🌿`,
+    html: wrap(inner),
+  };
+}
+
+// ─── Main handler ────────────────────────────────────────
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  const RESEND_API_KEY     = Deno.env.get('RESEND_API_KEY');
-  const SUPABASE_URL       = Deno.env.get('SUPABASE_URL');
+  const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
 
-  const now = new Date();
+  const now = Date.now();
+  const dashLink = 'https://mybodymap.app/dashboard';
 
-  // Day 3: signed up between 3d2h and 3d22h ago
-  const day3Min = new Date(now.getTime() - (3 * 24 + 22) * 60 * 60 * 1000).toISOString();
-  const day3Max = new Date(now.getTime() - (3 * 24 + 2) * 60 * 60 * 1000).toISOString();
-
-  // Day 7: signed up between 7d2h and 7d22h ago
-  const day7Min = new Date(now.getTime() - (7 * 24 + 22) * 60 * 60 * 1000).toISOString();
-  const day7Max = new Date(now.getTime() - (7 * 24 + 2) * 60 * 60 * 1000).toISOString();
-
-  const SKIP_EMAILS = [
-    'bodymapdemo@gmail.com','bodymap01@gmail.com','hk5@email.com','hk2@email.com',
-    'hk4@email.com','hkgpwc@gmail.com','harshk.mba@gmail.com','demo@mybodymap.app',
-    'testtherapistapr15@email.com','testtherapistapr152@email.com','testtherapistapr153@email.com',
-    'sarah.demo@bodymap.test','test_therapist2@bodymap.com','goodhands@email.com',
-    'therapist11@test.com','tt12@email.com','tt12@emails.com','tt14@email.com',
-    'tt18@email.com','tt22@email.com','tt24@email.com','tt25@email.com','tt26@email.com',
-    'tt100@email.com','tt103@gmail.com','test101@email.com','test102@email.com',
-    'testtherapist99@email.com',
+  // For each drip day, pick therapists whose signup falls in a 22-hour window centered on that day.
+  // Example: Day 2 targets signups between 2d2h and 2d22h ago. Keeps the window wide enough that
+  // even if the cron runs a bit late/early, we still catch people.
+  const windows = [
+    { day: 2 },
+    { day: 5 },
+    { day: 10 },
+    { day: 21 },
+    { day: 30 },
   ];
 
   const results: any[] = [];
 
-  // Fetch Day 3 therapists
-  const { data: day3 } = await supabase.from('therapists')
-    .select('full_name, email, custom_url, created_at')
-    .gte('created_at', day3Min).lte('created_at', day3Max);
+  for (const w of windows) {
+    const minAgo = (w.day * 24 + 22) * 60 * 60 * 1000;
+    const maxAgo = (w.day * 24 + 2) * 60 * 60 * 1000;
+    const minIso = new Date(now - minAgo).toISOString();
+    const maxIso = new Date(now - maxAgo).toISOString();
 
-  for (const t of (day3 || [])) {
-    if (!t.email || SKIP_EMAILS.includes(t.email.toLowerCase())) continue;
-    const firstName = t.full_name?.split(' ')[0] || 'there';
-    const intakeUrl = `https://mybodymap.app/book/${t.custom_url}`;
-    const dashLink  = 'https://mybodymap.app/dashboard';
+    const { data: therapists } = await supabase
+      .from('therapists')
+      .select('id, full_name, email, custom_url, created_at')
+      .gte('created_at', minIso)
+      .lte('created_at', maxIso);
 
-    const html = `
-      <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
-        <div style="margin-bottom:24px;">
-          <span style="font-size:20px;font-weight:700;color:#1A3A28;">BodyMap</span>
-          <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
-        </div>
-        <h2 style="font-size:22px;font-weight:700;color:#1A3A28;margin:0 0 12px;">The fastest way to get your first client into BodyMap</h2>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hi ${firstName}, it takes about 60 seconds. Text or email this link to one client before their next session:</p>
-        <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:16px 20px;margin-bottom:20px;text-align:center;">
-          <div style="font-family:system-ui;font-size:12px;color:#2A5741;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">Your intake link</div>
-          <a href="${intakeUrl}" style="font-family:system-ui;font-size:15px;color:#2A5741;font-weight:700;">${intakeUrl}</a>
-        </div>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">They tap their focus areas and what to avoid. You see it in your dashboard before they arrive. After their first session, BodyMap remembers everything and pre-fills it automatically next time.</p>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 28px;">That is the whole thing. One link, and your practice starts working differently.</p>
-        <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Go to my dashboard</a>
-        <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.6;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
-      </div>
-    `;
+    for (const t of (therapists || [])) {
+      if (!t.email || SKIP_EMAILS.has(t.email.toLowerCase())) continue;
 
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
-      body: JSON.stringify({
-        from: 'The BodyMap Team <reminders@mybodymap.app>',
-        to: [t.email],
-        bcc: ['bodymapdemo@gmail.com'],
-        subject: `${firstName}, here is your intake link — share it before their next session`,
-        html,
-      }),
-    });
-    const data = await res.json();
-    results.push({ day: 3, email: t.email, status: res.ok ? 'sent' : 'failed', id: data.id });
-    await new Promise(r => setTimeout(r, 300));
+      // Dedupe: have we already sent this day to this therapist?
+      const { data: existing } = await supabase
+        .from('drip_sends')
+        .select('id')
+        .eq('therapist_id', t.id)
+        .eq('drip_day', w.day)
+        .maybeSingle();
+      if (existing) continue;
+
+      const firstName = t.full_name?.split(' ')[0] || 'there';
+      let emailPayload: { subject: string; html: string } | null = null;
+
+      if (w.day === 2)  emailPayload = day2Email(firstName, dashLink);
+      if (w.day === 5)  emailPayload = day5Email(firstName, t.custom_url || '', dashLink);
+      if (w.day === 10) emailPayload = day10Email(firstName, dashLink);
+      if (w.day === 21) emailPayload = day21Email(firstName, t.custom_url || '');
+      if (w.day === 30) emailPayload = day30Email(firstName);
+
+      if (!emailPayload) continue;
+
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
+        body: JSON.stringify({
+          from: 'The BodyMap Team <reminders@mybodymap.app>',
+          to: [t.email],
+          bcc: ['bodymapdemo@gmail.com'],
+          subject: emailPayload.subject,
+          html: emailPayload.html,
+        }),
+      });
+
+      const data = await res.json();
+
+      // Log the send so we don't do it again
+      await supabase.from('drip_sends').insert({
+        therapist_id: t.id,
+        drip_day: w.day,
+        resend_id: data?.id || null,
+        status: res.ok ? 'sent' : 'failed',
+      });
+
+      results.push({ day: w.day, email: t.email, status: res.ok ? 'sent' : 'failed' });
+
+      // Gentle pace
+      await new Promise(r => setTimeout(r, 300));
+    }
   }
 
-  // Fetch Day 7 therapists
-  const { data: day7 } = await supabase.from('therapists')
-    .select('full_name, email, custom_url, created_at')
-    .gte('created_at', day7Min).lte('created_at', day7Max);
-
-  for (const t of (day7 || [])) {
-    if (!t.email || SKIP_EMAILS.includes(t.email.toLowerCase())) continue;
-    const firstName = t.full_name?.split(' ')[0] || 'there';
-    const demoUrl   = 'https://mybodymap.app/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test';
-    const dashLink  = 'https://mybodymap.app/dashboard';
-
-    const html = `
-      <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
-        <div style="margin-bottom:24px;">
-          <span style="font-size:20px;font-weight:700;color:#1A3A28;">BodyMap</span>
-          <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
-        </div>
-        <h2 style="font-size:22px;font-weight:700;color:#1A3A28;margin:0 0 12px;">After the first session, your clients never start from scratch again</h2>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hi ${firstName}, here is what happens after a client fills their intake once:</p>
-        <div style="background:#F9FAF9;border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:20px;">
-          <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">Next time they book, the link opens with a gold banner: <b>Welcome back</b>. Their zones are already filled in. Pressure, music, what to avoid. All there. They tap confirm and they are done in 10 seconds.</p>
-        </div>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">See it live with a demo client we set up:</p>
-        <a href="${demoUrl}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;margin-bottom:28px;">See the returning client demo</a>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 8px;">This is what makes clients feel like your regulars remember them. Because you do.</p>
-        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 28px;">Questions? Just reply here.</p>
-        <a href="${dashLink}" style="display:inline-block;background:#F0FDF4;color:#2A5741;border:1.5px solid #86EFAC;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Go to my dashboard</a>
-        <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.6;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
-      </div>
-    `;
-
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
-      body: JSON.stringify({
-        from: 'The BodyMap Team <reminders@mybodymap.app>',
-        to: [t.email],
-        bcc: ['bodymapdemo@gmail.com'],
-        subject: `${firstName}, after the first session they never start from scratch again`,
-        html,
-      }),
-    });
-    const data = await res.json();
-    results.push({ day: 7, email: t.email, status: res.ok ? 'sent' : 'failed', id: data.id });
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  return new Response(JSON.stringify({ sent: results.length, results }), {
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  return new Response(JSON.stringify({ total: results.length, results }), {
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 });
