@@ -348,6 +348,43 @@ export default function WhyBodyMap() {
         </div>
       </section>
 
+      {/* 7 categories at a glance */}
+      <section style={{ background:'#FFFBEB', padding:'70px 24px', borderTop:'1px solid #FDE68A' }}>
+        <div style={{ maxWidth:1000, margin:'0 auto' }}>
+          <div style={{ textAlign:'center', marginBottom:30 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:'#92400E', letterSpacing:'0.16em', textTransform:'uppercase', marginBottom:8 }}>How it all fits</div>
+            <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,38px)', fontWeight:700, color:C.dark, margin:'0 0 10px' }}>
+              Everything you need, across 7 parts of your practice
+            </h2>
+            <p style={{ fontSize:15, color:'#78350F', maxWidth:560, margin:'0 auto', lineHeight:1.6 }}>
+              From first click to long-term regular — every moment of your client's journey, handled.
+            </p>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
+            {[
+              { id:'1', name:'Find & Book',           desc:'Online scheduling, deposits, your custom booking page.' },
+              { id:'2', name:'Know Your Client',      desc:'Visual intake, waivers, preferences — all on submit.' },
+              { id:'3', name:'Client Intelligence',   desc:'Patterns across visits. AI chat. Weekly practice pulse.' },
+              { id:'4', name:'Day-of-Session',        desc:'Today\'s schedule, brief, and SOAP notes on your phone.' },
+              { id:'5', name:'Relationships',         desc:'Reminders, follow-ups, loyalty, lapsed client outreach.' },
+              { id:'6', name:'Money & Protection',    desc:'Billing, gift cards, signed waivers, privacy first.' },
+              { id:'7', name:'On Your Phone',         desc:'Install to home screen, push alerts, referrals, switching.' },
+            ].map(c => (
+              <Link key={c.id} to={`/features#cat-${c.id}`} style={{ textDecoration:'none', background:C.white, border:'1px solid #FDE68A', borderRadius:12, padding:'16px 18px', display:'block', transition:'transform 0.15s' }}>
+                <div style={{ display:'flex', alignItems:'baseline', gap:8, marginBottom:6 }}>
+                  <span style={{ fontFamily:'Georgia,serif', fontSize:24, fontWeight:700, color:C.forest, lineHeight:1 }}>{c.id}</span>
+                  <span style={{ fontFamily:'Georgia,serif', fontSize:15, fontWeight:700, color:C.dark }}>{c.name}</span>
+                </div>
+                <div style={{ fontSize:12, color:'#78350F', lineHeight:1.5 }}>{c.desc}</div>
+              </Link>
+            ))}
+          </div>
+          <div style={{ textAlign:'center', marginTop:24 }}>
+            <Link to="/features" style={{ color:'#92400E', fontSize:13, fontWeight:700, textDecoration:'underline' }}>See every feature in detail →</Link>
+          </div>
+        </div>
+      </section>
+
       {/* CTA */}
       <section style={{ background:`linear-gradient(160deg,#0D1F17,#2A5741)`, padding:'80px 24px', textAlign:'center' }}>
         <div style={{ maxWidth:580, margin:'0 auto' }}>
