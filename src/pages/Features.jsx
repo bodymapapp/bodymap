@@ -1515,7 +1515,16 @@ function TaxonomyNav() {
 
 // ── Main export ──────────────────────────────────────────────────────────
 export default function Features() {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    // Defensive: ensure no prior page left scroll locked
+    try {
+      document.body.style.overflow = '';
+      document.documentElement.style.overflow = '';
+      document.body.style.position = '';
+      document.body.style.height = '';
+    } catch (e) {}
+  }, []);
 
   return (
     <div style={{ fontFamily: 'system-ui, -apple-system, sans-serif', color: C.dark, paddingTop: 64 }}>
