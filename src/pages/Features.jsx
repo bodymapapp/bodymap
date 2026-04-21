@@ -1009,20 +1009,6 @@ function FeatureCarousel({ category, renderVisual }) {
   const next = () => setSlide(s => Math.min(s + 1, total - 1));
   const prev = () => setSlide(s => Math.max(s - 1, 0));
 
-  // Keyboard nav when carousel is focused
-  const containerRef = useRef(null);
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const handler = (e) => {
-      if (!el.contains(document.activeElement) && document.activeElement !== document.body) return;
-      if (e.key === 'ArrowRight') { e.preventDefault(); next(); }
-      if (e.key === 'ArrowLeft')  { e.preventDefault(); prev(); }
-    };
-    el.addEventListener('keydown', handler);
-    return () => el.removeEventListener('keydown', handler);
-  }, [total]);
-
   const textColor = isDark ? '#fff' : C.dark;
   const mutedColor = isDark ? 'rgba(255,255,255,0.75)' : C.muted;
   const chipBg = isDark ? 'rgba(255,255,255,0.08)' : '#F5F0E8';
@@ -1037,8 +1023,6 @@ function FeatureCarousel({ category, renderVisual }) {
   return (
     <section
       id={`cat-${category.id}`}
-      ref={containerRef}
-      tabIndex={-1}
       style={{
         scrollMarginTop: 112,
         padding: '80px 24px',
