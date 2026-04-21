@@ -124,8 +124,48 @@ export default function Signup() {
     if (formData.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match.'); return; }
     setLoading(true);
+
+    // Security guard: rate limits, disposable email block, suspicious pattern detection.
+    // Fail open — if the guard errors, we allow the signup (never block real users over a bug).
+    let guardFlags = [];
+    let guardScore = 0;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const guardRes = await fetch(`${supabaseUrl}/functions/v1/signup-guard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+        body: JSON.stringify({
+          email: formData.email,
+          full_name: formData.fullName,
+          business_name: formData.businessName,
+        }),
+      });
+      const guardData = await guardRes.json();
+      if (guardData.outcome === 'blocked') {
+        setError(guardData.message || 'We could not process this signup. Please check your details and try again.');
+        setLoading(false);
+        return;
+      }
+      guardFlags = guardData.flag_reasons || [];
+      guardScore = guardData.risk_score || 0;
+    } catch (e) { /* guard unreachable — proceed */ }
+
     const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: formData.businessName, customUrl: formData.customUrl, phone: formData.phone });
     if (result.success) {
+      // Mark signup risk on the therapist row so it surfaces in the daily digest and admin views
+      if (guardFlags.length > 0 || guardScore > 0) {
+        try {
+          const { supabase } = await import('../lib/supabase');
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            await supabase.from('therapists').update({
+              signup_risk_score: guardScore,
+              signup_flag_reasons: guardFlags,
+            }).eq('id', user.id);
+          }
+        } catch(e) { /* non-blocking */ }
+      }
       // Notify admin of new signup
       try {
         await fetch('https://api.resend.com/emails', {

@@ -50,6 +50,32 @@ export default function Onboarding() {
     setLoading(true);
     setError('');
     const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
+
+    // Security guard: rate limits, disposable email block, pattern detection.
+    // Fail open — guard errors never block legitimate users.
+    let guardFlags = [];
+    let guardScore = 0;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const guardRes = await fetch(`${supabaseUrl}/functions/v1/signup-guard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+        body: JSON.stringify({
+          email: user.email,
+          full_name: fullName,
+          business_name: businessName,
+        }),
+      });
+      const guardData = await guardRes.json();
+      if (guardData.outcome === 'blocked') {
+        setError(guardData.message || 'We could not process this signup. Please check your details and try again.');
+        setLoading(false);
+        return;
+      }
+      guardFlags = guardData.flag_reasons || [];
+      guardScore = guardData.risk_score || 0;
+    } catch (e) { /* guard unreachable — proceed */ }
     // Use upsert so re-submitting (or a signed-in user who somehow reaches this page)
     // updates their existing row instead of throwing "duplicate key value violates
     // unique constraint therapists_pkey".
@@ -61,7 +87,9 @@ export default function Onboarding() {
       phone: phone,
       custom_url: customUrl,
       password_hash: 'managed_by_supabase_auth',
-      plan: 'silver'
+      plan: 'silver',
+      signup_risk_score: guardScore,
+      signup_flag_reasons: guardFlags,
     }, { onConflict: 'id' }).select().single();
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
