@@ -49,11 +49,16 @@
       #pwa-splash svg { animation: pulse 1.5s ease-in-out infinite; }
       @keyframes pulse { 0%,100% { transform: scale(1); opacity:1; } 50% { transform: scale(1.05); opacity:0.85; } }
 
-      /* Safe area for notched phones */
-      body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+      /* Safe area for notched phones (mobile only — desktop gets 0) */
+      body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+      }
 
-      /* Prevent overscroll bounce on iOS */
-      html, body { overscroll-behavior: none; -webkit-overflow-scrolling: touch; }
+      /* Prevent overscroll bounce (iOS). Do NOT use -webkit-overflow-scrolling
+         on html/body — it's deprecated, has been removed from spec, and
+         causes freeze bugs in Chrome on some content heights. */
+      html, body { overscroll-behavior: none; }
 
       /* Remove tap highlight on mobile */
       * { -webkit-tap-highlight-color: transparent; }
@@ -79,21 +84,37 @@
     <div id="root"></div>
 
     <script>
-      // Hide splash after app loads
-      window.addEventListener('load', () => {
-        setTimeout(() => {
+      // Splash removal — triggers on multiple paths to prevent getting stuck.
+      // Old version relied on window.load (which can hang indefinitely if
+      // any resource fails to load, e.g. blocked PostHog). New version uses
+      // DOMContentLoaded + a shorter delay + fallback timeouts.
+      (function() {
+        function removeSplash() {
           const splash = document.getElementById('pwa-splash');
-          if (splash) {
-            splash.classList.add('hidden');
-            setTimeout(() => splash.remove(), 400);
-          }
-        }, 800);
-      });
+          if (!splash) return;
+          splash.classList.add('hidden');
+          setTimeout(() => { try { splash.remove(); } catch (e) {} }, 350);
+        }
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          setTimeout(removeSplash, 600);
+        } else {
+          document.addEventListener('DOMContentLoaded', () => setTimeout(removeSplash, 600));
+        }
+        // Absolute failsafe — splash MUST be gone after 3s no matter what.
+        setTimeout(removeSplash, 3000);
+      })();
 
-      // Register service worker
+      // Register service worker. If a broken older SW is present, force unregister first.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        window.addEventListener('load', async () => {
+          try {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            // Force update check on any existing registration so new sw.js takes over
+            await Promise.all(regs.map(r => r.update().catch(() => {})));
+            if (!regs.length) {
+              navigator.serviceWorker.register('/sw.js').catch(() => {});
+            }
+          } catch (e) {}
         });
       }
     </script>
