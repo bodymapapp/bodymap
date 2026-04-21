@@ -24,6 +24,7 @@ export default function Footer() {
             <p style={{ fontWeight: "700", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", color: "rgba(255,255,255,0.5)" }}>Product</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <a href="/#features" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Features</a>
+              <Link to="/atlas" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>The Atlas</Link>
               <Link to="/pricing" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Pricing</Link>
             </div>
           </div>

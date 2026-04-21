@@ -937,23 +937,41 @@ export default function Features() {
             </div>
           </FadeIn>
           <FadeIn delay={0.1}>
-            <h1 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(36px,5.5vw,68px)", fontWeight:700, color:"#FFFFFF", lineHeight:1.15, marginBottom:24, letterSpacing:"-0.02em" }}>
-              The Only Tool That<br/>
-              <span style={{ color:C.gold }}>Understands Your Clients' Bodies</span>
+            <h1 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(36px,5.5vw,64px)", fontWeight:700, color:"#FFFFFF", lineHeight:1.15, marginBottom:20, letterSpacing:"-0.02em" }}>
+              The platform that turns<br/>
+              <span style={{ color:C.gold }}>first-timers into regulars.</span>
             </h1>
           </FadeIn>
+          <FadeIn delay={0.15}>
+            <p style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:"clamp(18px,2.4vw,26px)", color:"rgba(255,255,255,0.85)", lineHeight:1.5, marginBottom:36, maxWidth:720, margin:"0 auto 36px" }}>
+              Reminders, intake, follow-ups — all automatic.
+            </p>
+          </FadeIn>
           <FadeIn delay={0.2}>
-            <p style={{ fontSize:"clamp(16px,2vw,20px)", color:"rgba(255,255,255,0.7)", lineHeight:1.65, marginBottom:44, maxWidth:640, margin:"0 auto 44px" }}>
-              Visual body map tracking. Pattern intelligence. AI memory. Automation that runs your practice. Built for the therapist who refuses to lose a client to being forgotten.
+            <p style={{ fontSize:"clamp(15px,1.8vw,18px)", color:"rgba(255,255,255,0.65)", lineHeight:1.65, marginBottom:44, maxWidth:580, margin:"0 auto 44px" }}>
+              Visual body maps, pattern intelligence, and the memory your practice deserves. Built for the therapist who refuses to lose a client to being forgotten.
             </p>
           </FadeIn>
           <FadeIn delay={0.3}>
-            <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:52 }}>
+            <div style={{ display:"flex", gap:14, justifyContent:"center", flexWrap:"wrap", marginBottom:20 }}>
               <Link to="/signup" style={{ background:C.gold, color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:700, textDecoration:"none", fontFamily:"Georgia, serif", boxShadow:"0 8px 24px rgba(201,168,76,0.4)" }}>
                 Start Free - No Card Needed →
               </Link>
               <Link to="/pricing" style={{ background:"rgba(255,255,255,0.08)", color:"#fff", padding:"16px 36px", borderRadius:50, fontSize:16, fontWeight:600, textDecoration:"none", border:"1.5px solid rgba(255,255,255,0.2)" }}>
                 View Pricing
+              </Link>
+            </div>
+            <div style={{ textAlign:'center', marginBottom:52 }}>
+              <Link to="/atlas" style={{
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: 'rgba(255,255,255,0.65)',
+                textDecoration: 'none',
+                borderBottom: '1px solid rgba(255,255,255,0.25)',
+                paddingBottom: 2,
+              }}>
+                Or see every feature in one view — The Atlas →
               </Link>
             </div>
           </FadeIn>

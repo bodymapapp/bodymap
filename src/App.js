@@ -23,6 +23,7 @@ import AIDashboard from './components/AIDashboard';
 import ClientIntake from './pages/ClientIntake';
 import Demo from './pages/Demo';
 import WhyBodyMap from './pages/WhyBodyMap';
+import Atlas from './pages/Atlas';
 import BookingPage from './pages/BookingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
@@ -43,6 +44,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
+          <Route path="/atlas" element={<Atlas />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
