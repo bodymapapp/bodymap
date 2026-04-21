@@ -183,7 +183,7 @@ export default function BookingPage() {
   const [existingBooked,setExistingBooked]=useState([]);
   const [slot,setSlot]=useState(null);
   const [loadingSlots,setLoadingSlots]=useState(false);
-  const [form,setForm]=useState({name:'',email:'',phone:''});
+  const [form,setForm]=useState({name:'',email:'',phone:'',sms_opted_in:false});
   const [partner,setPartner]=useState({name:'',email:''});
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
@@ -253,6 +253,7 @@ export default function BookingPage() {
       therapist_id:therapist.id, service_id:svc.id,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
+      sms_opted_in: !!form.sms_opted_in && !!form.phone,
       partner_name: svc?.is_couples ? partner.name.trim() : null,
       partner_email: svc?.is_couples ? partner.email.trim().toLowerCase() : null,
       start_time:slot.start, end_time:slot.end,
@@ -564,6 +565,17 @@ export default function BookingPage() {
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>
               ))}
+              {/* SMS consent (TCPA) — only shown if phone is filled */}
+              {form.phone && form.phone.replace(/\D/g,'').length >= 10 && (
+                <label style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:'#F9FAF9',border:`1px solid ${C.light}`,borderRadius:10,cursor:'pointer'}}>
+                  <input type="checkbox" checked={!!form.sms_opted_in}
+                    onChange={e=>setForm(f=>({...f,sms_opted_in:e.target.checked}))}
+                    style={{marginTop:2,accentColor:'#2A5741',width:16,height:16,flexShrink:0,cursor:'pointer'}}/>
+                  <div style={{fontSize:12,color:C.gray,lineHeight:1.5}}>
+                    It's OK to text me appointment reminders and confirmations at this number. Message and data rates may apply. Reply STOP anytime to opt out.
+                  </div>
+                </label>
+              )}
             </div>
             {svc?.is_couples && (
               <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'16px',marginBottom:8}}>

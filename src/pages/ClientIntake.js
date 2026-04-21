@@ -47,6 +47,18 @@ export default function ClientIntake() {
         email: intakeData.clientEmail || null
       });
 
+      // Update SMS consent if the client opted in on this intake.
+      // Only ever flip sms_opted_in to TRUE — never overwrite a previous TRUE
+      // with FALSE if they left it unchecked this time. Opt-out must go
+      // through STOP on SMS itself (handled by Twilio).
+      if (intakeData.smsOptIn && client?.id) {
+        try {
+          await supabase.from('clients')
+            .update({ sms_opted_in: true, sms_opted_in_at: new Date().toISOString() })
+            .eq('id', client.id);
+        } catch (e) { /* non-blocking */ }
+      }
+
       // Step 2: Resolve booking_id — use URL param if present, otherwise find
       // the client's next upcoming booking for this therapist. This ensures
       // sessions ALWAYS have booking_id set, so the schedule only needs one

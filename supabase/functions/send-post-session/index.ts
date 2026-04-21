@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendSmsViaTwilio, shouldSend, logNotification } from "../_shared/notifications.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -24,7 +25,15 @@ serve(async (req) => {
 
   const { data: session } = await supabase
     .from('sessions')
-    .select('*, therapists(full_name, business_name, custom_url), clients(name, email)')
+    .select(`
+      *,
+      therapists(
+        id, full_name, business_name, custom_url, email,
+        notification_prefs,
+        twilio_account_sid, twilio_auth_token, twilio_phone_number
+      ),
+      clients(id, name, email, phone, sms_opted_in)
+    `)
     .eq('id', session_id)
     .single();
 
@@ -35,12 +44,20 @@ serve(async (req) => {
   const therapist = session.therapists;
   const client = session.clients;
   const clientEmail = client?.email;
+  const clientPhone = client?.phone;
   const clientFirstName = client?.name?.split(' ')[0] || 'there';
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
 
-  if (!clientEmail) return new Response(JSON.stringify({ error: 'No client email', skipped: true }), {
-    headers: { ...cors, 'Content-Type': 'application/json' }
-  });
+  const sendEmail = shouldSend(therapist, 'client', 'post_session', 'email');
+  const sendSms = shouldSend(therapist, 'client', 'post_session', 'sms') && client?.sms_opted_in === true;
+
+  if (!sendEmail && !sendSms) {
+    return new Response(JSON.stringify({ skipped: 'prefs_off' }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
+
+  let emailStatus = 'skipped_prefs';
+  let smsStatus = 'skipped_prefs';
+  let emailId: string | null = null;
 
   // Parse SOAP notes - show Assessment (what worked) and Plan (next steps) to client
   let soapHtml = '';
@@ -90,26 +107,57 @@ serve(async (req) => {
 </div>
 </body></html>`;
 
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: `${therapistName} <sessions@mybodymap.app>`,
-      to: [clientEmail],
-      reply_to: therapist?.email || undefined,
-      subject: `Your session summary from ${therapistName}`,
-      html: emailHtml,
-    }),
-  });
-
-  const data = await res.json();
-
-  if (res.ok) {
-    await supabase.from('sessions').update({ post_session_email_sent_at: new Date().toISOString() }).eq('id', session_id);
-    return new Response(JSON.stringify({ success: true, email_id: data.id }), {
-      headers: { ...cors, 'Content-Type': 'application/json' }
+  if (sendEmail && clientEmail) {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: `${therapistName} <sessions@mybodymap.app>`,
+        to: [clientEmail],
+        reply_to: therapist?.email || undefined,
+        subject: `Your session summary from ${therapistName}`,
+        html: emailHtml,
+      }),
+    });
+    const data = await res.json();
+    emailStatus = res.ok ? 'sent' : 'failed';
+    emailId = data.id;
+    await logNotification(supabase, {
+      therapist_id: therapist.id,
+      client_id: client?.id,
+      session_id,
+      notification_type: 'post_session',
+      audience: 'client',
+      channel: 'email',
+      recipient: clientEmail,
+      status: emailStatus,
+      provider_id: emailId,
     });
   }
 
-  return new Response(JSON.stringify({ error: data }), { headers: { ...cors, 'Content-Type': 'application/json' } });
+  if (sendSms && clientPhone) {
+    const smsMsg = `Thanks for coming in today, ${clientFirstName}! Book your next session at ${therapistName}: ${bookingUrl}  Reply STOP to opt out.`;
+    const smsRes = await sendSmsViaTwilio(therapist, clientPhone, smsMsg);
+    smsStatus = smsRes.ok ? 'sent' : (smsRes.skipped || 'failed');
+    await logNotification(supabase, {
+      therapist_id: therapist.id,
+      client_id: client?.id,
+      session_id,
+      notification_type: 'post_session',
+      audience: 'client',
+      channel: 'sms',
+      recipient: clientPhone,
+      status: smsStatus,
+      provider_id: smsRes.sid,
+      error_message: smsRes.error,
+    });
+  }
+
+  if (emailStatus === 'sent' || smsStatus === 'sent') {
+    await supabase.from('sessions').update({ post_session_email_sent_at: new Date().toISOString() }).eq('id', session_id);
+  }
+
+  return new Response(JSON.stringify({ email: emailStatus, sms: smsStatus, email_id: emailId }), {
+    headers: { ...cors, 'Content-Type': 'application/json' }
+  });
 });

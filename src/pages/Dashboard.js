@@ -20,6 +20,7 @@ import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../compone
 import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
+import NotificationPrefsCard from '../components/NotificationPrefsCard';
 
 // Mobile page-end indicator
 function PageEnd() {
@@ -1196,6 +1197,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Waiver */}
       <WaiverCard therapist={therapist} C2={C2} />
+
+      {/* Notifications */}
+      <NotificationPrefsCard therapist={therapist} C2={C2} />
 
       {/* Block Days Off */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>

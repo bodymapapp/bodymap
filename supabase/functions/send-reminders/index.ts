@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { sendSmsViaTwilio, shouldSend, logNotification } from "../_shared/notifications.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,17 +16,23 @@ serve(async (req) => {
 
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
 
-  // Find bookings in next 24-48 hours that haven't been reminded yet
   const now = new Date();
   const in24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
   const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-
   const today24 = in24h.toISOString().split('T')[0];
   const today48 = in48h.toISOString().split('T')[0];
 
   const { data: bookings, error } = await supabase
     .from('bookings')
-    .select('*, therapists(full_name, business_name, custom_url, email), services(name, duration)')
+    .select(`
+      *,
+      therapists(
+        id, full_name, business_name, custom_url, email,
+        notification_prefs,
+        twilio_account_sid, twilio_auth_token, twilio_phone_number
+      ),
+      services(name, duration)
+    `)
     .eq('status', 'confirmed')
     .is('reminder_sent_at', null)
     .gte('booking_date', today24)
@@ -47,115 +54,82 @@ serve(async (req) => {
     const firstName = booking.client_name?.split(' ')[0] || 'there';
     const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
     const intakeUrl = `https://www.mybodymap.app/${therapist?.custom_url}`;
-
-    // Format date nicely
     const bookingDate = new Date(booking.booking_date + 'T12:00:00');
     const dateStr = bookingDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-
-    // Format time
     const [h, m] = booking.start_time.split(':').map(Number);
     const timeStr = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 
-    const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#F5F0E8;font-family:system-ui,-apple-system,sans-serif;">
-  <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
-    
-    <div style="text-align:center;margin-bottom:24px;">
-      <span style="font-size:32px;">🌿</span>
-      <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:8px 0 0;">BodyMap</h1>
-    </div>
+    const sendEmail = shouldSend(therapist, 'client', 'reminder_24h', 'email');
+    const sendSms = shouldSend(therapist, 'client', 'reminder_24h', 'sms') && booking.sms_opted_in === true;
 
-    <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
-      <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px;">
-        Your session is tomorrow, ${firstName} 👋
-      </h2>
-      <p style="color:#6B7280;font-size:15px;margin:0 0 24px;line-height:1.6;">
-        Just a friendly reminder about your upcoming massage appointment.
-      </p>
+    let emailStatus = 'skipped_prefs';
+    let smsStatus = 'skipped_prefs';
+    let emailId = null;
 
-      <div style="background:#F5F0E8;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="font-size:14px;color:#6B7280;">📅 <strong style="color:#1A1A2E;">${dateStr}</strong></div>
-          <div style="font-size:14px;color:#6B7280;">🕐 <strong style="color:#1A1A2E;">${timeStr}</strong></div>
-          <div style="font-size:14px;color:#6B7280;">💆 <strong style="color:#1A1A2E;">${service?.name || 'Session'} · ${service?.duration || 60} min</strong></div>
-          <div style="font-size:14px;color:#6B7280;">👤 <strong style="color:#1A1A2E;">${therapistName}</strong></div>
-        </div>
-      </div>
+    if (sendEmail && booking.client_email) {
+      const emailHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#F5F0E8;"><div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.06);"><div style="background:linear-gradient(135deg,#2A5741 0%,#4B8A6A 100%);padding:28px 24px;text-align:center;"><div style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;">🌿 Reminder</div><div style="color:#fff;font-family:Georgia,serif;font-size:22px;font-weight:700;">Your session is tomorrow</div></div><div style="padding:28px 28px 20px;"><p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 16px;">Hi ${firstName},</p><p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 18px;">This is a friendly reminder that your session with <strong>${therapistName}</strong> is <strong>${dateStr}</strong> at <strong>${timeStr}</strong>${service?.name ? ` — ${service.name} (${service.duration || 60} min)` : ''}.</p><div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px;padding:18px 20px;margin:22px 0;"><div style="font-size:11px;font-weight:700;color:#92400E;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Please fill your intake</div><div style="font-size:13px;color:#78350F;line-height:1.6;margin-bottom:12px;">It takes 90 seconds and helps me prepare the perfect session for you.</div><a href="${intakeUrl}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;">Open intake form →</a></div><p style="font-size:13px;color:#6B7280;line-height:1.6;margin:16px 0 0;">Need to reschedule? Reply to this email.</p></div><p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 16px;">Sent by BodyMap · mybodymap.app</p></div></body></html>`;
 
-      <div style="background:linear-gradient(135deg,#F0FDF4,#DCFCE7);border:1.5px solid #86EFAC;border-radius:12px;padding:20px;margin-bottom:24px;">
-        <h3 style="font-size:15px;font-weight:700;color:#2A5741;margin:0 0 8px;">📋 Complete your intake form</h3>
-        <p style="font-size:13px;color:#374151;margin:0 0 16px;line-height:1.6;">
-          Takes 60 seconds. Map out where you're holding tension so your therapist knows exactly where to focus before you arrive.
-        </p>
-        <a href="${intakeUrl}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:14px 20px;text-align:center;font-size:15px;font-weight:700;">
-          Fill My Intake Form →
-        </a>
-      </div>
+      const resendRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: 'BodyMap <reminders@mybodymap.app>',
+          to: [booking.client_email],
+          subject: `Your massage is tomorrow at ${timeStr} — please fill your intake form`,
+          html: emailHtml,
+        }),
+      });
+      const resendData = await resendRes.json();
+      emailStatus = resendRes.ok ? 'sent' : 'failed';
+      emailId = resendData.id;
 
-      <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;line-height:1.6;">
-        Need to reschedule? Reply to this email or contact ${therapistName} directly.
-      </p>
-    </div>
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: booking.id,
+        notification_type: 'reminder_24h',
+        audience: 'client',
+        channel: 'email',
+        recipient: booking.client_email,
+        status: emailStatus,
+        provider_id: emailId,
+      });
+    }
 
-    <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 0;">
-      Sent by BodyMap · mybodymap.app
-    </p>
-  </div>
-</body>
-</html>`;
+    if (sendSms && booking.client_phone) {
+      const smsMsg = `Hi ${firstName} — reminder: your session at ${therapistName} is ${dateStr} at ${timeStr}. Please fill your intake: ${intakeUrl}  Reply STOP to opt out.`;
+      const smsRes = await sendSmsViaTwilio(therapist, booking.client_phone, smsMsg);
+      smsStatus = smsRes.ok ? 'sent' : (smsRes.skipped || 'failed');
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: booking.id,
+        notification_type: 'reminder_24h',
+        audience: 'client',
+        channel: 'sms',
+        recipient: booking.client_phone,
+        status: smsStatus,
+        provider_id: smsRes.sid,
+        error_message: smsRes.error,
+      });
+    } else if (shouldSend(therapist, 'client', 'reminder_24h', 'sms') && !booking.sms_opted_in) {
+      smsStatus = 'skipped_consent';
+    }
 
-    // Send via Resend
-    const resendRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'BodyMap <reminders@mybodymap.app>',
-        to: [booking.client_email],
-        subject: `Your massage is tomorrow at ${timeStr} — please fill your intake form`,
-        html: emailHtml,
-      }),
-    });
-
-    const resendData = await resendRes.json();
-
-    if (resendRes.ok) {
-      // Mark as sent
+    if (emailStatus === 'sent' || smsStatus === 'sent') {
       await supabase.from('bookings').update({
         reminder_sent_at: new Date().toISOString(),
-        reminder_email_id: resendData.id,
+        reminder_email_id: emailId,
       }).eq('id', booking.id);
-      results.push({ booking_id: booking.id, client: booking.client_name, status: 'sent', email_id: resendData.id });
-
-      // Also ping therapist via push notification (best-effort, don't block)
-      try {
-        if (booking.therapist_id) {
-          await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              therapist_id: booking.therapist_id,
-              title: `Session tomorrow at ${timeStr}`,
-              body: `${booking.client_name} · ${service?.name || 'Session'} · ${service?.duration || 60} min`,
-              url: '/dashboard/schedule',
-              tag: `reminder-${booking.id}`,
-            }),
-          });
-        }
-      } catch (pushErr) {
-        console.log('Push notify failed (non-blocking):', pushErr?.message);
-      }
-    } else {
-      results.push({ booking_id: booking.id, client: booking.client_name, status: 'failed', error: resendData });
     }
+
+    results.push({
+      booking_id: booking.id,
+      client: booking.client_name,
+      email: emailStatus,
+      sms: smsStatus,
+    });
   }
 
   return new Response(JSON.stringify({ processed: results.length, results }), {

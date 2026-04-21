@@ -2519,6 +2519,9 @@ const PrefScreen = ({
   waiverText = '',
   therapistName = '',
   businessName = '',
+  hasPhone = false,
+  smsOptIn = false,
+  setSmsOptIn = () => {},
 }) => {
   const [showWaiver, setShowWaiver] = useState(false);
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
@@ -2777,6 +2780,19 @@ const PrefScreen = ({
             )}
           </p>
         </div>
+        {hasPhone && (
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.sage}33` }}>
+            <input
+              type="checkbox"
+              checked={smsOptIn}
+              onChange={(e) => setSmsOptIn(e.target.checked)}
+              style={{ width: 18, height: 18, marginTop: 2, accentColor: C.green, cursor: "pointer", flexShrink: 0 }}
+            />
+            <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
+              It's OK to text me appointment reminders. Message and data rates may apply. Reply STOP anytime to opt out.
+            </p>
+          </div>
+        )}
       </Card>
 
       {/* Waiver modal */}
@@ -4329,6 +4345,7 @@ export default function BodyMapApp({ therapistName = "Your Therapist", businessN
   const [prefs, setPrefs] = useState({ ...DEFAULT_PREFS });
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [sessions, setSessions] = useState([]);
   const [lastSession, setLastSession] = useState(null);
   const [checkingReturn, setCheckingReturn] = useState(false);
@@ -4462,7 +4479,8 @@ export default function BodyMapApp({ therapistName = "Your Therapist", businessN
         oilPref: prefs.oilPref,
         medFlag: prefs.medFlag,
         medNote: prefs.medNote || null,
-        notes: notes || null
+        notes: notes || null,
+        smsOptIn: smsOptIn && !contactIsEmail, // only valid if they gave a phone
       });
     } else {
       // Default behavior - show summary screen
@@ -4572,6 +4590,9 @@ export default function BodyMapApp({ therapistName = "Your Therapist", businessN
           waiverText={waiverText}
           therapistName={therapistName}
           businessName={businessName}
+          hasPhone={!clientInfo.contact.includes('@') && !!clientInfo.contact}
+          smsOptIn={smsOptIn}
+          setSmsOptIn={setSmsOptIn}
         />
       </div>
     ),
