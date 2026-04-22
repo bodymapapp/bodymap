@@ -4,10 +4,10 @@
 //
 // Sequence (counting from signup day):
 //   Day 2  — "One tip: spot a client about to ghost you"
-//   Day 5  — "Try your own body map — send one to yourself"
-//   Day 10 — Social proof: story from a founding therapist (sanitized name until we have quotes)
-//   Day 21 — Referral ask: share BodyMap, get a shoutout
+//   Day 5  — "Try your own body map, send one to yourself"
+//   Day 10 — Social proof: real quote from Terra
 //   Day 30 — One-question survey (harvest testimonials)
+//   Day 60 — Referral ask: share BodyMap, get a shoutout (moved from Day 21)
 //
 // Dedupe: writes to drip_sends table with (therapist_id, drip_day) unique key.
 // If a row exists, we skip — prevents duplicate sends even if the cron runs twice.
@@ -46,7 +46,7 @@ function wrap(inner: string) {
       </div>
       ${inner}
       <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.7;text-align:center;">
-        Reply any time — we read every email.<br/>
+        Reply any time, we read every email.<br/>
         <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
       </p>
     </div>
@@ -65,12 +65,12 @@ function day2Email(firstName: string, dashLink: string) {
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> Their rebooking window stretches. A 4-week regular now goes 6. Then 7.</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">2.</strong> Their session feedback shortens. "Great" with no detail.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">3.</strong> They skip the add-ons they always got. CBD oil, hot stones — gone.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">3.</strong> They skip the add-ons they always got. CBD oil, hot stones, gone.</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">4.</strong> They switch times. Weekly Thursday becomes random Saturdays.</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">5.</strong> They stop referring friends. The pipeline they used to send you dries up.</p>
 
     <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin-bottom:24px;">
-      <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;"><strong>How BodyMap helps:</strong> your Insights tab surfaces clients whose rebooking window has stretched. One glance, one tap, one text — "Haven't seen you in a while, want to grab your usual Thursday?" — saves most of them.</p>
+      <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;"><strong>How BodyMap helps:</strong> your Insights tab surfaces clients whose rebooking window has stretched. One glance, one tap, one text. "Haven't seen you in a while, want to grab your usual Thursday?" That saves most of them.</p>
     </div>
 
     <a href="${dashLink}?tab=insights" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Check my Insights tab →</a>
@@ -84,7 +84,7 @@ function day2Email(firstName: string, dashLink: string) {
 function day5Email(firstName: string, customUrl: string, dashLink: string) {
   const selfIntakeLink = `https://mybodymap.app/book/${customUrl}`;
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Try your own body map — before your next client does</h2>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Try your own body map before your next client does</h2>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, this one takes 60 seconds and changes how you'll think about intake forever.</p>
 
     <div style="background:#F9FAF9;border-radius:10px;padding:20px;margin-bottom:20px;">
@@ -96,7 +96,7 @@ function day5Email(firstName: string, customUrl: string, dashLink: string) {
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">When you're done, two things usually happen:</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> You realize it's way easier than what your clients fill out today.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">2.</strong> You see your own dashboard light up with real data — your own body map waiting, pressure preference, areas to avoid. That's what you get for every client going forward.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">2.</strong> You see your own dashboard light up with real data. Your own body map waiting, pressure preference, areas to avoid. That's what you get for every client going forward.</p>
 
     <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">P.S. Most therapists tell us this is the moment they finally "got it." Takes 60 seconds. Worth every one.</p>
   `;
@@ -107,33 +107,28 @@ function day5Email(firstName: string, customUrl: string, dashLink: string) {
 }
 
 function day10Email(firstName: string, dashLink: string) {
-  // Sanitized name until we have real quotes. Replace {SAMPLE_QUOTE_THERAPIST} with a real name later.
+  // Real quote from Terra, a BodyMap user. Captures the core promise:
+  // it works without effort. Short email, one quote, one CTA.
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">"My rebooking rate jumped 18% in a month."</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, wanted to share something one of our founding therapists sent us last week:</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about BodyMap</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on BodyMap sent this yesterday:</p>
 
     <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
-      <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 12px;font-style:italic;">"I switched to BodyMap three weeks ago and my rebooking rate jumped 18%. The Insights tab told me 7 regulars were drifting — I sent them all a quick text, and 5 booked that same week. I don't know how I ran my practice without this."</p>
-      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">— Jamie R., Licensed Massage Therapist · solo practice, 6 years</p>
+      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, BodyMap therapist</p>
     </div>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Three things Jamie did that you can do today:</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">That's the whole idea. Your back office keeps working while you do the work on the table.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> Imported her full client list week one (don't wait).</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">2.</strong> Checked Insights every Monday morning with coffee, 5 minutes.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">3.</strong> Sent the body map link to every new client before the first session.</p>
-
-    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
-
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:24px 0 0;">P.S. If you've had a moment like Jamie's, just reply — we love hearing how it's going.</p>
+    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard</a>
   `;
   return {
-    subject: `${firstName}, how Jamie got a 18% rebooking lift in a month`,
+    subject: `${firstName}, what Terra said about BodyMap`,
     html: wrap(inner),
   };
 }
 
-function day21Email(firstName: string, customUrl: string) {
+function day60Email(firstName: string, customUrl: string) {
   const referralLink = `https://mybodymap.app/?ref=${customUrl}`;
   const inner = `
     <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Know another therapist who'd love BodyMap?</h2>
@@ -162,18 +157,18 @@ function day30Email(firstName: string) {
   // Simple reply-to survey. Single question, easy to answer.
   const inner = `
     <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, one month in. How's it going?</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">You've been on BodyMap for a month, and we want to hear how it's going — good, bad, or in between. No form, no survey link, no tracking. Just hit reply.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">You've been on BodyMap for a month, and we want to hear how it's going. Good, bad, or in between. No form, no survey link, no tracking. Just hit reply.</p>
 
     <div style="background:#F9FAF9;border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:24px;">
       <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 4px;font-style:italic;">One question:</p>
       <p style="font-family:system-ui;font-size:16px;color:#1A3A28;line-height:1.7;margin:0;font-weight:600;">What's the one thing you'd tell another therapist about BodyMap?</p>
     </div>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Good, bad, hard, easy — whatever's real. One sentence is plenty.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Good, bad, hard, easy. Whatever's real. One sentence is plenty.</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">If it's a rave, we may share it on our Features page (we'll ask first). If it's a problem, it goes straight into next week's build. Your reply shapes what happens next.</p>
 
     <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Thank you for being one of the first. This thing exists because of you.</p>
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:4px 0 0;">— HK</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:4px 0 0;">Cheers, MyBodyMap Team</p>
   `;
   return {
     subject: `${firstName}, one question about your first month 🌿`,
@@ -198,16 +193,17 @@ serve(async (req) => {
   // Example: Day 2 targets signups between 2d2h and 2d22h ago. Keeps the window wide enough that
   // even if the cron runs a bit late/early, we still catch people.
   //
-  // Day 21 (referral ask) disabled per HK on 2026-04-22 — the referral link
-  // in that template was broken (pointed at root path not signup) and the
-  // ask itself felt premature. Keep day21Email() in the code for now so
-  // it's easy to re-enable once both issues are addressed; simply omitted
-  // from the windows array below.
+  // Day 21 referral ask was moved to Day 60 on 2026-04-22 per HK. The ask
+  // is the same (referral link, what they get, what you get) but fired later
+  // when the therapist has had more real time to form an opinion about the
+  // product. day60Email() contains the content; the original day21Email
+  // function was renamed.
   const windows = [
     { day: 2 },
     { day: 5 },
     { day: 10 },
     { day: 30 },
+    { day: 60 },
   ];
 
   const results: any[] = [];
@@ -244,7 +240,7 @@ serve(async (req) => {
       if (w.day === 2)  emailPayload = day2Email(firstName, dashLink);
       if (w.day === 5)  emailPayload = day5Email(firstName, t.custom_url || '', dashLink);
       if (w.day === 10) emailPayload = day10Email(firstName, dashLink);
-      if (w.day === 21) emailPayload = day21Email(firstName, t.custom_url || '');
+      if (w.day === 60) emailPayload = day60Email(firstName, t.custom_url || '');
       if (w.day === 30) emailPayload = day30Email(firstName);
 
       if (!emailPayload) continue;

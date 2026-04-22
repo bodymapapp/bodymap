@@ -75,8 +75,8 @@ serve(async (req) => {
             <div style="color:#6B7280;font-size:12px;margin-top:2px;">${s.full_name || ''}</div>
             ${hasFlags ? `<div style="margin-top:6px;"><span style="background:#FEF3C7;color:#92400E;font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;">⚠ ${flags.join(' · ')}</span></div>` : ''}
           </td>
-          <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-family:system-ui;font-size:13px;color:#374151;">${s.email || '—'}</td>
-          <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-family:system-ui;font-size:12px;color:#6B7280;">${s.phone || '—'}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-family:system-ui;font-size:13px;color:#374151;">${s.email || '(none)'}</td>
+          <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-family:system-ui;font-size:12px;color:#6B7280;">${s.phone || '(none)'}</td>
           <td style="padding:10px 12px;border-bottom:1px solid #E8E4DC;font-family:system-ui;font-size:12px;">
             <span style="background:${s.plan === 'silver' ? '#DCFCE7' : '#FEF3C7'};color:${s.plan === 'silver' ? '#166534' : '#92400E'};padding:2px 8px;border-radius:20px;font-weight:700;">${s.plan || 'free'}</span>
           </td>
@@ -87,7 +87,7 @@ serve(async (req) => {
     const signupsSection = count > 0 ? `
       <h1 style="font-family:Georgia,serif;font-size:26px;color:#1A3A28;margin:0 0 8px;">${count} new therapist${count > 1 ? 's' : ''} joined yesterday</h1>
       <p style="font-family:system-ui;font-size:14px;color:#6B7280;margin:0 0 20px;line-height:1.6;">
-        Highlighted rows have security flags. These are allowed through but worth a second look — real people do use partner emails, nicknames, etc.
+        Highlighted rows have security flags. These are allowed through but worth a second look. Real people do use partner emails, nicknames, etc.
       </p>
       <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #E8E4DC;border-radius:10px;overflow:hidden;">
         <thead>

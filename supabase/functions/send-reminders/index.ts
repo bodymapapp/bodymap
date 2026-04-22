@@ -67,7 +67,7 @@ serve(async (req) => {
     let emailId = null;
 
     if (sendEmail && booking.client_email) {
-      const emailHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#F5F0E8;"><div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.06);"><div style="background:linear-gradient(135deg,#2A5741 0%,#4B8A6A 100%);padding:28px 24px;text-align:center;"><div style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;">🌿 Reminder</div><div style="color:#fff;font-family:Georgia,serif;font-size:22px;font-weight:700;">Your session is tomorrow</div></div><div style="padding:28px 28px 20px;"><p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 16px;">Hi ${firstName},</p><p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 18px;">This is a friendly reminder that your session with <strong>${therapistName}</strong> is <strong>${dateStr}</strong> at <strong>${timeStr}</strong>${service?.name ? ` — ${service.name} (${service.duration || 60} min)` : ''}.</p><div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px;padding:18px 20px;margin:22px 0;"><div style="font-size:11px;font-weight:700;color:#92400E;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Please fill your intake</div><div style="font-size:13px;color:#78350F;line-height:1.6;margin-bottom:12px;">It takes 90 seconds and helps me prepare the perfect session for you.</div><a href="${intakeUrl}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;">Open intake form →</a></div><p style="font-size:13px;color:#6B7280;line-height:1.6;margin:16px 0 0;">Need to reschedule? Reply to this email.</p></div><p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 16px;">Sent by BodyMap · mybodymap.app</p></div></body></html>`;
+      const emailHtml = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#F5F0E8;"><div style="max-width:540px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,0.06);"><div style="background:linear-gradient(135deg,#2A5741 0%,#4B8A6A 100%);padding:28px 24px;text-align:center;"><div style="color:rgba(255,255,255,0.85);font-size:11px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;">🌿 Reminder</div><div style="color:#fff;font-family:Georgia,serif;font-size:22px;font-weight:700;">Your session is tomorrow</div></div><div style="padding:28px 28px 20px;"><p style="font-size:15px;color:#374151;line-height:1.6;margin:0 0 16px;">Hi ${firstName},</p><p style="font-size:15px;color:#374151;line-height:1.7;margin:0 0 18px;">This is a friendly reminder that your session with <strong>${therapistName}</strong> is <strong>${dateStr}</strong> at <strong>${timeStr}</strong>${service?.name ? `, ${service.name} (${service.duration || 60} min)` : ''}.</p><div style="background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:12px;padding:18px 20px;margin:22px 0;"><div style="font-size:11px;font-weight:700;color:#92400E;letter-spacing:0.14em;text-transform:uppercase;margin-bottom:6px;">Please fill your intake</div><div style="font-size:13px;color:#78350F;line-height:1.6;margin-bottom:12px;">It takes 90 seconds and helps me prepare the perfect session for you.</div><a href="${intakeUrl}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:12px 22px;border-radius:10px;font-size:14px;font-weight:700;">Open intake form →</a></div><p style="font-size:13px;color:#6B7280;line-height:1.6;margin:16px 0 0;">Need to reschedule? Reply to this email.</p></div><p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 16px;">Sent by BodyMap · mybodymap.app</p></div></body></html>`;
 
       const resendRes = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -78,7 +78,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: 'BodyMap <reminders@mybodymap.app>',
           to: [booking.client_email],
-          subject: `Your massage is tomorrow at ${timeStr} — please fill your intake form`,
+          subject: `Your massage is tomorrow at ${timeStr}. Please fill your intake form`,
           html: emailHtml,
         }),
       });
@@ -99,7 +99,7 @@ serve(async (req) => {
     }
 
     if (sendSms && booking.client_phone) {
-      const smsMsg = `Hi ${firstName} — reminder: your session at ${therapistName} is ${dateStr} at ${timeStr}. Please fill your intake: ${intakeUrl}  Reply STOP to opt out.`;
+      const smsMsg = `Hi ${firstName}, reminder: your session at ${therapistName} is ${dateStr} at ${timeStr}. Please fill your intake: ${intakeUrl}  Reply STOP to opt out.`;
       const smsRes = await sendSmsViaTwilio(therapist, booking.client_phone, smsMsg);
       smsStatus = smsRes.ok ? 'sent' : (smsRes.skipped || 'failed');
       await logNotification(supabase, {

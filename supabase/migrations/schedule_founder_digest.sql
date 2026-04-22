@@ -1,0 +1,40 @@
+-- ============================================================
+-- SCHEDULE FOUNDER-DIGEST AT 8pm CT DAILY
+-- ============================================================
+-- This file is documentation, NOT an auto-running migration.
+-- Your existing daily crons (send-drip, practice-pulse,
+-- daily-signups-digest, send-reminders) are configured directly in
+-- the Supabase dashboard, not via migration files. Follow the same
+-- pattern for consistency.
+--
+-- STEPS TO ENABLE FOUNDER-DIGEST DAILY SCHEDULE:
+--
+-- 1. Open Supabase dashboard:
+--    https://supabase.com/dashboard/project/rmnqfrljoknmellbnpiy
+--
+-- 2. Navigate to: Database, then Cron Jobs (left sidebar)
+--
+-- 3. Click "Create a new cron job"
+--
+-- 4. Fill in:
+--      Name:     founder-digest-daily
+--      Schedule: 0 1 * * *     (01:00 UTC = 8pm CT winter, 7pm CT summer)
+--      Type:     Supabase Edge Function
+--      Function: founder-digest
+--      Method:   POST
+--      Body:     {}
+--
+-- 5. Click Save.
+--
+-- 6. Verify tomorrow at ~8pm CT. Check bodymap01@gmail.com inbox.
+--    Subject starts with "BodyMap Daily:"
+--
+-- ============================================================
+-- NOTE ON TIMEZONE:
+-- pg_cron uses UTC. 01:00 UTC = 8pm CT during Central Standard Time
+-- (winter) but 7pm CT during Central Daylight Time (summer). If strict
+-- 8pm CT year-round is required, switch the schedule to "0 2 * * *"
+-- during CDT months (March to November) and back to "0 1 * * *"
+-- during CST months. Alternatively, accept the 1-hour drift. Low
+-- stakes for a metrics digest.
+-- ============================================================

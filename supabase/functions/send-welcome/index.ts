@@ -73,7 +73,7 @@ serve(async (req) => {
         </h1>
 
         <p style="font-family:system-ui;font-size:16px;color:#4B5563;line-height:1.7;margin:0 0 18px;">
-          Your back office just went on autopilot. Visual body maps instead of paper intake. Session patterns you never had time to spot. Automated reminders, gift cards, booking, and client history — all working quietly while you do what you actually love: the work on the table.
+          Your back office just went on autopilot. Visual body maps instead of paper intake. Session patterns you never had time to spot. Automated reminders, gift cards, booking, and client history, all working quietly while you do what you actually love: the work on the table.
         </p>
 
         <!-- Silver badge -->
@@ -85,7 +85,7 @@ serve(async (req) => {
         <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:18px 20px;margin-bottom:24px;">
           <div style="font-family:system-ui;font-size:13px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Get started in 5 minutes</div>
           <p style="font-family:system-ui;font-size:14px;color:#78350F;line-height:1.6;margin:0;">
-            Five short steps. The whole thing takes 5 minutes. You get <b>hours back every week</b> — no more paper intake, no more manual reminders, no more guessing what your client prefers this visit.
+            Five short steps. The whole thing takes 5 minutes. You get <b>hours back every week</b>. No more paper intake, no more manual reminders, no more guessing what your client prefers this visit.
           </p>
         </div>
 
@@ -106,7 +106,7 @@ serve(async (req) => {
             Your clients are going to love this.
           </p>
           <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">
-            The body map intake is unlike anything they've filled out before — visual, fast, and it remembers them next time. Once you send your first one, you'll see what we mean. They'll ask where you got it.
+            The body map intake is unlike anything they've filled out before. Visual, fast, and it remembers them next time. Once you send your first one, you'll see what we mean. They'll ask where you got it.
           </p>
         </div>
 
@@ -114,13 +114,13 @@ serve(async (req) => {
         <div style="background:#F9FAF9;border-radius:10px;padding:18px 20px;margin-top:24px;">
           <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">What's next</div>
           <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">
-            Over the next couple weeks, you'll get a few short emails with tips — things like how to spot clients about to lapse, using session patterns to anticipate needs, and small moves that boost rebooking. We keep them useful and we keep them short. Promise.
+            Over the next couple weeks, you'll get a few short emails with tips. Things like how to spot clients about to lapse, using session patterns to anticipate needs, and small moves that boost rebooking. We keep them useful and we keep them short. Promise.
           </p>
         </div>
 
         <!-- Footer -->
         <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.7;text-align:center;">
-          Questions? Just reply to this email — we read every single one.<br/>
+          Questions? Just reply to this email, we read every single one.<br/>
           <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span><br/>
           <span style="color:#D1D5DB;">Built by a licensed massage therapist, for solo therapists.</span>
         </p>

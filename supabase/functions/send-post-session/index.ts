@@ -98,7 +98,7 @@ serve(async (req) => {
     </div>` : ''}
     <div style="background:#FEF3C7;border:1.5px solid #FCD34D;border-radius:12px;padding:16px;margin-bottom:24px;">
       <p style="font-size:13px;font-weight:700;color:#92400E;margin:0 0 4px;">Take care of yourself 💛</p>
-      <p style="font-size:13px;color:#92400E;margin:0;line-height:1.6;">Drink plenty of water today — hydration helps your muscles recover faster.</p>
+      <p style="font-size:13px;color:#92400E;margin:0;line-height:1.6;">Drink plenty of water today. Hydration helps your muscles recover faster.</p>
     </div>
     <a href="${bookingUrl}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:14px 20px;text-align:center;font-size:15px;font-weight:700;margin-bottom:16px;">Book Your Next Session →</a>
     <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">Questions? Reply to this email or contact ${therapistName} directly.</p>

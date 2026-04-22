@@ -65,7 +65,7 @@ serve(async () => {
 
   <div style="background:#1a3a2a;padding:32px 36px">
     <div style="font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px">🌿 BodyMap</div>
-    <div style="font-size:14px;color:#9fcfb8;margin-top:6px">Founder Daily Digest — ${dateStr}</div>
+    <div style="font-size:14px;color:#9fcfb8;margin-top:6px">Founder Daily Digest for ${dateStr}</div>
   </div>
 
   <div style="padding:32px 36px">
@@ -129,7 +129,7 @@ serve(async () => {
       body:JSON.stringify({
         from:"BodyMap <noreply@mybodymap.app>",
         to:[FOUNDER_EMAIL],
-        subject:`BodyMap Daily — ${signups_24h??0} new signup${(signups_24h??0)!==1?"s":""} today · ${total_signups??0} total · ${silver_users??0} paid`,
+        subject:`BodyMap Daily: ${signups_24h??0} new signup${(signups_24h??0)!==1?"s":""} today · ${total_signups??0} total · ${silver_users??0} paid`,
         html,
       }),
     });

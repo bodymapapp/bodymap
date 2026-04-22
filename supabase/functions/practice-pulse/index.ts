@@ -194,10 +194,10 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'Practice Pulse <pulse@mybodymap.app>',
+        from: 'Practice Pulse <reminders@mybodymap.app>',
         to: therapist.practice_pulse_email ? [therapist.email, therapist.practice_pulse_email] : [therapist.email],
         reply_to: therapist.email,
-        subject: `Your Practice Pulse — ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
+        subject: `Your Practice Pulse for ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
         html: emailHtmlWithUnsub,
       }),
     });
