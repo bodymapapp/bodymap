@@ -200,6 +200,19 @@ export default function Home() {
                 </span>
               ))}
             </div>
+            <div style={{ marginTop: 20 }}>
+              <Link to="/atlas" style={{
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: G.mid2,
+                textDecoration: 'none',
+                borderBottom: `1px solid ${G.mid2}60`,
+                paddingBottom: 2,
+              }}>
+                Or see every feature in one view — The Atlas →
+              </Link>
+            </div>
           </div>
           {/* Client Intelligence Card */}
           <div style={{ position:'relative' }}>
