@@ -1685,64 +1685,39 @@ function buildActivationNudge(t) {
   if (missing.length === 0) return null;
 
   const name = firstName(t);
-  const missingLabels = missing.map((s) => s.label.toLowerCase());
 
-  // Human-readable list: "a, b, and c"
-  let stepList;
-  if (missingLabels.length === 1) stepList = missingLabels[0];
-  else if (missingLabels.length === 2) stepList = `${missingLabels[0]} and ${missingLabels[1]}`;
-  else stepList = `${missingLabels.slice(0, -1).join(", ")}, and ${missingLabels[missingLabels.length - 1]}`;
+  // Map each step key to a short, action-oriented phrase HK would actually write.
+  // Not the full label, not a list — just the one concrete thing they need to do.
+  const stepPhrase = {
+    import:  "import your clients",
+    service: "add your first service",
+    hours:   "set your working hours",
+    stripe:  "connect Stripe to accept payments",
+    intake:  "send your first intake to a client",
+  };
 
-  // Stage-aware tone. Solo grandma therapist. Warm. No pressure. No jargon.
-  const oneStepLeft = missing.length === 1;
-  const mostlyDone = t.steps_done >= 3;
+  const firstMissing = missing[0];
+  const firstStepText = stepPhrase[firstMissing.key] || firstMissing.label.toLowerCase();
 
-  let subject;
-  let bodyLines;
+  const subject = `Quick hello from BodyMap`;
 
-  if (oneStepLeft) {
-    subject = `One last thing, ${name}`;
-    bodyLines = [
-      `Hi ${name},`,
-      ``,
-      `You've done almost everything to set up your BodyMap. There's just one piece left: ${missingLabels[0]}.`,
-      ``,
-      `Once that's done, you'll be able to see the full picture of your practice inside BodyMap. Your clients, your schedule, everything in one place.`,
-      ``,
-      `If you'd like, I can walk you through it. Just hit reply.`,
-      ``,
-      `Warmly,`,
-      `BodyMap`,
-    ];
-  } else if (mostlyDone) {
-    subject = `You're so close, ${name}`;
-    bodyLines = [
-      `Hi ${name},`,
-      ``,
-      `You've made great progress setting up BodyMap. A few small steps still left: ${stepList}.`,
-      ``,
-      `These last pieces are what make your practice come alive inside BodyMap. Once they're done, you'll start seeing your clients' history and preferences all in one place.`,
-      ``,
-      `Take your time. I'm here if you need a hand.`,
-      ``,
-      `Warmly,`,
-      `BodyMap`,
-    ];
-  } else {
-    subject = `A gentle nudge, ${name}`;
-    bodyLines = [
-      `Hi ${name},`,
-      ``,
-      `Thank you for signing up for BodyMap. I wanted to reach out because I noticed a few setup steps still waiting: ${stepList}.`,
-      ``,
-      `I know setting up a new tool can feel like a lot. The steps are short, and once you finish them, BodyMap starts remembering your clients for you. That's where the real magic happens.`,
-      ``,
-      `If any part feels confusing, please reply and tell me. I'll help you personally.`,
-      ``,
-      `Warmly,`,
-      `BodyMap`,
-    ];
-  }
+  // One voice, one template. Names the single most important next step.
+  // If more steps remain, mention there are a few but don't list them all — keeps it light.
+  const moreStepsNote =
+    missing.length > 1
+      ? ` There are a couple more small things after that, but let's get this one first.`
+      : "";
+
+  const bodyLines = [
+    `Hi ${name},`,
+    ``,
+    `Good morning. This is BodyMap founder. Just wanted to send a message so you can reach out to me directly if you need any help.`,
+    ``,
+    `First step for you is to ${firstStepText}.${moreStepsNote}`,
+    ``,
+    `Cheers!`,
+    `BodyMap`,
+  ];
 
   return {
     key: "activation_nudge",
@@ -1801,10 +1776,15 @@ function NudgeButtons({ t, action }) {
   };
 
   const copySms = async () => {
-    // SMS version: shorter, no salutation block noise. Grandma-friendly.
-    const smsLines = (action.body || "").split("\n").filter((l) => l && l !== "Warmly," && l !== "BodyMap");
-    // Collapse into one message with one short blank between sentences.
-    const smsText = smsLines.join(" ").replace(/\s+/g, " ").trim();
+    // SMS version: keep the body as the therapist would see it in a text.
+    // Collapse blank lines, keep the greeting and the Cheers sign-off intact.
+    // One line break between paragraphs becomes a single space for a tight SMS.
+    const smsText = (action.body || "")
+      .split("\n")
+      .filter((l) => l.trim() !== "")
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
     try {
       await navigator.clipboard.writeText(smsText);
       setResult("copied");
