@@ -96,6 +96,8 @@ export default function FounderDashboard() {
         { data: activation },
         { data: outreachLog },
         { data: referrals },
+        { data: allServices },
+        { data: allAvailability },
       ] = await Promise.all([
         supabase.from("therapists").select(
           "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
@@ -109,6 +111,8 @@ export default function FounderDashboard() {
           .order("sent_at", { ascending: false }),
         supabase.from("referrals")
           .select("referrer_therapist_id,status,reward_sent"),
+        supabase.from("services").select("therapist_id,active"),
+        supabase.from("availability").select("therapist_id,active"),
       ]);
 
       const d7ms = now - 7 * DAY;
@@ -192,6 +196,32 @@ export default function FounderDashboard() {
       for (const e of activation || []) {
         const t = byId[e.therapist_id];
         if (t) t.activation_events.push(e.event_name);
+      }
+
+      // Compute onboarding step completion per therapist. Mirrors exactly
+      // what OnboardingChecklist.js shows to the therapist inside the app.
+      // Source of truth is the underlying data, not a separate "completed" flag.
+      const servicesByTh = {};
+      for (const s of allServices || []) {
+        if (!servicesByTh[s.therapist_id]) servicesByTh[s.therapist_id] = 0;
+        servicesByTh[s.therapist_id]++;
+      }
+      const availableByTh = {};
+      for (const a of allAvailability || []) {
+        if (a.active) availableByTh[a.therapist_id] = true;
+      }
+
+      for (const t of Object.values(byId)) {
+        const steps = {
+          import:  t.clients_total > 0,
+          service: (servicesByTh[t.id] || 0) > 0,
+          hours:   !!availableByTh[t.id],
+          stripe:  !!t.stripe_account_connected,
+          intake:  t.sessions_total > 0,
+        };
+        t.steps = steps;
+        t.steps_done = Object.values(steps).filter(Boolean).length;
+        t.steps_total = 5;
       }
 
       for (const t of Object.values(byId)) {
@@ -441,6 +471,8 @@ export default function FounderDashboard() {
           sortDir={sortDir}
           onSort={onSort}
         />
+
+        <ActivationSection rows={filtered} />
 
         <p style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginTop: 24 }}>
           Founder-only view. Not visible to therapists.
@@ -1236,4 +1268,269 @@ function formatPhoneDisplay(raw) {
     return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
   }
   return raw;
+}
+
+// The 5 onboarding steps mirror OnboardingChecklist.js. Column keys map to
+// the t.steps bitmap set in fetchAll().
+const ACTIVATION_STEPS = [
+  { key: "import",  label: "Clients imported", short: "Clients",  icon: "📥" },
+  { key: "service", label: "Service added",    short: "Service",  icon: "🛁" },
+  { key: "hours",   label: "Hours set",        short: "Hours",    icon: "🕐" },
+  { key: "stripe",  label: "Stripe connected", short: "Stripe",   icon: "💳" },
+  { key: "intake",  label: "First intake sent", short: "Intake",  icon: "📋" },
+];
+
+function ActivationSection({ rows }) {
+  const [onlyStuck, setOnlyStuck] = useState(false);
+  const [sortKey, setSortKey] = useState("steps_done");
+  const [sortDir, setSortDir] = useState("asc"); // least-done first — these need help most
+
+  // Aggregate: how many therapists completed each step
+  const total = rows.length;
+  const stepCounts = ACTIVATION_STEPS.reduce((acc, s) => {
+    acc[s.key] = rows.filter((t) => t?.steps?.[s.key]).length;
+    return acc;
+  }, {});
+  const fullyActivated = rows.filter((t) => t?.steps_done === 5).length;
+
+  let activationRows = [...rows];
+  if (onlyStuck) {
+    activationRows = activationRows.filter((t) => (t?.steps_done || 0) < 5);
+  }
+  activationRows.sort((a, b) => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    if (sortKey === "business_name") {
+      return (a.business_name || a.full_name || "").localeCompare(b.business_name || b.full_name || "") * dir;
+    }
+    if (sortKey === "days_on_platform") {
+      return ((a.days_on_platform || 0) - (b.days_on_platform || 0)) * dir;
+    }
+    // default: steps_done
+    const av = a?.steps_done || 0;
+    const bv = b?.steps_done || 0;
+    return (av - bv) * dir;
+  });
+
+  const onSort = (k) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir(k === "steps_done" ? "asc" : "desc"); }
+  };
+
+  if (total === 0) return null;
+
+  return (
+    <div style={{ marginTop: 36 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        <div>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
+            Activation checklist
+          </div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
+            Which therapists finished setup. Which are stuck.
+          </h2>
+          <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
+            Therapists who complete all 5 steps see the full product. Those who don't, churn.
+          </p>
+        </div>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.dark, cursor: "pointer", userSelect: "none", padding: "6px 10px", borderRadius: 8, background: onlyStuck ? C.softCream : "#fff", border: `1.5px solid ${C.light}` }}>
+          <input type="checkbox" checked={onlyStuck} onChange={(e) => setOnlyStuck(e.target.checked)} style={{ margin: 0 }} />
+          Only show stuck
+        </label>
+      </div>
+
+      {/* Rollup: completion % per step */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 14 }}>
+        {ACTIVATION_STEPS.map((s) => {
+          const count = stepCounts[s.key] || 0;
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const barColor = pct >= 70 ? C.rise : pct >= 40 ? C.gold : C.fall;
+          return (
+            <div key={s.key} style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: C.gray, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+                {s.icon} {s.short}
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.dark, fontFamily: "Georgia, serif" }}>
+                {count} <span style={{ fontSize: 12, color: C.gray, fontWeight: 500 }}>of {total}</span>
+              </div>
+              <div style={{ height: 4, background: C.light, borderRadius: 2, marginTop: 6, overflow: "hidden" }}>
+                <div style={{ width: `${pct}%`, height: "100%", background: barColor }} />
+              </div>
+              <div style={{ fontSize: 10, color: C.gray, marginTop: 3, fontWeight: 600 }}>{pct}% completed</div>
+            </div>
+          );
+        })}
+        <div style={{ background: fullyActivated > 0 ? "#EEF7F0" : "#fff", border: `1.5px solid ${fullyActivated > 0 ? C.sage : C.light}`, borderRadius: 10, padding: "10px 12px" }}>
+          <div style={{ fontSize: 11, color: C.forest, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>
+            ✓ Fully activated
+          </div>
+          <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: "Georgia, serif" }}>
+            {fullyActivated} <span style={{ fontSize: 12, color: C.gray, fontWeight: 500 }}>of {total}</span>
+          </div>
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 6, fontWeight: 600 }}>
+            All 5 steps done
+          </div>
+        </div>
+      </div>
+
+      {/* Per-therapist table */}
+      <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 900 }}>
+            <thead>
+              <tr>
+                <th
+                  onClick={() => onSort("business_name")}
+                  style={{
+                    position: "sticky", top: 0, left: 0, zIndex: 5,
+                    background: C.softCream, borderBottom: `1.5px solid ${C.light}`,
+                    padding: "10px 12px", textAlign: "left", cursor: "pointer",
+                    color: sortKey === "business_name" ? C.forest : C.gray,
+                    fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+                    whiteSpace: "nowrap", userSelect: "none", minWidth: 240,
+                    boxShadow: "1px 0 0 rgba(0,0,0,0.04)",
+                  }}
+                >
+                  Therapist {sortKey === "business_name" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
+                </th>
+                <th
+                  onClick={() => onSort("days_on_platform")}
+                  style={sortableHead(sortKey === "days_on_platform", sortDir)}
+                >
+                  Days on platform {sortKey === "days_on_platform" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
+                </th>
+                <th
+                  onClick={() => onSort("steps_done")}
+                  style={sortableHead(sortKey === "steps_done", sortDir)}
+                >
+                  Progress {sortKey === "steps_done" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
+                </th>
+                {ACTIVATION_STEPS.map((s) => (
+                  <th
+                    key={s.key}
+                    title={s.label}
+                    style={{ ...plainHead(), textAlign: "center", minWidth: 90 }}
+                  >
+                    {s.icon} {s.short}
+                  </th>
+                ))}
+                <th style={plainHead()}>
+                  Next step to push
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {activationRows.map((t) => (
+                <ActivationRow key={t.id} t={t} />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function sortableHead(active, sortDir) {
+  return {
+    position: "sticky", top: 0, background: C.softCream, zIndex: 3,
+    borderBottom: `1.5px solid ${C.light}`,
+    padding: "10px 12px", textAlign: "left",
+    color: active ? C.forest : C.gray,
+    fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+    whiteSpace: "nowrap", cursor: "pointer", userSelect: "none",
+  };
+}
+
+function plainHead() {
+  return {
+    position: "sticky", top: 0, background: C.softCream, zIndex: 3,
+    borderBottom: `1.5px solid ${C.light}`,
+    padding: "10px 12px", textAlign: "left",
+    color: C.gray, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em",
+    whiteSpace: "nowrap",
+  };
+}
+
+function ActivationRow({ t }) {
+  const done = t.steps_done || 0;
+  const pct = Math.round((done / 5) * 100);
+  const progressColor = done === 5 ? C.rise : done >= 3 ? C.gold : C.fall;
+
+  // Find first uncompleted step (ordered by the list) — that's what to push them toward
+  const nextStep = ACTIVATION_STEPS.find((s) => !t.steps?.[s.key]);
+
+  return (
+    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
+      {/* Sticky therapist column */}
+      <td style={{
+        position: "sticky", left: 0, background: "#fff", zIndex: 2,
+        padding: "12px", minWidth: 240,
+        boxShadow: "1px 0 0 rgba(0,0,0,0.04)",
+        borderTop: `1px solid ${C.light}`,
+      }}>
+        <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
+          {t.business_name || t.full_name || "(no name)"}
+          {t.is_dummy && (
+            <span style={{ marginLeft: 6, fontSize: 10, background: "#F3E9D7", color: "#8A6F3C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>TEST</span>
+          )}
+        </div>
+        <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>{t.email}</div>
+        {t.phone && (
+          <div style={{ fontSize: 11, color: C.sage, marginTop: 2 }}>
+            <a href={`tel:${(t.phone || "").replace(/\D/g, "")}`} style={{ color: C.sage, textDecoration: "none" }}>
+              {formatPhoneDisplay(t.phone)}
+            </a>
+          </div>
+        )}
+      </td>
+
+      {/* Days on platform */}
+      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, color: C.dark }}>
+        {t.days_on_platform === 0 ? "Today" : `${t.days_on_platform} day${t.days_on_platform === 1 ? "" : "s"}`}
+      </td>
+
+      {/* Progress bar + X/5 */}
+      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 60, height: 6, background: C.light, borderRadius: 3, overflow: "hidden" }}>
+            <div style={{ width: `${pct}%`, height: "100%", background: progressColor }} />
+          </div>
+          <span style={{ fontSize: 13, fontWeight: 700, color: progressColor }}>{done}/5</span>
+        </div>
+      </td>
+
+      {/* 5 step cells */}
+      {ACTIVATION_STEPS.map((s) => {
+        const ok = !!t.steps?.[s.key];
+        return (
+          <td key={s.key} style={{ padding: "12px", textAlign: "center" }}>
+            {ok ? (
+              <span title={s.label + " complete"} style={{
+                display: "inline-block", width: 22, height: 22, lineHeight: "22px",
+                background: C.sage, color: "#fff", borderRadius: "50%",
+                fontSize: 12, fontWeight: 800,
+              }}>✓</span>
+            ) : (
+              <span title={s.label + " not done"} style={{
+                display: "inline-block", width: 22, height: 22, lineHeight: "22px",
+                background: "#fff", color: C.stale, border: `1.5px solid ${C.light}`, borderRadius: "50%",
+                fontSize: 12, fontWeight: 800,
+              }}>·</span>
+            )}
+          </td>
+        );
+      })}
+
+      {/* Next step to push */}
+      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
+        {nextStep ? (
+          <span style={{ color: C.dark, fontWeight: 600 }}>
+            {nextStep.icon} {nextStep.short}
+          </span>
+        ) : (
+          <span style={{ color: C.rise, fontWeight: 700 }}>✓ All done</span>
+        )}
+      </td>
+    </tr>
+  );
 }
