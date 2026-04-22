@@ -33,6 +33,7 @@ import AdminFunnel from './pages/AdminFunnel';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
 import Onboarding from './pages/Onboarding';
+import FounderDashboard from './components/FounderDashboard';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -73,10 +74,11 @@ function App() {
           <Route path="/demo" element={<Demo />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
+          <Route path="/founder" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
         <Analytics />
-</Router>
+      </Router>
     </AuthProvider>
   );
 }
