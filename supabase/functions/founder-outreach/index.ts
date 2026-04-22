@@ -2,7 +2,9 @@
 // Sends a branded BodyMap email to a therapist from reminders@mybodymap.app
 // with reply-to bodymap01@gmail.com. Logs the send to notification_log.
 //
-// Request body: { therapist_id: string, action_type: 'welcome'|'checkin'|'reminder'|'testimonial' }
+// Request body: { therapist_id: string, action_type: ActionType, custom_subject?, custom_body? }
+// ActionType = welcome | checkin | reminder | testimonial | first_session
+//            | setup_nudge | churned | referral_thankyou | activation_nudge
 //
 // Auth: caller JWT must belong to an ADMIN_EMAILS address. Non-admins get 403.
 

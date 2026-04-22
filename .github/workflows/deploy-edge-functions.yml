@@ -23,15 +23,27 @@ jobs:
         run: |
           # Functions that skip gateway JWT verification (auth handled inside)
           NO_JWT_FUNCTIONS="send-push signup-guard founder-outreach unsubscribe"
+          FAILED_FUNCTIONS=""
           for dir in supabase/functions/*/; do
             fn=$(basename "$dir")
             if [ -f "$dir/index.ts" ]; then
               if echo " $NO_JWT_FUNCTIONS " | grep -q " $fn "; then
                 echo "Deploying $fn (no-verify-jwt)..."
-                supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt || echo "WARN: $fn failed, continuing"
+                if ! supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" --no-verify-jwt; then
+                  echo "::error::Deploy failed for $fn"
+                  FAILED_FUNCTIONS="$FAILED_FUNCTIONS $fn"
+                fi
               else
                 echo "Deploying $fn..."
-                supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF" || echo "WARN: $fn failed, continuing"
+                if ! supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_REF"; then
+                  echo "::error::Deploy failed for $fn"
+                  FAILED_FUNCTIONS="$FAILED_FUNCTIONS $fn"
+                fi
               fi
             fi
           done
+          if [ -n "$FAILED_FUNCTIONS" ]; then
+            echo "::error::The following functions failed to deploy:$FAILED_FUNCTIONS"
+            exit 1
+          fi
+          echo "All edge functions deployed successfully"
