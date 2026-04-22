@@ -1659,19 +1659,23 @@ function ActivationRow({ t, updateFlag, onAfterSend }) {
           bottom: have I emailed them about it (📧 + date, or nothing) */}
       {ACTIVATION_STEPS.map((s) => {
         const ok = !!t.steps?.[s.key];
-        // Find most recent founder email mentioning this step in its body_snippet.
-        // Falls back to most recent activation_nudge email if no specific match,
-        // since the nudge body always names one specific step by phrase.
-        const stepPhrase = {
-          import: "import your clients",
-          service: "add your first service",
-          hours: "set your working hours",
-          stripe: "connect Stripe",
-          intake: "send your first intake",
-        }[s.key] || "";
-        const emailedAboutThis = (t.contact_history || []).find((h) =>
-          (h.body_snippet || "").toLowerCase().includes(stepPhrase)
-        );
+        // Find most recent founder email that mentioned THIS step. Case-
+        // insensitive match on a set of phrases that could appear in any
+        // activation nudge body for this step. Also matches old checkin
+        // emails that mentioned bringing clients over.
+        const stepPhrases = {
+          import: ["import your clients", "bring your client", "client list over"],
+          service: ["add your first service", "first service"],
+          hours: ["set your working hours", "working hours"],
+          stripe: ["connect stripe", "stripe or square", "accept payments"],
+          intake: ["send your first intake", "first intake"],
+        }[s.key] || [];
+        const emailedAboutThis = stepPhrases.length
+          ? (t.contact_history || []).find((h) => {
+              const body = (h.body_snippet || "").toLowerCase();
+              return stepPhrases.some((p) => body.includes(p));
+            })
+          : null;
         return (
           <td key={s.key} style={{ padding: "6px 8px", textAlign: "center", verticalAlign: "top" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
