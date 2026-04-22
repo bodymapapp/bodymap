@@ -1,15 +1,22 @@
-// Founder dashboard. Only visible to admins via /founder route.
-// Shows platform-wide stats plus a per-therapist retention intelligence table.
-// Tabs: Momentum (default), Cold Signups, Champions, All Therapists.
-// Momentum is defined as sessions this 7d minus sessions prior 7d.
+// Founder dashboard at /founder. Admin-only via email allowlist.
+// Per-therapist retention intelligence: who signed up, how engaged they are,
+// and one-click action for each row.
 //
 // Schema notes (verified in codebase, not guessed):
 //   therapists.plan values: 'silver' | 'gold' | null/'free'. Column is NOT 'tier'.
-//   last activity is derived from sessions.created_at + clients.created_at
+//   last activity is derived from max(sessions.created_at, clients.created_at, created_at)
 //   since last_sign_in_at lives in auth.users, not therapists.
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useAuth } from "../contexts/AuthContext";
+
+const ADMIN_EMAILS = new Set([
+  "bodymap01@gmail.com",
+  "bodymapdemo@gmail.com",
+  "harshk.mba@gmail.com",
+]);
 
 const C = {
   forest: "#2A5741",
@@ -23,19 +30,59 @@ const C = {
   fall: "#B44A3A",
   stale: "#9CA3AF",
   softCream: "#F9F8F5",
+  actionBlue: "#1E5F8A",
 };
 
 const DAY = 86400000;
+const REMINDER_THRESHOLD_DAYS = 7;
+const COLD_MIN_AGE_DAYS = 3;
+const TESTIMONIAL_MIN_SESSIONS = 10;
+
+// Heuristic dummy detection. Conservative: only emails that pattern-match
+// obvious test shapes or admin accounts. Does NOT flag someone just because
+// they haven't added a client yet (they might be a real new signup).
+function isDummyEmail(email) {
+  const e = (email || "").toLowerCase().trim();
+  if (!e) return true;
+  if (ADMIN_EMAILS.has(e)) return true;
+  const patterns = [
+    /^hk\d*@/,
+    /^test\d*@/,
+    /^demo\d*@/,
+    /^asdf/,
+    /^qwer/,
+    /\+test@/,
+    /@test\./,
+    /@example\./,
+    /@email\.com$/,
+    /mailinator/,
+    /guerrilla/,
+    /tempmail/,
+    /throwaway/,
+    /\.test$/,
+  ];
+  return patterns.some((p) => p.test(e));
+}
 
 export default function FounderDashboard() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState("");
-  const [tab, setTab] = useState("momentum");
   const [search, setSearch] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
-  const [sortKey, setSortKey] = useState("momentum");
+  const [cohortFilter, setCohortFilter] = useState("all");
+  const [hideDummies, setHideDummies] = useState(true);
+  const [sortKey, setSortKey] = useState("sessions_total");
   const [sortDir, setSortDir] = useState("desc");
+
+  // Admin allowlist. Kick anyone else back to dashboard.
+  useEffect(() => {
+    if (user && !ADMIN_EMAILS.has((user.email || "").toLowerCase())) {
+      navigate("/dashboard");
+    }
+  }, [user, navigate]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -65,6 +112,7 @@ export default function FounderDashboard() {
           ...t,
           plan_normalized:
             t.plan === "silver" ? "silver" : t.plan === "gold" ? "gold" : "free",
+          is_dummy: isDummyEmail(t.email),
           sessions_total: 0,
           sessions_7d: 0,
           sessions_prev_7d: 0,
@@ -108,24 +156,17 @@ export default function FounderDashboard() {
         const signedUp = new Date(t.created_at).getTime();
         const lastSess = t.last_session_at ? new Date(t.last_session_at).getTime() : 0;
         const lastCli = t.last_client_at ? new Date(t.last_client_at).getTime() : 0;
-        const lastAct = Math.max(lastSess, lastCli, signedUp);
+        const hasAnyActivity = lastSess > 0 || lastCli > 0;
+        const lastAct = hasAnyActivity ? Math.max(lastSess, lastCli) : 0;
+
         t.days_on_platform = Math.max(0, Math.floor((now - signedUp) / DAY));
-        t.last_activity_at = new Date(lastAct).toISOString();
-        t.days_since_activity = Math.floor((now - lastAct) / DAY);
+        t.last_activity_at = hasAnyActivity ? new Date(lastAct).toISOString() : null;
+        t.days_since_use = hasAnyActivity
+          ? Math.floor((now - lastAct) / DAY)
+          : null;
         t.momentum = t.sessions_7d - t.sessions_prev_7d;
-        t.has_activation =
-          t.activation_events.length > 0 || t.sessions_total > 0 || t.clients_total > 0;
-        t.activation_pct = Math.min(
-          100,
-          Math.round(
-            ((t.activation_events.length > 0 ? 1 : 0) +
-              (t.sessions_total > 0 ? 1 : 0) +
-              (t.clients_total > 0 ? 1 : 0) +
-              (t.stripe_account_connected ? 1 : 0) +
-              (t.cal_connected ? 1 : 0)) *
-              20
-          )
-        );
+        t.has_activation = t.activation_events.length > 0 || t.sessions_total > 0 || t.clients_total > 0;
+        t.action = recommendAction(t);
       }
 
       const list = Object.values(byId).sort(
@@ -136,28 +177,27 @@ export default function FounderDashboard() {
       const d7 = now - 7 * DAY;
       const d30 = now - 30 * DAY;
 
+      // Stats exclude dummies by default
+      const real = list.filter((t) => !t.is_dummy);
       const stats = {
-        signups_24h: list.filter((t) => new Date(t.created_at).getTime() >= h24).length,
-        signups_7d: list.filter((t) => new Date(t.created_at).getTime() >= d7).length,
-        signups_30d: list.filter((t) => new Date(t.created_at).getTime() >= d30).length,
-        total: list.length,
-        silver: list.filter((t) => t.plan_normalized === "silver").length,
-        free: list.filter((t) => t.plan_normalized === "free").length,
-        gold: list.filter((t) => t.plan_normalized === "gold").length,
+        signups_24h: real.filter((t) => new Date(t.created_at).getTime() >= h24).length,
+        signups_7d: real.filter((t) => new Date(t.created_at).getTime() >= d7).length,
+        signups_30d: real.filter((t) => new Date(t.created_at).getTime() >= d30).length,
+        total: real.length,
+        silver: real.filter((t) => t.plan_normalized === "silver").length,
+        free: real.filter((t) => t.plan_normalized === "free").length,
+        gold: real.filter((t) => t.plan_normalized === "gold").length,
+        dummies: list.length - real.length,
+        active_7d: real.filter(
+          (t) => t.days_since_use !== null && t.days_since_use <= 7
+        ).length,
+        sessions_7d: real.reduce((sum, t) => sum + t.sessions_7d, 0),
         sessions_24h: (allSessions || []).filter(
           (s) => new Date(s.created_at).getTime() >= h24
         ).length,
-        sessions_7d: (allSessions || []).filter(
-          (s) => new Date(s.created_at).getTime() >= d7
-        ).length,
-        clients_7d: (allClients || []).filter(
-          (c) => new Date(c.created_at).getTime() >= d7
-        ).length,
-        active_7d: list.filter(
-          (t) =>
-            new Date(t.last_activity_at).getTime() >= d7 &&
-            (t.sessions_total > 0 || t.clients_total > 0)
-        ).length,
+        clients_7d: real.reduce((sum, t) => sum + t.clients_7d, 0),
+        cold: real.filter((t) => t.action.key === "checkin" || t.action.key === "reminder").length,
+        champions: real.filter((t) => t.sessions_total >= 3).length,
       };
 
       setData({ therapists: list, stats });
@@ -171,14 +211,29 @@ export default function FounderDashboard() {
   };
 
   useEffect(() => {
-    fetchAll();
-  }, []);
+    if (user && ADMIN_EMAILS.has((user.email || "").toLowerCase())) {
+      fetchAll();
+    }
+  }, [user]);
 
   const filtered = useMemo(() => {
     if (!data) return [];
     let rows = data.therapists;
 
+    if (hideDummies) rows = rows.filter((t) => !t.is_dummy);
     if (planFilter !== "all") rows = rows.filter((t) => t.plan_normalized === planFilter);
+
+    if (cohortFilter === "cold") {
+      rows = rows.filter((t) => t.action.key === "checkin" || t.action.key === "reminder");
+    } else if (cohortFilter === "champions") {
+      rows = rows.filter((t) => t.sessions_total >= 3);
+    } else if (cohortFilter === "active_7d") {
+      rows = rows.filter((t) => t.days_since_use !== null && t.days_since_use <= 7);
+    } else if (cohortFilter === "new_7d") {
+      rows = rows.filter((t) => t.days_on_platform <= 7);
+    } else if (cohortFilter === "silver") {
+      rows = rows.filter((t) => t.plan_normalized === "silver");
+    }
 
     const q = search.trim().toLowerCase();
     if (q) {
@@ -191,37 +246,34 @@ export default function FounderDashboard() {
       );
     }
 
-    if (tab === "momentum") {
-      rows = [...rows].sort((a, b) => {
-        if (b.momentum !== a.momentum) return b.momentum - a.momentum;
-        return b.sessions_7d - a.sessions_7d;
-      });
-    } else if (tab === "cold") {
-      rows = rows
-        .filter((t) => t.days_on_platform >= 3)
-        .filter((t) => t.sessions_total === 0 || t.days_since_activity >= 14)
-        .sort((a, b) => b.days_since_activity - a.days_since_activity);
-    } else if (tab === "champions") {
-      rows = [...rows]
-        .filter((t) => t.sessions_total > 0 || t.clients_total > 0)
-        .sort((a, b) => {
-          const aScore = a.sessions_total * 2 + a.clients_total + a.sessions_7d * 3;
-          const bScore = b.sessions_total * 2 + b.clients_total + b.sessions_7d * 3;
-          return bScore - aScore;
-        });
-    } else if (tab === "all") {
-      rows = [...rows].sort((a, b) => {
-        const dir = sortDir === "asc" ? 1 : -1;
-        const av = a[sortKey];
-        const bv = b[sortKey];
-        if (typeof av === "string" && typeof bv === "string") {
-          return av.localeCompare(bv) * dir;
-        }
-        return ((av || 0) - (bv || 0)) * dir;
-      });
-    }
-    return rows;
-  }, [data, tab, search, planFilter, sortKey, sortDir]);
+    return [...rows].sort((a, b) => {
+      const dir = sortDir === "asc" ? 1 : -1;
+      let av = a[sortKey];
+      let bv = b[sortKey];
+      if (sortKey === "last_activity_at") {
+        av = av ? new Date(av).getTime() : 0;
+        bv = bv ? new Date(bv).getTime() : 0;
+      } else if (sortKey === "created_at") {
+        av = new Date(av).getTime();
+        bv = new Date(bv).getTime();
+      } else if (sortKey === "days_since_use") {
+        av = av === null ? Number.MAX_SAFE_INTEGER : av;
+        bv = bv === null ? Number.MAX_SAFE_INTEGER : bv;
+      }
+      if (typeof av === "string" && typeof bv === "string") {
+        return av.localeCompare(bv) * dir;
+      }
+      return ((av || 0) - (bv || 0)) * dir;
+    });
+  }, [data, hideDummies, planFilter, cohortFilter, search, sortKey, sortDir]);
+
+  if (!user) {
+    return (
+      <div style={{ minHeight: "100vh", background: C.cream, padding: 48, textAlign: "center", color: C.gray }}>
+        Checking access...
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -233,15 +285,26 @@ export default function FounderDashboard() {
   if (!data) return null;
 
   const s = data.stats;
-  const convRate = s.total > 0 ? Math.round(((s.silver + s.gold) / s.total) * 100) : 0;
-  const coldCount = data.therapists.filter(
-    (t) => t.days_on_platform >= 3 && (t.sessions_total === 0 || t.days_since_activity >= 14)
-  ).length;
-  const champCount = data.therapists.filter((t) => t.sessions_total > 0 || t.clients_total > 0).length;
+  const activateFilter = (key) => {
+    setCohortFilter(cohortFilter === key ? "all" : key);
+    // Smooth scroll to table
+    setTimeout(() => {
+      const el = document.getElementById("therapist-table");
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 50);
+  };
+
+  const onSort = (k) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else {
+      setSortKey(k);
+      setSortDir("desc");
+    }
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: C.cream, padding: "24px 16px 48px", fontFamily: "system-ui" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+      <div style={{ maxWidth: 1280, margin: "0 auto" }}>
 
         {/* Header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 20 }}>
@@ -252,7 +315,9 @@ export default function FounderDashboard() {
             <h1 style={{ fontFamily: "Georgia, serif", fontSize: 28, color: C.dark, margin: "4px 0 0" }}>
               Who signed up. How they're doing. Who needs a nudge.
             </h1>
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: C.gray }}>Updated {lastUpdated}</p>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: C.gray }}>
+              Updated {lastUpdated} · Excluding {s.dummies} test accounts from totals. Click any stat card to filter the table below.
+            </p>
           </div>
           <button
             onClick={fetchAll}
@@ -262,86 +327,77 @@ export default function FounderDashboard() {
           </button>
         </div>
 
-        {/* Top-line stats */}
-        <SectionLabel>Signups</SectionLabel>
+        {/* Macro stats — clickable */}
+        <SectionLabel>Signups · click to filter table</SectionLabel>
         <Grid>
-          <Stat value={s.signups_24h} label="Last 24h" />
-          <Stat value={s.signups_7d} label="Last 7 days" />
-          <Stat value={s.signups_30d} label="Last 30 days" />
-          <Stat value={s.total} label="All time" />
+          <ClickStat value={s.signups_24h} label="Last 24h" active={false} />
+          <ClickStat value={s.signups_7d} label="New this 7d" onClick={() => activateFilter("new_7d")} active={cohortFilter === "new_7d"} />
+          <ClickStat value={s.signups_30d} label="Last 30 days" active={false} />
+          <ClickStat value={s.total} label="All time (real)" sub={`${s.dummies} test excluded`} active={false} />
         </Grid>
 
-        <SectionLabel>Plans & Activity</SectionLabel>
+        <SectionLabel>Plans · click Silver to filter</SectionLabel>
         <Grid>
-          <Stat value={s.free} label="Free (bronze)" sub="No plan set" />
-          <Stat value={s.silver} label="Silver" sub="Phase 0: free for all" />
-          <Stat value={s.gold} label="Gold" sub="Not yet active" />
-        </Grid>
-        <div style={{ height: 10 }} />
-        <Grid>
-          <Stat value={s.active_7d} label="Active (7d)" sub="Logged session or client" />
-          <Stat value={s.sessions_7d} label="Sessions (7d)" sub={`${s.sessions_24h} today`} />
-          <Stat value={s.clients_7d} label="Clients added (7d)" sub="Across platform" />
+          <ClickStat value={s.free} label="Free (bronze)" sub="No plan set" active={false} />
+          <ClickStat value={s.silver} label="Silver" sub="Phase 0: free" onClick={() => activateFilter("silver")} active={cohortFilter === "silver"} />
+          <ClickStat value={s.gold} label="Gold" sub="Not yet active" active={false} />
         </Grid>
 
-        <SectionLabel>Conversion Health</SectionLabel>
+        <SectionLabel>Engagement · click to filter</SectionLabel>
         <Grid>
-          <Stat value={`${convRate}%`} label="On a paid plan" sub={`${s.silver + s.gold} of ${s.total}`} />
-          <Stat value={coldCount} label="Cold signups" sub="Need a nudge" tint={C.fall} />
-          <Stat value={champCount} label="Active champions" sub="Actually using it" tint={C.rise} />
+          <ClickStat value={s.active_7d} label="Active last 7d" sub="Used platform recently" onClick={() => activateFilter("active_7d")} active={cohortFilter === "active_7d"} tint={C.rise} />
+          <ClickStat value={s.cold} label="Need a nudge" sub={`No activity in ${REMINDER_THRESHOLD_DAYS}+ days`} onClick={() => activateFilter("cold")} active={cohortFilter === "cold"} tint={C.fall} />
+          <ClickStat value={s.champions} label="Champions" sub="3+ sessions logged" onClick={() => activateFilter("champions")} active={cohortFilter === "champions"} tint={C.rise} />
         </Grid>
 
-        {/* Tabs */}
-        <div style={{ marginTop: 28, marginBottom: 12, display: "flex", gap: 4, flexWrap: "wrap", borderBottom: `1.5px solid ${C.light}` }}>
-          <Tab active={tab === "momentum"} onClick={() => setTab("momentum")}>
-            Momentum
-          </Tab>
-          <Tab active={tab === "cold"} onClick={() => setTab("cold")}>
-            Cold Signups <Badge>{coldCount}</Badge>
-          </Tab>
-          <Tab active={tab === "champions"} onClick={() => setTab("champions")}>
-            Champions <Badge>{champCount}</Badge>
-          </Tab>
-          <Tab active={tab === "all"} onClick={() => setTab("all")}>
-            All Therapists <Badge>{s.total}</Badge>
-          </Tab>
+        {/* Table controls */}
+        <div id="therapist-table" style={{ marginTop: 28, marginBottom: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: 0 }}>
+              Therapists
+              {cohortFilter !== "all" && (
+                <button
+                  onClick={() => setCohortFilter("all")}
+                  style={{ marginLeft: 10, fontSize: 12, padding: "3px 10px", borderRadius: 999, background: C.sage, color: "#fff", border: "none", cursor: "pointer", fontFamily: "system-ui", fontWeight: 600 }}
+                >
+                  Filter: {filterLabel(cohortFilter)} ✕
+                </button>
+              )}
+            </h2>
+            <span style={{ fontSize: 12, color: C.gray }}>
+              Showing {filtered.length} of {hideDummies ? data.therapists.filter((t) => !t.is_dummy).length : data.therapists.length}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              placeholder="Search email, business, name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ flex: "1 1 220px", minWidth: 180, padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.light}`, fontSize: 13, background: "#fff" }}
+            />
+            <select
+              value={planFilter}
+              onChange={(e) => setPlanFilter(e.target.value)}
+              style={{ padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.light}`, fontSize: 13, background: "#fff" }}
+            >
+              <option value="all">All plans</option>
+              <option value="silver">Silver only</option>
+              <option value="free">Free only</option>
+              <option value="gold">Gold only</option>
+            </select>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.dark, cursor: "pointer", userSelect: "none", padding: "6px 10px", borderRadius: 8, background: hideDummies ? C.softCream : "#fff", border: `1.5px solid ${C.light}` }}>
+              <input type="checkbox" checked={hideDummies} onChange={(e) => setHideDummies(e.target.checked)} style={{ margin: 0 }} />
+              Hide {s.dummies} test accounts
+            </label>
+          </div>
         </div>
-
-        {/* Filters */}
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-          <input
-            placeholder="Search email, business, name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            style={{ flex: "1 1 220px", padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.light}`, fontSize: 13, background: "#fff" }}
-          />
-          <select
-            value={planFilter}
-            onChange={(e) => setPlanFilter(e.target.value)}
-            style={{ padding: "9px 12px", borderRadius: 8, border: `1.5px solid ${C.light}`, fontSize: 13, background: "#fff" }}
-          >
-            <option value="all">All plans</option>
-            <option value="silver">Silver only</option>
-            <option value="free">Free only</option>
-            <option value="gold">Gold only</option>
-          </select>
-        </div>
-
-        <TabHint tab={tab} />
 
         <TherapistTable
           rows={filtered}
-          tab={tab}
           sortKey={sortKey}
           sortDir={sortDir}
-          onSort={(k) => {
-            if (tab !== "all") return;
-            if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
-            else {
-              setSortKey(k);
-              setSortDir("desc");
-            }
-          }}
+          onSort={onSort}
         />
 
         <p style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginTop: 24 }}>
@@ -350,6 +406,107 @@ export default function FounderDashboard() {
       </div>
     </div>
   );
+}
+
+function filterLabel(key) {
+  return {
+    cold: "Need a nudge",
+    champions: "Champions",
+    active_7d: "Active 7d",
+    new_7d: "New 7d",
+    silver: "Silver",
+  }[key] || key;
+}
+
+function recommendAction(t) {
+  if (t.is_dummy) return { key: "none", label: "Test account", button: null };
+  const noActivity = t.sessions_total === 0 && t.clients_total === 0;
+
+  if (t.days_on_platform < COLD_MIN_AGE_DAYS && noActivity) {
+    return {
+      key: "welcome",
+      label: "Welcome them",
+      button: "Welcome",
+      subject: `Welcome to BodyMap, ${firstName(t)}`,
+      body: [
+        `Hi ${firstName(t)},`,
+        ``,
+        `I'm the founder. Just wanted to say welcome to BodyMap personally.`,
+        ``,
+        `If you have 30 seconds, what brought you in? Anything I can help with to get you set up?`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS) {
+    return {
+      key: "checkin",
+      label: "Check in",
+      button: "Check in",
+      subject: `Checking in, ${firstName(t)}`,
+      body: [
+        `Hi ${firstName(t)},`,
+        ``,
+        `I'm the founder of BodyMap. I saw you signed up ${t.days_on_platform} days ago but haven't added a client yet.`,
+        ``,
+        `What's in the way? I'd love to help you get your first client imported so you can see the platform in action.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  if (t.days_since_use !== null && t.days_since_use >= REMINDER_THRESHOLD_DAYS) {
+    return {
+      key: "reminder",
+      label: `Remind (${t.days_since_use}d idle)`,
+      button: "Send reminder",
+      subject: `Haven't seen you in a bit, ${firstName(t)}`,
+      body: [
+        `Hi ${firstName(t)},`,
+        ``,
+        `Noticed it's been ${t.days_since_use} days since you last used BodyMap. Everything okay?`,
+        ``,
+        `Is there something friction-y getting in the way, or just busy? Either way I'd love to hear.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  if (t.sessions_total >= TESTIMONIAL_MIN_SESSIONS && t.days_since_use !== null && t.days_since_use <= 7) {
+    return {
+      key: "testimonial",
+      label: "Ask for testimonial",
+      button: "Ask testimonial",
+      subject: `Quick favor, ${firstName(t)}?`,
+      body: [
+        `Hi ${firstName(t)},`,
+        ``,
+        `You've logged ${t.sessions_total} sessions on BodyMap. That's amazing.`,
+        ``,
+        `Would you be open to sharing a one or two sentence testimonial about what BodyMap does for your practice? I'd like to feature it on the homepage.`,
+        ``,
+        `No pressure. And thank you either way.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  return { key: "ontrack", label: "On track", button: null };
+}
+
+function firstName(t) {
+  return (t.full_name || "").split(" ")[0] || "there";
+}
+
+function mailto(t, action) {
+  return `mailto:${encodeURIComponent(t.email)}?subject=${encodeURIComponent(
+    action.subject
+  )}&body=${encodeURIComponent(action.body)}`;
 }
 
 function SectionLabel({ children }) {
@@ -362,69 +519,42 @@ function SectionLabel({ children }) {
 
 function Grid({ children }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(150px, 1fr))`, gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))`, gap: 10 }}>
       {children}
     </div>
   );
 }
 
-function Stat({ value, label, sub, tint }) {
-  return (
-    <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, padding: "14px 16px" }}>
-      <div style={{ fontSize: 26, fontWeight: 700, color: tint || C.forest, fontFamily: "Georgia, serif", lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 12, color: C.dark, marginTop: 6, fontWeight: 600 }}>{label}</div>
-      {sub && <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function Tab({ active, onClick, children }) {
+function ClickStat({ value, label, sub, tint, onClick, active }) {
+  const clickable = !!onClick;
   return (
     <button
       onClick={onClick}
+      disabled={!clickable}
       style={{
-        background: "transparent",
-        border: "none",
-        padding: "10px 14px",
-        fontSize: 13,
-        fontWeight: active ? 700 : 600,
-        color: active ? C.forest : C.gray,
-        cursor: "pointer",
-        borderBottom: active ? `2.5px solid ${C.forest}` : "2.5px solid transparent",
-        marginBottom: -1.5,
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
+        background: active ? "#F0EEE8" : "#fff",
+        border: `1.5px solid ${active ? C.forest : C.light}`,
+        borderRadius: 12,
+        padding: "14px 16px",
+        textAlign: "left",
+        cursor: clickable ? "pointer" : "default",
+        transition: "transform 0.08s, border 0.15s",
+        fontFamily: "inherit",
       }}
     >
-      {children}
+      <div style={{ fontSize: 26, fontWeight: 700, color: tint || C.forest, fontFamily: "Georgia, serif", lineHeight: 1 }}>{value}</div>
+      <div style={{ fontSize: 12, color: C.dark, marginTop: 6, fontWeight: 600 }}>{label}</div>
+      {sub && <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{sub}</div>}
+      {clickable && (
+        <div style={{ fontSize: 10, color: active ? C.forest : C.sage, marginTop: 6, fontWeight: 700, letterSpacing: "0.05em" }}>
+          {active ? "FILTERED ✓" : "FILTER →"}
+        </div>
+      )}
     </button>
   );
 }
 
-function Badge({ children }) {
-  return (
-    <span style={{ background: C.softCream, color: C.gray, border: `1px solid ${C.light}`, borderRadius: 10, fontSize: 11, fontWeight: 700, padding: "1px 7px" }}>
-      {children}
-    </span>
-  );
-}
-
-function TabHint({ tab }) {
-  const hints = {
-    momentum: "Sorted by sessions this week minus sessions last week. Green arrow means rising, red means slowing, gray means cold.",
-    cold: "Signed up at least 3 days ago and either have zero sessions or no activity in 14 days. These are your retention email targets. Click Email to open a pre-drafted check-in.",
-    champions: "Actually using the platform. These are your Silver conversion candidates, testimonial asks, and referral seeds.",
-    all: "Every therapist on the platform. Click a column header to sort.",
-  };
-  return (
-    <p style={{ fontSize: 12, color: C.gray, margin: "0 0 12px", fontStyle: "italic" }}>
-      {hints[tab]}
-    </p>
-  );
-}
-
-function TherapistTable({ rows, tab, sortKey, sortDir, onSort }) {
+function TherapistTable({ rows, sortKey, sortDir, onSort }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, padding: 32, textAlign: "center", color: C.gray, fontSize: 13 }}>
@@ -433,10 +563,37 @@ function TherapistTable({ rows, tab, sortKey, sortDir, onSort }) {
     );
   }
 
-  const showColdAction = tab === "cold";
+  // Sticky header styles. Position sticky works relative to nearest scrolling ancestor.
+  // The page itself is the vertical scroller, so top:0 pins to viewport as user scrolls.
+  // For horizontal scroll inside the overflow-x wrapper, left:0 pins the first column
+  // within that container.
+  const stickyHead = {
+    position: "sticky",
+    top: 0,
+    background: C.softCream,
+    zIndex: 3,
+    borderBottom: `1.5px solid ${C.light}`,
+    boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
+  };
 
-  const header = (key, label) => {
-    const sortable = tab === "all";
+  const firstColHead = {
+    ...stickyHead,
+    left: 0,
+    zIndex: 5,
+    minWidth: 240,
+    boxShadow: "1px 0 0 rgba(0,0,0,0.04), 0 1px 0 rgba(0,0,0,0.04)",
+  };
+
+  const firstColCell = {
+    position: "sticky",
+    left: 0,
+    background: "#fff",
+    zIndex: 2,
+    minWidth: 240,
+    boxShadow: "1px 0 0 rgba(0,0,0,0.04)",
+  };
+
+  const header = (key, label, sortable = true) => {
     const active = sortable && sortKey === key;
     return (
       <th
@@ -455,7 +612,7 @@ function TherapistTable({ rows, tab, sortKey, sortDir, onSort }) {
         }}
       >
         {label}
-        {active ? (sortDir === "asc" ? " \u2191" : " \u2193") : ""}
+        {active ? (sortDir === "asc" ? " \u2191" : " \u2193") : sortable ? " ⇅" : ""}
       </th>
     );
   };
@@ -463,23 +620,29 @@ function TherapistTable({ rows, tab, sortKey, sortDir, onSort }) {
   return (
     <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 900 }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1100 }}>
           <thead>
-            <tr style={{ background: C.softCream, borderBottom: `1.5px solid ${C.light}` }}>
-              {header("email", "Therapist")}
+            <tr>
+              <th style={firstColHead} onClick={() => onSort("business_name")}>
+                <div style={{ color: sortKey === "business_name" ? C.forest : C.gray, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "10px 12px", textAlign: "left", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
+                  Therapist {sortKey === "business_name" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
+                </div>
+              </th>
               {header("created_at", "Signed up")}
+              {header("days_on_platform", "Days on platform")}
+              {header("last_activity_at", "Last used")}
               {header("plan_normalized", "Plan")}
-              {header("momentum", "Momentum (7d vs prev)")}
               {header("sessions_total", "Sessions")}
               {header("clients_total", "Clients")}
-              {header("last_activity_at", "Last active")}
-              {header("activation_pct", "Setup")}
-              {showColdAction && <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: C.gray, fontSize: 11, textTransform: "uppercase" }}>Action</th>}
+              {header("momentum", "Momentum 7d")}
+              <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: C.gray, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+                Recommended action
+              </th>
             </tr>
           </thead>
           <tbody>
             {rows.map((t) => (
-              <Row key={t.id} t={t} showColdAction={showColdAction} />
+              <Row key={t.id} t={t} firstColCell={firstColCell} />
             ))}
           </tbody>
         </table>
@@ -488,7 +651,7 @@ function TherapistTable({ rows, tab, sortKey, sortDir, onSort }) {
   );
 }
 
-function Row({ t, showColdAction }) {
+function Row({ t, firstColCell }) {
   const momColor =
     t.momentum > 0 ? C.rise : t.momentum < 0 ? C.fall : t.sessions_7d === 0 && t.sessions_prev_7d === 0 ? C.stale : C.gray;
   const momArrow = t.momentum > 0 ? "\u2191" : t.momentum < 0 ? "\u2193" : "\u2500";
@@ -497,12 +660,23 @@ function Row({ t, showColdAction }) {
       ? "No sessions"
       : `${t.sessions_7d} vs ${t.sessions_prev_7d}`;
 
-  const lastActiveLabel =
-    t.days_since_activity === 0
+  const lastUsedLabel =
+    t.days_since_use === null
+      ? "Never"
+      : t.days_since_use === 0
       ? "Today"
-      : t.days_since_activity === 1
+      : t.days_since_use === 1
       ? "Yesterday"
-      : `${t.days_since_activity}d ago`;
+      : `${t.days_since_use}d ago`;
+
+  const lastUsedColor =
+    t.days_since_use === null
+      ? C.fall
+      : t.days_since_use >= REMINDER_THRESHOLD_DAYS
+      ? C.fall
+      : t.days_since_use <= 2
+      ? C.rise
+      : C.dark;
 
   const planColors =
     t.plan_normalized === "silver"
@@ -511,13 +685,17 @@ function Row({ t, showColdAction }) {
       ? { bg: "#FDF4E3", fg: "#8A5A1C", bd: "#E8C890" }
       : { bg: "#F5F0E8", fg: "#7A5C1A", bd: "#D8C8A0" };
 
-  const mailto = buildColdEmail(t);
-
   return (
     <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
-      <td style={{ padding: "12px", minWidth: 200 }}>
+      <td style={{ ...firstColCell, padding: "12px", borderTop: `1px solid ${C.light}` }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
+          {t.is_dummy && (
+            <span style={{ marginLeft: 6, fontSize: 10, background: "#F3E9D7", color: "#8A6F3C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>TEST</span>
+          )}
+          {t.stripe_account_connected && (
+            <span style={{ marginLeft: 6, fontSize: 10, background: "#E8F5EE", color: "#1A5C38", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>STRIPE</span>
+          )}
         </div>
         <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>{t.email}</div>
         {t.custom_url && (
@@ -537,13 +715,16 @@ function Row({ t, showColdAction }) {
         )}
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.gray, fontSize: 12 }}>
-        <div style={{ color: C.dark, fontSize: 12 }}>
-          {new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-        </div>
-        <div style={{ fontSize: 11, color: C.gray }}>
-          {t.days_on_platform === 0 ? "Today" : `${t.days_on_platform}d ago`}
-        </div>
+      <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.dark, fontSize: 12 }}>
+        {new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
+      </td>
+
+      <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.dark, fontSize: 13, fontWeight: 600 }}>
+        {t.days_on_platform === 0 ? "Today" : `${t.days_on_platform} day${t.days_on_platform === 1 ? "" : "s"}`}
+      </td>
+
+      <td style={{ padding: "12px", whiteSpace: "nowrap", color: lastUsedColor, fontSize: 13, fontWeight: 600 }}>
+        {lastUsedLabel}
       </td>
 
       <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
@@ -564,14 +745,6 @@ function Row({ t, showColdAction }) {
       </td>
 
       <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
-        <div style={{ color: momColor, fontWeight: 700, fontSize: 14 }}>
-          {momArrow} {t.momentum > 0 ? "+" : ""}
-          {t.momentum}
-        </div>
-        <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{momLabel}</div>
-      </td>
-
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
         <div style={{ fontWeight: 700, color: C.dark }}>{t.sessions_total}</div>
         <div style={{ fontSize: 11, color: C.gray }}>{t.sessions_7d} this 7d</div>
       </td>
@@ -581,92 +754,57 @@ function Row({ t, showColdAction }) {
         <div style={{ fontSize: 11, color: C.gray }}>{t.clients_7d} this 7d</div>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12, color: C.dark }}>
-        {lastActiveLabel}
+      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+        <div style={{ color: momColor, fontWeight: 700, fontSize: 14 }}>
+          {momArrow} {t.momentum > 0 ? "+" : ""}{t.momentum}
+        </div>
+        <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{momLabel}</div>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <div style={{ width: 42, height: 5, background: C.light, borderRadius: 3, overflow: "hidden" }}>
-            <div
-              style={{
-                width: `${t.activation_pct}%`,
-                height: "100%",
-                background:
-                  t.activation_pct >= 60
-                    ? C.rise
-                    : t.activation_pct >= 40
-                    ? C.gold
-                    : C.fall,
-              }}
-            />
-          </div>
-          <span style={{ fontSize: 11, color: C.gray }}>{t.activation_pct}%</span>
-        </div>
-        <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-          <Dot on={t.stripe_account_connected} label="Stripe" />
-          <Dot on={t.cal_connected} label="Cal" />
-          <Dot on={t.has_activation} label="Used" />
-        </div>
+      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+        <ActionCell t={t} />
       </td>
-
-      {showColdAction && (
-        <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
-          <a
-            href={mailto}
-            style={{
-              background: C.forest,
-              color: "#fff",
-              padding: "7px 12px",
-              borderRadius: 6,
-              textDecoration: "none",
-              fontSize: 12,
-              fontWeight: 600,
-              display: "inline-block",
-            }}
-          >
-            Email
-          </a>
-        </td>
-      )}
     </tr>
   );
 }
 
-function Dot({ on, label }) {
-  return (
-    <span
-      title={label + (on ? " connected" : " not connected")}
-      style={{
-        fontSize: 9,
-        fontWeight: 700,
-        color: on ? "#fff" : C.gray,
-        background: on ? C.sage : C.softCream,
-        border: `1px solid ${on ? C.sage : C.light}`,
-        borderRadius: 10,
-        padding: "1px 6px",
-      }}
-    >
-      {label}
-    </span>
-  );
-}
+function ActionCell({ t }) {
+  const a = t.action;
+  if (!a.button) {
+    const color = a.key === "ontrack" ? C.rise : C.gray;
+    return (
+      <div style={{ fontSize: 12, color, fontWeight: 600 }}>
+        {a.label}
+      </div>
+    );
+  }
 
-function buildColdEmail(t) {
-  const firstName = (t.full_name || "").split(" ")[0] || "there";
-  const subject = `Checking in on BodyMap, ${firstName}`;
-  const body = [
-    `Hi ${firstName},`,
-    ``,
-    `I'm the founder of BodyMap. I saw you signed up ${t.days_on_platform} days ago and wanted to check in.`,
-    ``,
-    `What brought you in? And what would make the platform actually useful for how you run your practice?`,
-    ``,
-    `I read every reply.`,
-    ``,
-    `MyBodyMap`,
-  ].join("\n");
-  return `mailto:${encodeURIComponent(t.email)}?subject=${encodeURIComponent(
-    subject
-  )}&body=${encodeURIComponent(body)}`;
+  const btnColors = {
+    welcome: { bg: C.sage, fg: "#fff" },
+    checkin: { bg: C.actionBlue, fg: "#fff" },
+    reminder: { bg: C.fall, fg: "#fff" },
+    testimonial: { bg: C.gold, fg: "#fff" },
+  }[a.key] || { bg: C.forest, fg: "#fff" };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
+      <div style={{ fontSize: 11, color: C.gray, fontWeight: 600 }}>{a.label}</div>
+      <a
+        href={mailto(t, a)}
+        style={{
+          background: btnColors.bg,
+          color: btnColors.fg,
+          padding: "6px 12px",
+          borderRadius: 6,
+          textDecoration: "none",
+          fontSize: 12,
+          fontWeight: 700,
+          display: "inline-block",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {a.button} →
+      </a>
+    </div>
+  );
 }
