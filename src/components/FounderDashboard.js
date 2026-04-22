@@ -95,6 +95,7 @@ export default function FounderDashboard() {
         { data: allClients },
         { data: activation },
         { data: outreachLog },
+        { data: referrals },
       ] = await Promise.all([
         supabase.from("therapists").select(
           "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
@@ -106,6 +107,8 @@ export default function FounderDashboard() {
           .select("therapist_id,notification_type,status,sent_at")
           .like("notification_type", "founder_outreach_%")
           .order("sent_at", { ascending: false }),
+        supabase.from("referrals")
+          .select("referrer_therapist_id,status,reward_sent"),
       ]);
 
       const d7ms = now - 7 * DAY;
@@ -128,15 +131,39 @@ export default function FounderDashboard() {
           activation_events: [],
           last_contact_at: null,
           last_contact_type: null,
+          unthanked_referrals: 0,
+          emailed_first_session: false,
+          emailed_welcome: false,
+          emailed_churned: false,
+          emailed_setup_nudge: false,
         };
       }
 
       // Layer in outreach log. Log is ordered desc, so first hit per therapist = most recent.
+      // Also track which one-off templates have already been sent so we don't recommend them again.
       for (const r of outreachLog || []) {
         const t = byId[r.therapist_id];
-        if (!t || t.last_contact_at) continue;
-        t.last_contact_at = r.sent_at;
-        t.last_contact_type = (r.notification_type || "").replace("founder_outreach_", "");
+        if (!t) continue;
+        if (!t.last_contact_at) {
+          t.last_contact_at = r.sent_at;
+          t.last_contact_type = (r.notification_type || "").replace("founder_outreach_", "");
+        }
+        const type = (r.notification_type || "").replace("founder_outreach_", "");
+        if (r.status === "sent") {
+          if (type === "first_session") t.emailed_first_session = true;
+          else if (type === "welcome") t.emailed_welcome = true;
+          else if (type === "churned") t.emailed_churned = true;
+          else if (type === "setup_nudge") t.emailed_setup_nudge = true;
+        }
+      }
+
+      // Count unthanked referrals (confirmed but reward_sent=false) per referrer
+      for (const r of referrals || []) {
+        const t = byId[r.referrer_therapist_id];
+        if (!t) continue;
+        if (r.status === "confirmed" && !r.reward_sent) {
+          t.unthanked_referrals++;
+        }
       }
 
       for (const s of allSessions || []) {
@@ -434,34 +461,124 @@ function filterLabel(key) {
 }
 
 function recommendAction(t) {
+  const name = firstName(t);
   const noActivity = t.sessions_total === 0 && t.clients_total === 0;
+  const daysIdle = t.days_since_use;
 
-  if (t.days_on_platform < COLD_MIN_AGE_DAYS && noActivity) {
+  // Priority order: first match wins. Rare/celebratory states before nagging states.
+
+  // 1. Referral thank-you (highest priority, celebratory, one-off per referral batch)
+  if (t.unthanked_referrals > 0) {
     return {
-      key: "welcome",
-      label: "Welcome them",
-      button: "Welcome",
-      subject: `Welcome to BodyMap, ${firstName(t)}`,
+      key: "referral_thankyou",
+      label: `Thank for ${t.unthanked_referrals} referral${t.unthanked_referrals > 1 ? "s" : ""}`,
+      button: "Thank",
+      subject: `Thank you for the referral, ${name}`,
       body: [
-        `Hi ${firstName(t)},`,
+        `Hi ${name},`,
         ``,
-        `I'm the founder. Just wanted to say welcome to BodyMap personally.`,
+        `Someone just signed up through your link. That means a lot.`,
         ``,
-        `If you have 30 seconds, what brought you in? Anything I can help with to get you set up?`,
+        `You're helping another therapist find a platform that actually works for how they practice. I don't take that lightly.`,
+        ``,
+        `If there's anything I can do to make BodyMap better for you, reply and tell me.`,
         ``,
         `MyBodyMap`,
       ].join("\n"),
     };
   }
 
+  // 2. First session milestone: they just logged session #1
+  if (t.sessions_total === 1 && !t.emailed_first_session) {
+    return {
+      key: "first_session",
+      label: "Celebrate 1st session",
+      button: "Celebrate",
+      subject: `Congrats on your first session, ${name}`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Just saw you logged your first session on BodyMap. That's a real moment. Your practice now has a memory it didn't have yesterday.`,
+        ``,
+        `A small suggestion: next time that client books, open their body map before they walk in. You'll know where they hold tension, what pressure they like, what to avoid. That thirty seconds is what turns a first-timer into a regular.`,
+        ``,
+        `I'm here if you hit any bumps.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  // 3. Testimonial (power user, recently active)
+  if (t.sessions_total >= TESTIMONIAL_MIN_SESSIONS && daysIdle !== null && daysIdle <= 7) {
+    return {
+      key: "testimonial",
+      label: "Ask for testimonial",
+      button: "Ask testimonial",
+      subject: `Quick favor, ${name}?`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `You've logged ${t.sessions_total} sessions on BodyMap. That's amazing.`,
+        ``,
+        `Would you be open to sharing a one or two sentence testimonial about what BodyMap does for your practice? I'd like to feature it on the homepage.`,
+        ``,
+        `No pressure. And thank you either way.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  // 4. Churned (30+ days idle, softer than reminder)
+  if (daysIdle !== null && daysIdle >= 30) {
+    return {
+      key: "churned",
+      label: `Win back (${daysIdle}d gone)`,
+      button: "Reach out",
+      subject: `Are you still with us, ${name}?`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `It's been ${daysIdle} days since you last logged into BodyMap. I'm not writing to push you back in. I'm writing to understand why.`,
+        ``,
+        `If BodyMap didn't fit your practice, I'd genuinely love to know. Was it the interface? A missing feature? Something else?`,
+        ``,
+        `One sentence back would help me build something better for therapists like you. Thank you.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  // 5. Reminder (7-30 days idle)
+  if (daysIdle !== null && daysIdle >= REMINDER_THRESHOLD_DAYS) {
+    return {
+      key: "reminder",
+      label: `Remind (${daysIdle}d idle)`,
+      button: "Send reminder",
+      subject: `Haven't seen you in a bit, ${name}`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Noticed it's been ${daysIdle} days since you last used BodyMap. Everything okay?`,
+        ``,
+        `Is there something friction-y getting in the way, or just busy? Either way I'd love to hear.`,
+        ``,
+        `MyBodyMap`,
+      ].join("\n"),
+    };
+  }
+
+  // 6. Check in (3+ days, still nothing)
   if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS) {
     return {
       key: "checkin",
       label: "Check in",
       button: "Check in",
-      subject: `Checking in, ${firstName(t)}`,
+      subject: `Checking in, ${name}`,
       body: [
-        `Hi ${firstName(t)},`,
+        `Hi ${name},`,
         ``,
         `I'm the founder of BodyMap. I saw you signed up ${t.days_on_platform} days ago but haven't added a client yet.`,
         ``,
@@ -472,38 +589,40 @@ function recommendAction(t) {
     };
   }
 
-  if (t.days_since_use !== null && t.days_since_use >= REMINDER_THRESHOLD_DAYS) {
+  // 7. Welcome (<3 days, still nothing)
+  if (noActivity && t.days_on_platform < COLD_MIN_AGE_DAYS && !t.emailed_welcome) {
     return {
-      key: "reminder",
-      label: `Remind (${t.days_since_use}d idle)`,
-      button: "Send reminder",
-      subject: `Haven't seen you in a bit, ${firstName(t)}`,
+      key: "welcome",
+      label: "Welcome them",
+      button: "Welcome",
+      subject: `Welcome to BodyMap, ${name}`,
       body: [
-        `Hi ${firstName(t)},`,
+        `Hi ${name},`,
         ``,
-        `Noticed it's been ${t.days_since_use} days since you last used BodyMap. Everything okay?`,
+        `I'm the founder. Just wanted to say welcome to BodyMap personally.`,
         ``,
-        `Is there something friction-y getting in the way, or just busy? Either way I'd love to hear.`,
+        `If you have 30 seconds, what brought you in? Anything I can help with to get you set up?`,
         ``,
         `MyBodyMap`,
       ].join("\n"),
     };
   }
 
-  if (t.sessions_total >= TESTIMONIAL_MIN_SESSIONS && t.days_since_use !== null && t.days_since_use <= 7) {
+  // 8. Setup nudge (3+ days, using platform, but no Stripe and no Cal)
+  if (t.days_on_platform >= COLD_MIN_AGE_DAYS && !t.stripe_account_connected && !t.cal_connected && !t.emailed_setup_nudge) {
     return {
-      key: "testimonial",
-      label: "Ask for testimonial",
-      button: "Ask testimonial",
-      subject: `Quick favor, ${firstName(t)}?`,
+      key: "setup_nudge",
+      label: "Nudge setup",
+      button: "Send nudge",
+      subject: `One quick thing to finish, ${name}`,
       body: [
-        `Hi ${firstName(t)},`,
+        `Hi ${name},`,
         ``,
-        `You've logged ${t.sessions_total} sessions on BodyMap. That's amazing.`,
+        `Noticed you've been using BodyMap for ${t.days_on_platform} days but haven't connected your payment account or calendar yet.`,
         ``,
-        `Would you be open to sharing a one or two sentence testimonial about what BodyMap does for your practice? I'd like to feature it on the homepage.`,
+        `Without these, clients can't book or pay you through your BodyMap link. Both take about a minute each from Settings.`,
         ``,
-        `No pressure. And thank you either way.`,
+        `Want me to walk you through it? Happy to.`,
         ``,
         `MyBodyMap`,
       ].join("\n"),
@@ -794,23 +913,33 @@ function Row({ t, firstColCell }) {
 }
 
 function ActionCell({ t }) {
+  const [modalOpen, setModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState(null); // 'sent' | 'failed' | 'copied' | null
+  const [result, setResult] = useState(null); // 'sent' | 'copied' | 'failed' | null
   const [errorMsg, setErrorMsg] = useState("");
 
   const a = t.action;
 
-  const sendEmail = async () => {
+  const openModal = () => {
+    setResult(null);
+    setErrorMsg("");
+    setModalOpen(true);
+  };
+
+  const onSend = async ({ subject, body }) => {
     if (sending) return;
     setSending(true);
     setResult(null);
     setErrorMsg("");
     try {
       const { data, error } = await supabase.functions.invoke("founder-outreach", {
-        body: { therapist_id: t.id, action_type: a.key },
+        body: {
+          therapist_id: t.id,
+          action_type: a.key,
+          custom_subject: subject,
+          custom_body: body,
+        },
       });
-      // Function now returns 200 with { ok: false, error, step } on handled failures,
-      // so error is only set on true network/transport failures.
       if (error) {
         setResult("failed");
         setErrorMsg(`transport: ${error.message || "unknown"}`);
@@ -819,6 +948,7 @@ function ActionCell({ t }) {
         setErrorMsg(`${data?.step || "?"}: ${data?.error || "Send failed"}`);
       } else {
         setResult("sent");
+        setModalOpen(false);
       }
     } catch (e) {
       setResult("failed");
@@ -840,7 +970,6 @@ function ActionCell({ t }) {
     }
   };
 
-  // Non-actionable row (dummy or on track)
   if (!a.button) {
     const color = a.key === "ontrack" ? C.rise : C.gray;
     return (
@@ -860,6 +989,10 @@ function ActionCell({ t }) {
     checkin: { bg: C.actionBlue, fg: "#fff" },
     reminder: { bg: C.fall, fg: "#fff" },
     testimonial: { bg: C.gold, fg: "#fff" },
+    first_session: { bg: C.rise, fg: "#fff" },
+    setup_nudge: { bg: C.actionBlue, fg: "#fff" },
+    churned: { bg: "#6B4A8A", fg: "#fff" },
+    referral_thankyou: { bg: C.forest, fg: "#fff" },
   }[a.key] || { bg: C.forest, fg: "#fff" };
 
   const recentlyContacted = t.last_contact_at && daysAgoNumeric(t.last_contact_at) <= 3;
@@ -876,23 +1009,22 @@ function ActionCell({ t }) {
       </div>
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
         <button
-          onClick={sendEmail}
-          disabled={sending}
+          onClick={openModal}
           style={{
-            background: sending ? C.stale : btnColors.bg,
+            background: btnColors.bg,
             color: btnColors.fg,
             padding: "6px 11px",
             borderRadius: 6,
             border: "none",
             fontSize: 12,
             fontWeight: 700,
-            cursor: sending ? "wait" : "pointer",
+            cursor: "pointer",
             whiteSpace: "nowrap",
             opacity: recentlyContacted ? 0.75 : 1,
           }}
-          title={recentlyContacted ? "You emailed this person recently. Click again if you still want to send." : "Send branded BodyMap email from reminders@mybodymap.app"}
+          title={recentlyContacted ? "You emailed this person recently. Open anyway to review and send." : "Open editor, tune the message, send via BodyMap"}
         >
-          {sending ? "Sending..." : "Email"}
+          Email
         </button>
         {t.phone ? (
           <button
@@ -918,7 +1050,7 @@ function ActionCell({ t }) {
       </div>
       {result === "sent" && (
         <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
-          ✓ Email sent from BodyMap
+          ✓ Sent from BodyMap
         </div>
       )}
       {result === "copied" && (
@@ -931,6 +1063,155 @@ function ActionCell({ t }) {
           ✗ {errorMsg || "Failed"}
         </div>
       )}
+
+      {modalOpen && (
+        <SendModal
+          t={t}
+          action={a}
+          sending={sending}
+          errorMsg={errorMsg}
+          onClose={() => setModalOpen(false)}
+          onSend={onSend}
+        />
+      )}
+    </div>
+  );
+}
+
+function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
+  const [subject, setSubject] = useState(action.subject);
+  const [body, setBody] = useState(action.body);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(26, 38, 32, 0.45)",
+        zIndex: 1000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff",
+          borderRadius: 14,
+          maxWidth: 640,
+          width: "100%",
+          maxHeight: "90vh",
+          overflow: "auto",
+          boxShadow: "0 25px 80px rgba(0,0,0,0.25)",
+          border: `1.5px solid ${C.light}`,
+        }}
+      >
+        {/* Header */}
+        <div style={{ padding: "20px 24px", borderBottom: `1.5px solid ${C.light}`, background: C.softCream }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.sage, textTransform: "uppercase" }}>
+            {action.label}
+          </div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
+            Send to {t.business_name || t.full_name || t.email}
+          </h2>
+          <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
+            {t.email} · From "BodyMap Founder &lt;reminders@mybodymap.app&gt;" · Replies go to bodymap01@gmail.com
+          </p>
+        </div>
+
+        {/* Subject */}
+        <div style={{ padding: "16px 24px 0" }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+            Subject
+          </label>
+          <input
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              border: `1.5px solid ${C.light}`,
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: "inherit",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: "12px 24px 0" }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
+            Body
+          </label>
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={12}
+            style={{
+              width: "100%",
+              padding: "12px",
+              border: `1.5px solid ${C.light}`,
+              borderRadius: 8,
+              fontSize: 14,
+              fontFamily: "Georgia, serif",
+              lineHeight: 1.6,
+              boxSizing: "border-box",
+              resize: "vertical",
+            }}
+          />
+          <p style={{ fontSize: 11, color: C.gray, margin: "6px 0 0" }}>
+            Plain text. Edit freely. Your changes won't affect the template for other therapists.
+          </p>
+        </div>
+
+        {/* Error inline */}
+        {errorMsg && (
+          <div style={{ padding: "12px 24px 0" }}>
+            <div style={{ background: "#FEF2F1", border: `1px solid ${C.fall}`, color: C.fall, padding: "10px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+              ✗ {errorMsg}
+            </div>
+          </div>
+        )}
+
+        {/* Footer */}
+        <div style={{ padding: "16px 24px 20px", display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+          <button
+            onClick={onClose}
+            style={{
+              background: "#fff",
+              color: C.dark,
+              padding: "10px 18px",
+              borderRadius: 8,
+              border: `1.5px solid ${C.light}`,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onSend({ subject, body })}
+            disabled={sending || !subject.trim() || !body.trim()}
+            style={{
+              background: sending ? C.stale : C.forest,
+              color: "#fff",
+              padding: "10px 22px",
+              borderRadius: 8,
+              border: "none",
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: sending ? "wait" : "pointer",
+            }}
+          >
+            {sending ? "Sending..." : "Send email →"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

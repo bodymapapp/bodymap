@@ -28,7 +28,7 @@ const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const FROM = "BodyMap Founder <reminders@mybodymap.app>";
 const REPLY_TO = "bodymap01@gmail.com";
 
-type ActionType = "welcome" | "checkin" | "reminder" | "testimonial";
+type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -113,6 +113,62 @@ function buildMessage(
         `MyBodyMap`,
       ],
     },
+    first_session: {
+      subject: `Congrats on your first session, ${name}`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `Just saw you logged your first session on BodyMap. That's a real moment. Your practice now has a memory it didn't have yesterday.`,
+        ``,
+        `A small suggestion: next time that client books, open their body map before they walk in. You'll know where they hold tension, what pressure they like, what to avoid. That thirty seconds is what turns a first-timer into a regular.`,
+        ``,
+        `I'm here if you hit any bumps.`,
+        ``,
+        `MyBodyMap`,
+      ],
+    },
+    setup_nudge: {
+      subject: `One quick thing to finish, ${name}`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `Noticed you've been using BodyMap for ${t.days_on_platform} days but haven't connected your payment account or calendar yet.`,
+        ``,
+        `Without these, clients can't book or pay you through your BodyMap link. Both take about a minute each from Settings.`,
+        ``,
+        `Want me to walk you through it? Happy to.`,
+        ``,
+        `MyBodyMap`,
+      ],
+    },
+    churned: {
+      subject: `Are you still with us, ${name}?`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `It's been ${t.days_since_use ?? "over a month"} days since you last logged into BodyMap. I'm not writing to push you back in. I'm writing to understand why.`,
+        ``,
+        `If BodyMap didn't fit your practice, I'd genuinely love to know. Was it the interface? A missing feature? Something else?`,
+        ``,
+        `One sentence back would help me build something better for therapists like you. Thank you.`,
+        ``,
+        `MyBodyMap`,
+      ],
+    },
+    referral_thankyou: {
+      subject: `Thank you for the referral, ${name}`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `Someone just signed up through your link. That means a lot.`,
+        ``,
+        `You're helping another therapist find a platform that actually works for how they practice. I don't take that lightly.`,
+        ``,
+        `If there's anything I can do to make BodyMap better for you, reply and tell me.`,
+        ``,
+        `MyBodyMap`,
+      ],
+    },
   };
 
   const tpl = templates[action];
@@ -169,10 +225,10 @@ serve(async (req) => {
     } catch {
       return fail("Invalid JSON body", "parse");
     }
-    const { therapist_id, action_type } = body || {};
+    const { therapist_id, action_type, custom_subject, custom_body } = body || {};
     if (!therapist_id) return fail("therapist_id required", "validation");
     if (!action_type) return fail("action_type required", "validation");
-    const validActions: ActionType[] = ["welcome", "checkin", "reminder", "testimonial"];
+    const validActions: ActionType[] = ["welcome", "checkin", "reminder", "testimonial", "first_session", "setup_nudge", "churned", "referral_thankyou"];
     if (!validActions.includes(action_type)) {
       return fail(`action_type must be one of ${validActions.join(", ")}`, "validation");
     }
@@ -207,12 +263,26 @@ serve(async (req) => {
     );
     const days_since_use = lastAct > 0 ? Math.floor((now - lastAct) / 86400000) : null;
 
-    const msg = buildMessage(action_type, {
+    const tpl = buildMessage(action_type, {
       full_name: therapist.full_name,
       days_on_platform,
       days_since_use,
       sessions_total: sessionsCount || 0,
     });
+
+    // If caller supplied custom subject/body (from modal edit), use them; else use template.
+    const subject = (typeof custom_subject === "string" && custom_subject.trim()) ? custom_subject.trim() : tpl.subject;
+    const text = (typeof custom_body === "string" && custom_body.trim()) ? custom_body.trim() : tpl.text;
+    // Regenerate HTML from potentially edited text (preserves the branded card).
+    const html = `
+<div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 BodyMap</div>
+  ${text.split("\n").map((l: string) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
+  <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
+    Reply to this email and it reaches me directly.
+  </div>
+</div>`.trim();
+    const msg = { subject, text, html };
 
     // Send via Resend
     let resendJson: any = null;
@@ -253,6 +323,19 @@ serve(async (req) => {
       });
     } catch (_e) {
       // non-blocking
+    }
+
+    // Side effects on specific action types
+    if (resendOk && action_type === "referral_thankyou") {
+      try {
+        await admin
+          .from("referrals")
+          .update({ status: "rewarded", reward_sent: true })
+          .eq("referrer_therapist_id", therapist_id)
+          .eq("status", "confirmed");
+      } catch (_e) {
+        // non-blocking
+      }
     }
 
     if (!resendOk) {
