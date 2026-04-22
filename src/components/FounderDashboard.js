@@ -1850,13 +1850,16 @@ function NudgeButtons({ t, action, onAfterSend }) {
     setResult(null);
     setErrorMsg("");
     try {
-      // Send as activation_nudge so it logs distinctly from generic checkin.
-      // Edge function accepts custom_subject/custom_body; the template key
-      // just determines the notification_type stored in notification_log.
+      // Send as checkin (safe default that works with all edge function
+      // versions). The edge function's activation_nudge action_type is
+      // shipped but not guaranteed to be live yet — using checkin avoids
+      // the race. Note: this logs as founder_outreach_checkin in
+      // notification_log, which is fine for the history view and still
+      // respects the 3-day cooldown.
       const { data, error } = await supabase.functions.invoke("founder-outreach", {
         body: {
           therapist_id: t.id,
-          action_type: "activation_nudge",
+          action_type: "checkin",
           custom_subject: subject,
           custom_body: body,
         },
