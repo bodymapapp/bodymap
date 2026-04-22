@@ -26,17 +26,17 @@ export default function FounderDashboard() {
         { count: active_7d },
         { data: recent_signups },
       ] = await Promise.all([
-        supabase.from("profiles").select("*",{count:"exact",head:true}).gte("created_at",h24),
-        supabase.from("profiles").select("*",{count:"exact",head:true}).gte("created_at",d7),
-        supabase.from("profiles").select("*",{count:"exact",head:true}).gte("created_at",new Date(now.getTime()-30*24*60*60*1000).toISOString()),
-        supabase.from("profiles").select("*",{count:"exact",head:true}),
-        supabase.from("profiles").select("*",{count:"exact",head:true}).eq("tier","bronze"),
-        supabase.from("profiles").select("*",{count:"exact",head:true}).eq("tier","silver"),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).gte("created_at",h24),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).gte("created_at",d7),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).gte("created_at",new Date(now.getTime()-30*24*60*60*1000).toISOString()),
+        supabase.from("therapists").select("*",{count:"exact",head:true}),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).eq("tier","bronze"),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).eq("tier","silver"),
         supabase.from("sessions").select("*",{count:"exact",head:true}).gte("created_at",h24),
         supabase.from("sessions").select("*",{count:"exact",head:true}).gte("created_at",d7),
         supabase.from("clients").select("*",{count:"exact",head:true}).gte("created_at",d7),
-        supabase.from("profiles").select("*",{count:"exact",head:true}).gte("last_sign_in_at",d7),
-        supabase.from("profiles").select("email,created_at,tier").order("created_at",{ascending:false}).limit(15),
+        supabase.from("therapists").select("*",{count:"exact",head:true}).gte("last_sign_in_at",d7),
+        supabase.from("therapists").select("email,created_at,tier").order("created_at",{ascending:false}).limit(15),
       ]);
 
       setStats({ signups_24h:signups_24h??0, signups_7d:signups_7d??0, signups_30d:signups_30d??0, total_signups:total_signups??0, bronze_users:bronze_users??0, silver_users:silver_users??0, sessions_24h:sessions_24h??0, sessions_7d:sessions_7d??0, clients_7d:clients_7d??0, active_7d:active_7d??0, recent_signups:recent_signups??[] });
