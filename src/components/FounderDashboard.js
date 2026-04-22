@@ -1654,24 +1654,53 @@ function ActivationRow({ t, updateFlag, onAfterSend }) {
         </div>
       </td>
 
-      {/* 5 step cells */}
+      {/* 5 step cells: each shows TWO things stacked —
+          top: did the therapist complete this step (✓ green or · gray)
+          bottom: have I emailed them about it (📧 + date, or nothing) */}
       {ACTIVATION_STEPS.map((s) => {
         const ok = !!t.steps?.[s.key];
+        // Find most recent founder email mentioning this step in its body_snippet.
+        // Falls back to most recent activation_nudge email if no specific match,
+        // since the nudge body always names one specific step by phrase.
+        const stepPhrase = {
+          import: "import your clients",
+          service: "add your first service",
+          hours: "set your working hours",
+          stripe: "connect Stripe",
+          intake: "send your first intake",
+        }[s.key] || "";
+        const emailedAboutThis = (t.contact_history || []).find((h) =>
+          (h.body_snippet || "").toLowerCase().includes(stepPhrase)
+        );
         return (
-          <td key={s.key} style={{ padding: "8px 10px", textAlign: "center" }}>
-            {ok ? (
-              <span title={s.label + " complete"} style={{
-                display: "inline-block", width: 22, height: 22, lineHeight: "22px",
-                background: C.sage, color: "#fff", borderRadius: "50%",
-                fontSize: 12, fontWeight: 800,
-              }}>✓</span>
-            ) : (
-              <span title={s.label + " not done"} style={{
-                display: "inline-block", width: 22, height: 22, lineHeight: "22px",
-                background: "#fff", color: C.stale, border: `1.5px solid ${C.light}`, borderRadius: "50%",
-                fontSize: 12, fontWeight: 800,
-              }}>·</span>
-            )}
+          <td key={s.key} style={{ padding: "6px 8px", textAlign: "center", verticalAlign: "top" }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+              {ok ? (
+                <span title={s.label + " complete"} style={{
+                  display: "inline-block", width: 22, height: 22, lineHeight: "22px",
+                  background: C.sage, color: "#fff", borderRadius: "50%",
+                  fontSize: 12, fontWeight: 800,
+                }}>✓</span>
+              ) : (
+                <span title={s.label + " not done"} style={{
+                  display: "inline-block", width: 22, height: 22, lineHeight: "22px",
+                  background: "#fff", color: C.stale, border: `1.5px solid ${C.light}`, borderRadius: "50%",
+                  fontSize: 12, fontWeight: 800,
+                }}>·</span>
+              )}
+              {emailedAboutThis && (
+                <span
+                  title={`Emailed about this step ${daysAgo(emailedAboutThis.sent_at)}: "${emailedAboutThis.subject || ""}"`}
+                  style={{
+                    fontSize: 9, color: C.forest, fontWeight: 700,
+                    background: "#EEF4F1", padding: "1px 5px", borderRadius: 8,
+                    whiteSpace: "nowrap", lineHeight: 1.3,
+                  }}
+                >
+                  📧 {daysAgoNumeric(emailedAboutThis.sent_at) === 0 ? "today" : `${daysAgoNumeric(emailedAboutThis.sent_at)}d`}
+                </span>
+              )}
+            </div>
           </td>
         );
       })}
