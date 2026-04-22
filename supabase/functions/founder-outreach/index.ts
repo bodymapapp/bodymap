@@ -21,15 +21,36 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
+const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
 const FROM = "BodyMap Founder <reminders@mybodymap.app>";
 const REPLY_TO = "bodymap01@gmail.com";
 
 type ActionType = "welcome" | "checkin" | "reminder" | "testimonial";
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+// Decode the JWT payload. Safe because Supabase gateway already verified signature
+// before this function ran (verify_jwt is on by default).
+function decodeJwt(jwt: string): any {
+  try {
+    const parts = jwt.split(".");
+    if (parts.length !== 3) return null;
+    let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    const payload = atob(b64);
+    return JSON.parse(payload);
+  } catch {
+    return null;
+  }
+}
 
 function firstName(fullName: string | null | undefined): string {
   return (fullName || "").split(" ")[0] || "there";
@@ -120,53 +141,43 @@ function escapeHtml(s: string): string {
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // We return 200 on handled errors with { ok: false, error, step } so the client
+  // can always read the detail. Only unhandled exceptions throw a 500.
+  const fail = (error: string, step: string, detail?: unknown) =>
+    json({ ok: false, error, step, detail: detail ?? null }, 200);
+
   try {
-    // Verify caller is an admin
+    // Env check
+    if (!RESEND_API_KEY) return fail("RESEND_API_KEY not set in edge function env", "env_check");
+    if (!SUPABASE_URL) return fail("SUPABASE_URL not set", "env_check");
+    if (!SUPABASE_SERVICE_KEY) return fail("SUPABASE_SERVICE_ROLE_KEY not set", "env_check");
+
+    // Decode JWT (gateway has already verified signature since verify_jwt is on)
     const authHeader = req.headers.get("Authorization") || "";
-    const jwt = authHeader.replace("Bearer ", "").trim();
-    if (!jwt) {
-      return new Response(JSON.stringify({ error: "Missing auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const jwt = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!jwt) return fail("Missing Authorization header", "auth");
 
-    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      global: { headers: { Authorization: `Bearer ${jwt}` } },
-    });
-    const { data: userData, error: userErr } = await userClient.auth.getUser();
-    if (userErr || !userData?.user) {
-      return new Response(JSON.stringify({ error: "Invalid auth" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const payload = decodeJwt(jwt);
+    const callerEmail = (payload?.email || "").toLowerCase();
+    if (!callerEmail) return fail("Could not read email from JWT", "auth", { payload_keys: payload ? Object.keys(payload) : null });
+    if (!ADMIN_EMAILS.has(callerEmail)) return fail(`${callerEmail} is not in admin allowlist`, "authz");
 
-    const callerEmail = (userData.user.email || "").toLowerCase();
-    if (!ADMIN_EMAILS.has(callerEmail)) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Parse request body
+    let body: any;
+    try {
+      body = await req.json();
+    } catch {
+      return fail("Invalid JSON body", "parse");
     }
-
-    // Parse request
-    const { therapist_id, action_type } = await req.json();
-    if (!therapist_id || !action_type) {
-      return new Response(JSON.stringify({ error: "therapist_id and action_type required" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    const { therapist_id, action_type } = body || {};
+    if (!therapist_id) return fail("therapist_id required", "validation");
+    if (!action_type) return fail("action_type required", "validation");
     const validActions: ActionType[] = ["welcome", "checkin", "reminder", "testimonial"];
     if (!validActions.includes(action_type)) {
-      return new Response(JSON.stringify({ error: "invalid action_type" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return fail(`action_type must be one of ${validActions.join(", ")}`, "validation");
     }
 
-    // Load therapist with full context using service role
+    // Load therapist via service role
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: therapist, error: tErr } = await admin
       .from("therapists")
@@ -174,34 +185,21 @@ serve(async (req) => {
       .eq("id", therapist_id)
       .single();
 
-    if (tErr || !therapist) {
-      return new Response(JSON.stringify({ error: "therapist not found" }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (tErr) return fail(tErr.message, "load_therapist");
+    if (!therapist) return fail("therapist not found", "load_therapist");
+    if (!therapist.email) return fail("therapist has no email on record", "load_therapist");
 
-    // Compute days on platform and days since use
+    // Compute context
     const now = Date.now();
     const signedUpMs = new Date(therapist.created_at).getTime();
     const days_on_platform = Math.max(0, Math.floor((now - signedUpMs) / 86400000));
 
-    const { data: lastSession } = await admin
-      .from("sessions")
-      .select("created_at")
-      .eq("therapist_id", therapist_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const { data: lastClient } = await admin
-      .from("clients")
-      .select("created_at")
-      .eq("therapist_id", therapist_id)
-      .order("created_at", { ascending: false })
-      .limit(1);
-    const { count: sessionsCount } = await admin
-      .from("sessions")
-      .select("*", { count: "exact", head: true })
-      .eq("therapist_id", therapist_id);
+    const [{ data: lastSession }, { data: lastClient }, { count: sessionsCount }] =
+      await Promise.all([
+        admin.from("sessions").select("created_at").eq("therapist_id", therapist_id).order("created_at", { ascending: false }).limit(1),
+        admin.from("clients").select("created_at").eq("therapist_id", therapist_id).order("created_at", { ascending: false }).limit(1),
+        admin.from("sessions").select("*", { count: "exact", head: true }).eq("therapist_id", therapist_id),
+      ]);
 
     const lastAct = Math.max(
       lastSession?.[0]?.created_at ? new Date(lastSession[0].created_at).getTime() : 0,
@@ -217,57 +215,61 @@ serve(async (req) => {
     });
 
     // Send via Resend
-    const resendRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-      },
-      body: JSON.stringify({
-        from: FROM,
-        to: [therapist.email],
-        reply_to: REPLY_TO,
-        subject: msg.subject,
-        text: msg.text,
-        html: msg.html,
-      }),
-    });
-
-    const resendJson = await resendRes.json();
-    const ok = resendRes.ok && !!resendJson?.id;
-
-    // Log to notification_log
-    await admin.from("notification_log").insert({
-      therapist_id,
-      notification_type: `founder_outreach_${action_type}`,
-      audience: "therapist",
-      channel: "email",
-      recipient: therapist.email,
-      status: ok ? "sent" : "failed",
-      provider_id: resendJson?.id || null,
-      error_message: ok ? null : JSON.stringify(resendJson).slice(0, 500),
-    });
-
-    if (!ok) {
-      return new Response(
-        JSON.stringify({ error: "resend_failed", detail: resendJson }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    let resendJson: any = null;
+    let resendOk = false;
+    try {
+      const resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${RESEND_API_KEY}`,
+        },
+        body: JSON.stringify({
+          from: FROM,
+          to: [therapist.email],
+          reply_to: REPLY_TO,
+          subject: msg.subject,
+          text: msg.text,
+          html: msg.html,
+        }),
+      });
+      resendJson = await resendRes.json();
+      resendOk = resendRes.ok && !!resendJson?.id;
+    } catch (e: any) {
+      return fail(`Network call to Resend threw: ${e?.message || "unknown"}`, "resend_fetch");
     }
 
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        sent_at: new Date().toISOString(),
-        provider_id: resendJson.id,
-        subject: msg.subject,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e?.message || "unknown" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    // Log regardless (best effort)
+    try {
+      await admin.from("notification_log").insert({
+        therapist_id,
+        notification_type: `founder_outreach_${action_type}`,
+        audience: "therapist",
+        channel: "email",
+        recipient: therapist.email,
+        status: resendOk ? "sent" : "failed",
+        provider_id: resendJson?.id || null,
+        error_message: resendOk ? null : JSON.stringify(resendJson).slice(0, 500),
+      });
+    } catch (_e) {
+      // non-blocking
+    }
+
+    if (!resendOk) {
+      const detail =
+        resendJson?.message ||
+        resendJson?.error?.message ||
+        (typeof resendJson === "object" ? JSON.stringify(resendJson).slice(0, 400) : String(resendJson));
+      return fail(`Resend rejected: ${detail}`, "resend_response", resendJson);
+    }
+
+    return json({
+      ok: true,
+      sent_at: new Date().toISOString(),
+      provider_id: resendJson.id,
+      subject: msg.subject,
     });
+  } catch (e: any) {
+    return json({ ok: false, error: e?.message || "unhandled exception", step: "catch_all" }, 200);
   }
 });

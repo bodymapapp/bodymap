@@ -434,7 +434,6 @@ function filterLabel(key) {
 }
 
 function recommendAction(t) {
-  if (t.is_dummy) return { key: "none", label: "Test account", button: null };
   const noActivity = t.sessions_total === 0 && t.clients_total === 0;
 
   if (t.days_on_platform < COLD_MIN_AGE_DAYS && noActivity) {
@@ -810,9 +809,14 @@ function ActionCell({ t }) {
       const { data, error } = await supabase.functions.invoke("founder-outreach", {
         body: { therapist_id: t.id, action_type: a.key },
       });
-      if (error || !data?.ok) {
+      // Function now returns 200 with { ok: false, error, step } on handled failures,
+      // so error is only set on true network/transport failures.
+      if (error) {
         setResult("failed");
-        setErrorMsg(error?.message || data?.error || "Send failed");
+        setErrorMsg(`transport: ${error.message || "unknown"}`);
+      } else if (!data?.ok) {
+        setResult("failed");
+        setErrorMsg(`${data?.step || "?"}: ${data?.error || "Send failed"}`);
       } else {
         setResult("sent");
       }
