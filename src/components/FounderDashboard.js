@@ -89,8 +89,23 @@ export default function FounderDashboard() {
     try {
       const now = Date.now();
 
+      // Fetch therapists with admin_flag. If the column doesn't exist yet
+      // (migration not run), retry without it. The UI will still render;
+      // flag updates will show a gentle "Run the migration first" message.
+      const therapistQuery = supabase.from("therapists").select(
+        "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons,admin_flag"
+      ).order("created_at", { ascending: false });
+
+      let therapistRes = await therapistQuery;
+      let adminFlagMissing = false;
+      if (therapistRes.error && /admin_flag/i.test(therapistRes.error.message || "")) {
+        adminFlagMissing = true;
+        therapistRes = await supabase.from("therapists").select(
+          "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
+        ).order("created_at", { ascending: false });
+      }
+
       const [
-        { data: therapists },
         { data: allSessions },
         { data: allClients },
         { data: activation },
@@ -99,9 +114,6 @@ export default function FounderDashboard() {
         { data: allServices },
         { data: allAvailability },
       ] = await Promise.all([
-        supabase.from("therapists").select(
-          "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
-        ).order("created_at", { ascending: false }),
         supabase.from("sessions").select("therapist_id,created_at"),
         supabase.from("clients").select("therapist_id,created_at"),
         supabase.from("activation_events").select("therapist_id,event_name"),
@@ -115,16 +127,31 @@ export default function FounderDashboard() {
         supabase.from("availability").select("therapist_id,active"),
       ]);
 
+      const therapists = therapistRes.data;
+      if (adminFlagMissing) {
+        console.warn("admin_flag column missing — run supabase/migrations/founder_admin_flag.sql to enable flagging");
+      }
+
       const d7ms = now - 7 * DAY;
       const d14ms = now - 14 * DAY;
 
       const byId = {};
       for (const t of therapists || []) {
+        // admin_flag overrides heuristic. If HK tagged it 'mine' or 'suspicious',
+        // treat it as non-real (hidden by default) regardless of email pattern.
+        // If flagged 'normal' explicitly, it's real regardless of heuristic.
+        const flag = t.admin_flag || "normal";
+        let isDummy;
+        if (flag === "mine" || flag === "suspicious") isDummy = true;
+        else if (flag === "normal") isDummy = isDummyEmail(t.email);
+        else isDummy = isDummyEmail(t.email);
+
         byId[t.id] = {
           ...t,
+          admin_flag: flag,
           plan_normalized:
             t.plan === "silver" ? "silver" : t.plan === "gold" ? "gold" : "free",
-          is_dummy: isDummyEmail(t.email),
+          is_dummy: isDummy,
           sessions_total: 0,
           sessions_7d: 0,
           sessions_prev_7d: 0,
@@ -272,7 +299,7 @@ export default function FounderDashboard() {
         champions: real.filter((t) => t.sessions_total >= 3).length,
       };
 
-      setData({ therapists: list, stats });
+      setData({ therapists: list, stats, adminFlagMissing });
       setLastUpdated(
         new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
       );
@@ -374,6 +401,40 @@ export default function FounderDashboard() {
     }
   };
 
+  // Update admin_flag on a therapist row. Optimistic: update local state first,
+  // then persist. Rollback on error.
+  const updateFlag = async (therapistId, newFlag) => {
+    if (!data) return;
+    const prev = data.therapists.find((t) => t.id === therapistId)?.admin_flag || "normal";
+    const newList = data.therapists.map((t) => {
+      if (t.id !== therapistId) return t;
+      const isDummy = newFlag === "mine" || newFlag === "suspicious" || (newFlag === "normal" && isDummyEmail(t.email));
+      return { ...t, admin_flag: newFlag, is_dummy: isDummy };
+    });
+    setData({ ...data, therapists: newList });
+
+    const { error } = await supabase
+      .from("therapists")
+      .update({ admin_flag: newFlag })
+      .eq("id", therapistId);
+
+    if (error) {
+      console.error("updateFlag failed", error);
+      // rollback
+      const rolledBack = data.therapists.map((t) => {
+        if (t.id !== therapistId) return t;
+        const isDummy = prev === "mine" || prev === "suspicious" || (prev === "normal" && isDummyEmail(t.email));
+        return { ...t, admin_flag: prev, is_dummy: isDummy };
+      });
+      setData({ ...data, therapists: rolledBack });
+      if (/admin_flag/i.test(error.message || "")) {
+        alert("The admin_flag column is missing. Run supabase/migrations/founder_admin_flag.sql in the Supabase SQL editor, then refresh.");
+      } else {
+        alert("Could not save flag: " + error.message);
+      }
+    }
+  };
+
   return (
     <div style={{ minHeight: "100vh", background: C.cream, padding: "24px 16px 48px", fontFamily: "system-ui" }}>
       <div style={{ maxWidth: 1280, margin: "0 auto" }}>
@@ -470,9 +531,16 @@ export default function FounderDashboard() {
           sortKey={sortKey}
           sortDir={sortDir}
           onSort={onSort}
+          updateFlag={updateFlag}
         />
 
-        <ActivationSection rows={filtered} />
+        <ActivationSection rows={filtered} updateFlag={updateFlag} />
+
+        {data.adminFlagMissing && (
+          <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
+            <strong>Flagging disabled:</strong> run <code>supabase/migrations/founder_admin_flag.sql</code> in the Supabase SQL editor to enable per-account flagging (normal / mine / suspicious). Heuristic dummy detection still works in the meantime.
+          </div>
+        )}
 
         <p style={{ fontSize: 11, color: "#ccc", textAlign: "center", marginTop: 24 }}>
           Founder-only view. Not visible to therapists.
@@ -713,7 +781,7 @@ function ClickStat({ value, label, sub, tint, onClick, active }) {
   );
 }
 
-function TherapistTable({ rows, sortKey, sortDir, onSort }) {
+function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, padding: 32, textAlign: "center", color: C.gray, fontSize: 13 }}>
@@ -802,7 +870,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort }) {
           </thead>
           <tbody>
             {rows.map((t) => (
-              <Row key={t.id} t={t} firstColCell={firstColCell} />
+              <Row key={t.id} t={t} firstColCell={firstColCell} updateFlag={updateFlag} />
             ))}
           </tbody>
         </table>
@@ -811,7 +879,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort }) {
   );
 }
 
-function Row({ t, firstColCell }) {
+function Row({ t, firstColCell, updateFlag }) {
   const momColor =
     t.momentum > 0 ? C.rise : t.momentum < 0 ? C.fall : t.sessions_7d === 0 && t.sessions_prev_7d === 0 ? C.stale : C.gray;
   const momArrow = t.momentum > 0 ? "\u2191" : t.momentum < 0 ? "\u2193" : "\u2500";
@@ -850,9 +918,7 @@ function Row({ t, firstColCell }) {
       <td style={{ ...firstColCell, padding: "12px", borderTop: `1px solid ${C.light}` }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
-          {t.is_dummy && (
-            <span style={{ marginLeft: 6, fontSize: 10, background: "#F3E9D7", color: "#8A6F3C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>TEST</span>
-          )}
+          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} />
           {t.stripe_account_connected && (
             <span style={{ marginLeft: 6, fontSize: 10, background: "#E8F5EE", color: "#1A5C38", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>STRIPE</span>
           )}
@@ -873,6 +939,7 @@ function Row({ t, firstColCell }) {
             flagged: {t.signup_flag_reasons.join(", ")}
           </div>
         )}
+        <FlagMenu flag={t.admin_flag} onChange={(f) => updateFlag && updateFlag(t.id, f)} />
       </td>
 
       <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
@@ -1280,7 +1347,7 @@ const ACTIVATION_STEPS = [
   { key: "intake",  label: "First intake sent", short: "Intake",  icon: "📋" },
 ];
 
-function ActivationSection({ rows }) {
+function ActivationSection({ rows, updateFlag }) {
   const [onlyStuck, setOnlyStuck] = useState(false);
   const [sortKey, setSortKey] = useState("steps_done");
   const [sortDir, setSortDir] = useState("asc"); // least-done first — these need help most
@@ -1416,11 +1483,14 @@ function ActivationSection({ rows }) {
                 <th style={plainHead()}>
                   Next step to push
                 </th>
+                <th style={plainHead()}>
+                  Nudge
+                </th>
               </tr>
             </thead>
             <tbody>
               {activationRows.map((t) => (
-                <ActivationRow key={t.id} t={t} />
+                <ActivationRow key={t.id} t={t} updateFlag={updateFlag} />
               ))}
             </tbody>
           </table>
@@ -1451,13 +1521,16 @@ function plainHead() {
   };
 }
 
-function ActivationRow({ t }) {
+function ActivationRow({ t, updateFlag }) {
   const done = t.steps_done || 0;
   const pct = Math.round((done / 5) * 100);
   const progressColor = done === 5 ? C.rise : done >= 3 ? C.gold : C.fall;
 
   // Find first uncompleted step (ordered by the list) — that's what to push them toward
   const nextStep = ACTIVATION_STEPS.find((s) => !t.steps?.[s.key]);
+
+  // Build the activation_nudge action on demand — grandma-voice, names the missing steps
+  const nudgeAction = buildActivationNudge(t);
 
   return (
     <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
@@ -1470,9 +1543,7 @@ function ActivationRow({ t }) {
       }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
-          {t.is_dummy && (
-            <span style={{ marginLeft: 6, fontSize: 10, background: "#F3E9D7", color: "#8A6F3C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>TEST</span>
-          )}
+          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} />
         </div>
         <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>{t.email}</div>
         {t.phone && (
@@ -1482,6 +1553,7 @@ function ActivationRow({ t }) {
             </a>
           </div>
         )}
+        <FlagMenu flag={t.admin_flag} onChange={(f) => updateFlag && updateFlag(t.id, f)} />
       </td>
 
       {/* Days on platform */}
@@ -1531,6 +1603,286 @@ function ActivationRow({ t }) {
           <span style={{ color: C.rise, fontWeight: 700 }}>✓ All done</span>
         )}
       </td>
+
+      {/* Nudge: Email + Copy SMS buttons with grandma-voice activation copy */}
+      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+        {nudgeAction ? (
+          <NudgeButtons t={t} action={nudgeAction} />
+        ) : (
+          <span style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>✓ Activated</span>
+        )}
+      </td>
     </tr>
+  );
+}
+
+// ========================================================================
+// Flag components
+// ========================================================================
+
+function FlagBadge({ flag, isDummy }) {
+  if (flag === "mine") {
+    return (
+      <span style={{ marginLeft: 6, fontSize: 10, background: "#E3F0FB", color: "#1E5F8A", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>MINE</span>
+    );
+  }
+  if (flag === "suspicious") {
+    return (
+      <span style={{ marginLeft: 6, fontSize: 10, background: "#FDE7E3", color: "#B44A3A", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>SUSPICIOUS</span>
+    );
+  }
+  if (isDummy) {
+    return (
+      <span style={{ marginLeft: 6, fontSize: 10, background: "#F3E9D7", color: "#8A6F3C", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>TEST</span>
+    );
+  }
+  return null;
+}
+
+function FlagMenu({ flag, onChange }) {
+  const current = flag || "normal";
+  const btn = (key, label, activeBg, activeFg) => {
+    const active = current === key;
+    return (
+      <button
+        key={key}
+        onClick={() => onChange(key)}
+        style={{
+          background: active ? activeBg : "#fff",
+          color: active ? activeFg : C.gray,
+          border: `1px solid ${active ? activeBg : C.light}`,
+          borderRadius: 999,
+          padding: "2px 8px",
+          fontSize: 10,
+          fontWeight: 700,
+          cursor: "pointer",
+          letterSpacing: "0.03em",
+        }}
+        title={`Mark as ${label}`}
+      >
+        {label}
+      </button>
+    );
+  };
+  return (
+    <div style={{ display: "flex", gap: 4, marginTop: 6, flexWrap: "wrap" }}>
+      {btn("normal", "Normal", C.sage, "#fff")}
+      {btn("mine", "Mine", "#1E5F8A", "#fff")}
+      {btn("suspicious", "Suspicious", "#B44A3A", "#fff")}
+    </div>
+  );
+}
+
+// ========================================================================
+// Activation nudge action + buttons
+// ========================================================================
+
+// Generates a warm, 70-year-old-grandma-friendly email naming the specific
+// steps this therapist still needs to complete. Returns null if they're done.
+function buildActivationNudge(t) {
+  if (!t || !t.steps) return null;
+  const missing = ACTIVATION_STEPS.filter((s) => !t.steps[s.key]);
+  if (missing.length === 0) return null;
+
+  const name = firstName(t);
+  const missingLabels = missing.map((s) => s.label.toLowerCase());
+
+  // Human-readable list: "a, b, and c"
+  let stepList;
+  if (missingLabels.length === 1) stepList = missingLabels[0];
+  else if (missingLabels.length === 2) stepList = `${missingLabels[0]} and ${missingLabels[1]}`;
+  else stepList = `${missingLabels.slice(0, -1).join(", ")}, and ${missingLabels[missingLabels.length - 1]}`;
+
+  // Stage-aware tone. Solo grandma therapist. Warm. No pressure. No jargon.
+  const oneStepLeft = missing.length === 1;
+  const mostlyDone = t.steps_done >= 3;
+
+  let subject;
+  let bodyLines;
+
+  if (oneStepLeft) {
+    subject = `One last thing, ${name}`;
+    bodyLines = [
+      `Hi ${name},`,
+      ``,
+      `You've done almost everything to set up your BodyMap. There's just one piece left: ${missingLabels[0]}.`,
+      ``,
+      `Once that's done, you'll be able to see the full picture of your practice inside BodyMap. Your clients, your schedule, everything in one place.`,
+      ``,
+      `If you'd like, I can walk you through it. Just hit reply.`,
+      ``,
+      `Warmly,`,
+      `BodyMap`,
+    ];
+  } else if (mostlyDone) {
+    subject = `You're so close, ${name}`;
+    bodyLines = [
+      `Hi ${name},`,
+      ``,
+      `You've made great progress setting up BodyMap. A few small steps still left: ${stepList}.`,
+      ``,
+      `These last pieces are what make your practice come alive inside BodyMap. Once they're done, you'll start seeing your clients' history and preferences all in one place.`,
+      ``,
+      `Take your time. I'm here if you need a hand.`,
+      ``,
+      `Warmly,`,
+      `BodyMap`,
+    ];
+  } else {
+    subject = `A gentle nudge, ${name}`;
+    bodyLines = [
+      `Hi ${name},`,
+      ``,
+      `Thank you for signing up for BodyMap. I wanted to reach out because I noticed a few setup steps still waiting: ${stepList}.`,
+      ``,
+      `I know setting up a new tool can feel like a lot. The steps are short, and once you finish them, BodyMap starts remembering your clients for you. That's where the real magic happens.`,
+      ``,
+      `If any part feels confusing, please reply and tell me. I'll help you personally.`,
+      ``,
+      `Warmly,`,
+      `BodyMap`,
+    ];
+  }
+
+  return {
+    key: "activation_nudge",
+    label: `Nudge (${t.steps_done}/5)`,
+    button: "Nudge",
+    subject,
+    body: bodyLines.join("\n"),
+  };
+}
+
+function NudgeButtons({ t, action }) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const openModal = () => {
+    setResult(null);
+    setErrorMsg("");
+    setModalOpen(true);
+  };
+
+  const onSend = async ({ subject, body }) => {
+    if (sending) return;
+    setSending(true);
+    setResult(null);
+    setErrorMsg("");
+    try {
+      // Use checkin action type under the hood — edge function already accepts
+      // custom_subject/custom_body so the activation_nudge copy goes through as-is.
+      // checkin is closest in intent and doesn't trigger dedup flags for welcome/first_session.
+      const { data, error } = await supabase.functions.invoke("founder-outreach", {
+        body: {
+          therapist_id: t.id,
+          action_type: "checkin",
+          custom_subject: subject,
+          custom_body: body,
+        },
+      });
+      if (error) {
+        setResult("failed");
+        setErrorMsg(`transport: ${error.message || "unknown"}`);
+      } else if (!data?.ok) {
+        setResult("failed");
+        setErrorMsg(`${data?.step || "?"}: ${data?.error || "Send failed"}`);
+      } else {
+        setResult("sent");
+        setModalOpen(false);
+      }
+    } catch (e) {
+      setResult("failed");
+      setErrorMsg(e?.message || "Send failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const copySms = async () => {
+    // SMS version: shorter, no salutation block noise. Grandma-friendly.
+    const smsLines = (action.body || "").split("\n").filter((l) => l && l !== "Warmly," && l !== "BodyMap");
+    // Collapse into one message with one short blank between sentences.
+    const smsText = smsLines.join(" ").replace(/\s+/g, " ").trim();
+    try {
+      await navigator.clipboard.writeText(smsText);
+      setResult("copied");
+      setTimeout(() => setResult(null), 3000);
+    } catch (e) {
+      setResult("failed");
+      setErrorMsg("Clipboard blocked");
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 140 }}>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        <button
+          onClick={openModal}
+          style={{
+            background: C.sage,
+            color: "#fff",
+            padding: "6px 11px",
+            borderRadius: 6,
+            border: "none",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            whiteSpace: "nowrap",
+          }}
+          title="Send a warm, grandma-voice email naming each missing step"
+        >
+          Email
+        </button>
+        {t.phone ? (
+          <button
+            onClick={copySms}
+            style={{
+              background: "#fff",
+              color: C.dark,
+              padding: "6px 11px",
+              borderRadius: 6,
+              border: `1.5px solid ${C.light}`,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+            title={`Copy SMS text. Paste into Messages and send to ${t.phone}.`}
+          >
+            Copy SMS
+          </button>
+        ) : (
+          <span style={{ fontSize: 10, color: C.stale, fontStyle: "italic", alignSelf: "center" }}>no phone</span>
+        )}
+      </div>
+      {result === "sent" && (
+        <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
+          ✓ Sent
+        </div>
+      )}
+      {result === "copied" && (
+        <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
+          ✓ Copied
+        </div>
+      )}
+      {result === "failed" && (
+        <div style={{ fontSize: 10, color: C.fall, fontWeight: 700, maxWidth: 180 }}>
+          ✗ {errorMsg || "Failed"}
+        </div>
+      )}
+
+      {modalOpen && (
+        <SendModal
+          t={t}
+          action={action}
+          sending={sending}
+          errorMsg={errorMsg}
+          onClose={() => setModalOpen(false)}
+          onSend={onSend}
+        />
+      )}
+    </div>
   );
 }
