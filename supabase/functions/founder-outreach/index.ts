@@ -25,8 +25,9 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-const FROM = "BodyMap Founder <reminders@mybodymap.app>";
+const FROM = "MyBodyMap Team <reminders@mybodymap.app>";
 const REPLY_TO = "bodymap01@gmail.com";
+const BCC_FOUNDER = "bodymapdemo@gmail.com";
 
 type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou";
 
@@ -64,15 +65,17 @@ function buildMessage(
 
   const templates: Record<ActionType, { subject: string; lines: string[] }> = {
     welcome: {
+      // Kept for backward compat with any legacy calls. Dashboard no longer surfaces
+      // welcome — the auto-firing send-welcome edge function handles new signups.
       subject: `Welcome to BodyMap, ${name}`,
       lines: [
         `Hi ${name},`,
         ``,
-        `I'm the founder. Just wanted to say welcome to BodyMap personally.`,
+        `MyBodyMap Team here. Welcome to BodyMap. First step to get value fast is to bring your full client list in.`,
         ``,
-        `If you have 30 seconds, what brought you in? Anything I can help with to get you set up?`,
+        `Reply if you need help. Cheers!`,
         ``,
-        `MyBodyMap`,
+        `MyBodyMap Team`,
       ],
     },
     checkin: {
@@ -80,11 +83,12 @@ function buildMessage(
       lines: [
         `Hi ${name},`,
         ``,
-        `I'm the founder of BodyMap. I saw you signed up ${t.days_on_platform} days ago but haven't added a client yet.`,
+        `MyBodyMap Team here. Saw you signed up a few days ago but haven't brought your client list over yet. Anything getting in the way?`,
         ``,
-        `What's in the way? I'd love to help you get your first client imported so you can see the platform in action.`,
+        `Reply to this email and we'll help you get set up. Usually takes a few minutes.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     reminder: {
@@ -92,11 +96,12 @@ function buildMessage(
       lines: [
         `Hi ${name},`,
         ``,
-        `Noticed it's been ${t.days_since_use ?? "a while"} days since you last used BodyMap. Everything okay?`,
+        `MyBodyMap Team here. It's been about ${t.days_since_use ?? "a while"} days since you last logged in. Everything okay?`,
         ``,
-        `Is there something friction-y getting in the way, or just busy? Either way I'd love to hear.`,
+        `If anything is off with the platform or you've got a question, hit reply. We read every message.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     testimonial: {
@@ -104,13 +109,12 @@ function buildMessage(
       lines: [
         `Hi ${name},`,
         ``,
-        `You've logged ${t.sessions_total} sessions on BodyMap. That's amazing.`,
+        `Good morning. MyBodyMap Team here. You've logged ${t.sessions_total} sessions on BodyMap. That's a big deal.`,
         ``,
-        `Would you be open to sharing a one or two sentence testimonial about what BodyMap does for your practice? I'd like to feature it on the homepage.`,
+        `Would you be open to sharing a line or two about what the platform does for your practice? We'd put it on the homepage. No pressure either way.`,
         ``,
-        `No pressure. And thank you either way.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     first_session: {
@@ -118,55 +122,55 @@ function buildMessage(
       lines: [
         `Hi ${name},`,
         ``,
-        `Just saw you logged your first session on BodyMap. That's a real moment. Your practice now has a memory it didn't have yesterday.`,
+        `MyBodyMap Team here. Just saw you logged your first session. Big moment.`,
         ``,
-        `A small suggestion: next time that client books, open their body map before they walk in. You'll know where they hold tension, what pressure they like, what to avoid. That thirty seconds is what turns a first-timer into a regular.`,
+        `Tip: next time that client books, open their body map 30 seconds before they walk in. You'll see exactly where they hold tension and what pressure they like. Those 30 seconds are what bring clients back.`,
         ``,
-        `I'm here if you hit any bumps.`,
+        `Here if you need anything.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     setup_nudge: {
-      subject: `One quick thing to finish, ${name}`,
+      subject: `One quick thing, ${name}`,
       lines: [
         `Hi ${name},`,
         ``,
-        `Noticed you've been using BodyMap for ${t.days_on_platform} days but haven't connected your payment account or calendar yet.`,
+        `MyBodyMap Team here. You're using the platform but haven't connected Stripe or Square yet.`,
         ``,
-        `Without these, clients can't book or pay you through your BodyMap link. Both take about a minute each from Settings.`,
+        `Without this, clients can't pay you through your BodyMap link. Takes about a minute in Settings. Want us to walk you through it? Just reply.`,
         ``,
-        `Want me to walk you through it? Happy to.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     churned: {
-      subject: `Are you still with us, ${name}?`,
+      subject: `Still with us, ${name}?`,
       lines: [
         `Hi ${name},`,
         ``,
-        `It's been ${t.days_since_use ?? "over a month"} days since you last logged into BodyMap. I'm not writing to push you back in. I'm writing to understand why.`,
+        `MyBodyMap Team here. It's been ${t.days_since_use ?? "over a month"} days since you last used BodyMap. Not writing to push you back in. Writing to ask what didn't work.`,
         ``,
-        `If BodyMap didn't fit your practice, I'd genuinely love to know. Was it the interface? A missing feature? Something else?`,
+        `One sentence back would mean a lot. Thank you.`,
         ``,
-        `One sentence back would help me build something better for therapists like you. Thank you.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
     referral_thankyou: {
-      subject: `Thank you for the referral, ${name}`,
+      subject: `Thank you, ${name}`,
       lines: [
         `Hi ${name},`,
         ``,
-        `Someone just signed up through your link. That means a lot.`,
+        `MyBodyMap Team here. Someone just signed up through your link. That means a lot.`,
         ``,
-        `You're helping another therapist find a platform that actually works for how they practice. I don't take that lightly.`,
+        `You're helping another therapist find something that actually fits how they practice. Thank you.`,
         ``,
-        `If there's anything I can do to make BodyMap better for you, reply and tell me.`,
+        `If there's anything we can do to make BodyMap better for you, reply and tell us.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ],
     },
   };
@@ -297,6 +301,7 @@ serve(async (req) => {
         body: JSON.stringify({
           from: FROM,
           to: [therapist.email],
+          bcc: [BCC_FOUNDER],
           reply_to: REPLY_TO,
           subject: msg.subject,
           text: msg.text,

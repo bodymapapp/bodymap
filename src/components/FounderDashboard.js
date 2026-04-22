@@ -566,6 +566,8 @@ function recommendAction(t) {
   const daysIdle = t.days_since_use;
 
   // Priority order: first match wins. Rare/celebratory states before nagging states.
+  // Welcome is NOT in this list — the auto-firing send-welcome edge function
+  // already handles new signups. Adding it here would double-email them.
 
   // 1. Referral thank-you (highest priority, celebratory, one-off per referral batch)
   if (t.unthanked_referrals > 0) {
@@ -573,17 +575,18 @@ function recommendAction(t) {
       key: "referral_thankyou",
       label: `Thank for ${t.unthanked_referrals} referral${t.unthanked_referrals > 1 ? "s" : ""}`,
       button: "Thank",
-      subject: `Thank you for the referral, ${name}`,
+      subject: `Thank you, ${name}`,
       body: [
         `Hi ${name},`,
         ``,
-        `Someone just signed up through your link. That means a lot.`,
+        `MyBodyMap Team here. Someone just signed up through your link. That means a lot.`,
         ``,
-        `You're helping another therapist find a platform that actually works for how they practice. I don't take that lightly.`,
+        `You're helping another therapist find something that actually fits how they practice. Thank you.`,
         ``,
-        `If there's anything I can do to make BodyMap better for you, reply and tell me.`,
+        `If there's anything we can do to make BodyMap better for you, reply and tell us.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
@@ -598,13 +601,14 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `Just saw you logged your first session on BodyMap. That's a real moment. Your practice now has a memory it didn't have yesterday.`,
+        `MyBodyMap Team here. Just saw you logged your first session. Big moment.`,
         ``,
-        `A small suggestion: next time that client books, open their body map before they walk in. You'll know where they hold tension, what pressure they like, what to avoid. That thirty seconds is what turns a first-timer into a regular.`,
+        `Tip: next time that client books, open their body map 30 seconds before they walk in. You'll see exactly where they hold tension and what pressure they like. Those 30 seconds are what bring clients back.`,
         ``,
-        `I'm here if you hit any bumps.`,
+        `Here if you need anything.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
@@ -619,13 +623,12 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `You've logged ${t.sessions_total} sessions on BodyMap. That's amazing.`,
+        `Good morning. MyBodyMap Team here. You've logged ${t.sessions_total} sessions on BodyMap. That's a big deal.`,
         ``,
-        `Would you be open to sharing a one or two sentence testimonial about what BodyMap does for your practice? I'd like to feature it on the homepage.`,
+        `Would you be open to sharing a line or two about what the platform does for your practice? We'd put it on the homepage. No pressure either way.`,
         ``,
-        `No pressure. And thank you either way.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
@@ -636,17 +639,16 @@ function recommendAction(t) {
       key: "churned",
       label: `Win back (${daysIdle}d gone)`,
       button: "Reach out",
-      subject: `Are you still with us, ${name}?`,
+      subject: `Still with us, ${name}?`,
       body: [
         `Hi ${name},`,
         ``,
-        `It's been ${daysIdle} days since you last logged into BodyMap. I'm not writing to push you back in. I'm writing to understand why.`,
+        `MyBodyMap Team here. It's been ${daysIdle} days since you last used BodyMap. Not writing to push you back in. Writing to ask what didn't work.`,
         ``,
-        `If BodyMap didn't fit your practice, I'd genuinely love to know. Was it the interface? A missing feature? Something else?`,
+        `One sentence back would mean a lot. Thank you.`,
         ``,
-        `One sentence back would help me build something better for therapists like you. Thank you.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
@@ -661,16 +663,17 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `Noticed it's been ${daysIdle} days since you last used BodyMap. Everything okay?`,
+        `MyBodyMap Team here. It's been about ${daysIdle} days since you last logged in. Everything okay?`,
         ``,
-        `Is there something friction-y getting in the way, or just busy? Either way I'd love to hear.`,
+        `If anything is off with the platform or you've got a question, hit reply. We read every message.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
 
-  // 6. Check in (3+ days, still nothing)
+  // 6. Check in (3+ days, still nothing — asks for full client list per HK's guidance)
   if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS) {
     return {
       key: "checkin",
@@ -680,51 +683,33 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `I'm the founder of BodyMap. I saw you signed up ${t.days_on_platform} days ago but haven't added a client yet.`,
+        `MyBodyMap Team here. Saw you signed up a few days ago but haven't brought your client list over yet. Anything getting in the way?`,
         ``,
-        `What's in the way? I'd love to help you get your first client imported so you can see the platform in action.`,
+        `Reply to this email and we'll help you get set up. Usually takes a few minutes.`,
         ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
 
-  // 7. Welcome (<3 days, still nothing)
-  if (noActivity && t.days_on_platform < COLD_MIN_AGE_DAYS && !t.emailed_welcome) {
-    return {
-      key: "welcome",
-      label: "Welcome them",
-      button: "Welcome",
-      subject: `Welcome to BodyMap, ${name}`,
-      body: [
-        `Hi ${name},`,
-        ``,
-        `I'm the founder. Just wanted to say welcome to BodyMap personally.`,
-        ``,
-        `If you have 30 seconds, what brought you in? Anything I can help with to get you set up?`,
-        ``,
-        `MyBodyMap`,
-      ].join("\n"),
-    };
-  }
-
-  // 8. Setup nudge (3+ days, using platform, but no Stripe and no Cal)
-  if (t.days_on_platform >= COLD_MIN_AGE_DAYS && !t.stripe_account_connected && !t.cal_connected && !t.emailed_setup_nudge) {
+  // 7. Setup nudge (3+ days, using platform, but no Stripe connected)
+  // HK clarified: only flag if Stripe NOT connected (Square is optional alt, Cal removed).
+  if (t.days_on_platform >= COLD_MIN_AGE_DAYS && !t.stripe_account_connected && !t.emailed_setup_nudge) {
     return {
       key: "setup_nudge",
       label: "Nudge setup",
       button: "Send nudge",
-      subject: `One quick thing to finish, ${name}`,
+      subject: `One quick thing, ${name}`,
       body: [
         `Hi ${name},`,
         ``,
-        `Noticed you've been using BodyMap for ${t.days_on_platform} days but haven't connected your payment account or calendar yet.`,
+        `MyBodyMap Team here. You're using the platform but haven't connected Stripe or Square yet.`,
         ``,
-        `Without these, clients can't book or pay you through your BodyMap link. Both take about a minute each from Settings.`,
+        `Without this, clients can't pay you through your BodyMap link. Takes about a minute in Settings. Want us to walk you through it? Just reply.`,
         ``,
-        `Want me to walk you through it? Happy to.`,
-        ``,
-        `MyBodyMap`,
+        `Cheers!`,
+        `MyBodyMap Team`,
       ].join("\n"),
     };
   }
@@ -1058,9 +1043,18 @@ function ActionCell({ t }) {
   };
 
   const copySms = async () => {
-    const smsBody = (a.body || "").split("\n").filter((l) => l !== "MyBodyMap").join(" ").trim();
+    // SMS voice: replace the email-team signature with the founder sig.
+    // Keep the message structure, just switch the label/tone for SMS.
+    const smsText = (a.body || "")
+      .replace(/MyBodyMap Team here/g, "MyBodyMap founder here")
+      .replace(/MyBodyMap Team/g, "MyBodyMap founder")
+      .split("\n")
+      .filter((l) => l.trim() !== "")
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
     try {
-      await navigator.clipboard.writeText(smsBody);
+      await navigator.clipboard.writeText(smsText);
       setResult("copied");
       setTimeout(() => setResult(null), 3000);
     } catch (e) {
@@ -1181,6 +1175,19 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
   const [subject, setSubject] = useState(action.subject);
   const [body, setBody] = useState(action.body);
 
+  // Keyboard shortcuts for speed: Cmd/Ctrl+Enter = send, Esc = cancel
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+        if (subject.trim() && body.trim()) onSend({ subject, body });
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [subject, body, onClose, onSend]);
+
   return (
     <div
       onClick={onClose}
@@ -1200,7 +1207,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
         style={{
           background: "#fff",
           borderRadius: 14,
-          maxWidth: 640,
+          maxWidth: 620,
           width: "100%",
           maxHeight: "90vh",
           overflow: "auto",
@@ -1208,33 +1215,37 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
           border: `1.5px solid ${C.light}`,
         }}
       >
-        {/* Header */}
-        <div style={{ padding: "20px 24px", borderBottom: `1.5px solid ${C.light}`, background: C.softCream }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.14em", color: C.sage, textTransform: "uppercase" }}>
-            {action.label}
+        {/* Compact header: who + where */}
+        <div style={{ padding: "14px 20px", borderBottom: `1.5px solid ${C.light}`, background: C.softCream, display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.12em", color: C.sage, textTransform: "uppercase" }}>
+              {action.label}
+            </div>
+            <div style={{ fontFamily: "Georgia, serif", fontSize: 16, color: C.dark, fontWeight: 700, marginTop: 2 }}>
+              {t.business_name || t.full_name || t.email}
+            </div>
+            <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+              To: {t.email} · BCC: {"bodymapdemo@gmail.com"}
+            </div>
           </div>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
-            Send to {t.business_name || t.full_name || t.email}
-          </h2>
-          <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
-            {t.email} · From "BodyMap Founder &lt;reminders@mybodymap.app&gt;" · Replies go to bodymap01@gmail.com
-          </p>
+          <span style={{ fontSize: 10, color: C.gray, fontStyle: "italic" }}>
+            ⌘↩ to send · Esc to cancel
+          </span>
         </div>
 
         {/* Subject */}
-        <div style={{ padding: "16px 24px 0" }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
-            Subject
-          </label>
+        <div style={{ padding: "12px 20px 0" }}>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
+            placeholder="Subject"
             style={{
               width: "100%",
               padding: "10px 12px",
               border: `1.5px solid ${C.light}`,
               borderRadius: 8,
               fontSize: 14,
+              fontWeight: 600,
               fontFamily: "inherit",
               boxSizing: "border-box",
             }}
@@ -1242,14 +1253,11 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: "12px 24px 0" }}>
-          <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", display: "block", marginBottom: 4 }}>
-            Body
-          </label>
+        <div style={{ padding: "10px 20px 0" }}>
           <textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            rows={12}
+            rows={10}
             style={{
               width: "100%",
               padding: "12px",
@@ -1257,37 +1265,34 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
               borderRadius: 8,
               fontSize: 14,
               fontFamily: "Georgia, serif",
-              lineHeight: 1.6,
+              lineHeight: 1.55,
               boxSizing: "border-box",
               resize: "vertical",
             }}
           />
-          <p style={{ fontSize: 11, color: C.gray, margin: "6px 0 0" }}>
-            Plain text. Edit freely. Your changes won't affect the template for other therapists.
-          </p>
         </div>
 
         {/* Error inline */}
         {errorMsg && (
-          <div style={{ padding: "12px 24px 0" }}>
-            <div style={{ background: "#FEF2F1", border: `1px solid ${C.fall}`, color: C.fall, padding: "10px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
+          <div style={{ padding: "10px 20px 0" }}>
+            <div style={{ background: "#FEF2F1", border: `1px solid ${C.fall}`, color: C.fall, padding: "8px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600 }}>
               ✗ {errorMsg}
             </div>
           </div>
         )}
 
-        {/* Footer */}
-        <div style={{ padding: "16px 24px 20px", display: "flex", justifyContent: "space-between", gap: 10, marginTop: 8 }}>
+        {/* Footer: Send prominent, Cancel quiet */}
+        <div style={{ padding: "14px 20px 16px", display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <button
             onClick={onClose}
             style={{
-              background: "#fff",
-              color: C.dark,
-              padding: "10px 18px",
+              background: "transparent",
+              color: C.gray,
+              padding: "10px 14px",
               borderRadius: 8,
-              border: `1.5px solid ${C.light}`,
-              fontSize: 14,
-              fontWeight: 700,
+              border: "none",
+              fontSize: 13,
+              fontWeight: 600,
               cursor: "pointer",
             }}
           >
@@ -1299,7 +1304,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
             style={{
               background: sending ? C.stale : C.forest,
               color: "#fff",
-              padding: "10px 22px",
+              padding: "10px 24px",
               borderRadius: 8,
               border: "none",
               fontSize: 14,
@@ -1307,7 +1312,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
               cursor: sending ? "wait" : "pointer",
             }}
           >
-            {sending ? "Sending..." : "Send email →"}
+            {sending ? "Sending..." : "Send email"}
           </button>
         </div>
       </div>
@@ -1708,15 +1713,28 @@ function buildActivationNudge(t) {
       ? ` There are a couple more small things after that, but let's get this one first.`
       : "";
 
-  const bodyLines = [
+  // Email variant: signed 'MyBodyMap Team'. Used when you click Email.
+  const emailBody = [
     `Hi ${name},`,
     ``,
-    `Good morning. This is BodyMap founder. Just wanted to send a message so you can reach out to me directly if you need any help.`,
+    `Good morning. MyBodyMap Team here. Just wanted to send a message so you can reach out to us directly if you need any help.`,
     ``,
     `First step for you is to ${firstStepText}.${moreStepsNote}`,
     ``,
     `Cheers!`,
-    `BodyMap`,
+    `MyBodyMap Team`,
+  ];
+
+  // SMS variant: signed 'MyBodyMap founder'. More personal, from your Google Voice.
+  const smsBody = [
+    `Hi ${name},`,
+    ``,
+    `Good morning. This is MyBodyMap founder. Just wanted to send a message so you can reach out to me directly if you need any help.`,
+    ``,
+    `First step for you is to ${firstStepText}.${moreStepsNote}`,
+    ``,
+    `Cheers!`,
+    `MyBodyMap founder`,
   ];
 
   return {
@@ -1724,7 +1742,8 @@ function buildActivationNudge(t) {
     label: `Nudge (${t.steps_done}/5)`,
     button: "Nudge",
     subject,
-    body: bodyLines.join("\n"),
+    body: emailBody.join("\n"),       // default (Email modal uses body)
+    sms_body: smsBody.join("\n"),     // Copy SMS uses this
   };
 }
 
@@ -1776,10 +1795,10 @@ function NudgeButtons({ t, action }) {
   };
 
   const copySms = async () => {
-    // SMS version: keep the body as the therapist would see it in a text.
-    // Collapse blank lines, keep the greeting and the Cheers sign-off intact.
-    // One line break between paragraphs becomes a single space for a tight SMS.
-    const smsText = (action.body || "")
+    // Prefer the dedicated sms_body (signed 'MyBodyMap founder' for warmer SMS tone);
+    // fall back to body if not provided. Collapse blank lines into a single space.
+    const source = action.sms_body || action.body || "";
+    const smsText = source
       .split("\n")
       .filter((l) => l.trim() !== "")
       .join(" ")
