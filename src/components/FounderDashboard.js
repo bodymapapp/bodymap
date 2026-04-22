@@ -94,13 +94,18 @@ export default function FounderDashboard() {
         { data: allSessions },
         { data: allClients },
         { data: activation },
+        { data: outreachLog },
       ] = await Promise.all([
         supabase.from("therapists").select(
-          "id,email,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
+          "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
         ).order("created_at", { ascending: false }),
         supabase.from("sessions").select("therapist_id,created_at"),
         supabase.from("clients").select("therapist_id,created_at"),
         supabase.from("activation_events").select("therapist_id,event_name"),
+        supabase.from("notification_log")
+          .select("therapist_id,notification_type,status,sent_at")
+          .like("notification_type", "founder_outreach_%")
+          .order("sent_at", { ascending: false }),
       ]);
 
       const d7ms = now - 7 * DAY;
@@ -121,7 +126,17 @@ export default function FounderDashboard() {
           last_session_at: null,
           last_client_at: null,
           activation_events: [],
+          last_contact_at: null,
+          last_contact_type: null,
         };
+      }
+
+      // Layer in outreach log. Log is ordered desc, so first hit per therapist = most recent.
+      for (const r of outreachLog || []) {
+        const t = byId[r.therapist_id];
+        if (!t || t.last_contact_at) continue;
+        t.last_contact_at = r.sent_at;
+        t.last_contact_type = (r.notification_type || "").replace("founder_outreach_", "");
       }
 
       for (const s of allSessions || []) {
@@ -503,12 +518,6 @@ function firstName(t) {
   return (t.full_name || "").split(" ")[0] || "there";
 }
 
-function mailto(t, action) {
-  return `mailto:${encodeURIComponent(t.email)}?subject=${encodeURIComponent(
-    action.subject
-  )}&body=${encodeURIComponent(action.body)}`;
-}
-
 function SectionLabel({ children }) {
   return (
     <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.gray, margin: "20px 0 10px" }}>
@@ -620,7 +629,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort }) {
   return (
     <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1100 }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1240 }}>
           <thead>
             <tr>
               <th style={firstColHead} onClick={() => onSort("business_name")}>
@@ -628,6 +637,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort }) {
                   Therapist {sortKey === "business_name" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
                 </div>
               </th>
+              {header("phone", "Phone", false)}
               {header("created_at", "Signed up")}
               {header("days_on_platform", "Days on platform")}
               {header("last_activity_at", "Last used")}
@@ -715,6 +725,22 @@ function Row({ t, firstColCell }) {
         )}
       </td>
 
+      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
+        {t.phone ? (
+          <div>
+            <div style={{ color: C.dark, fontWeight: 600 }}>{formatPhoneDisplay(t.phone)}</div>
+            <a
+              href={`tel:${t.phone.replace(/\D/g, "")}`}
+              style={{ fontSize: 11, color: C.sage, textDecoration: "none" }}
+            >
+              tap to call
+            </a>
+          </div>
+        ) : (
+          <span style={{ color: C.stale, fontStyle: "italic", fontSize: 12 }}>No phone</span>
+        )}
+      </td>
+
       <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.dark, fontSize: 12 }}>
         {new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
       </td>
@@ -769,12 +795,58 @@ function Row({ t, firstColCell }) {
 }
 
 function ActionCell({ t }) {
+  const [sending, setSending] = useState(false);
+  const [result, setResult] = useState(null); // 'sent' | 'failed' | 'copied' | null
+  const [errorMsg, setErrorMsg] = useState("");
+
   const a = t.action;
+
+  const sendEmail = async () => {
+    if (sending) return;
+    setSending(true);
+    setResult(null);
+    setErrorMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("founder-outreach", {
+        body: { therapist_id: t.id, action_type: a.key },
+      });
+      if (error || !data?.ok) {
+        setResult("failed");
+        setErrorMsg(error?.message || data?.error || "Send failed");
+      } else {
+        setResult("sent");
+      }
+    } catch (e) {
+      setResult("failed");
+      setErrorMsg(e?.message || "Send failed");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const copySms = async () => {
+    const smsBody = (a.body || "").split("\n").filter((l) => l !== "MyBodyMap").join(" ").trim();
+    try {
+      await navigator.clipboard.writeText(smsBody);
+      setResult("copied");
+      setTimeout(() => setResult(null), 3000);
+    } catch (e) {
+      setResult("failed");
+      setErrorMsg("Clipboard blocked");
+    }
+  };
+
+  // Non-actionable row (dummy or on track)
   if (!a.button) {
     const color = a.key === "ontrack" ? C.rise : C.gray;
     return (
       <div style={{ fontSize: 12, color, fontWeight: 600 }}>
         {a.label}
+        {t.last_contact_at && (
+          <div style={{ fontSize: 10, color: C.gray, fontWeight: 500, marginTop: 2 }}>
+            Last emailed {daysAgo(t.last_contact_at)}
+          </div>
+        )}
       </div>
     );
   }
@@ -786,25 +858,97 @@ function ActionCell({ t }) {
     testimonial: { bg: C.gold, fg: "#fff" },
   }[a.key] || { bg: C.forest, fg: "#fff" };
 
+  const recentlyContacted = t.last_contact_at && daysAgoNumeric(t.last_contact_at) <= 3;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4 }}>
-      <div style={{ fontSize: 11, color: C.gray, fontWeight: 600 }}>{a.label}</div>
-      <a
-        href={mailto(t, a)}
-        style={{
-          background: btnColors.bg,
-          color: btnColors.fg,
-          padding: "6px 12px",
-          borderRadius: 6,
-          textDecoration: "none",
-          fontSize: 12,
-          fontWeight: 700,
-          display: "inline-block",
-          whiteSpace: "nowrap",
-        }}
-      >
-        {a.button} →
-      </a>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, minWidth: 180 }}>
+      <div style={{ fontSize: 11, color: C.gray, fontWeight: 600 }}>
+        {a.label}
+        {t.last_contact_at && (
+          <span style={{ color: recentlyContacted ? C.fall : C.gray, marginLeft: 6, fontWeight: 500 }}>
+            · last {t.last_contact_type || "email"} {daysAgo(t.last_contact_at)}
+          </span>
+        )}
+      </div>
+      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+        <button
+          onClick={sendEmail}
+          disabled={sending}
+          style={{
+            background: sending ? C.stale : btnColors.bg,
+            color: btnColors.fg,
+            padding: "6px 11px",
+            borderRadius: 6,
+            border: "none",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: sending ? "wait" : "pointer",
+            whiteSpace: "nowrap",
+            opacity: recentlyContacted ? 0.75 : 1,
+          }}
+          title={recentlyContacted ? "You emailed this person recently. Click again if you still want to send." : "Send branded BodyMap email from reminders@mybodymap.app"}
+        >
+          {sending ? "Sending..." : "Email"}
+        </button>
+        {t.phone ? (
+          <button
+            onClick={copySms}
+            style={{
+              background: "#fff",
+              color: C.dark,
+              padding: "6px 11px",
+              borderRadius: 6,
+              border: `1.5px solid ${C.light}`,
+              fontSize: 12,
+              fontWeight: 700,
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+            title={`Copy SMS text. Paste into Messages and send to ${t.phone}.`}
+          >
+            Copy SMS
+          </button>
+        ) : (
+          <span style={{ fontSize: 10, color: C.stale, fontStyle: "italic", alignSelf: "center" }}>no phone</span>
+        )}
+      </div>
+      {result === "sent" && (
+        <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
+          ✓ Email sent from BodyMap
+        </div>
+      )}
+      {result === "copied" && (
+        <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
+          ✓ Copied. Paste into Messages.
+        </div>
+      )}
+      {result === "failed" && (
+        <div style={{ fontSize: 11, color: C.fall, fontWeight: 700 }}>
+          ✗ {errorMsg || "Failed"}
+        </div>
+      )}
     </div>
   );
+}
+
+function daysAgo(iso) {
+  const d = Math.floor((Date.now() - new Date(iso).getTime()) / DAY);
+  if (d === 0) return "today";
+  if (d === 1) return "yesterday";
+  return `${d}d ago`;
+}
+
+function daysAgoNumeric(iso) {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / DAY);
+}
+
+function formatPhoneDisplay(raw) {
+  const digits = (raw || "").replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return raw;
 }
