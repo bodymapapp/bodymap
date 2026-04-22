@@ -30,24 +30,27 @@ serve(async () => {
       supabase.from("therapists").select("*",{count:"exact",head:true}).gte("created_at",d7),
       supabase.from("therapists").select("*",{count:"exact",head:true}).gte("created_at",d30),
       supabase.from("therapists").select("*",{count:"exact",head:true}),
-      supabase.from("therapists").select("*",{count:"exact",head:true}).eq("tier","silver"),
-      supabase.from("therapists").select("*",{count:"exact",head:true}).eq("tier","bronze"),
+      supabase.from("therapists").select("*",{count:"exact",head:true}).eq("plan","silver"),
+      supabase.from("therapists").select("*",{count:"exact",head:true}).or("plan.is.null,plan.eq.free"),
       supabase.from("sessions").select("*",{count:"exact",head:true}).gte("created_at",h24),
       supabase.from("sessions").select("*",{count:"exact",head:true}).gte("created_at",d7),
       supabase.from("clients").select("*",{count:"exact",head:true}).gte("created_at",d7),
-      supabase.from("therapists").select("email,created_at,tier").order("created_at",{ascending:false}).limit(15),
+      supabase.from("therapists").select("email,created_at,plan").order("created_at",{ascending:false}).limit(15),
     ]);
 
     const convRate = (total_signups??0)>0 ? Math.round(((silver_users??0)/(total_signups??1))*100) : 0;
     const dateStr = now.toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric"});
 
-    const rows = (recent_signups??[]).map((u:any)=>
-      `<tr>
+    const rows = (recent_signups??[]).map((u:any)=>{
+      const p = u.plan === "silver" ? "silver" : u.plan === "gold" ? "gold" : "free";
+      const bg = p === "silver" ? "#e8f5ee" : p === "gold" ? "#fdf4e3" : "#f5f0e8";
+      const fg = p === "silver" ? "#1a5c38" : p === "gold" ? "#8a5a1c" : "#7a5c1a";
+      return `<tr>
         <td style="padding:10px 16px;border-bottom:1px solid #f0ede8;font-size:13px;color:#222">${u.email}</td>
         <td style="padding:10px 16px;border-bottom:1px solid #f0ede8;color:#888;font-size:12px">${new Date(u.created_at).toLocaleDateString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"})}</td>
-        <td style="padding:10px 16px;border-bottom:1px solid #f0ede8"><span style="background:${u.tier==="silver"?"#e8f5ee":"#f5f0e8"};color:${u.tier==="silver"?"#1a5c38":"#7a5c1a"};border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600">${u.tier||"bronze"}</span></td>
-      </tr>`
-    ).join("")||`<tr><td colspan="3" style="padding:20px;text-align:center;color:#bbb;font-size:13px">No new signups today</td></tr>`;
+        <td style="padding:10px 16px;border-bottom:1px solid #f0ede8"><span style="background:${bg};color:${fg};border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600">${p}</span></td>
+      </tr>`;
+    }).join("")||`<tr><td colspan="3" style="padding:20px;text-align:center;color:#bbb;font-size:13px">No new signups today</td></tr>`;
 
     const statBox = (val:any, label:string) =>
       `<td style="background:#f9f8f5;border-radius:10px;padding:18px;text-align:center;width:30%">
