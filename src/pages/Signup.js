@@ -130,6 +130,8 @@ export default function Signup() {
     if (!formData.fullName.trim() || formData.fullName.trim().length < 2) { setError('Please enter your full name.'); return; }
     if (!formData.businessName.trim()) { setError('Please enter your business name.'); return; }
     if (!formData.email.trim()) { setError('Please enter your email.'); return; }
+    const phoneDigits = (formData.phone || '').replace(/\D/g, '');
+    if (phoneDigits.length < 10) { setError('Please enter a valid phone number. We will use it to text you account updates.'); return; }
     if (formData.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match.'); return; }
     setLoading(true);
@@ -384,8 +386,9 @@ export default function Signup() {
         {/* Row 2: Phone + Email */}
         <div style={{ display: 'flex', gap: '20px', marginBottom: '14px' }}>
           <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Phone</label>
-            <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange} style={inputStyle} />
+            <label style={labelStyle}>Phone <span style={{ color: '#B44A3A' }}>*</span></label>
+            <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange} required style={inputStyle} />
+            <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>So we can text you account updates. We will never share it.</p>
           </div>
           <div style={{ flex: 1 }}>
             <label style={labelStyle}>Email</label>

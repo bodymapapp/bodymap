@@ -47,6 +47,8 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     if (!businessName.trim()) { setError('Please enter your business name'); return; }
     if (!customUrl || customUrl.length < 3) { setError('Custom URL must be at least 3 characters'); return; }
+    const phoneDigits = (phone || '').replace(/\D/g, '');
+    if (phoneDigits.length < 10) { setError('Please enter a valid phone number. We will use it to text you account updates.'); return; }
     setLoading(true);
     setError('');
     const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
@@ -138,9 +140,10 @@ export default function Onboarding() {
           </div>
         </div>
         <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: C.darkGray, display: 'block', marginBottom: '6px' }}>Phone Number (optional)</label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(512) 555-1234" type="tel"
+          <label style={{ fontSize: '13px', fontWeight: '600', color: C.darkGray, display: 'block', marginBottom: '6px' }}>Phone Number <span style={{ color: '#B44A3A' }}>*</span></label>
+          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(512) 555-1234" type="tel" required
             style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+          <p style={{ fontSize: '11px', color: C.sage, margin: '4px 0 0 0' }}>So we can text you account updates. We will never share it.</p>
         </div>
         <button onClick={handleSubmit} disabled={loading}
           style={{ width: '100%', padding: '14px', background: C.forest, color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
