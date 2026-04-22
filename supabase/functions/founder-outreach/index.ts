@@ -8,6 +8,12 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  generateUnsubToken,
+  unsubscribeFooterHtml,
+  unsubscribeFooterText,
+  UNSUB_BASE_URL,
+} from "../_shared/unsubscribe.ts";
 
 const ADMIN_EMAILS = new Set([
   "bodymap01@gmail.com",
@@ -241,13 +247,16 @@ serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
     const { data: therapist, error: tErr } = await admin
       .from("therapists")
-      .select("id,email,full_name,created_at")
+      .select("id,email,full_name,created_at,email_unsubscribed")
       .eq("id", therapist_id)
       .single();
 
     if (tErr) return fail(tErr.message, "load_therapist");
     if (!therapist) return fail("therapist not found", "load_therapist");
     if (!therapist.email) return fail("therapist has no email on record", "load_therapist");
+    if (therapist.email_unsubscribed) {
+      return fail("Recipient has unsubscribed from marketing emails", "unsubscribed");
+    }
 
     // Compute context
     const now = Date.now();
@@ -276,15 +285,24 @@ serve(async (req) => {
 
     // If caller supplied custom subject/body (from modal edit), use them; else use template.
     const subject = (typeof custom_subject === "string" && custom_subject.trim()) ? custom_subject.trim() : tpl.subject;
-    const text = (typeof custom_body === "string" && custom_body.trim()) ? custom_body.trim() : tpl.text;
+    const bodyText = (typeof custom_body === "string" && custom_body.trim()) ? custom_body.trim() : tpl.text;
+
+    // Generate signed unsubscribe link for this recipient
+    const unsubToken = await generateUnsubToken(therapist.id);
+    const unsubUrl = `${UNSUB_BASE_URL}?token=${encodeURIComponent(unsubToken)}`;
+
+    // Append CAN-SPAM-compliant footer to both text and HTML
+    const text = bodyText + unsubscribeFooterText(unsubUrl);
+
     // Regenerate HTML from potentially edited text (preserves the branded card).
     const html = `
 <div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
   <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 BodyMap</div>
-  ${text.split("\n").map((l: string) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
+  ${bodyText.split("\n").map((l: string) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
     Reply to this email and it reaches me directly.
   </div>
+  ${unsubscribeFooterHtml(therapist.id, unsubUrl)}
 </div>`.trim();
     const msg = { subject, text, html };
 

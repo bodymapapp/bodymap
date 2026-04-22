@@ -32,6 +32,7 @@ import CareSummary from './pages/CareSummary';
 import AdminFunnel from './pages/AdminFunnel';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
+import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
 import FounderDashboard from './components/FounderDashboard';
 
@@ -75,6 +76,7 @@ function App() {
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
           <Route path="/founder" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
+          <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
         <Analytics />

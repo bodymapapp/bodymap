@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import {
+  generateUnsubToken,
+  unsubscribeFooterHtml,
+  UNSUB_BASE_URL,
+} from "../_shared/unsubscribe.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -19,7 +24,7 @@ serve(async (req) => {
   const singleTherapistId = body?.therapist_id || null;
 
   // Fetch therapists (all or single)
-  let therapistQuery = supabase.from('therapists').select('id, full_name, business_name, email, custom_url, lapsed_days, practice_pulse_enabled, practice_pulse_email');
+  let therapistQuery = supabase.from('therapists').select('id, full_name, business_name, email, custom_url, lapsed_days, practice_pulse_enabled, practice_pulse_email, email_unsubscribed');
   if (singleTherapistId) therapistQuery = therapistQuery.eq('id', singleTherapistId);
   const { data: therapists } = await therapistQuery;
 
@@ -33,6 +38,8 @@ serve(async (req) => {
   for (const therapist of therapists || []) {
     if (!therapist.email) continue;
     if (therapist.practice_pulse_enabled === false) continue;
+    // CAN-SPAM: skip anyone who unsubscribed
+    if (therapist.email_unsubscribed) continue;
 
     const therapistName = therapist.business_name || therapist.full_name || 'Your Practice';
     const lapsedDays = therapist.lapsed_days || 60;
@@ -175,6 +182,14 @@ serve(async (req) => {
 </div>
 </body></html>`;
 
+    // Generate signed unsubscribe link + append footer
+    const unsubToken = await generateUnsubToken(therapist.id);
+    const unsubUrl = `${UNSUB_BASE_URL}?token=${encodeURIComponent(unsubToken)}`;
+    const emailHtmlWithUnsub = emailHtml.replace(
+      '</body></html>',
+      `${unsubscribeFooterHtml(therapist.id, unsubUrl)}</body></html>`
+    );
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -183,7 +198,7 @@ serve(async (req) => {
         to: therapist.practice_pulse_email ? [therapist.email, therapist.practice_pulse_email] : [therapist.email],
         reply_to: therapist.email,
         subject: `Your Practice Pulse — ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`,
-        html: emailHtml,
+        html: emailHtmlWithUnsub,
       }),
     });
 

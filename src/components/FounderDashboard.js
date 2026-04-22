@@ -93,13 +93,20 @@ export default function FounderDashboard() {
       // (migration not run), retry without it. The UI will still render;
       // flag updates will show a gentle "Run the migration first" message.
       const therapistQuery = supabase.from("therapists").select(
-        "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons,admin_flag"
+        "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons,admin_flag,email_unsubscribed"
       ).order("created_at", { ascending: false });
 
       let therapistRes = await therapistQuery;
       let adminFlagMissing = false;
       if (therapistRes.error && /admin_flag/i.test(therapistRes.error.message || "")) {
         adminFlagMissing = true;
+        therapistRes = await supabase.from("therapists").select(
+          "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons,email_unsubscribed"
+        ).order("created_at", { ascending: false });
+      }
+
+      // Also handle case where email_unsubscribed column doesn't exist yet
+      if (therapistRes.error && /email_unsubscribed/i.test(therapistRes.error.message || "")) {
         therapistRes = await supabase.from("therapists").select(
           "id,email,phone,full_name,business_name,custom_url,plan,created_at,stripe_account_connected,cal_connected,signup_flag_reasons"
         ).order("created_at", { ascending: false });
@@ -903,7 +910,7 @@ function Row({ t, firstColCell, updateFlag }) {
       <td style={{ ...firstColCell, padding: "12px", borderTop: `1px solid ${C.light}` }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
-          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} />
+          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
           {t.stripe_account_connected && (
             <span style={{ marginLeft: 6, fontSize: 10, background: "#E8F5EE", color: "#1A5C38", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>STRIPE</span>
           )}
@@ -1089,6 +1096,7 @@ function ActionCell({ t }) {
   }[a.key] || { bg: C.forest, fg: "#fff" };
 
   const recentlyContacted = t.last_contact_at && daysAgoNumeric(t.last_contact_at) <= 3;
+  const isUnsubscribed = !!t.email_unsubscribed;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, minWidth: 180 }}>
@@ -1102,22 +1110,23 @@ function ActionCell({ t }) {
       </div>
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
         <button
-          onClick={openModal}
+          onClick={isUnsubscribed ? undefined : openModal}
+          disabled={isUnsubscribed}
           style={{
-            background: btnColors.bg,
-            color: btnColors.fg,
+            background: isUnsubscribed ? "#F3E9D7" : btnColors.bg,
+            color: isUnsubscribed ? "#8A6F3C" : btnColors.fg,
             padding: "6px 11px",
             borderRadius: 6,
             border: "none",
             fontSize: 12,
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: isUnsubscribed ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
-            opacity: recentlyContacted ? 0.75 : 1,
+            opacity: isUnsubscribed ? 0.7 : (recentlyContacted ? 0.75 : 1),
           }}
-          title={recentlyContacted ? "You emailed this person recently. Open anyway to review and send." : "Open editor, tune the message, send via BodyMap"}
+          title={isUnsubscribed ? "This therapist unsubscribed from marketing emails. You cannot send them founder email." : (recentlyContacted ? "You emailed this person recently. Open anyway to review and send." : "Open editor, tune the message, send via BodyMap")}
         >
-          Email
+          {isUnsubscribed ? "Unsubscribed" : "Email"}
         </button>
         {t.phone ? (
           <button
@@ -1548,7 +1557,7 @@ function ActivationRow({ t, updateFlag }) {
       }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
-          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} />
+          <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
         </div>
         <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>{t.email}</div>
         {t.phone && (
@@ -1625,7 +1634,13 @@ function ActivationRow({ t, updateFlag }) {
 // Flag components
 // ========================================================================
 
-function FlagBadge({ flag, isDummy }) {
+function FlagBadge({ flag, isDummy, unsubscribed }) {
+  // Unsubscribed takes priority — most important signal
+  if (unsubscribed) {
+    return (
+      <span style={{ marginLeft: 6, fontSize: 10, background: "#FCE8E6", color: "#8A2F2F", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }} title="This therapist unsubscribed from marketing emails">UNSUBSCRIBED</span>
+    );
+  }
   if (flag === "mine") {
     return (
       <span style={{ marginLeft: 6, fontSize: 10, background: "#E3F0FB", color: "#1E5F8A", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>MINE</span>
@@ -1814,25 +1829,29 @@ function NudgeButtons({ t, action }) {
     }
   };
 
+  const isUnsubscribed = !!t.email_unsubscribed;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 140 }}>
       <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
         <button
-          onClick={openModal}
+          onClick={isUnsubscribed ? undefined : openModal}
+          disabled={isUnsubscribed}
           style={{
-            background: C.sage,
-            color: "#fff",
+            background: isUnsubscribed ? "#F3E9D7" : C.sage,
+            color: isUnsubscribed ? "#8A6F3C" : "#fff",
             padding: "6px 11px",
             borderRadius: 6,
             border: "none",
             fontSize: 12,
             fontWeight: 700,
-            cursor: "pointer",
+            cursor: isUnsubscribed ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
+            opacity: isUnsubscribed ? 0.7 : 1,
           }}
-          title="Send a warm, grandma-voice email naming each missing step"
+          title={isUnsubscribed ? "This therapist unsubscribed from marketing emails." : "Send a warm email naming their next setup step"}
         >
-          Email
+          {isUnsubscribed ? "Unsubscribed" : "Email"}
         </button>
         {t.phone ? (
           <button

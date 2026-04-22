@@ -14,6 +14,11 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import {
+  generateUnsubToken,
+  unsubscribeFooterHtml,
+  UNSUB_BASE_URL,
+} from "../_shared/unsubscribe.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -210,12 +215,14 @@ serve(async (req) => {
 
     const { data: therapists } = await supabase
       .from('therapists')
-      .select('id, full_name, email, custom_url, created_at')
+      .select('id, full_name, email, custom_url, created_at, email_unsubscribed')
       .gte('created_at', minIso)
       .lte('created_at', maxIso);
 
     for (const t of (therapists || [])) {
       if (!t.email || SKIP_EMAILS.has(t.email.toLowerCase())) continue;
+      // CAN-SPAM: respect unsubscribe
+      if (t.email_unsubscribed) continue;
 
       // Dedupe: have we already sent this day to this therapist?
       const { data: existing } = await supabase
@@ -237,6 +244,11 @@ serve(async (req) => {
 
       if (!emailPayload) continue;
 
+      // Inject unsubscribe footer into HTML before sending
+      const unsubToken = await generateUnsubToken(t.id);
+      const unsubUrl = `${UNSUB_BASE_URL}?token=${encodeURIComponent(unsubToken)}`;
+      const htmlWithUnsub = emailPayload.html + unsubscribeFooterHtml(t.id, unsubUrl);
+
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
@@ -245,7 +257,7 @@ serve(async (req) => {
           to: [t.email],
           bcc: ['bodymapdemo@gmail.com'],
           subject: emailPayload.subject,
-          html: emailPayload.html,
+          html: htmlWithUnsub,
         }),
       });
 
