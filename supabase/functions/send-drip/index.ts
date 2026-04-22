@@ -197,11 +197,16 @@ serve(async (req) => {
   // For each drip day, pick therapists whose signup falls in a 22-hour window centered on that day.
   // Example: Day 2 targets signups between 2d2h and 2d22h ago. Keeps the window wide enough that
   // even if the cron runs a bit late/early, we still catch people.
+  //
+  // Day 21 (referral ask) disabled per HK on 2026-04-22 — the referral link
+  // in that template was broken (pointed at root path not signup) and the
+  // ask itself felt premature. Keep day21Email() in the code for now so
+  // it's easy to re-enable once both issues are addressed; simply omitted
+  // from the windows array below.
   const windows = [
     { day: 2 },
     { day: 5 },
     { day: 10 },
-    { day: 21 },
     { day: 30 },
   ];
 

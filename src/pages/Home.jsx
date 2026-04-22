@@ -161,6 +161,20 @@ export default function Home() {
     return () => clearInterval(t);
   }, []);
 
+  // Capture referral code from URL if someone arrives via a shared referral
+  // link like mybodymap.app/?ref=simonsmassage. Persists to localStorage so
+  // it survives navigation into /signup, where it's picked up and written
+  // to the new therapist row on account creation.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+      if (ref) {
+        localStorage.setItem('bm_referrer', ref);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener('resize', handler);
