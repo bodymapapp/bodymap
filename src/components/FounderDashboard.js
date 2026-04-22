@@ -498,12 +498,15 @@ export default function FounderDashboard() {
               Updated {lastUpdated} · Excluding {s.dummies} test accounts from totals. Click any stat card to filter the table below.
             </p>
           </div>
-          <button
-            onClick={fetchAll}
-            style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600 }}
-          >
-            Refresh
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <RunDigestButton />
+            <button
+              onClick={fetchAll}
+              style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600 }}
+            >
+              Refresh
+            </button>
+          </div>
         </div>
 
         {/* Macro stats — clickable */}
@@ -2162,4 +2165,80 @@ function formatShortDate(iso) {
     ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
     : { month: "short", day: "numeric", year: "numeric" };
   return d.toLocaleString("en-US", opts);
+}
+
+// ========================================================================
+// Run Founder Digest button
+// Fires the founder-digest edge function on demand. Shows status inline.
+// Helpful for (a) getting the email now without waiting for 8pm cron
+// and (b) verifying the function works end-to-end.
+// ========================================================================
+
+function RunDigestButton() {
+  const [status, setStatus] = useState("idle"); // idle | running | sent | failed
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const run = async () => {
+    if (status === "running") return;
+    setStatus("running");
+    setErrorMsg("");
+    try {
+      const { data, error } = await supabase.functions.invoke("founder-digest", {
+        body: {},
+      });
+      if (error) {
+        setStatus("failed");
+        setErrorMsg(error.message || "transport error");
+        return;
+      }
+      // founder-digest doesn't return a detailed ok/fail shape, so success = no error
+      setStatus("sent");
+      setTimeout(() => setStatus("idle"), 6000);
+    } catch (e) {
+      setStatus("failed");
+      setErrorMsg(e?.message || "request failed");
+    }
+  };
+
+  const bg = status === "running" ? C.stale
+    : status === "sent" ? C.rise
+    : status === "failed" ? C.fall
+    : C.forest;
+  const label = status === "running" ? "Sending..."
+    : status === "sent" ? "✓ Sent, check inbox"
+    : status === "failed" ? "✗ Failed"
+    : "Run Founder Digest";
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+      <button
+        onClick={run}
+        disabled={status === "running"}
+        style={{
+          padding: "8px 14px",
+          borderRadius: 8,
+          border: "none",
+          background: bg,
+          color: "#fff",
+          cursor: status === "running" ? "wait" : "pointer",
+          fontSize: 13,
+          fontWeight: 700,
+          whiteSpace: "nowrap",
+        }}
+        title="Invoke the founder-digest edge function now. Email lands in bodymap01@gmail.com within ~30 seconds."
+      >
+        {label}
+      </button>
+      {status === "failed" && errorMsg && (
+        <div style={{ fontSize: 10, color: C.fall, fontWeight: 600, maxWidth: 220, textAlign: "right" }}>
+          {errorMsg}
+        </div>
+      )}
+      {status === "sent" && (
+        <div style={{ fontSize: 10, color: C.rise, fontWeight: 600 }}>
+          Landing in bodymap01@gmail.com
+        </div>
+      )}
+    </div>
+  );
 }
