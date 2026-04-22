@@ -35,7 +35,7 @@ const FROM = "MyBodyMap Team <reminders@mybodymap.app>";
 const REPLY_TO = "bodymap01@gmail.com";
 const BCC_FOUNDER = "bodymapdemo@gmail.com";
 
-type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou";
+type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou" | "activation_nudge";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -174,6 +174,19 @@ function buildMessage(
         `You're helping another therapist find something that actually fits how they practice. Thank you.`,
         ``,
         `If there's anything we can do to make BodyMap better for you, reply and tell us.`,
+        ``,
+        `Cheers!`,
+        `MyBodyMap Team`,
+      ],
+    },
+    activation_nudge: {
+      // Placeholder — dashboard always passes custom_subject + custom_body
+      // built from the therapist's missing setup steps.
+      subject: `Quick hello from BodyMap`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `MyBodyMap Team here. Just a quick message to say we're here if you need help.`,
         ``,
         `Cheers!`,
         `MyBodyMap Team`,
@@ -332,7 +345,8 @@ serve(async (req) => {
       return fail(`Network call to Resend threw: ${e?.message || "unknown"}`, "resend_fetch");
     }
 
-    // Log regardless (best effort)
+    // Log regardless (best effort). Includes subject + body snippet so the
+    // dashboard can show HK exactly what was sent and when.
     try {
       await admin.from("notification_log").insert({
         therapist_id,
@@ -343,9 +357,24 @@ serve(async (req) => {
         status: resendOk ? "sent" : "failed",
         provider_id: resendJson?.id || null,
         error_message: resendOk ? null : JSON.stringify(resendJson).slice(0, 500),
+        subject: msg.subject,
+        body_snippet: (msg.text || "").slice(0, 200),
       });
     } catch (_e) {
-      // non-blocking
+      // non-blocking — if subject/body_snippet columns don't exist yet,
+      // fall back to the legacy insert shape so logging doesn't block sends.
+      try {
+        await admin.from("notification_log").insert({
+          therapist_id,
+          notification_type: `founder_outreach_${action_type}`,
+          audience: "therapist",
+          channel: "email",
+          recipient: therapist.email,
+          status: resendOk ? "sent" : "failed",
+          provider_id: resendJson?.id || null,
+          error_message: resendOk ? null : JSON.stringify(resendJson).slice(0, 500),
+        });
+      } catch (_e2) { /* give up */ }
     }
 
     // Side effects on specific action types

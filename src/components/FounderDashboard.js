@@ -125,7 +125,7 @@ export default function FounderDashboard() {
         supabase.from("clients").select("therapist_id,created_at"),
         supabase.from("activation_events").select("therapist_id,event_name"),
         supabase.from("notification_log")
-          .select("therapist_id,notification_type,status,sent_at")
+          .select("therapist_id,notification_type,status,sent_at,subject,body_snippet")
           .like("notification_type", "founder_outreach_%")
           .order("sent_at", { ascending: false }),
         supabase.from("referrals")
@@ -169,29 +169,68 @@ export default function FounderDashboard() {
           activation_events: [],
           last_contact_at: null,
           last_contact_type: null,
+          last_contact_subject: null,
+          // Full history: sorted desc by sent_at. Populated below.
+          contact_history: [],
+          contact_count: 0,
+          // Hard cooldown: days since most recent send, -1 if never contacted
+          days_since_last_contact: -1,
           unthanked_referrals: 0,
           emailed_first_session: false,
           emailed_welcome: false,
           emailed_churned: false,
           emailed_setup_nudge: false,
+          emailed_checkin: false,
+          emailed_reminder: false,
+          emailed_testimonial: false,
+          emailed_referral_thankyou: false,
+          emailed_activation_nudge: false,
         };
       }
 
-      // Layer in outreach log. Log is ordered desc, so first hit per therapist = most recent.
-      // Also track which one-off templates have already been sent so we don't recommend them again.
+      // Process the full outreach log. Log is already ordered desc by sent_at.
+      // Build contact_history array per therapist + set dedup flags for
+      // every known action type (not just the original four). This is what
+      // lets the dashboard display the complete email history and enforce
+      // a 3-day cooldown.
       for (const r of outreachLog || []) {
         const t = byId[r.therapist_id];
         if (!t) continue;
+        const type = (r.notification_type || "").replace("founder_outreach_", "");
+
+        // Full history entry
+        t.contact_history.push({
+          sent_at: r.sent_at,
+          type,
+          subject: r.subject || "(no subject stored)",
+          body_snippet: r.body_snippet || "",
+          status: r.status,
+        });
+
+        // First row per therapist is the most recent (log is desc)
         if (!t.last_contact_at) {
           t.last_contact_at = r.sent_at;
-          t.last_contact_type = (r.notification_type || "").replace("founder_outreach_", "");
+          t.last_contact_type = type;
+          t.last_contact_subject = r.subject || null;
+          t.days_since_last_contact = Math.floor(
+            (now - new Date(r.sent_at).getTime()) / DAY
+          );
         }
-        const type = (r.notification_type || "").replace("founder_outreach_", "");
+
+        // Count successful sends
         if (r.status === "sent") {
+          t.contact_count++;
+          // Dedup flags for every action type. Once sent, we don't
+          // auto-recommend the same template to this person again.
           if (type === "first_session") t.emailed_first_session = true;
           else if (type === "welcome") t.emailed_welcome = true;
           else if (type === "churned") t.emailed_churned = true;
           else if (type === "setup_nudge") t.emailed_setup_nudge = true;
+          else if (type === "checkin") t.emailed_checkin = true;
+          else if (type === "reminder") t.emailed_reminder = true;
+          else if (type === "testimonial") t.emailed_testimonial = true;
+          else if (type === "referral_thankyou") t.emailed_referral_thankyou = true;
+          else if (type === "activation_nudge") t.emailed_activation_nudge = true;
         }
       }
 
@@ -539,9 +578,10 @@ export default function FounderDashboard() {
           sortDir={sortDir}
           onSort={onSort}
           updateFlag={updateFlag}
+          onAfterSend={fetchAll}
         />
 
-        <ActivationSection rows={filtered} updateFlag={updateFlag} />
+        <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -577,7 +617,7 @@ function recommendAction(t) {
   // already handles new signups. Adding it here would double-email them.
 
   // 1. Referral thank-you (highest priority, celebratory, one-off per referral batch)
-  if (t.unthanked_referrals > 0) {
+  if (t.unthanked_referrals > 0 && !t.emailed_referral_thankyou) {
     return {
       key: "referral_thankyou",
       label: `Thank for ${t.unthanked_referrals} referral${t.unthanked_referrals > 1 ? "s" : ""}`,
@@ -621,7 +661,7 @@ function recommendAction(t) {
   }
 
   // 3. Testimonial (power user, recently active)
-  if (t.sessions_total >= TESTIMONIAL_MIN_SESSIONS && daysIdle !== null && daysIdle <= 7) {
+  if (t.sessions_total >= TESTIMONIAL_MIN_SESSIONS && daysIdle !== null && daysIdle <= 7 && !t.emailed_testimonial) {
     return {
       key: "testimonial",
       label: "Ask for testimonial",
@@ -641,7 +681,7 @@ function recommendAction(t) {
   }
 
   // 4. Churned (30+ days idle, softer than reminder)
-  if (daysIdle !== null && daysIdle >= 30) {
+  if (daysIdle !== null && daysIdle >= 30 && !t.emailed_churned) {
     return {
       key: "churned",
       label: `Win back (${daysIdle}d gone)`,
@@ -661,7 +701,7 @@ function recommendAction(t) {
   }
 
   // 5. Reminder (7-30 days idle)
-  if (daysIdle !== null && daysIdle >= REMINDER_THRESHOLD_DAYS) {
+  if (daysIdle !== null && daysIdle >= REMINDER_THRESHOLD_DAYS && !t.emailed_reminder) {
     return {
       key: "reminder",
       label: `Remind (${daysIdle}d idle)`,
@@ -681,7 +721,7 @@ function recommendAction(t) {
   }
 
   // 6. Check in (3+ days, still nothing — asks for full client list per HK's guidance)
-  if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS) {
+  if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS && !t.emailed_checkin) {
     return {
       key: "checkin",
       label: "Check in",
@@ -773,7 +813,7 @@ function ClickStat({ value, label, sub, tint, onClick, active }) {
   );
 }
 
-function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag }) {
+function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSend }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, padding: 32, textAlign: "center", color: C.gray, fontSize: 13 }}>
@@ -862,7 +902,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag }) {
           </thead>
           <tbody>
             {rows.map((t) => (
-              <Row key={t.id} t={t} firstColCell={firstColCell} updateFlag={updateFlag} />
+              <Row key={t.id} t={t} firstColCell={firstColCell} updateFlag={updateFlag} onAfterSend={onAfterSend} />
             ))}
           </tbody>
         </table>
@@ -871,7 +911,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag }) {
   );
 }
 
-function Row({ t, firstColCell, updateFlag }) {
+function Row({ t, firstColCell, updateFlag, onAfterSend }) {
   const momColor =
     t.momentum > 0 ? C.rise : t.momentum < 0 ? C.fall : t.sessions_7d === 0 && t.sessions_prev_7d === 0 ? C.stale : C.gray;
   const momArrow = t.momentum > 0 ? "\u2191" : t.momentum < 0 ? "\u2193" : "\u2500";
@@ -907,7 +947,7 @@ function Row({ t, firstColCell, updateFlag }) {
 
   return (
     <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
-      <td style={{ ...firstColCell, padding: "12px", borderTop: `1px solid ${C.light}` }}>
+      <td style={{ ...firstColCell, padding: "8px 10px", borderTop: `1px solid ${C.light}` }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
           <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
@@ -934,7 +974,7 @@ function Row({ t, firstColCell, updateFlag }) {
         <FlagMenu flag={t.admin_flag} onChange={(f) => updateFlag && updateFlag(t.id, f)} />
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", fontSize: 12 }}>
         {t.phone ? (
           <div>
             <div style={{ color: C.dark, fontWeight: 600 }}>{formatPhoneDisplay(t.phone)}</div>
@@ -950,19 +990,19 @@ function Row({ t, firstColCell, updateFlag }) {
         )}
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.dark, fontSize: 12 }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: C.dark, fontSize: 12 }}>
         {new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "2-digit" })}
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", color: C.dark, fontSize: 13, fontWeight: 600 }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: C.dark, fontSize: 13, fontWeight: 600 }}>
         {t.days_on_platform === 0 ? "Today" : `${t.days_on_platform} day${t.days_on_platform === 1 ? "" : "s"}`}
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap", color: lastUsedColor, fontSize: 13, fontWeight: 600 }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", color: lastUsedColor, fontSize: 13, fontWeight: 600 }}>
         {lastUsedLabel}
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         <span
           style={{
             background: planColors.bg,
@@ -979,35 +1019,36 @@ function Row({ t, firstColCell, updateFlag }) {
         </span>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         <div style={{ fontWeight: 700, color: C.dark }}>{t.sessions_total}</div>
         <div style={{ fontSize: 11, color: C.gray }}>{t.sessions_7d} this 7d</div>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         <div style={{ fontWeight: 700, color: C.dark }}>{t.clients_total}</div>
         <div style={{ fontSize: 11, color: C.gray }}>{t.clients_7d} this 7d</div>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         <div style={{ color: momColor, fontWeight: 700, fontSize: 14 }}>
           {momArrow} {t.momentum > 0 ? "+" : ""}{t.momentum}
         </div>
         <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{momLabel}</div>
       </td>
 
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
-        <ActionCell t={t} />
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
+        <ActionCell t={t} onAfterSend={onAfterSend} />
       </td>
     </tr>
   );
 }
 
-function ActionCell({ t }) {
+function ActionCell({ t, onAfterSend }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null); // 'sent' | 'copied' | 'failed' | null
   const [errorMsg, setErrorMsg] = useState("");
+  const [override, setOverride] = useState(false);
 
   const a = t.action;
 
@@ -1040,6 +1081,11 @@ function ActionCell({ t }) {
       } else {
         setResult("sent");
         setModalOpen(false);
+        // Refetch dashboard data so the row shows the new contact, cooldown
+        // kicks in, and Email button updates without a manual refresh.
+        if (onAfterSend) {
+          try { await onAfterSend(); } catch (_e) { /* non-blocking */ }
+        }
       }
     } catch (e) {
       setResult("failed");
@@ -1075,11 +1121,7 @@ function ActionCell({ t }) {
     return (
       <div style={{ fontSize: 12, color, fontWeight: 600 }}>
         {a.label}
-        {t.last_contact_at && (
-          <div style={{ fontSize: 10, color: C.gray, fontWeight: 500, marginTop: 2 }}>
-            Last emailed {daysAgo(t.last_contact_at)}
-          </div>
-        )}
+        {t.contact_count > 0 && <ContactHistoryBadge t={t} />}
       </div>
     );
   }
@@ -1095,39 +1137,66 @@ function ActionCell({ t }) {
     referral_thankyou: { bg: C.forest, fg: "#fff" },
   }[a.key] || { bg: C.forest, fg: "#fff" };
 
-  const recentlyContacted = t.last_contact_at && daysAgoNumeric(t.last_contact_at) <= 3;
+  // 3-day cooldown: hard block until 72 hours have passed since last send.
+  // Override link exposed for urgent cases so HK isn't truly locked out.
+  const COOLDOWN_DAYS = 3;
+  const inCooldown = t.last_contact_at && daysAgoNumeric(t.last_contact_at) < COOLDOWN_DAYS;
+  const coolDaysLeft = inCooldown ? COOLDOWN_DAYS - daysAgoNumeric(t.last_contact_at) : 0;
   const isUnsubscribed = !!t.email_unsubscribed;
+  const sendBlocked = isUnsubscribed || (inCooldown && !override);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 5, minWidth: 180 }}>
-      <div style={{ fontSize: 11, color: C.gray, fontWeight: 600 }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 180 }}>
+      <div style={{ fontSize: 11, color: C.gray, fontWeight: 600, lineHeight: 1.3 }}>
         {a.label}
-        {t.last_contact_at && (
-          <span style={{ color: recentlyContacted ? C.fall : C.gray, marginLeft: 6, fontWeight: 500 }}>
-            · last {t.last_contact_type || "email"} {daysAgo(t.last_contact_at)}
-          </span>
+        {t.contact_count > 0 && (
+          <ContactHistoryBadge t={t} />
         )}
       </div>
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
         <button
-          onClick={isUnsubscribed ? undefined : openModal}
-          disabled={isUnsubscribed}
+          onClick={sendBlocked ? undefined : openModal}
+          disabled={sendBlocked}
           style={{
-            background: isUnsubscribed ? "#F3E9D7" : btnColors.bg,
-            color: isUnsubscribed ? "#8A6F3C" : btnColors.fg,
-            padding: "6px 11px",
+            background: isUnsubscribed ? "#F3E9D7" : (inCooldown && !override ? "#E8E4DC" : btnColors.bg),
+            color: isUnsubscribed ? "#8A6F3C" : (inCooldown && !override ? "#6B7280" : btnColors.fg),
+            padding: "5px 10px",
             borderRadius: 6,
             border: "none",
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 700,
-            cursor: isUnsubscribed ? "not-allowed" : "pointer",
+            cursor: sendBlocked ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
-            opacity: isUnsubscribed ? 0.7 : (recentlyContacted ? 0.75 : 1),
+            opacity: sendBlocked ? 0.75 : 1,
           }}
-          title={isUnsubscribed ? "This therapist unsubscribed from marketing emails. You cannot send them founder email." : (recentlyContacted ? "You emailed this person recently. Open anyway to review and send." : "Open editor, tune the message, send via BodyMap")}
+          title={
+            isUnsubscribed
+              ? "This therapist unsubscribed from marketing emails."
+              : inCooldown && !override
+              ? `Cooldown: you emailed them ${daysAgo(t.last_contact_at)}. Next possible send in ${coolDaysLeft} day${coolDaysLeft === 1 ? "" : "s"}.`
+              : "Open editor, tune the message, send via BodyMap"
+          }
         >
-          {isUnsubscribed ? "Unsubscribed" : "Email"}
+          {isUnsubscribed ? "Unsubscribed" : inCooldown && !override ? `Sent ${daysAgo(t.last_contact_at)}` : "Email"}
         </button>
+        {inCooldown && !override && !isUnsubscribed && (
+          <button
+            onClick={() => setOverride(true)}
+            style={{
+              background: "transparent",
+              color: C.fall,
+              border: "none",
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+            }}
+            title="Override the 3-day cooldown. Use for urgent cases only."
+          >
+            override
+          </button>
+        )}
         {t.phone ? (
           <button
             onClick={copySms}
@@ -1269,7 +1338,7 @@ function SendModal({ t, action, sending, errorMsg, onClose, onSend }) {
             rows={10}
             style={{
               width: "100%",
-              padding: "12px",
+              padding: "8px 10px",
               border: `1.5px solid ${C.light}`,
               borderRadius: 8,
               fontSize: 14,
@@ -1361,7 +1430,7 @@ const ACTIVATION_STEPS = [
   { key: "intake",  label: "First intake sent", short: "Intake",  icon: "📋" },
 ];
 
-function ActivationSection({ rows, updateFlag }) {
+function ActivationSection({ rows, updateFlag, onAfterSend }) {
   const [onlyStuck, setOnlyStuck] = useState(false);
   const [sortKey, setSortKey] = useState("steps_done");
   const [sortDir, setSortDir] = useState("asc"); // least-done first — these need help most
@@ -1504,7 +1573,7 @@ function ActivationSection({ rows, updateFlag }) {
             </thead>
             <tbody>
               {activationRows.map((t) => (
-                <ActivationRow key={t.id} t={t} updateFlag={updateFlag} />
+                <ActivationRow key={t.id} t={t} updateFlag={updateFlag} onAfterSend={onAfterSend} />
               ))}
             </tbody>
           </table>
@@ -1535,7 +1604,7 @@ function plainHead() {
   };
 }
 
-function ActivationRow({ t, updateFlag }) {
+function ActivationRow({ t, updateFlag, onAfterSend }) {
   const done = t.steps_done || 0;
   const pct = Math.round((done / 5) * 100);
   const progressColor = done === 5 ? C.rise : done >= 3 ? C.gold : C.fall;
@@ -1551,7 +1620,7 @@ function ActivationRow({ t, updateFlag }) {
       {/* Sticky therapist column */}
       <td style={{
         position: "sticky", left: 0, background: "#fff", zIndex: 2,
-        padding: "12px", minWidth: 240,
+        padding: "8px 10px", minWidth: 240,
         boxShadow: "1px 0 0 rgba(0,0,0,0.04)",
         borderTop: `1px solid ${C.light}`,
       }}>
@@ -1571,12 +1640,12 @@ function ActivationRow({ t, updateFlag }) {
       </td>
 
       {/* Days on platform */}
-      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, color: C.dark }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", fontSize: 13, fontWeight: 600, color: C.dark }}>
         {t.days_on_platform === 0 ? "Today" : `${t.days_on_platform} day${t.days_on_platform === 1 ? "" : "s"}`}
       </td>
 
       {/* Progress bar + X/5 */}
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 60, height: 6, background: C.light, borderRadius: 3, overflow: "hidden" }}>
             <div style={{ width: `${pct}%`, height: "100%", background: progressColor }} />
@@ -1589,7 +1658,7 @@ function ActivationRow({ t, updateFlag }) {
       {ACTIVATION_STEPS.map((s) => {
         const ok = !!t.steps?.[s.key];
         return (
-          <td key={s.key} style={{ padding: "12px", textAlign: "center" }}>
+          <td key={s.key} style={{ padding: "8px 10px", textAlign: "center" }}>
             {ok ? (
               <span title={s.label + " complete"} style={{
                 display: "inline-block", width: 22, height: 22, lineHeight: "22px",
@@ -1608,7 +1677,7 @@ function ActivationRow({ t, updateFlag }) {
       })}
 
       {/* Next step to push */}
-      <td style={{ padding: "12px", whiteSpace: "nowrap", fontSize: 12 }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap", fontSize: 12 }}>
         {nextStep ? (
           <span style={{ color: C.dark, fontWeight: 600 }}>
             {nextStep.icon} {nextStep.short}
@@ -1619,9 +1688,9 @@ function ActivationRow({ t, updateFlag }) {
       </td>
 
       {/* Nudge: Email + Copy SMS buttons with grandma-voice activation copy */}
-      <td style={{ padding: "12px", whiteSpace: "nowrap" }}>
+      <td style={{ padding: "8px 10px", whiteSpace: "nowrap" }}>
         {nudgeAction ? (
-          <NudgeButtons t={t} action={nudgeAction} />
+          <NudgeButtons t={t} action={nudgeAction} onAfterSend={onAfterSend} />
         ) : (
           <span style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>✓ Activated</span>
         )}
@@ -1762,11 +1831,12 @@ function buildActivationNudge(t) {
   };
 }
 
-function NudgeButtons({ t, action }) {
+function NudgeButtons({ t, action, onAfterSend }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
+  const [override, setOverride] = useState(false);
 
   const openModal = () => {
     setResult(null);
@@ -1780,13 +1850,13 @@ function NudgeButtons({ t, action }) {
     setResult(null);
     setErrorMsg("");
     try {
-      // Use checkin action type under the hood — edge function already accepts
-      // custom_subject/custom_body so the activation_nudge copy goes through as-is.
-      // checkin is closest in intent and doesn't trigger dedup flags for welcome/first_session.
+      // Send as activation_nudge so it logs distinctly from generic checkin.
+      // Edge function accepts custom_subject/custom_body; the template key
+      // just determines the notification_type stored in notification_log.
       const { data, error } = await supabase.functions.invoke("founder-outreach", {
         body: {
           therapist_id: t.id,
-          action_type: "checkin",
+          action_type: "activation_nudge",
           custom_subject: subject,
           custom_body: body,
         },
@@ -1800,6 +1870,10 @@ function NudgeButtons({ t, action }) {
       } else {
         setResult("sent");
         setModalOpen(false);
+        // Refetch so cooldown + history reflect the new send immediately
+        if (onAfterSend) {
+          try { await onAfterSend(); } catch (_e) { /* non-blocking */ }
+        }
       }
     } catch (e) {
       setResult("failed");
@@ -1829,40 +1903,71 @@ function NudgeButtons({ t, action }) {
     }
   };
 
+  const COOLDOWN_DAYS = 3;
+  const inCooldown = t.last_contact_at && daysAgoNumeric(t.last_contact_at) < COOLDOWN_DAYS;
+  const coolDaysLeft = inCooldown ? COOLDOWN_DAYS - daysAgoNumeric(t.last_contact_at) : 0;
   const isUnsubscribed = !!t.email_unsubscribed;
+  const sendBlocked = isUnsubscribed || (inCooldown && !override);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4, minWidth: 140 }}>
-      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3, minWidth: 140 }}>
+      {t.contact_count > 0 && (
+        <ContactHistoryBadge t={t} />
+      )}
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
         <button
-          onClick={isUnsubscribed ? undefined : openModal}
-          disabled={isUnsubscribed}
+          onClick={sendBlocked ? undefined : openModal}
+          disabled={sendBlocked}
           style={{
-            background: isUnsubscribed ? "#F3E9D7" : C.sage,
-            color: isUnsubscribed ? "#8A6F3C" : "#fff",
-            padding: "6px 11px",
+            background: isUnsubscribed ? "#F3E9D7" : (inCooldown && !override ? "#E8E4DC" : C.sage),
+            color: isUnsubscribed ? "#8A6F3C" : (inCooldown && !override ? "#6B7280" : "#fff"),
+            padding: "5px 10px",
             borderRadius: 6,
             border: "none",
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: 700,
-            cursor: isUnsubscribed ? "not-allowed" : "pointer",
+            cursor: sendBlocked ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
-            opacity: isUnsubscribed ? 0.7 : 1,
+            opacity: sendBlocked ? 0.75 : 1,
           }}
-          title={isUnsubscribed ? "This therapist unsubscribed from marketing emails." : "Send a warm email naming their next setup step"}
+          title={
+            isUnsubscribed
+              ? "This therapist unsubscribed from marketing emails."
+              : inCooldown && !override
+              ? `Cooldown: you emailed them ${daysAgo(t.last_contact_at)}. Next possible send in ${coolDaysLeft} day${coolDaysLeft === 1 ? "" : "s"}.`
+              : "Send a warm email naming their next setup step"
+          }
         >
-          {isUnsubscribed ? "Unsubscribed" : "Email"}
+          {isUnsubscribed ? "Unsubscribed" : inCooldown && !override ? `Sent ${daysAgo(t.last_contact_at)}` : "Email"}
         </button>
+        {inCooldown && !override && !isUnsubscribed && (
+          <button
+            onClick={() => setOverride(true)}
+            style={{
+              background: "transparent",
+              color: C.fall,
+              border: "none",
+              fontSize: 10,
+              fontWeight: 700,
+              cursor: "pointer",
+              padding: 0,
+              textDecoration: "underline",
+            }}
+            title="Override the 3-day cooldown. Use for urgent cases only."
+          >
+            override
+          </button>
+        )}
         {t.phone ? (
           <button
             onClick={copySms}
             style={{
               background: "#fff",
               color: C.dark,
-              padding: "6px 11px",
+              padding: "5px 10px",
               borderRadius: 6,
               border: `1.5px solid ${C.light}`,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
               cursor: "pointer",
               whiteSpace: "nowrap",
@@ -1903,4 +2008,125 @@ function NudgeButtons({ t, action }) {
       )}
     </div>
   );
+}
+
+// ========================================================================
+// Contact history badge + expandable timeline
+// Shows next to the action button in both tables. Click the "📧 3" pill
+// to expand a timeline of every founder email ever sent to this therapist,
+// with date, template type, subject line, and delivery status. This is
+// what prevents HK from accidentally re-sending the same message.
+// ========================================================================
+
+function ContactHistoryBadge({ t }) {
+  const [open, setOpen] = useState(false);
+  const count = t.contact_count || 0;
+  if (count === 0) return null;
+
+  const label = TEMPLATE_LABELS;
+
+  return (
+    <>
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+        style={{
+          marginLeft: 6,
+          background: open ? C.forest : "#EEF4F1",
+          color: open ? "#fff" : C.forest,
+          border: "none",
+          borderRadius: 10,
+          padding: "1px 7px",
+          fontSize: 10,
+          fontWeight: 700,
+          cursor: "pointer",
+          letterSpacing: "0.02em",
+          verticalAlign: "baseline",
+        }}
+        title={`Click to see all ${count} email${count === 1 ? "" : "s"} sent to this therapist`}
+      >
+        📧 {count} {open ? "▲" : "▼"}
+      </button>
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            marginTop: 6,
+            background: "#FAFBFA",
+            border: `1px solid ${C.light}`,
+            borderRadius: 8,
+            padding: "8px 10px",
+            fontSize: 11,
+            lineHeight: 1.5,
+            color: C.dark,
+            width: "100%",
+            maxWidth: 360,
+            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+          }}
+        >
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            color: C.gray,
+            marginBottom: 6,
+          }}>
+            Email history · most recent first
+          </div>
+          {(t.contact_history || []).map((h, i) => (
+            <div key={i} style={{
+              paddingBottom: 6,
+              marginBottom: 6,
+              borderBottom: i === t.contact_history.length - 1 ? "none" : `1px dashed ${C.light}`,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "baseline" }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.sage, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  {label[h.type] || h.type}
+                </span>
+                <span style={{ fontSize: 10, color: C.gray, whiteSpace: "nowrap" }}>
+                  {formatShortDate(h.sent_at)}
+                </span>
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.dark, marginTop: 2 }}>
+                {h.subject || "(no subject stored)"}
+              </div>
+              {h.body_snippet && (
+                <div style={{ fontSize: 10, color: C.gray, fontStyle: "italic", marginTop: 2, lineHeight: 1.4 }}>
+                  {h.body_snippet.length >= 200 ? h.body_snippet + "..." : h.body_snippet}
+                </div>
+              )}
+              {h.status !== "sent" && (
+                <div style={{ fontSize: 10, color: C.fall, fontWeight: 700, marginTop: 2 }}>
+                  ✗ {h.status}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
+const TEMPLATE_LABELS = {
+  welcome: "Welcome",
+  checkin: "Check in",
+  reminder: "Reminder",
+  testimonial: "Testimonial",
+  first_session: "First session",
+  setup_nudge: "Setup nudge",
+  churned: "Churned",
+  referral_thankyou: "Referral thanks",
+  activation_nudge: "Activation nudge",
+};
+
+function formatShortDate(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const now = new Date();
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const opts = sameYear
+    ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }
+    : { month: "short", day: "numeric", year: "numeric" };
+  return d.toLocaleString("en-US", opts);
 }
