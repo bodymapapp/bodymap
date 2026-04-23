@@ -443,6 +443,18 @@ export default function FounderDashboard() {
   if (!data) return null;
 
   const s = data.stats;
+
+  // Diagnostic: count total notification_log entries across all therapists
+  // (visible + hidden). Helps HK see if comms rows exist in DB but aren't
+  // rendering for some reason. Also count dummies.
+  const diagCommsAllTherapists = (data.therapists || []).reduce(function(sum, t) {
+    return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
+  }, 0);
+  const diagCommsVisible = (filtered || []).reduce(function(sum, t) {
+    return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
+  }, 0);
+  const diagCommsHidden = diagCommsAllTherapists - diagCommsVisible;
+
   const activateFilter = (key) => {
     setCohortFilter(cohortFilter === key ? "all" : key);
     // Smooth scroll to table
@@ -510,6 +522,32 @@ export default function FounderDashboard() {
             <p style={{ margin: "6px 0 0", fontSize: 12, color: C.gray }}>
               Updated {lastUpdated} · Excluding {s.dummies} test accounts from totals. Click any stat card to filter the table below.
             </p>
+            {/* DIAGNOSTIC BANNER for Table 3 comms log. Shows right under the title so it
+                survives any scroll-to-top on page load. Color coded:
+                  green = data is reaching the grid
+                  red   = zero comms found anywhere, nothing to show
+                  gold  = comms exist but hidden behind the dummy filter  */}
+            <div style={{
+              marginTop: 10,
+              padding: "8px 12px",
+              background: diagCommsVisible > 0 ? "#F0FDF4"
+                        : diagCommsAllTherapists > 0 ? "#FEF9E7"
+                        : "#FEF3F2",
+              border: "1.5px solid " + (diagCommsVisible > 0 ? C.rise
+                        : diagCommsAllTherapists > 0 ? C.gold
+                        : C.fall),
+              borderRadius: 6,
+              fontSize: 12,
+              fontWeight: 600,
+              color: diagCommsVisible > 0 ? C.forest
+                    : diagCommsAllTherapists > 0 ? "#7D5A1F"
+                    : C.fall,
+              maxWidth: 680,
+            }}>
+              Comms log diagnostic · {diagCommsAllTherapists} total comms in DB · {diagCommsVisible} visible in Table 3 · {diagCommsHidden} hidden behind dummy filter
+              {diagCommsAllTherapists === 0 && " · Import from Resend button in Table 3 to populate."}
+              {diagCommsVisible === 0 && diagCommsAllTherapists > 0 && " · Uncheck \"Hide test accounts\" to see them."}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
             <RunDigestButton />
@@ -2510,9 +2548,30 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
     return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
   }, 0);
 
+  // Count therapists with at least one send
+  const therapistsWithSends = (rowsWithSends || []).filter(function(t) {
+    return Array.isArray(t?.contact_history) && t.contact_history.length > 0;
+  }).length;
+
   // Header area (always rendered so Table 3 shows up even if body errors)
   const header = (
     <div style={{ marginTop: 36 }}>
+      {/* Fixed diagnostic banner at top of Table 3. Survives scroll-to-top. */}
+      <div style={{
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        background: totalHistoryRows === 0 ? "#FEF3F2" : "#F0FDF4",
+        border: "2px solid " + (totalHistoryRows === 0 ? C.fall : C.rise),
+        padding: "10px 14px",
+        marginBottom: 12,
+        borderRadius: 6,
+        fontSize: 13,
+        fontWeight: 700,
+        color: totalHistoryRows === 0 ? C.fall : C.forest,
+      }}>
+        DIAGNOSTIC: {totalHistoryRows} total comms across {rowsWithSends?.length ?? 0} visible therapists · {therapistsWithSends} therapist(s) have at least one send
+      </div>
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
           Table 3
@@ -2522,7 +2581,6 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
         </h2>
         <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
           Every email sent to each therapist. Auto sends (Welcome, Drip, Pulse) and manual founder outreach side by side. Hover any cell to see subject and date.
-          {" "}Raw contact_history across {rowsWithSends?.length ?? 0} visible therapists: <strong>{totalHistoryRows}</strong> entries.
         </p>
       </div>
     </div>
