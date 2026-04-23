@@ -612,7 +612,7 @@ export default function FounderDashboard() {
 
         <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
 
-        <CommsLogGrid rows={filtered} />
+        <CommsLogGrid rows={filtered} updateFlag={updateFlag} />
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -2380,7 +2380,7 @@ function CommsBackfillButton() {
   );
 }
 
-function CommsLogGrid({ rows }) {
+function CommsLogGrid({ rows, updateFlag }) {
   const [sortBy, setSortBy] = useState("name");
   const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
@@ -2508,7 +2508,7 @@ function CommsLogGrid({ rows }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Georgia, serif", fontSize: 12 }}>
           <thead>
             <tr style={{ background: C.softCream }}>
-              <th style={{ textAlign: "left", padding: "10px 10px", borderBottom: "1.5px solid " + C.dark, position: "sticky", left: 0, background: C.softCream, zIndex: 2, minWidth: 220 }}>
+              <th style={{ textAlign: "left", padding: "10px 10px", borderBottom: "1.5px solid " + C.dark, position: "sticky", left: 0, background: C.softCream, zIndex: 2, minWidth: 260 }}>
                 Therapist
               </th>
               {COMMS_OUTREACH_COLUMNS.map(function (col, i) {
@@ -2552,13 +2552,22 @@ function CommsLogGrid({ rows }) {
               return (
                 <tr key={t.id || Math.random()} style={{ borderBottom: "1px solid " + C.light }}>
                   <td style={{ padding: "8px 10px", position: "sticky", left: 0, background: "#fff", zIndex: 1, borderRight: "1px solid " + C.light }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: C.dark }}>
+                    <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
                       {t.business_name || t.full_name || "(no name)"}
+                      <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
                     </div>
-                    <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>{t.email || ""}</div>
+                    <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>{t.email || ""}</div>
+                    {t.phone && (
+                      <div style={{ fontSize: 11, color: C.sage, marginTop: 2 }}>
+                        <a href={"tel:" + (t.phone || "").replace(/\D/g, "")} style={{ color: C.sage, textDecoration: "none" }}>
+                          {formatPhoneDisplay(t.phone)}
+                        </a>
+                      </div>
+                    )}
+                    <FlagMenu flag={t.admin_flag} onChange={function(f) { if (updateFlag) updateFlag(t.id, f); }} />
                     {t.last_contact_at && (
-                      <div style={{ fontSize: 10, color: C.gray, marginTop: 2, fontStyle: "italic" }}>
-                        last: {commsDaysAgoShort(t.last_contact_at)}
+                      <div style={{ fontSize: 10, color: C.gray, marginTop: 4, fontStyle: "italic" }}>
+                        last contact: {commsDaysAgoShort(t.last_contact_at)}
                       </div>
                     )}
                   </td>
