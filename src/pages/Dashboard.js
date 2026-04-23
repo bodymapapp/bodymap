@@ -638,7 +638,7 @@ function ReferralCard({ therapist, C2 }) {
     <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #FFFBEB)', border: '1.5px solid #86EFAC', borderRadius: 14, padding: 24, marginBottom: 20 }}>
       <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.forest, margin: '0 0 6px 0' }}>🌿 Refer a therapist</p>
       <p style={{ fontSize: 14, color: C2.darkGray, lineHeight: 1.6, margin: '0 0 14px 0', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-        Know another therapist who'd love BodyMap? Share your link. They get Silver free for life. You get a shoutout and swag.
+        Know another therapist who'd love BodyMap? Share your link. They get Silver free for a limited time. You get a shoutout and swag.
       </p>
       <div style={{ background: '#fff', border: `1.5px solid ${C2.lightGray}`, borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 13, color: C2.forest, fontWeight: 700, wordBreak: 'break-all' }}>
         {referralUrl}

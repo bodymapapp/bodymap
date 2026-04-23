@@ -280,7 +280,7 @@ export default function Signup() {
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', marginBottom:8 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'#A8C5B5' }}>🌿 First 100 therapists · Silver for free</span>
+              <span style={{ fontSize:11, fontWeight:700, color:'#A8C5B5' }}>🌿 First 100 therapists · Silver free for a limited time</span>
             </div>
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Make it impossible for clients<br/>not to come back.</h2>
             <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores — helping every client feel like your #1.</p>
@@ -340,10 +340,10 @@ export default function Signup() {
         {/* Heading */}
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:20, padding:'4px 12px', marginBottom:10 }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>🌿 Founding Therapist — Silver for Free</span>
+            <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>🌿 Founding Therapist — Silver Free for a Limited Time</span>
           </div>
           <h1 style={{ fontSize: '28px', fontWeight: '800', color: C.darkGray, margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Create your account</h1>
-          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>Free Silver for life · No credit card · Up and running in 30 seconds</p>
+          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>Silver free for a limited time · No credit card · Up and running in 30 seconds</p>
         </div>
 
         {/* Google button */}

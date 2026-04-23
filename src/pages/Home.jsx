@@ -208,7 +208,7 @@ export default function Home() {
               </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-              {['🌿 Silver free for founding therapists', 'Live in 30 seconds', 'No credit card ever'].map(t => (
+              {['🌿 Silver free for a limited time', 'Live in 30 seconds', 'No credit card ever'].map(t => (
                 <span key={t} style={{ fontSize:13, color:G.soft, display:'flex', alignItems:'center', gap:4 }}>
                   <span style={{ color:G.soft }}>✓</span> {t}
                 </span>
@@ -490,7 +490,7 @@ export default function Home() {
             Your practice deserves<br/>better tools. Free ones.
           </h2>
           <p style={{ fontSize:17, color:'rgba(255,255,255,0.65)', margin:'0 0 36px', lineHeight:1.7 }}>
-            We're giving the first 100 therapists full Silver access — free for life. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
+            We're giving the first 100 therapists full Silver access, free for a limited time. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
             <Link to="/signup" style={{ background:'#fff', color:G.deep, borderRadius:12, padding:'16px 32px', fontSize:16, fontWeight:700, textDecoration:'none' }}>
@@ -501,7 +501,7 @@ export default function Home() {
             </Link>
           </div>
           <p style={{ fontSize:13, color:'rgba(255,255,255,0.35)', margin:0 }}>
-            Free Silver for life — for founding therapists. You're early. That means something.
+            Silver free for a limited time, for founding therapists. You're early. That means something.
           </p>
         </div>
       </section>

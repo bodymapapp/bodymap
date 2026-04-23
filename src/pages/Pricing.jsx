@@ -22,7 +22,8 @@ export default function Pricing() {
     {
       name: 'Bronze', emoji: '🥉', highlight: false,
       price: { monthly: 0, annual: 0 },
-      tagline: 'Everything to run your practice — automated. Free to start for a limited time.',
+      futurePrice: 9,
+      tagline: 'Everything to run your practice, automated. Free for a limited time.',
       cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free - No Card',
       ctaAction: () => isAuthenticated ? navigate('/dashboard') : navigate('/signup'),
       features: [
@@ -46,7 +47,8 @@ export default function Pricing() {
     {
       name: 'Silver', emoji: '🥈', highlight: true, badge: '🌿 Free for Founding Therapists',
       price: { monthly: 0, annual: 0 },
-      tagline: 'Your entire client history, working for you. Intelligence that compounds over time.',
+      futurePrice: 19,
+      tagline: 'Your entire client history, working for you. Free for a limited time.',
       cta: 'Join free — founding therapist',
       ctaAction: () => window.location.href = '/signup',
       features: [
@@ -87,7 +89,7 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🌿 First 100 therapists · Silver for free
+          🌿 First 100 therapists · Silver free for a limited time
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
           Retain and Grow Your Client Base.<br/>Automate the Rest.
@@ -96,7 +98,7 @@ export default function Pricing() {
           Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
         </p>
         <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 40px', lineHeight:1.6 }}>
-          We're giving the first 100 therapists full Silver access — free for life. No credit card, no trial, no catch.
+          We're giving the first 100 therapists full Silver access, free for a limited time. No credit card, no trial, no catch.
         </p>
       </div>
 
@@ -115,16 +117,21 @@ export default function Pricing() {
             <div style={{ fontSize:28, marginBottom:8 }}>{tier.emoji}</div>
             <div style={{ fontSize:22, fontWeight:700, color:tier.highlight?'#fff':C.dark, marginBottom:4 }}>{tier.name}</div>
             <div style={{ fontSize:13, color:tier.highlight?'rgba(255,255,255,0.7)':C.gray, lineHeight:1.5, marginBottom:20 }}>{tier.tagline}</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:4, marginBottom:4 }}>
+            <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginBottom:4, flexWrap:'wrap' }}>
               <span style={{ fontSize:44, fontWeight:700, color:tier.highlight?'#fff':C.dark, lineHeight:1, fontFamily:'Georgia,serif' }}>
                 {tier.price.monthly === 0 ? 'Free' : `$${tier.price.monthly}`}
               </span>
+              {tier.price.monthly === 0 && tier.futurePrice && (
+                <span style={{ fontSize:16, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:8, textDecoration:'line-through', fontFamily:'Georgia,serif', fontStyle:'italic' }}>
+                  ${tier.futurePrice}/mo
+                </span>
+              )}
               {tier.price.monthly > 0 && <span style={{ fontSize:14, color:tier.highlight?'rgba(255,255,255,0.6)':C.gray, marginBottom:6 }}>/mo</span>}
             </div>
             {tier.price.monthly === 0 && tier.highlight
-              ? <div style={{ fontSize:13, fontWeight:700, color:'#86EFAC', marginBottom:20 }}>🌿 For founding therapists — Silver for life</div>
+              ? <div style={{ fontSize:13, fontWeight:700, color:'#86EFAC', marginBottom:20 }}>🌿 Free for founding therapists, for a limited time</div>
               : tier.price.monthly === 0
-              ? <div style={{ fontSize:13, fontWeight:700, color:C.sage, marginBottom:20 }}>Free forever</div>
+              ? <div style={{ fontSize:13, fontWeight:700, color:C.sage, marginBottom:20 }}>Free for a limited time</div>
               : <div style={{ fontSize:12, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:20 }}>billed monthly</div>
             }
             {tier.comingSoon
@@ -160,7 +167,7 @@ export default function Pricing() {
       <div style={{ maxWidth:680, margin:'0 auto', padding:'0 24px 80px' }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:40 }}>Common questions</h2>
         {[
-          { q:'Is Bronze really free forever?', a:"Yes. Every tool on this page is free on Bronze. No credit card, no trial, no hidden limits. We plan to keep Bronze free for everyone who signs up now. As BodyMap grows, we reserve the right to introduce pricing for new signups - but anyone on Bronze today will be grandfathered. We believe every therapist deserves professional tools, not just the ones who can afford $70 a month." },
+          { q:'Is Bronze really free?', a:"Yes, for a limited time. Every tool on this page is free on Bronze right now. No credit card, no trial, no hidden limits. Bronze will eventually be $9 per month for new signups, but anyone who joins today stays free for as long as the promotion runs, and gets grandfathered benefits when pricing starts. We believe every therapist deserves professional tools." },
           { q:'How can you afford to offer this for free?', a:"Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build and run - AI, automated emails, intelligent scheduling, body mapping - now cost a fraction of that. We built BodyMap lean and pass that directly to you. We make money when you grow into Silver. That only happens if Bronze genuinely helps you first. So we are fully aligned with your success." },
           { q:'Why BodyMap and not the other scheduling tools?', bullets:['They charge for everything - reminders, SOAP notes, forms, and messaging are paywalled add-ons. On BodyMap they are all free on Bronze.','They require clients to create accounts or download an app just to book. That friction kills bookings. BodyMap clients book in 2 taps, no account, no app.','They have no intelligence. They store your data but never tell you anything useful with it. BodyMap surfaces patterns, flags retention risk, and forecasts revenue automatically.','They are built for salons and spas, not massage therapists. You pay for inventory management and loyalty points you will never use.','They push constant updates that break your workflow. Multiple competitors have reviews specifically about updates that caused missed bookings and dropped reminders. BodyMap is built for solo LMTs. Stable, focused, and fast.'] },
           { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets." },
