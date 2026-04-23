@@ -1,17 +1,14 @@
 // Preview edge function — renders every email template with sample data.
-// Used by the /founder/emails page to let HK review copy in one place.
+// Used by /founder/emails.
 //
-// IMPORTANT TECHNICAL DEBT: this file duplicates template code from
-// send-drip, send-welcome, practice-pulse, and founder-outreach. Supabase
-// edge functions don't cleanly share code across directories, so for now
-// we vendor. When changing an email:
-//   1. Change it in the real send function (send-drip, etc.)
-//   2. Change it here too
-//   3. Consider extracting to supabase/functions/_shared/email_templates.ts
-//      if the list grows past ~20 templates
+// TAXONOMY:
+//   E1.x = Auto Drip (fires automatically, signup or cron)
+//   E2.x = Founder Outreach (manual sends from /founder)
 //
-// Auth: admin email allowlist via JWT check. Returns JSON array:
-//   [{ id, category, subject, html, when_fires, notes }]
+// TECH DEBT: this file vendors template code from send-welcome, send-drip,
+// practice-pulse, and founder-outreach. When editing an email I edit both
+// files in one commit. When the list grows past ~20, extract to
+// supabase/functions/_shared/email_templates.ts.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -26,8 +23,6 @@ const ADMIN_EMAILS = new Set([
   "harshk.mba@gmail.com",
 ]);
 
-// ─── Sample data ─────────────────────────────────────────
-
 const FAKE = {
   first_name: "Sarah",
   full_name: "Sarah Mitchell",
@@ -36,13 +31,9 @@ const FAKE = {
   days_on_platform: 34,
   days_since_use: 12,
   sessions_total: 47,
-  practice_name: "Still Point Massage",
 };
 
-const DASH_LINK = "https://mybodymap.app/dashboard";
-const BOOK_LINK = `https://mybodymap.app/book/${FAKE.custom_url}`;
-
-// ─── Shared chrome ───────────────────────────────────────
+const DASH = "https://mybodymap.app/dashboard";
 
 function wrap(inner: string) {
   return `
@@ -61,33 +52,60 @@ function wrap(inner: string) {
 }
 
 function plainTextWrap(lines: string[]) {
-  // For founder-outreach emails that are plain-text style
   return `
-    <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;font-size:15px;color:#1F2937;line-height:1.7;">
-      <div style="margin-bottom:24px;">
-        <span style="font-size:20px;font-weight:700;color:#1A3A28;">BodyMap</span>
+    <div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 BodyMap</div>
+      ${lines.map(l => l === "" ? "<br/>" : `<div>${l}</div>`).join("\n")}
+      <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
+        Reply to this email and it reaches me directly.
       </div>
-      ${lines.map(l => l === "" ? "<br/>" : `<p style="margin:0 0 4px;">${l}</p>`).join("\n")}
     </div>
   `;
 }
 
-// ─── Drip templates (vendored from send-drip/index.ts) ───
+// ─── E1.1 Welcome / Onboarding ────────────────────────────
 
-function welcomeEmail(firstName: string) {
+function e11Welcome(firstName: string) {
+  const steps = [
+    { n: "1", title: "Bring your clients in", body: "Import your list or add a few by hand. This is the foundation that everything else sits on top of.", link: DASH, cta: "Import clients" },
+    { n: "2", title: "Tell us what you offer", body: "Your 60-min deep tissue. Your 90-min prenatal. Your hot stone add-on. Add your services so clients book the right thing.", link: `${DASH}/settings`, cta: "Add services" },
+    { n: "3", title: "Set your hours", body: "When you're open. When you're closed. When you are with a client and not to be disturbed. This is how clients book themselves without you typing a single text.", link: `${DASH}/schedule`, cta: "Set hours" },
+    { n: "4", title: "Connect payments", body: `Stripe or Square. One minute. After this, clients pay the moment they book. You never have to send "hey can you Venmo me" again.`, link: `${DASH}/billing`, cta: "Connect payments" },
+    { n: "5", title: "Send your first intake", body: "Pick one regular client. Text them your BodyMap link. Watch them fill out a visual body map on their phone in 60 seconds instead of scribbling on a clipboard. The first time you see it land in your dashboard is the moment this all clicks.", link: DASH, cta: "Send first intake" },
+  ];
+  const stepsHtml = steps.map(s => `
+    <div style="border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:14px;background:#F9FAF9;border-radius:0 8px 8px 0;">
+      <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Step ${s.n}</div>
+      <div style="font-size:17px;font-weight:700;color:#1A3A28;margin-bottom:6px;font-family:Georgia,serif;">${s.title}</div>
+      <div style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin-bottom:10px;">${s.body}</div>
+      <a href="${s.link}" style="font-family:system-ui;font-size:13px;font-weight:700;color:#2A5741;text-decoration:none;">${s.cta} &rarr;</a>
+    </div>
+  `).join("");
+
   const inner = `
-    <h2 style="font-size:26px;font-weight:700;color:#1A3A28;margin:0 0 16px;line-height:1.25;">Welcome to BodyMap, ${firstName} 🌿</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Your back office just went on autopilot.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Here's what happens next, so you know what to expect:</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">Today:</strong> Connect Stripe, add your first service, set your hours.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">This week:</strong> Send your BodyMap link to one regular client. Watch them light up.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">Ongoing:</strong> We'll send short, useful tips every few days. Nothing salesy.</p>
-    <a href="${DASH_LINK}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
+    <h1 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 18px;line-height:1.3;">Welcome home, ${firstName}. 5 steps, any order, no hurry. 🌿</h1>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hi ${firstName},</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">You spent the day giving other people their breath back. Now here you are, screen on, thinking about one more thing to set up. We see you.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">So let's make this short.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 22px;">BodyMap works best once these 5 things are in place. Each one takes a minute or two. You can do them in any order. You can stop after three and come back next week. Whatever fits the day.</p>
+    ${stepsHtml}
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:20px 0 16px;">That's it. No quiz at the end. No "complete your profile to unlock features." Just five small things that turn your hands-on practice into one that runs itself in the background.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">We are here if you get stuck. Reply to this email and a real person reads it.</p>
+    <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin:0 0 24px;">
+      <p style="font-family:Georgia,serif;font-size:16px;font-style:italic;color:#2A5741;margin:0;">Welcome home.</p>
+    </div>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Cheers,</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
+    <div style="margin-top:26px;text-align:center;">
+      <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life (founding therapist)</span>
+    </div>
   `;
-  return { subject: `${firstName}, your back office just went on autopilot 🌿`, html: wrap(inner) };
+  return { subject: `Welcome home, ${firstName}. 5 steps, any order, no hurry.`, html: wrap(inner) };
 }
 
-function day2Email(firstName: string, dashLink: string) {
+// ─── E1.2 Day 2 ───────────────────────────────────────────
+
+function e12Day2(firstName: string) {
   const inner = `
     <div style="background:#E8F0EA;border:1px solid #C8DCCC;border-radius:8px;padding:4px 10px;display:inline-block;margin-bottom:16px;">
       <span style="font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;text-transform:uppercase;letter-spacing:0.08em;">🌿 Day 2 · Unusual energy</span>
@@ -105,43 +123,50 @@ function day2Email(firstName: string, dashLink: string) {
     <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin-bottom:24px;">
       <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;">Open your dashboard and look at the Clients tab. It quietly flags anyone whose booking gap is stretching. One tap, one message, most of them come back. And they usually need it more than they'll admit.</p>
     </div>
-    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
+    <a href="${DASH}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
   `;
   return { subject: `3 reasons BodyMap might be a terrible idea, ${firstName}`, html: wrap(inner) };
 }
 
-function day5Email(firstName: string, customUrl: string, dashLink: string) {
+// ─── E1.3 Day 5 ───────────────────────────────────────────
+
+function e13Day5(firstName: string, customUrl: string) {
   const selfIntakeLink = `https://mybodymap.app/book/${customUrl}`;
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Try your own body map before your next client does</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, this one takes 60 seconds and changes how you'll think about intake forever.</p>
-    <div style="background:#F9FAF9;border-radius:10px;padding:20px;margin-bottom:20px;">
-      <p style="font-family:Georgia,serif;font-size:16px;color:#1A3A28;line-height:1.7;margin:0 0 8px;font-style:italic;">Send the body map to yourself.</p>
-      <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">Pretend you're a new client booking with you. Walk through the intake. Tap your own zones. See what your clients see.</p>
-    </div>
-    <a href="${selfIntakeLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Take the intake yourself →</a>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">When you're done, two things usually happen:</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> You realize it's way easier than what your clients fill out today.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">2.</strong> You see your own dashboard light up with real data. Your own body map waiting, pressure preference, areas to avoid. That's what you get for every client going forward.</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, feel what your clients feel</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hey ${firstName},</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Here is a thing almost no therapist does before recommending a tool to their clients.</p>
+    <p style="font-family:system-ui;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 20px;font-weight:700;font-family:Georgia,serif;font-style:italic;">They actually try it themselves.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Take 60 seconds right now. Open your dashboard. Find your BodyMap link. Open it on your phone like you are a client booking with you for the first time.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Walk through the intake. Tap your own shoulders. Mark the spot on your lower back that aches after a long day. Note the places on your body that carry the week.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">When you are done, two things happen.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;"><strong style="color:#1A3A28;">First,</strong> you realize how quick this is for your clients. Probably quicker than the paper form you currently hand them.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">Second,</strong> your own dashboard lights up with your own body. Your own pressure preference. Your own tension pattern. That is a small, quiet thing. But it is also exactly what every one of your clients is about to experience when they try this for themselves.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;font-style:italic;">You give your clients peace. Let us give you a tiny moment of it too.</p>
+    <a href="${selfIntakeLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Take the intake yourself →</a>
   `;
-  return { subject: `${firstName}, send yourself the body map`, html: wrap(inner) };
+  return { subject: `${firstName}, feel what your clients feel`, html: wrap(inner) };
 }
 
-function day10Email(firstName: string, dashLink: string) {
+// ─── E1.4 Day 10 (unchanged) ──────────────────────────────
+
+function e14Day10(firstName: string) {
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, what Terra said about BodyMap</h2>
-    <div style="background:#F9FAF9;border-left:3px solid #C59550;padding:20px 24px;margin:20px 0;">
-      <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
-      <p style="font-family:system-ui;font-size:12px;color:#6B7280;margin:0;">— Terra, BodyMap therapist</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about BodyMap</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on BodyMap sent this yesterday:</p>
+    <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
+      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, BodyMap therapist</p>
     </div>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">That was Terra's reaction the first time a BodyMap intake landed pre-filled in her dashboard. No typing. No chasing. Client filled it out on their phone while waiting for coffee.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;">If you're not doing this yet, grab a regular client and send them your BodyMap link today. One send, one conversation, they'll never fill out another paper form.</p>
-    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">That's the whole idea. Your back office keeps working while you do the work on the table.</p>
+    <a href="${DASH}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
   `;
-  return { subject: `${firstName}, what Terra said about BodyMap`, html: wrap(inner) };
+  return { subject: `What Terra said about BodyMap`, html: wrap(inner) };
 }
 
-function day30Email(firstName: string) {
+// ─── E1.5 Day 30 ──────────────────────────────────────────
+
+function e15Day30(firstName: string) {
   const inner = `
     <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 16px;line-height:1.25;">${firstName}, no rush at all</h2>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">You've been on your feet for 8 hours. You've given 5 massages. Your hands are done. Your back is done. The last thing you want to do right now is open a laptop and answer one more email.</p>
@@ -160,24 +185,35 @@ function day30Email(firstName: string) {
   return { subject: `${firstName}, no rush at all`, html: wrap(inner) };
 }
 
-function day60Email(firstName: string, customUrl: string) {
+// ─── E1.6 Day 60 ──────────────────────────────────────────
+
+function e16Day60(firstName: string, customUrl: string) {
   const referralLink = `https://mybodymap.app/?ref=${customUrl}`;
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, a small ask (with a free thing attached)</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">You've been on BodyMap for two months. Long enough to know if it fits your practice or not.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">If it does, here's a small ask: know another solo massage therapist who could use this? Share your link.</p>
-    <div style="background:#F9FAF9;border-radius:10px;padding:16px 20px;margin:20px 0;">
-      <p style="font-family:system-ui;font-size:12px;color:#6B7280;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Your referral link</p>
-      <p style="font-family:Courier New, monospace;font-size:14px;color:#1A3A28;margin:0;font-weight:600;">${referralLink}</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 16px;line-height:1.25;">${firstName}, a quiet thank you (and a small ask)</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hi ${firstName},</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Two months in. You've had enough sessions by now to know whether this thing earns its place in your practice or not.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">If it does, we want to say something first.</p>
+    <p style="font-family:system-ui;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 20px;font-weight:700;font-family:Georgia,serif;font-style:italic;">Thank you. Seriously. You are why this exists.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Every week, your body does physical work that most software founders will never understand. You stand, you lift, you hold space, you breathe through other people's weeks. And still you made room to try something new. That is a gift we do not take lightly.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Now the small ask.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Do you know another massage therapist out there who is buried under paper intake forms, chasing Venmo payments, wondering where their regulars went? Someone who would feel a little lighter if they found us?</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Send them your referral link:</p>
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+      <a href="${referralLink}" style="font-family:system-ui;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;text-decoration:none;">${referralLink}</a>
     </div>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;"><strong style="color:#1A3A28;">What they get:</strong> full Silver tier, free for life. No trial, no credit card, no expiration.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">What you get:</strong> our genuine thanks, plus we'll mention you in our launch announcement (with your permission).</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">No pressure. Only share it if you actually think they'd love it.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 8px;"><strong style="color:#1A3A28;">What they get:</strong> full Silver tier, free for life. No trial. No credit card. No "upgrade later" trick.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">What you get:</strong> our genuine thanks, plus a small shoutout in our launch post when the time comes (with your permission).</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;font-style:italic;">No pressure. Only share it if you truly think they would love it. One therapist helping another is how healing work spreads. That is the oldest story there is.</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Cheers,</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
   `;
-  return { subject: `${firstName}, a small ask (with a free thing attached) 🌿`, html: wrap(inner) };
+  return { subject: `${firstName}, a quiet thank you (and a small ask)`, html: wrap(inner) };
 }
 
-function pulseEmail(firstName: string) {
+// ─── E1.7 Practice Pulse ──────────────────────────────────
+
+function e17Pulse(firstName: string) {
   const inner = `
     <h2 style="font-size:22px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Your Practice Pulse</h2>
     <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 20px;">Good morning ${firstName}. Here's what's happening in your practice today.</p>
@@ -190,74 +226,88 @@ function pulseEmail(firstName: string) {
   return { subject: `Your Practice Pulse for Wed, Oct 15`, html: wrap(inner) };
 }
 
-// ─── Founder outreach templates (vendored from founder-outreach/index.ts) ─
+// ─── Founder outreach (E2.x, plain-text style) ────────────
 
-function outreachWelcome(name: string) {
+function e21Welcome(n: string) {
   return {
-    subject: `Welcome to BodyMap, ${name}`,
+    subject: `Welcome to BodyMap, ${n}`,
     lines: [
-      `Hi ${name},`, ``,
+      `Hi ${n},`, ``,
       `MyBodyMap Team here. Welcome to BodyMap. First step to get value fast is to bring your full client list in.`, ``,
       `Reply if you need help. Cheers!`, ``,
       `MyBodyMap Team`,
     ],
   };
 }
-function outreachCheckin(name: string) {
+
+function e22Checkin(n: string) {
   return {
-    subject: `Checking in, ${name}`,
+    subject: `${n}, how are your hands?`,
     lines: [
-      `Hi ${name},`, ``,
-      `MyBodyMap Team here. Just checking in. Are things clicking for you on BodyMap, or running into anything we could help with?`, ``,
-      `Hit reply with whatever's on your mind. One sentence works fine.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Hi ${n},`, ``,
+      `MyBodyMap Team here. Not writing to push anything. Just checking in.`, ``,
+      `You signed up a little while ago, and we know signup week is the busiest week. New clients find you. Old clients need you. A hundred small things land on your plate that have nothing to do with the software you were going to set up on Tuesday.`, ``,
+      `So we want to do something small and useful instead of sending another reminder.`, ``,
+      `Want us to import your client list for you? Send us a CSV export from your current tool, or even a photo of a handwritten list. We will get it into your BodyMap dashboard by tomorrow morning. No forms, no back-and-forth, just send whatever you have.`, ``,
+      `Or if something else is in the way, hit reply and tell us. "The payments setup confused me." "I'm not sure which plan I need." "I just need more time." Any of those, we can help with in one message.`, ``,
+      `Take care of your hands this week.`, ``,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachReminder(name: string, days: number) {
+
+function e23Reminder(n: string, days: number) {
   return {
-    subject: `Haven't seen you in a bit, ${name}`,
+    subject: `${n}, still thinking about you`,
     lines: [
-      `Hi ${name},`, ``,
-      `MyBodyMap Team here. It's been about ${days} days since you last used BodyMap. No pressure, just wanted to make sure you didn't hit a wall anywhere.`, ``,
-      `If something's missing, reply and tell us. It goes straight to the build list.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Hi ${n},`, ``,
+      `MyBodyMap Team here. It has been about ${days} days since you last opened BodyMap.`, ``,
+      `We are not writing to drag you back. Your practice runs on your schedule, not ours.`, ``,
+      `But we were thinking about you today, and we had a small idea.`, ``,
+      `Want us to send you a short video of your dashboard? Two minutes, voiceover, walking through what's new since you last logged in and what other therapists are doing with it. No sales pitch. Just so the next time you have a quiet Sunday, you already know what you are walking back into.`, ``,
+      `Reply with "yes video" and we'll record one and send it by the end of the day.`, ``,
+      `Or if the honest truth is that this was not the right tool for you, tell us that too. "It did not click" is useful, and we promise to take it well.`, ``,
+      `Either way, thank you for trying us. That alone is more than most therapists have time for.`, ``,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachTestimonial(name: string) {
+
+function e24Testimonial(n: string, sessions: number) {
   return {
-    subject: `Quick favor, ${name}`,
+    subject: `${n}, the kindest thing you could do for another therapist`,
     lines: [
-      `Hi ${name},`, ``,
-      `MyBodyMap Team here. You're one of the therapists who's really been making BodyMap a daily part of your practice. Thank you.`, ``,
-      `If you've got 30 seconds, we'd love one sentence from you about what's working. We'd use it on our Features page. Any other therapist seeing your name would probably give it a serious look.`, ``,
-      `If not your thing, no worries. Just hit reply with "pass" and we won't ask again.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Hi ${n},`, ``,
+      `MyBodyMap Team here. We are writing because of something real.`, ``,
+      `You have logged ${sessions} sessions on BodyMap so far. That is not a vanity number to us. That is ${sessions} clients who walked in, were seen, and walked out a little lighter.`, ``,
+      `Somewhere right now, another massage therapist is typing a search into Google. "Is there anything better than paper forms." "How do I stop losing regulars." "Something for a solo practice that actually respects my time."`, ``,
+      `If they found one sentence from you, in your own words, about what this platform does for how you work, it would mean more to them than anything we could write.`, ``,
+      `Would you share one sentence with us? Just hit reply. Say it how you would say it to a friend over coffee. One line. No need to be polished. No need to praise. Just true.`, ``,
+      `We will put it on our site, with your name and practice (or anonymous, your call). If you want to see how we use it before committing, we will show you the draft first.`, ``,
+      `And if you would rather not, no worries at all. Reply with "pass" and we will never ask again. That is a real promise.`, ``,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachFirstSession(name: string) {
+
+function e25FirstSession(n: string) {
   return {
-    subject: `Congrats on your first session, ${name}! 🎉`,
+    subject: `Congrats on your first session, ${n}! 🎉`,
     lines: [
-      `Hi ${name},`, ``,
+      `Hi ${n},`, ``,
       `MyBodyMap Team here. You just logged your first session on BodyMap. That's the hardest part.`, ``,
       `Every session after this gets easier. Your AI pre-session brief gets smarter. Your client starts seeing patterns.`, ``,
       `Anything trip you up on that first one? Reply and tell us. We iterate weekly.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Cheers!`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachSetupNudge(name: string) {
+
+function e26SetupNudge(n: string) {
   return {
-    subject: `${name}, some free career advice (that we will take back in a second)`,
+    subject: `${n}, some free career advice (that we will take back in a second)`,
     lines: [
-      `Hi ${name},`, ``,
+      `Hi ${n},`, ``,
       `MyBodyMap Team here with some genuinely useful career advice.`, ``,
       `Keep taking payment in Venmo, Zelle, cash, check, and occasionally baked goods. It is charming. It is personal. It is how massage therapy has worked for decades. Please do not let us talk you out of it.`, ``,
       `...`, ``,
@@ -265,45 +315,52 @@ function outreachSetupNudge(name: string) {
       `You haven't connected Stripe or Square yet. Which means when a client books through your BodyMap link, they can't actually pay you. Which means after a long day of holding space for everyone else, you still have to send the awkward "oh by the way, can you Venmo me" text. Which, fine. It's just one more small thing on top of a day that was already full.`, ``,
       `One minute in Settings and it's done. Clients pay the moment they book. You get to close the laptop and go back to the actual work.`, ``,
       `Want a hand walking through it? Hit reply and we'll help.`, ``,
-      `Cheers,`,
-      `MyBodyMap Team`,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachChurned(name: string, days: number) {
+
+function e27Churned(n: string, days: number) {
   return {
-    subject: `Still with us, ${name}?`,
+    subject: `${n}, we miss your hands`,
     lines: [
-      `Hi ${name},`, ``,
-      `MyBodyMap Team here. It's been ${days} days since you last used BodyMap. Not writing to push you back in. Writing to ask what didn't work.`, ``,
-      `One sentence back would mean a lot. Thank you.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Hi ${n},`, ``,
+      `MyBodyMap Team here. Not writing to sell you anything. We just noticed you have not been back in about ${days} days, and we wanted to send something small.`, ``,
+      `We built this platform for a particular kind of therapist. Someone who cares about their clients' actual bodies, not just their booking calendar. Someone who notices when a regular's shoulders are tighter than last month. Someone who would rather be good than fast.`, ``,
+      `If that is you, and BodyMap fell short of that somehow, we want to know what happened. Not for a survey. For our next build.`, ``,
+      `Pick whichever is easiest:`, ``,
+      `- Hit reply with one sentence. What went wrong, what was missing, what you wish existed. We read every word.`,
+      `- Or, if you'd like, we will get on a 15-minute call with you this week. No sales pitch. Just the two of us, listening. Reply with "call" and we'll send a link.`, ``,
+      `And if the honest answer is that life got busy and BodyMap slipped off the list, that is a fine answer too. We understand. Your hands matter more than our retention rate.`, ``,
+      `Whatever the reason, thank you for trying us. Really.`, ``,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachReferralThankyou(name: string) {
+
+function e28ReferralThankyou(n: string) {
   return {
-    subject: `Thank you, ${name}`,
+    subject: `Thank you, ${n}`,
     lines: [
-      `Hi ${name},`, ``,
+      `Hi ${n},`, ``,
       `MyBodyMap Team here. Someone just signed up through your link. That means a lot.`, ``,
       `You're helping another therapist find something that actually fits how they practice. Thank you.`, ``,
       `If there's anything we can do to make BodyMap better for you, reply and tell us.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Cheers!`, `MyBodyMap Team`,
     ],
   };
 }
-function outreachActivationNudge(name: string) {
+
+function e29ActivationNudge(n: string) {
   return {
-    subject: `Quick hello from BodyMap`,
+    subject: `${n}, small things left`,
     lines: [
-      `Hi ${name},`, ``,
-      `MyBodyMap Team here. Noticed you started setting up BodyMap but haven't quite finished. Happens to all of us — the world gets loud, the to-do list gets long.`, ``,
-      `You've got 2 steps left. Takes about 5 minutes. Want me to walk you through them? Just reply.`, ``,
-      `Cheers!`,
-      `MyBodyMap Team`,
+      `Hi ${n},`, ``,
+      `MyBodyMap Team here. Just a quiet nudge. You've got a couple of setup steps left, and finishing them unlocks the whole point of the platform. No alarm, no urgency. You could knock them out during your next coffee break.`, ``,
+      `If something is in the way, tell us. "I couldn't figure out the Stripe connection." "I don't know what to put for services." "I ran out of time." Any of those, we help with in one reply.`, ``,
+      `Want us to walk through it on a quick call? Reply with "call" and we'll send you a 15-minute slot this week. We sit with you, you share your screen, we get it done.`, ``,
+      `You are almost there.`, ``,
+      `Cheers,`, `MyBodyMap Team`,
     ],
   };
 }
@@ -329,149 +386,26 @@ serve(async (req) => {
     }
 
     const n = FAKE.first_name;
-    const fn = FAKE.full_name.split(" ")[0];
-
     const emails = [
-      // Auto drip
-      {
-        id: "welcome",
-        category: "auto_drip",
-        label: "Welcome",
-        when_fires: "Instantly when a new therapist signs up.",
-        notes: "Sets tone for the whole relationship. First impression.",
-        ...welcomeEmail(fn),
-      },
-      {
-        id: "drip_day2",
-        category: "auto_drip",
-        label: "Day 2 — Pattern interrupt",
-        when_fires: "Day 2 after signup (auto-cron).",
-        notes: "New warm-honest voice v4. Negative framing with humor. Uplifts therapist as healer.",
-        ...day2Email(fn, DASH_LINK),
-      },
-      {
-        id: "drip_day5",
-        category: "auto_drip",
-        label: "Day 5 — Send yourself the body map",
-        when_fires: "Day 5 after signup (auto-cron).",
-        notes: "Product tip. Still in old voice, candidate for rewrite.",
-        ...day5Email(fn, FAKE.custom_url, DASH_LINK),
-      },
-      {
-        id: "drip_day10",
-        category: "auto_drip",
-        label: "Day 10 — Terra quote",
-        when_fires: "Day 10 after signup (auto-cron).",
-        notes: "Real testimonial from Terra. Short, authentic. Don't overthink.",
-        ...day10Email(fn, DASH_LINK),
-      },
-      {
-        id: "drip_day30",
-        category: "auto_drip",
-        label: "Day 30 — Soft check-in",
-        when_fires: "Day 30 after signup (auto-cron).",
-        notes: "New warm-honest voice v4. Honors the therapist's long physical day.",
-        ...day30Email(fn),
-      },
-      {
-        id: "drip_day60",
-        category: "auto_drip",
-        label: "Day 60 — Referral ask",
-        when_fires: "Day 60 after signup (auto-cron). Moved from Day 21.",
-        notes: "Referral ask. Still in old voice, candidate for rewrite.",
-        ...day60Email(fn, FAKE.custom_url),
-      },
-      {
-        id: "practice_pulse",
-        category: "auto_drip",
-        label: "Practice Pulse",
-        when_fires: "Every morning. Skipped if therapist has no activity or has it disabled.",
-        notes: "Data digest. Not a place for voice rewrites — keep it neutral and useful.",
-        ...pulseEmail(fn),
-      },
+      // Auto drip (E1.x)
+      { id: "welcome", code: "E1.1", category: "auto_drip", label: "Welcome / Onboarding", when_fires: "Instantly when a new therapist signs up.", notes: "Warm healer voice. 5-step onboarding with CTA links per step. Any order, no hurry.", ...e11Welcome(n) },
+      { id: "drip_day2", code: "E1.2", category: "auto_drip", label: "Day 2 — Pattern interrupt", when_fires: "Day 2 after signup (auto-cron).", notes: "Negative-framing humor. Uplifts therapist as healer who gives clients their breath back.", ...e12Day2(n) },
+      { id: "drip_day5", code: "E1.3", category: "auto_drip", label: "Day 5 — Feel what clients feel", when_fires: "Day 5 after signup (auto-cron).", notes: "Warm healer voice. Invites therapist to take their own intake. Self-care framing.", ...e13Day5(n, FAKE.custom_url) },
+      { id: "drip_day10", code: "E1.4", category: "auto_drip", label: "Day 10 — Terra quote", when_fires: "Day 10 after signup (auto-cron).", notes: "Real testimonial from Terra. Kept as-is — authenticity is the point.", ...e14Day10(n) },
+      { id: "drip_day30", code: "E1.5", category: "auto_drip", label: "Day 30 — Soft check-in", when_fires: "Day 30 after signup (auto-cron).", notes: "Honors the therapist's long physical day. Three-option reply framework.", ...e15Day30(n) },
+      { id: "drip_day60", code: "E1.6", category: "auto_drip", label: "Day 60 — Quiet thank you + referral", when_fires: "Day 60 after signup (auto-cron).", notes: "Warm gratitude first, then referral ask with specific what-they-get / what-you-get.", ...e16Day60(n, FAKE.custom_url) },
+      { id: "practice_pulse", code: "E1.7", category: "auto_drip", label: "Practice Pulse", when_fires: "Every morning when therapist has activity to report.", notes: "Data digest. Neutral tone — not a place for prose voice.", ...e17Pulse(n) },
 
-      // Founder outreach (manual from /founder dashboard)
-      {
-        id: "outreach_welcome",
-        category: "founder_outreach",
-        label: "Founder Welcome",
-        when_fires: "Manual, fired from /founder. Usually redundant with auto welcome.",
-        notes: "Backward-compat. Rarely used now.",
-        subject: outreachWelcome(n).subject,
-        html: plainTextWrap(outreachWelcome(n).lines),
-      },
-      {
-        id: "outreach_checkin",
-        category: "founder_outreach",
-        label: "Check-in",
-        when_fires: "Manual, when HK wants to nudge an active therapist.",
-        notes: "Still in old voice, candidate for rewrite.",
-        subject: outreachCheckin(n).subject,
-        html: plainTextWrap(outreachCheckin(n).lines),
-      },
-      {
-        id: "outreach_reminder",
-        category: "founder_outreach",
-        label: "Reminder (days idle)",
-        when_fires: "Manual, for therapists who started strong then went quiet.",
-        notes: "Functional. Could be rewritten to be warmer.",
-        subject: outreachReminder(n, FAKE.days_since_use ?? 14).subject,
-        html: plainTextWrap(outreachReminder(n, FAKE.days_since_use ?? 14).lines),
-      },
-      {
-        id: "outreach_testimonial",
-        category: "founder_outreach",
-        label: "Testimonial ask",
-        when_fires: "Manual, for power users with many sessions.",
-        notes: "Transactional today. Could be warmer and more specific.",
-        subject: outreachTestimonial(n).subject,
-        html: plainTextWrap(outreachTestimonial(n).lines),
-      },
-      {
-        id: "outreach_first_session",
-        category: "founder_outreach",
-        label: "First session celebration",
-        when_fires: "Manual, right after a therapist logs their first session.",
-        notes: "Already warm. Low priority for rewrites.",
-        subject: outreachFirstSession(n).subject,
-        html: plainTextWrap(outreachFirstSession(n).lines),
-      },
-      {
-        id: "outreach_setup_nudge",
-        category: "founder_outreach",
-        label: "Setup nudge — Stripe/Square",
-        when_fires: "Manual, for therapists who haven't connected payments.",
-        notes: "New warm-honest voice v4. Bait-and-switch career advice.",
-        subject: outreachSetupNudge(n).subject,
-        html: plainTextWrap(outreachSetupNudge(n).lines),
-      },
-      {
-        id: "outreach_churned",
-        category: "founder_outreach",
-        label: "Churned",
-        when_fires: "Manual, for therapists idle 30+ days.",
-        notes: "Already decent. Could lift tone further.",
-        subject: outreachChurned(n, FAKE.days_since_use ?? 45).subject,
-        html: plainTextWrap(outreachChurned(n, FAKE.days_since_use ?? 45).lines),
-      },
-      {
-        id: "outreach_referral_thankyou",
-        category: "founder_outreach",
-        label: "Referral thank-you",
-        when_fires: "Auto after a ref-link signup + manual backup option.",
-        notes: "Already warm. Low priority for rewrites.",
-        subject: outreachReferralThankyou(n).subject,
-        html: plainTextWrap(outreachReferralThankyou(n).lines),
-      },
-      {
-        id: "outreach_activation_nudge",
-        category: "founder_outreach",
-        label: "Activation nudge",
-        when_fires: "Manual from /founder, usually with custom body built per therapist.",
-        notes: "This is a placeholder — real sends use custom_subject + custom_body based on missing steps.",
-        subject: outreachActivationNudge(n).subject,
-        html: plainTextWrap(outreachActivationNudge(n).lines),
-      },
+      // Founder outreach (E2.x)
+      { id: "outreach_welcome", code: "E2.1", category: "founder_outreach", label: "Founder Welcome", when_fires: "Manual, fired from /founder. Usually redundant with auto E1.1.", notes: "Backward-compat. Rarely used now since E1.1 auto-fires.", subject: e21Welcome(n).subject, html: plainTextWrap(e21Welcome(n).lines) },
+      { id: "outreach_checkin", code: "E2.2", category: "founder_outreach", label: "Check-in — How are your hands?", when_fires: "Manual, for therapists stalled in setup.", notes: "Offers concrete help: 'send us your CSV, we'll import.' Specific CTA, not just 'hit reply.'", subject: e22Checkin(n).subject, html: plainTextWrap(e22Checkin(n).lines) },
+      { id: "outreach_reminder", code: "E2.3", category: "founder_outreach", label: "Reminder — Still thinking about you", when_fires: "Manual, for therapists gone quiet.", notes: "Offers video walkthrough CTA. Respects their schedule.", subject: e23Reminder(n, FAKE.days_since_use).subject, html: plainTextWrap(e23Reminder(n, FAKE.days_since_use).lines) },
+      { id: "outreach_testimonial", code: "E2.4", category: "founder_outreach", label: "Testimonial — Kindest thing for another therapist", when_fires: "Manual, for power users.", notes: "Reframes ask as help for another therapist, not PR for us. Opt-out respected.", subject: e24Testimonial(n, FAKE.sessions_total).subject, html: plainTextWrap(e24Testimonial(n, FAKE.sessions_total).lines) },
+      { id: "outreach_first_session", code: "E2.5", category: "founder_outreach", label: "First session celebration", when_fires: "Manual, after therapist logs first session.", notes: "Kept as-is. Already warm.", subject: e25FirstSession(n).subject, html: plainTextWrap(e25FirstSession(n).lines) },
+      { id: "outreach_setup_nudge", code: "E2.6", category: "founder_outreach", label: "Setup nudge — Stripe/Square", when_fires: "Manual, for therapists who haven't connected payments.", notes: "Bait-and-switch career advice. Warm healer voice.", subject: e26SetupNudge(n).subject, html: plainTextWrap(e26SetupNudge(n).lines) },
+      { id: "outreach_churned", code: "E2.7", category: "founder_outreach", label: "Churned — We miss your hands", when_fires: "Manual, for therapists idle 30+ days.", notes: "Offers reply OR 15-min call. Acknowledges life happens.", subject: e27Churned(n, FAKE.days_since_use).subject, html: plainTextWrap(e27Churned(n, FAKE.days_since_use).lines) },
+      { id: "outreach_referral_thankyou", code: "E2.8", category: "founder_outreach", label: "Referral thank-you", when_fires: "Auto after a ref-link signup + manual backup.", notes: "Kept as-is. Already warm.", subject: e28ReferralThankyou(n).subject, html: plainTextWrap(e28ReferralThankyou(n).lines) },
+      { id: "outreach_activation_nudge", code: "E2.9", category: "founder_outreach", label: "Activation nudge", when_fires: "Manual from /founder, usually with custom body built per therapist.", notes: "Placeholder shown here. Real sends use custom_subject + custom_body with missing steps named.", subject: e29ActivationNudge(n).subject, html: plainTextWrap(e29ActivationNudge(n).lines) },
     ];
 
     return json({ ok: true, fake: FAKE, emails });

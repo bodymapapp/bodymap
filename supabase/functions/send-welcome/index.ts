@@ -19,116 +19,105 @@ serve(async (req) => {
     const bookingLink = `https://mybodymap.app/book/${customUrl}`;
     const dashLink = 'https://mybodymap.app/dashboard';
 
-    // Steps now have explicit time estimates for psychological commitment.
-    // Total: 5 minutes. Frames whole setup as trivial vs. hours of admin saved.
+    // E1.1 Welcome / Onboarding — warm healer voice, 5 steps in any order.
+    // Replaced 2026-04-23: previous version had marketing voice ("autopilot",
+    // "most modern platform"). New copy honors the therapist as a healer
+    // and positions setup as small, do-when-you-can tasks.
     const steps = [
       {
-        n: '1', title: 'Move your clients over', time: '90 seconds',
-        body: 'Import from Square, MassageBook, Vagaro, or any CSV. Go to <b>Clients &gt; Import Clients</b> and upload your export file. Any row with a name, phone, or email comes in. Missing info can be added later.',
-        link: dashLink, cta: 'Import clients'
+        n: '1', title: 'Bring your clients in',
+        body: 'Import your list or add a few by hand. This is the foundation that everything else sits on top of.',
+        link: `${dashLink}`, cta: 'Import clients'
       },
       {
-        n: '2', title: 'Add your first service', time: '60 seconds',
-        body: 'Tell clients what you offer and at what price. Go to <b>Settings &gt; Services</b> and add your massage types, duration, and price. This is what shows on your booking page.',
-        link: dashLink, cta: 'Add services'
+        n: '2', title: 'Tell us what you offer',
+        body: 'Your 60-min deep tissue. Your 90-min prenatal. Your hot stone add-on. Add your services so clients book the right thing.',
+        link: `${dashLink}/settings`, cta: 'Add services'
       },
       {
-        n: '3', title: 'Set your working hours', time: '60 seconds',
-        body: 'Clients can only book during your available times. Go to <b>Settings &gt; Availability</b> and toggle on your working days and times. Done.',
-        link: dashLink, cta: 'Set hours'
+        n: '3', title: 'Set your hours',
+        body: "When you're open. When you're closed. When you are with a client and not to be disturbed. This is how clients book themselves without you typing a single text.",
+        link: `${dashLink}/schedule`, cta: 'Set hours'
       },
       {
-        n: '4', title: 'Share your booking link', time: '30 seconds',
-        body: `Your personal booking page is live at <a href="${bookingLink}" style="color:#2A5741;">${bookingLink}</a>. Drop it in your email signature, Instagram bio, or text it directly to a client. They book, fill their body map, and you see it all before they arrive.`,
-        link: bookingLink, cta: 'See your booking page'
+        n: '4', title: 'Connect payments',
+        body: `Stripe or Square. One minute. After this, clients pay the moment they book. You never have to send "hey can you Venmo me" again.`,
+        link: `${dashLink}/billing`, cta: 'Connect payments'
       },
       {
-        n: '5', title: 'Send your first intake', time: '60 seconds',
-        body: 'Go to <b>Clients &gt; Send Intake</b> and send the body map link to one client. They tap their focus zones, pressure preference, and areas to avoid on a visual body. It will be waiting in your dashboard before they arrive. After the first session, BodyMap remembers everything for next time.',
-        link: dashLink, cta: 'Send an intake'
+        n: '5', title: 'Send your first intake',
+        body: `Pick one regular client. Text them your BodyMap link. Watch them fill out a visual body map on their phone in 60 seconds instead of scribbling on a clipboard. The first time you see it land in your dashboard is the moment this all clicks.`,
+        link: `${dashLink}`, cta: 'Send first intake'
       },
     ];
 
     const stepsHtml = steps.map(s => `
-      <div style="border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:16px;background:#F9FAF9;border-radius:0 8px 8px 0;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-          <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;">Step ${s.n}</div>
-          <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#9CA3AF;">⏱ ${s.time}</div>
-        </div>
-        <div style="font-size:17px;font-weight:700;color:#1A3A28;margin-bottom:8px;font-family:Georgia,serif;">${s.title}</div>
-        <div style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin-bottom:12px;">${s.body}</div>
+      <div style="border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:14px;background:#F9FAF9;border-radius:0 8px 8px 0;">
+        <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Step ${s.n}</div>
+        <div style="font-size:17px;font-weight:700;color:#1A3A28;margin-bottom:6px;font-family:Georgia,serif;">${s.title}</div>
+        <div style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin-bottom:10px;">${s.body}</div>
         <a href="${s.link}" style="font-family:system-ui;font-size:13px;font-weight:700;color:#2A5741;text-decoration:none;">${s.cta} &rarr;</a>
       </div>
     `).join('');
 
     const html = `
-      <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
+      <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;color:#1F2937;line-height:1.7;font-size:15px;">
 
-        <!-- Brand header -->
-        <div style="margin-bottom:28px;">
+        <div style="margin-bottom:24px;">
           <span style="font-size:22px;font-weight:700;color:#1A3A28;">BodyMap</span>
           <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence for Massage Therapists</span>
         </div>
 
-        <!-- Headline — confident, outcome-focused -->
-        <h1 style="font-size:28px;font-weight:700;color:#1A3A28;margin:0 0 14px;line-height:1.2;">
-          ${firstName}, welcome to the most modern, automated platform built for massage therapists. 🌿
+        <h1 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 18px;line-height:1.3;">
+          Welcome home, ${firstName}. 5 steps, any order, no hurry. 🌿
         </h1>
 
-        <p style="font-family:system-ui;font-size:16px;color:#4B5563;line-height:1.7;margin:0 0 18px;">
-          Your back office just went on autopilot. Visual body maps instead of paper intake. Session patterns you never had time to spot. Automated reminders, gift cards, booking, and client history, all working quietly while you do what you actually love: the work on the table.
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">
+          Hi ${firstName},
         </p>
 
-        <!-- Silver badge -->
-        <div style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:6px 14px;margin-bottom:28px;">
-          <span style="font-family:system-ui;font-size:12px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free forever (founding therapist)</span>
-        </div>
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">
+          You spent the day giving other people their breath back. Now here you are, screen on, thinking about one more thing to set up. We see you.
+        </p>
 
-        <!-- Setup promise with time commitment -->
-        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:12px;padding:18px 20px;margin-bottom:24px;">
-          <div style="font-family:system-ui;font-size:13px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Get started in 5 minutes</div>
-          <p style="font-family:system-ui;font-size:14px;color:#78350F;line-height:1.6;margin:0;">
-            Five short steps. The whole thing takes 5 minutes. You get <b>hours back every week</b>. No more paper intake, no more manual reminders, no more guessing what your client prefers this visit.
-          </p>
-        </div>
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">
+          So let's make this short.
+        </p>
+
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 22px;">
+          BodyMap works best once these 5 things are in place. Each one takes a minute or two. You can do them in any order. You can stop after three and come back next week. Whatever fits the day.
+        </p>
 
         ${stepsHtml}
 
-        <!-- Primary CTA -->
-        <div style="background:#2A5741;border-radius:12px;padding:26px 24px;margin-top:28px;text-align:center;">
-          <p style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#fff;margin:0 0 6px;">Ready? Let's do the 5 minutes.</p>
-          <p style="font-family:system-ui;font-size:13px;color:rgba(255,255,255,0.8);margin:0 0 20px;line-height:1.6;">
-            Open your dashboard and we'll walk you through step one.
-          </p>
-          <a href="${dashLink}" style="display:inline-block;background:#fff;color:#2A5741;font-family:system-ui;font-size:15px;font-weight:700;padding:14px 32px;border-radius:10px;text-decoration:none;">Start setup &rarr;</a>
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:20px 0 16px;">
+          That's it. No quiz at the end. No "complete your profile to unlock features." Just five small things that turn your hands-on practice into one that runs itself in the background.
+        </p>
+
+        <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">
+          We are here if you get stuck. Reply to this email and a real person reads it.
+        </p>
+
+        <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin:0 0 24px;">
+          <p style="font-family:Georgia,serif;font-size:16px;font-style:italic;color:#2A5741;margin:0;">Welcome home.</p>
         </div>
 
-        <!-- Client-side hook (makes recipients evangelists) -->
-        <div style="border-top:1px solid #E8E4DC;margin-top:36px;padding-top:24px;">
-          <p style="font-family:Georgia,serif;font-size:15px;font-style:italic;color:#4B5563;line-height:1.7;margin:0 0 10px;">
-            Your clients are going to love this.
-          </p>
-          <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">
-            The body map intake is unlike anything they've filled out before. Visual, fast, and it remembers them next time. Once you send your first one, you'll see what we mean. They'll ask where you got it.
-          </p>
+        <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Cheers,</p>
+        <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
+
+        <!-- Silver badge, kept subtle -->
+        <div style="margin-top:26px;text-align:center;">
+          <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life (founding therapist)</span>
         </div>
 
-        <!-- What's next (sets expectation, reduces friction for drip emails) -->
-        <div style="background:#F9FAF9;border-radius:10px;padding:18px 20px;margin-top:24px;">
-          <div style="font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">What's next</div>
-          <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">
-            Over the next couple weeks, you'll get a few short emails with tips. Things like how to spot clients about to lapse, using session patterns to anticipate needs, and small moves that boost rebooking. We keep them useful and we keep them short. Promise.
-          </p>
-        </div>
-
-        <!-- Footer -->
-        <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.7;text-align:center;">
-          Questions? Just reply to this email, we read every single one.<br/>
-          <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span><br/>
-          <span style="color:#D1D5DB;">Built by a licensed massage therapist, for solo therapists.</span>
+        <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:28px;line-height:1.7;text-align:center;">
+          Reply any time, we read every email.<br/>
+          <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
         </p>
       </div>
     `;
+
+    const subjectLine = `Welcome home, ${firstName}. 5 steps, any order, no hurry.`;
 
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -137,7 +126,7 @@ serve(async (req) => {
         from: 'The BodyMap Team <reminders@mybodymap.app>',
         to: [email],
         bcc: ['bodymapdemo@gmail.com'],
-        subject: `${firstName}, your back office just went on autopilot 🌿`,
+        subject: subjectLine,
         html,
       }),
     });
@@ -163,8 +152,8 @@ serve(async (req) => {
               recipient: email,
               status: res.ok ? 'sent' : 'failed',
               provider_id: data?.id || null,
-              subject: `${firstName}, your back office just went on autopilot 🌿`,
-              body_snippet: 'Welcome to BodyMap. 5-step setup guide included.',
+              subject: subjectLine,
+              body_snippet: '5-step onboarding welcome. Any order, no hurry.',
             });
           } catch (_e) {
             await supabase.from('notification_log').insert({

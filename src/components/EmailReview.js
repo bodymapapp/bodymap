@@ -108,13 +108,46 @@ export default function EmailReview() {
         status: "open",
         created_by: currentUserEmail,
       });
-      if (insErr) throw insErr;
+      if (insErr) {
+        // If the table doesn't exist yet, offer to run the migration
+        const msg = insErr.message || String(insErr);
+        if (/relation.*does not exist|table.*not.*found|PGRST/i.test(msg)) {
+          if (window.confirm("The email_feedback table doesn't exist yet. Run the migration to create it now?")) {
+            await runMigration();
+            // Retry save
+            const { error: retryErr } = await supabase.from("email_feedback").insert({
+              email_id: selected.id,
+              feedback: newFeedback.trim(),
+              status: "open",
+              created_by: currentUserEmail,
+            });
+            if (retryErr) throw retryErr;
+          } else {
+            return;
+          }
+        } else {
+          throw insErr;
+        }
+      }
       setNewFeedback("");
       await loadEverything();
     } catch (e) {
       alert("Failed to save: " + (e.message || "unknown"));
     } finally {
       setSavingFeedback(false);
+    }
+  }
+
+  async function runMigration() {
+    try {
+      const { data, error } = await supabase.functions.invoke("run-migration", { body: { name: "email_feedback" } });
+      if (error || !data?.ok) {
+        throw new Error(error?.message || data?.error || "migration failed");
+      }
+      return data;
+    } catch (e) {
+      alert("Migration failed: " + (e.message || "unknown"));
+      throw e;
     }
   }
 
@@ -219,7 +252,10 @@ export default function EmailReview() {
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
-                        <span style={{ fontWeight: isSelected ? 700 : 500, flex: 1 }}>{e.label}</span>
+                        <span style={{ fontWeight: isSelected ? 700 : 500, flex: 1, display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 10, color: C.sage, fontWeight: 700, minWidth: 28 }}>{e.code || ""}</span>
+                          <span>{e.label}</span>
+                        </span>
                         {open > 0 && (
                           <span style={{ fontSize: 10, fontWeight: 700, background: C.gold, color: "#fff", borderRadius: 10, padding: "1px 7px" }}>
                             {open}
@@ -239,8 +275,13 @@ export default function EmailReview() {
               <div>
                 {/* Meta */}
                 <div style={{ background: "#fff", border: `1px solid ${C.light}`, borderRadius: 10, padding: "16px 18px", marginBottom: 14 }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage, fontFamily: "system-ui" }}>
-                    {CATEGORY_LABELS[selected.category]}
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 4 }}>
+                    {selected.code && (
+                      <span style={{ fontFamily: "ui-monospace, monospace", fontSize: 12, color: C.sage, fontWeight: 700 }}>{selected.code}</span>
+                    )}
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage, fontFamily: "system-ui" }}>
+                      · {CATEGORY_LABELS[selected.category]}
+                    </div>
                   </div>
                   <h2 style={{ fontSize: 20, color: C.dark, margin: "4px 0 0" }}>{selected.label}</h2>
                   <div style={{ marginTop: 10, padding: "8px 12px", background: C.softCream, borderRadius: 6, fontSize: 12, color: C.dark, fontFamily: "system-ui" }}>

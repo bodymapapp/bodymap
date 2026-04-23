@@ -90,24 +90,29 @@ function day2Email(firstName: string, dashLink: string) {
 function day5Email(firstName: string, customUrl: string, dashLink: string) {
   const selfIntakeLink = `https://mybodymap.app/book/${customUrl}`;
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Try your own body map before your next client does</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, this one takes 60 seconds and changes how you'll think about intake forever.</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, feel what your clients feel</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hey ${firstName},</p>
 
-    <div style="background:#F9FAF9;border-radius:10px;padding:20px;margin-bottom:20px;">
-      <p style="font-family:Georgia,serif;font-size:16px;color:#1A3A28;line-height:1.7;margin:0 0 8px;font-style:italic;">Send the body map to yourself.</p>
-      <p style="font-family:system-ui;font-size:14px;color:#4B5563;line-height:1.7;margin:0;">Pretend you're a new client booking with you. Walk through the intake. Tap your own zones. See what your clients see.</p>
-    </div>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Here is a thing almost no therapist does before recommending a tool to their clients.</p>
 
-    <a href="${selfIntakeLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;margin-bottom:24px;">Take the intake yourself →</a>
+    <p style="font-family:system-ui;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 20px;font-weight:700;font-family:Georgia,serif;font-style:italic;">They actually try it themselves.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">When you're done, two things usually happen:</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> You realize it's way easier than what your clients fill out today.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">2.</strong> You see your own dashboard light up with real data. Your own body map waiting, pressure preference, areas to avoid. That's what you get for every client going forward.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Take 60 seconds right now. Open your dashboard. Find your BodyMap link. Open it on your phone like you are a client booking with you for the first time.</p>
 
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">P.S. Most therapists tell us this is the moment they finally "got it." Takes 60 seconds. Worth every one.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Walk through the intake. Tap your own shoulders. Mark the spot on your lower back that aches after a long day. Note the places on your body that carry the week.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">When you are done, two things happen.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;"><strong style="color:#1A3A28;">First,</strong> you realize how quick this is for your clients. Probably quicker than the paper form you currently hand them.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">Second,</strong> your own dashboard lights up with your own body. Your own pressure preference. Your own tension pattern. That is a small, quiet thing. But it is also exactly what every one of your clients is about to experience when they try this for themselves.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;font-style:italic;">You give your clients peace. Let us give you a tiny moment of it too.</p>
+
+    <a href="${selfIntakeLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Take the intake yourself →</a>
   `;
   return {
-    subject: `${firstName}, send yourself the body map (60 seconds)`,
+    subject: `${firstName}, feel what your clients feel`,
     html: wrap(inner),
   };
 }
@@ -137,24 +142,39 @@ function day10Email(firstName: string, dashLink: string) {
 function day60Email(firstName: string, customUrl: string) {
   const referralLink = `https://mybodymap.app/?ref=${customUrl}`;
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">Know another therapist who'd love BodyMap?</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, if you've got a friend in the field who's still fighting paper intake or Square's rising fees, we'd love to meet them.</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 16px;line-height:1.25;">${firstName}, a quiet thank you (and a small ask)</h2>
 
-    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <div style="font-family:system-ui;font-size:12px;color:#2A5741;font-weight:700;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">Your personal referral link</div>
-      <a href="${referralLink}" style="font-family:system-ui;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;">${referralLink}</a>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hi ${firstName},</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Two months in. You've had enough sessions by now to know whether this thing earns its place in your practice or not.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">If it does, we want to say something first.</p>
+
+    <p style="font-family:system-ui;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 20px;font-weight:700;font-family:Georgia,serif;font-style:italic;">Thank you. Seriously. You are why this exists.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Every week, your body does physical work that most software founders will never understand. You stand, you lift, you hold space, you breathe through other people's weeks. And still you made room to try something new. That is a gift we do not take lightly.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Now the small ask.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Do you know another massage therapist out there who is buried under paper intake forms, chasing Venmo payments, wondering where their regulars went? Someone who would feel a little lighter if they found us?</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Send them your referral link:</p>
+
+    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
+      <a href="${referralLink}" style="font-family:system-ui;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;text-decoration:none;">${referralLink}</a>
     </div>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;"><strong style="color:#1A3A28;">What they get:</strong> Silver for life, free, same as you. No trial, no card.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;"><strong style="color:#1A3A28;">What you get:</strong> A shoutout on our Features page, a swag kit (stickers + tote), and our eternal thanks.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 8px;"><strong style="color:#1A3A28;">What they get:</strong> full Silver tier, free for life. No trial. No credit card. No "upgrade later" trick.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 10px;">Easy ways to share:</p>
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 6px;">• Text it to one therapist friend who's always complaining about their software</p>
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0 0 6px;">• Drop it in your LMT Facebook group if you love it</p>
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">• Post a screenshot of your favorite feature on Instagram and tag us (@mybodymap.app)</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">What you get:</strong> our genuine thanks, plus a small shoutout in our launch post when the time comes (with your permission).</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;font-style:italic;">No pressure. Only share it if you truly think they would love it. One therapist helping another is how healing work spreads. That is the oldest story there is.</p>
+
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Cheers,</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
   `;
   return {
-    subject: `${firstName}, a small ask (and a free thing for you)`,
+    subject: `${firstName}, a quiet thank you (and a small ask)`,
     html: wrap(inner),
   };
 }
