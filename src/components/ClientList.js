@@ -228,19 +228,62 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
 
         {clients.length === 0 ? (
           <div>
+            {/* Preview banner — sets expectations that the cards below are a glimpse of the future */}
             <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>👁️</span>
-              <div><strong>Sample clients - for preview only.</strong> Tap <strong>Send Intake</strong> to add your first real client. They fill out their body map and appear here instantly.</div>
+              <div><strong>A preview of your practice.</strong> These are sample clients. The real ones appear the moment someone fills out your body map. Tap <strong>Send Intake</strong> above to invite your first.</div>
             </div>
+
+            {/* Retention insight card — the exact thing the Day 2 email points at */}
+            <div style={{
+              background: '#FEF9E7',
+              border: '1.5px solid #F4C46C',
+              borderRadius: 12,
+              padding: '16px 18px',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 14,
+            }}>
+              <div style={{ fontSize: 22, lineHeight: 1 }}>🍂</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: '#92400E', marginBottom: 4 }}>
+                  Retention insight · Sample
+                </div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: '#1F2937', marginBottom: 4 }}>
+                  1 client is drifting
+                </div>
+                <div style={{ fontSize: 13, color: '#4B5563', lineHeight: 1.5, marginBottom: 8 }}>
+                  Dana Park used to book every 4 weeks. She hasn't booked in 68 days. A short message from you is usually the one thing that brings someone like Dana back.
+                </div>
+                <div style={{ fontSize: 12, color: '#78350F', fontStyle: 'italic' }}>
+                  Once you have real clients, BodyMap flags this for you automatically. No work on your end.
+                </div>
+              </div>
+            </div>
+
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
               {[
                 { id:'s1', full_name:'Sarah Mitchell', focus:'Neck, Upper Back', sessions:7, status:'active', last:'2 days ago', initials:'SM', color:'#2A5741' },
                 { id:'s2', full_name:'Jennifer Kim',   focus:'Lower Back, Hip', sessions:4, status:'active', last:'5 days ago', initials:'JK', color:'#6B9E80' },
                 { id:'s3', full_name:'Maria Lopez',    focus:'Shoulders',       sessions:12,status:'active', last:'1 week ago',  initials:'ML', color:'#C9A84C' },
                 { id:'s4', full_name:'Rachel Torres',  focus:'Full Body',       sessions:2, status:'new',    last:'New client',  initials:'RT', color:'#9CA3AF' },
-                { id:'s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626' },
+                { id:'s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626', highlight:true },
               ].map(c => (
-                <div key={c.id} style={{ background:'#FFFFFF', borderRadius:12, padding:16, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', opacity:0.85, border:'1px solid #E5E7EB' }}>
+                <div key={c.id} style={{
+                  background:'#FFFFFF',
+                  borderRadius:12,
+                  padding:16,
+                  boxShadow: c.highlight ? '0 2px 8px rgba(220, 38, 38, 0.12)' : '0 1px 4px rgba(0,0,0,0.07)',
+                  opacity: 0.9,
+                  border: c.highlight ? '1.5px solid #F4C46C' : '1px solid #E5E7EB',
+                  position: 'relative',
+                }}>
+                  {c.highlight && (
+                    <div style={{ position: 'absolute', top: -8, right: 12, background: '#F4C46C', color: '#78350F', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, letterSpacing: "0.04em" }}>
+                      NEEDS A NUDGE
+                    </div>
+                  )}
                   <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
                     <div style={{ width:40, height:40, borderRadius:'50%', background:c.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0 }}>{c.initials}</div>
                     <div style={{ flex:1 }}>
@@ -264,11 +307,33 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
             <p style={{ fontSize: "16px" }}>No clients found</p>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
-            {filtered.map((client) => (
-              <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} lapsedDays={lapsedDays} customUrl={customUrl} />
-            ))}
-          </div>
+          <>
+            {/* Demo retention hint — shown only when therapist has clients but hasn't yet accumulated any lapsed ones.
+                Gives them a preview of what retention insights will look like as their practice grows.
+                Hidden once they have 10+ sessions across the practice (by then they'll see real retention signals). */}
+            {filter === "all" && lapsedClients.length === 0 && clients.reduce((s, c) => s + (c.total_sessions || 0), 0) < 10 && (
+              <div style={{
+                background: '#FEF9E7',
+                border: '1.5px dashed #F4C46C',
+                borderRadius: 12,
+                padding: '12px 16px',
+                marginBottom: 14,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 12,
+              }}>
+                <div style={{ fontSize: 18, lineHeight: 1 }}>🔭</div>
+                <div style={{ flex: 1, fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
+                  <strong style={{ color: '#1F2937' }}>Retention insights appear here as your practice grows.</strong> Once a client hasn't booked in 60 days, BodyMap flags them so you can send a short note. Most come back. No work on your end.
+                </div>
+              </div>
+            )}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+              {filtered.map((client) => (
+                <ClientCard key={client.id} client={client} onSelect={onSelectClient} initials={initials} avatarColor={avatarColor} lapsedDays={lapsedDays} customUrl={customUrl} />
+              ))}
+            </div>
+          </>
         )}
       </div>
       {/* Lapsed Client Nudge - bottom */}

@@ -3,11 +3,11 @@
 // and sends the right drip email based on which window they fall into.
 //
 // Sequence (counting from signup day):
-//   Day 2  — "One tip: spot a client about to ghost you"
-//   Day 5  — "Try your own body map, send one to yourself"
-//   Day 10 — Social proof: real quote from Terra
-//   Day 30 — One-question survey (harvest testimonials)
-//   Day 60 — Referral ask: share BodyMap, get a shoutout (moved from Day 21)
+//   Day 2  - "3 reasons BodyMap might be a terrible idea for you" (pattern-interrupt honest framing)
+//   Day 5  - "Try your own body map, send one to yourself"
+//   Day 10 - Social proof: real quote from Terra
+//   Day 30 - Soft check-in honoring the long day, one sentence reply
+//   Day 60 - Referral ask: share BodyMap, get a shoutout (moved from Day 21)
 //
 // Dedupe: writes to drip_sends table with (therapist_id, drip_day) unique key.
 // If a row exists, we skip — prevents duplicate sends even if the cron runs twice.
@@ -57,26 +57,32 @@ function wrap(inner: string) {
 
 function day2Email(firstName: string, dashLink: string) {
   const inner = `
-    <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:4px 10px;display:inline-block;margin-bottom:16px;">
-      <span style="font-family:system-ui;font-size:11px;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:0.08em;">⚠ Tip of the week</span>
+    <div style="background:#E8F0EA;border:1px solid #C8DCCC;border-radius:8px;padding:4px 10px;display:inline-block;margin-bottom:16px;">
+      <span style="font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;text-transform:uppercase;letter-spacing:0.08em;">🌿 Day 2 · Unusual energy</span>
     </div>
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">5 signs a regular is about to ghost you</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Hey ${firstName}, most client attrition happens quietly. You don't get a breakup text. You just stop seeing them on your calendar. The good news: the warning signs are almost always there a week or two before they disappear.</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">3 reasons BodyMap might be a terrible idea for you</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, every software company in the world sends you the same email. "Here are 17 reasons you need us." We got tired of writing it. You're probably tired of reading it. So let's flip it.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Here are 3 reasons BodyMap might be a terrible idea for you. Said with love.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">1.</strong> Their rebooking window stretches. A 4-week regular now goes 6. Then 7.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">2.</strong> Their session feedback shortens. "Great" with no detail.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">3.</strong> They skip the add-ons they always got. CBD oil, hot stones, gone.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;"><strong style="color:#1A3A28;">4.</strong> They switch times. Weekly Thursday becomes random Saturdays.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;"><strong style="color:#1A3A28;">5.</strong> They stop referring friends. The pipeline they used to send you dries up.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 4px;"><strong style="color:#1A3A28;">1. You have a deep, spiritual connection with your paper intake forms.</strong></p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Look, we get it. The crinkle. The pen ink. The little basket by the door. If clipping a fresh form to a clipboard is one of your favorite parts of the day, please do not let us ruin that for you. Nothing we build can compete with that basket. You have our respect.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 4px;"><strong style="color:#1A3A28;">2. Doing the back office work is your happy place.</strong></p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Some people love typing "Looking forward to seeing you Thursday!" for the 400th time. Some people find peace in digging through texts to figure out if a client paid. If that's you, we salute you. We'd only be in your way. Keep the flow going.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 4px;"><strong style="color:#1A3A28;">3. You think clients who quietly stop booking are fine on their own.</strong></p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">They almost always are going through something. Stress at work. A bad back. A week that got away from them. A body that's forgotten what it feels like to exhale. That is exactly why they need to come see you. You are the person who gives them their breath back. But they won't remember that in the middle of a hard week. You have to be the one who reaches out. A short message from you, at the right moment, is sometimes the only reason someone remembers they deserve an hour of peace.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Still with us? Great. You're probably the right kind of weird for this.</p>
 
     <div style="background:#F0FDF4;border-left:3px solid #2A5741;padding:14px 18px;margin-bottom:24px;">
-      <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;"><strong>How BodyMap helps:</strong> your Insights tab surfaces clients whose rebooking window has stretched. One glance, one tap, one text. "Haven't seen you in a while, want to grab your usual Thursday?" That saves most of them.</p>
+      <p style="font-family:system-ui;font-size:14px;color:#1A3A28;line-height:1.7;margin:0;">Open your dashboard and look at the Clients tab. It quietly flags anyone whose booking gap is stretching. One tap, one message, most of them come back. And they usually need it more than they'll admit.</p>
     </div>
 
-    <a href="${dashLink}?tab=insights" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Check my Insights tab →</a>
+    <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
   `;
   return {
-    subject: `${firstName}, 5 signs a regular is about to ghost you`,
+    subject: `3 reasons BodyMap might be a terrible idea, ${firstName}`,
     html: wrap(inner),
   };
 }
@@ -154,24 +160,30 @@ function day60Email(firstName: string, customUrl: string) {
 }
 
 function day30Email(firstName: string) {
-  // Simple reply-to survey. Single question, easy to answer.
+  // Softer check-in acknowledging the therapist's long physical day.
+  // Invites a single sentence reply, makes all three possible answers feel validated.
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">${firstName}, one month in. How's it going?</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">You've been on BodyMap for a month, and we want to hear how it's going. Good, bad, or in between. No form, no survey link, no tracking. Just hit reply.</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 16px;line-height:1.25;">${firstName}, no rush at all</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">You've been on your feet for 8 hours. You've given 5 massages. Your hands are done. Your back is done. The last thing you want to do right now is open a laptop and answer one more email.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">So this one is short. Delete it if you want. Come back to it whenever. Or never.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;">We just wanted to check in.</p>
 
-    <div style="background:#F9FAF9;border-left:3px solid #2A5741;padding:16px 20px;margin-bottom:24px;">
-      <p style="font-family:Georgia,serif;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 4px;font-style:italic;">One question:</p>
-      <p style="font-family:system-ui;font-size:16px;color:#1A3A28;line-height:1.7;margin:0;font-weight:600;">What's the one thing you'd tell another therapist about BodyMap?</p>
-    </div>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">It's been a month since you joined BodyMap. If you ever get a quiet minute, maybe over tea, maybe on a Sunday, we'd love to hear how it's going. Good, not-great, or somewhere in the middle.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Good, bad, hard, easy. Whatever's real. One sentence is plenty.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">If it's a rave, we may share it on our Features page (we'll ask first). If it's a problem, it goes straight into next week's build. Your reply shapes what happens next.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Just hit reply. One sentence. No form, no survey, no rating scale.</p>
 
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Thank you for being one of the first. This thing exists because of you.</p>
-    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:4px 0 0;">Cheers, MyBodyMap Team</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;">• "It's helping, here's what I like." We'll do more of that.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 6px;">• "It's not working for me, here's why." It goes straight into next week's build.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;">• "Honestly, I haven't had a chance to look." Totally fair. You're running a practice and a body. That's two full-time jobs.</p>
+
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">We read every reply. Usually late at night, after our own long days. Always.</p>
+
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;font-style:italic;">Take care of yourself first.</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:12px 0 0;">Cheers,</p>
+    <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
   `;
   return {
-    subject: `${firstName}, one question about your first month 🌿`,
+    subject: `${firstName}, no rush at all`,
     html: wrap(inner),
   };
 }
