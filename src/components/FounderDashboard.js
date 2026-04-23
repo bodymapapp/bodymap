@@ -431,17 +431,6 @@ export default function FounderDashboard() {
 
   const s = data.stats;
 
-  // Diagnostic: count total notification_log entries across all therapists
-  // (visible + hidden). Helps HK see if comms rows exist in DB but aren't
-  // rendering for some reason. Also count dummies.
-  const diagCommsAllTherapists = (data.therapists || []).reduce(function(sum, t) {
-    return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
-  }, 0);
-  const diagCommsVisible = (filtered || []).reduce(function(sum, t) {
-    return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
-  }, 0);
-  const diagCommsHidden = diagCommsAllTherapists - diagCommsVisible;
-
   const activateFilter = (key) => {
     setCohortFilter(cohortFilter === key ? "all" : key);
     // Smooth scroll to table
@@ -507,34 +496,8 @@ export default function FounderDashboard() {
               Who signed up. How they're doing. Who needs a nudge.
             </h1>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: C.gray }}>
-              Updated {lastUpdated} · Excluding {s.dummies} test accounts from totals. Click any stat card to filter the table below.
+              Updated {lastUpdated} · Excluding {s.dummies} test accounts from totals. Click any stat below to filter the tables.
             </p>
-            {/* DIAGNOSTIC BANNER for Table 3 comms log. Shows right under the title so it
-                survives any scroll-to-top on page load. Color coded:
-                  green = data is reaching the grid
-                  red   = zero comms found anywhere, nothing to show
-                  gold  = comms exist but hidden behind the dummy filter  */}
-            <div style={{
-              marginTop: 10,
-              padding: "8px 12px",
-              background: diagCommsVisible > 0 ? "#F0FDF4"
-                        : diagCommsAllTherapists > 0 ? "#FEF9E7"
-                        : "#FEF3F2",
-              border: "1.5px solid " + (diagCommsVisible > 0 ? C.rise
-                        : diagCommsAllTherapists > 0 ? C.gold
-                        : C.fall),
-              borderRadius: 6,
-              fontSize: 12,
-              fontWeight: 600,
-              color: diagCommsVisible > 0 ? C.forest
-                    : diagCommsAllTherapists > 0 ? "#7D5A1F"
-                    : C.fall,
-              maxWidth: 680,
-            }}>
-              Comms log diagnostic · {diagCommsAllTherapists} total comms in DB · {diagCommsVisible} visible in Table 3 · {diagCommsHidden} hidden behind dummy filter
-              {diagCommsAllTherapists === 0 && " · Import from Resend button in Table 3 to populate."}
-              {diagCommsVisible === 0 && diagCommsAllTherapists > 0 && " · Uncheck \"Hide test accounts\" to see them."}
-            </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
             <RunDigestButton />
@@ -547,48 +510,34 @@ export default function FounderDashboard() {
           </div>
         </div>
 
-        {/* Macro stats — clickable */}
-        <SectionLabel>Signups · click to filter table</SectionLabel>
-        <Grid>
-          <ClickStat value={s.signups_24h} label="Last 24h" active={false} />
-          <ClickStat value={s.signups_7d} label="New this 7d" onClick={() => activateFilter("new_7d")} active={cohortFilter === "new_7d"} />
-          <ClickStat value={s.signups_30d} label="Last 30 days" active={false} />
-          <ClickStat value={s.total} label="All time (real)" sub={`${s.dummies} test excluded`} active={false} />
-        </Grid>
+        {/* Thin stats strip — same info as before, 90% less vertical space */}
+        <div style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: 18,
+          padding: "10px 14px",
+          marginBottom: 24,
+          background: "#fff",
+          border: `1px solid ${C.light}`,
+          borderRadius: 6,
+          fontFamily: "system-ui",
+          fontSize: 12,
+        }}>
+          <InlineStat n={s.total} label="total" sub={`${s.dummies} test excluded`} />
+          <InlineStat n={s.signups_24h} label="24h" />
+          <InlineStat n={s.signups_7d} label="7d" onClick={() => activateFilter("new_7d")} active={cohortFilter === "new_7d"} />
+          <InlineStat n={s.signups_30d} label="30d" />
+          <InlineDivider />
+          <InlineStat n={s.silver} label="Silver" onClick={() => activateFilter("silver")} active={cohortFilter === "silver"} />
+          <InlineStat n={s.free} label="Free" />
+          <InlineDivider />
+          <InlineStat n={s.active_7d} label="active 7d" tint={C.rise} onClick={() => activateFilter("active_7d")} active={cohortFilter === "active_7d"} />
+          <InlineStat n={s.cold} label="need nudge" tint={C.fall} onClick={() => activateFilter("cold")} active={cohortFilter === "cold"} />
+          <InlineStat n={s.champions} label="champions" tint={C.rise} onClick={() => activateFilter("champions")} active={cohortFilter === "champions"} />
+        </div>
 
-        <SectionLabel>Plans · click Silver to filter</SectionLabel>
-        <Grid>
-          <ClickStat value={s.free} label="Free (bronze)" sub="No plan set" active={false} />
-          <ClickStat value={s.silver} label="Silver" sub="Phase 0: free" onClick={() => activateFilter("silver")} active={cohortFilter === "silver"} />
-          <ClickStat value={s.gold} label="Gold" sub="Not yet active" active={false} />
-        </Grid>
-
-        <SectionLabel>Engagement · click to filter</SectionLabel>
-        <Grid>
-          <ClickStat value={s.active_7d} label="Active last 7d" sub="Used platform recently" onClick={() => activateFilter("active_7d")} active={cohortFilter === "active_7d"} tint={C.rise} />
-          <ClickStat value={s.cold} label="Need a nudge" sub={`No activity in ${REMINDER_THRESHOLD_DAYS}+ days`} onClick={() => activateFilter("cold")} active={cohortFilter === "cold"} tint={C.fall} />
-          <ClickStat value={s.champions} label="Champions" sub="3+ sessions logged" onClick={() => activateFilter("champions")} active={cohortFilter === "champions"} tint={C.rise} />
-        </Grid>
-
-        {/* Table controls */}
-        <div id="therapist-table" style={{ marginTop: 28, marginBottom: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
-            <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: 0 }}>
-              Therapists
-              {cohortFilter !== "all" && (
-                <button
-                  onClick={() => setCohortFilter("all")}
-                  style={{ marginLeft: 10, fontSize: 12, padding: "3px 10px", borderRadius: 999, background: C.sage, color: "#fff", border: "none", cursor: "pointer", fontFamily: "system-ui", fontWeight: 600 }}
-                >
-                  Filter: {filterLabel(cohortFilter)} ✕
-                </button>
-              )}
-            </h2>
-            <span style={{ fontSize: 12, color: C.gray }}>
-              Showing {filtered.length} of {hideDummies ? data.therapists.filter((t) => !t.is_dummy).length : data.therapists.length}
-            </span>
-          </div>
-
+        {/* Shared filter bar - applies to all three tables */}
+        <div style={{ marginTop: 20, marginBottom: 14 }}>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <input
               placeholder="Search email, business, name..."
@@ -610,11 +559,26 @@ export default function FounderDashboard() {
               <input type="checkbox" checked={hideDummies} onChange={(e) => setHideDummies(e.target.checked)} style={{ margin: 0 }} />
               Hide {s.dummies} test accounts
             </label>
+            {cohortFilter !== "all" && (
+              <button
+                onClick={() => setCohortFilter("all")}
+                style={{ fontSize: 12, padding: "4px 12px", borderRadius: 999, background: C.sage, color: "#fff", border: "none", cursor: "pointer", fontFamily: "system-ui", fontWeight: 600 }}
+              >
+                Filter: {filterLabel(cohortFilter)} ✕
+              </button>
+            )}
+            <span style={{ fontSize: 12, color: C.gray, marginLeft: "auto" }}>
+              {filtered.length} of {hideDummies ? data.therapists.filter((t) => !t.is_dummy).length : data.therapists.length} therapists
+            </span>
           </div>
         </div>
 
+        <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
+
+        <CommsLogGrid rows={filtered} updateFlag={updateFlag} onAfterBackfill={fetchAll} />
+
         {/* ====== TABLE 1 ====== */}
-        <div style={{ marginTop: 28, marginBottom: 10 }}>
+        <div id="therapist-table" style={{ marginTop: 36, marginBottom: 10 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
             Table 1
           </div>
@@ -622,7 +586,7 @@ export default function FounderDashboard() {
             Therapists
           </h2>
           <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
-            Every therapist on BodyMap. Activity, plan, flags. Click column headers to sort.
+            Full roster. Activity, plan, flags, and recent sessions. Click column headers to sort.
           </p>
         </div>
 
@@ -634,10 +598,6 @@ export default function FounderDashboard() {
           updateFlag={updateFlag}
           onAfterSend={fetchAll}
         />
-
-        <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
-
-        <CommsLogGrid rows={filtered} updateFlag={updateFlag} onAfterBackfill={fetchAll} />
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -869,6 +829,43 @@ function ClickStat({ value, label, sub, tint, onClick, active }) {
   );
 }
 
+// Inline stat (thin strip at top) - compact number + label pair, optionally clickable.
+// Kept deliberately minimal so 10 of them fit in one horizontal row.
+function InlineStat({ n, label, sub, tint, onClick, active }) {
+  const clickable = !!onClick;
+  const color = tint || C.forest;
+  return (
+    <button
+      onClick={onClick}
+      disabled={!clickable}
+      style={{
+        display: "inline-flex",
+        alignItems: "baseline",
+        gap: 6,
+        padding: active ? "4px 10px" : "4px 8px",
+        background: active ? "#F0EEE8" : "transparent",
+        border: active ? `1px solid ${C.forest}` : "1px solid transparent",
+        borderRadius: 999,
+        cursor: clickable ? "pointer" : "default",
+        fontFamily: "inherit",
+        fontSize: 12,
+        color: C.dark,
+        whiteSpace: "nowrap",
+      }}
+      title={sub || undefined}
+    >
+      <span style={{ fontSize: 16, fontWeight: 700, color: color, fontFamily: "Georgia, serif", lineHeight: 1 }}>{n}</span>
+      <span style={{ color: C.gray }}>{label}</span>
+    </button>
+  );
+}
+
+function InlineDivider() {
+  return (
+    <span style={{ width: 1, background: C.light, alignSelf: "stretch", margin: "0 4px" }} aria-hidden="true" />
+  );
+}
+
 function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSend }) {
   if (rows.length === 0) {
     return (
@@ -957,8 +954,8 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
             </tr>
           </thead>
           <tbody>
-            {rows.map((t) => (
-              <Row key={t.id} t={t} firstColCell={firstColCell} updateFlag={updateFlag} onAfterSend={onAfterSend} />
+            {rows.map((t, idx) => (
+              <Row key={t.id} t={t} idx={idx} firstColCell={firstColCell} updateFlag={updateFlag} onAfterSend={onAfterSend} />
             ))}
           </tbody>
         </table>
@@ -967,7 +964,8 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
   );
 }
 
-function Row({ t, firstColCell, updateFlag, onAfterSend }) {
+function Row({ t, idx, firstColCell, updateFlag, onAfterSend }) {
+  const zebra = idx % 2 === 1 ? "#FBFAF5" : "#fff";
   const momColor =
     t.momentum > 0 ? C.rise : t.momentum < 0 ? C.fall : t.sessions_7d === 0 && t.sessions_prev_7d === 0 ? C.stale : C.gray;
   const momArrow = t.momentum > 0 ? "\u2191" : t.momentum < 0 ? "\u2193" : "\u2500";
@@ -1002,8 +1000,8 @@ function Row({ t, firstColCell, updateFlag, onAfterSend }) {
       : { bg: "#F5F0E8", fg: "#7A5C1A", bd: "#D8C8A0" };
 
   return (
-    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
-      <td style={{ ...firstColCell, padding: "8px 10px", borderTop: `1px solid ${C.light}` }}>
+    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top", background: zebra }}>
+      <td style={{ ...firstColCell, padding: "8px 10px", borderTop: `1px solid ${C.light}`, background: zebra }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
           <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
@@ -1628,8 +1626,8 @@ function ActivationSection({ rows, updateFlag, onAfterSend }) {
               </tr>
             </thead>
             <tbody>
-              {activationRows.map((t) => (
-                <ActivationRow key={t.id} t={t} updateFlag={updateFlag} onAfterSend={onAfterSend} />
+              {activationRows.map((t, idx) => (
+                <ActivationRow key={t.id} t={t} idx={idx} updateFlag={updateFlag} onAfterSend={onAfterSend} />
               ))}
             </tbody>
           </table>
@@ -1660,7 +1658,8 @@ function plainHead() {
   };
 }
 
-function ActivationRow({ t, updateFlag, onAfterSend }) {
+function ActivationRow({ t, idx, updateFlag, onAfterSend }) {
+  const zebra = idx % 2 === 1 ? "#FBFAF5" : "#fff";
   const done = t.steps_done || 0;
   const pct = Math.round((done / 5) * 100);
   const progressColor = done === 5 ? C.rise : done >= 3 ? C.gold : C.fall;
@@ -1672,10 +1671,10 @@ function ActivationRow({ t, updateFlag, onAfterSend }) {
   const nudgeAction = buildActivationNudge(t);
 
   return (
-    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top" }}>
+    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top", background: zebra }}>
       {/* Sticky therapist column */}
       <td style={{
-        position: "sticky", left: 0, background: "#fff", zIndex: 2,
+        position: "sticky", left: 0, background: zebra, zIndex: 2,
         padding: "8px 10px", minWidth: 240,
         boxShadow: "1px 0 0 rgba(0,0,0,0.04)",
         borderTop: `1px solid ${C.light}`,
@@ -2654,11 +2653,12 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
                     : "No rows to display."}
                 </td>
               </tr>
-            ) : displayRows.map(function (t) {
+            ) : displayRows.map(function (t, idx) {
               if (!t) return null;
+              const zebra = idx % 2 === 1 ? "#FBFAF5" : "#fff";
               return (
-                <tr key={t.id || Math.random()} style={{ borderBottom: "1px solid " + C.light }}>
-                  <td style={{ padding: "8px 10px", position: "sticky", left: 0, background: "#fff", zIndex: 1, borderRight: "1px solid " + C.light }}>
+                <tr key={t.id || Math.random()} style={{ borderBottom: "1px solid " + C.light, background: zebra }}>
+                  <td style={{ padding: "8px 10px", position: "sticky", left: 0, background: zebra, zIndex: 1, borderRight: "1px solid " + C.light }}>
                     <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
                       {t.business_name || t.full_name || "(no name)"}
                       <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
