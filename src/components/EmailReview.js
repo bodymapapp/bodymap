@@ -1,14 +1,10 @@
 // src/components/EmailReview.js
 //
-// /founder/emails — a single-page email review tool.
+// /founder/emails — email review page.
 //
-// Left sidebar: list of all email templates grouped by category.
-// Right pane: rendered HTML preview of the selected email in an iframe,
-// with subject line, when-it-fires note, and a feedback box.
-//
-// Feedback is stored in email_feedback table (see migration). When HK
-// leaves a note it's attributed to his email and marked 'open'. Claude
-// walks the open feedback queue when rewriting emails.
+// Left sidebar: every email template grouped by category with E-codes.
+// Right pane: rendered preview in iframe + subject + feedback textarea.
+// Feedback saves to browser localStorage. No database, no setup.
 
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
@@ -32,30 +28,46 @@ const CATEGORY_LABELS = {
   founder_outreach: "Founder Outreach (manual)",
 };
 
+const STORAGE_KEY = "bodymap_email_feedback_v1";
+
+// ─── localStorage helpers ───
+
+function loadAllFeedback() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveAllFeedback(data) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function EmailReview() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emails, setEmails] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
-  const [feedbackByEmail, setFeedbackByEmail] = useState({}); // {email_id: [rows]}
+  const [feedbackByEmail, setFeedbackByEmail] = useState({});
   const [newFeedback, setNewFeedback] = useState("");
-  const [savingFeedback, setSavingFeedback] = useState(false);
-  const [currentUserEmail, setCurrentUserEmail] = useState(null);
 
   useEffect(() => {
-    loadEverything();
+    loadEmails();
+    setFeedbackByEmail(loadAllFeedback());
   }, []);
 
-  async function loadEverything() {
+  async function loadEmails() {
     setLoading(true);
     setError(null);
     try {
-      const { data: auth } = await supabase.auth.getSession();
-      const emailOfUser = auth?.session?.user?.email || null;
-      setCurrentUserEmail(emailOfUser);
-
-      // Call preview edge function
       const { data, error: invokeErr } = await supabase.functions.invoke("preview-emails", { body: {} });
       if (invokeErr || !data?.ok) {
         throw new Error(invokeErr?.message || data?.error || "Failed to load emails");
@@ -63,20 +75,6 @@ export default function EmailReview() {
       setEmails(data.emails || []);
       if ((data.emails || []).length > 0 && !selectedId) {
         setSelectedId(data.emails[0].id);
-      }
-
-      // Load all feedback
-      const { data: fb, error: fbErr } = await supabase
-        .from("email_feedback")
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (!fbErr && fb) {
-        const grouped = {};
-        for (const row of fb) {
-          if (!grouped[row.email_id]) grouped[row.email_id] = [];
-          grouped[row.email_id].push(row);
-        }
-        setFeedbackByEmail(grouped);
       }
     } catch (e) {
       setError(e.message || "Failed to load");
@@ -98,96 +96,68 @@ export default function EmailReview() {
   const selectedFeedback = selected ? (feedbackByEmail[selected.id] || []) : [];
   const openCount = (id) => (feedbackByEmail[id] || []).filter((f) => f.status === "open").length;
 
-  async function saveFeedback() {
+  function saveFeedback() {
     if (!newFeedback.trim() || !selected) return;
-    setSavingFeedback(true);
-    try {
-      const { error: insErr } = await supabase.from("email_feedback").insert({
+    const next = { ...feedbackByEmail };
+    if (!next[selected.id]) next[selected.id] = [];
+    next[selected.id] = [
+      {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
         email_id: selected.id,
         feedback: newFeedback.trim(),
         status: "open",
-        created_by: currentUserEmail,
-      });
-      if (insErr) {
-        // If the table doesn't exist yet, offer to run the migration.
-        // Supabase returns various error shapes: "relation does not exist",
-        // "Could not find the table", schema-cache errors, PGRST codes.
-        const msg = (insErr.message || "") + " " + (insErr.code || "") + " " + (insErr.details || "");
-        const isMissingTable = /does not exist|not.{0,5}find.{0,15}table|schema.cache|PGRST|relation/i.test(msg);
-        if (isMissingTable) {
-          if (window.confirm("The email_feedback table doesn't exist yet. Run the migration to create it now?")) {
-            await runMigration();
-            // Retry save
-            const { error: retryErr } = await supabase.from("email_feedback").insert({
-              email_id: selected.id,
-              feedback: newFeedback.trim(),
-              status: "open",
-              created_by: currentUserEmail,
-            });
-            if (retryErr) throw retryErr;
-          } else {
-            return;
-          }
-        } else {
-          throw insErr;
-        }
-      }
+        created_at: new Date().toISOString(),
+      },
+      ...next[selected.id],
+    ];
+    if (saveAllFeedback(next)) {
+      setFeedbackByEmail(next);
       setNewFeedback("");
-      await loadEverything();
-    } catch (e) {
-      alert("Failed to save: " + (e.message || "unknown"));
-    } finally {
-      setSavingFeedback(false);
+    } else {
+      alert("Browser storage full or blocked. Try clearing some site data.");
     }
   }
 
-  async function runMigration() {
-    try {
-      const { data, error } = await supabase.functions.invoke("run-migration", { body: { name: "email_feedback" } });
-      if (error) {
-        throw new Error(error.message || "migration invoke failed");
-      }
-      if (data?.fallback && data?.sql) {
-        // Function couldn't run DDL automatically; show the SQL for user to paste
-        const proceed = window.confirm(
-          "Auto-migration wasn't able to run. Click OK to copy the SQL to your clipboard, then paste it into Supabase SQL editor (one-time setup)."
-        );
-        if (proceed) {
-          try {
-            await navigator.clipboard.writeText(data.sql);
-            window.alert("SQL copied to clipboard.\n\nGo to Supabase dashboard → SQL editor → paste → Run. Then come back and try saving feedback again.");
-          } catch (_) {
-            window.prompt("Copy this SQL and paste it in Supabase SQL editor:", data.sql);
-          }
-        }
-        throw new Error("Migration needs manual step (SQL was copied to clipboard)");
-      }
-      if (!data?.ok) {
-        throw new Error(data?.error || "migration failed");
-      }
-      return data;
-    } catch (e) {
-      alert("Migration step: " + (e.message || "unknown"));
-      throw e;
+  function markAddressed(fbId) {
+    const next = { ...feedbackByEmail };
+    for (const eid of Object.keys(next)) {
+      next[eid] = next[eid].map((f) =>
+        f.id === fbId ? { ...f, status: "addressed", addressed_at: new Date().toISOString() } : f
+      );
     }
+    saveAllFeedback(next);
+    setFeedbackByEmail(next);
   }
 
-  async function markAddressed(fbId) {
-    const note = window.prompt("Optional note on how this was addressed:");
-    if (note === null) return; // cancelled
+  function deleteFeedback(fbId) {
+    if (!window.confirm("Delete this feedback?")) return;
+    const next = { ...feedbackByEmail };
+    for (const eid of Object.keys(next)) {
+      next[eid] = next[eid].filter((f) => f.id !== fbId);
+    }
+    saveAllFeedback(next);
+    setFeedbackByEmail(next);
+  }
+
+  function exportAll() {
+    // Collect all open feedback into a single readable block
+    const openItems = [];
+    for (const e of emails) {
+      const fbs = (feedbackByEmail[e.id] || []).filter((f) => f.status === "open");
+      for (const f of fbs) {
+        openItems.push({ code: e.code, label: e.label, feedback: f.feedback, at: f.created_at });
+      }
+    }
+    if (openItems.length === 0) {
+      alert("No open feedback to export.");
+      return;
+    }
+    const text = openItems.map((i) => `[${i.code}] ${i.label}\n${i.feedback}\n(noted ${new Date(i.at).toLocaleString()})`).join("\n\n---\n\n");
     try {
-      const { error: updErr } = await supabase
-        .from("email_feedback")
-        .update({
-          status: "addressed",
-          addressed_at: new Date().toISOString(),
-          addressed_note: note || null,
-        })
-        .eq("id", fbId);
-      if (updErr) throw updErr;
-      await loadEverything();
-    } catch (e) {
-      alert("Failed to update: " + (e.message || "unknown"));
+      navigator.clipboard.writeText(text);
+      alert(`${openItems.length} open feedback item${openItems.length === 1 ? "" : "s"} copied to clipboard. Paste it to HK or into Claude to process.`);
+    } catch {
+      window.prompt("Copy this feedback:", text);
     }
   }
 
@@ -204,12 +174,14 @@ export default function EmailReview() {
       <div style={{ padding: 40, textAlign: "center", color: C.fall, fontFamily: "Georgia, serif" }}>
         <h2>Could not load</h2>
         <p>{error}</p>
-        <button onClick={loadEverything} style={{ marginTop: 16, padding: "8px 20px", background: C.forest, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
+        <button onClick={loadEmails} style={{ marginTop: 16, padding: "8px 20px", background: C.forest, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
           Retry
         </button>
       </div>
     );
   }
+
+  const totalOpen = Object.values(feedbackByEmail).flat().filter((f) => f.status === "open").length;
 
   return (
     <div style={{ fontFamily: "Georgia, serif", background: C.cream, minHeight: "100vh" }}>
@@ -224,15 +196,25 @@ export default function EmailReview() {
             </h1>
             <p style={{ fontSize: 13, color: C.gray, margin: "6px 0 0", maxWidth: 680 }}>
               Every email BodyMap sends to therapists. Preview, leave feedback, track what needs rewriting.
-              Sample data uses fake therapist Sarah Mitchell.
+              Feedback saves to your browser and stays private to this device.
             </p>
           </div>
-          <button
-            onClick={() => navigate("/founder")}
-            style={{ padding: "8px 14px", background: "#fff", border: `1px solid ${C.light}`, borderRadius: 6, cursor: "pointer", fontSize: 12, color: C.dark, fontFamily: "system-ui" }}
-          >
-            ← Back to /founder
-          </button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {totalOpen > 0 && (
+              <button
+                onClick={exportAll}
+                style={{ padding: "8px 14px", background: C.forest, color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 12, fontWeight: 700, fontFamily: "system-ui" }}
+              >
+                📋 Copy {totalOpen} open feedback
+              </button>
+            )}
+            <button
+              onClick={() => navigate("/founder")}
+              style={{ padding: "8px 14px", background: "#fff", border: `1px solid ${C.light}`, borderRadius: 6, cursor: "pointer", fontSize: 12, color: C.dark, fontFamily: "system-ui" }}
+            >
+              ← Back to /founder
+            </button>
+          </div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 320px) 1fr", gap: 20, alignItems: "start" }}>
@@ -339,8 +321,8 @@ export default function EmailReview() {
                         <div key={f.id} style={{
                           padding: "10px 12px",
                           marginBottom: 8,
-                          background: f.status === "open" ? "#FEF9E7" : f.status === "addressed" ? "#F0FDF4" : C.softCream,
-                          borderLeft: `3px solid ${f.status === "open" ? C.gold : f.status === "addressed" ? C.rise : C.gray}`,
+                          background: f.status === "open" ? "#FEF9E7" : "#F0FDF4",
+                          borderLeft: `3px solid ${f.status === "open" ? C.gold : C.rise}`,
                           borderRadius: 4,
                           fontFamily: "system-ui",
                           fontSize: 13,
@@ -350,19 +332,24 @@ export default function EmailReview() {
                           <div style={{ whiteSpace: "pre-wrap" }}>{f.feedback}</div>
                           <div style={{ marginTop: 6, fontSize: 10, color: C.gray, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                             <span>
-                              {f.status.toUpperCase()} · by {f.created_by || "admin"} · {new Date(f.created_at).toLocaleString()}
-                              {f.status === "addressed" && f.addressed_note && (
-                                <span style={{ fontStyle: "italic" }}> · Resolved: {f.addressed_note}</span>
-                              )}
+                              {f.status.toUpperCase()} · {new Date(f.created_at).toLocaleString()}
                             </span>
-                            {f.status === "open" && (
+                            <span style={{ display: "flex", gap: 6 }}>
+                              {f.status === "open" && (
+                                <button
+                                  onClick={() => markAddressed(f.id)}
+                                  style={{ fontSize: 10, padding: "3px 10px", background: C.rise, color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "system-ui", fontWeight: 700 }}
+                                >
+                                  Mark addressed
+                                </button>
+                              )}
                               <button
-                                onClick={() => markAddressed(f.id)}
-                                style={{ fontSize: 10, padding: "3px 10px", background: C.rise, color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "system-ui", fontWeight: 700 }}
+                                onClick={() => deleteFeedback(f.id)}
+                                style={{ fontSize: 10, padding: "3px 10px", background: "transparent", color: C.gray, border: `1px solid ${C.light}`, borderRadius: 4, cursor: "pointer", fontFamily: "system-ui" }}
                               >
-                                Mark addressed
+                                Delete
                               </button>
-                            )}
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -376,7 +363,13 @@ export default function EmailReview() {
                   <textarea
                     value={newFeedback}
                     onChange={(e) => setNewFeedback(e.target.value)}
-                    placeholder={`Leave feedback on "${selected.label}"... Be specific. E.g. "line 3 too cold, suggest something warmer about the therapist's experience"`}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
+                        e.preventDefault();
+                        saveFeedback();
+                      }
+                    }}
+                    placeholder={`Feedback on "${selected.label}". Be specific. E.g. "line 3 sounds too cold, something warmer about the therapist's day". Cmd+Enter to save.`}
                     style={{
                       width: "100%",
                       minHeight: 80,
@@ -393,20 +386,20 @@ export default function EmailReview() {
                   <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
                     <button
                       onClick={saveFeedback}
-                      disabled={savingFeedback || !newFeedback.trim()}
+                      disabled={!newFeedback.trim()}
                       style={{
                         padding: "8px 18px",
-                        background: (!newFeedback.trim() || savingFeedback) ? C.light : C.forest,
+                        background: !newFeedback.trim() ? C.light : C.forest,
                         color: "#fff",
                         border: "none",
                         borderRadius: 6,
-                        cursor: (!newFeedback.trim() || savingFeedback) ? "default" : "pointer",
+                        cursor: !newFeedback.trim() ? "default" : "pointer",
                         fontSize: 13,
                         fontWeight: 700,
                         fontFamily: "system-ui",
                       }}
                     >
-                      {savingFeedback ? "Saving..." : "Save feedback"}
+                      Save feedback
                     </button>
                   </div>
                 </div>
