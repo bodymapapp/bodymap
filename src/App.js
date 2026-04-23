@@ -35,6 +35,7 @@ import PostSessionBrief from './pages/PostSessionBrief';
 import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
 import FounderDashboard from './components/FounderDashboard';
+import EmailReview from './components/EmailReview';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -76,6 +77,7 @@ function App() {
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
           <Route path="/founder" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
+          <Route path="/founder/emails" element={<ProtectedRoute><EmailReview /></ProtectedRoute>} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>
