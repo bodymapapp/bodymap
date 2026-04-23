@@ -126,7 +126,20 @@ export default function FounderDashboard() {
         supabase.from("activation_events").select("therapist_id,event_name"),
         supabase.from("notification_log")
           .select("therapist_id,notification_type,status,sent_at,subject,body_snippet")
-          .like("notification_type", "founder_outreach_%")
+          .in("notification_type", [
+            "welcome",
+            "drip_day2","drip_day5","drip_day10","drip_day30","drip_day60",
+            "practice_pulse",
+            "founder_outreach_welcome",
+            "founder_outreach_checkin",
+            "founder_outreach_reminder",
+            "founder_outreach_testimonial",
+            "founder_outreach_first_session",
+            "founder_outreach_setup_nudge",
+            "founder_outreach_churned",
+            "founder_outreach_referral_thankyou",
+            "founder_outreach_activation_nudge",
+          ])
           .order("sent_at", { ascending: false }),
         supabase.from("referrals")
           .select("referrer_therapist_id,status,reward_sent"),
@@ -575,6 +588,19 @@ export default function FounderDashboard() {
           </div>
         </div>
 
+        {/* ====== TABLE 1 ====== */}
+        <div style={{ marginTop: 28, marginBottom: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
+            Table 1
+          </div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
+            Therapists
+          </h2>
+          <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
+            Every therapist on BodyMap. Activity, plan, flags. Click column headers to sort.
+          </p>
+        </div>
+
         <TherapistTable
           rows={filtered}
           sortKey={sortKey}
@@ -585,6 +611,8 @@ export default function FounderDashboard() {
         />
 
         <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
+
+        <CommsLogGrid rows={filtered} />
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -1476,13 +1504,13 @@ function ActivationSection({ rows, updateFlag, onAfterSend }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
-            Activation checklist
+            Table 2
           </div>
           <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
-            Which therapists finished setup. Which are stuck.
+            Activation Checklist
           </h2>
           <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
-            Therapists who complete all 5 steps see the full product. Those who don't, churn.
+            Which therapists finished setup. Which are stuck. Therapists who complete all 5 steps see the full product. Those who don't, churn.
           </p>
         </div>
         <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.dark, cursor: "pointer", userSelect: "none", padding: "6px 10px", borderRadius: 8, background: onlyStuck ? C.softCream : "#fff", border: `1.5px solid ${C.light}` }}>
@@ -2240,5 +2268,289 @@ function RunDigestButton() {
         </div>
       )}
     </div>
+  );
+}
+
+// ========================================================================
+// Table 3: Comms Log Grid
+// One row per therapist, one column per outreach type. Checkmark + date
+// if that type has been sent. Defensive: wrapped in a try-catch so any
+// render error shows a fallback message instead of blanking /founder.
+// ========================================================================
+
+const COMMS_OUTREACH_COLUMNS = [
+  { key: "welcome",                           label: "Welcome",       group: "auto",   short: "W"   },
+  { key: "drip_day2",                         label: "Day 2",         group: "auto",   short: "D2"  },
+  { key: "drip_day5",                         label: "Day 5",         group: "auto",   short: "D5"  },
+  { key: "drip_day10",                        label: "Day 10",        group: "auto",   short: "D10" },
+  { key: "drip_day30",                        label: "Day 30",        group: "auto",   short: "D30" },
+  { key: "drip_day60",                        label: "Day 60",        group: "auto",   short: "D60" },
+  { key: "practice_pulse",                    label: "Pulse",         group: "auto",   short: "PP"  },
+  { key: "founder_outreach_checkin",          label: "Check in",      group: "manual", short: "Ci"  },
+  { key: "founder_outreach_reminder",         label: "Reminder",      group: "manual", short: "Rm"  },
+  { key: "founder_outreach_testimonial",      label: "Testimonial",   group: "manual", short: "Ts"  },
+  { key: "founder_outreach_first_session",    label: "First session", group: "manual", short: "Fs"  },
+  { key: "founder_outreach_setup_nudge",      label: "Setup nudge",   group: "manual", short: "Sn"  },
+  { key: "founder_outreach_churned",          label: "Churned",       group: "manual", short: "Ch"  },
+  { key: "founder_outreach_referral_thankyou",label: "Referral thx",  group: "manual", short: "Rt"  },
+  { key: "founder_outreach_activation_nudge", label: "Activation",    group: "manual", short: "An"  },
+];
+
+function commsDaysAgoShort(dateStr) {
+  try {
+    if (!dateStr) return "";
+    const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
+    if (isNaN(days)) return "";
+    if (days === 0) return "today";
+    if (days === 1) return "1d";
+    if (days < 30) return days + "d";
+    if (days < 365) return Math.floor(days / 30) + "mo";
+    return Math.floor(days / 365) + "y";
+  } catch (e) {
+    return "";
+  }
+}
+
+function CommsLogGrid({ rows }) {
+  const [sortBy, setSortBy] = useState("total_desc");
+  const [hideInactive, setHideInactive] = useState(true);
+  const [renderError, setRenderError] = useState(null);
+
+  // Build per-therapist send summary. Everything defensively guarded.
+  const rowsWithSends = useMemo(() => {
+    try {
+      const autoTypes = ["welcome", "drip_day2", "drip_day5", "drip_day10", "drip_day30", "drip_day60", "practice_pulse"];
+      const input = Array.isArray(rows) ? rows : [];
+      return input.map(function (t) {
+        if (!t || typeof t !== "object") {
+          return { id: "unknown-" + Math.random(), sendMap: {}, totalSends: 0 };
+        }
+        const sendMap = {};
+        const history = Array.isArray(t.contact_history) ? t.contact_history : [];
+        for (let i = 0; i < history.length; i++) {
+          const h = history[i];
+          if (!h || typeof h !== "object") continue;
+          const hType = typeof h.type === "string" ? h.type : "";
+          if (!hType) continue;
+          const fullKey = autoTypes.indexOf(hType) !== -1 ? hType : ("founder_outreach_" + hType);
+          if (!sendMap[fullKey]) sendMap[fullKey] = { count: 0, mostRecent: null, subject: null };
+          sendMap[fullKey].count++;
+          const sentAt = h.sent_at;
+          if (sentAt) {
+            try {
+              const newTime = new Date(sentAt).getTime();
+              if (!isNaN(newTime)) {
+                if (!sendMap[fullKey].mostRecent || newTime > new Date(sendMap[fullKey].mostRecent).getTime()) {
+                  sendMap[fullKey].mostRecent = sentAt;
+                  sendMap[fullKey].subject = h.subject || null;
+                }
+              }
+            } catch (_e) { /* skip bad date */ }
+          }
+        }
+        let total = 0;
+        const keys = Object.keys(sendMap);
+        for (let k = 0; k < keys.length; k++) total += sendMap[keys[k]].count;
+        return Object.assign({}, t, { sendMap: sendMap, totalSends: total });
+      });
+    } catch (err) {
+      setRenderError(err?.message || "failed to build send summary");
+      return [];
+    }
+  }, [rows]);
+
+  const displayRows = useMemo(() => {
+    try {
+      let r = rowsWithSends || [];
+      if (hideInactive) r = r.filter(function (t) { return (t && t.totalSends > 0); });
+      if (sortBy === "total_desc") r = r.slice().sort(function (a, b) { return (b?.totalSends || 0) - (a?.totalSends || 0); });
+      else if (sortBy === "total_asc") r = r.slice().sort(function (a, b) { return (a?.totalSends || 0) - (b?.totalSends || 0); });
+      else if (sortBy === "recent") r = r.slice().sort(function (a, b) {
+        const ax = a?.last_contact_at ? new Date(a.last_contact_at).getTime() : 0;
+        const bx = b?.last_contact_at ? new Date(b.last_contact_at).getTime() : 0;
+        return bx - ax;
+      });
+      else if (sortBy === "name") r = r.slice().sort(function (a, b) {
+        return (a?.business_name || a?.email || "").localeCompare(b?.business_name || b?.email || "");
+      });
+      return r;
+    } catch (err) {
+      setRenderError(err?.message || "failed to sort/filter");
+      return [];
+    }
+  }, [rowsWithSends, sortBy, hideInactive]);
+
+  // Header area (always rendered so Table 3 shows up even if body errors)
+  const header = (
+    <div style={{ marginTop: 36 }}>
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
+          Table 3
+        </div>
+        <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
+          Comms Log
+        </h2>
+        <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
+          Every email sent to each therapist. Auto sends (Welcome, Drip, Pulse) and manual founder outreach side by side. Hover any cell to see subject and date.
+        </p>
+      </div>
+    </div>
+  );
+
+  // If either memo failed, render a clear fallback so /founder stays usable
+  if (renderError) {
+    return (
+      <>
+        {header}
+        <div style={{ padding: 16, background: "#FEF3F2", border: "1px solid " + C.fall, borderRadius: 8, fontSize: 12, color: C.fall }}>
+          Table 3 couldn't render: {renderError}. The rest of /founder is unaffected. Screenshot this message for HK to fix.
+        </div>
+      </>
+    );
+  }
+
+  const firstManualIndex = COMMS_OUTREACH_COLUMNS.findIndex(function (c) { return c.group === "manual"; });
+  const mint = "#E8F0EA";
+  const navyBg = "#E4E8EF";
+  const navyText = "#31466B";
+
+  return (
+    <>
+      {header}
+      <div style={{ marginBottom: 10, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <label style={{ fontSize: 12, color: C.gray, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={hideInactive} onChange={function (e) { setHideInactive(e.target.checked); }} />
+          Hide therapists with no sends
+        </label>
+        <div style={{ fontSize: 12, color: C.gray }}>Sort:</div>
+        <select value={sortBy} onChange={function (e) { setSortBy(e.target.value); }} style={{ fontSize: 12, padding: "4px 8px", borderRadius: 4, border: "1px solid " + C.light, background: "#fff" }}>
+          <option value="total_desc">Most emails first</option>
+          <option value="total_asc">Fewest emails first</option>
+          <option value="recent">Most recent contact</option>
+          <option value="name">Alphabetical</option>
+        </select>
+        <div style={{ fontSize: 11, color: C.gray, marginLeft: "auto" }}>
+          Showing {displayRows.length} therapist{displayRows.length === 1 ? "" : "s"}
+        </div>
+      </div>
+
+      <div style={{ overflowX: "auto", border: "1px solid " + C.light, borderRadius: 8, background: "#fff" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Georgia, serif", fontSize: 12 }}>
+          <thead>
+            <tr style={{ background: C.softCream }}>
+              <th style={{ textAlign: "left", padding: "10px 10px", borderBottom: "1.5px solid " + C.dark, position: "sticky", left: 0, background: C.softCream, zIndex: 2, minWidth: 220 }}>
+                Therapist
+              </th>
+              {COMMS_OUTREACH_COLUMNS.map(function (col, i) {
+                return (
+                  <th key={col.key} title={col.label} style={{
+                    textAlign: "center",
+                    padding: "8px 4px",
+                    borderBottom: "1.5px solid " + C.dark,
+                    borderLeft: i === firstManualIndex ? ("2px solid " + C.dark) : ("1px solid " + C.light),
+                    fontSize: 10,
+                    fontWeight: 700,
+                    letterSpacing: "0.04em",
+                    color: col.group === "auto" ? C.forest : navyText,
+                    textTransform: "uppercase",
+                    width: 54,
+                    whiteSpace: "nowrap",
+                  }}>
+                    {col.short}
+                    <div style={{ fontSize: 9, fontWeight: 400, color: C.gray, textTransform: "none", letterSpacing: 0, marginTop: 2 }}>
+                      {col.label}
+                    </div>
+                  </th>
+                );
+              })}
+              <th style={{ textAlign: "center", padding: "8px 10px", borderBottom: "1.5px solid " + C.dark, borderLeft: "2px solid " + C.dark, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.dark, textTransform: "uppercase", width: 60 }}>
+                Total
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {displayRows.length === 0 ? (
+              <tr>
+                <td colSpan={COMMS_OUTREACH_COLUMNS.length + 2} style={{ padding: 32, textAlign: "center", color: C.gray, fontSize: 12, fontStyle: "italic" }}>
+                  {hideInactive
+                    ? "No therapists have been emailed yet. Uncheck \"Hide therapists with no sends\" to show all rows."
+                    : "No rows to display."}
+                </td>
+              </tr>
+            ) : displayRows.map(function (t) {
+              if (!t) return null;
+              return (
+                <tr key={t.id || Math.random()} style={{ borderBottom: "1px solid " + C.light }}>
+                  <td style={{ padding: "8px 10px", position: "sticky", left: 0, background: "#fff", zIndex: 1, borderRight: "1px solid " + C.light }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: C.dark }}>
+                      {t.business_name || t.full_name || "(no name)"}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>{t.email || ""}</div>
+                    {t.last_contact_at && (
+                      <div style={{ fontSize: 10, color: C.gray, marginTop: 2, fontStyle: "italic" }}>
+                        last: {commsDaysAgoShort(t.last_contact_at)}
+                      </div>
+                    )}
+                  </td>
+                  {COMMS_OUTREACH_COLUMNS.map(function (col, i) {
+                    const send = t.sendMap && t.sendMap[col.key];
+                    const hasSend = send && send.count > 0;
+                    const cellBg = col.group === "auto" ? mint : navyBg;
+                    const cellText = col.group === "auto" ? C.forest : navyText;
+                    return (
+                      <td key={col.key} style={{
+                        textAlign: "center",
+                        padding: "6px 4px",
+                        borderLeft: i === firstManualIndex ? ("2px solid " + C.dark) : ("1px solid " + C.light),
+                        verticalAlign: "middle",
+                      }}>
+                        {hasSend ? (
+                          <div title={col.label + ": " + send.count + "x, last " + commsDaysAgoShort(send.mostRecent) + (send.subject ? (", " + send.subject) : "")}
+                            style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                            <div style={{ width: 20, height: 20, borderRadius: 4, background: cellBg, color: cellText, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>
+                              {"\u2713"}
+                            </div>
+                            <div style={{ fontSize: 9, color: C.gray, lineHeight: 1.2 }}>
+                              {commsDaysAgoShort(send.mostRecent)}
+                              {send.count > 1 && <span style={{ color: C.fall, fontWeight: 700 }}> x{send.count}</span>}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 11, color: "#D5D0C1" }}>.</div>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td style={{
+                    textAlign: "center",
+                    padding: "8px 10px",
+                    borderLeft: "2px solid " + C.dark,
+                    fontWeight: 800,
+                    fontSize: 14,
+                    color: t.totalSends > 6 ? C.fall : t.totalSends > 3 ? C.gold : C.forest,
+                  }}>
+                    {t.totalSends || 0}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ marginTop: 10, display: "flex", gap: 16, fontSize: 11, color: C.gray, flexWrap: "wrap", alignItems: "center" }}>
+        <div>
+          <span style={{ display: "inline-block", width: 10, height: 10, background: mint, borderRadius: 2, marginRight: 4, verticalAlign: "middle" }}></span>
+          Auto send (Welcome, Drip, Pulse)
+        </div>
+        <div>
+          <span style={{ display: "inline-block", width: 10, height: 10, background: navyBg, borderRadius: 2, marginRight: 4, verticalAlign: "middle" }}></span>
+          Manual send (Founder outreach)
+        </div>
+        <div><span style={{ color: C.fall, fontWeight: 700 }}>xN</span> = sent N times</div>
+        <div><span style={{ color: C.gold, fontWeight: 700 }}>Total 4-6</span> = watch</div>
+        <div><span style={{ color: C.fall, fontWeight: 700 }}>Total 7+</span> = likely too many</div>
+      </div>
+    </>
   );
 }
