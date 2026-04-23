@@ -203,6 +203,35 @@ serve(async (req) => {
     });
 
     const data = await res.json();
+
+    // Log to notification_log for founder dashboard comms grid
+    const subjectLine = `Your Practice Pulse for ${today.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`;
+    try {
+      await supabase.from('notification_log').insert({
+        therapist_id: therapist.id,
+        notification_type: 'practice_pulse',
+        audience: 'therapist',
+        channel: 'email',
+        recipient: therapist.email,
+        status: res.ok ? 'sent' : 'failed',
+        provider_id: data?.id || null,
+        subject: subjectLine,
+        body_snippet: 'Daily practice digest: bookings, sessions, clients.',
+      });
+    } catch (_e) {
+      try {
+        await supabase.from('notification_log').insert({
+          therapist_id: therapist.id,
+          notification_type: 'practice_pulse',
+          audience: 'therapist',
+          channel: 'email',
+          recipient: therapist.email,
+          status: res.ok ? 'sent' : 'failed',
+          provider_id: data?.id || null,
+        });
+      } catch (_e2) { /* non-blocking */ }
+    }
+
     results.push({ therapist: therapistName, email: therapist.email, status: res.ok ? 'sent' : 'failed', id: data.id, error: data.message });
   }
 

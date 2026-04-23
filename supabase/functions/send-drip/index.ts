@@ -264,13 +264,42 @@ serve(async (req) => {
 
       const data = await res.json();
 
-      // Log the send so we don't do it again
+      // Log the send so we don't do it again (drip_sends = dedupe table)
       await supabase.from('drip_sends').insert({
         therapist_id: t.id,
         drip_day: w.day,
         resend_id: data?.id || null,
         status: res.ok ? 'sent' : 'failed',
       });
+
+      // Also write to unified notification_log so founder dashboard's
+      // comms log view can render this send. Format: drip_day{N}.
+      try {
+        await supabase.from('notification_log').insert({
+          therapist_id: t.id,
+          notification_type: `drip_day${w.day}`,
+          audience: 'therapist',
+          channel: 'email',
+          recipient: t.email,
+          status: res.ok ? 'sent' : 'failed',
+          provider_id: data?.id || null,
+          subject: emailPayload.subject,
+          body_snippet: (htmlWithUnsub || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 200),
+        });
+      } catch (_e) {
+        // Fallback without subject/body_snippet columns
+        try {
+          await supabase.from('notification_log').insert({
+            therapist_id: t.id,
+            notification_type: `drip_day${w.day}`,
+            audience: 'therapist',
+            channel: 'email',
+            recipient: t.email,
+            status: res.ok ? 'sent' : 'failed',
+            provider_id: data?.id || null,
+          });
+        } catch (_e2) { /* non-blocking */ }
+      }
 
       results.push({ day: w.day, email: t.email, status: res.ok ? 'sent' : 'failed' });
 

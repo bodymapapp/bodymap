@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,6 +10,8 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+  const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+  const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 
   try {
     const { email, firstName, customUrl } = await req.json();
@@ -140,6 +143,44 @@ serve(async (req) => {
     });
 
     const data = await res.json();
+
+    // Log to notification_log so founder dashboard comms log shows this send.
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data: tRow } = await supabase
+          .from('therapists')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+        if (tRow?.id) {
+          try {
+            await supabase.from('notification_log').insert({
+              therapist_id: tRow.id,
+              notification_type: 'welcome',
+              audience: 'therapist',
+              channel: 'email',
+              recipient: email,
+              status: res.ok ? 'sent' : 'failed',
+              provider_id: data?.id || null,
+              subject: `${firstName}, your back office just went on autopilot 🌿`,
+              body_snippet: 'Welcome to BodyMap. 5-step setup guide included.',
+            });
+          } catch (_e) {
+            await supabase.from('notification_log').insert({
+              therapist_id: tRow.id,
+              notification_type: 'welcome',
+              audience: 'therapist',
+              channel: 'email',
+              recipient: email,
+              status: res.ok ? 'sent' : 'failed',
+              provider_id: data?.id || null,
+            });
+          }
+        }
+      } catch (_err) { /* non-blocking */ }
+    }
+
     return new Response(JSON.stringify({ ok: res.ok, data }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
