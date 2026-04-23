@@ -122,6 +122,10 @@ serve(async (req) => {
     let skipped_no_therapist_match = 0;
     let skipped_unknown_type = 0;
     let failed = 0;
+    const unknownSubjects: string[] = [];
+    const unmatchedRecipients: string[] = [];
+    const insertErrors: string[] = [];
+    const samplesInserted: Array<{ to: string; type: string; subject: string }> = [];
 
     for (const e of fetched) {
       const providerId = e?.id;
@@ -137,14 +141,19 @@ serve(async (req) => {
       const match = byEmail.get(primaryTo);
       if (!match) {
         skipped_no_therapist_match++;
+        if (unmatchedRecipients.length < 10) unmatchedRecipients.push(primaryTo);
         continue;
       }
 
       const type = inferType(e?.subject || "", e?.from || "");
-      if (!type) { skipped_unknown_type++; continue; }
+      if (!type) {
+        skipped_unknown_type++;
+        if (unknownSubjects.length < 10) unknownSubjects.push(e?.subject || "(empty)");
+        continue;
+      }
 
       try {
-        await admin.from("notification_log").insert({
+        const { error: insertErr } = await admin.from("notification_log").insert({
           therapist_id: match.id,
           notification_type: type,
           audience: "therapist",
@@ -156,9 +165,18 @@ serve(async (req) => {
           subject: e?.subject || null,
           body_snippet: null,
         });
-        inserted++;
-      } catch (_err) {
+        if (insertErr) {
+          failed++;
+          if (insertErrors.length < 5) insertErrors.push(insertErr.message || JSON.stringify(insertErr));
+        } else {
+          inserted++;
+          if (samplesInserted.length < 5) {
+            samplesInserted.push({ to: primaryTo, type, subject: (e?.subject || "").slice(0, 80) });
+          }
+        }
+      } catch (err: any) {
         failed++;
+        if (insertErrors.length < 5) insertErrors.push(err?.message || String(err));
       }
     }
 
@@ -171,6 +189,14 @@ serve(async (req) => {
       skipped_no_therapist_match,
       skipped_unknown_type,
       failed,
+      diagnostics: {
+        therapists_in_db: byEmail.size,
+        existing_log_provider_ids: seenProviderIds.size,
+        samples_inserted: samplesInserted,
+        sample_unknown_subjects: unknownSubjects,
+        sample_unmatched_recipients: unmatchedRecipients,
+        insert_errors: insertErrors,
+      },
     });
   } catch (e: any) {
     return json({ ok: false, error: e?.message || String(e) });

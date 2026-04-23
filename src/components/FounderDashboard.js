@@ -2373,8 +2373,33 @@ function CommsBackfillButton({ onAfterImport }) {
         {label}
       </button>
       {status === "done" && result && (
-        <div style={{ fontSize: 10, color: C.gray, fontStyle: "italic", maxWidth: 340, textAlign: "right" }}>
-          {result.inserted} new, {result.skipped_already_logged} already logged, {result.skipped_unknown_type} unknown subject, {result.skipped_no_therapist_match} non-therapist
+        <div style={{ fontSize: 10, color: C.gray, fontStyle: "italic", maxWidth: 420, textAlign: "right", lineHeight: 1.5 }}>
+          <div>Fetched {result.total_fetched_from_resend} from Resend across {result.pages_fetched} page(s)</div>
+          <div>Inserted {result.inserted}, already logged {result.skipped_already_logged}, no therapist match {result.skipped_no_therapist_match}, unknown subject {result.skipped_unknown_type}</div>
+          {result.diagnostics?.sample_unknown_subjects?.length > 0 && (
+            <details style={{ marginTop: 4, textAlign: "left", color: C.dark }}>
+              <summary style={{ cursor: "pointer", color: C.fall, fontWeight: 600 }}>Unknown subjects ({result.diagnostics.sample_unknown_subjects.length})</summary>
+              <ul style={{ margin: "4px 0", paddingLeft: 16 }}>
+                {result.diagnostics.sample_unknown_subjects.map((s, i) => <li key={i} style={{ fontSize: 10 }}>{s}</li>)}
+              </ul>
+            </details>
+          )}
+          {result.diagnostics?.sample_unmatched_recipients?.length > 0 && (
+            <details style={{ marginTop: 4, textAlign: "left", color: C.dark }}>
+              <summary style={{ cursor: "pointer", color: C.gold, fontWeight: 600 }}>Unmatched recipients ({result.diagnostics.sample_unmatched_recipients.length})</summary>
+              <ul style={{ margin: "4px 0", paddingLeft: 16 }}>
+                {result.diagnostics.sample_unmatched_recipients.map((s, i) => <li key={i} style={{ fontSize: 10 }}>{s}</li>)}
+              </ul>
+            </details>
+          )}
+          {result.diagnostics?.insert_errors?.length > 0 && (
+            <details style={{ marginTop: 4, textAlign: "left", color: C.dark }}>
+              <summary style={{ cursor: "pointer", color: C.fall, fontWeight: 600 }}>Insert errors ({result.diagnostics.insert_errors.length})</summary>
+              <ul style={{ margin: "4px 0", paddingLeft: 16 }}>
+                {result.diagnostics.insert_errors.map((s, i) => <li key={i} style={{ fontSize: 10 }}>{s}</li>)}
+              </ul>
+            </details>
+          )}
         </div>
       )}
       {status === "failed" && result?.error && (
