@@ -612,7 +612,7 @@ export default function FounderDashboard() {
 
         <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
 
-        <CommsLogGrid rows={filtered} updateFlag={updateFlag} />
+        <CommsLogGrid rows={filtered} updateFlag={updateFlag} onAfterBackfill={fetchAll} />
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -2311,13 +2311,13 @@ function commsDaysAgoShort(dateStr) {
   }
 }
 
-function CommsBackfillButton() {
+function CommsBackfillButton({ onAfterImport }) {
   const [status, setStatus] = useState("idle");
   const [result, setResult] = useState(null);
 
   const run = async () => {
     if (status === "running") return;
-    if (!window.confirm("Import historical email sends from Resend?\n\nPulls up to 1000 recent sends, matches recipients to therapists, and fills in checkmarks for any sends that aren't already logged. Safe to run multiple times (dedupes by provider_id). Takes about 15 seconds.\n\nAfter it finishes, hit Refresh to see the updated grid.")) {
+    if (!window.confirm("Import historical email sends from Resend?\n\nPulls up to 1000 recent sends, matches recipients to therapists, and fills in checkmarks for any sends that aren't already logged. Safe to run multiple times (dedupes by provider_id). Takes about 15 seconds.")) {
       return;
     }
     setStatus("running");
@@ -2331,6 +2331,10 @@ function CommsBackfillButton() {
       }
       setStatus("done");
       setResult(data);
+      // Auto-refresh the dashboard so new checkmarks appear without a manual click
+      if (onAfterImport) {
+        try { await onAfterImport(); } catch (_e) { /* non-blocking */ }
+      }
       setTimeout(() => setStatus("idle"), 20000);
     } catch (e) {
       setStatus("failed");
@@ -2339,7 +2343,7 @@ function CommsBackfillButton() {
   };
 
   const label = status === "running" ? "Importing..."
-    : status === "done" ? ("Imported " + (result?.inserted ?? 0) + " · Refresh to see")
+    : status === "done" ? ("Imported " + (result?.inserted ?? 0) + " " + ((result?.inserted ?? 0) === 1 ? "send" : "sends"))
     : status === "failed" ? "Import failed"
     : "Import from Resend";
 
@@ -2380,7 +2384,7 @@ function CommsBackfillButton() {
   );
 }
 
-function CommsLogGrid({ rows, updateFlag }) {
+function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
   const [sortBy, setSortBy] = useState("name");
   const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
@@ -2500,7 +2504,7 @@ function CommsLogGrid({ rows, updateFlag }) {
         </select>
         <div style={{ fontSize: 11, color: C.gray, marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
           <span>Showing {displayRows.length} therapist{displayRows.length === 1 ? "" : "s"}</span>
-          <CommsBackfillButton />
+          <CommsBackfillButton onAfterImport={onAfterBackfill} />
         </div>
       </div>
 
