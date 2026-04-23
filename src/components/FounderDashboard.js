@@ -2324,19 +2324,38 @@ function CommsBackfillButton({ onAfterImport }) {
     setResult(null);
     try {
       const { data, error } = await supabase.functions.invoke("resend-backfill", { body: {} });
+
+      // Use alert so we know EXACTLY what came back, no matter what UI does next.
+      // This is a diagnostic. Will be removed once backfill works reliably.
+      const debugMsg = [
+        "BACKFILL RESPONSE:",
+        "error: " + (error ? JSON.stringify(error) : "none"),
+        "data.ok: " + (data ? data.ok : "data is null/undefined"),
+        "data.inserted: " + (data ? data.inserted : "n/a"),
+        "data.total_fetched: " + (data ? data.total_fetched_from_resend : "n/a"),
+        "data.skipped_already_logged: " + (data ? data.skipped_already_logged : "n/a"),
+        "data.skipped_no_therapist_match: " + (data ? data.skipped_no_therapist_match : "n/a"),
+        "data.skipped_unknown_type: " + (data ? data.skipped_unknown_type : "n/a"),
+        "data.failed: " + (data ? data.failed : "n/a"),
+        "data.error: " + (data ? data.error : "n/a"),
+      ].join("\n");
+      window.alert(debugMsg);
+
       if (error || !data || !data.ok) {
         setStatus("failed");
-        setResult({ error: (error && error.message) || (data && data.error) || "unknown error" });
+        setResult({ error: (error && error.message) || (data && data.error) || "see alert above" });
         return;
       }
       setStatus("done");
       setResult(data);
-      // Auto-refresh the dashboard so new checkmarks appear without a manual click
-      if (onAfterImport) {
-        try { await onAfterImport(); } catch (_e) { /* non-blocking */ }
-      }
-      setTimeout(() => setStatus("idle"), 20000);
+      setTimeout(() => {
+        if (onAfterImport) {
+          Promise.resolve(onAfterImport()).catch(() => {});
+        }
+      }, 800);
+      setTimeout(() => setStatus("idle"), 30000);
     } catch (e) {
+      window.alert("BACKFILL THREW EXCEPTION:\n" + (e?.message || String(e)) + "\n\nStack:\n" + (e?.stack || "no stack"));
       setStatus("failed");
       setResult({ error: (e && e.message) || "invocation failed" });
     }
