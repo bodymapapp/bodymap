@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /admin
+Disallow: /admin/
+Disallow: /founder
+Disallow: /login
+Disallow: /onboarding
+Disallow: /brief/
+Disallow: /summary/
+Disallow: /thank-you
+
+# Crawl-delay helps Google not hammer a small site on first discovery
+Crawl-delay: 1
+
+Sitemap: https://www.mybodymap.app/sitemap.xml
