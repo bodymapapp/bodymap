@@ -109,9 +109,12 @@ export default function EmailReview() {
         created_by: currentUserEmail,
       });
       if (insErr) {
-        // If the table doesn't exist yet, offer to run the migration
-        const msg = insErr.message || String(insErr);
-        if (/relation.*does not exist|table.*not.*found|PGRST/i.test(msg)) {
+        // If the table doesn't exist yet, offer to run the migration.
+        // Supabase returns various error shapes: "relation does not exist",
+        // "Could not find the table", schema-cache errors, PGRST codes.
+        const msg = (insErr.message || "") + " " + (insErr.code || "") + " " + (insErr.details || "");
+        const isMissingTable = /does not exist|not.{0,5}find.{0,15}table|schema.cache|PGRST|relation/i.test(msg);
+        if (isMissingTable) {
           if (window.confirm("The email_feedback table doesn't exist yet. Run the migration to create it now?")) {
             await runMigration();
             // Retry save
@@ -141,12 +144,30 @@ export default function EmailReview() {
   async function runMigration() {
     try {
       const { data, error } = await supabase.functions.invoke("run-migration", { body: { name: "email_feedback" } });
-      if (error || !data?.ok) {
-        throw new Error(error?.message || data?.error || "migration failed");
+      if (error) {
+        throw new Error(error.message || "migration invoke failed");
+      }
+      if (data?.fallback && data?.sql) {
+        // Function couldn't run DDL automatically; show the SQL for user to paste
+        const proceed = window.confirm(
+          "Auto-migration wasn't able to run. Click OK to copy the SQL to your clipboard, then paste it into Supabase SQL editor (one-time setup)."
+        );
+        if (proceed) {
+          try {
+            await navigator.clipboard.writeText(data.sql);
+            window.alert("SQL copied to clipboard.\n\nGo to Supabase dashboard → SQL editor → paste → Run. Then come back and try saving feedback again.");
+          } catch (_) {
+            window.prompt("Copy this SQL and paste it in Supabase SQL editor:", data.sql);
+          }
+        }
+        throw new Error("Migration needs manual step (SQL was copied to clipboard)");
+      }
+      if (!data?.ok) {
+        throw new Error(data?.error || "migration failed");
       }
       return data;
     } catch (e) {
-      alert("Migration failed: " + (e.message || "unknown"));
+      alert("Migration step: " + (e.message || "unknown"));
       throw e;
     }
   }

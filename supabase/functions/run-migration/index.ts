@@ -1,5 +1,6 @@
-// Admin-only migration runner. Executes pre-approved migration SQL via
-// direct Postgres connection. Admin JWT check prevents abuse.
+// Admin-only migration runner. Tries direct Postgres connection via
+// SUPABASE_DB_URL. Falls back to returning the SQL + paste instructions
+// if the connection fails.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
@@ -63,22 +64,32 @@ serve(async (req) => {
       return json({ ok: false, error: "Unknown migration", available: Object.keys(MIGRATIONS) });
     }
 
+    const sql = MIGRATIONS[name];
+
+    // Try direct Postgres connection
     const DB_URL = Deno.env.get("SUPABASE_DB_URL") || "";
-    if (!DB_URL) {
-      return json({ ok: false, error: "SUPABASE_DB_URL env var not available" });
+    if (DB_URL) {
+      try {
+        const { Client } = await import("https://deno.land/x/postgres@v0.17.0/mod.ts");
+        const client = new Client(DB_URL);
+        await client.connect();
+        await client.queryArray(sql);
+        await client.end();
+        return json({ ok: true, migration: name, message: "Migration applied via Postgres connection", method: "direct_pg" });
+      } catch (err: any) {
+        // Fall through to fallback
+        console.error("Direct pg connection failed:", err?.message);
+      }
     }
 
-    const { Client } = await import("https://deno.land/x/postgres@v0.17.0/mod.ts");
-    const client = new Client(DB_URL);
-    try {
-      await client.connect();
-      await client.queryArray(MIGRATIONS[name]);
-      await client.end();
-      return json({ ok: true, migration: name, message: "Migration applied" });
-    } catch (err: any) {
-      try { await client.end(); } catch (_) { /* ignore */ }
-      return json({ ok: false, error: `Migration failed: ${err?.message || String(err)}` });
-    }
+    // Fallback: return the SQL so HK can paste it into Supabase SQL editor
+    return json({
+      ok: false,
+      error: "Migration runner could not execute DDL automatically.",
+      fallback: true,
+      paste_instructions: "Open Supabase SQL editor and paste the SQL below, then click Run. This creates the email_feedback table so you can save feedback on the Email Review page.",
+      sql: sql.trim(),
+    });
   } catch (e: any) {
     return json({ ok: false, error: e?.message || String(e) });
   }
