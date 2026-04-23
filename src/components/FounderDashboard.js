@@ -126,20 +126,7 @@ export default function FounderDashboard() {
         supabase.from("activation_events").select("therapist_id,event_name"),
         supabase.from("notification_log")
           .select("therapist_id,notification_type,status,sent_at,subject,body_snippet")
-          .in("notification_type", [
-            "welcome",
-            "drip_day2","drip_day5","drip_day10","drip_day30","drip_day60",
-            "practice_pulse",
-            "founder_outreach_welcome",
-            "founder_outreach_checkin",
-            "founder_outreach_reminder",
-            "founder_outreach_testimonial",
-            "founder_outreach_first_session",
-            "founder_outreach_setup_nudge",
-            "founder_outreach_churned",
-            "founder_outreach_referral_thankyou",
-            "founder_outreach_activation_nudge",
-          ])
+          .eq("audience", "therapist")
           .order("sent_at", { ascending: false }),
         supabase.from("referrals")
           .select("referrer_therapist_id,status,reward_sent"),
