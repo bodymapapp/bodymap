@@ -2326,7 +2326,15 @@ function CommsBackfillButton({ onAfterImport }) {
       const { data, error } = await supabase.functions.invoke("resend-backfill", { body: {} });
 
       // Use alert so we know EXACTLY what came back, no matter what UI does next.
-      // This is a diagnostic. Will be removed once backfill works reliably.
+      const samplesStr = data?.diagnostics?.samples_inserted?.length
+        ? "\n\nSamples inserted:\n" + data.diagnostics.samples_inserted.map((s) => `  ${s.type} → ${s.to} (${s.subject})`).join("\n")
+        : "\n\n(no samples this run — likely all were already logged)";
+      const unknownStr = data?.diagnostics?.sample_unknown_subjects?.length
+        ? "\n\nUnknown subjects (skipped):\n" + data.diagnostics.sample_unknown_subjects.slice(0, 5).map((s) => "  " + s).join("\n")
+        : "";
+      const errStr = data?.diagnostics?.insert_errors?.length
+        ? "\n\nINSERT ERRORS:\n" + data.diagnostics.insert_errors.join("\n")
+        : "";
       const debugMsg = [
         "BACKFILL RESPONSE:",
         "error: " + (error ? JSON.stringify(error) : "none"),
@@ -2336,9 +2344,9 @@ function CommsBackfillButton({ onAfterImport }) {
         "data.skipped_already_logged: " + (data ? data.skipped_already_logged : "n/a"),
         "data.skipped_no_therapist_match: " + (data ? data.skipped_no_therapist_match : "n/a"),
         "data.skipped_unknown_type: " + (data ? data.skipped_unknown_type : "n/a"),
-        "data.failed: " + (data ? data.failed : "n/a"),
-        "data.error: " + (data ? data.error : "n/a"),
-      ].join("\n");
+        "therapists_in_db: " + (data?.diagnostics?.therapists_in_db ?? "n/a"),
+        "existing_log_provider_ids: " + (data?.diagnostics?.existing_log_provider_ids ?? "n/a"),
+      ].join("\n") + samplesStr + unknownStr + errStr;
       window.alert(debugMsg);
 
       if (error || !data || !data.ok) {
@@ -2497,6 +2505,11 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
     }
   }, [rowsWithSends, sortBy, hideInactive]);
 
+  // Aggregate: total rows in contact_history across all visible therapists
+  const totalHistoryRows = (rowsWithSends || []).reduce(function(sum, t) {
+    return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
+  }, 0);
+
   // Header area (always rendered so Table 3 shows up even if body errors)
   const header = (
     <div style={{ marginTop: 36 }}>
@@ -2509,6 +2522,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
         </h2>
         <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
           Every email sent to each therapist. Auto sends (Welcome, Drip, Pulse) and manual founder outreach side by side. Hover any cell to see subject and date.
+          {" "}Raw contact_history across {rowsWithSends?.length ?? 0} visible therapists: <strong>{totalHistoryRows}</strong> entries.
         </p>
       </div>
     </div>
@@ -2657,6 +2671,13 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
                     color: t.totalSends > 6 ? C.fall : t.totalSends > 3 ? C.gold : C.forest,
                   }}>
                     {t.totalSends || 0}
+                    {/* Debug: show raw contact_history count if it differs from totalSends. If you see "(raw: N)" below a 0,
+                        that means rows exist in DB but key reconstruction failed. */}
+                    {Array.isArray(t.contact_history) && t.contact_history.length > 0 && t.contact_history.length !== t.totalSends && (
+                      <div style={{ fontSize: 9, color: C.fall, fontStyle: "italic", fontWeight: 400 }}>
+                        raw: {t.contact_history.length}
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
