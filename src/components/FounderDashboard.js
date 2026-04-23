@@ -2311,9 +2311,78 @@ function commsDaysAgoShort(dateStr) {
   }
 }
 
+function CommsBackfillButton() {
+  const [status, setStatus] = useState("idle");
+  const [result, setResult] = useState(null);
+
+  const run = async () => {
+    if (status === "running") return;
+    if (!window.confirm("Import historical email sends from Resend?\n\nPulls up to 1000 recent sends, matches recipients to therapists, and fills in checkmarks for any sends that aren't already logged. Safe to run multiple times (dedupes by provider_id). Takes about 15 seconds.\n\nAfter it finishes, hit Refresh to see the updated grid.")) {
+      return;
+    }
+    setStatus("running");
+    setResult(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("resend-backfill", { body: {} });
+      if (error || !data || !data.ok) {
+        setStatus("failed");
+        setResult({ error: (error && error.message) || (data && data.error) || "unknown error" });
+        return;
+      }
+      setStatus("done");
+      setResult(data);
+      setTimeout(() => setStatus("idle"), 20000);
+    } catch (e) {
+      setStatus("failed");
+      setResult({ error: (e && e.message) || "invocation failed" });
+    }
+  };
+
+  const label = status === "running" ? "Importing..."
+    : status === "done" ? ("Imported " + (result?.inserted ?? 0) + " · Refresh to see")
+    : status === "failed" ? "Import failed"
+    : "Import from Resend";
+
+  const bg = status === "running" ? C.stale
+    : status === "done" ? C.rise
+    : status === "failed" ? C.fall
+    : C.actionBlue;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-end" }}>
+      <button
+        onClick={run}
+        disabled={status === "running"}
+        style={{
+          padding: "5px 12px",
+          borderRadius: 6,
+          border: "none",
+          background: bg,
+          color: "#fff",
+          cursor: status === "running" ? "wait" : "pointer",
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.02em",
+        }}
+        title="One-shot import of historical Resend sends into the comms log. Idempotent, safe to re-run."
+      >
+        {label}
+      </button>
+      {status === "done" && result && (
+        <div style={{ fontSize: 10, color: C.gray, fontStyle: "italic", maxWidth: 340, textAlign: "right" }}>
+          {result.inserted} new, {result.skipped_already_logged} already logged, {result.skipped_unknown_type} unknown subject, {result.skipped_no_therapist_match} non-therapist
+        </div>
+      )}
+      {status === "failed" && result?.error && (
+        <div style={{ fontSize: 10, color: C.fall, maxWidth: 340, textAlign: "right" }}>{result.error}</div>
+      )}
+    </div>
+  );
+}
+
 function CommsLogGrid({ rows }) {
-  const [sortBy, setSortBy] = useState("total_desc");
-  const [hideInactive, setHideInactive] = useState(true);
+  const [sortBy, setSortBy] = useState("name");
+  const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
 
   // Build per-therapist send summary. Everything defensively guarded.
@@ -2429,8 +2498,9 @@ function CommsLogGrid({ rows }) {
           <option value="recent">Most recent contact</option>
           <option value="name">Alphabetical</option>
         </select>
-        <div style={{ fontSize: 11, color: C.gray, marginLeft: "auto" }}>
-          Showing {displayRows.length} therapist{displayRows.length === 1 ? "" : "s"}
+        <div style={{ fontSize: 11, color: C.gray, marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
+          <span>Showing {displayRows.length} therapist{displayRows.length === 1 ? "" : "s"}</span>
+          <CommsBackfillButton />
         </div>
       </div>
 
