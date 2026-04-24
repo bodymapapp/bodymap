@@ -61,7 +61,7 @@ const SLIDES = [
   {
     tag: 'AI Pre-Session Brief',
     headline: 'Know your client before you walk in.',
-    sub: 'BodyMap reads every past session and generates a 60-second brief. Tension patterns, what worked, what to avoid. Automated before every session.',
+    sub: 'MyBodyMap reads every past session and generates a 60-second brief. Tension patterns, what worked, what to avoid. Automated before every session.',
     visual: (
       <div style={{ background:'#fff', borderRadius:20, padding:28, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', maxWidth:360 }}>
         <div style={{ fontSize:13, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>AI Pre-Session Brief</div>
@@ -88,7 +88,7 @@ const SLIDES = [
   {
     tag: 'Automated Retention Alerts',
     headline: 'Catch drifting clients before they leave.',
-    sub: 'BodyMap monitors every client automatically. When someone goes quiet, you get an alert with a suggested message. One text brings them back.',
+    sub: 'MyBodyMap monitors every client automatically. When someone goes quiet, you get an alert with a suggested message. One text brings them back.',
     visual: (
       <div style={{ background:'#fff', borderRadius:20, padding:28, boxShadow:'0 8px 40px rgba(0,0,0,0.1)', maxWidth:360 }}>
         <div style={{ fontSize:13, fontWeight:700, color:G.soft, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:14 }}>Retention Alerts</div>
@@ -193,22 +193,22 @@ export default function Home() {
             <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(42,87,65,0.08)', borderRadius:20, padding:'6px 14px', marginBottom:24 }}>
               <span style={{ fontSize:12, fontWeight:700, color:G.mid, textTransform:'uppercase', letterSpacing:'0.08em' }}>Built by therapists, for therapists</span>
             </div>
-            <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,58px)', fontWeight:700, lineHeight:1.1, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
-              Your client's full history,<br/>ready before<br/><em style={{ fontStyle:'italic', color:G.soft }}>every session.</em>
+            <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,58px)', fontWeight:700, lineHeight:1.15, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
+              Your client's full history, ready before <em style={{ fontStyle:'italic', color:G.soft }}>every session.</em>
             </h1>
             <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
-              The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free Silver for the first 100 therapists.
+              The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free on Bronze. Forever.
             </p>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
-                Join free — founding therapist
+                Start free
               </Link>
               <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
                 See How It Works →
               </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-              {['🌿 Silver free for a limited time', 'Live in 30 seconds', 'No credit card ever'].map(t => (
+              {['Free on Bronze. Forever.', 'Live in 30 seconds', 'No credit card ever'].map(t => (
                 <span key={t} style={{ fontSize:13, color:G.soft, display:'flex', alignItems:'center', gap:4 }}>
                   <span style={{ color:G.soft }}>✓</span> {t}
                 </span>
@@ -306,7 +306,7 @@ export default function Home() {
                 Move your clients over in 5 minutes. Start saving money the same day.
               </h2>
               <p style={{ fontSize:16, color:G.mid2, lineHeight:1.75, margin:'0 0 28px' }}>
-                Import from Square, MassageBook, Vagaro, or GlossGenius in two clicks. Every client, every phone number, every visit history — in BodyMap before your next session. No re-entering. No confusion. No ads.
+                Import from Square, MassageBook, Vagaro, or GlossGenius in two clicks. Every client, every phone number, every visit history — in MyBodyMap before your next session. No re-entering. No confusion. No ads.
               </p>
               <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:32 }}>
                 {[
@@ -340,7 +340,7 @@ export default function Home() {
                 </div>
               ))}
               <div style={{ marginTop:16, background:G.mid, borderRadius:12, padding:'14px 18px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>BodyMap Bronze</div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#fff' }}>MyBodyMap Bronze</div>
                 <div style={{ fontSize:16, fontWeight:800, color:'#86EFAC' }}>$0/yr</div>
               </div>
             </div>
@@ -424,7 +424,7 @@ export default function Home() {
       {/* ── WHY BODYMAP ───────────────────────────────────────────────────── */}
       <section style={{ padding:'88px 24px', background:G.card, textAlign:'center' }}>
         <div style={{ maxWidth:1000, margin:'0 auto' }}>
-          <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.soft, marginBottom:16 }}>Why BodyMap</div>
+          <div style={{ fontSize:13, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:G.soft, marginBottom:16 }}>Why MyBodyMap</div>
           <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,40px)', fontWeight:700, color:G.deep, margin:'0 auto 16px', maxWidth:640, lineHeight:1.2 }}>
             You vs. the therapist down the street.
           </h2>
@@ -433,7 +433,7 @@ export default function Home() {
           </p>
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:3, maxWidth:820, margin:'0 auto', borderRadius:16, overflow:'hidden' }} className="bm-home-compare-grid">
             <div style={{ background:'#FEF2F2', padding:'20px 24px' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.06em' }}>Without BodyMap</div>
+              <div style={{ fontSize:13, fontWeight:700, color:'#DC2626', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.06em' }}>Without MyBodyMap</div>
               {[
                 'Client drifts away - you find out when they stop booking',
                 'New clients repeat intake every visit',
@@ -448,7 +448,7 @@ export default function Home() {
               ))}
             </div>
             <div style={{ background:'#F0FDF4', padding:'20px 24px' }}>
-              <div style={{ fontSize:13, fontWeight:700, color:'#16A34A', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.06em' }}>With BodyMap</div>
+              <div style={{ fontSize:13, fontWeight:700, color:'#16A34A', marginBottom:16, textTransform:'uppercase', letterSpacing:'0.06em' }}>With MyBodyMap</div>
               {[
                 'Automated alert catches drifting clients before they leave',
                 'Full history ready before every session, automatically',
@@ -474,9 +474,9 @@ export default function Home() {
             <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(24px,3.5vw,38px)', fontWeight:700, color:G.deep, margin:0, lineHeight:1.25 }}>Real stories. Real practices.</h2>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))', gap:24 }}>
-            <StoryCard initial="M" color="#52b788" name="Maya" since="Regular client - 3 years" headline="She was gone 8 weeks. One BodyMap alert brought her back." body="Life got busy - new job, a move. Six weeks went by, then eight. BodyMap flagged her as quiet. Her therapist sent one text: Hey Maya, been thinking about you. Lower back still giving you trouble? She booked the next day." outcome="One text. Client retained." />
-            <StoryCard initial="J" color="#2d6a4f" name="James" since="Monthly client - 1 year" headline="Every visit, he repeated himself. Until she just knew." body="He hated deep pressure on his left shoulder. Every session he would wince and say it again. Third visit with BodyMap, his therapist just said I have got you before he even sat down. He told his wife that night. His wife booked the next morning." outcome="Loyalty earned. Referral earned." />
-            <StoryCard initial="P" color="#c9a84c" name="Priya" since="New client - found her person" headline="3 therapists in 2 years. BodyMap changed that." body="Good hands, all of them - but every session felt like starting over. With BodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She had found her person." outcome="Client stopped searching." />
+            <StoryCard initial="M" color="#52b788" name="Maya" since="Regular client - 3 years" headline="She was gone 8 weeks. One MyBodyMap alert brought her back." body="Life got busy - new job, a move. Six weeks went by, then eight. MyBodyMap flagged her as quiet. Her therapist sent one text: Hey Maya, been thinking about you. Lower back still giving you trouble? She booked the next day." outcome="One text. Client retained." />
+            <StoryCard initial="J" color="#2d6a4f" name="James" since="Monthly client - 1 year" headline="Every visit, he repeated himself. Until she just knew." body="He hated deep pressure on his left shoulder. Every session he would wince and say it again. Third visit with MyBodyMap, his therapist just said I have got you before he even sat down. He told his wife that night. His wife booked the next morning." outcome="Loyalty earned. Referral earned." />
+            <StoryCard initial="P" color="#c9a84c" name="Priya" since="New client - found her person" headline="3 therapists in 2 years. MyBodyMap changed that." body="Good hands, all of them - but every session felt like starting over. With MyBodyMap, her therapist knew her patterns by session two. By session four, Priya stopped looking. She had found her person." outcome="Client stopped searching." />
           </div>
         </div>
       </section>
@@ -490,18 +490,18 @@ export default function Home() {
             Your practice deserves<br/>better tools. Free ones.
           </h2>
           <p style={{ fontSize:17, color:'rgba(255,255,255,0.65)', margin:'0 0 36px', lineHeight:1.7 }}>
-            We're giving the first 100 therapists full Silver access, free for a limited time. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
+            Every tool on this page. Free on Bronze, forever. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
             <Link to="/signup" style={{ background:'#fff', color:G.deep, borderRadius:12, padding:'16px 32px', fontSize:16, fontWeight:700, textDecoration:'none' }}>
-              Join free — founding therapist
+              Start free
             </Link>
             <Link to="/pricing" style={{ background:'transparent', color:'rgba(255,255,255,0.8)', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:12, padding:'16px 28px', fontSize:15, fontWeight:600, textDecoration:'none' }}>
               See Pricing
             </Link>
           </div>
           <p style={{ fontSize:13, color:'rgba(255,255,255,0.35)', margin:0 }}>
-            Silver free for a limited time, for founding therapists. You're early. That means something.
+            Built by therapists, for therapists. Free forever on Bronze.
           </p>
         </div>
       </section>

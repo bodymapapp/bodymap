@@ -121,7 +121,7 @@ export default function ThankYou() {
               fontSize: '16px'
             }}
           >
-            Learn More About BodyMap
+            Learn More About MyBodyMap
           </Link>
           
           <p style={{

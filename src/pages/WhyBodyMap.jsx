@@ -66,7 +66,7 @@ const FEATURES = [
 ];
 
 const PRICING = {
-  bm: { monthly: 0,  annual: 0,  name:'BodyMap Bronze' },
+  bm: { monthly: 0,  annual: 0,  name:'MyBodyMap Bronze' },
   mb: { monthly: 45, annual: 39, name:'MassageBook' },
   vg: { monthly: 25, annual: 20, name:'Vagaro' },
   gg: { monthly: 48, annual: 40, name:'GlossGenius' },
@@ -80,7 +80,7 @@ function CellValue({ val }) {
   return <span style={{ fontSize:12, color:C.gray }}>{val}</span>;
 }
 
-export default function WhyBodyMap() {
+export default function WhyMyBodyMap() {
   const [billing, setBilling] = useState('monthly');
 
   const savings = {
@@ -105,10 +105,10 @@ export default function WhyBodyMap() {
             The honest comparison
           </div>
           <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:'#fff', margin:'0 0 20px', lineHeight:1.15 }}>
-            Why therapists are switching to BodyMap
+            Why therapists are switching to MyBodyMap
           </h1>
           <p style={{ fontSize:18, color:'rgba(255,255,255,0.7)', maxWidth:580, margin:'0 auto 32px', lineHeight:1.7 }}>
-            BodyMap was built for one thing MassageBook, Vagaro, and GlossGenius were not: making every therapist irreplaceable to every client.
+            MyBodyMap was built for one thing MassageBook, Vagaro, and GlossGenius were not: making every therapist irreplaceable to every client.
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
             <Link to="/signup" style={{ background:'#fff', color:C.forest, borderRadius:12, padding:'14px 28px', fontSize:15, fontWeight:700, textDecoration:'none' }}>
@@ -126,9 +126,9 @@ export default function WhyBodyMap() {
         <div style={{ maxWidth:900, margin:'0 auto' }}>
           <div style={{ textAlign:'center', marginBottom:36 }}>
             <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(24px,4vw,36px)', fontWeight:700, color:C.dark, margin:'0 0 12px' }}>
-              Your annual savings with BodyMap
+              Your annual savings with MyBodyMap
             </h2>
-            <p style={{ fontSize:15, color:C.gray, margin:'0 0 20px' }}>BodyMap Bronze is free. Here's what you save vs. the competition.</p>
+            <p style={{ fontSize:15, color:C.gray, margin:'0 0 20px' }}>MyBodyMap Bronze is free. Here's what you save vs. the competition.</p>
             <div style={{ display:'inline-flex', background:'#fff', borderRadius:10, padding:4, border:`1px solid ${C.border}`, gap:4 }}>
               {['monthly','annual'].map(c => (
                 <button key={c} onClick={() => setBilling(c)}
@@ -153,7 +153,7 @@ export default function WhyBodyMap() {
                   { key:'mb', name:'MassageBook'  },
                   { key:'vg', name:'Vagaro'       },
                   { key:'ac', name:'Acuity'       },
-                  { key:'bm', name:'BodyMap'      },
+                  { key:'bm', name:'MyBodyMap'      },
                 ].map(({ key, name }) => {
                   const price  = PRICING[key][billing];
                   const isBM   = key === 'bm';
@@ -188,7 +188,7 @@ export default function WhyBodyMap() {
                   { key:'mb', name:'MassageBook'  },
                   { key:'vg', name:'Vagaro'       },
                   { key:'ac', name:'Acuity'       },
-                  { key:'bm', name:'BodyMap'      },
+                  { key:'bm', name:'MyBodyMap'      },
                 ].map(({ key, name }) => {
                   const isBM = key === 'bm';
                   return (
@@ -266,7 +266,7 @@ export default function WhyBodyMap() {
                 <tr>
                   <th style={{ textAlign:'left', padding:'12px 16px', fontSize:13, color:C.gray, fontWeight:600, borderBottom:`2px solid ${C.border}`, width:'40%' }}>Feature</th>
                   {[
-                    { key:'bm', name:'BodyMap',      sub:'Free on Bronze', highlight:true },
+                    { key:'bm', name:'MyBodyMap',      sub:'Free on Bronze', highlight:true },
                     { key:'mb', name:'MassageBook',  sub:'From $45/mo' },
                     { key:'vg', name:'Vagaro',       sub:'From $25/mo' },
                     { key:'gg', name:'GlossGenius',  sub:'From $48/mo' },
@@ -316,7 +316,7 @@ export default function WhyBodyMap() {
           </div>
 
           <div style={{ marginTop:16, fontSize:11, color:C.gray, lineHeight:1.6, padding:'0 4px' }}>
-            ✓ = Included · ✕ = Not available · $ = Available as paid add-on · Competitor pricing and features based on publicly available information as of April 2026. BodyMap makes no guarantee of accuracy. Prices and features may have changed — verify directly with each provider.
+            ✓ = Included · ✕ = Not available · $ = Available as paid add-on · Competitor pricing and features based on publicly available information as of April 2026. MyBodyMap makes no guarantee of accuracy. Prices and features may have changed — verify directly with each provider.
           </div>
         </div>
       </section>

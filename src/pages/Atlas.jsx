@@ -1,5 +1,5 @@
 // src/pages/Atlas.jsx
-// The Atlas — an editorial overview of every BodyMap capability.
+// The Atlas — an editorial overview of every MyBodyMap capability.
 // Intentionally feels like a printed field guide, not a software feature page.
 // Hidden from top nav; linked from Features, Home, Footer, and shareable.
 
@@ -17,7 +17,7 @@ const GOLD = '#C9A84C';       // accent
 const SAGE = '#6B9E80';
 const MUTED = '#6B7280';
 
-// ── Taxonomy — source of truth for every BodyMap feature ────────────────
+// ── Taxonomy — source of truth for every MyBodyMap feature ────────────────
 // Numbers and IDs visible in the Atlas. Ordered by practice flow.
 const CATEGORIES = [
   {
@@ -56,7 +56,7 @@ const CATEGORIES = [
     subs: [
       { id: '3.1', name: 'Longitudinal heatmaps' },
       { id: '3.2', name: 'Full session history' },
-      { id: '3.3', name: 'BodyMap AI chat' },
+      { id: '3.3', name: 'MyBodyMap AI chat' },
       { id: '3.4', name: 'Pattern detection' },
       { id: '3.5', name: 'Practice Pulse' },
     ],
@@ -360,10 +360,10 @@ export default function Atlas() {
     try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
     // Set page title + meta for SEO/social sharing
     const prevTitle = document.title;
-    document.title = 'The Atlas — Every BodyMap feature in one view';
+    document.title = 'The Atlas — Every MyBodyMap feature in one view';
     let meta = document.querySelector('meta[name="description"]');
     const prevDesc = meta?.getAttribute('content');
-    if (meta) meta.setAttribute('content', `Every BodyMap capability, mapped. ${TOTAL_COUNT} features across 7 parts of your massage practice — booking, intake, client intelligence, retention, and more.`);
+    if (meta) meta.setAttribute('content', `Every MyBodyMap capability, mapped. ${TOTAL_COUNT} features across 7 parts of your massage practice — booking, intake, client intelligence, retention, and more.`);
     return () => {
       document.title = prevTitle;
       if (meta && prevDesc) meta.setAttribute('content', prevDesc);
@@ -483,7 +483,7 @@ export default function Atlas() {
             maxWidth: 640,
             margin: '0 auto 38px',
           }}>
-            A field guide to BodyMap. Seven parts of your practice — from the first time a client taps "book" to the quiet text reminding them it's been a while.
+            A field guide to MyBodyMap. Seven parts of your practice — from the first time a client taps "book" to the quiet text reminding them it's been a while.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/signup" style={{

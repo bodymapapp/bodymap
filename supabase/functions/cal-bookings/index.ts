@@ -29,7 +29,7 @@ serve(async (req) => {
 
     const data = await response.json();
 
-    // Normalize bookings to BodyMap format
+    // Normalize bookings to MyBodyMap format
     const bookings = (data.bookings || []).map((b: any) => ({
       id: b.id,
       client: b.attendees?.[0]?.name || 'Unknown',

@@ -253,7 +253,7 @@ function ServicesAndAvailability({ therapist }) {
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
         <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 16px', lineHeight:1.5 }}>
-          💡 Prefer Square or cash? Keep deposits off — clients pay you directly at the session. BodyMap handles scheduling, intake, and reminders regardless.
+          💡 Prefer Square or cash? Keep deposits off — clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <button onClick={async () => {
@@ -529,7 +529,7 @@ function PushNotificationsCard({ therapist, C2 }) {
         🔔 Push Notifications
       </p>
       <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
-        Get a tap on your phone when something matters — a new booking, a client reply, a gift card redemption. Works on your iPhone after you install BodyMap to your home screen.
+        Get a tap on your phone when something matters — a new booking, a client reply, a gift card redemption. Works on your iPhone after you install MyBodyMap to your home screen.
       </p>
 
       {!supported && (
@@ -541,7 +541,7 @@ function PushNotificationsCard({ therapist, C2 }) {
 
       {supported && permission === 'denied' && (
         <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: '#991B1B', lineHeight: 1.5 }}>
-          <strong>Notifications blocked.</strong> Open your device Settings → Notifications → BodyMap, and allow notifications.
+          <strong>Notifications blocked.</strong> Open your device Settings → Notifications → MyBodyMap, and allow notifications.
         </div>
       )}
 
@@ -639,7 +639,7 @@ function ReferralCard({ therapist, C2 }) {
     <div style={{ background: 'linear-gradient(135deg, #F0FDF4, #FFFBEB)', border: '1.5px solid #86EFAC', borderRadius: 14, padding: 24, marginBottom: 20 }}>
       <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.forest, margin: '0 0 6px 0' }}>🌿 Refer a therapist</p>
       <p style={{ fontSize: 14, color: C2.darkGray, lineHeight: 1.6, margin: '0 0 14px 0', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
-        Know another therapist who'd love BodyMap? Share your link. They get Silver free for a limited time. You get a shoutout and swag.
+        Know another therapist who'd love MyBodyMap? Share your link. They get Silver free for a limited time. You get a shoutout and swag.
       </p>
       <div style={{ background: '#fff', border: `1.5px solid ${C2.lightGray}`, borderRadius: 10, padding: '10px 12px', marginBottom: 10, fontSize: 13, color: C2.forest, fontWeight: 700, wordBreak: 'break-all' }}>
         {referralUrl}
@@ -953,7 +953,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         {/* Cal.com */}
         <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
           <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>📅 External Calendar (Optional)</p>
-          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Already using Cal.com for scheduling? Connect it here to sync bookings automatically. If you're using BodyMap's built-in booking, you don't need this.</p>
+          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Already using Cal.com for scheduling? Connect it here to sync bookings automatically. If you're using MyBodyMap's built-in booking, you don't need this.</p>
           {(therapist?.cal_connected || therapist?.cal_api_key) ? (
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
               <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -1352,7 +1352,7 @@ export default function Dashboard({ view }) {
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <BMLogo size={isMobile ? 26 : 30} variant="dark" showWordmark={false} />
           <div>
-            <h1 style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '700', color: C.forest, margin: 0, lineHeight: 1.1 }}>BodyMap</h1>
+            <h1 style={{ fontSize: isMobile ? '15px' : '16px', fontWeight: '700', color: C.forest, margin: 0, lineHeight: 1.1 }}>MyBodyMap</h1>
             <p style={{ fontSize: '10px', color: C.gray, margin: 0 }}>{therapist?.business_name || 'Dashboard'}</p>
           </div>
         </div>
@@ -1395,7 +1395,7 @@ export default function Dashboard({ view }) {
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>📲</span>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add BodyMap to your home screen for instant access — use Share → Add to Home Screen</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add MyBodyMap to your home screen for instant access — use Share → Add to Home Screen</p>
           </div>
           <button onClick={() => setShowBookmarkNudge(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>Got it ✓</button>
         </div>

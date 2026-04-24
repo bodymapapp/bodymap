@@ -45,7 +45,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="bm-footer-bottom" style={{ borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "24px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: 0 }}>© 2026 BodyMap. All rights reserved.</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: 0 }}>© 2026 MyBodyMap. All rights reserved.</p>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", margin: 0 }}>Made with 🌿 for massage therapists</p>
         </div>
       </div>

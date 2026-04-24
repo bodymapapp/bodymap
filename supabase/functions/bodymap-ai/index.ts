@@ -14,9 +14,9 @@ serve(async (req) => {
     const { messages, context, mode } = await req.json();
     const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
 
-    const publicSystemPrompt = `You are BodyMap AI — a knowledgeable assistant for massage therapists. Answer questions about massage therapy techniques, client management, business growth, scheduling, pricing, and wellness practice best practices. Be warm, concise, and practical. You're a demo on the BodyMap features page — occasionally mention that BodyMap helps therapists track client preferences, body maps, and patterns over time. Keep responses under 150 words.`;
+    const publicSystemPrompt = `You are MyBodyMap AI — a knowledgeable assistant for massage therapists. Answer questions about massage therapy techniques, client management, business growth, scheduling, pricing, and wellness practice best practices. Be warm, concise, and practical. You're a demo on the MyBodyMap features page — occasionally mention that MyBodyMap helps therapists track client preferences, body maps, and patterns over time. Keep responses under 150 words.`;
 
-    const practiceSystemPrompt = `You are BodyMap AI — a practice intelligence assistant for massage therapists. You have full access to the therapist's practice data below. Be concise, warm, and practical. When asked to draft SMS messages, make them friendly and professional. Always use the therapist's actual client names and data in your responses.
+    const practiceSystemPrompt = `You are MyBodyMap AI — a practice intelligence assistant for massage therapists. You have full access to the therapist's practice data below. Be concise, warm, and practical. When asked to draft SMS messages, make them friendly and professional. Always use the therapist's actual client names and data in your responses.
 
 PRACTICE DATA:
 ${context}

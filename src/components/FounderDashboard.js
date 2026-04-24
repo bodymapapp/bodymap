@@ -695,7 +695,7 @@ function recommendAction(t) {
         ``,
         `You're helping another therapist find something that actually fits how they practice. Thank you.`,
         ``,
-        `If there's anything we can do to make BodyMap better for you, reply and tell us.`,
+        `If there's anything we can do to make MyBodyMap better for you, reply and tell us.`,
         ``,
         `Cheers!`,
         `MyBodyMap Team`,
@@ -735,7 +735,7 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `Good morning. MyBodyMap Team here. You've logged ${t.sessions_total} sessions on BodyMap. That's a big deal.`,
+        `Good morning. MyBodyMap Team here. You've logged ${t.sessions_total} sessions on MyBodyMap. That's a big deal.`,
         ``,
         `Would you be open to sharing a line or two about what the platform does for your practice? We'd put it on the homepage. No pressure either way.`,
         ``,
@@ -755,7 +755,7 @@ function recommendAction(t) {
       body: [
         `Hi ${name},`,
         ``,
-        `MyBodyMap Team here. It's been ${daysIdle} days since you last used BodyMap. Not writing to push you back in. Writing to ask what didn't work.`,
+        `MyBodyMap Team here. It's been ${daysIdle} days since you last used MyBodyMap. Not writing to push you back in. Writing to ask what didn't work.`,
         ``,
         `One sentence back would mean a lot. Thank you.`,
         ``,
@@ -818,7 +818,7 @@ function recommendAction(t) {
         ``,
         `MyBodyMap Team here. You're using the platform but haven't connected Stripe or Square yet.`,
         ``,
-        `Without this, clients can't pay you through your BodyMap link. Takes about a minute in Settings. Want us to walk you through it? Just reply.`,
+        `Without this, clients can't pay you through your MyBodyMap link. Takes about a minute in Settings. Want us to walk you through it? Just reply.`,
         ``,
         `Cheers!`,
         `MyBodyMap Team`,
@@ -1507,7 +1507,7 @@ function ActionCell({ t, onAfterSend }) {
               ? "This therapist unsubscribed from marketing emails."
               : inCooldown && !override
               ? `Cooldown: you emailed them ${daysAgo(t.last_contact_at)}. Next possible send in ${coolDaysLeft} day${coolDaysLeft === 1 ? "" : "s"}.`
-              : "Open editor, tune the message, send via BodyMap"
+              : "Open editor, tune the message, send via MyBodyMap"
           }
         >
           {isUnsubscribed ? "Unsubscribed" : inCooldown && !override ? `Sent ${daysAgo(t.last_contact_at)}` : "Email"}
@@ -1554,7 +1554,7 @@ function ActionCell({ t, onAfterSend }) {
       </div>
       {result === "sent" && (
         <div style={{ fontSize: 11, color: C.rise, fontWeight: 700 }}>
-          ✓ Sent from BodyMap
+          ✓ Sent from MyBodyMap
         </div>
       )}
       {result === "copied" && (
@@ -2155,7 +2155,7 @@ function buildActivationNudge(t) {
   const firstMissing = missing[0];
   const firstStepText = stepPhrase[firstMissing.key] || firstMissing.label.toLowerCase();
 
-  const subject = `Quick hello from BodyMap`;
+  const subject = `Quick hello from MyBodyMap`;
 
   // One voice, one template. Names the single most important next step.
   // If more steps remain, mention there are a few but don't list them all — keeps it light.

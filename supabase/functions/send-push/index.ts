@@ -72,7 +72,7 @@ serve(async (req) => {
     }
 
     const payload = JSON.stringify({
-      title: body.title || 'BodyMap',
+      title: body.title || 'MyBodyMap',
       body: body.body || '',
       url: body.url || '/dashboard',
       tag: body.tag || 'bodymap',

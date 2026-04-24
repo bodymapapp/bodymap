@@ -116,7 +116,7 @@ serve(async (req) => {
 <div style="font-family:system-ui,sans-serif;max-width:520px;margin:24px auto;padding:24px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:14px">
   <div style="font-size:11px;font-weight:700;letter-spacing:0.12em;color:#B44A3A;text-transform:uppercase;margin-bottom:10px">Founder alert</div>
   <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;margin-bottom:8px">${escapeHtml(name)} unsubscribed</div>
-  <div>${escapeHtml(therapist.email)} just unsubscribed from BodyMap marketing emails.</div>
+  <div>${escapeHtml(therapist.email)} just unsubscribed from MyBodyMap marketing emails.</div>
   ${reason ? `<div style="margin-top:10px;padding:10px 12px;background:#fff;border-radius:6px;border:1px solid #E8E4DC;font-size:13px"><strong>Reason:</strong> ${escapeHtml(reason)}</div>` : ""}
   <div style="margin-top:16px;font-size:12px;color:#6B7280">They will no longer receive founder nudges, drip emails, or Practice Pulse. Transactional emails (welcome, booking confirmations) still go through.</div>
 </div>`;
@@ -132,7 +132,7 @@ serve(async (req) => {
               bcc: [FOUNDER_BCC],
               subject: `Unsubscribe: ${name}`,
               html,
-              text: `${name} (${therapist.email}) just unsubscribed from BodyMap marketing emails.${reason ? `\n\nReason: ${reason}` : ""}`,
+              text: `${name} (${therapist.email}) just unsubscribed from MyBodyMap marketing emails.${reason ? `\n\nReason: ${reason}` : ""}`,
             }),
           });
         } catch (_e) { /* non-blocking */ }

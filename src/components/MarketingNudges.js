@@ -30,7 +30,7 @@ export function ActivationNudge({ sessions, onDismiss }) {
         First intake sent — this is the moment.
       </div>
       <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', lineHeight:1.6, marginBottom:16 }}>
-        Your client will fill their body map before they arrive. You'll walk in knowing exactly what they need. This is what BodyMap is built for.
+        Your client will fill their body map before they arrive. You'll walk in knowing exactly what they need. This is what MyBodyMap is built for.
       </div>
       <button onClick={() => { setVisible(false); onDismiss?.(); }}
         style={{ background:'rgba(255,255,255,0.15)', border:'1px solid rgba(255,255,255,0.3)', color:'#fff', borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
@@ -96,7 +96,7 @@ export function EmptyClientsNudge({ onNavigate }) {
         Your practice starts here
       </div>
       <div style={{ fontSize:14, color:C.gray, maxWidth:280, margin:'0 auto 24px', lineHeight:1.6 }}>
-        Add your first client to see how BodyMap works. It takes 30 seconds.
+        Add your first client to see how MyBodyMap works. It takes 30 seconds.
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap:10, maxWidth:240, margin:'0 auto' }}>
         <button onClick={() => onNavigate('import')}

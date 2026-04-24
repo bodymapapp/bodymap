@@ -100,7 +100,7 @@ export default function Unsubscribe() {
           fontSize: 11, fontWeight: 700, letterSpacing: '0.14em',
           color: C.sage, textTransform: 'uppercase', marginBottom: 10,
         }}>
-          🌿 BodyMap
+          🌿 MyBodyMap
         </div>
         {children}
         <div style={{
@@ -147,10 +147,10 @@ export default function Unsubscribe() {
           {email ? <>We won't send marketing emails to <strong style={{ color: C.dark }}>{email}</strong> anymore.</> : "We won't send you marketing emails anymore."}
         </p>
         <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.7, marginTop: 12 }}>
-          You'll still get transactional messages (things like booking confirmations and password resets) because you're a BodyMap user.
+          You'll still get transactional messages (things like booking confirmations and password resets) because you're a MyBodyMap user.
         </p>
         <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.7, marginTop: 16 }}>
-          Changed your mind or this was a mistake? Reply to any BodyMap email and we'll turn it back on.
+          Changed your mind or this was a mistake? Reply to any MyBodyMap email and we'll turn it back on.
         </p>
       </div>
     );
@@ -160,7 +160,7 @@ export default function Unsubscribe() {
   return card(
     <div>
       <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.dark, margin: '0 0 12px' }}>
-        Unsubscribe from BodyMap emails?
+        Unsubscribe from MyBodyMap emails?
       </h1>
       <p style={{ fontSize: 14, color: C.gray, lineHeight: 1.7, margin: '0 0 20px' }}>
         We'll stop sending you marketing emails. You'll still get transactional messages (like booking confirmations) since you have an account.
@@ -175,7 +175,7 @@ export default function Unsubscribe() {
       <textarea
         value={reason}
         onChange={(e) => setReason(e.target.value)}
-        placeholder="Too many emails, not relevant, not using BodyMap anymore..."
+        placeholder="Too many emails, not relevant, not using MyBodyMap anymore..."
         rows={3}
         maxLength={500}
         style={{

@@ -224,7 +224,7 @@ export default function PreSessionBrief() {
           </div>
         )}
         <div style={{borderTop:"1px solid #E8E4DC",paddingTop:"8px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 BodyMap - mybodymap.app</span>
+          <span style={{fontSize:"10px",color:"#9CA3AF"}}>🌿 MyBodyMap - mybodymap.app</span>
           <span style={{fontSize:"10px",color:"#9CA3AF"}}>{therapistFullName && <div style={{fontSize:'11px', color:'inherit', opacity:0.8}}>{therapistFullName}</div>}{therapistName}{therapistPhone ? " · " + therapistPhone : ""}{intakeUrl ? " · " + intakeUrl : ""} · Confidential</span>
         </div>
       </div>

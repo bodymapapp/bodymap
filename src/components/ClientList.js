@@ -257,7 +257,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
                   Dana Park used to book every 4 weeks. She hasn't booked in 68 days. A short message from you is usually the one thing that brings someone like Dana back.
                 </div>
                 <div style={{ fontSize: 12, color: '#78350F', fontStyle: 'italic' }}>
-                  Once you have real clients, BodyMap flags this for you automatically. No work on your end.
+                  Once you have real clients, MyBodyMap flags this for you automatically. No work on your end.
                 </div>
               </div>
             </div>
@@ -324,7 +324,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
               }}>
                 <div style={{ fontSize: 18, lineHeight: 1 }}>🔭</div>
                 <div style={{ flex: 1, fontSize: 13, color: '#78350F', lineHeight: 1.5 }}>
-                  <strong style={{ color: '#1F2937' }}>Retention insights appear here as your practice grows.</strong> Once a client hasn't booked in 60 days, BodyMap flags them so you can send a short note. Most come back. No work on your end.
+                  <strong style={{ color: '#1F2937' }}>Retention insights appear here as your practice grows.</strong> Once a client hasn't booked in 60 days, MyBodyMap flags them so you can send a short note. Most come back. No work on your end.
                 </div>
               </div>
             )}

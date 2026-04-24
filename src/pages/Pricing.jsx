@@ -23,7 +23,7 @@ export default function Pricing() {
       name: 'Bronze', emoji: '🥉', highlight: false,
       price: { monthly: 0, annual: 0 },
       futurePrice: 9,
-      tagline: 'Everything to run your practice, automated. Free for a limited time.',
+      tagline: 'Everything to run your practice, automated. Free forever.',
       cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free - No Card',
       ctaAction: () => isAuthenticated ? navigate('/dashboard') : navigate('/signup'),
       features: [
@@ -33,7 +33,7 @@ export default function Pricing() {
         { text: 'Automated email reminders', on: true, auto: true, detail: '24h notice to every client, automatically' },
         { text: 'Automated AI pre-session brief', on: true, auto: true, detail: 'Client history ready before you walk in' },
         { text: 'Automated AI post-session brief', on: true, auto: true, detail: 'Session notes drafted for you after' },
-        { text: 'BodyMap AI - chat with your client data', on: true },
+        { text: 'MyBodyMap AI - chat with your client data', on: true },
         { text: 'Visual body map - front & back', on: true, detail: 'Focus zones, avoid areas, medical flags' },
         { text: 'SOAP notes', on: true },
         { text: 'Schedule - today, weekly, monthly', on: true },
@@ -45,11 +45,11 @@ export default function Pricing() {
       ],
     },
     {
-      name: 'Silver', emoji: '🥈', highlight: true, badge: '🌿 Free for Founding Therapists',
+      name: 'Silver', emoji: '🥈', highlight: true, badge: '🌿 Free on every Bronze plan',
       price: { monthly: 0, annual: 0 },
       futurePrice: 19,
-      tagline: 'Your entire client history, working for you. Free for a limited time.',
-      cta: 'Join free — founding therapist',
+      tagline: 'Your entire client history, working for you. Free on Bronze today.',
+      cta: 'Start free',
       ctaAction: () => window.location.href = '/signup',
       features: [
         { text: 'Everything in Bronze - fully automated', on: true },
@@ -60,7 +60,7 @@ export default function Pricing() {
         { text: 'Longitudinal body map overlays', on: true, detail: 'Visual tension diff across all sessions' },
         { text: 'Revenue gap intelligence', on: true, detail: 'See exactly what empty slots cost you' },
         { text: 'Business & billing analytics', on: true, detail: 'Busiest days, top services, revenue trends' },
-        { text: 'BodyMap AI with full history context', on: true, detail: 'Smarter answers, deeper insights' },
+        { text: 'MyBodyMap AI with full history context', on: true, detail: 'Smarter answers, deeper insights' },
         { text: 'Priority support', on: true },
       ],
     },
@@ -89,7 +89,7 @@ export default function Pricing() {
 
       <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
         <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🌿 First 100 therapists · Silver free for a limited time
+          🌿 Free forever on Bronze. No credit card.
         </div>
         <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
           Retain and Grow Your Client Base.<br/>Automate the Rest.
@@ -98,7 +98,7 @@ export default function Pricing() {
           Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
         </p>
         <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 40px', lineHeight:1.6 }}>
-          We're giving the first 100 therapists full Silver access, free for a limited time. No credit card, no trial, no catch.
+          Every tool on this page is free on Bronze. No credit card, no trial, no catch.
         </p>
       </div>
 
@@ -129,9 +129,9 @@ export default function Pricing() {
               {tier.price.monthly > 0 && <span style={{ fontSize:14, color:tier.highlight?'rgba(255,255,255,0.6)':C.gray, marginBottom:6 }}>/mo</span>}
             </div>
             {tier.price.monthly === 0 && tier.highlight
-              ? <div style={{ fontSize:13, fontWeight:700, color:'#86EFAC', marginBottom:20 }}>🌿 Free for founding therapists, for a limited time</div>
+              ? <div style={{ fontSize:13, fontWeight:700, color:'#86EFAC', marginBottom:20 }}>🌿 Free on Bronze today</div>
               : tier.price.monthly === 0
-              ? <div style={{ fontSize:13, fontWeight:700, color:C.sage, marginBottom:20 }}>Free for a limited time</div>
+              ? <div style={{ fontSize:13, fontWeight:700, color:C.sage, marginBottom:20 }}>Free forever</div>
               : <div style={{ fontSize:12, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:20 }}>billed monthly</div>
             }
             {tier.comingSoon
@@ -167,15 +167,15 @@ export default function Pricing() {
       <div style={{ maxWidth:680, margin:'0 auto', padding:'0 24px 80px' }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:40 }}>Common questions</h2>
         {[
-          { q:'Is Bronze really free?', a:"Yes, for a limited time. Every tool on this page is free on Bronze right now. No credit card, no trial, no hidden limits. Bronze will eventually be $9 per month for new signups, but anyone who joins today stays free for as long as the promotion runs, and gets grandfathered benefits when pricing starts. We believe every therapist deserves professional tools." },
-          { q:'How can you afford to offer this for free?', a:"Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build and run - AI, automated emails, intelligent scheduling, body mapping - now cost a fraction of that. We built BodyMap lean and pass that directly to you. We make money when you grow into Silver. That only happens if Bronze genuinely helps you first. So we are fully aligned with your success." },
-          { q:'Why BodyMap and not the other scheduling tools?', bullets:['They charge for everything - reminders, SOAP notes, forms, and messaging are paywalled add-ons. On BodyMap they are all free on Bronze.','They require clients to create accounts or download an app just to book. That friction kills bookings. BodyMap clients book in 2 taps, no account, no app.','They have no intelligence. They store your data but never tell you anything useful with it. BodyMap surfaces patterns, flags retention risk, and forecasts revenue automatically.','They are built for salons and spas, not massage therapists. You pay for inventory management and loyalty points you will never use.','They push constant updates that break your workflow. Multiple competitors have reviews specifically about updates that caused missed bookings and dropped reminders. BodyMap is built for solo LMTs. Stable, focused, and fast.'] },
-          { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets." },
-          { q:'What does first 5 sessions mean for intelligence on Bronze?', a:"On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use BodyMap." },
+          { q:'Is Bronze really free?', a:"Yes. Every tool on this page is free on Bronze — forever. No credit card, no trial, no hidden limits. Bronze will eventually be $9 per month for new signups, but anyone who joins today stays free and gets grandfathered benefits when pricing starts. We believe every therapist deserves professional tools." },
+          { q:'How can you afford to offer this for free?', a:"Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build and run - AI, automated emails, intelligent scheduling, body mapping - now cost a fraction of that. We built MyBodyMap lean and pass that directly to you. We make money when you grow into Silver. That only happens if Bronze genuinely helps you first. So we are fully aligned with your success." },
+          { q:'Why MyBodyMap and not the other scheduling tools?', bullets:['They charge for everything - reminders, SOAP notes, forms, and messaging are paywalled add-ons. On MyBodyMap they are all free on Bronze.','They require clients to create accounts or download an app just to book. That friction kills bookings. MyBodyMap clients book in 2 taps, no account, no app.','They have no intelligence. They store your data but never tell you anything useful with it. MyBodyMap surfaces patterns, flags retention risk, and forecasts revenue automatically.','They are built for salons and spas, not massage therapists. You pay for inventory management and loyalty points you will never use.','They push constant updates that break your workflow. Multiple competitors have reviews specifically about updates that caused missed bookings and dropped reminders. MyBodyMap is built for solo LMTs. Stable, focused, and fast.'] },
+          { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use MyBodyMap, the smarter it gets." },
+          { q:'What does first 5 sessions mean for intelligence on Bronze?', a:"On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use MyBodyMap." },
           { q:'When is Gold launching?', a:"Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches." },
           { q:'Can I switch plans anytime?', a:"Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade." },
-          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use BodyMap.' },
-          { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use BodyMap, the smarter it gets.' },
+          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use MyBodyMap.' },
+          { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use MyBodyMap, the smarter it gets.' },
           { q:'When is Gold launching?', a:'Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches.' },
           { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
         ].map((item) => (

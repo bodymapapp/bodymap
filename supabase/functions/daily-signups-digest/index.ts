@@ -117,24 +117,24 @@ serve(async (req) => {
 
     const html = `<!DOCTYPE html><html><body style="background:#FAFAF7;padding:24px 0;margin:0;">
       <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:14px;padding:28px;border:1px solid #E8E4DC;">
-        <div style="font-family:Georgia,serif;font-size:11px;color:#6B9E80;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin-bottom:8px;">🌿 BodyMap · Daily Signups</div>
+        <div style="font-family:Georgia,serif;font-size:11px;color:#6B9E80;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin-bottom:8px;">🌿 MyBodyMap · Daily Signups</div>
         ${signupsSection}
         ${securitySection}
         <p style="font-family:system-ui;font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 0;">
-          Sent by BodyMap · Generated daily covering the previous 24 hours.
+          Sent by MyBodyMap · Generated daily covering the previous 24 hours.
         </p>
       </div>
     </body></html>`;
 
     const subject = count > 0
-      ? `🌿 ${count} new BodyMap signup${count > 1 ? 's' : ''} yesterday${blockedCount > 0 ? ` (+${blockedCount} blocked)` : ''}`
-      : `🛡️ BodyMap security: ${blockedCount} blocked, ${flaggedCount} flagged`;
+      ? `🌿 ${count} new MyBodyMap signup${count > 1 ? 's' : ''} yesterday${blockedCount > 0 ? ` (+${blockedCount} blocked)` : ''}`
+      : `🛡️ MyBodyMap security: ${blockedCount} blocked, ${flaggedCount} flagged`;
 
     const resendRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from: 'BodyMap <reminders@mybodymap.app>',
+        from: 'MyBodyMap <reminders@mybodymap.app>',
         to: [DIGEST_TO],
         bcc: ['bodymapdemo@gmail.com'],
         subject,

@@ -139,7 +139,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
     <p style="font-size:16px;color:#1A1A2E;line-height:1.7;margin:0 0 20px;">${msg}</p>
     <a href="${bookingLink}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:13px 20px;text-align:center;font-size:15px;font-weight:700;">Book a Session →</a>
   </div>
-  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">Sent via BodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
+  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">Sent via MyBodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
 </div></body></html>`;
 
           const res = await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {

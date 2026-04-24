@@ -225,7 +225,6 @@ body { overflow-x: clip; }
 
   /* Nav section padding */
   .bm-home-hero-grid h1 { font-size: 28px !important; line-height: 1.15 !important; }
-  .bm-home-hero-grid h1 br { display: none !important; }
 }
 
 /* ── FEATURES PAGE MOBILE ── */

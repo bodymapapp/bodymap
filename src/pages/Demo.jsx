@@ -1,4 +1,4 @@
-// BodyMap v5.0 - Loyalty Program · 5-Dimension Review · AI Insights
+// MyBodyMap v5.0 - Loyalty Program · 5-Dimension Review · AI Insights
 import { useState, useEffect, useCallback } from "react";
 
 const C = {
@@ -53,7 +53,7 @@ const DEFAULT_PREFS = {
 };
 
 // Claude API
-const SYSTEM = `You are a wellness session preference observer for BodyMap. Notice patterns in self-reported preferences only.
+const SYSTEM = `You are a wellness session preference observer for MyBodyMap. Notice patterns in self-reported preferences only.
 RULES: Never diagnose. Never use: diagnosis, condition, injury, treatment, syndrome, disorder, symptom, prognosis, risk.
 Frame everything as preference patterns: "you tend to prefer", "your sessions show a pattern of".
 End every response with: "✨ These are observations from your personal session preferences only - not medical advice."`;
@@ -2739,7 +2739,7 @@ const PrefScreen = ({
             marginTop: 8,
           }}
         >
-          ℹ️ BodyMap is a communication tool, not a medical service.
+          ℹ️ MyBodyMap is a communication tool, not a medical service.
         </p>
       </Card>
       <Card>
@@ -2845,7 +2845,7 @@ const PrefScreen = ({
         </Btn>
       </div>
       <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, textAlign: "center", lineHeight: 1.5, margin: "8px 0 0 0" }}>
-        By continuing, you agree to BodyMap&apos;s <a href="/terms" style={{ color: C.green }}>Terms</a> and <a href="/privacy" style={{ color: C.green }}>Privacy Policy</a>. We never sell your data.
+        By continuing, you agree to MyBodyMap&apos;s <a href="/terms" style={{ color: C.green }}>Terms</a> and <a href="/privacy" style={{ color: C.green }}>Privacy Policy</a>. We never sell your data.
       </p>
     </div>
   );
@@ -3916,7 +3916,7 @@ const WelcomeScreen = ({ onStart, sessions, onHistory, onPreFill }) => {
             lineHeight: 1.1,
           }}
         >
-          BodyMap
+          MyBodyMap
         </h1>
         <p
           style={{

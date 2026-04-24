@@ -366,8 +366,8 @@ export default function ImportClients({ therapist, onComplete }) {
             <h3 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 8px' }}>Import complete!</h3>
             <p style={{ fontSize:15, color:C.gray, margin:'0 0 24px' }}>
               {results.created > 0
-                ? `${results.created} client${results.created !== 1 ? 's' : ''} from ${platform?.label} are now in BodyMap.`
-                : `All clients from ${platform?.label} were already in BodyMap.`}
+                ? `${results.created} client${results.created !== 1 ? 's' : ''} from ${platform?.label} are now in MyBodyMap.`
+                : `All clients from ${platform?.label} were already in MyBodyMap.`}
             </p>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
               {[
@@ -388,7 +388,7 @@ export default function ImportClients({ therapist, onComplete }) {
             )}
             {results.created === 0 && results.skipped > 0 && (
               <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#1D4ED8', textAlign:'left', lineHeight:1.6 }}>
-                All clients already exist in BodyMap — no duplicates were created.
+                All clients already exist in MyBodyMap — no duplicates were created.
               </div>
             )}
             <p style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>

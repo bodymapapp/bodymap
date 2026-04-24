@@ -208,7 +208,7 @@ export default function NotificationPrefsCard({ therapist, C2 }) {
       )}
 
       <p style={{ fontSize: 11, color: C2.gray, lineHeight: 1.5, margin: '14px 0 0' }}>
-        <strong>App alert</strong> = a tap on your phone when you have BodyMap installed to your home screen. Works without Twilio.
+        <strong>App alert</strong> = a tap on your phone when you have MyBodyMap installed to your home screen. Works without Twilio.
       </p>
     </div>
   );

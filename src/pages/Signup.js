@@ -87,6 +87,10 @@ export default function Signup() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // Optional fields (business name, intake URL, phone) are collapsed by
+  // default to reduce signup friction. Mobile especially benefits - the
+  // 7-field form becomes a 4-field form until they explicitly expand.
+  const [showOptional, setShowOptional] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 900);
   const { signUp, signInWithGoogle, user } = useAuth();
   const navigate = useNavigate();
@@ -128,12 +132,18 @@ export default function Signup() {
   const handleSubmit = async (e) => {
     e.preventDefault(); setError('');
     if (!formData.fullName.trim() || formData.fullName.trim().length < 2) { setError('Please enter your full name.'); return; }
-    if (!formData.businessName.trim()) { setError('Please enter your business name.'); return; }
     if (!formData.email.trim()) { setError('Please enter your email.'); return; }
+    // Phone, business name, and custom URL are optional at signup.
+    // Business name auto-defaults to the therapist's full name if blank
+    // (they can change it in Settings later).
     const phoneDigits = (formData.phone || '').replace(/\D/g, '');
-    if (phoneDigits.length < 10) { setError('Please enter a valid phone number. We will use it to text you account updates.'); return; }
+    if (phoneDigits.length > 0 && phoneDigits.length < 10) { setError('Phone number must be at least 10 digits, or leave it blank.'); return; }
     if (formData.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match.'); return; }
+    const effectiveBusinessName = formData.businessName.trim() || formData.fullName.trim();
+    // Auto-generate custom URL slug if user didn't provide one
+    const effectiveCustomUrl = formData.customUrl.trim() ||
+      formData.fullName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30);
     setLoading(true);
 
     // Security guard: rate limits, disposable email block, suspicious pattern detection.
@@ -149,7 +159,7 @@ export default function Signup() {
         body: JSON.stringify({
           email: formData.email,
           full_name: formData.fullName,
-          business_name: formData.businessName,
+          business_name: effectiveBusinessName,
         }),
       });
       const guardData = await guardRes.json();
@@ -162,7 +172,7 @@ export default function Signup() {
       guardScore = guardData.risk_score || 0;
     } catch (e) { /* guard unreachable — proceed */ }
 
-    const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: formData.businessName, customUrl: formData.customUrl, phone: formData.phone });
+    const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: effectiveBusinessName, customUrl: effectiveCustomUrl, phone: formData.phone });
     if (result.success) {
       // Mark signup risk on the therapist row so it surfaces in the daily digest and admin views
       if (guardFlags.length > 0 || guardScore > 0) {
@@ -204,9 +214,9 @@ export default function Signup() {
             'Authorization': `Bearer ${process.env.REACT_APP_RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: 'BodyMap <notifications@mybodymap.app>',
+            from: 'MyBodyMap <notifications@mybodymap.app>',
             to: ['bodymap01@gmail.com'],
-            subject: `New BodyMap Signup: ${formData.businessName || formData.fullName}`,
+            subject: `New MyBodyMap Signup: ${formData.businessName || formData.fullName}`,
             html: `<div style="font-family:system-ui;max-width:480px;padding:24px">
               <h2 style="color:#2A5741">New therapist signed up!</h2>
               <table style="width:100%;border-collapse:collapse">
@@ -280,7 +290,7 @@ export default function Signup() {
           {/* Headline */}
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'rgba(255,255,255,0.12)', borderRadius:20, padding:'4px 12px', marginBottom:8 }}>
-              <span style={{ fontSize:11, fontWeight:700, color:'#A8C5B5' }}>🌿 First 100 therapists · Silver free for a limited time</span>
+              <span style={{ fontSize:11, fontWeight:700, color:'#A8C5B5' }}>🌿 Free on Bronze · No credit card</span>
             </div>
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Make it impossible for clients<br/>not to come back.</h2>
             <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores — helping every client feel like your #1.</p>
@@ -307,7 +317,7 @@ export default function Signup() {
 
           {/* Therapist quote */}
           <div style={{ borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '14px' }}>
-            <p style={{ fontSize: '12px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 5px 0', lineHeight: 1.5 }}>"I used to ask the same questions every visit. BodyMap changed that - I walk in knowing exactly what Sarah needs before I touch her."</p>
+            <p style={{ fontSize: '12px', color: '#A8C5B5', fontStyle: 'italic', margin: '0 0 5px 0', lineHeight: 1.5 }}>"I used to ask the same questions every visit. MyBodyMap changed that - I walk in knowing exactly what Sarah needs before I touch her."</p>
             <p style={{ fontSize: '11px', color: '#6B9E80', margin: 0, fontWeight: '600' }}>- Jennifer K., LMT · Houston TX</p>
           </div>
         </div>
@@ -340,10 +350,10 @@ export default function Signup() {
         {/* Heading */}
         <div style={{ marginBottom: '20px' }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:20, padding:'4px 12px', marginBottom:10 }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>🌿 Founding Therapist — Silver Free for a Limited Time</span>
+            <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>🌿 Free forever on Bronze</span>
           </div>
           <h1 style={{ fontSize: '28px', fontWeight: '800', color: C.darkGray, margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Create your account</h1>
-          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>Silver free for a limited time · No credit card · Up and running in 30 seconds</p>
+          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>No credit card · Up and running in 30 seconds</p>
         </div>
 
         {/* Google button */}
@@ -360,45 +370,21 @@ export default function Signup() {
           <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
         </div>
 
-        {/* Row 1: Full Name + Business Name */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '14px' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Full Name</label>
-            <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange} style={inputStyle} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Business Name</label>
-            <input name="businessName" type="text" placeholder="Healing Hands" value={formData.businessName} onChange={handleChange} style={inputStyle} />
-          </div>
-        </div>
-
-        {/* Intake Link */}
+        {/* Full Name (full width, required) */}
         <div style={{ marginBottom: '14px' }}>
-          <label style={labelStyle}>Your Intake Link <span style={{ fontSize: '10px', color: C.sage, textTransform: 'none', letterSpacing: 0 }}>✨ auto-generated</span></label>
-          <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1.5px solid #6B9E80' }}>
-            <span style={{ fontSize: '13px', color: C.sage, fontWeight: '600', whiteSpace: 'nowrap', paddingBottom: '9px' }}>mybodymap.app/</span>
-            <input name="customUrl" type="text" placeholder="janesmassage" value={formData.customUrl} onChange={handleChange}
-              style={{ ...inputStyle, borderBottom: 'none', flex: 1, minWidth: 0 }} />
-          </div>
-          <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>Clients tap this to fill their body map before each session</p>
+          <label style={labelStyle}>Full Name</label>
+          <input name="fullName" type="text" placeholder="Jane Smith" value={formData.fullName} onChange={handleChange} style={inputStyle} />
         </div>
 
-        {/* Row 2: Phone + Email */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '14px' }}>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Phone <span style={{ color: '#B44A3A' }}>*</span></label>
-            <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange} required style={inputStyle} />
-            <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>So we can text you account updates. We will never share it.</p>
-          </div>
-          <div style={{ flex: 1 }}>
-            <label style={labelStyle}>Email</label>
-            <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} style={inputStyle} />
-          </div>
+        {/* Email (full width, required) */}
+        <div style={{ marginBottom: '14px' }}>
+          <label style={labelStyle}>Email</label>
+          <input name="email" type="email" placeholder="you@example.com" value={formData.email} onChange={handleChange} style={inputStyle} />
         </div>
 
-        {/* Row 3: Password + Confirm */}
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px' }}>
-          <div style={{ flex: 1 }}>
+        {/* Password + Confirm (side-by-side on desktop, stacks on mobile via flex-wrap) */}
+        <div style={{ display: 'flex', gap: '20px', marginBottom: '16px', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
               <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Create a password" value={formData.password} onChange={handleChange}
@@ -424,7 +410,7 @@ export default function Signup() {
               </div>
             )}
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: '1 1 180px', minWidth: 0 }}>
             <label style={labelStyle}>Confirm Password</label>
             <input name="confirmPassword" type="password" placeholder="Re-enter password" value={formData.confirmPassword} onChange={handleChange}
               style={{ ...inputStyle, borderBottomColor: formData.confirmPassword && formData.confirmPassword !== formData.password ? '#EF4444' : '#D1D5DB' }} />
@@ -435,6 +421,48 @@ export default function Signup() {
               <p style={{ fontSize: '10px', color: '#16A34A', margin: '2px 0 0 0' }}>✓ Passwords match</p>
             )}
           </div>
+        </div>
+
+        {/* Optional fields - collapsed by default. Keeps signup to 4 visible
+            fields (name, email, password, confirm) unless user expands. */}
+        <div style={{ marginBottom: '18px' }}>
+          <button
+            type="button"
+            onClick={() => setShowOptional(v => !v)}
+            style={{
+              background: 'transparent', border: 'none', padding: 0,
+              fontSize: '12px', color: C.sage, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', gap: 6,
+              fontFamily: 'inherit', fontWeight: 600,
+            }}>
+            <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showOptional ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
+            {showOptional ? 'Hide' : 'Add'} business name, custom URL, and phone (optional)
+          </button>
+
+          {showOptional && (
+            <div style={{ marginTop: 12, paddingLeft: 4, borderLeft: `2px solid ${C.sage}40`, paddingTop: 4 }}>
+              <div style={{ marginBottom: '14px', marginLeft: 10 }}>
+                <label style={labelStyle}>Business Name</label>
+                <input name="businessName" type="text" placeholder="Healing Hands (we will use your name if blank)" value={formData.businessName} onChange={handleChange} style={inputStyle} />
+              </div>
+
+              <div style={{ marginBottom: '14px', marginLeft: 10 }}>
+                <label style={labelStyle}>Custom Intake URL</label>
+                <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1.5px solid #6B9E80' }}>
+                  <span style={{ fontSize: '13px', color: C.sage, fontWeight: '600', whiteSpace: 'nowrap', paddingBottom: '9px' }}>mybodymap.app/</span>
+                  <input name="customUrl" type="text" placeholder="janesmassage" value={formData.customUrl} onChange={handleChange}
+                    style={{ ...inputStyle, borderBottom: 'none', flex: 1, minWidth: 0 }} />
+                </div>
+                <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>Clients use this link to fill their body map. We auto-generate one if you skip this.</p>
+              </div>
+
+              <div style={{ marginBottom: '4px', marginLeft: 10 }}>
+                <label style={labelStyle}>Phone</label>
+                <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange} style={inputStyle} />
+                <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>For account-recovery texts only. We never share it.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Error */}

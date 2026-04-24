@@ -119,10 +119,10 @@ function InstallGuideModal({ onDismiss }) {
 
   const steps = isIOS ? [
     {
-      title: isIOSChrome ? "Welcome! Let's put BodyMap on your home screen." : "Welcome! Let's make BodyMap easy to open.",
+      title: isIOSChrome ? "Welcome! Let's put MyBodyMap on your home screen." : "Welcome! Let's make MyBodyMap easy to open.",
       body: isIOSChrome
-        ? "In 20 seconds, we'll add a BodyMap icon to your home screen — so it opens in one tap, like any other app. You can use Chrome to install it. No app store needed."
-        : "In 20 seconds, we'll put a BodyMap icon right on your home screen — so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
+        ? "In 20 seconds, we'll add a MyBodyMap icon to your home screen — so it opens in one tap, like any other app. You can use Chrome to install it. No app store needed."
+        : "In 20 seconds, we'll put a MyBodyMap icon right on your home screen — so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
       visual: (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '30px 0' }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, boxShadow: '0 10px 32px rgba(42,87,65,0.35)' }}>🌿</div>
@@ -174,7 +174,7 @@ function InstallGuideModal({ onDismiss }) {
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 10, background: '#F9FAFB', borderRadius: 12 }}>
               <div style={{ width: 48, height: 48, borderRadius: 10, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🌿</div>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>BodyMap</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: C.dark }}>MyBodyMap</div>
                 <div style={{ fontSize: 11, color: C.gray }}>mybodymap.app</div>
               </div>
             </div>
@@ -188,7 +188,7 @@ function InstallGuideModal({ onDismiss }) {
     },
     {
       title: "You're all set. 🌿",
-      body: "Go to your home screen and tap the green leaf icon. BodyMap will open like any other app. The next time you sign in, we'll offer to turn on gentle notifications so you know when clients book.",
+      body: "Go to your home screen and tap the green leaf icon. MyBodyMap will open like any other app. The next time you sign in, we'll offer to turn on gentle notifications so you know when clients book.",
       visual: (
         <div style={{ display: 'flex', justifyContent: 'center', padding: '28px 0' }}>
           <div style={{ width: 96, height: 96, borderRadius: 22, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 52, boxShadow: '0 14px 40px rgba(42,87,65,0.45)' }}>🌿</div>
@@ -199,7 +199,7 @@ function InstallGuideModal({ onDismiss }) {
     },
   ] : [
     {
-      title: "Want to save BodyMap to your phone?",
+      title: "Want to save MyBodyMap to your phone?",
       body: "We can give you a shortcut on your phone's home screen. Opens in one tap. No app store needed.",
       visual: (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '30px 0' }}>
@@ -379,7 +379,7 @@ function PushOnboardingModal({ therapist, onDone }) {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17, flexShrink: 0 }}>🌿</div>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: C.dark }}>BodyMap</div>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: C.dark }}>MyBodyMap</div>
                   <div style={{ marginLeft: 'auto', fontSize: 11, color: C.gray }}>now</div>
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 2 }}>New booking · Sarah 🌿</div>
@@ -390,7 +390,7 @@ function PushOnboardingModal({ therapist, onDone }) {
 
             {state === 'denied' && (
               <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', color: '#991B1B', borderRadius: 12, padding: '12px 14px', fontSize: 13, marginBottom: 14, lineHeight: 1.5 }}>
-                Looks like notifications are turned off for BodyMap. Open your iPhone Settings → Notifications → BodyMap, and allow them. Then come back and try again.
+                Looks like notifications are turned off for MyBodyMap. Open your iPhone Settings → Notifications → MyBodyMap, and allow them. Then come back and try again.
               </div>
             )}
             {error && state !== 'denied' && (

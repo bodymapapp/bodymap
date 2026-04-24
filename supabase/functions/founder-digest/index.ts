@@ -64,7 +64,7 @@ serve(async () => {
 <div style="max-width:620px;margin:32px auto;background:#fff;border-radius:16px;border:1px solid #e8e5e0;overflow:hidden">
 
   <div style="background:#1a3a2a;padding:32px 36px">
-    <div style="font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px">🌿 BodyMap</div>
+    <div style="font-size:24px;font-weight:700;color:#fff;letter-spacing:-0.5px">🌿 MyBodyMap</div>
     <div style="font-size:14px;color:#9fcfb8;margin-top:6px">Founder Daily Digest for ${dateStr}</div>
   </div>
 
@@ -117,7 +117,7 @@ serve(async () => {
 
   <div style="background:#f9f8f5;padding:20px 36px;text-align:center;border-top:1px solid #e8e5e0">
     <a href="https://mybodymap.app/founder" style="font-size:13px;color:#1a3a2a;text-decoration:none;font-weight:600">Open Founder Dashboard →</a>
-    <p style="font-size:11px;color:#ccc;margin:8px 0 0">Sent daily at 8pm CT · BodyMap founder digest</p>
+    <p style="font-size:11px;color:#ccc;margin:8px 0 0">Sent daily at 8pm CT · MyBodyMap founder digest</p>
   </div>
 
 </div>
@@ -127,9 +127,9 @@ serve(async () => {
       method:"POST",
       headers:{"Content-Type":"application/json","Authorization":`Bearer ${RESEND_API_KEY}`},
       body:JSON.stringify({
-        from:"BodyMap <noreply@mybodymap.app>",
+        from:"MyBodyMap <noreply@mybodymap.app>",
         to:[FOUNDER_EMAIL],
-        subject:`BodyMap Daily: ${signups_24h??0} new signup${(signups_24h??0)!==1?"s":""} today · ${total_signups??0} total · ${silver_users??0} paid`,
+        subject:`MyBodyMap Daily: ${signups_24h??0} new signup${(signups_24h??0)!==1?"s":""} today · ${total_signups??0} total · ${silver_users??0} paid`,
         html,
       }),
     });

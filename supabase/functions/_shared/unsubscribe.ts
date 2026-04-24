@@ -58,7 +58,7 @@ export const BODYMAP_LLC_ADDRESS = "BodyMap LLC, 30 N Gould St Ste R, Sheridan, 
 export function unsubscribeFooterHtml(therapistId: string, unsubUrl: string): string {
   return `
 <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:11px;color:#9CA3AF;line-height:1.6">
-  <div>You're receiving this because you signed up for BodyMap at mybodymap.app.</div>
+  <div>You're receiving this because you signed up for MyBodyMap at mybodymap.app.</div>
   <div style="margin-top:6px"><a href="${unsubUrl}" style="color:#6B7280;text-decoration:underline">Unsubscribe from all marketing emails</a></div>
   <div style="margin-top:6px">${BODYMAP_LLC_ADDRESS}</div>
 </div>`;
@@ -69,7 +69,7 @@ export function unsubscribeFooterText(unsubUrl: string): string {
   return [
     "",
     "---",
-    "You're receiving this because you signed up for BodyMap at mybodymap.app.",
+    "You're receiving this because you signed up for MyBodyMap at mybodymap.app.",
     `Unsubscribe from all marketing emails: ${unsubUrl}`,
     BODYMAP_LLC_ADDRESS,
   ].join("\n");

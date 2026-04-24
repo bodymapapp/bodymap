@@ -1,4 +1,4 @@
-// BMLogo.jsx — BodyMap paired-leaf SVG mark
+// BMLogo.jsx — MyBodyMap paired-leaf SVG mark
 import React from 'react';
 
 export default function BMLogo({ size = 32, variant = 'dark', showWordmark = true, showTagline = false }) {
@@ -13,7 +13,8 @@ export default function BMLogo({ size = 32, variant = 'dark', showWordmark = tru
   const markH = size;
   const markW = Math.round(size * (60 / 72));
   const gap = showWordmark ? 10 : 0;
-  const fontSize = Math.round(size * 0.52);
+  // Slightly smaller font since "MyBodyMap" (9 chars) is longer than the original "BodyMap" (7 chars)
+  const fontSize = Math.round(size * 0.48);
   const tagSize  = Math.round(size * 0.24);
 
   return (
@@ -28,9 +29,9 @@ export default function BMLogo({ size = 32, variant = 'dark', showWordmark = tru
       </svg>
       {showWordmark && (
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 3 }}>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize, fontWeight: 700, color: c.text, lineHeight: 1, whiteSpace: 'nowrap' }}>BodyMap</span>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize, fontWeight: 700, color: c.text, lineHeight: 1, whiteSpace: 'nowrap' }}>MyBodyMap</span>
           {showTagline && (
-            <span style={{ fontFamily: 'system-ui, sans-serif', fontSize: tagSize, fontWeight: 700, color: c.tag, letterSpacing: '0.13em', textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap' }}>Client Intelligence</span>
+            <span style={{ fontFamily: 'system-ui, sans-serif', fontSize: tagSize, fontWeight: 700, color: c.tag, letterSpacing: '0.13em', textTransform: 'uppercase', lineHeight: 1, whiteSpace: 'nowrap' }}>For massage therapists</span>
           )}
         </div>
       )}

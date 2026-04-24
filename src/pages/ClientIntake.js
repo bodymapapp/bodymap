@@ -1,5 +1,5 @@
 // src/pages/ClientIntake.js
-// Custom URL page - loads therapist, shows BodyMap, saves to Supabase
+// Custom URL page - loads therapist, shows MyBodyMap, saves to Supabase
 
 import BMLogo from '../components/BMLogo';
 import React, { useState, useEffect } from 'react';
@@ -189,7 +189,7 @@ export default function ClientIntake() {
               fontWeight: '600'
             }}
           >
-            Go to BodyMap Home
+            Go to MyBodyMap Home
           </a>
         </div>
       </div>

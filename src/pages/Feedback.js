@@ -80,7 +80,7 @@ export default function Feedback() {
     <div style={{ minHeight:"100vh", background:C.bg }}>
       <div style={{ background:"linear-gradient(155deg,#2A5741,#1E4230)", padding:"28px 20px 24px", textAlign:"center" }}>
         <BMLogo size={32} variant="dark" showWordmark={true} />
-        <h1 style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:600, color:"#fff", margin:0 }}>{therapist.business_name || "BodyMap"}</h1>
+        <h1 style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:600, color:"#fff", margin:0 }}>{therapist.business_name || "MyBodyMap"}</h1>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.75)", marginTop:4 }}>Session Feedback</p>
       </div>
       <div style={{ padding:"20px 16px 40px", maxWidth:500, margin:"0 auto" }}>
