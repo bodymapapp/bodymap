@@ -845,6 +845,7 @@ function GrowthEngine() {
 function SectionNav() {
   const [active, setActive] = useState("pattern");
   const [visible, setVisible] = useState(false);
+  const navRef = useRef(null);
   const sections = [
     { id:"bodymap",     label:"Body Map",               n:1  },
     { id:"pattern",     label:"Pattern Intelligence",   n:2  },
@@ -874,8 +875,50 @@ function SectionNav() {
     sections.forEach(s => { const el=document.getElementById(s.id); if(el) obs.observe(el); });
     return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
   }, []);
+
+  // Explicit scroll handler instead of browser-native anchor scrolling.
+  // Why: scroll-margin-top on the target sections works in theory, but in
+  // practice on this page (with FadeIn wrappers that change height as they
+  // animate in on scroll, safe-area-inset-top on notched phones, and a
+  // fixed section nav with a slide-in transform that affects offsetHeight
+  // mid-animation), the browser's built-in hash-link scroll can land in
+  // unpredictable places. The HK-reported gap was ~170px of empty space
+  // above content on mobile even with scroll-margin-top:180px applied.
+  //
+  // Fix: measure the ACTUAL fixed-nav height at click time from the DOM,
+  // compute the target y = element.getBoundingClientRect().top + window.scrollY
+  // minus the measured nav height, and scrollTo() that position. This makes
+  // the landing deterministic and correct regardless of what animations or
+  // layout shifts are in flight.
+  const handleClick = (e, sectionId) => {
+    e.preventDefault();
+    setActive(sectionId);
+    const el = document.getElementById(sectionId);
+    if (!el) return;
+
+    // Measure the full fixed-nav stack at this exact moment. On mobile
+    // the main Nav is ~64px and the SectionNav (this component) is ~48px
+    // tall — together ~112px. Add a small 12px buffer so the section
+    // headline has breathing room above it instead of kissing the nav.
+    const myNav = navRef.current;
+    const sectionNavHeight = myNav ? myNav.getBoundingClientRect().height : 48;
+    const mainNavHeight = 64; // fixed via Nav component, see top:64 on this nav
+    const buffer = 12;
+    const targetOffset = mainNavHeight + sectionNavHeight + buffer;
+
+    const targetY = el.getBoundingClientRect().top + window.scrollY - targetOffset;
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
+
+    // Update URL hash without triggering browser's own jump-scroll. Using
+    // replaceState (not pushState) so we don't pollute history with every
+    // section tap.
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, '', `#${sectionId}`);
+    }
+  };
+
   return (
-    <div style={{
+    <div ref={navRef} style={{
       position:"fixed", top:64, left:0, right:0, zIndex:89,
       background:"rgba(255,255,255,0.98)", backdropFilter:"blur(12px)",
       borderBottom:`1px solid ${C.border}`, boxShadow:'0 2px 8px rgba(0,0,0,0.07)',
@@ -886,7 +929,7 @@ function SectionNav() {
         <style>{`.bm-secnav-scroll::-webkit-scrollbar{display:none}`}</style>
         <div className="bm-secnav-scroll" style={{ display:"flex", gap:2, padding:"14px 0" }}>
           {sections.map(s=>(
-            <a key={s.id} href={`#${s.id}`} onClick={()=>setActive(s.id)}
+            <a key={s.id} href={`#${s.id}`} onClick={(e)=>handleClick(e, s.id)}
               style={{
                 padding:"8px 14px",
                 fontSize:13,
