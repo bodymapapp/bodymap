@@ -876,39 +876,62 @@ function SectionNav() {
     return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
   }, []);
 
-  // Explicit scroll handler. Uses a button (not an <a> with href) so there
-  // is ZERO chance of iOS Safari firing a native hash-scroll in addition to
-  // our JS scroll. The measurement reads the live fixed-nav height from the
-  // DOM so this stays correct across safe-area-inset variations, font
-  // scaling, and any future nav redesign.
+  // Explicit scroll handler using a button (no anchor href) so iOS Safari
+  // cannot fire a native hash-scroll race. Measures BOTH the main Nav
+  // AND this section nav from the DOM, then uses the max of their bottom
+  // edges as the fixed-stack offset. Previous attempts only measured the
+  // section nav, missing the fact that on mobile the main nav (with a
+  // 44px logo + 32px padding + wordmark + tagline + safe-area) is often
+  // TALLER than the section nav's top+height, so it defines where the
+  // fixed stack ends. HK reported a persistent gap; the pixel analysis
+  // of his iPhone 15 Pro screenshot showed real fixed-stack bottom at
+  // ~215 logical px while my sectionNav-only measurement gave 124.
   const handleClick = (sectionId) => {
     setActive(sectionId);
     const el = document.getElementById(sectionId);
     if (!el) return;
 
-    // Measure the full fixed-nav stack NOW from the DOM. Don't guess.
-    const myNav = navRef.current;
-    const sectionNavRect = myNav ? myNav.getBoundingClientRect() : null;
-    // sectionNavRect.bottom is the pixel Y where the fixed nav ends in the
-    // current viewport. This already accounts for safe-area-inset-top,
-    // the Nav component above it, any transform/translate, and the actual
-    // rendered height including padding and border. Use it directly rather
-    // than summing guessed values.
-    const navBottom = sectionNavRect ? sectionNavRect.bottom : 160;
+    // Measure main Nav (the <nav> element at the top of Features) AND
+    // section nav (this component). The bottom of the fixed-nav stack
+    // is whichever extends further down the viewport.
+    const mainNav = document.querySelector('nav');
+    const sectionNav = navRef.current;
+    const mainNavBottom = mainNav ? mainNav.getBoundingClientRect().bottom : 0;
+    const sectionNavBottom = sectionNav ? sectionNav.getBoundingClientRect().bottom : 0;
+    const navBottom = Math.max(mainNavBottom, sectionNavBottom, 112); // 112 floor for dev safety
     const buffer = 14;
     const targetOffset = navBottom + buffer;
 
-    // Compute absolute document Y coordinate that makes the section's top
-    // edge appear at (targetOffset) pixels below viewport top.
+    // Compute absolute doc Y so the section's top lands targetOffset
+    // below viewport top (i.e. just below the fixed nav stack).
     const elTop = el.getBoundingClientRect().top + window.scrollY;
-    const targetY = elTop - targetOffset;
+    const targetY = Math.max(0, elTop - targetOffset);
 
-    window.scrollTo({
-      top: Math.max(0, targetY),  // clamp to 0 so we never try to scroll above document top
-      behavior: 'smooth',
-    });
+    window.scrollTo({ top: targetY, behavior: 'smooth' });
 
-    // Update URL hash without triggering a second browser scroll.
+    // Also scroll the section nav's own horizontal scroller so the
+    // ACTIVE pill is centered/visible. HK reported that the tapped
+    // pill was getting cut off at the right edge — on a narrow mobile
+    // viewport, pills 5+ require horizontal scroll to see, and tapping
+    // a pill that's partially offscreen means the user can't visually
+    // confirm the selection. The section nav's scroller element is the
+    // direct child of navRef (inner maxWidth flex row); query by class
+    // on the inner bm-secnav-scroll and center the active button.
+    if (sectionNav) {
+      // Find the scroll container (the one with overflowX:auto) and
+      // the active button inside it.
+      const scroller = sectionNav.querySelector('div[style*="overflow"]') || sectionNav.querySelector('.bm-secnav-scroll')?.parentElement;
+      const activeBtn = sectionNav.querySelector('.bm-secnav-scroll button[data-id="' + sectionId + '"]');
+      if (scroller && activeBtn) {
+        const scrollerRect = scroller.getBoundingClientRect();
+        const btnRect = activeBtn.getBoundingClientRect();
+        // Center the button in the scroller
+        const btnCenterInScroller = (btnRect.left - scrollerRect.left) + scroller.scrollLeft + btnRect.width / 2;
+        const targetScrollLeft = btnCenterInScroller - scrollerRect.width / 2;
+        scroller.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+      }
+    }
+
     if (window.history && window.history.replaceState) {
       window.history.replaceState(null, '', `#${sectionId}`);
     }
@@ -926,7 +949,7 @@ function SectionNav() {
         <style>{`.bm-secnav-scroll::-webkit-scrollbar{display:none}`}</style>
         <div className="bm-secnav-scroll" style={{ display:"flex", gap:2, padding:"14px 0" }}>
           {sections.map(s=>(
-            <button key={s.id} type="button" onClick={()=>handleClick(s.id)}
+            <button key={s.id} type="button" data-id={s.id} onClick={()=>handleClick(s.id)}
               style={{
                 padding:"8px 14px",
                 fontSize:13,
