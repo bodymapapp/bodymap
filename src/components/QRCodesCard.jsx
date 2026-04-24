@@ -5,11 +5,16 @@
 
 import React, { useState } from 'react';
 
-const QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=';
+// Display a small preview (240px) but download the high-res version (800px)
+// so therapists can print up to 8 inches square without pixelation.
+const QR_API_PREVIEW = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=10&data=';
+const QR_API_HIRES = 'https://api.qrserver.com/v1/create-qr-code/?size=800x800&margin=30&data=';
 
-function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, children }) {
-  const qrSrc = url ? `${QR_API}${encodeURIComponent(url)}` : null;
+function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted = false, children }) {
+  const previewSrc = url ? `${QR_API_PREVIEW}${encodeURIComponent(url)}` : null;
+  const hiresSrc = url ? `${QR_API_HIRES}${encodeURIComponent(url)}` : null;
   const [copied, setCopied] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   const copy = () => {
     if (!url) return;
@@ -17,6 +22,79 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
     });
+  };
+
+  // Reliable download that works on iPhone Safari (which ignores the `download`
+  // attribute on cross-origin links). Fetches the image as a Blob, creates a
+  // same-origin object URL, then triggers download via a hidden link.
+  const download = async () => {
+    if (!hiresSrc || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await fetch(hiresSrc);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (e) {
+      // Fallback: open in new tab so user can long-press and Save Image
+      window.open(hiresSrc, '_blank');
+    }
+    setDownloading(false);
+  };
+
+  // Print-ready window with business name, QR at full size, and the URL below.
+  // Uses window.print() so AirPrint / any printer works.
+  const printQR = () => {
+    if (!hiresSrc) return;
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    w.document.write(`
+<!DOCTYPE html>
+<html>
+<head>
+  <title>${title} QR Code</title>
+  <style>
+    @media print {
+      @page { margin: 0.5in; }
+      body { margin: 0; }
+      .no-print { display: none; }
+    }
+    body {
+      font-family: Georgia, serif;
+      text-align: center;
+      padding: 40px 20px;
+      color: #1F2937;
+    }
+    h1 { font-size: 24px; margin: 0 0 8px; }
+    .subtitle { font-size: 14px; color: #6B7280; margin: 0 0 32px; font-style: italic; }
+    img { max-width: 500px; width: 100%; height: auto; display: block; margin: 0 auto 20px; }
+    .url { font-family: monospace; font-size: 13px; color: #6B7280; word-break: break-all; }
+    .cta { font-size: 18px; margin-top: 28px; font-weight: 700; color: #2A5741; }
+    button {
+      background: #2A5741; color: white; border: none; padding: 12px 28px;
+      border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <h1>${businessName || 'Scan to Continue'}</h1>
+  <p class="subtitle">${subtitle}</p>
+  <img src="${hiresSrc}" alt="QR code" />
+  <p class="url">${url}</p>
+  <p class="cta">Scan with your phone camera</p>
+  <button class="no-print" onclick="window.print()">🖨️ Print</button>
+</body>
+</html>`);
+    w.document.close();
+    // Auto-open print dialog after image loads
+    w.onload = () => setTimeout(() => w.print(), 300);
   };
 
   return (
@@ -41,10 +119,10 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
 
       {children /* optional input for custom panel */}
 
-      {qrSrc ? (
+      {previewSrc ? (
         <>
           <div style={{ background: '#fff', padding: 8, borderRadius: 10, border: `1px solid ${C2.lightGray}`, marginBottom: 14 }}>
-            <img src={qrSrc} alt="QR code" style={{ width: 160, height: 160, display: 'block' }} />
+            <img src={previewSrc} alt="QR code" style={{ width: 160, height: 160, display: 'block' }} />
           </div>
           <div style={{
             width: '100%',
@@ -62,7 +140,7 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
           }}>
             {url}
           </div>
-          <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+          <div style={{ display: 'flex', gap: 6, width: '100%', marginBottom: 6 }}>
             <button
               onClick={copy}
               style={{
@@ -70,7 +148,7 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
                 background: copied ? C2.forest : C2.sage,
                 color: '#fff',
                 border: 'none',
-                padding: '9px 10px',
+                padding: '9px 8px',
                 borderRadius: 8,
                 fontSize: 12,
                 fontWeight: 600,
@@ -80,25 +158,43 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
             >
               {copied ? '✓ Copied' : 'Copy link'}
             </button>
-            <a
-              href={qrSrc}
-              download={filename}
+            <button
+              onClick={download}
+              disabled={downloading}
               style={{
                 flex: 1,
                 background: C2.beige,
                 border: `1.5px solid ${C2.lightGray}`,
                 color: C2.darkGray,
-                padding: '9px 10px',
+                padding: '9px 8px',
                 borderRadius: 8,
                 fontSize: 12,
                 fontWeight: 600,
-                textDecoration: 'none',
-                textAlign: 'center',
+                cursor: downloading ? 'wait' : 'pointer',
               }}
             >
-              ⬇️ Download
-            </a>
+              {downloading ? '…' : '⬇️ Save'}
+            </button>
           </div>
+          <button
+            onClick={printQR}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: `1.5px solid ${C2.lightGray}`,
+              color: C2.darkGray,
+              padding: '9px 10px',
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            🖨️ Print
+          </button>
+          <p style={{ fontSize: 10, color: C2.gray, margin: '8px 0 0', lineHeight: 1.4 }}>
+            Downloads as 800×800 PNG. Prints sharp at any size.
+          </p>
         </>
       ) : (
         <div style={{
@@ -122,7 +218,7 @@ function QRPanel({ title, subtitle, url, filename, C2, highlighted = false, chil
   );
 }
 
-export default function QRCodesCard({ intakeUrl, bookingUrl, C2 }) {
+export default function QRCodesCard({ intakeUrl, bookingUrl, businessName, C2 }) {
   const [customInput, setCustomInput] = useState('');
 
   // Normalize the custom URL: add https:// if missing, trim whitespace
@@ -160,6 +256,7 @@ export default function QRCodesCard({ intakeUrl, bookingUrl, C2 }) {
           subtitle="Your modern digital intake"
           url={intakeUrl}
           filename="bodymap-intake-qr.png"
+          businessName={businessName}
           C2={C2}
           highlighted
         />
@@ -169,6 +266,7 @@ export default function QRCodesCard({ intakeUrl, bookingUrl, C2 }) {
           subtitle="For new clients booking a session"
           url={bookingUrl}
           filename="bodymap-booking-qr.png"
+          businessName={businessName}
           C2={C2}
         />
 
@@ -177,6 +275,7 @@ export default function QRCodesCard({ intakeUrl, bookingUrl, C2 }) {
           subtitle="Your website, social page, anything"
           url={normalizedCustom}
           filename="bodymap-custom-qr.png"
+          businessName={businessName}
           C2={C2}
         >
           <input

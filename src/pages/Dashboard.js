@@ -839,7 +839,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div>
 
       {/* QR Codes: Intake, Booking, Custom */}
-      <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} C2={C2} />
+      <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} />
 
       {/* Profile Edit */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
