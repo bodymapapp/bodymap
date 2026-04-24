@@ -1034,7 +1034,6 @@ export default function Features() {
       {/* BODY MAP, Section 1, The Core Moat */}
       <section id="bodymap" style={{ scrollMarginTop:"112px", background:`linear-gradient(160deg,#0D1F17 0%,#1B3A28 60%,#2A5741 100%)`, padding:"100px 24px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-intake.jpg" alt="Hand-drawn anatomical chart being marked by a therapist in warm morning light" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
               <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:"rgba(201,168,76,0.15)", border:"1px solid rgba(201,168,76,0.35)", borderRadius:20, padding:"6px 18px", fontSize:12, fontWeight:700, color:C.gold, letterSpacing:"0.08em", marginBottom:20 }}>
@@ -1159,7 +1158,6 @@ export default function Features() {
       {/* ONLINE BOOKING */}
       <section id="booking" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-booking.jpg" alt="Weekly planner open on a warm wooden table with dried lavender" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Online Booking</div>
@@ -1229,7 +1227,6 @@ export default function Features() {
 
       <section id="reminders" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:C.beige }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-reminders.jpg" alt="Handwritten envelope sealed with sage sprig, fountain pen beside it" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Automated Reminders</div>
@@ -1306,7 +1303,6 @@ export default function Features() {
       {/* RETURNING CLIENT PRE-FILL */}
       <section id="returning" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:`linear-gradient(160deg, #0D1F17 0%, #1A3A28 100%)` }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-retention.jpg" alt="River stone hand-lettered with a message of calm care in a handmade ceramic bowl" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:56 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Returning Clients</div>
@@ -1489,7 +1485,6 @@ export default function Features() {
       {/* BILLING */}
       <section id="billing" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"#fff" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-billing.jpg" alt="Handwritten practice ledger on handmade paper with brass pen" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:48 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Billing</div>
@@ -1523,7 +1518,6 @@ export default function Features() {
       {/* GIFT CARDS */}
       <section id="gifts" style={{ scrollMarginTop:"112px", padding:"90px 24px", background:"linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FFF9F3 100%)", position:"relative", overflow:"hidden" }}>
         <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
-          <img src="/images/feature-gifts.jpg" alt="Cloth-wrapped gift with dusty rose ribbon, candle glowing nearby" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:52 }}>
               <div style={{ fontSize:13, fontWeight:700, color:"#E85C79", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>♡ Gift Cards</div>
@@ -1557,7 +1551,6 @@ export default function Features() {
       {/* AI */}
       <section id="ai" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:`linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #F0FDF4 100%)` }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
-          <img src="/images/feature-ai.jpg" alt="Stacked leather journals with open anatomy sketch and dried rose petals" className="bm-feature-image" loading="lazy" />
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>MyBodyMap AI</div>

@@ -254,19 +254,19 @@ body { overflow-x: clip; }
 
 /* ── FEATURES PAGE MOBILE ── */
 @media (max-width: 640px) {
-  /* Every feature section on /features uses 80-100px vertical padding
-     on desktop. Clicking a section nav pill should land the user
-     immediately AT the content, not at a dead white zone above it.
-     Combined with scrollMarginTop:112px (which offsets for the
-     sticky nav), the 48px padding-top from my Phase 3 override was
-     creating a 48px dead zone right where content should be. Fix:
-     zero top padding on mobile, generous bottom padding for breathing
-     between sections. Visual separation still exists because adjacent
-     sections have different background colors (cream / beige / forest).
-     The click-target "lands" at actual content. */
+  /* When a user taps a section pill at top, the page scrolls so the
+     section lands at viewport y=scroll-margin-top. The inline style
+     has this at 112px, which was calibrated for desktop. On mobile the
+     fixed stack is taller: header (~64px) + section nav pills (~60px)
+     + small breathing room = ~180px. With 112px, the scroll lands
+     ~70px too high, leaving the END of the previous section visible
+     above the target — which is exactly the gap HK has been flagging.
+     Override scroll-margin-top to 180px on mobile. Must be !important
+     to beat the React inline style. */
   #bodymap, #pattern, #booking, #deposits, #reminders, #intake,
   #returning, #schedule, #outreach, #postsession, #billing,
   #gifts, #ai, #mobile, #automation, #growth, #portability {
+    scroll-margin-top: 180px !important;
     padding-top: 16px !important;
     padding-bottom: 48px !important;
     padding-left: 20px !important;
@@ -391,17 +391,37 @@ body { overflow-x: clip; }
   .bm-comparison-table-desktop { display: none !important; }
   .bm-comparison-cards-mobile  { display: flex !important; }
 
-  /* Bar chart labels on mobile: "MyBodyMap" is 9 chars and was
-     truncating on narrow widths because each of 5 bars gets flex:1.
-     Drop font size and tighten letter spacing so the label fits
-     under its bar without wrapping. */
-  .bm-bar-chart-labels > div {
-    font-size: 11px !important;
+  /* Bar chart on mobile: the 5 bars (4 competitors + MyBodyMap) must
+     fit within a ~380px viewport. Root cause of the truncated
+     MyBodyMap label: the chart CARD had padding:'32px 32px 28px'
+     which ate 64px of horizontal space, leaving only ~316px for 5
+     bars + 4 gaps + labels. With 76%-wide bars of 50px per slot,
+     "MassageBook" and "MyBodyMap" labels overflowed. Fix: tighten
+     card padding, gap, and font size so everything fits inside
+     the viewport with margin to spare. */
+  .bm-bar-chart-labels,
+  .bm-bar-chart-prices {
+    gap: 6px !important;
+  }
+  .bm-bar-chart-labels > div,
+  .bm-bar-chart-prices > div {
+    font-size: 10px !important;
     letter-spacing: -0.01em !important;
+    line-height: 1.25 !important;
+  }
+  .bm-bar-chart-labels > div {
+    min-width: 0 !important;
+    overflow: visible !important;
   }
   .bm-bar-chart-prices > div {
-    font-size: 11px !important;
-    min-height: 16px !important;
+    min-height: 14px !important;
+  }
+  /* Chart card parent: shrink inner padding so bars have room. The
+     chart card is a direct descendant of the pricing-comparison
+     container and uses inline style padding 32px. Override via
+     attribute selector because it has no class. */
+  .bm-price-chart-card {
+    padding: 16px 14px 14px !important;
   }
 }
 

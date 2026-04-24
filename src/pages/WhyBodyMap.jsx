@@ -141,7 +141,7 @@ export default function WhyMyBodyMap() {
           <div style={{ display:'grid', gridTemplateColumns:'3fr 2fr', gap:20, alignItems:'stretch' }}>
 
             {/* ── Bar Chart ── */}
-            <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+            <div className="bm-price-chart-card" style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
               <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:28 }}>
                 {billing === 'monthly' ? 'Monthly platform cost' : 'Annual platform cost, total per year'}
               </div>
