@@ -229,6 +229,56 @@ body { overflow-x: clip; }
 
 /* ── FEATURES PAGE MOBILE ── */
 @media (max-width: 640px) {
+  /* Every feature section on /features uses 80-100px vertical padding
+     on desktop. On a 667pt iPhone viewport that eats half the screen
+     before content renders. Tighten across the board: 48px top, 56px
+     bottom. The asymmetry respects visual rhythm when scrolling down. */
+  #bodymap, #pattern, #booking, #deposits, #reminders, #intake,
+  #returning, #schedule, #outreach, #postsession, #billing,
+  #gifts, #ai, #mobile, #automation, #growth {
+    padding-top: 48px !important;
+    padding-bottom: 56px !important;
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  /* Feature headlines shrink aggressively on mobile. Desktop uses
+     clamp(28px, 4vw, 44px). That resolves to ~28px at 640px viewport
+     which is still heavy. Drop to 24px with tighter line-height. */
+  #bodymap h2, #pattern h2, #booking h2, #deposits h2, #reminders h2,
+  #intake h2, #returning h2, #schedule h2, #outreach h2,
+  #postsession h2, #billing h2, #gifts h2, #ai h2, #mobile h2,
+  #automation h2, #growth h2 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+
+  /* Body copy under each headline was 16-18px. 15px is more readable
+     on mobile without reducing scanability. */
+  #bodymap p, #pattern p, #booking p, #deposits p, #reminders p,
+  #intake p, #returning p, #schedule p, #outreach p,
+  #postsession p, #billing p, #gifts p, #ai p, #mobile p,
+  #automation p, #growth p {
+    font-size: 15px !important;
+  }
+
+  /* The top-of-section centered intro block has marginBottom: 56px
+     on desktop which is overkill on mobile. Tighten to 28. */
+  #bodymap > div > div:first-child,
+  #pattern > div > div:first-child,
+  #booking > div > div:first-child,
+  #intake > div > div:first-child {
+    margin-bottom: 28px !important;
+  }
+
+  /* Demo visuals sometimes have hardcoded max-width values that don't
+     account for mobile padding. Force them to respect container width. */
+  #bodymap svg, #pattern svg, #booking svg, #intake svg,
+  #schedule svg, #ai svg, #mobile svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
   /* Large 2-col feature sections (pattern, schedule, booking, automation) */
   #pattern > div > div,
   #booking > div > div,
@@ -236,7 +286,7 @@ body { overflow-x: clip; }
   #automation > div > div,
   #growth > div > div {
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 24px !important;
   }
 
   /* 3-col opportunity cards and FAQ */
@@ -259,7 +309,7 @@ body { overflow-x: clip; }
   /* AI section 2-col grid */
   #ai > div > div > div {
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 24px !important;
   }
 }
 
@@ -267,6 +317,30 @@ body { overflow-x: clip; }
 @media (max-width: 640px) {
   .bm-why-3col { grid-template-columns: 1fr !important; }
   .bm-why-2col { grid-template-columns: 1fr !important; gap: 32px !important; }
+
+  /* Show the mobile card stack, hide the wide comparison table.
+     The previous implementation used overflowX: auto with minWidth: 600
+     forcing a horizontal-scroll table on mobile — which is hostile UX. */
+  .bm-comparison-table-desktop { display: none !important; }
+  .bm-comparison-cards-mobile  { display: flex !important; }
+
+  /* Bar chart labels on mobile: "MyBodyMap" is 9 chars and was
+     truncating on narrow widths because each of 5 bars gets flex:1.
+     Drop font size and tighten letter spacing so the label fits
+     under its bar without wrapping. */
+  .bm-bar-chart-labels > div {
+    font-size: 11px !important;
+    letter-spacing: -0.01em !important;
+  }
+  .bm-bar-chart-prices > div {
+    font-size: 11px !important;
+    min-height: 16px !important;
+  }
+}
+
+/* On desktop the mobile card stack must stay hidden. */
+@media (min-width: 641px) {
+  .bm-comparison-cards-mobile { display: none !important; }
 }
 
 /* ── PRICING PAGE MOBILE ── */

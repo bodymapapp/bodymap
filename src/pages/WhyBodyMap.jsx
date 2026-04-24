@@ -147,7 +147,7 @@ export default function WhyMyBodyMap() {
               </div>
 
               {/* borderBottom IS the baseline, bars sit flush on it */}
-              <div style={{ display:'flex', alignItems:'flex-end', gap:16, borderBottom:'2.5px solid #C4BEB7' }}>
+              <div className="bm-bar-chart-prices" style={{ display:'flex', alignItems:'flex-end', gap:16, borderBottom:'2.5px solid #C4BEB7' }}>
                 {[
                   { key:'gg', name:'GlossGenius' },
                   { key:'mb', name:'MassageBook'  },
@@ -182,7 +182,7 @@ export default function WhyMyBodyMap() {
               </div>
 
               {/* Name labels */}
-              <div style={{ display:'flex', gap:16, marginTop:12 }}>
+              <div className="bm-bar-chart-labels" style={{ display:'flex', gap:16, marginTop:12 }}>
                 {[
                   { key:'gg', name:'GlossGenius' },
                   { key:'mb', name:'MassageBook'  },
@@ -260,7 +260,8 @@ export default function WhyMyBodyMap() {
             </p>
           </div>
 
-          <div style={{ overflowX:'auto' }}>
+          {/* Desktop: full comparison table. Hidden on mobile. */}
+          <div className="bm-comparison-table-desktop" style={{ overflowX:'auto' }}>
             <table style={{ width:'100%', borderCollapse:'collapse', minWidth:600 }}>
               <thead>
                 <tr>
@@ -281,8 +282,8 @@ export default function WhyMyBodyMap() {
               </thead>
               <tbody>
                 {FEATURES.map((group, gi) => (
-                  <>
-                    <tr key={`cat-${gi}`}>
+                  <React.Fragment key={`group-${gi}`}>
+                    <tr>
                       <td colSpan={6} style={{ padding:'16px 16px 6px', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', background:C.light }}>
                         {group.category}
                       </td>
@@ -299,7 +300,7 @@ export default function WhyMyBodyMap() {
                         <td style={{ textAlign:'center', padding:'11px 8px' }}><CellValue val={item.ac} /></td>
                       </tr>
                     ))}
-                  </>
+                  </React.Fragment>
                 ))}
               </tbody>
               <tfoot>
@@ -313,6 +314,68 @@ export default function WhyMyBodyMap() {
                 </tr>
               </tfoot>
             </table>
+          </div>
+
+          {/* Mobile: per-competitor stacked cards. Hidden on desktop.
+              Each card shows: competitor name/price, annual savings vs
+              MyBodyMap, up to 6 features MyBodyMap has that the competitor
+              does not, and an import CTA. The "advantages" list is computed
+              at render time by filtering FEATURES for items where bm=true
+              and the competitor key is not exactly true. */}
+          <div className="bm-comparison-cards-mobile" style={{ display:'flex', flexDirection:'column', gap:16 }}>
+            {[
+              { key:'mb', name:'MassageBook',  price:45 },
+              { key:'vg', name:'Vagaro',       price:25 },
+              { key:'gg', name:'GlossGenius',  price:48 },
+              { key:'ac', name:'Acuity',       price:20 },
+            ].map(({ key, name, price }) => {
+              const advantages = FEATURES
+                .flatMap(g => g.items)
+                .filter(item => item.bm === true && item[key] !== true)
+                .slice(0, 6);
+              const annualSave = price * 12;
+              return (
+                <div key={key} style={{
+                  background:C.white,
+                  borderRadius:16,
+                  padding:'20px 18px',
+                  boxShadow:'0 2px 12px rgba(0,0,0,0.06)',
+                  border:`1px solid ${C.border}`,
+                }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:4 }}>
+                    <div style={{ fontSize:17, fontWeight:700, color:C.dark }}>{name}</div>
+                    <div style={{ fontSize:13, color:C.gray, fontWeight:600 }}>${price}/mo</div>
+                  </div>
+                  <div style={{ fontSize:13, color:C.forest, fontWeight:700, marginBottom:14 }}>
+                    You save ${annualSave}/yr on MyBodyMap
+                  </div>
+                  <div style={{ fontSize:11, color:C.gray, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:10 }}>
+                    Missing from {name}, included on MyBodyMap:
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
+                    {advantages.map((item, i) => (
+                      <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                        <span style={{ color:C.forest, fontWeight:700, fontSize:14, marginTop:1 }}>✓</span>
+                        <span style={{ fontSize:13, color:C.dark, lineHeight:1.4 }}>{item.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link to="/signup" style={{
+                    display:'block',
+                    textAlign:'center',
+                    background:C.forest,
+                    color:'#fff',
+                    borderRadius:10,
+                    padding:'12px 16px',
+                    fontSize:14,
+                    fontWeight:700,
+                    textDecoration:'none',
+                  }}>
+                    Switch from {name} free →
+                  </Link>
+                </div>
+              );
+            })}
           </div>
 
           <div style={{ marginTop:16, fontSize:11, color:C.gray, lineHeight:1.6, padding:'0 4px' }}>
