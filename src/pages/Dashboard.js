@@ -21,6 +21,7 @@ import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
 import NotificationPrefsCard from '../components/NotificationPrefsCard';
+import QRCodesCard from '../components/QRCodesCard';
 
 // Mobile page-end indicator
 function PageEnd() {
@@ -754,7 +755,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   }
 
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(intakeUrl)}`;
+  const bookingUrl = `${window.location.origin}/book/${therapist?.custom_url}`;
 
   const C2 = {
     sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
@@ -837,22 +838,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div>
 
-      {/* QR Code */}
-      <div className="bm-qr-section" style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px', display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-        <img src={qrUrl} alt="QR Code" style={{ width: 130, height: 130, borderRadius: '8px', border: `1px solid ${C2.lightGray}` }} />
-        <div style={{ flex: 1 }}>
-          <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>
-            📱 QR Code
-          </p>
-          <p style={{ fontSize: '14px', fontWeight: '600', color: C2.darkGray, margin: '0 0 8px 0' }}>Print & place at your table</p>
-          <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
-            Clients scan before the session. No link needed. Works on any phone.
-          </p>
-          <a href={qrUrl} download="bodymap-qr.png" style={{ display: 'inline-block', background: C2.beige, border: `1.5px solid ${C2.lightGray}`, color: C2.darkGray, padding: '8px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none' }}>
-            ⬇️ Download QR Code
-          </a>
-        </div>
-      </div>
+      {/* QR Codes: Intake, Booking, Custom */}
+      <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} C2={C2} />
 
       {/* Profile Edit */}
       <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
