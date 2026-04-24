@@ -876,42 +876,39 @@ function SectionNav() {
     return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
   }, []);
 
-  // Explicit scroll handler instead of browser-native anchor scrolling.
-  // Why: scroll-margin-top on the target sections works in theory, but in
-  // practice on this page (with FadeIn wrappers that change height as they
-  // animate in on scroll, safe-area-inset-top on notched phones, and a
-  // fixed section nav with a slide-in transform that affects offsetHeight
-  // mid-animation), the browser's built-in hash-link scroll can land in
-  // unpredictable places. The HK-reported gap was ~170px of empty space
-  // above content on mobile even with scroll-margin-top:180px applied.
-  //
-  // Fix: measure the ACTUAL fixed-nav height at click time from the DOM,
-  // compute the target y = element.getBoundingClientRect().top + window.scrollY
-  // minus the measured nav height, and scrollTo() that position. This makes
-  // the landing deterministic and correct regardless of what animations or
-  // layout shifts are in flight.
-  const handleClick = (e, sectionId) => {
-    e.preventDefault();
+  // Explicit scroll handler. Uses a button (not an <a> with href) so there
+  // is ZERO chance of iOS Safari firing a native hash-scroll in addition to
+  // our JS scroll. The measurement reads the live fixed-nav height from the
+  // DOM so this stays correct across safe-area-inset variations, font
+  // scaling, and any future nav redesign.
+  const handleClick = (sectionId) => {
     setActive(sectionId);
     const el = document.getElementById(sectionId);
     if (!el) return;
 
-    // Measure the full fixed-nav stack at this exact moment. On mobile
-    // the main Nav is ~64px and the SectionNav (this component) is ~48px
-    // tall — together ~112px. Add a small 12px buffer so the section
-    // headline has breathing room above it instead of kissing the nav.
+    // Measure the full fixed-nav stack NOW from the DOM. Don't guess.
     const myNav = navRef.current;
-    const sectionNavHeight = myNav ? myNav.getBoundingClientRect().height : 48;
-    const mainNavHeight = 64; // fixed via Nav component, see top:64 on this nav
-    const buffer = 12;
-    const targetOffset = mainNavHeight + sectionNavHeight + buffer;
+    const sectionNavRect = myNav ? myNav.getBoundingClientRect() : null;
+    // sectionNavRect.bottom is the pixel Y where the fixed nav ends in the
+    // current viewport. This already accounts for safe-area-inset-top,
+    // the Nav component above it, any transform/translate, and the actual
+    // rendered height including padding and border. Use it directly rather
+    // than summing guessed values.
+    const navBottom = sectionNavRect ? sectionNavRect.bottom : 160;
+    const buffer = 14;
+    const targetOffset = navBottom + buffer;
 
-    const targetY = el.getBoundingClientRect().top + window.scrollY - targetOffset;
-    window.scrollTo({ top: targetY, behavior: 'smooth' });
+    // Compute absolute document Y coordinate that makes the section's top
+    // edge appear at (targetOffset) pixels below viewport top.
+    const elTop = el.getBoundingClientRect().top + window.scrollY;
+    const targetY = elTop - targetOffset;
 
-    // Update URL hash without triggering browser's own jump-scroll. Using
-    // replaceState (not pushState) so we don't pollute history with every
-    // section tap.
+    window.scrollTo({
+      top: Math.max(0, targetY),  // clamp to 0 so we never try to scroll above document top
+      behavior: 'smooth',
+    });
+
+    // Update URL hash without triggering a second browser scroll.
     if (window.history && window.history.replaceState) {
       window.history.replaceState(null, '', `#${sectionId}`);
     }
@@ -929,7 +926,7 @@ function SectionNav() {
         <style>{`.bm-secnav-scroll::-webkit-scrollbar{display:none}`}</style>
         <div className="bm-secnav-scroll" style={{ display:"flex", gap:2, padding:"14px 0" }}>
           {sections.map(s=>(
-            <a key={s.id} href={`#${s.id}`} onClick={(e)=>handleClick(e, s.id)}
+            <button key={s.id} type="button" onClick={()=>handleClick(s.id)}
               style={{
                 padding:"8px 14px",
                 fontSize:13,
@@ -937,13 +934,15 @@ function SectionNav() {
                 color:active===s.id?"#fff":C.gray,
                 background: active===s.id ? C.forest : 'transparent',
                 borderRadius:20,
-                textDecoration:"none",
+                border:"none",
+                cursor:"pointer",
                 whiteSpace:"nowrap",
                 transition:"all 0.18s",
                 flexShrink:0,
                 display:"flex",
                 alignItems:"center",
                 gap:7,
+                fontFamily:"inherit",
               }}>
               <span style={{
                 fontSize:10,
@@ -952,7 +951,7 @@ function SectionNav() {
                 minWidth:12,
               }}>{s.n}</span>
               {s.label}
-            </a>
+            </button>
           ))}
         </div>
       </div>
