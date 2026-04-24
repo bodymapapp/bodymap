@@ -77,6 +77,18 @@ export default function FounderDashboard() {
   const [sortKey, setSortKey] = useState("sessions_total");
   const [sortDir, setSortDir] = useState("desc");
 
+  // Batch-send state: which therapists are checked for a multi-send
+  const [selected, setSelected] = useState(() => new Set());
+  const toggleSelected = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+  const clearSelected = () => setSelected(new Set());
+  const selectAll = (ids) => setSelected(new Set(ids));
+
   // Admin allowlist. Kick anyone else back to dashboard.
   useEffect(() => {
     if (user && !ADMIN_EMAILS.has((user.email || "").toLowerCase())) {
@@ -596,6 +608,13 @@ export default function FounderDashboard() {
           </p>
         </div>
 
+        <BatchSendBar
+          selectedIds={selected}
+          rows={filtered}
+          onClearSelected={clearSelected}
+          onAfterSend={fetchAll}
+        />
+
         <TherapistTable
           rows={filtered}
           sortKey={sortKey}
@@ -603,6 +622,10 @@ export default function FounderDashboard() {
           onSort={onSort}
           updateFlag={updateFlag}
           onAfterSend={fetchAll}
+          selected={selected}
+          toggleSelected={toggleSelected}
+          selectAll={selectAll}
+          clearSelected={clearSelected}
         />
 
         {data.adminFlagMissing && (
@@ -872,7 +895,198 @@ function InlineDivider() {
   );
 }
 
-function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSend }) {
+// ─── Batch Send Bar ─────────────────────────────────────────────────────
+// Floats above the Therapists table when one or more rows are selected.
+// Pick an email type, press send, watch the per-therapist progress.
+// Uses the same founder-outreach edge function as single-therapist sends,
+// calls it once per therapist in sequence (not parallel) to avoid hitting
+// Resend's rate limits and to keep the notification_log clean.
+const BATCH_EMAIL_OPTIONS = [
+  { value: "setup_nudge",       code: "E2.6", label: "Setup nudge (Stripe/Square)" },
+  { value: "activation_nudge",  code: "E2.9", label: "Activation nudge (incomplete setup)" },
+  { value: "welcome",           code: "E2.1", label: "Founder Welcome" },
+  { value: "checkin",           code: "E2.2", label: "Check-in (how are your hands?)" },
+  { value: "reminder",          code: "E2.3", label: "Reminder (still thinking about you)" },
+  { value: "testimonial",       code: "E2.4", label: "Testimonial ask" },
+  { value: "first_session",     code: "E2.5", label: "First session celebration" },
+  { value: "churned",           code: "E2.7", label: "Churned (we miss your hands)" },
+  { value: "referral_thankyou", code: "E2.8", label: "Referral thank-you" },
+];
+
+function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
+  const [actionType, setActionType] = useState("setup_nudge");
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState(null); // { done, total, results: [{id, name, status, error?}] }
+
+  const selectedRows = rows.filter((r) => selectedIds.has(r.id));
+  const count = selectedRows.length;
+  if (count === 0) return null;
+
+  const chosen = BATCH_EMAIL_OPTIONS.find((o) => o.value === actionType);
+
+  async function runBatch() {
+    if (sending || count === 0) return;
+
+    const confirmMsg = `Send "${chosen.label}" (${chosen.code}) to ${count} therapist${count === 1 ? "" : "s"}?\n\nThis fires immediately. Emails cannot be unsent.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    setSending(true);
+    setProgress({ done: 0, total: count, results: [] });
+    const results = [];
+
+    for (const t of selectedRows) {
+      try {
+        const { data, error } = await supabase.functions.invoke("founder-outreach", {
+          body: { therapist_id: t.id, action_type: actionType },
+        });
+        if (error) {
+          results.push({ id: t.id, name: t.business_name || t.full_name || t.email, status: "failed", error: error.message || "transport" });
+        } else if (!data?.ok) {
+          results.push({ id: t.id, name: t.business_name || t.full_name || t.email, status: "failed", error: `${data?.step || "?"}: ${data?.error || "send failed"}` });
+        } else {
+          results.push({ id: t.id, name: t.business_name || t.full_name || t.email, status: "sent" });
+        }
+      } catch (e) {
+        results.push({ id: t.id, name: t.business_name || t.full_name || t.email, status: "failed", error: e?.message || "exception" });
+      }
+      // Update progress incrementally so the UI reflects each send
+      setProgress({ done: results.length, total: count, results: [...results] });
+    }
+
+    setSending(false);
+    // Refresh the dashboard so notification_log and cooldowns show the new sends
+    if (onAfterSend) {
+      try { await onAfterSend(); } catch (_e) { /* non-blocking */ }
+    }
+  }
+
+  const sentCount = progress?.results.filter((r) => r.status === "sent").length || 0;
+  const failedCount = progress?.results.filter((r) => r.status === "failed").length || 0;
+  const isDone = progress && progress.done === progress.total && !sending;
+
+  return (
+    <div style={{
+      position: "sticky",
+      top: 12,
+      zIndex: 10,
+      background: "#fff",
+      border: `2px solid ${C.forest}`,
+      borderRadius: 12,
+      padding: "12px 16px",
+      marginBottom: 14,
+      boxShadow: "0 4px 16px rgba(42, 87, 65, 0.12)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.forest }}>
+          Batch send
+        </div>
+        <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>
+          {count} selected
+        </div>
+
+        <select
+          value={actionType}
+          onChange={(e) => setActionType(e.target.value)}
+          disabled={sending}
+          style={{
+            padding: "7px 10px",
+            border: `1.5px solid ${C.light}`,
+            borderRadius: 6,
+            fontSize: 13,
+            color: C.dark,
+            background: "#fff",
+            fontFamily: "system-ui",
+            minWidth: 300,
+          }}
+        >
+          {BATCH_EMAIL_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.code} · {opt.label}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={runBatch}
+          disabled={sending}
+          style={{
+            padding: "7px 16px",
+            background: sending ? C.light : C.forest,
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            cursor: sending ? "default" : "pointer",
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: "system-ui",
+          }}
+        >
+          {sending ? `Sending ${progress?.done || 0}/${progress?.total || count}…` : `Send to ${count}`}
+        </button>
+
+        <button
+          onClick={onClearSelected}
+          disabled={sending}
+          style={{
+            padding: "7px 12px",
+            background: "transparent",
+            color: C.gray,
+            border: `1px solid ${C.light}`,
+            borderRadius: 6,
+            cursor: sending ? "default" : "pointer",
+            fontSize: 12,
+            fontFamily: "system-ui",
+          }}
+        >
+          Clear
+        </button>
+
+        {progress && (
+          <div style={{ marginLeft: "auto", fontSize: 12, color: C.gray, fontFamily: "system-ui" }}>
+            {sentCount > 0 && <span style={{ color: C.rise, fontWeight: 700, marginRight: 8 }}>✓ {sentCount} sent</span>}
+            {failedCount > 0 && <span style={{ color: C.fall, fontWeight: 700 }}>✗ {failedCount} failed</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Per-therapist progress detail, shown during/after send */}
+      {progress && (progress.results.length > 0) && (
+        <div style={{ marginTop: 10, maxHeight: 140, overflowY: "auto", borderTop: `1px solid ${C.light}`, paddingTop: 8 }}>
+          {progress.results.map((r) => (
+            <div key={r.id} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              padding: "4px 0",
+              fontSize: 12,
+              fontFamily: "system-ui",
+              color: r.status === "sent" ? C.rise : C.fall,
+            }}>
+              <span style={{ width: 16, textAlign: "center" }}>{r.status === "sent" ? "✓" : "✗"}</span>
+              <span style={{ color: C.dark, fontWeight: 600 }}>{r.name}</span>
+              {r.error && <span style={{ color: C.fall }}>· {r.error}</span>}
+            </div>
+          ))}
+          {isDone && (
+            <div style={{ marginTop: 8, fontSize: 12, color: C.gray, fontFamily: "system-ui" }}>
+              Batch complete. {sentCount} sent, {failedCount} failed.
+              {failedCount === 0 && (
+                <button
+                  onClick={onClearSelected}
+                  style={{ marginLeft: 10, padding: "2px 8px", background: "transparent", color: C.forest, border: `1px solid ${C.light}`, borderRadius: 4, cursor: "pointer", fontSize: 11, fontFamily: "system-ui", fontWeight: 700 }}
+                >
+                  Clear selection
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSend, selected, toggleSelected, selectAll, clearSelected }) {
   if (rows.length === 0) {
     return (
       <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, padding: 32, textAlign: "center", color: C.gray, fontSize: 13 }}>
@@ -935,13 +1149,35 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
     );
   };
 
+  const visibleIds = rows.map((r) => r.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected?.has(id));
+  const someVisibleSelected = visibleIds.some((id) => selected?.has(id));
+
+  const onHeaderCheckboxChange = () => {
+    if (allVisibleSelected) {
+      clearSelected && clearSelected();
+    } else {
+      selectAll && selectAll(visibleIds);
+    }
+  };
+
   return (
     <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1240 }}>
+        <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1280 }}>
           <thead>
             <tr>
-              <th style={firstColHead} onClick={() => onSort("business_name")}>
+              <th style={{ ...stickyHead, left: 0, zIndex: 6, minWidth: 36, padding: "10px 8px 10px 14px" }}>
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  ref={(el) => { if (el) el.indeterminate = !allVisibleSelected && someVisibleSelected; }}
+                  onChange={onHeaderCheckboxChange}
+                  title={allVisibleSelected ? "Clear all" : "Select all visible"}
+                  style={{ cursor: "pointer", width: 15, height: 15 }}
+                />
+              </th>
+              <th style={{ ...firstColHead, left: 36 }} onClick={() => onSort("business_name")}>
                 <div style={{ color: sortKey === "business_name" ? C.forest : C.gray, fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", padding: "10px 12px", textAlign: "left", cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}>
                   Therapist {sortKey === "business_name" ? (sortDir === "asc" ? "\u2191" : "\u2193") : "⇅"}
                 </div>
@@ -961,7 +1197,16 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
           </thead>
           <tbody>
             {rows.map((t, idx) => (
-              <Row key={t.id} t={t} idx={idx} firstColCell={firstColCell} updateFlag={updateFlag} onAfterSend={onAfterSend} />
+              <Row
+                key={t.id}
+                t={t}
+                idx={idx}
+                firstColCell={firstColCell}
+                updateFlag={updateFlag}
+                onAfterSend={onAfterSend}
+                isSelected={selected?.has(t.id) || false}
+                onToggleSelect={() => toggleSelected && toggleSelected(t.id)}
+              />
             ))}
           </tbody>
         </table>
@@ -970,7 +1215,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
   );
 }
 
-function Row({ t, idx, firstColCell, updateFlag, onAfterSend }) {
+function Row({ t, idx, firstColCell, updateFlag, onAfterSend, isSelected, onToggleSelect }) {
   const zebra = idx % 2 === 1 ? "#FBFAF5" : "#fff";
   const momColor =
     t.momentum > 0 ? C.rise : t.momentum < 0 ? C.fall : t.sessions_7d === 0 && t.sessions_prev_7d === 0 ? C.stale : C.gray;
@@ -1006,8 +1251,16 @@ function Row({ t, idx, firstColCell, updateFlag, onAfterSend }) {
       : { bg: "#F5F0E8", fg: "#7A5C1A", bd: "#D8C8A0" };
 
   return (
-    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top", background: zebra }}>
-      <td style={{ ...firstColCell, padding: "8px 10px", borderTop: `1px solid ${C.light}`, background: zebra }}>
+    <tr style={{ borderTop: `1px solid ${C.light}`, verticalAlign: "top", background: isSelected ? "#F0FDF4" : zebra }}>
+      <td style={{ position: "sticky", left: 0, background: isSelected ? "#F0FDF4" : zebra, zIndex: 2, padding: "8px 8px 8px 14px", borderTop: `1px solid ${C.light}`, minWidth: 36 }}>
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onToggleSelect}
+          style={{ cursor: "pointer", width: 15, height: 15 }}
+        />
+      </td>
+      <td style={{ ...firstColCell, left: 36, background: isSelected ? "#F0FDF4" : zebra, padding: "8px 10px", borderTop: `1px solid ${C.light}` }}>
         <div style={{ fontWeight: 700, color: C.dark, fontSize: 13 }}>
           {t.business_name || t.full_name || "(no name)"}
           <FlagBadge flag={t.admin_flag} isDummy={t.is_dummy} unsubscribed={t.email_unsubscribed} />
