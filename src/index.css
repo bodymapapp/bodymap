@@ -46,18 +46,7 @@ code {
 
 /* Every page background defaults to cream now. Dark sections (final CTA,
    testimonial quotes, feature spotlights) override this individually. */
-html {
-  background: var(--bm-cream);
-  /* scroll-padding-top is the MODERN, cross-browser reliable way to tell
-     the browser "when any scroll lands (anchor click, keyboard, programmatic
-     scrollTo), leave this much room at the top of the viewport". It
-     composes with scroll-margin-top on elements and scrollIntoView calls.
-     Value of 180px accounts for: main nav (~64) + section nav (~48) +
-     safe-area-inset-top on notched iPhones (~47) + 20px breathing room.
-     This is the last-resort catcher for scroll-to-anchor behaviors that
-     don't go through our explicit JS handler. */
-  scroll-padding-top: 180px;
-}
+html { background: var(--bm-cream); }
 
 * { box-sizing: border-box; }
 /* Use overflow-x: clip to prevent horizontal scroll without creating
@@ -278,7 +267,7 @@ body { overflow-x: clip; }
   #returning, #schedule, #outreach, #postsession, #billing,
   #gifts, #ai, #mobile, #automation, #growth, #portability {
     scroll-margin-top: 180px !important;
-    padding-top: 16px !important;
+    padding-top: 0 !important;
     padding-bottom: 48px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;

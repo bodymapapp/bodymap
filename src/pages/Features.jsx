@@ -29,8 +29,8 @@ function FadeIn({ children, delay = 0, style = {} }) {
   return (
     <div ref={ref} style={{
       opacity: visible ? 1 : 0,
-      transform: visible ? "translateY(0)" : "translateY(32px)",
-      transition: `opacity 0.7s ease ${delay}s, transform 0.7s ease ${delay}s`,
+      transform: visible ? "translateY(0)" : "translateY(8px)",
+      transition: `opacity 0.6s ease ${delay}s, transform 0.6s ease ${delay}s`,
       ...style
     }}>
       {children}
@@ -876,59 +876,42 @@ function SectionNav() {
     return () => { window.removeEventListener('scroll', onScroll); obs.disconnect(); };
   }, []);
 
-  // Explicit scroll handler using a button (no anchor href) so iOS Safari
-  // cannot fire a native hash-scroll race. Measures BOTH the main Nav
-  // AND this section nav from the DOM, then uses the max of their bottom
-  // edges as the fixed-stack offset. Previous attempts only measured the
-  // section nav, missing the fact that on mobile the main nav (with a
-  // 44px logo + 32px padding + wordmark + tagline + safe-area) is often
-  // TALLER than the section nav's top+height, so it defines where the
-  // fixed stack ends. HK reported a persistent gap; the pixel analysis
-  // of his iPhone 15 Pro screenshot showed real fixed-stack bottom at
-  // ~215 logical px while my sectionNav-only measurement gave 124.
+  // Minimal scroll handler. First principles:
+  //   1. Target: the section's top edge lands exactly at the bottom of
+  //      the fixed nav stack. Section's own 16px padding-top on mobile
+  //      then provides breathing room above content — no extra buffer
+  //      needed in JS.
+  //   2. Measurement: read both main nav AND this section nav from the
+  //      DOM. Use the larger .bottom as the fixed-stack bottom. This
+  //      self-adapts to any device, font loading state, or safe-area-inset.
+  //   3. Scroll: instant, not smooth. Smooth scrolling on iOS Safari
+  //      has historically been unreliable AND makes timing harder to
+  //      reason about. Instant snap is deterministic.
   const handleClick = (sectionId) => {
     setActive(sectionId);
     const el = document.getElementById(sectionId);
     if (!el) return;
 
-    // Measure main Nav (the <nav> element at the top of Features) AND
-    // section nav (this component). The bottom of the fixed-nav stack
-    // is whichever extends further down the viewport.
     const mainNav = document.querySelector('nav');
     const sectionNav = navRef.current;
-    const mainNavBottom = mainNav ? mainNav.getBoundingClientRect().bottom : 0;
-    const sectionNavBottom = sectionNav ? sectionNav.getBoundingClientRect().bottom : 0;
-    const navBottom = Math.max(mainNavBottom, sectionNavBottom, 112); // 112 floor for dev safety
-    const buffer = 14;
-    const targetOffset = navBottom + buffer;
+    const mainBottom = mainNav ? mainNav.getBoundingClientRect().bottom : 0;
+    const secBottom = sectionNav ? sectionNav.getBoundingClientRect().bottom : 0;
+    const navBottom = Math.max(mainBottom, secBottom, 64);
 
-    // Compute absolute doc Y so the section's top lands targetOffset
-    // below viewport top (i.e. just below the fixed nav stack).
     const elTop = el.getBoundingClientRect().top + window.scrollY;
-    const targetY = Math.max(0, elTop - targetOffset);
+    const targetY = Math.max(0, elTop - navBottom);
 
     window.scrollTo({ top: targetY, behavior: 'smooth' });
 
-    // Also scroll the section nav's own horizontal scroller so the
-    // ACTIVE pill is centered/visible. HK reported that the tapped
-    // pill was getting cut off at the right edge — on a narrow mobile
-    // viewport, pills 5+ require horizontal scroll to see, and tapping
-    // a pill that's partially offscreen means the user can't visually
-    // confirm the selection. The section nav's scroller element is the
-    // direct child of navRef (inner maxWidth flex row); query by class
-    // on the inner bm-secnav-scroll and center the active button.
+    // Center the active pill in the horizontal scroller
     if (sectionNav) {
-      // Find the scroll container (the one with overflowX:auto) and
-      // the active button inside it.
-      const scroller = sectionNav.querySelector('div[style*="overflow"]') || sectionNav.querySelector('.bm-secnav-scroll')?.parentElement;
-      const activeBtn = sectionNav.querySelector('.bm-secnav-scroll button[data-id="' + sectionId + '"]');
+      const scroller = sectionNav.querySelector('div[style*="overflow"]');
+      const activeBtn = sectionNav.querySelector(`button[data-id="${sectionId}"]`);
       if (scroller && activeBtn) {
-        const scrollerRect = scroller.getBoundingClientRect();
+        const scRect = scroller.getBoundingClientRect();
         const btnRect = activeBtn.getBoundingClientRect();
-        // Center the button in the scroller
-        const btnCenterInScroller = (btnRect.left - scrollerRect.left) + scroller.scrollLeft + btnRect.width / 2;
-        const targetScrollLeft = btnCenterInScroller - scrollerRect.width / 2;
-        scroller.scrollTo({ left: Math.max(0, targetScrollLeft), behavior: 'smooth' });
+        const center = (btnRect.left - scRect.left) + scroller.scrollLeft + btnRect.width / 2;
+        scroller.scrollTo({ left: Math.max(0, center - scRect.width / 2), behavior: 'smooth' });
       }
     }
 
