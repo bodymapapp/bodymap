@@ -157,7 +157,7 @@ export default function QRCodesCard({ intakeUrl, bookingUrl, C2 }) {
       }}>
         <QRPanel
           title="Intake Form"
-          subtitle="For clients filling their body map"
+          subtitle="Your modern digital intake"
           url={intakeUrl}
           filename="bodymap-intake-qr.png"
           C2={C2}
