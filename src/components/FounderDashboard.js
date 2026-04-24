@@ -89,6 +89,18 @@ export default function FounderDashboard() {
   const clearSelected = () => setSelected(new Set());
   const selectAll = (ids) => setSelected(new Set(ids));
 
+  // Table 3 clickable-cell queue state. Cell keys are "therapistId:colKey".
+  const [queuedCells, setQueuedCells] = useState(() => new Set());
+  const toggleCell = (therapistId, colKey) => {
+    const k = therapistId + ":" + colKey;
+    setQueuedCells((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
+  const clearQueue = () => setQueuedCells(new Set());
+
   // Admin allowlist. Kick anyone else back to dashboard.
   useEffect(() => {
     if (user && !ADMIN_EMAILS.has((user.email || "").toLowerCase())) {
@@ -593,7 +605,15 @@ export default function FounderDashboard() {
 
         <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
 
-        <CommsLogGrid rows={filtered} updateFlag={updateFlag} onAfterBackfill={fetchAll} />
+        <CommsLogGrid
+          rows={filtered}
+          updateFlag={updateFlag}
+          onAfterBackfill={fetchAll}
+          queuedCells={queuedCells}
+          toggleCell={toggleCell}
+          clearQueue={clearQueue}
+          onAfterSend={fetchAll}
+        />
 
         {/* ====== TABLE 1 ====== */}
         <div id="therapist-table" style={{ marginTop: 36, marginBottom: 10 }}>
@@ -2579,6 +2599,20 @@ const COMMS_OUTREACH_COLUMNS = [
   { key: "founder_outreach_activation_nudge", label: "Activation",    group: "manual", short: "An"  },
 ];
 
+// Map Table 3 manual column keys to founder-outreach action_type values.
+// Auto columns fire on cron and aren't in this map (so they render as
+// read-only dots when empty).
+const MANUAL_COL_TO_ACTION = {
+  founder_outreach_checkin:           "checkin",
+  founder_outreach_reminder:          "reminder",
+  founder_outreach_testimonial:       "testimonial",
+  founder_outreach_first_session:     "first_session",
+  founder_outreach_setup_nudge:       "setup_nudge",
+  founder_outreach_churned:           "churned",
+  founder_outreach_referral_thankyou: "referral_thankyou",
+  founder_outreach_activation_nudge:  "activation_nudge",
+};
+
 function commsDaysAgoShort(dateStr) {
   try {
     if (!dateStr) return "";
@@ -2719,10 +2753,12 @@ function CommsBackfillButton({ onAfterImport }) {
   );
 }
 
-function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
+function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCell, clearQueue, onAfterSend }) {
   const [sortBy, setSortBy] = useState("name");
   const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
+  const [sending, setSending] = useState(false);
+  const [sendProgress, setSendProgress] = useState(null);
 
   // Build per-therapist send summary. Everything defensively guarded.
   const rowsWithSends = useMemo(() => {
@@ -2788,6 +2824,35 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
     }
   }, [rowsWithSends, sortBy, hideInactive]);
 
+  // Batch-send queue derived from parent queuedCells Set. One entry per
+  // cell queued for send. Each maps to exactly one founder-outreach call.
+  const batchItems = useMemo(function () {
+    if (!queuedCells || queuedCells.size === 0) return [];
+    const byId = {};
+    (rowsWithSends || []).forEach(function (r) { if (r && r.id) byId[r.id] = r; });
+    const items = [];
+    queuedCells.forEach(function (k) {
+      const idx = k.indexOf(":");
+      if (idx < 0) return;
+      const tid = k.slice(0, idx);
+      const colKey = k.slice(idx + 1);
+      const actionType = MANUAL_COL_TO_ACTION[colKey];
+      const t = byId[tid];
+      if (!t || !actionType) return;
+      const already = t.sendMap && t.sendMap[colKey] && t.sendMap[colKey].count > 0;
+      if (already) return;
+      const colInfo = COMMS_OUTREACH_COLUMNS.find(function (c) { return c.key === colKey; });
+      items.push({
+        cellKey: k,
+        therapistId: tid,
+        therapistName: t.business_name || t.full_name || t.email || "(unknown)",
+        actionType: actionType,
+        colLabel: colInfo ? colInfo.label : colKey,
+      });
+    });
+    return items;
+  }, [queuedCells, rowsWithSends]);
+
   // Aggregate: total rows in contact_history across all visible therapists
   const totalHistoryRows = (rowsWithSends || []).reduce(function(sum, t) {
     return sum + (Array.isArray(t?.contact_history) ? t.contact_history.length : 0);
@@ -2848,9 +2913,116 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
   const navyBg = "#E4E8EF";
   const navyText = "#31466B";
 
+  async function runBatch() {
+    if (sending || batchItems.length === 0) return;
+    const n = batchItems.length;
+    const byType = {};
+    batchItems.forEach(function (it) { byType[it.colLabel] = (byType[it.colLabel] || 0) + 1; });
+    const breakdown = Object.keys(byType).map(function (k) { return k + " (" + byType[k] + ")"; }).join(", ");
+    if (!window.confirm("Send " + n + " email" + (n === 1 ? "" : "s") + " now?\n\nBreakdown: " + breakdown + "\n\nFires immediately. Cannot be undone.")) return;
+
+    setSending(true);
+    setSendProgress({ done: 0, total: n, results: [] });
+    const results = [];
+    for (const it of batchItems) {
+      try {
+        const r = await supabase.functions.invoke("founder-outreach", {
+          body: { therapist_id: it.therapistId, action_type: it.actionType },
+        });
+        if (r.error) {
+          results.push({ ...it, status: "failed", error: r.error.message || "transport" });
+        } else if (!r.data || !r.data.ok) {
+          results.push({ ...it, status: "failed", error: ((r.data && r.data.step) || "?") + ": " + ((r.data && r.data.error) || "send failed") });
+        } else {
+          results.push({ ...it, status: "sent" });
+        }
+      } catch (e) {
+        results.push({ ...it, status: "failed", error: (e && e.message) || "exception" });
+      }
+      setSendProgress({ done: results.length, total: n, results: results.slice() });
+    }
+    setSending(false);
+    if (onAfterSend) { try { await onAfterSend(); } catch (_e) { /* non-blocking */ } }
+    if (clearQueue) clearQueue();
+  }
+
+  const sentCount = sendProgress ? sendProgress.results.filter(function (r) { return r.status === "sent"; }).length : 0;
+  const failedCount = sendProgress ? sendProgress.results.filter(function (r) { return r.status === "failed"; }).length : 0;
+
   return (
     <>
       {header}
+
+      {(batchItems.length > 0 || sending || sendProgress) && (
+        <div style={{
+          position: "sticky",
+          top: 52,
+          zIndex: 11,
+          background: "#fff",
+          border: "2px solid " + C.forest,
+          borderRadius: 10,
+          padding: "12px 16px",
+          marginBottom: 12,
+          boxShadow: "0 4px 16px rgba(42, 87, 65, 0.18)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", fontFamily: "system-ui" }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.forest }}>Batch send</div>
+            <div style={{ fontSize: 13, color: C.dark, fontWeight: 600 }}>{batchItems.length} cell{batchItems.length === 1 ? "" : "s"} queued</div>
+            <button onClick={runBatch} disabled={sending || batchItems.length === 0} style={{
+              padding: "7px 16px",
+              background: (sending || batchItems.length === 0) ? C.light : C.forest,
+              color: "#fff", border: "none", borderRadius: 6,
+              cursor: (sending || batchItems.length === 0) ? "default" : "pointer",
+              fontSize: 13, fontWeight: 700,
+            }}>
+              {sending ? ("Sending " + ((sendProgress && sendProgress.done) || 0) + "/" + ((sendProgress && sendProgress.total) || batchItems.length) + "...") : ("Send " + batchItems.length)}
+            </button>
+            <button onClick={function () { if (clearQueue) clearQueue(); setSendProgress(null); }} disabled={sending} style={{
+              padding: "7px 12px", background: "transparent", color: C.gray,
+              border: "1px solid " + C.light, borderRadius: 6,
+              cursor: sending ? "default" : "pointer", fontSize: 12,
+            }}>Clear</button>
+            {sendProgress && (
+              <div style={{ marginLeft: "auto", fontSize: 12, color: C.gray }}>
+                {sentCount > 0 && <span style={{ color: C.rise, fontWeight: 700, marginRight: 8 }}>{"\u2713"} {sentCount} sent</span>}
+                {failedCount > 0 && <span style={{ color: C.fall, fontWeight: 700 }}>{"\u2717"} {failedCount} failed</span>}
+              </div>
+            )}
+          </div>
+          {sendProgress && sendProgress.results.length > 0 && (
+            <div style={{ marginTop: 10, maxHeight: 140, overflowY: "auto", borderTop: "1px solid " + C.light, paddingTop: 8, fontFamily: "system-ui" }}>
+              {sendProgress.results.map(function (r, i) {
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "3px 0", fontSize: 12 }}>
+                    <span style={{ width: 16, textAlign: "center", color: r.status === "sent" ? C.rise : C.fall }}>{r.status === "sent" ? "\u2713" : "\u2717"}</span>
+                    <span style={{ color: C.dark, fontWeight: 600 }}>{r.therapistName}</span>
+                    <span style={{ color: C.gray }}>{"\u00b7"} {r.colLabel}</span>
+                    {r.error && <span style={{ color: C.fall }}>{"\u00b7"} {r.error}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {(batchItems.length === 0 && !sending && !sendProgress) && (
+        <div style={{
+          background: "#FEF9E7",
+          border: "2px solid " + C.gold,
+          borderRadius: 8,
+          padding: "10px 14px",
+          marginBottom: 12,
+          fontSize: 12,
+          color: "#78350F",
+          fontFamily: "system-ui",
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ fontWeight: 700 }}>Batch send:</strong> click any
+          {" "}<span style={{ display: "inline-flex", width: 20, height: 20, borderRadius: 3, border: "2px solid " + C.forest, background: "#fff", color: C.forest, alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, lineHeight: 1, verticalAlign: "middle", margin: "0 3px" }}>+</span>{" "}
+          cell in the manual columns (Check in through Activation) to queue it. A Send button will appear here once you have queued one or more cells. Sent cells turn into permanent checkmarks.
+        </div>
+      )}
       <div style={{ marginBottom: 10, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <label style={{ fontSize: 12, color: C.gray, display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={hideInactive} onChange={function (e) { setHideInactive(e.target.checked); }} />
@@ -2942,13 +3114,21 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
                     const hasSend = send && send.count > 0;
                     const cellBg = col.group === "auto" ? mint : navyBg;
                     const cellText = col.group === "auto" ? C.forest : navyText;
+                    const isManual = col.group === "manual";
+                    const cellKey = t.id + ":" + col.key;
+                    const isQueued = queuedCells ? queuedCells.has(cellKey) : false;
+                    const isClickable = isManual && !hasSend && MANUAL_COL_TO_ACTION[col.key];
                     return (
-                      <td key={col.key} style={{
-                        textAlign: "center",
-                        padding: "6px 4px",
-                        borderLeft: i === firstManualIndex ? ("2px solid " + C.dark) : ("1px solid " + C.light),
-                        verticalAlign: "middle",
-                      }}>
+                      <td key={col.key}
+                        onClick={isClickable ? function () { if (toggleCell) toggleCell(t.id, col.key); } : undefined}
+                        style={{
+                          textAlign: "center",
+                          padding: "6px 4px",
+                          borderLeft: i === firstManualIndex ? ("2px solid " + C.dark) : ("1px solid " + C.light),
+                          verticalAlign: "middle",
+                          cursor: isClickable ? "pointer" : "default",
+                          background: isQueued ? "#FEF9E7" : undefined,
+                        }}>
                         {hasSend ? (
                           <div title={col.label + ": " + send.count + "x, last " + commsDaysAgoShort(send.mostRecent) + (send.subject ? (", " + send.subject) : "")}
                             style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
@@ -2960,6 +3140,16 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill }) {
                               {send.count > 1 && <span style={{ color: C.fall, fontWeight: 700 }}> x{send.count}</span>}
                             </div>
                           </div>
+                        ) : isQueued ? (
+                          <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+                            <div style={{ width: 22, height: 22, borderRadius: 4, background: "#FEF3C7", color: "#92400E", border: "2px solid " + C.gold, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 800 }}>
+                              {"\u2713"}
+                            </div>
+                            <div style={{ fontSize: 9, color: "#92400E", lineHeight: 1.2, fontWeight: 700 }}>queued</div>
+                          </div>
+                        ) : isClickable ? (
+                          <div title={"Click to queue " + col.label + " for " + (t.business_name || t.email || "this therapist")}
+                            style={{ width: 22, height: 22, borderRadius: 4, border: "2px solid " + C.forest, background: "#fff", color: C.forest, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, lineHeight: 1, margin: "0 auto" }}>+</div>
                         ) : (
                           <div style={{ fontSize: 11, color: "#D5D0C1" }}>.</div>
                         )}
