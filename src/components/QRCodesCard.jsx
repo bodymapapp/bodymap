@@ -157,6 +157,7 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
         marginBottom: 10,
+        marginTop: 'auto', // pushes URL + buttons to bottom for alignment
         minHeight: 18,
       }}>
         {url || '—'}
@@ -251,9 +252,10 @@ export default function QRCodesCard({ intakeUrl, bookingUrl, businessName, C2 })
       </div>
 
       <div style={{
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
         gap: 16,
-        flexWrap: 'wrap',
+        alignItems: 'stretch',
       }}>
         <QRPanel
           title="Intake Form"
