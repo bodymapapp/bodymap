@@ -186,75 +186,70 @@ export default function Home() {
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section className="bm-home-hero-section" style={{ minHeight:'92vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'linear-gradient(160deg,#eef8f2 0%,#fafaf8 65%)', position:'relative', overflow:'hidden' }}>
-        <div style={{ position:'absolute', top:-80, right:-80, width:500, height:500, borderRadius:'50%', background:'rgba(107,158,128,0.07)', pointerEvents:'none' }}/>
-        <div style={{ maxWidth:1100, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="bm-home-hero-grid">
+      {/* Phase 3.5: warm cream background replaces the old mint gradient.
+          Fraunces serif headline. Photo replaces what was a decorative
+          widget card (which kept the demo-y tech-product feel). Image sits
+          naturally within the grid on desktop, full-width above headline
+          on mobile. */}
+      <section className="bm-home-hero-section" style={{ minHeight:'88vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'var(--bm-cream)', position:'relative', overflow:'hidden' }}>
+        <div style={{ maxWidth:1100, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:56, alignItems:'center' }} className="bm-home-hero-grid">
           <div>
-            <div style={{ display:'inline-flex', alignItems:'center', gap:8, background:'rgba(42,87,65,0.08)', borderRadius:20, padding:'6px 14px', marginBottom:24 }}>
-              <span style={{ fontSize:12, fontWeight:700, color:G.mid, textTransform:'uppercase', letterSpacing:'0.08em' }}>Built by therapists, for therapists</span>
+            <div style={{ display:'inline-flex', alignItems:'center', gap:8, marginBottom:20 }}>
+              <span style={{ fontSize:11, fontWeight:600, color:'var(--bm-sage)', textTransform:'uppercase', letterSpacing:'0.22em' }}>For massage therapists</span>
             </div>
-            <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,58px)', fontWeight:700, lineHeight:1.15, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
-              Keep every client <em style={{ fontStyle:'italic', color:G.soft }}>coming back.</em>
+            <h1 style={{ fontFamily:"'Fraunces', Georgia, serif", fontSize:'clamp(36px,5.2vw,62px)', fontWeight:400, lineHeight:1.08, color:'var(--bm-forest)', margin:'0 0 22px', letterSpacing:'-0.02em' }}>
+              Keep every client <em style={{ fontStyle:'italic', color:'var(--bm-sage)' }}>coming back.</em>
             </h1>
-            <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
+            <p style={{ fontSize:17, color:'var(--bm-ink)', lineHeight:1.7, margin:'0 0 32px', maxWidth:460 }}>
               Booking, intake, reminders, and session notes. All automated. You do what you do best: help clients feel better.
             </p>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
-              <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
-                Start free
+              <Link to="/signup" style={{ background:'var(--bm-forest)', color:'var(--bm-cream)', borderRadius:999, padding:'15px 28px', fontSize:15, fontWeight:600, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
+                Start free →
               </Link>
-              <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:G.mid, border:`2px solid ${G.mid}`, borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
-                See How It Works →
+              <a href="/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test" style={{ background:'transparent', color:'var(--bm-forest)', border:`1.5px solid var(--bm-forest)`, borderRadius:999, padding:'15px 28px', fontSize:15, fontWeight:600, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
+                See How It Works
               </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
               {['Free during beta', 'Live in 30 seconds', 'No credit card'].map(t => (
-                <span key={t} style={{ fontSize:13, color:G.soft, display:'flex', alignItems:'center', gap:4 }}>
-                  <span style={{ color:G.soft }}>✓</span> {t}
+                <span key={t} style={{ fontSize:13, color:'var(--bm-ink-soft)', display:'flex', alignItems:'center', gap:4, fontWeight:500 }}>
+                  <span style={{ color:'var(--bm-sage)' }}>✓</span> {t}
                 </span>
               ))}
             </div>
-            <div style={{ marginTop: 20 }}>
+            <div style={{ marginTop: 22 }}>
               <Link to="/atlas" style={{
-                fontFamily: 'Georgia, serif',
+                fontFamily: "'Fraunces', Georgia, serif",
                 fontStyle: 'italic',
-                fontSize: 14,
-                color: G.mid2,
+                fontSize: 15,
+                color: 'var(--bm-sage)',
                 textDecoration: 'none',
-                borderBottom: `1px solid ${G.mid2}60`,
+                borderBottom: `1px solid var(--bm-sage)40`,
                 paddingBottom: 2,
               }}>
                 See every feature in one view, The Atlas →
               </Link>
             </div>
           </div>
-          {/* Client Intelligence Card */}
+          {/* Hero image: replaces the old "Client Intelligence" widget card.
+              Warm editorial photograph. Subtle breathing animation on
+              desktop (disabled on mobile for performance). */}
           <div style={{ position:'relative' }}>
-            <div style={{ position:'absolute', top:-16, right:-8, background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:12, padding:'8px 14px', fontSize:12, fontWeight:700, color:'#92400E', zIndex:2, boxShadow:'0 4px 16px rgba(0,0,0,0.1)' }}>
-              ⚠️ Sarah has not booked in 6 weeks - follow up?
-            </div>
-            <div style={{ background:G.white, borderRadius:20, padding:28, boxShadow:'0 16px 48px rgba(0,0,0,0.1)' }}>
-              <div style={{ fontSize:11, fontWeight:700, color:G.light, textTransform:'uppercase', letterSpacing:'0.1em', marginBottom:16 }}>Client Intelligence</div>
-              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20 }}>
-                <div style={{ width:44, height:44, borderRadius:'50%', background:'#52b788', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:15, fontWeight:700 }}>SM</div>
-                <div>
-                  <div style={{ fontWeight:700, color:G.deep, fontSize:15 }}>Sarah M.</div>
-                  <div style={{ fontSize:12, color:G.light }}>Client since Jan 2024 - 8 sessions - Last seen 6 wks ago</div>
-                </div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:16 }}>
-                {[{l:'Upper back - focus',c:'#DCFCE7',t:'#16A34A'},{l:'L. Shoulder - deep work',c:'#DCFCE7',t:'#16A34A'},{l:'Neck - avoid',c:'#FEE2E2',t:'#DC2626'},{l:'Ambient music',c:'#F5F0E8',t:'#92400E'},{l:'Medium pressure',c:'#F5F0E8',t:'#92400E'}].map(b=>(
-                  <div key={b.l} style={{ background:b.c, borderRadius:8, padding:'8px 12px', fontSize:13, fontWeight:600, color:b.t }}>{b.l}</div>
-                ))}
-              </div>
-              <div style={{ background:'#F9FAFB', borderRadius:8, padding:'8px 12px', fontSize:12, color:G.mid2, display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>
-                <span>L. shoulder recurring - 6 of 8 sessions</span>
-                <span style={{ background:G.mid, color:'#fff', borderRadius:20, padding:'2px 8px', fontSize:10, fontWeight:700 }}>Pattern</span>
-              </div>
-              <div style={{ background:'#F9FAFB', borderRadius:8, padding:'8px 12px', fontSize:12, color:G.mid2 }}>
-                "Stress from work - go deeper today"
-              </div>
-            </div>
+            <img
+              src="/images/hero-home.jpg"
+              alt="Warm, calm moment in a massage therapist's practice"
+              className="bm-hero-image"
+              style={{
+                width:'100%',
+                height:'auto',
+                maxHeight:'72vh',
+                objectFit:'cover',
+                borderRadius:20,
+                display:'block',
+                boxShadow:'0 20px 60px rgba(28, 43, 34, 0.12)',
+              }}
+            />
           </div>
         </div>
       </section>

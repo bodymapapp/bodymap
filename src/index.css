@@ -7,13 +7,34 @@
 :root {
   /* Mobile bottom nav total clearance = nav height + safe area inset + breathing room */
   --bm-nav-clearance: calc(74px + env(safe-area-inset-bottom, 0px) + 24px);
+
+  /* Phase 3.5 design system tokens. All hex values are the "production"
+     palette documented in the mood board. Using CSS custom properties
+     here so we can override globally in one place if we ever restage. */
+  --bm-cream:     #F9F5EE;  /* primary background, replaces stark white */
+  --bm-cream-alt: #F3EEE2;  /* slightly deeper cream for zone separation */
+  --bm-forest:    #1C2B22;  /* primary brand dark. Warmer than old #2A5741. */
+  --bm-sage:      #4A6B54;  /* mid-tone green for italic accents on headlines */
+  --bm-rose:      #E8C5B5;  /* dusty rose, rare accent color */
+  --bm-gold:      #C9A84C;  /* warm gold, highlights and small-label color */
+  --bm-ink:       #3D4F43;  /* body copy color on cream */
+  --bm-ink-soft:  #6B7F72;  /* muted secondary text color */
+
+  /* Typography system. Fraunces loads via Google Fonts in index.html. */
+  --bm-serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --bm-sans:  'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  /* Inter as the body font across all platforms. Previously used
+     system-ui which rendered differently on iOS (San Francisco) vs
+     Android (Roboto) vs Windows (Segoe UI). Inter via Google Fonts
+     gives us the exact same rendering everywhere. */
+  font-family: var(--bm-sans);
+  font-feature-settings: 'ss01' on, 'ss02' on, 'cv11' on;  /* Inter alternate glyphs */
+  background: var(--bm-cream);
+  color: var(--bm-ink);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -22,6 +43,10 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Every page background defaults to cream now. Dark sections (final CTA,
+   testimonial quotes, feature spotlights) override this individually. */
+html { background: var(--bm-cream); }
 
 * { box-sizing: border-box; }
 /* Use overflow-x: clip to prevent horizontal scroll without creating
@@ -230,45 +255,57 @@ body { overflow-x: clip; }
 /* ── FEATURES PAGE MOBILE ── */
 @media (max-width: 640px) {
   /* Every feature section on /features uses 80-100px vertical padding
-     on desktop. On a 667pt iPhone viewport that eats half the screen
-     before content renders. Tighten across the board: 48px top, 56px
-     bottom. The asymmetry respects visual rhythm when scrolling down. */
+     on desktop. Clicking a section nav pill should land the user
+     immediately AT the content, not at a dead white zone above it.
+     Combined with scrollMarginTop:112px (which offsets for the
+     sticky nav), the 48px padding-top from my Phase 3 override was
+     creating a 48px dead zone right where content should be. Fix:
+     zero top padding on mobile, generous bottom padding for breathing
+     between sections. Visual separation still exists because adjacent
+     sections have different background colors (cream / beige / forest).
+     The click-target "lands" at actual content. */
   #bodymap, #pattern, #booking, #deposits, #reminders, #intake,
   #returning, #schedule, #outreach, #postsession, #billing,
-  #gifts, #ai, #mobile, #automation, #growth {
-    padding-top: 48px !important;
-    padding-bottom: 56px !important;
+  #gifts, #ai, #mobile, #automation, #growth, #portability {
+    padding-top: 16px !important;
+    padding-bottom: 48px !important;
     padding-left: 20px !important;
     padding-right: 20px !important;
   }
 
-  /* Feature headlines shrink aggressively on mobile. Desktop uses
-     clamp(28px, 4vw, 44px). That resolves to ~28px at 640px viewport
-     which is still heavy. Drop to 24px with tighter line-height. */
+  /* Apply Fraunces editorial serif to EVERY headline on marketing pages.
+     This is the single biggest Phase 3.5 visual change. Georgia was
+     generic; Fraunces has real character, variable weight, and reads
+     as premium magazine not generic SaaS. */
   #bodymap h2, #pattern h2, #booking h2, #deposits h2, #reminders h2,
   #intake h2, #returning h2, #schedule h2, #outreach h2,
   #postsession h2, #billing h2, #gifts h2, #ai h2, #mobile h2,
-  #automation h2, #growth h2 {
-    font-size: 24px !important;
-    line-height: 1.2 !important;
+  #automation h2, #growth h2, #portability h2 {
+    font-family: var(--bm-serif) !important;
+    font-size: 26px !important;
+    line-height: 1.12 !important;
+    letter-spacing: -0.015em !important;
+    font-weight: 400 !important;
   }
 
-  /* Body copy under each headline was 16-18px. 15px is more readable
-     on mobile without reducing scanability. */
+  /* Body copy under each headline: Inter 15, warmer color, better line
+     height for reading on small screens. */
   #bodymap p, #pattern p, #booking p, #deposits p, #reminders p,
   #intake p, #returning p, #schedule p, #outreach p,
   #postsession p, #billing p, #gifts p, #ai p, #mobile p,
-  #automation p, #growth p {
+  #automation p, #growth p, #portability p {
+    font-family: var(--bm-sans) !important;
     font-size: 15px !important;
+    line-height: 1.7 !important;
   }
 
   /* The top-of-section centered intro block has marginBottom: 56px
-     on desktop which is overkill on mobile. Tighten to 28. */
+     on desktop which is overkill on mobile. Tighten to 24. */
   #bodymap > div > div:first-child,
   #pattern > div > div:first-child,
   #booking > div > div:first-child,
   #intake > div > div:first-child {
-    margin-bottom: 28px !important;
+    margin-bottom: 24px !important;
   }
 
   /* Demo visuals sometimes have hardcoded max-width values that don't
@@ -279,6 +316,21 @@ body { overflow-x: clip; }
     height: auto !important;
   }
 
+  /* Feature imagery: the new <img class="bm-feature-image"> tags
+     rendered inline before each section's content. Rounded corners,
+     full width of container, subtle border for depth on cream bg.
+     object-fit: cover so the varying aspect ratios all frame gracefully. */
+  .bm-feature-image {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 260px !important;
+    object-fit: cover !important;
+    border-radius: 16px !important;
+    display: block !important;
+    margin: 0 auto 24px !important;
+    box-shadow: 0 1px 3px rgba(28, 43, 34, 0.08) !important;
+  }
+
   /* Large 2-col feature sections (pattern, schedule, booking, automation) */
   #pattern > div > div,
   #booking > div > div,
@@ -286,7 +338,7 @@ body { overflow-x: clip; }
   #automation > div > div,
   #growth > div > div {
     grid-template-columns: 1fr !important;
-    gap: 24px !important;
+    gap: 20px !important;
   }
 
   /* 3-col opportunity cards and FAQ */
@@ -309,7 +361,22 @@ body { overflow-x: clip; }
   /* AI section 2-col grid */
   #ai > div > div > div {
     grid-template-columns: 1fr !important;
-    gap: 24px !important;
+    gap: 20px !important;
+  }
+}
+
+/* Feature image on desktop — shows before feature content, constrained
+   width so it doesn't dominate wide viewports. */
+@media (min-width: 641px) {
+  .bm-feature-image {
+    width: 100%;
+    max-width: 720px;
+    height: auto;
+    object-fit: cover;
+    border-radius: 20px;
+    display: block;
+    margin: 0 auto 32px;
+    box-shadow: 0 4px 16px rgba(28, 43, 34, 0.1);
   }
 }
 
