@@ -197,7 +197,7 @@ export default function Home() {
               Keep every client <em style={{ fontStyle:'italic', color:G.soft }}>coming back.</em>
             </h1>
             <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
-              Booking, intake, reminders, and session notes. All automated. You do what you do best: help them feel better.
+              Booking, intake, reminders, and session notes. All automated. You do what you do best: help clients feel better.
             </p>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
@@ -224,7 +224,7 @@ export default function Home() {
                 borderBottom: `1px solid ${G.mid2}60`,
                 paddingBottom: 2,
               }}>
-                Or see every feature in one view, The Atlas →
+                See every feature in one view, The Atlas →
               </Link>
             </div>
           </div>

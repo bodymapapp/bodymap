@@ -51,7 +51,11 @@ export default function Pricing() {
       cta: 'Choose Silver',
       ctaAction: () => window.location.href = 'https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03',
       promoCode: 'BETAONE',
-      promoNote: 'Have a founder code? Enter BETAONE at checkout. 100% off for 12 months.',
+      promoNote: 'Founder codes available. Message us on Instagram or Facebook and tell us about your practice.',
+      promoLinks: [
+        { label: 'Instagram', url: 'https://www.instagram.com/mybodymap01/' },
+        { label: 'Facebook', url: 'https://www.facebook.com/profile.php?id=61568064032135' },
+      ],
       features: [
         { text: 'Everything in Bronze, fully automated', on: true },
         { text: 'Full session history, unlimited', on: true },
@@ -142,12 +146,38 @@ export default function Pricing() {
                 background:tier.highlight?'rgba(255,255,255,0.08)':'#F0FDF4',
                 border:tier.highlight?'1px solid rgba(255,255,255,0.15)':'1px solid #BBF7D0',
                 borderRadius:8,
-                padding:'8px 10px',
+                padding:'10px 12px',
                 marginBottom:16,
-                lineHeight:1.4,
+                lineHeight:1.5,
                 fontWeight:600,
               }}>
-                ✨ {tier.promoNote}
+                <div style={{ marginBottom: tier.promoLinks ? 8 : 0 }}>✨ {tier.promoNote}</div>
+                {tier.promoLinks && (
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {tier.promoLinks.map(link => (
+                      <a
+                        key={link.label}
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display:'inline-flex',
+                          alignItems:'center',
+                          gap:4,
+                          padding:'5px 10px',
+                          borderRadius:6,
+                          background:tier.highlight?'rgba(255,255,255,0.15)':'#fff',
+                          color:tier.highlight?'#fff':C.forest,
+                          border:tier.highlight?'1px solid rgba(255,255,255,0.25)':'1px solid #86EFAC',
+                          textDecoration:'none',
+                          fontSize:11,
+                          fontWeight:700,
+                        }}>
+                        {link.label} →
+                      </a>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {tier.comingSoon
