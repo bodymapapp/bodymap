@@ -244,7 +244,7 @@ function buildMessage(
       ],
     },
     activation_nudge: {
-      // Placeholder — dashboard always passes custom_subject + custom_body
+      // Placeholder - dashboard always passes custom_subject + custom_body
       // built from the therapist's missing setup steps.
       subject: `${name}, small things left`,
       lines: [
@@ -431,7 +431,7 @@ serve(async (req) => {
         body_snippet: (msg.text || "").slice(0, 200),
       });
     } catch (_e) {
-      // non-blocking — if subject/body_snippet columns don't exist yet,
+      // non-blocking - if subject/body_snippet columns don't exist yet,
       // fall back to the legacy insert shape so logging doesn't block sends.
       try {
         await admin.from("notification_log").insert({

@@ -10,7 +10,7 @@
 //   Day 60 - Referral ask: share MyBodyMap, get a shoutout (moved from Day 21)
 //
 // Dedupe: writes to drip_sends table with (therapist_id, drip_day) unique key.
-// If a row exists, we skip — prevents duplicate sends even if the cron runs twice.
+// If a row exists, we skip - prevents duplicate sends even if the cron runs twice.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -36,7 +36,7 @@ const SKIP_EMAILS = new Set([
   'testtherapist99@email.com',
 ].map(e => e.toLowerCase()));
 
-// Shared email chrome — header + footer wrapper used by every drip
+// Shared email chrome - header + footer wrapper used by every drip
 function wrap(inner: string) {
   return `
     <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">

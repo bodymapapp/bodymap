@@ -19,7 +19,7 @@ serve(async (req) => {
     const bookingLink = `https://mybodymap.app/book/${customUrl}`;
     const dashLink = 'https://mybodymap.app/dashboard';
 
-    // E1.1 Welcome / Onboarding — warm healer voice, 5 steps in any order.
+    // E1.1 Welcome / Onboarding - warm healer voice, 5 steps in any order.
     // Replaced 2026-04-23: previous version had marketing voice ("autopilot",
     // "most modern platform"). New copy honors the therapist as a healer
     // and positions setup as small, do-when-you-can tasks.
