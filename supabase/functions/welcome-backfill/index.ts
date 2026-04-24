@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateUnsubToken, UNSUB_BASE_URL, unsubscribeFooterHtml } from "../_shared/unsubscribe.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,7 +79,7 @@ serve(async (req) => {
   // Fetch all therapists
   const { data: therapists, error } = await supabase
     .from('therapists')
-    .select('full_name, email, custom_url, created_at')
+    .select('id, full_name, email, custom_url, created_at')
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -102,6 +103,10 @@ serve(async (req) => {
     const customUrl   = t.custom_url || '';
     const dashLink    = 'https://mybodymap.app/dashboard';
     const bookingLink = `https://mybodymap.app/book/${customUrl}`;
+
+    const unsubToken = t.id ? await generateUnsubToken(t.id) : '';
+    const unsubUrl   = unsubToken ? `${UNSUB_BASE_URL}?t=${unsubToken}` : UNSUB_BASE_URL;
+    const unsubFooter = t.id ? unsubscribeFooterHtml(t.id, unsubUrl) : '';
 
     const steps = [
       { n:'1', title:'Move your clients over',
@@ -147,6 +152,7 @@ serve(async (req) => {
           The MyBodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a><br/>
           Built for massage therapists, by a massage therapist.
         </p>
+        ${unsubFooter}
       </div>
     `;
 

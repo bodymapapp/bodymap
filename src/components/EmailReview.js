@@ -26,7 +26,15 @@ const C = {
 const CATEGORY_LABELS = {
   auto_drip: "Auto Drip (fires on cron)",
   founder_outreach: "Founder Outreach (manual)",
+  sms_auto: "Auto SMS (transactional to clients)",
+  sms_manual: "Manual SMS (therapist to clients)",
+  sms_founder: "Founder SMS (HK to therapists)",
 };
+
+const CATEGORY_ORDER = ["auto_drip", "founder_outreach", "sms_auto", "sms_manual", "sms_founder"];
+
+// SMS categories render at a smaller iframe height since content is shorter
+const SMS_CATEGORIES = new Set(["sms_auto", "sms_manual", "sms_founder"]);
 
 const STORAGE_KEY = "bodymap_email_feedback_v1";
 
@@ -192,10 +200,10 @@ export default function EmailReview() {
               Founder tools
             </div>
             <h1 style={{ fontFamily: "Georgia, serif", fontSize: 28, color: C.dark, margin: "4px 0 0" }}>
-              Email Review
+              Email & SMS Review
             </h1>
             <p style={{ fontSize: 13, color: C.gray, margin: "6px 0 0", maxWidth: 680 }}>
-              Every email BodyMap sends to therapists. Preview, leave feedback, track what needs rewriting.
+              Every email and text MyBodyMap sends. Preview, leave feedback, track what needs rewriting.
               Feedback saves to your browser and stays private to this device.
             </p>
           </div>
@@ -220,7 +228,7 @@ export default function EmailReview() {
         <div style={{ display: "grid", gridTemplateColumns: "minmax(280px, 320px) 1fr", gap: 20, alignItems: "start" }}>
           {/* Sidebar */}
           <div style={{ background: "#fff", borderRadius: 10, border: `1px solid ${C.light}`, padding: "12px 0", position: "sticky", top: 20 }}>
-            {Object.keys(grouped).map((cat) => (
+            {CATEGORY_ORDER.filter(cat => grouped[cat]).map((cat) => (
               <div key={cat} style={{ marginBottom: 10 }}>
                 <div style={{
                   padding: "8px 16px 6px",
@@ -287,9 +295,11 @@ export default function EmailReview() {
                     </div>
                   </div>
                   <h2 style={{ fontSize: 20, color: C.dark, margin: "4px 0 0" }}>{selected.label}</h2>
-                  <div style={{ marginTop: 10, padding: "8px 12px", background: C.softCream, borderRadius: 6, fontSize: 12, color: C.dark, fontFamily: "system-ui" }}>
-                    <strong style={{ fontWeight: 700 }}>Subject:</strong> {selected.subject}
-                  </div>
+                  {!SMS_CATEGORIES.has(selected.category) && (
+                    <div style={{ marginTop: 10, padding: "8px 12px", background: C.softCream, borderRadius: 6, fontSize: 12, color: C.dark, fontFamily: "system-ui" }}>
+                      <strong style={{ fontWeight: 700 }}>Subject:</strong> {selected.subject}
+                    </div>
+                  )}
                   <div style={{ marginTop: 8, fontSize: 12, color: C.gray, fontFamily: "system-ui", lineHeight: 1.5 }}>
                     <strong>Fires:</strong> {selected.when_fires}
                   </div>
@@ -304,8 +314,8 @@ export default function EmailReview() {
                 <div style={{ background: "#fff", border: `1px solid ${C.light}`, borderRadius: 10, overflow: "hidden", marginBottom: 14 }}>
                   <iframe
                     title={selected.label}
-                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:#f5f5f0;}</style></head><body>${selected.html}</body></html>`}
-                    style={{ width: "100%", height: 680, border: "none", display: "block" }}
+                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><style>body{margin:0;background:${SMS_CATEGORIES.has(selected.category) ? "#fff" : "#f5f5f0"};}</style></head><body>${selected.html}</body></html>`}
+                    style={{ width: "100%", height: SMS_CATEGORIES.has(selected.category) ? 320 : 680, border: "none", display: "block" }}
                   />
                 </div>
 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { generateUnsubToken, UNSUB_BASE_URL, unsubscribeFooterHtml } from "../_shared/unsubscribe.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -18,6 +19,22 @@ serve(async (req) => {
 
     const bookingLink = `https://mybodymap.app/book/${customUrl}`;
     const dashLink = 'https://mybodymap.app/dashboard';
+
+    // Fetch therapist id up front so we can inject a signed unsubscribe token
+    // into the email footer. If we can't find the therapist, we still send the
+    // email but without a personalized unsubscribe link. The global unsubscribe
+    // page at /unsubscribe still lets them opt out by typing their email.
+    let therapistId: string | null = null;
+    if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+      try {
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+        const { data: tRow } = await supabase.from('therapists').select('id').eq('email', email).maybeSingle();
+        therapistId = tRow?.id || null;
+      } catch (_err) { /* non-blocking */ }
+    }
+    const unsubToken = therapistId ? await generateUnsubToken(therapistId) : '';
+    const unsubUrl = unsubToken ? `${UNSUB_BASE_URL}?t=${unsubToken}` : UNSUB_BASE_URL;
+    const unsubFooter = therapistId ? unsubscribeFooterHtml(therapistId, unsubUrl) : '';
 
     // E1.1 Welcome / Onboarding - warm healer voice, 5 steps in any order.
     // Replaced 2026-04-23: previous version had marketing voice ("autopilot",
@@ -114,6 +131,7 @@ serve(async (req) => {
           Reply any time, we read every email.<br/>
           <span style="color:#D1D5DB;">The MyBodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
         </p>
+        ${unsubFooter}
       </div>
     `;
 

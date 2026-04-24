@@ -35,6 +35,15 @@ const FAKE = {
 
 const DASH = "https://mybodymap.app/dashboard";
 
+// Sample footer shown in previews. Real emails get a per-therapist signed
+// unsubscribe token; in the preview we show a representative version.
+const SAMPLE_UNSUB_FOOTER = `
+<div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:11px;color:#9CA3AF;line-height:1.6">
+  <div>You're receiving this because you signed up for MyBodyMap at mybodymap.app.</div>
+  <div style="margin-top:6px"><a href="https://mybodymap.app/unsubscribe" style="color:#6B7280;text-decoration:underline">Unsubscribe from all marketing emails</a></div>
+  <div style="margin-top:6px">BodyMap LLC, 30 N Gould St Ste R, Sheridan, WY 82801</div>
+</div>`;
+
 function wrap(inner: string) {
   return `
     <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
@@ -47,6 +56,7 @@ function wrap(inner: string) {
         Reply any time, we read every email.<br/>
         <span style="color:#D1D5DB;">The MyBodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
       </p>
+      ${SAMPLE_UNSUB_FOOTER}
     </div>
   `;
 }
@@ -59,6 +69,7 @@ function plainTextWrap(lines: string[]) {
       <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
         Reply to this email and it reaches me directly.
       </div>
+      ${SAMPLE_UNSUB_FOOTER}
     </div>
   `;
 }
@@ -377,7 +388,59 @@ function e29ActivationNudge(n: string) {
   };
 }
 
-// ─── Main handler ────────────────────────────────────────
+// ─── SMS renderer ────────────────────────────────────────
+// SMS previews as a phone-chat bubble so HK sees what the recipient
+// sees. Character count surfaced since carriers segment at 160.
+
+function smsPreview(body: string, meta: { from: string; to: string }): string {
+  const chars = body.length;
+  const segments = Math.ceil(chars / 160) || 1;
+  const escaped = body
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\n/g, "<br/>");
+  return `
+    <div style="font-family:system-ui,-apple-system,sans-serif;max-width:420px;margin:24px auto;padding:20px;background:#F5F5F7;border-radius:24px;">
+      <div style="font-size:11px;color:#8E8E93;text-align:center;margin-bottom:12px;letter-spacing:0.02em;">
+        <div style="font-weight:600;color:#1F2937;margin-bottom:2px;">${meta.from}</div>
+        <div>Text Message</div>
+      </div>
+      <div style="background:#E5E5EA;color:#1F2937;padding:11px 15px;border-radius:18px;border-bottom-left-radius:4px;font-size:15px;line-height:1.4;word-wrap:break-word;">
+        ${escaped}
+      </div>
+      <div style="margin-top:10px;font-size:10px;color:#8E8E93;text-align:center;">
+        ${chars} character${chars === 1 ? "" : "s"} · ${segments} SMS segment${segments === 1 ? "" : "s"} · sent to ${meta.to}
+      </div>
+    </div>
+  `;
+}
+
+// ─── SMS templates (from production code) ────────────────
+
+function s11ReminderSms(clientFirst: string, therapistName: string, dateStr: string, timeStr: string, intakeUrl: string) {
+  return `Hi ${clientFirst}, reminder: your session at ${therapistName} is ${dateStr} at ${timeStr}. Please fill your intake: ${intakeUrl}  Reply STOP to opt out.`;
+}
+
+function s12PostSessionSms(clientFirst: string, therapistName: string, bookingUrl: string) {
+  return `Thanks for coming in today, ${clientFirst}! Book your next session at ${therapistName}: ${bookingUrl}  Reply STOP to opt out.`;
+}
+
+function s21OpeningSms(clientFirst: string, bookingUrl: string) {
+  return `Hi ${clientFirst}, I have an opening this week and thought of you. Would love to see you. Grab a spot here: ${bookingUrl}`;
+}
+
+function s22CheckinSms(clientFirst: string, bookingUrl: string) {
+  return `Hi ${clientFirst}, just checking in! It's been a while since your last visit. How are you feeling? I'd love to help: ${bookingUrl}`;
+}
+
+function s23SelfcareSms(clientFirst: string, bookingUrl: string) {
+  return `Hi ${clientFirst}, a gentle reminder that taking care of yourself matters. I have some availability if you'd like to book: ${bookingUrl}`;
+}
+
+function s31FounderSms(therapistFirst: string, firstStep: string) {
+  return `Hi ${therapistFirst},\n\nGood morning. This is MyBodyMap founder. Just wanted to send a message so you can reach out to me directly if you need any help.\n\nFirst step for you is to ${firstStep}.\n\nCheers!\nMyBodyMap founder`;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -418,6 +481,86 @@ serve(async (req) => {
       { id: "outreach_churned", code: "E2.7", category: "founder_outreach", label: "Churned · We miss your hands", when_fires: "Manual, for therapists idle 30+ days.", notes: "Offers reply OR 15-min call. Acknowledges life happens.", subject: e27Churned(n, FAKE.days_since_use).subject, html: plainTextWrap(e27Churned(n, FAKE.days_since_use).lines) },
       { id: "outreach_referral_thankyou", code: "E2.8", category: "founder_outreach", label: "Referral thank-you", when_fires: "Auto after a ref-link signup + manual backup.", notes: "Kept as-is. Already warm.", subject: e28ReferralThankyou(n).subject, html: plainTextWrap(e28ReferralThankyou(n).lines) },
       { id: "outreach_activation_nudge", code: "E2.9", category: "founder_outreach", label: "Activation nudge", when_fires: "Manual from /founder, usually with custom body built per therapist.", notes: "Placeholder shown here. Real sends use custom_subject + custom_body with missing steps named.", subject: e29ActivationNudge(n).subject, html: plainTextWrap(e29ActivationNudge(n).lines) },
+
+      // SMS - S1.x = auto transactional to client, S2.x = manual from therapist to client, S3.x = manual from founder to therapist
+      {
+        id: "sms_reminder",
+        code: "S1.1",
+        category: "sms_auto",
+        label: "24h appointment reminder",
+        when_fires: "Auto, 24h before a booked session (cron).",
+        notes: "Sent to client. Includes intake link so client arrives prepared. STOP keyword handles opt-out.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s11ReminderSms("Sarah", "Jamie at Still Point Massage", "Thursday Oct 16", "10:00 AM", "https://mybodymap.app/intake/abc123"),
+          { from: "Your practice number", to: "Client mobile" }
+        ),
+      },
+      {
+        id: "sms_post_session",
+        code: "S1.2",
+        category: "sms_auto",
+        label: "Post-session thank-you + rebook",
+        when_fires: "Auto, after the therapist logs a completed session.",
+        notes: "Sent to client. Warm thank-you plus booking link for the next session.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s12PostSessionSms("Sarah", "Jamie at Still Point Massage", `https://mybodymap.app/book/${FAKE.custom_url}`),
+          { from: "Your practice number", to: "Client mobile" }
+        ),
+      },
+      {
+        id: "sms_opening",
+        code: "S2.1",
+        category: "sms_manual",
+        label: "Opening available",
+        when_fires: "Manual, from the therapist's Outreach page to targeted clients.",
+        notes: "Uses client first name and a direct booking link. Feels personal, not mass-sent.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s21OpeningSms("Sarah", `https://mybodymap.app/book/${FAKE.custom_url}`),
+          { from: "Your practice number", to: "Client mobile" }
+        ),
+      },
+      {
+        id: "sms_checkin",
+        code: "S2.2",
+        category: "sms_manual",
+        label: "Gentle check-in",
+        when_fires: "Manual, from the therapist to lapsed clients.",
+        notes: "No pressure, asks how they're feeling. Softer than the opening pitch.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s22CheckinSms("Sarah", `https://mybodymap.app/book/${FAKE.custom_url}`),
+          { from: "Your practice number", to: "Client mobile" }
+        ),
+      },
+      {
+        id: "sms_selfcare",
+        code: "S2.3",
+        category: "sms_manual",
+        label: "Self-care reminder",
+        when_fires: "Manual, from the therapist to their whole list or a segment.",
+        notes: "Lowest-pressure version. Frames booking as taking care of oneself.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s23SelfcareSms("Sarah", `https://mybodymap.app/book/${FAKE.custom_url}`),
+          { from: "Your practice number", to: "Client mobile" }
+        ),
+      },
+      {
+        id: "sms_founder_nudge",
+        code: "S3.1",
+        category: "sms_founder",
+        label: "Founder activation nudge",
+        when_fires: "Manual, from HK to a therapist stuck on setup. Sent via HK's Google Voice.",
+        notes: "Signed 'MyBodyMap founder' for personal touch. Surfaces the therapist's specific next step.",
+        subject: "SMS (no subject)",
+        html: smsPreview(
+          s31FounderSms(n, "import your client list (step 1 of 5)"),
+          { from: "MyBodyMap founder", to: `${n}'s mobile` }
+        ),
+      },
     ];
 
     return json({ ok: true, fake: FAKE, emails });

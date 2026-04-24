@@ -504,7 +504,7 @@ export default function FounderDashboard() {
               href="/founder/emails"
               style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600, textDecoration: "none", fontFamily: "system-ui" }}
             >
-              📧 Email review
+              📧 Email & SMS review
             </a>
             <RunDigestButton />
             <button
