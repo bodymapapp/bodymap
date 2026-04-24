@@ -33,7 +33,7 @@ function inferType(subject: string, from: string): string | null {
 
   if (/5 signs a regular is about to ghost/i.test(s)) return "drip_day2";
   if (/send yourself the body map/i.test(s)) return "drip_day5";
-  if (/what terra said|how jamie got|rebooking rate/i.test(s)) return "drip_day10";
+  if (/what terra said|how jamie got|rebooking rate|the whole idea in one sentence/i.test(s)) return "drip_day10";
   if (/one question about your first month/i.test(s)) return "drip_day30";
   if (/a small ask.*free thing|know another therapist/i.test(s)) return "drip_day60";
 

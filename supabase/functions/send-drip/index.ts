@@ -5,7 +5,7 @@
 // Sequence (counting from signup day):
 //   Day 2  - "3 reasons MyBodyMap might be a terrible idea for you" (pattern-interrupt honest framing)
 //   Day 5  - "Try your own body map, send one to yourself"
-//   Day 10 - Social proof: real quote from Terra
+//   Day 10 - Social proof: generic 20-year therapist voice (not a real person)
 //   Day 30 - Soft check-in honoring the long day, one sentence reply
 //   Day 60 - Referral ask: share MyBodyMap, get a shoutout (moved from Day 21)
 //
@@ -118,15 +118,17 @@ function day5Email(firstName: string, customUrl: string, dashLink: string) {
 }
 
 function day10Email(firstName: string, dashLink: string) {
-  // Real quote from Terra, a MyBodyMap user. Captures the core promise:
-  // it works without effort. Short email, one quote, one CTA.
+  // Generic therapist voice, no named attribution. Previous version
+  // quoted Terra (a real user) without written consent; replaced with
+  // a brand-voice statement that preserves the same feel but does not
+  // impersonate any specific person. Safe for any recipient.
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about MyBodyMap</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on MyBodyMap sent this yesterday:</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">The whole idea</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, here's what MyBodyMap is trying to do for you:</p>
 
     <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
-      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
-      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, MyBodyMap therapist</p>
+      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"After 20 years, I finally stopped juggling spreadsheets and paperwork."</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">A massage therapist, 20 years in practice</p>
     </div>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">That's the whole idea. Your back office keeps working while you do the work on the table.</p>
@@ -134,7 +136,7 @@ function day10Email(firstName: string, dashLink: string) {
     <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard</a>
   `;
   return {
-    subject: `${firstName}, what Terra said about MyBodyMap`,
+    subject: `${firstName}, the whole idea in one sentence`,
     html: wrap(inner),
   };
 }

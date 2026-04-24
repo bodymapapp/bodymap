@@ -163,16 +163,16 @@ function e13Day5(firstName: string, customUrl: string) {
 
 function e14Day10(firstName: string) {
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about MyBodyMap</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on MyBodyMap sent this yesterday:</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">The whole idea</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, here's what MyBodyMap is trying to do for you:</p>
     <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
-      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
-      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, MyBodyMap therapist</p>
+      <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"After 20 years, I finally stopped juggling spreadsheets and paperwork."</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">A massage therapist, 20 years in practice</p>
     </div>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">That's the whole idea. Your back office keeps working while you do the work on the table.</p>
     <a href="${DASH}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
   `;
-  return { subject: `What Terra said about MyBodyMap`, html: wrap(inner) };
+  return { subject: `The whole idea in one sentence`, html: wrap(inner) };
 }
 
 // ─── E1.5 Day 30 ──────────────────────────────────────────
@@ -466,7 +466,7 @@ serve(async (req) => {
       { id: "welcome", code: "E1.1", category: "auto_drip", label: "Welcome / Onboarding", when_fires: "Instantly when a new therapist signs up.", notes: "Warm healer voice. 5-step onboarding with CTA links per step. Any order, no hurry.", ...e11Welcome(n) },
       { id: "drip_day2", code: "E1.2", category: "auto_drip", label: "Day 2 · Pattern interrupt", when_fires: "Day 2 after signup (auto-cron).", notes: "Negative-framing humor. Uplifts therapist as healer who gives clients their breath back.", ...e12Day2(n) },
       { id: "drip_day5", code: "E1.3", category: "auto_drip", label: "Day 5 · Feel what clients feel", when_fires: "Day 5 after signup (auto-cron).", notes: "Warm healer voice. Invites therapist to take their own intake. Self-care framing.", ...e13Day5(n, FAKE.custom_url) },
-      { id: "drip_day10", code: "E1.4", category: "auto_drip", label: "Day 10 · Terra quote", when_fires: "Day 10 after signup (auto-cron).", notes: "Real testimonial from Terra. Kept as-is · authenticity is the point.", ...e14Day10(n) },
+      { id: "drip_day10", code: "E1.4", category: "auto_drip", label: "Day 10 · The whole idea", when_fires: "Day 10 after signup (auto-cron).", notes: "Brand voice message, anonymous 20-year therapist attribution. Not a real person.", ...e14Day10(n) },
       { id: "drip_day30", code: "E1.5", category: "auto_drip", label: "Day 30 · Soft check-in", when_fires: "Day 30 after signup (auto-cron).", notes: "Honors the therapist's long physical day. Three-option reply framework.", ...e15Day30(n) },
       { id: "drip_day60", code: "E1.6", category: "auto_drip", label: "Day 60 · Quiet thank you + referral", when_fires: "Day 60 after signup (auto-cron).", notes: "Warm gratitude first, then referral ask with specific what-they-get / what-you-get.", ...e16Day60(n, FAKE.custom_url) },
       { id: "practice_pulse", code: "E1.7", category: "auto_drip", label: "Practice Pulse", when_fires: "Every morning when therapist has activity to report.", notes: "Data digest. Neutral tone · not a place for prose voice.", ...e17Pulse(n) },
