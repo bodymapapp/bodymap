@@ -186,7 +186,7 @@ export default function Home() {
       <Nav />
 
       {/* ── HERO ─────────────────────────────────────────────────────────── */}
-      <section style={{ minHeight:'92vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'linear-gradient(160deg,#eef8f2 0%,#fafaf8 65%)', position:'relative', overflow:'hidden' }}>
+      <section className="bm-home-hero-section" style={{ minHeight:'92vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'80px 24px 60px', background:'linear-gradient(160deg,#eef8f2 0%,#fafaf8 65%)', position:'relative', overflow:'hidden' }}>
         <div style={{ position:'absolute', top:-80, right:-80, width:500, height:500, borderRadius:'50%', background:'rgba(107,158,128,0.07)', pointerEvents:'none' }}/>
         <div style={{ maxWidth:1100, width:'100%', display:'grid', gridTemplateColumns:'1fr 1fr', gap:64, alignItems:'center' }} className="bm-home-hero-grid">
           <div>

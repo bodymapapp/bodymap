@@ -169,10 +169,29 @@ body { overflow-x: clip; }
   /* Hero: stack columns, hide decorative circle */
   .bm-home-hero-grid {
     grid-template-columns: 1fr !important;
-    gap: 32px !important;
+    gap: 20px !important;
   }
-  /* Hide the right-column hero card on mobile — text is enough */
-  .bm-home-hero-grid > div:nth-child(2) { display: none !important; }
+  /* Show the Client Intelligence card on mobile in a compact form.
+     Moving it above the CTAs would split the scroll pattern, so we
+     keep it below but make it compact and visible. */
+  .bm-home-hero-grid > div:nth-child(2) {
+    display: block !important;
+    order: 2;
+  }
+  /* Shrink the card on mobile so it fits without dominating. The nested
+     inner card gets less padding, smaller text, tighter spacing. */
+  .bm-home-hero-grid > div:nth-child(2) > div:last-child {
+    padding: 18px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08) !important;
+  }
+  /* The "Sarah has not booked" warning pill: reposition so it doesn't
+     overflow the card edge on tiny viewports. */
+  .bm-home-hero-grid > div:nth-child(2) > div:first-child {
+    top: -10px !important;
+    right: 8px !important;
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
 
   /* Hero section padding */
   .bm-home-hero-grid { padding: 0 !important; }
@@ -193,11 +212,20 @@ body { overflow-x: clip; }
   /* Section padding reduced on mobile */
   section { padding-left: 16px !important; padding-right: 16px !important; }
 
+  /* Hero section: less vertical padding so product visual is above fold */
+  .bm-home-hero-grid { padding: 0 !important; }
+  .bm-home-hero-section {
+    padding-top: 32px !important;
+    padding-bottom: 40px !important;
+    min-height: unset !important;
+  }
+
   /* Pricing/feature cards that are auto-fit minmax — already responsive */
   /* Testimonial cards — already auto-fit */
 
   /* Nav section padding */
-  .bm-home-hero-grid h1 { font-size: 32px !important; }
+  .bm-home-hero-grid h1 { font-size: 28px !important; line-height: 1.15 !important; }
+  .bm-home-hero-grid h1 br { display: none !important; }
 }
 
 /* ── FEATURES PAGE MOBILE ── */
