@@ -13,7 +13,7 @@ I release my massage therapist and their business from liability for any injury 
 I have read, understood, and voluntarily agree to the above.`;
 
 // Returns the waiver text with therapist/business name substituted in where relevant.
-// If therapist has customized their waiver, we don't overwrite their wording — we just
+// If therapist has customized their waiver, we don't overwrite their wording, we just
 // replace the generic phrases with their specific name/business when present.
 export function renderWaiverForClient(waiverText, therapistName, businessName) {
   if (!waiverText) return '';

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-// VAPID public key — safe to ship to client, used to identify the app server
+// VAPID public key, safe to ship to client, used to identify the app server
 const VAPID_PUBLIC_KEY = 'BIj1wL2VIP8Chwj37JY2eOkHkwKpO-90AnCk6fLOLnGbgrpehP9sEMYEwAthBaO1M_ftVtonMQisiCZzpWVyJgQ';
 
 function urlBase64ToUint8Array(base64String) {
@@ -46,7 +46,7 @@ export default function usePushNotifications(therapistId) {
         const existing = await reg.pushManager.getSubscription();
         setSubscribed(!!existing);
       } catch (e) {
-        // ignore — sw might not be ready yet
+        // ignore, sw might not be ready yet
       }
     })();
   }, []);

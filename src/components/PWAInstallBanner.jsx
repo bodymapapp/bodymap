@@ -48,7 +48,7 @@ function InstallGuideModal({ onDismiss }) {
 
   // Chrome-on-iOS step 1: Share button is in the TOP-RIGHT corner next to address bar
   const chromeStep1 = {
-    title: "Step 1 — Tap the Share button at the top.",
+    title: "Step 1, Tap the Share button at the top.",
     body: "Look at the top-right corner of your screen, right next to the address bar. You'll see a small box with an arrow pointing up. Tap it.",
     visual: (
       <div style={{ padding: '16px 0 10px' }}>
@@ -59,7 +59,7 @@ function InstallGuideModal({ onDismiss }) {
             <span style={{ fontSize: 16, color: '#C7C7CC' }}>‹</span>
             {/* URL pill */}
             <div style={{ flex: 1, background: '#EFEFF4', borderRadius: 8, padding: '6px 10px', fontSize: 12, color: '#1F2937', textAlign: 'center' }}>mybodymap.app</div>
-            {/* Share button — pulsing */}
+            {/* Share button, pulsing */}
             <div style={{ width: 40, height: 40, borderRadius: 10, background: '#fff', border: '2.5px solid #007AFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,122,255,0.3)', animation: 'bmPulse 1.8s ease-in-out infinite', flexShrink: 0 }}>
               <ShareIcon size={20} />
             </div>
@@ -76,12 +76,12 @@ function InstallGuideModal({ onDismiss }) {
         <style>{`@keyframes bmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }`}</style>
       </div>
     ),
-    cta: "Got it — what's next?",
+    cta: "Got it, what's next?",
   };
 
   // Safari step 1: Share button is at the BOTTOM, OR three-dots menu
   const safariStep1 = {
-    title: "Step 1 — Find the menu button at the bottom.",
+    title: "Step 1, Find the menu button at the bottom.",
     body: "Look at the very bottom of your screen. Depending on your iPhone, you'll see ONE of these two buttons. Tap whichever one you see.",
     visual: (
       <div style={{ padding: '16px 0 10px' }}>
@@ -114,15 +114,15 @@ function InstallGuideModal({ onDismiss }) {
         <style>{`@keyframes bmPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }`}</style>
       </div>
     ),
-    cta: "Got it — what's next?",
+    cta: "Got it, what's next?",
   };
 
   const steps = isIOS ? [
     {
       title: isIOSChrome ? "Welcome! Let's put MyBodyMap on your home screen." : "Welcome! Let's make MyBodyMap easy to open.",
       body: isIOSChrome
-        ? "In 20 seconds, we'll add a MyBodyMap icon to your home screen — so it opens in one tap, like any other app. You can use Chrome to install it. No app store needed."
-        : "In 20 seconds, we'll put a MyBodyMap icon right on your home screen — so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
+        ? "In 20 seconds, we'll add a MyBodyMap icon to your home screen, so it opens in one tap, like any other app. You can use Chrome to install it. No app store needed."
+        : "In 20 seconds, we'll put a MyBodyMap icon right on your home screen, so it opens in one tap, like any other app. No app store. No passwords to type. Just tap the leaf and you're in.",
       visual: (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, padding: '30px 0' }}>
           <div style={{ width: 76, height: 76, borderRadius: 18, background: 'linear-gradient(135deg, #2A5741, #4B8A6A)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 38, boxShadow: '0 10px 32px rgba(42,87,65,0.35)' }}>🌿</div>
@@ -134,7 +134,7 @@ function InstallGuideModal({ onDismiss }) {
     },
     isIOSChrome ? chromeStep1 : safariStep1,
     {
-      title: "Step 2 — Tap \"Add to Home Screen\".",
+      title: "Step 2, Tap \"Add to Home Screen\".",
       body: "A menu just opened. Look for a row that says \"Add to Home Screen\" with a small plus-in-a-square icon. You may need to scroll down a little to find it. Tap that row.",
       visual: (
         <div style={{ padding: '16px 0' }}>
@@ -158,10 +158,10 @@ function InstallGuideModal({ onDismiss }) {
           </div>
         </div>
       ),
-      cta: "Got it — next",
+      cta: "Got it, next",
     },
     {
-      title: "Step 3 — Tap Add in the corner.",
+      title: "Step 3, Tap Add in the corner.",
       body: "On the next screen, iPhone asks you to confirm. Just tap \"Add\" in the top-right corner. Done!",
       visual: (
         <div style={{ padding: '16px 0' }}>
@@ -364,7 +364,7 @@ function PushOnboardingModal({ therapist, onDone }) {
             </h2>
 
             <p style={{ fontSize: 17, color: '#4B5563', lineHeight: 1.6, margin: '0 0 18px' }}>
-              You'll get a small notification on your phone when someone books, replies, or a gift card is redeemed. No noise, no spam — just the things that matter to your practice.
+              You'll get a small notification on your phone when someone books, replies, or a gift card is redeemed. No noise, no spam, just the things that matter to your practice.
             </p>
 
             {/* Visual: phone with notification */}

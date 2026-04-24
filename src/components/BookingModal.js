@@ -223,7 +223,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
         <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-          {/* Client info — readonly for reschedule */}
+          {/* Client info, readonly for reschedule */}
           {!isReschedule && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Client</label>
@@ -325,7 +325,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                   {/* Custom time override */}
                   <div style={{ borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
                     <div style={{ fontSize: 11, color: C.gray, marginBottom: 6, fontWeight: 600 }}>
-                      Set a custom time — after hours or special scheduling
+                      Set a custom time, after hours or special scheduling
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                       <input type="time"
@@ -340,7 +340,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                     </div>
                     {slot && !slots.find(s => s.start === slot.start) && (
                       <div style={{ fontSize: 12, color: '#D97706', marginTop: 6, fontWeight: 600 }}>
-                        ⚠ Custom time — outside normal hours
+                        ⚠ Custom time, outside normal hours
                       </div>
                     )}
                   </div>

@@ -228,13 +228,13 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
 
         {clients.length === 0 ? (
           <div>
-            {/* Preview banner — sets expectations that the cards below are a glimpse of the future */}
+            {/* Preview banner, sets expectations that the cards below are a glimpse of the future */}
             <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>👁️</span>
               <div><strong>A preview of your practice.</strong> These are sample clients. The real ones appear the moment someone fills out your body map. Tap <strong>Send Intake</strong> above to invite your first.</div>
             </div>
 
-            {/* Retention insight card — the exact thing the Day 2 email points at */}
+            {/* Retention insight card, the exact thing the Day 2 email points at */}
             <div style={{
               background: '#FEF9E7',
               border: '1.5px solid #F4C46C',
@@ -308,7 +308,7 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
           </div>
         ) : (
           <>
-            {/* Demo retention hint — shown only when therapist has clients but hasn't yet accumulated any lapsed ones.
+            {/* Demo retention hint, shown only when therapist has clients but hasn't yet accumulated any lapsed ones.
                 Gives them a preview of what retention insights will look like as their practice grows.
                 Hidden once they have 10+ sessions across the practice (by then they'll see real retention signals). */}
             {filter === "all" && lapsedClients.length === 0 && clients.reduce((s, c) => s + (c.total_sessions || 0), 0) < 10 && (

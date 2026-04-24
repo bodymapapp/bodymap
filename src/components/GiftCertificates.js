@@ -200,7 +200,7 @@ export default function GiftCertificates({ therapist }) {
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto' }}>
-      {/* Hero header — warm, storytelling, feminine */}
+      {/* Hero header, warm, storytelling, feminine */}
       <div style={{
         position: 'relative',
         background: 'linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 35%, #FFF9F3 100%)',
@@ -267,7 +267,7 @@ export default function GiftCertificates({ therapist }) {
         </div>
       )}
 
-      {/* Create form — warm, gentle */}
+      {/* Create form, warm, gentle */}
       {showForm && (
         <div style={{
           background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF9F3 100%)',
@@ -502,7 +502,7 @@ export default function GiftCertificates({ therapist }) {
             </div>
           )}
 
-          {/* Past / redeemed — smaller, humble */}
+          {/* Past / redeemed, smaller, humble */}
           {past.length > 0 && (
             <div style={{ marginTop: 32 }}>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: C.gray, fontStyle: 'italic', marginBottom: 12 }}>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', gray:'#6B7280', light:'#E8E4DC', gold:'#C9A84C' };
 
-// Nudge 1: Activation moment — first intake sent is the "aha" moment
+// Nudge 1: Activation moment, first intake sent is the "aha" moment
 export function ActivationNudge({ sessions, onDismiss }) {
   const [visible, setVisible] = useState(false);
 
@@ -27,7 +27,7 @@ export function ActivationNudge({ sessions, onDismiss }) {
       <div style={{ position:'absolute', bottom:-30, left:40, width:100, height:100, borderRadius:'50%', background:'rgba(255,255,255,0.04)' }}/>
       <div style={{ fontSize:28, marginBottom:8 }}>🎉</div>
       <div style={{ fontSize:16, fontWeight:700, color:'#fff', marginBottom:6, fontFamily:'Georgia,serif' }}>
-        First intake sent — this is the moment.
+        First intake sent, this is the moment.
       </div>
       <div style={{ fontSize:13, color:'rgba(255,255,255,0.8)', lineHeight:1.6, marginBottom:16 }}>
         Your client will fill their body map before they arrive. You'll walk in knowing exactly what they need. This is what MyBodyMap is built for.
@@ -40,7 +40,7 @@ export function ActivationNudge({ sessions, onDismiss }) {
   );
 }
 
-// Nudge 2: Lapsed client alert — shows when clients haven't booked in 6+ weeks
+// Nudge 2: Lapsed client alert, shows when clients haven't booked in 6+ weeks
 export function LapsedClientAlert({ clients, onNavigate }) {
   const [dismissed, setDismissed] = useState(false);
 
@@ -87,7 +87,7 @@ export function LapsedClientAlert({ clients, onNavigate }) {
   );
 }
 
-// Nudge 3: Empty state prompt — shown when clients tab is empty
+// Nudge 3: Empty state prompt, shown when clients tab is empty
 export function EmptyClientsNudge({ onNavigate }) {
   return (
     <div style={{ textAlign:'center', padding:'48px 24px' }}>
@@ -112,7 +112,7 @@ export function EmptyClientsNudge({ onNavigate }) {
   );
 }
 
-// Nudge 4: Booking link share prompt — shown when no bookings yet
+// Nudge 4: Booking link share prompt, shown when no bookings yet
 export function BookingLinkNudge({ therapist, bookings }) {
   const [copied, setCopied] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -146,7 +146,7 @@ export function BookingLinkNudge({ therapist, bookings }) {
           style={{ background:'transparent', border:'none', color:C.gray, fontSize:16, cursor:'pointer', lineHeight:1 }}>×</button>
       </div>
       <div style={{ fontSize:12, color:C.gray, marginBottom:12, lineHeight:1.5 }}>
-        Send this to your clients and they can book anytime — no calls, no texts back and forth.
+        Send this to your clients and they can book anytime, no calls, no texts back and forth.
       </div>
       <div style={{ background:'#fff', borderRadius:8, padding:'8px 12px', fontSize:11, color:'#374151', fontFamily:'monospace', marginBottom:10, wordBreak:'break-all' }}>
         {link}

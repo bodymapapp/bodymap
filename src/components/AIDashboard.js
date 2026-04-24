@@ -280,7 +280,7 @@ ${clientSummaries.join('\n')}
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: containerHeight, minHeight: isMobile ? 0 : 500, transition: 'height 0.2s ease' }}>
-      {/* Header — collapsed when keyboard open to give chat space */}
+      {/* Header, collapsed when keyboard open to give chat space */}
       {!keyboardOpen && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
@@ -306,7 +306,7 @@ ${clientSummaries.join('\n')}
         </div>
       )}
 
-      {/* Messages — scrollable middle */}
+      {/* Messages, scrollable middle */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0', marginBottom: 8, minHeight: 0 }}>
         {messages.map((msg, i) => <Message key={i} msg={msg} />)}
         {loading && (
@@ -319,7 +319,7 @@ ${clientSummaries.join('\n')}
         <div ref={bottomRef} />
       </div>
 
-      {/* Suggested prompts — always visible, horizontal scroll on mobile */}
+      {/* Suggested prompts, always visible, horizontal scroll on mobile */}
       {showSuggested && (
         <div style={{ marginBottom: 10, flexShrink: 0 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Suggested questions</div>
@@ -334,7 +334,7 @@ ${clientSummaries.join('\n')}
         </div>
       )}
 
-      {/* Input — sticky at bottom */}
+      {/* Input, sticky at bottom */}
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: 'flex', gap: 8, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <textarea

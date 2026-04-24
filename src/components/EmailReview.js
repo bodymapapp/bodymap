@@ -1,6 +1,6 @@
 // src/components/EmailReview.js
 //
-// /founder/emails — email review page.
+// /founder/emails, email review page.
 //
 // Left sidebar: every email template grouped by category with E-codes.
 // Right pane: rendered preview in iframe + subject + feedback textarea.

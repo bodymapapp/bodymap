@@ -1,4 +1,4 @@
-// Activation tracking — tiny helper used throughout the app to log key
+// Activation tracking, tiny helper used throughout the app to log key
 // funnel events per therapist. Fire-and-forget: we never block UI on this.
 //
 // Usage:
@@ -6,7 +6,7 @@
 //   trackActivation(therapist.id, 'imported_clients', { count: 42 });
 //
 // Each event is unique per therapist per event_name (enforced by dedupe here).
-// We read back our own events to decide whether to log again — most events
+// We read back our own events to decide whether to log again, most events
 // should only fire once per therapist (first time they do something).
 
 import { supabase } from './supabase';
@@ -47,6 +47,6 @@ export async function trackActivation(
       metadata: metadata || null,
     });
   } catch {
-    // Never throw to the caller — analytics must not break UX
+    // Never throw to the caller, analytics must not break UX
   }
 }

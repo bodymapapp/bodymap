@@ -42,7 +42,7 @@ export default function AdminFunnel() {
         supabase.from('therapists').select('id', { count: 'exact', head: true }),
       ]);
 
-      // Activation counts (distinct therapists per event) — scope to last 30 days of signups
+      // Activation counts (distinct therapists per event), scope to last 30 days of signups
       const { data: recentTherapists } = await supabase
         .from('therapists').select('id').gte('created_at', mo);
       const recentIds = (recentTherapists || []).map(r => r.id);

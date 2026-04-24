@@ -160,7 +160,7 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
         marginTop: 'auto', // pushes URL + buttons to bottom for alignment
         minHeight: 18,
       }}>
-        {url || '—'}
+        {url || ', '}
       </div>
       <div style={{ display: 'flex', gap: 6, width: '100%', marginBottom: 6 }}>
         <button

@@ -135,7 +135,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
             })}
           </div>
 
-          {/* Sign out — clean row, not loud */}
+          {/* Sign out, clean row, not loud */}
           <button onClick={() => { onSignOut?.(); setShowMore(false); }}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -150,7 +150,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
             <span style={{ fontSize: 14, fontWeight: 600, color: '#6B7280' }}>Sign out</span>
           </button>
 
-          {/* Safe area spacer — ensures Sign Out never gets cut off on iPhone */}
+          {/* Safe area spacer, ensures Sign Out never gets cut off on iPhone */}
           <div style={{ height: 'max(env(safe-area-inset-bottom, 0px), 8px)' }} />
         </div>
       </div>

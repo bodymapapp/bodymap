@@ -13,7 +13,7 @@ const SEGMENTS = [
 ];
 
 const TEMPLATES = [
-  { id:'opening',  label:'You have an opening', text:'Hi {name}, I have an opening this week and thought of you. Would love to see you — grab a spot here: {link}' },
+  { id:'opening',  label:'You have an opening', text:'Hi {name}, I have an opening this week and thought of you. Would love to see you, grab a spot here: {link}' },
   { id:'checkin',  label:'Gentle check-in',     text:'Hi {name}, just checking in! It\'s been a while since your last visit. How are you feeling? I\'d love to help: {link}' },
   { id:'selfcare', label:'Self-care reminder',  text:'Hi {name}, a gentle reminder that taking care of yourself matters. I have some availability if you\'d like to book: {link}' },
   { id:'custom',   label:'Write my own',        text:'' },
@@ -195,14 +195,14 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       {channel === 'sms' && (
         <div style={{ background:C.beige, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'14px 16px', marginBottom:16, fontSize:13, color:C.gray, lineHeight:1.6 }}>
           <div style={{ fontWeight:700, color:C.dark, marginBottom:4 }}>📱 How SMS works</div>
-          Your clients receive texts from your dedicated practice number {therapist?.twilio_phone_number ? `(${therapist.twilio_phone_number})` : ''}. It is not your personal number — it is a number assigned to your practice via Twilio.
+          Your clients receive texts from your dedicated practice number {therapist?.twilio_phone_number ? `(${therapist.twilio_phone_number})` : ''}. It is not your personal number, it is a number assigned to your practice via Twilio.
           {!twilioReady && <div style={{ marginTop:8, color:'#92400E', fontWeight:600 }}>⚠️ Set up your SMS number in Settings to enable this.</div>}
         </div>
       )}
 
       {/* Step 1 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginBottom:16 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 1 — Who to reach</div>
+        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 1, Who to reach</div>
         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
           {SEGMENTS.map(seg => (
             <button key={seg.id} onClick={() => setSegment(seg.id)}
@@ -257,7 +257,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
 
       {/* Step 2 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginBottom:16 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 2 — Your message</div>
+        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 2, Your message</div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => { setTemplate(t.id); if(t.text) setMessage(t.text); }}
@@ -278,7 +278,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       {/* Step 3 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}` }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-          <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Step 3 — Review & send</div>
+          <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Step 3, Review & send</div>
           <button onClick={() => setTestMode(t => !t)}
             style={{ fontSize:12, fontWeight:600, padding:'5px 12px', borderRadius:20, border:`1.5px solid ${testMode?C.forest:C.light}`, background:testMode?'#F0FDF4':'transparent', color:testMode?C.forest:C.gray, cursor:'pointer' }}>
             {testMode ? '🧪 Test mode ON' : '🧪 Test mode'}
@@ -287,7 +287,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
 
         {testMode && (
           <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
-            <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:8 }}>Sends only to you — not to any clients</div>
+            <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:8 }}>Sends only to you, not to any clients</div>
             {channel === 'email'
               ? <input type="email" value={testEmail} onChange={e => setTestEmail(e.target.value)} placeholder="Your email address"
                   style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, boxSizing:'border-box', outline:'none' }} />
@@ -320,7 +320,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         {/* Preview */}
         {message.trim() && (
           <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 14px', marginBottom:14, border:`1px solid ${C.light}` }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW — as Sarah would see it:</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW, as Sarah would see it:</div>
             <div style={{ fontSize:14, color:C.dark, lineHeight:1.7, wordBreak:'break-word' }}>
               {message.replace(/{name}/gi, 'Sarah').replace(/{link}/gi, bookingLink)}
             </div>

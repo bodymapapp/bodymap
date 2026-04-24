@@ -112,7 +112,7 @@ export default function WhyMyBodyMap() {
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap' }}>
             <Link to="/signup" style={{ background:'#fff', color:C.forest, borderRadius:12, padding:'14px 28px', fontSize:15, fontWeight:700, textDecoration:'none' }}>
-              Start Free — No Card Needed
+              Start Free, No Card Needed
             </Link>
             <Link to="/features" style={{ background:'transparent', color:'rgba(255,255,255,0.85)', border:'1.5px solid rgba(255,255,255,0.3)', borderRadius:12, padding:'14px 24px', fontSize:14, fontWeight:600, textDecoration:'none' }}>
               See All Features
@@ -143,10 +143,10 @@ export default function WhyMyBodyMap() {
             {/* ── Bar Chart ── */}
             <div style={{ background:C.white, borderRadius:20, padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.07)', display:'flex', flexDirection:'column', justifyContent:'center' }}>
               <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.09em', marginBottom:28 }}>
-                {billing === 'monthly' ? 'Monthly platform cost' : 'Annual platform cost — total per year'}
+                {billing === 'monthly' ? 'Monthly platform cost' : 'Annual platform cost, total per year'}
               </div>
 
-              {/* borderBottom IS the baseline — bars sit flush on it */}
+              {/* borderBottom IS the baseline, bars sit flush on it */}
               <div style={{ display:'flex', alignItems:'flex-end', gap:16, borderBottom:'2.5px solid #C4BEB7' }}>
                 {[
                   { key:'gg', name:'GlossGenius' },
@@ -225,7 +225,7 @@ export default function WhyMyBodyMap() {
                   switching from GlossGenius
                 </div>
                 <div style={{ marginTop:18, display:'inline-block', padding:'6px 18px', background:'#F0FDF4', borderRadius:24, fontSize:12, color:'#16A34A', fontWeight:700 }}>
-                  Free to start — limited time
+                  Free to start, limited time
                 </div>
               </div>
 
@@ -316,7 +316,7 @@ export default function WhyMyBodyMap() {
           </div>
 
           <div style={{ marginTop:16, fontSize:11, color:C.gray, lineHeight:1.6, padding:'0 4px' }}>
-            ✓ = Included · ✕ = Not available · $ = Available as paid add-on · Competitor pricing and features based on publicly available information as of April 2026. MyBodyMap makes no guarantee of accuracy. Prices and features may have changed — verify directly with each provider.
+            ✓ = Included · ✕ = Not available · $ = Available as paid add-on · Competitor pricing and features based on publicly available information as of April 2026. MyBodyMap makes no guarantee of accuracy. Prices and features may have changed, verify directly with each provider.
           </div>
         </div>
       </section>
@@ -343,7 +343,7 @@ export default function WhyMyBodyMap() {
             ))}
           </div>
           <div style={{ marginTop:24, background:C.forest, borderRadius:14, padding:'20px 24px', color:'#fff', fontSize:16, fontWeight:600 }}>
-            That's 4+ hours per week back to focus on your clients — not your back office.
+            That's 4+ hours per week back to focus on your clients, not your back office.
           </div>
         </div>
       </section>
@@ -357,13 +357,13 @@ export default function WhyMyBodyMap() {
               Everything you need, across 7 parts of your practice
             </h2>
             <p style={{ fontSize:15, color:'#78350F', maxWidth:560, margin:'0 auto', lineHeight:1.6 }}>
-              From first click to long-term regular — every moment of your client's journey, handled.
+              From first click to long-term regular, every moment of your client's journey, handled.
             </p>
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))', gap:12 }}>
             {[
               { id:'1', name:'Find & Book',           desc:'Online scheduling, deposits, your custom booking page.' },
-              { id:'2', name:'Know Your Client',      desc:'Visual intake, waivers, preferences — all on submit.' },
+              { id:'2', name:'Know Your Client',      desc:'Visual intake, waivers, preferences, all on submit.' },
               { id:'3', name:'Client Intelligence',   desc:'Patterns across visits. AI chat. Weekly practice pulse.' },
               { id:'4', name:'Day-of-Session',        desc:'Today\'s schedule, brief, and SOAP notes on your phone.' },
               { id:'5', name:'Relationships',         desc:'Reminders, follow-ups, loyalty, lapsed client outreach.' },

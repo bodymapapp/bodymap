@@ -54,7 +54,7 @@ export default function Onboarding() {
     const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
 
     // Security guard: rate limits, disposable email block, pattern detection.
-    // Fail open — guard errors never block legitimate users.
+    // Fail open, guard errors never block legitimate users.
     let guardFlags = [];
     let guardScore = 0;
     try {
@@ -77,7 +77,7 @@ export default function Onboarding() {
       }
       guardFlags = guardData.flag_reasons || [];
       guardScore = guardData.risk_score || 0;
-    } catch (e) { /* guard unreachable — proceed */ }
+    } catch (e) { /* guard unreachable, proceed */ }
     // Use upsert so re-submitting (or a signed-in user who somehow reaches this page)
     // updates their existing row instead of throwing "duplicate key value violates
     // unique constraint therapists_pkey".
@@ -96,7 +96,7 @@ export default function Onboarding() {
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
       // Fire welcome email (server-side edge function handles BCC to bodymapdemo@gmail.com).
-      // Non-blocking — don't make the dashboard redirect wait.
+      // Non-blocking, don't make the dashboard redirect wait.
       try {
         const firstName = fullName?.split(' ')[0] || 'there';
         const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;

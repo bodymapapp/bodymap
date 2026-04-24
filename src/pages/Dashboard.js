@@ -253,7 +253,7 @@ function ServicesAndAvailability({ therapist }) {
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
         <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 16px', lineHeight:1.5 }}>
-          💡 Prefer Square or cash? Keep deposits off — clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
+          💡 Prefer Square or cash? Keep deposits off, clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <button onClick={async () => {
@@ -307,7 +307,7 @@ function ServicesAndAvailability({ therapist }) {
             <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:bufferEnabled?21:3, transition:'left 0.2s' }} />
           </button>
           <span style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>
-            {bufferEnabled ? `Buffer ON — ${bufferMinutes} min after each session` : 'Buffer OFF'}
+            {bufferEnabled ? `Buffer ON, ${bufferMinutes} min after each session` : 'Buffer OFF'}
           </span>
         </div>
         {bufferEnabled && (
@@ -332,7 +332,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Working Hours - Time Blocks */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off. Add blocks for each working period — e.g. 9–12 and 1–5 for a lunch break.</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off. Add blocks for each working period, e.g. 9–12 and 1–5 for a lunch break.</p>
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           {DAYS.map(({ id: dow, label }) => {
             const avail = availability.find(a => a.day_of_week === dow);
@@ -529,7 +529,7 @@ function PushNotificationsCard({ therapist, C2 }) {
         🔔 Push Notifications
       </p>
       <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
-        Get a tap on your phone when something matters — a new booking, a client reply, a gift card redemption. Works on your iPhone after you install MyBodyMap to your home screen.
+        Get a tap on your phone when something matters, a new booking, a client reply, a gift card redemption. Works on your iPhone after you install MyBodyMap to your home screen.
       </p>
 
       {!supported && (
@@ -1102,11 +1102,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       {/* SMS / Twilio */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💬 SMS Outreach (via Twilio)</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 6px 0', lineHeight:1.5 }}>Send text messages to lapsed or due clients from a dedicated practice number. Your clients see a local number — not your personal phone.</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 6px 0', lineHeight:1.5 }}>Send text messages to lapsed or due clients from a dedicated practice number. Your clients see a local number, not your personal phone.</p>
         <div style={{ background:C2.beige, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:C2.gray, lineHeight:1.6 }}>
           <strong>Setup takes about 10 minutes:</strong><br/>
           1. Go to <a href="https://twilio.com" target="_blank" rel="noreferrer" style={{ color:C2.forest }}>twilio.com</a> → create a free account ($15 trial credit included)<br/>
-          2. Get a phone number — pick your local area code<br/>
+          2. Get a phone number, pick your local area code<br/>
           3. Go to Console → Account Info → copy your Account SID, Auth Token, and phone number<br/>
           4. Paste them below and save
         </div>
@@ -1147,14 +1147,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       {/* Practice Pulse */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 Practice Pulse</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening — sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <button onClick={togglePulse}
               style={{ width:40, height:22, borderRadius:11, background:pulseEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
               <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:pulseEnabled?21:3, transition:'left 0.2s' }} />
             </button>
-            <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON — sent at 6pm' : 'Daily Pulse OFF'}</span>
+            <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON, sent at 6pm' : 'Daily Pulse OFF'}</span>
           </div>
         </div>
         <div style={{ marginBottom:14 }}>
@@ -1213,7 +1213,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
                       {new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
                     </span>
-                    {d.note && <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>— {d.note}</span>}
+                    {d.note && <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>,  {d.note}</span>}
                   </div>
                   <button onClick={() => removeBlockedDay(d.id)}
                     style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
@@ -1395,13 +1395,13 @@ export default function Dashboard({ view }) {
         <div style={{ background: '#2A5741', color: 'white', padding: '12px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 20 }}>📲</span>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add MyBodyMap to your home screen for instant access — use Share → Add to Home Screen</p>
+            <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Add MyBodyMap to your home screen for instant access, use Share → Add to Home Screen</p>
           </div>
           <button onClick={() => setShowBookmarkNudge(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: 'white', padding: '6px 14px', borderRadius: 20, fontWeight: 700, fontSize: 13, cursor: 'pointer', whiteSpace: 'nowrap' }}>Got it ✓</button>
         </div>
       )}
 
-      {/* Desktop tab nav — hidden on mobile */}
+      {/* Desktop tab nav, hidden on mobile */}
       {!isMobile && (
         <div className="bm-dash-pad" style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 16px 0' }}>
           <div style={{ background: C.white, borderRadius: '12px', padding: '6px', marginBottom: '24px', display: 'flex', gap: '4px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflowX: 'auto', scrollbarWidth: 'none' }}>

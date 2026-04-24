@@ -217,7 +217,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </div>
             )}
           </div>
-          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card — real clients appear here after booking.</div>}
+          {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card, real clients appear here after booking.</div>}
         </div>
       </div>
     </>
@@ -306,7 +306,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               </div>
               <div style={{fontSize:17,fontWeight:700}}>{d.getDate()}</div>
               {count>0&&<div style={{fontSize:10,marginTop:2,opacity:0.7}}>{count} appt{count!==1?'s':''}</div>}
-              {count===0&&<div style={{fontSize:10,marginTop:2,opacity:0.35}}>—</div>}
+              {count===0&&<div style={{fontSize:10,marginTop:2,opacity:0.35}}>, </div>}
             </button>
           );
         })}
@@ -458,7 +458,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
         <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
 
-      {/* MOBILE: vertical day list — full-width rows, no truncation */}
+      {/* MOBILE: vertical day list, full-width rows, no truncation */}
       {isMobile ? (
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {weekDays.map((d,i)=>{
@@ -618,7 +618,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
         })}
       </div>
       <div style={{fontSize:12,fontWeight:700,color:'#6B7280',textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:10}}>
-        {fmtShort(selDate)} — {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
+        {fmtShort(selDate)}, {selAppts.filter(a=>!a.preview).length} appointment{selAppts.filter(a=>!a.preview).length!==1?'s':''}
       </div>
       {selAppts.filter(a=>!a.preview).length===0
         ?<div style={{background:'#fff',borderRadius:12,padding:24,textAlign:'center',color:'#9CA3AF',fontSize:14}}>No appointments on this day.</div>
@@ -855,7 +855,7 @@ export default function ScheduleDashboard({ therapist }) {
           <h2 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
           <p style={{fontSize:12,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
         </div>
-        {/* Action row — unified pill buttons, consistent heights */}
+        {/* Action row, unified pill buttons, consistent heights */}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
           {/* Primary: Book Appointment */}
           <button onClick={() => setShowCreate(true)}
@@ -889,7 +889,7 @@ export default function ScheduleDashboard({ therapist }) {
         </div>
       </div>
 
-      {/* Block panel — expands below action row */}
+      {/* Block panel, expands below action row */}
       {showBlockPanel && (
         <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginBottom:12}}>
           <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
@@ -913,7 +913,7 @@ export default function ScheduleDashboard({ therapist }) {
                         <span style={{fontSize:13,fontWeight:700,color:'#1F2937'}}>
                           {new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}
                         </span>
-                        {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8}}>— {d.note}</span>}
+                        {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8}}>,  {d.note}</span>}
                       </div>
                       <button onClick={()=>removeBlockedDay(d.id)}
                         style={{background:'#FEE2E2',color:'#DC2626',border:'none',borderRadius:6,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
@@ -926,7 +926,7 @@ export default function ScheduleDashboard({ therapist }) {
           </div>
         )}
 
-      {/* Stats — compact on mobile */}
+      {/* Stats, compact on mobile */}
       {window.innerWidth < 768 ? (
         <div style={{display:'flex',gap:8,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
           {[

@@ -48,7 +48,7 @@ export default function ClientIntake() {
       });
 
       // Update SMS consent if the client opted in on this intake.
-      // Only ever flip sms_opted_in to TRUE — never overwrite a previous TRUE
+      // Only ever flip sms_opted_in to TRUE, never overwrite a previous TRUE
       // with FALSE if they left it unchecked this time. Opt-out must go
       // through STOP on SMS itself (handled by Twilio).
       if (intakeData.smsOptIn && client?.id) {
@@ -59,7 +59,7 @@ export default function ClientIntake() {
         } catch (e) { /* non-blocking */ }
       }
 
-      // Step 2: Resolve booking_id — use URL param if present, otherwise find
+      // Step 2: Resolve booking_id, use URL param if present, otherwise find
       // the client's next upcoming booking for this therapist. This ensures
       // sessions ALWAYS have booking_id set, so the schedule only needs one
       // condition to determine intake status (no email fallback needed).
@@ -104,7 +104,7 @@ export default function ClientIntake() {
       });
 
       // Step 4: Record waiver signature if therapist has waiver enabled.
-      // This is non-blocking — a signature failure should never prevent intake submission.
+      // This is non-blocking, a signature failure should never prevent intake submission.
       if (therapist.waiver_enabled !== false && therapist.waiver_text) {
         try {
           await supabase.from('waiver_signatures').insert({
@@ -202,7 +202,7 @@ export default function ClientIntake() {
       const isEmail = contact.includes('@');
       const digits = contact.replace(/\D/g, '');
 
-      // Fetch all clients for this therapist once — then match on email, phone, or name
+      // Fetch all clients for this therapist once, then match on email, phone, or name
       const { data: allClients } = await supabase
         .from('clients')
         .select('*')
@@ -236,7 +236,7 @@ export default function ClientIntake() {
 
       if (!client) return null;
 
-      // Get their previous sessions — exclude the current booking's session
+      // Get their previous sessions, exclude the current booking's session
       const { data: sessions } = await supabase
         .from('sessions')
         .select('*')
@@ -249,7 +249,7 @@ export default function ClientIntake() {
       // Use most recent session that isn't the current booking
       const prev = sessions.find(s => s.booking_id !== bookingIdFromUrl) || sessions[0];
 
-      // jsonb columns may return as array OR as JSON string — handle both
+      // jsonb columns may return as array OR as JSON string, handle both
       const parseZones = (field) => {
         if (!field) return [];
         if (Array.isArray(field)) return field;

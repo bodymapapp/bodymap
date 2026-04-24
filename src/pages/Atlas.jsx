@@ -1,5 +1,5 @@
 // src/pages/Atlas.jsx
-// The Atlas — an editorial overview of every MyBodyMap capability.
+// The Atlas, an editorial overview of every MyBodyMap capability.
 // Intentionally feels like a printed field guide, not a software feature page.
 // Hidden from top nav; linked from Features, Home, Footer, and shareable.
 
@@ -17,7 +17,7 @@ const GOLD = '#C9A84C';       // accent
 const SAGE = '#6B9E80';
 const MUTED = '#6B7280';
 
-// ── Taxonomy — source of truth for every MyBodyMap feature ────────────────
+// ── Taxonomy, source of truth for every MyBodyMap feature ────────────────
 // Numbers and IDs visible in the Atlas. Ordered by practice flow.
 const CATEGORIES = [
   {
@@ -117,7 +117,7 @@ const CATEGORIES = [
 // Count total capabilities (for the footer animated number)
 const TOTAL_COUNT = CATEGORIES.reduce((sum, c) => sum + c.subs.length, 0);
 
-// ── Illustrations — unique hand-drawn-feel SVG vignette per category ─────
+// ── Illustrations, unique hand-drawn-feel SVG vignette per category ─────
 function Illustration({ id, size = 56 }) {
   const stroke = INK_SOFT;
   const fill = 'none';
@@ -360,10 +360,10 @@ export default function Atlas() {
     try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); }
     // Set page title + meta for SEO/social sharing
     const prevTitle = document.title;
-    document.title = 'The Atlas — Every MyBodyMap feature in one view';
+    document.title = 'The Atlas, Every MyBodyMap feature in one view';
     let meta = document.querySelector('meta[name="description"]');
     const prevDesc = meta?.getAttribute('content');
-    if (meta) meta.setAttribute('content', `Every MyBodyMap capability, mapped. ${TOTAL_COUNT} features across 7 parts of your massage practice — booking, intake, client intelligence, retention, and more.`);
+    if (meta) meta.setAttribute('content', `Every MyBodyMap capability, mapped. ${TOTAL_COUNT} features across 7 parts of your massage practice, booking, intake, client intelligence, retention, and more.`);
     return () => {
       document.title = prevTitle;
       if (meta && prevDesc) meta.setAttribute('content', prevDesc);
@@ -386,7 +386,7 @@ export default function Atlas() {
     <div style={{ background: '#0B1A13', minHeight: '100vh', paddingTop: 64, position: 'relative', overflow: 'hidden' }}>
       <Nav />
 
-      {/* Ambient gradient orb — drifts slowly behind content */}
+      {/* Ambient gradient orb, drifts slowly behind content */}
       <div aria-hidden style={{
         position: 'absolute',
         top: '12%', left: '-10%',
@@ -410,7 +410,7 @@ export default function Atlas() {
         zIndex: 0,
       }} />
 
-      {/* Paper texture overlay — subtle noise */}
+      {/* Paper texture overlay, subtle noise */}
       <div aria-hidden style={{
         position: 'absolute', inset: 0,
         backgroundImage: `radial-gradient(circle at 50% 40%, rgba(255,255,255,0.015) 0%, transparent 40%)`,
@@ -483,7 +483,7 @@ export default function Atlas() {
             maxWidth: 640,
             margin: '0 auto 38px',
           }}>
-            A field guide to MyBodyMap. Seven parts of your practice — from the first time a client taps "book" to the quiet text reminding them it's been a while.
+            A field guide to MyBodyMap. Seven parts of your practice, from the first time a client taps "book" to the quiet text reminding them it's been a while.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/signup" style={{
@@ -521,7 +521,7 @@ export default function Atlas() {
         </div>
       </section>
 
-      {/* THE CARDS — arranged as pinned Polaroids on a dark wall */}
+      {/* THE CARDS, arranged as pinned Polaroids on a dark wall */}
       <section style={{ position: 'relative', zIndex: 1, padding: '40px 20px 100px' }}>
         <div style={{
           maxWidth: 1200, margin: '0 auto',
@@ -548,7 +548,7 @@ export default function Atlas() {
             letterSpacing: '0.04em',
             marginBottom: 14,
           }}>
-            And that's —
+            And that's , 
           </div>
           <div style={{
             fontFamily: 'Georgia, serif',
@@ -579,7 +579,7 @@ export default function Atlas() {
             One platform. One price.
           </div>
 
-          {/* Final CTA — quiet, confident */}
+          {/* Final CTA, quiet, confident */}
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link to="/signup" style={{
               background: GOLD,
@@ -593,7 +593,7 @@ export default function Atlas() {
               letterSpacing: '0.02em',
               boxShadow: '0 8px 24px rgba(201,168,76,0.3)',
             }}>
-              Start free — 5 minutes →
+              Start free, 5 minutes →
             </Link>
             <Link to="/features" style={{
               background: 'transparent',

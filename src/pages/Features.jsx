@@ -944,7 +944,7 @@ export default function Features() {
           </FadeIn>
           <FadeIn delay={0.15}>
             <p style={{ fontFamily:"Georgia, serif", fontStyle:"italic", fontSize:"clamp(18px,2.4vw,26px)", color:"rgba(255,255,255,0.85)", lineHeight:1.5, marginBottom:36, maxWidth:720, margin:"0 auto 36px" }}>
-              Reminders, intake, follow-ups — all automatic.
+              Reminders, intake, follow-ups, all automatic.
             </p>
           </FadeIn>
           <FadeIn delay={0.2}>
@@ -971,7 +971,7 @@ export default function Features() {
                 borderBottom: '1px solid rgba(255,255,255,0.25)',
                 paddingBottom: 2,
               }}>
-                Or see every feature in one view — The Atlas →
+                Or see every feature in one view, The Atlas →
               </Link>
             </div>
           </FadeIn>
@@ -1004,7 +1004,7 @@ export default function Features() {
                 What Makes a Complete Therapist?
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:680, margin:"0 auto", lineHeight:1.75 }}>
-                One who brings both exceptional technique <em>and</em> the technology to deliver an unforgettable experience. A client who feels their therapist remembers everything shared over two years. Who receives a perfectly-timed reminder to take care of themselves. Whose therapist walks in already knowing — so 99% of their energy goes to the work, not the back office. That therapist is you. MyBodyMap makes it possible.
+                One who brings both exceptional technique <em>and</em> the technology to deliver an unforgettable experience. A client who feels their therapist remembers everything shared over two years. Who receives a perfectly-timed reminder to take care of themselves. Whose therapist walks in already knowing, so 99% of their energy goes to the work, not the back office. That therapist is you. MyBodyMap makes it possible.
               </p>
             </div>
           </FadeIn>
@@ -1031,7 +1031,7 @@ export default function Features() {
         </div>
       </section>
 
-      {/* BODY MAP — Section 1, The Core Moat */}
+      {/* BODY MAP, Section 1, The Core Moat */}
       <section id="bodymap" style={{ scrollMarginTop:"112px", background:`linear-gradient(160deg,#0D1F17 0%,#1B3A28 60%,#2A5741 100%)`, padding:"100px 24px" }}>
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
@@ -1043,7 +1043,7 @@ export default function Features() {
                 The Visual Body Map
               </h2>
               <p style={{ fontSize:18, color:"rgba(255,255,255,0.65)", maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
-                Every client maps their body before they arrive. Focus zones, avoid areas, pressure, medical flags — all captured visually, not verbally. Nothing else in the market does this.
+                Every client maps their body before they arrive. Focus zones, avoid areas, pressure, medical flags, all captured visually, not verbally. Nothing else in the market does this.
               </p>
             </div>
           </FadeIn>
@@ -1052,7 +1052,7 @@ export default function Features() {
               <div>
                 <BodyMapDemo />
                 <div style={{ textAlign:"center", marginTop:12, fontSize:12, color:"rgba(255,255,255,0.35)" }}>
-                  ↑ Live demo — tap zones, switch front/back
+                  ↑ Live demo, tap zones, switch front/back
                 </div>
               </div>
             </FadeIn>
@@ -1062,7 +1062,7 @@ export default function Features() {
                   {[
                     { icon:"🖐️", title:"Tap-to-select, not type-to-explain", desc:"Clients tap exactly where they want work and what to avoid on a front/back body diagram. No forms. No free-text. Precise, visual, instant." },
                     { icon:"🔄", title:"Carries forward every session", desc:"After session 1, every future intake is pre-filled. Clients confirm or update in one tap. You never ask the same question twice." },
-                    { icon:"🚨", title:"Medical flags surface automatically", desc:"Injuries, contraindications, and sensitivities are flagged before you walk in — not discovered mid-session." },
+                    { icon:"🚨", title:"Medical flags surface automatically", desc:"Injuries, contraindications, and sensitivities are flagged before you walk in, not discovered mid-session." },
                     { icon:"📲", title:"Sent automatically after booking", desc:"The body map link fires the moment a booking is confirmed. No chasing. No paper. It's in your dashboard before the client arrives." },
                   ].map((f,i) => (
                     <div key={i} style={{ display:"flex", gap:16 }}>
@@ -1267,7 +1267,7 @@ export default function Features() {
                 She tells you where it hurts. Before she arrives.
               </h2>
               <p style={{ fontSize:16, color:C.gray, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
-                A visual body map sent automatically after every booking. Clients tap exactly where they need work and what to avoid. Preferences saved permanently — never asked again.
+                A visual body map sent automatically after every booking. Clients tap exactly where they need work and what to avoid. Preferences saved permanently, never asked again.
               </p>
             </div>
           </FadeIn>
@@ -1275,7 +1275,7 @@ export default function Features() {
             <FadeIn delay={0.1}>
               <div>
                 <BodyMapDemo />
-                <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Try it — tap zones, switch front/back, toggle focus/avoid</div>
+                <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Try it, tap zones, switch front/back, toggle focus/avoid</div>
               </div>
             </FadeIn>
             <FadeIn delay={0.15}>
@@ -1310,7 +1310,7 @@ export default function Features() {
                 After Session One,<br/>They Never Start From Scratch.
               </h2>
               <p style={{ fontSize:16, color:"rgba(255,255,255,0.65)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
-                MyBodyMap remembers every client's preferences — zones, pressure, music, lighting, what to avoid. When they book again, their intake arrives pre-filled. One tap to confirm. Done in 10 seconds.
+                MyBodyMap remembers every client's preferences, zones, pressure, music, lighting, what to avoid. When they book again, their intake arrives pre-filled. One tap to confirm. Done in 10 seconds.
               </p>
             </div>
           </FadeIn>
@@ -1365,9 +1365,9 @@ export default function Features() {
             <FadeIn delay={0.15}>
               <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
                 {[
-                  { icon:"🧠", title:"Remembers everything", desc:"Zones, pressure level, music preference, lighting, draping, medical flags — all stored from session one and carried forward automatically." },
+                  { icon:"🧠", title:"Remembers everything", desc:"Zones, pressure level, music preference, lighting, draping, medical flags, all stored from session one and carried forward automatically." },
                   { icon:"⚡", title:"10-second intake for returning clients", desc:"The welcome back banner appears the moment they open the link. One tap and they are done. No re-entering anything they already told you." },
-                  { icon:"📈", title:"Every session adds a layer", desc:"If something changes — a new injury, a different pressure preference — they update just that field. Everything else stays. The record gets richer over time." },
+                  { icon:"📈", title:"Every session adds a layer", desc:"If something changes, a new injury, a different pressure preference, they update just that field. Everything else stays. The record gets richer over time." },
                   { icon:"🔒", title:"No competitor has this", desc:"Vagaro, MassageBook, and Acuity send a blank intake every time. MyBodyMap is the only platform that treats returning clients as the individuals they are." },
                 ].map(({icon,title,desc}) => (
                   <div key={title} style={{ display:"flex", gap:14 }}>
@@ -1380,7 +1380,7 @@ export default function Features() {
                 ))}
                 <a href={`/bodymapdemopractice?name=Sarah+Mitchell&email=sarah.demo@bodymap.test`}
                   style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.sage, color:"#fff", padding:"13px 24px", borderRadius:12, textDecoration:"none", fontFamily:"system-ui", fontSize:14, fontWeight:700, width:"fit-content", marginTop:8 }}>
-                  See it live — open Sarah's intake →
+                  See it live, open Sarah's intake →
                 </a>
               </div>
             </FadeIn>
@@ -1432,7 +1432,7 @@ export default function Features() {
                 Fill your calendar without the awkward follow-up
               </h2>
               <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
-                Send a personal message to your lapsed clients, your regulars, or anyone past their usual visit interval — in one tap. Each client gets their own message with their name. You set it and forget it.
+                Send a personal message to your lapsed clients, your regulars, or anyone past their usual visit interval, in one tap. Each client gets their own message with their name. You set it and forget it.
               </p>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
@@ -1462,13 +1462,13 @@ export default function Features() {
                 The session doesn't end when the client leaves
               </h2>
               <p style={{ fontSize:18, color:C.textLight, maxWidth:600, margin:"0 auto", lineHeight:1.7 }}>
-                The moment you mark a session complete, your client receives a beautifully formatted summary — your personal message, session notes, a self-care tip, and a direct link to book their next visit.
+                The moment you mark a session complete, your client receives a beautifully formatted summary, your personal message, session notes, a self-care tip, and a direct link to book their next visit.
               </p>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:32 }}>
               {[
                 { icon:"✉️", title:"Automatic delivery", desc:"Fires the instant you mark a session complete. No extra steps. Your client hears from you while the session is still fresh." },
-                { icon:"📋", title:"Your words, their inbox", desc:"Write a personal message in the Session Record — stretches to try, what improved, what to focus on next time. It goes straight to them." },
+                { icon:"📋", title:"Your words, their inbox", desc:"Write a personal message in the Session Record, stretches to try, what improved, what to focus on next time. It goes straight to them." },
                 { icon:"📅", title:"Book next session button", desc:"Every brief includes a direct link to book their next appointment. The best time to rebook is right after a great session." },
               ].map(({ icon, title, desc }) => (
                 <div key={title} style={{ background:C.white, borderRadius:16, padding:28 }}>
@@ -1499,7 +1499,7 @@ export default function Features() {
           <FadeIn delay={0.1}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
               {[
-                { icon:"📈", title:"Expected vs collected", desc:"See your projected revenue from upcoming bookings and your collected revenue from completed sessions — side by side." },
+                { icon:"📈", title:"Expected vs collected", desc:"See your projected revenue from upcoming bookings and your collected revenue from completed sessions, side by side." },
                 { icon:"📅", title:"Daily, weekly, monthly views", desc:"Switch between views to see today's earnings, this week's performance, or the full month at a glance." },
                 { icon:"💳", title:"Deposit tracking", desc:"Deposits are automatically counted toward expected revenue. See which clients have paid and which are pending." },
                 { icon:"🔔", title:"Session rate drives everything", desc:"Set your hourly rate once in Settings. Every revenue projection across every view updates automatically." },
@@ -1525,7 +1525,7 @@ export default function Features() {
                 Give the gift of <em style={{ color:"#E85C79", fontStyle:"italic" }}>feeling good.</em>
               </h2>
               <p style={{ fontSize:16, color:C.gray, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
-                For the mother who gives everything. The friend in a hard season. The partner who deserves to be cared for. Gift cards travel where flowers can't — and they bring clients back through your door.
+                For the mother who gives everything. The friend in a hard season. The partner who deserves to be cared for. Gift cards travel where flowers can't, and they bring clients back through your door.
               </p>
             </div>
           </FadeIn>
@@ -1534,8 +1534,8 @@ export default function Features() {
               {[
                 { icon:"🌸", title:"Beautiful by default", desc:"Every card comes with a rose-and-cream design, botanical flourishes, and space for a personal note. Nothing feels transactional." },
                 { icon:"💌", title:"Live preview as you create", desc:"See the gift card build in real time as you fill in the recipient, amount, and message. What you see is what they'll receive." },
-                { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200 — or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
-                { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. MyBodyMap makes it as easy as texting your booking link — and each redemption brings a new client." },
+                { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200, or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
+                { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. MyBodyMap makes it as easy as texting your booking link, and each redemption brings a new client." },
               ].map(({icon,title,desc}) => (
                 <div key={title} style={{ background:"rgba(255,255,255,0.75)", backdropFilter:"blur(6px)", borderRadius:16, padding:24, border:"1.5px solid rgba(251,207,232,0.6)" }}>
                   <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
@@ -1606,14 +1606,14 @@ export default function Features() {
                 Your Practice,<br/>In Your Pocket.
               </h2>
               <p style={{ fontSize:17, color:"rgba(255,255,255,0.75)", maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
-                Install MyBodyMap to your home screen in two taps. No app store. No download. Just a tap on the Safari share button and you're in. Then when a client books, replies, or goes quiet — a gentle tap on your phone tells you.
+                Install MyBodyMap to your home screen in two taps. No app store. No download. Just a tap on the Safari share button and you're in. Then when a client books, replies, or goes quiet, a gentle tap on your phone tells you.
               </p>
             </div>
           </FadeIn>
           <FadeIn delay={0.1}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
               {[
-                { icon:"📲", title:"Install to home screen", desc:"Tap Share in Safari, then Add to Home Screen. MyBodyMap opens like any native app — full screen, no browser bar." },
+                { icon:"📲", title:"Install to home screen", desc:"Tap Share in Safari, then Add to Home Screen. MyBodyMap opens like any native app, full screen, no browser bar." },
                 { icon:"🔔", title:"Push notifications", desc:"Know the moment a client books, a gift card is redeemed, or a lapsed client replies. No need to check email or refresh." },
                 { icon:"🌿", title:"Built for thumbs", desc:"Every screen rebuilt for one-handed use. Bottom nav, large tap targets, sliding panels. Runs smoothly on iPhone SE and up." },
                 { icon:"⚡", title:"Works when Wi-Fi doesn't", desc:"Session notes, schedule, and client profiles load instantly from cache. Come back online and everything syncs." },
@@ -1722,13 +1722,13 @@ export default function Features() {
                 Bring your entire client history with you
               </h2>
               <p style={{ fontSize:18, color:C.textLight, maxWidth:620, margin:"0 auto", lineHeight:1.7 }}>
-                Already using MassageBook, Vagaro, GlossGenius, or Mindbody? Import your full client list in under 5 minutes. Your history, your patterns, your relationships — all carry over.
+                Already using MassageBook, Vagaro, GlossGenius, or Mindbody? Import your full client list in under 5 minutes. Your history, your patterns, your relationships, all carry over.
               </p>
             </div>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:24, marginBottom:40 }}>
               {[
-                { icon:"📋", title:"Client list import", desc:"Upload a CSV from any platform. Names, emails, phones, notes — all mapped automatically. Duplicates are detected and merged." },
-                { icon:"📅", title:"Appointment history", desc:"Import past sessions so lapsed detection and pattern intelligence work from day one — not after months of building new data." },
+                { icon:"📋", title:"Client list import", desc:"Upload a CSV from any platform. Names, emails, phones, notes, all mapped automatically. Duplicates are detected and merged." },
+                { icon:"📅", title:"Appointment history", desc:"Import past sessions so lapsed detection and pattern intelligence work from day one, not after months of building new data." },
                 { icon:"📆", title:"Upcoming bookings", desc:"Import your upcoming appointment schedule so your calendar isn't empty on day one. Clients are notified via your new MyBodyMap link." },
                 { icon:"🔗", title:"Supported platforms", desc:"MassageBook, Vagaro, GlossGenius, Mindbody, Square, or any CSV file. If it exports a spreadsheet, MyBodyMap can import it." },
               ].map(({ icon, title, desc }) => (
@@ -1745,7 +1745,7 @@ export default function Features() {
                 <div style={{ fontSize:14, color:"rgba(255,255,255,0.7)" }}>Takes 5 minutes. We walk you through every step inside the app.</div>
               </div>
               <Link to="/signup" style={{ background:"#fff", color:C.forest, borderRadius:10, padding:"12px 24px", fontSize:14, fontWeight:700, textDecoration:"none", whiteSpace:"nowrap" }}>
-                Start Free — Import Today →
+                Start Free, Import Today →
               </Link>
             </div>
           </FadeIn>

@@ -194,10 +194,10 @@ export default function Home() {
               <span style={{ fontSize:12, fontWeight:700, color:G.mid, textTransform:'uppercase', letterSpacing:'0.08em' }}>Built by therapists, for therapists</span>
             </div>
             <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(36px,5vw,58px)', fontWeight:700, lineHeight:1.15, color:G.deep, margin:'0 0 20px', letterSpacing:'-0.02em' }}>
-              Your client's full history, ready before <em style={{ fontStyle:'italic', color:G.soft }}>every session.</em>
+              Keep every client <em style={{ fontStyle:'italic', color:G.soft }}>coming back.</em>
             </h1>
             <p style={{ fontSize:18, color:G.mid2, lineHeight:1.65, margin:'0 0 32px', maxWidth:480 }}>
-              The only practice tool built around client retention. Automated booking, intake, reminders, and AI session briefs. Free on Bronze. Forever.
+              Booking, intake, reminders, and session notes. All automated. You do what you do best: help them feel better.
             </p>
             <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginBottom:20, flexDirection: isMobile ? 'column' : 'row' }}>
               <Link to="/signup" style={{ background:G.mid, color:'#fff', borderRadius:12, padding:'15px 28px', fontSize:15, fontWeight:700, textDecoration:'none', display:'inline-block', textAlign:'center' }}>
@@ -208,7 +208,7 @@ export default function Home() {
               </a>
             </div>
             <div style={{ display:'flex', gap:20, flexWrap:'wrap' }}>
-              {['Free on Bronze. Forever.', 'Live in 30 seconds', 'No credit card ever'].map(t => (
+              {['Free during beta', 'Live in 30 seconds', 'No credit card'].map(t => (
                 <span key={t} style={{ fontSize:13, color:G.soft, display:'flex', alignItems:'center', gap:4 }}>
                   <span style={{ color:G.soft }}>✓</span> {t}
                 </span>
@@ -224,7 +224,7 @@ export default function Home() {
                 borderBottom: `1px solid ${G.mid2}60`,
                 paddingBottom: 2,
               }}>
-                Or see every feature in one view — The Atlas →
+                Or see every feature in one view, The Atlas →
               </Link>
             </div>
           </div>
@@ -264,7 +264,7 @@ export default function Home() {
           From intake to post-session summary.
         </h2>
         <p style={{fontSize: isMobile ? '15px' : '18px', color:'rgba(255,255,255,0.65)', marginBottom:'40px', maxWidth:'560px', margin:'0 auto 40px', lineHeight:1.65}}>
-          Everything your clients experience, and everything you see — before they arrive.
+          Everything your clients experience, and everything you see, before they arrive.
         </p>
 
         {/* Mobile: card-based feature flow instead of iframe */}
@@ -272,7 +272,7 @@ export default function Home() {
           {[
             { step:'1', icon:'📅', title:'Client books online', desc:'No app. No account. They pick a time in 2 taps. Your schedule updates instantly.', color:'#1A3A28' },
             { step:'2', icon:'🗺️', title:'They fill their body map', desc:'Focus zones, pressure, music, what to avoid. Sent automatically. Arrives in 60 seconds.', color:'#1A3A28' },
-            { step:'3', icon:'✨', title:'You walk in knowing everything', desc:'Their full intake, past session patterns, and AI brief — waiting before you touch them.', color:'#1A3A28' },
+            { step:'3', icon:'✨', title:'You walk in knowing everything', desc:'Their full intake, past session patterns, and AI brief, waiting before you touch them.', color:'#1A3A28' },
             { step:'4', icon:'🔁', title:'Next visit? 10 seconds', desc:'The welcome back banner pre-fills everything from last time. They just confirm and done.', color:'#1A3A28' },
           ].map(({step, icon, title, desc, color}) => (
             <div key={step} style={{background:color, border:'1px solid rgba(255,255,255,0.08)', borderRadius:16, padding:'20px 24px', textAlign:'left', display:'flex', gap:16, alignItems:'flex-start'}}>
@@ -306,11 +306,11 @@ export default function Home() {
                 Move your clients over in 5 minutes. Start saving money the same day.
               </h2>
               <p style={{ fontSize:16, color:G.mid2, lineHeight:1.75, margin:'0 0 28px' }}>
-                Import from Square, MassageBook, Vagaro, or GlossGenius in two clicks. Every client, every phone number, every visit history — in MyBodyMap before your next session. No re-entering. No confusion. No ads.
+                Import from Square, MassageBook, Vagaro, or GlossGenius in two clicks. Every client, every phone number, every visit history, in MyBodyMap before your next session. No re-entering. No confusion. No ads.
               </p>
               <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:32 }}>
                 {[
-                  { icon:'📥', text:'Upload your existing client list — any platform, any CSV' },
+                  { icon:'📥', text:'Upload your existing client list, any platform, any CSV' },
                   { icon:'⚡', text:'Clients appear instantly with their history intact' },
                   { icon:'💰', text:'Stop paying $45–$70/mo for tools that don\'t know your clients\' bodies' },
                 ].map(item => (
@@ -490,7 +490,7 @@ export default function Home() {
             Your practice deserves<br/>better tools. Free ones.
           </h2>
           <p style={{ fontSize:17, color:'rgba(255,255,255,0.65)', margin:'0 0 36px', lineHeight:1.7 }}>
-            Every tool on this page. Free on Bronze, forever. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
+            Every tool on this page. Free during our beta. No credit card, no trial, no catch. Start today and your first client can book in 5 minutes.
           </p>
           <div style={{ display:'flex', gap:12, justifyContent:'center', flexWrap:'wrap', marginBottom:20 }}>
             <Link to="/signup" style={{ background:'#fff', color:G.deep, borderRadius:12, padding:'16px 32px', fontSize:16, fontWeight:700, textDecoration:'none' }}>
@@ -501,7 +501,7 @@ export default function Home() {
             </Link>
           </div>
           <p style={{ fontSize:13, color:'rgba(255,255,255,0.35)', margin:0 }}>
-            Built by therapists, for therapists. Free forever on Bronze.
+            Built by therapists, for therapists. Free during beta.
           </p>
         </div>
       </section>

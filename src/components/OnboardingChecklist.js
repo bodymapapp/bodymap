@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const STEPS = [
-  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes — no client left behind.', action:'Import Clients', view:'import'   },
+  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'import'   },
   { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Go to Settings', view:'settings' },
   { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Go to Settings', view:'settings' },
   { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings' },

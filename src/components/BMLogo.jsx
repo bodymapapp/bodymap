@@ -1,4 +1,4 @@
-// BMLogo.jsx — MyBodyMap paired-leaf SVG mark
+// BMLogo.jsx, MyBodyMap paired-leaf SVG mark
 import React from 'react';
 
 export default function BMLogo({ size = 32, variant = 'dark', showWordmark = true, showTagline = false }) {

@@ -91,7 +91,7 @@ function Cal({availability, selected, onSelect, blockedDates=new Set()}) {
   );
 }
 
-// Stripe Card Element — uses connected account to match payment intent
+// Stripe Card Element, uses connected account to match payment intent
 function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuccess, onError }) {
   const divRef = useRef(null);
   const stripeRef = useRef(null);
@@ -304,7 +304,7 @@ export default function BookingPage() {
     if(depositRequired && therapist.stripe_account_id) {
       console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);
-      // Call edge function directly via fetch — supabase.functions.invoke()
+      // Call edge function directly via fetch, supabase.functions.invoke()
       // was failing at the gateway level before the function ran (no invocation logs)
       const fnRes = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/create-deposit`,
@@ -336,13 +336,13 @@ export default function BookingPage() {
         setDepositAccountId(res.data.account_id || null);
         return;
       }
-      // Edge function failed — show the error, DO NOT confirm
+      // Edge function failed, show the error, DO NOT confirm
       const errMsg = res.data?.error || res.error?.message || 'Payment setup failed. Please try again.';
       setPaymentError(errMsg);
       // Stay on step 4 so the error is visible
       return;
     }
-    // No deposit required — confirm directly
+    // No deposit required, confirm directly
     // If couples booking, send partner their intake link
     if (svc?.is_couples && partner.email && partner.name && bookingId) {
       const intakeUrl = `${window.location.origin}/${therapist.custom_url}?name=${encodeURIComponent(partner.name)}&email=${encodeURIComponent(partner.email)}&booking_id=${bookingId}`;
@@ -408,7 +408,7 @@ export default function BookingPage() {
           </div>
         )}
         <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing — takes 60 seconds</div>
+          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 One more thing, takes 60 seconds</div>
           <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
             Fill your body map so {therapist.full_name?.split(' ')[0]||'your therapist'} knows exactly where to focus before you arrive.
           </div>
@@ -454,7 +454,7 @@ export default function BookingPage() {
         {step===1&&(
           <div>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like — no account needed.</p>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like, no account needed.</p>
             {services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -565,7 +565,7 @@ export default function BookingPage() {
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>
               ))}
-              {/* SMS consent (TCPA) — only shown if phone is filled */}
+              {/* SMS consent (TCPA), only shown if phone is filled */}
               {form.phone && form.phone.replace(/\D/g,'').length >= 10 && (
                 <label style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:'#F9FAF9',border:`1px solid ${C.light}`,borderRadius:10,cursor:'pointer'}}>
                   <input type="checkbox" checked={!!form.sms_opted_in}
@@ -605,7 +605,7 @@ export default function BookingPage() {
                 if(!partner.name.trim()) perrs.name='Required';
                 if(!partner.email.trim()||!/\S+@\S+\.\S+/.test(partner.email)) perrs.email='Valid email required';
                 if(Object.keys(perrs).length){setPartnerErrors(perrs);return;}
-              }              // Check repeat client by email OR phone OR name — any match = returning client
+              }              // Check repeat client by email OR phone OR name, any match = returning client
               const email = form.email.trim().toLowerCase();
               const phone = form.phone.replace(/\D/g,'').slice(-10);
               const name = form.name.trim().toLowerCase();
@@ -678,7 +678,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* STEP 4 — Confirm */}
+        {/* STEP 4, Confirm */}
         {step===4&&!depositClientSecret&&!depositLoading&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
@@ -688,7 +688,7 @@ export default function BookingPage() {
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
                 ['Time',slot.display],['Therapist',therapist.business_name||therapist.full_name],
-                ['Price',`$${svc.price} — pay at session`],['Name',form.name],['Email',form.email],
+                ['Price',`$${svc.price}, pay at session`],['Name',form.name],['Email',form.email],
                 ...(form.phone?[['Phone',form.phone]]:[]),
               ].map(([l,v],i,arr)=>(
                 <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:16,padding:'10px 0',borderBottom:i<arr.length-1?`1px solid ${C.light}`:'none'}}>
@@ -712,7 +712,7 @@ export default function BookingPage() {
               <div style={{marginBottom:14,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
                 <span style={{fontSize:18}}>🎁</span>
                 <div>
-                  <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>Gift certificate applied — no deposit required</div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>Gift certificate applied, no deposit required</div>
                   <div style={{fontSize:12,color:'#374151',marginTop:2}}>${giftCert.remaining?.toFixed(0)} credit · Code: {giftCert.code}</div>
                 </div>
               </div>
@@ -720,7 +720,7 @@ export default function BookingPage() {
             {isRepeatClient&&!giftCert&&(
               <div style={{marginBottom:14,background:'#F0FDF4',border:'1px solid #86EFAC',borderRadius:12,padding:'12px 16px',display:'flex',gap:8,alignItems:'center'}}>
                 <span>✅</span>
-                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back! As a returning client, no deposit is required — your booking is confirmed instantly.</span>
+                <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back! As a returning client, no deposit is required, your booking is confirmed instantly.</span>
               </div>
             )}
             <button onClick={submit} disabled={submitting}
@@ -748,7 +748,7 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* DEPOSIT PAYMENT FORM — embedded, no redirect */}
+        {/* DEPOSIT PAYMENT FORM, embedded, no redirect */}
         {depositClientSecret&&!confirmed&&(
           <div>
             <button onClick={()=>{setDepositClientSecret(null);setDepositAccountId(null);setStep(4);}}

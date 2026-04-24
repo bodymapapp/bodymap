@@ -1,4 +1,4 @@
-// Daily signups digest — runs once a day via Supabase cron.
+// Daily signups digest, runs once a day via Supabase cron.
 // Emails bodymap01@gmail.com (BCC bodymapdemo@gmail.com) with:
 //   1. Every therapist that signed up in the past 24 hours (with any security flags)
 //   2. Signup attempt stats: blocked, flagged, rate-limit hits

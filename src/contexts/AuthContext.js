@@ -45,7 +45,7 @@ export const AuthProvider = ({ children }) => {
                   plan: 'silver',
                   trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 }]);
-                // Welcome email (non-blocking) — edge function BCCs bodymapdemo@gmail.com
+                // Welcome email (non-blocking), edge function BCCs bodymapdemo@gmail.com
                 try {
                   const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
                   const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;

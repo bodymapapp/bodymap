@@ -176,7 +176,7 @@ export default function NotificationPrefsCard({ therapist, C2 }) {
         <div>
           <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>🔔 Notifications</p>
           <p style={{ fontSize: 13, color: C2.darkGray, lineHeight: 1.6, margin: 0, fontFamily: 'Georgia, serif' }}>
-            Choose how your clients hear from you — and how you hear about them.
+            Choose how your clients hear from you, and how you hear about them.
           </p>
         </div>
         {saved && <span style={{ fontSize: 11, color: C2.forest, fontWeight: 700 }}>✓ Saved</span>}

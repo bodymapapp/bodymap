@@ -58,7 +58,7 @@ function analyzeInput(email: string, fullName: string, businessName: string) {
   if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
     block = { reason: 'disposable_email', message: 'Please use a real email address so we can reach you about your practice.' };
   }
-  // Plus-alias used for throwaways (jane+spam1@gmail.com) — soft flag, don't block
+  // Plus-alias used for throwaways (jane+spam1@gmail.com), soft flag, don't block
   const localPart = emailLower.split('@')[0];
   if (localPart.includes('+')) {
     flags.push('plus_alias_email');
@@ -170,7 +170,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({ outcome: 'allowed', risk_score: score, flag_reasons: flags }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err: any) {
     console.error('signup-guard error:', err);
-    // Fail open — never block legitimate signups because of a bug in the guard.
+    // Fail open, never block legitimate signups because of a bug in the guard.
     return new Response(JSON.stringify({ outcome: 'allowed', risk_score: 0, flag_reasons: [], guard_error: err?.message || String(err) }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });

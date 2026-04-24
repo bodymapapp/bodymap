@@ -97,12 +97,12 @@ export default function ImportClients({ therapist, onComplete }) {
       const lastVisit = get(mapping.lastVisit) || null;
       const visitCount = parseInt(get(mapping.visitCount)) || null;
 
-      // Build best possible name — fall back to email or phone if name missing
+      // Build best possible name, fall back to email or phone if name missing
       let name = [firstName, lastName].filter(Boolean).join(' ');
       if (!name && email) name = email.split('@')[0].replace(/[._]/g, ' ');
       if (!name && phone) name = `Client ${phone.replace(/\D/g,'').slice(-4)}`;
       
-      // Nothing at all — truly skip
+      // Nothing at all, truly skip
       if (!name && !email && !phone) { skipped++; continue; }
 
       try {
@@ -133,7 +133,7 @@ export default function ImportClients({ therapist, onComplete }) {
           if (Object.keys(updates).length) {
             await supabase.from('clients').update(updates).eq('id', client.id);
           }
-          skipped++; // already exists — count as skipped not failed
+          skipped++; // already exists, count as skipped not failed
         } else {
           // Insert new client
           const payload = { therapist_id: therapist.id, name };
@@ -237,10 +237,10 @@ export default function ImportClients({ therapist, onComplete }) {
         {importTab === 'appointments' && <ImportBookings therapist={therapist} onComplete={onComplete} />}
         {importTab === 'clients' && <>
 
-        {/* STEP 1 — Select platform */}
+        {/* STEP 1, Select platform */}
         {step === 1 && (
           <div>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 1 — Where are you coming from?</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 1, Where are you coming from?</div>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))', gap:10 }}>
               {PLATFORMS.map(p => (
                 <button key={p.id} onClick={() => { setPlatform(p); setStep(2); }}
@@ -254,11 +254,11 @@ export default function ImportClients({ therapist, onComplete }) {
           </div>
         )}
 
-        {/* STEP 2 — Upload */}
+        {/* STEP 2, Upload */}
         {step === 2 && (
           <div>
             <button onClick={() => setStep(1)} style={{ background:'none', border:'none', color:C.gray, fontSize:13, cursor:'pointer', marginBottom:16, padding:0 }}>‹ Back</button>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 2 — Export from {platform?.label} and upload</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 2, Export from {platform?.label} and upload</div>
 
             <div style={{ background:C.beige, borderRadius:12, padding:16, marginBottom:20, fontSize:13, color:C.gray, lineHeight:1.7 }}>
               <strong style={{ color:C.dark }}>How to export from {platform?.label}:</strong>
@@ -283,11 +283,11 @@ export default function ImportClients({ therapist, onComplete }) {
           </div>
         )}
 
-        {/* STEP 3 — Preview & map */}
+        {/* STEP 3, Preview & map */}
         {step === 3 && (
           <div>
             <button onClick={() => setStep(2)} style={{ background:'none', border:'none', color:C.gray, fontSize:13, cursor:'pointer', marginBottom:16, padding:0 }}>‹ Back</button>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 3 — Preview & confirm</div>
+            <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:14 }}>Step 3, Preview & confirm</div>
 
             <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#16A34A', fontWeight:600 }}>
               ✅ Found {rows.length} clients in your file
@@ -295,7 +295,7 @@ export default function ImportClients({ therapist, onComplete }) {
 
             {/* Column mapping */}
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, marginBottom:10 }}>Column mapping — auto-detected, adjust if needed:</div>
+              <div style={{ fontSize:12, fontWeight:700, color:C.gray, marginBottom:10 }}>Column mapping, auto-detected, adjust if needed:</div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }} className="bm-2col">
                 {[
                   { key:'firstName', label:'First Name *' },
@@ -311,7 +311,7 @@ export default function ImportClients({ therapist, onComplete }) {
                     <select value={mapping[key] >= 0 ? mapping[key] : -1}
                       onChange={e => setMapping(m => ({ ...m, [key]: parseInt(e.target.value) }))}
                       style={{ flex:1, padding:'6px 8px', border:`1.5px solid ${C.light}`, borderRadius:6, fontSize:12, outline:'none', background:'#fff' }}>
-                      <option value={-1}>— skip —</option>
+                      <option value={-1}>,  skip , </option>
                       {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
                     </select>
                   </div>
@@ -332,8 +332,8 @@ export default function ImportClients({ therapist, onComplete }) {
                 </thead>
                 <tbody>
                   {previewRows.map((row, i) => {
-                    const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '—';
-                    const name = [get(mapping.firstName), get(mapping.lastName)].filter(v => v && v !== '—').join(' ') || '—';
+                    const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : ', ';
+                    const name = [get(mapping.firstName), get(mapping.lastName)].filter(v => v && v !== ', ').join(' ') || ', ';
                     return (
                       <tr key={i} style={{ borderBottom:`1px solid ${C.light}` }}>
                         <td style={{ padding:'8px 10px', color:C.dark, fontWeight:600 }}>{name}</td>
@@ -359,7 +359,7 @@ export default function ImportClients({ therapist, onComplete }) {
           </div>
         )}
 
-        {/* STEP 4 — Done */}
+        {/* STEP 4, Done */}
         {step === 4 && results && (
           <div style={{ textAlign:'center', padding:'20px 0' }}>
             <div style={{ fontSize:48, marginBottom:16 }}>🎉</div>
@@ -388,11 +388,11 @@ export default function ImportClients({ therapist, onComplete }) {
             )}
             {results.created === 0 && results.skipped > 0 && (
               <div style={{ background:'#EFF6FF', border:'1px solid #BFDBFE', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#1D4ED8', textAlign:'left', lineHeight:1.6 }}>
-                All clients already exist in MyBodyMap — no duplicates were created.
+                All clients already exist in MyBodyMap, no duplicates were created.
               </div>
             )}
             <p style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>
-              Visit history has been preserved where available — lapsed detection and pattern intelligence will work immediately for imported clients.
+              Visit history has been preserved where available, lapsed detection and pattern intelligence will work immediately for imported clients.
             </p>
             <button onClick={() => { setStep(1); setPlatform(null); setHeaders([]); setRows([]); setResults(null); }}
               style={{ background:C.beige, color:C.forest, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
@@ -557,7 +557,7 @@ export function ImportBookings({ therapist, onComplete }) {
               </tr></thead>
               <tbody>
                 {rows.slice(0,5).map((row, i) => {
-                  const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '—';
+                  const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : ', ';
                   return (
                     <tr key={i} style={{ borderBottom:`1px solid ${C.light}` }}>
                       <td style={{ padding:'7px 10px' }}>{get(mapping.clientName)}</td>

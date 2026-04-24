@@ -33,7 +33,7 @@ export default function Unsubscribe() {
   const [errorMsg, setErrorMsg] = useState('');
 
   // On mount, do a lightweight verify by calling the function without a
-  // reason — the function is idempotent, so hitting it here just flips the
+  // reason, the function is idempotent, so hitting it here just flips the
   // flag and confirms the token. A second submit with a reason updates the
   // reason if provided.
   //

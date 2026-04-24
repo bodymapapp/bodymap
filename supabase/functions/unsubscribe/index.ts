@@ -2,7 +2,7 @@
 // URL: POST /functions/v1/unsubscribe  { token, reason? }
 //
 // Called from the public /unsubscribe page on mybodymap.app.
-// No JWT required (gateway bypassed via no-verify-jwt in workflow) — we
+// No JWT required (gateway bypassed via no-verify-jwt in workflow), we
 // authenticate via the HMAC-signed token only.
 //
 // Side effects when a valid token is posted:

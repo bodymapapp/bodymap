@@ -147,7 +147,7 @@ export default function Signup() {
     setLoading(true);
 
     // Security guard: rate limits, disposable email block, suspicious pattern detection.
-    // Fail open — if the guard errors, we allow the signup (never block real users over a bug).
+    // Fail open, if the guard errors, we allow the signup (never block real users over a bug).
     let guardFlags = [];
     let guardScore = 0;
     try {
@@ -170,7 +170,7 @@ export default function Signup() {
       }
       guardFlags = guardData.flag_reasons || [];
       guardScore = guardData.risk_score || 0;
-    } catch (e) { /* guard unreachable — proceed */ }
+    } catch (e) { /* guard unreachable, proceed */ }
 
     const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: effectiveBusinessName, customUrl: effectiveCustomUrl, phone: formData.phone });
     if (result.success) {
@@ -293,7 +293,7 @@ export default function Signup() {
               <span style={{ fontSize:11, fontWeight:700, color:'#A8C5B5' }}>🌿 Free on Bronze · No credit card</span>
             </div>
             <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '0 0 6px 0', lineHeight: 1.2, letterSpacing: '-0.3px' }}>Make it impossible for clients<br/>not to come back.</h2>
-            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores — helping every client feel like your #1.</p>
+            <p style={{ fontSize: '12px', color: '#A8C5B5', margin: 0, lineHeight: 1.5 }}>The only tool built around what every other app ignores, helping every client feel like your #1.</p>
           </div>
 
           {/* Body Map SVG */}
@@ -326,14 +326,15 @@ export default function Signup() {
       {/* ── RIGHT PANEL ── */}
       <div style={{ flex: 1, background: '#FAFAF8', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isDesktop ? '32px 48px' : '24px 20px', overflowY: 'auto' }}>
 
-        {/* Mobile logo */}
+        {/* Mobile logo. Smaller size, no tagline on this page
+            since the context (signup) already implies who we are. */}
         {!isDesktop && (
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px', textDecoration: 'none' }}>
-            <BMLogo size={36} variant="dark" showWordmark={true} showTagline={true} />
+          <Link to="/" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '16px', textDecoration: 'none' }}>
+            <BMLogo size={28} variant="dark" showWordmark={true} showTagline={false} />
           </Link>
         )}
 
-        {/* Banners */}
+        {/* Banners. Only shown for paid Silver conversion flows. */}
         {justPaid && (
           <div style={{ background: '#ECFDF5', border: '1.5px solid #6B9E80', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
             <p style={{ fontSize: '14px', fontWeight: '700', color: C.forest, margin: '0 0 2px 0' }}>✅ Payment received!</p>
@@ -343,30 +344,25 @@ export default function Signup() {
         {nextPlan === 'silver' && !justPaid && (
           <div style={{ background: '#EEF2FF', border: '1.5px solid #6366F1', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', textAlign: 'center' }}>
             <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e1b4b', margin: '0 0 2px 0' }}>🚀 Almost there!</p>
-            <p style={{ fontSize: '12px', color: '#3730a3', margin: 0 }}>Create your free account - you'll go straight to Silver payment after.</p>
+            <p style={{ fontSize: '12px', color: '#3730a3', margin: 0 }}>Create your free account, you'll go straight to Silver payment after.</p>
           </div>
         )}
 
-        {/* Heading */}
-        <div style={{ marginBottom: '20px' }}>
-          <div style={{ display:'inline-flex', alignItems:'center', gap:6, background:'#F0FDF4', border:'1px solid #86EFAC', borderRadius:20, padding:'4px 12px', marginBottom:10 }}>
-            <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>🌿 Free forever on Bronze</span>
-          </div>
-          <h1 style={{ fontSize: '28px', fontWeight: '800', color: C.darkGray, margin: '0 0 4px 0', letterSpacing: '-0.5px' }}>Create your account</h1>
-          <p style={{ fontSize: '13px', color: C.gray, margin: 0 }}>No credit card · Up and running in 30 seconds</p>
+        {/* Heading: stripped. No badge pill, no subtitle (moved to footer text under the submit button). */}
+        <div style={{ marginBottom: '18px' }}>
+          <h1 style={{ fontSize: '26px', fontWeight: '800', color: C.darkGray, margin: '0', letterSpacing: '-0.5px' }}>Create your account</h1>
         </div>
 
         {/* Google button */}
-        <button onClick={signInWithGoogle} style={{ width: '100%', padding: '13px', background: '#fff', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '15px', fontWeight: '700', color: C.darkGray, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <button onClick={signInWithGoogle} style={{ width: '100%', padding: '13px', background: '#fff', border: '2px solid #E5E7EB', borderRadius: '10px', fontSize: '15px', fontWeight: '700', color: C.darkGray, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginBottom: '14px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2.04a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.48A4.8 4.8 0 0 1 4.5 7.5V5.43H1.83a8 8 0 0 0 0 7.12l2.67-2.07z"/><path fill="#EA4335" d="M8.98 3.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.43L4.5 7.5a4.77 4.77 0 0 1 4.48-4.32z"/></svg>
           Continue with Google
         </button>
-        <p style={{ fontSize: '11px', color: '#9CA3AF', textAlign: 'center', margin: '0 0 16px 0' }}>Fastest - your intake link is ready in 10 seconds</p>
 
         {/* Divider */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
           <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
-          <span style={{ fontSize: '11px', color: '#9CA3AF', letterSpacing: '0.05em' }}>OR SIGN UP WITH EMAIL</span>
+          <span style={{ fontSize: '11px', color: '#9CA3AF', letterSpacing: '0.05em' }}>OR USE EMAIL</span>
           <div style={{ flex: 1, height: '1px', background: '#E5E7EB' }} />
         </div>
 
@@ -388,9 +384,10 @@ export default function Signup() {
             <label style={labelStyle}>Password</label>
             <div style={{ position: 'relative' }}>
               <input name="password" type={showPassword ? 'text' : 'password'} placeholder="Create a password" value={formData.password} onChange={handleChange}
-                style={{ ...inputStyle, paddingRight: '28px' }} />
+                style={{ ...inputStyle, paddingRight: '36px' }} />
               <button type="button" onClick={() => setShowPassword(p => !p)}
-                style={{ position: 'absolute', right: '0', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '2px', color: C.gray }}>
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                style={{ position: 'absolute', right: '4px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '16px', padding: '6px', color: C.gray, lineHeight: 1 }}>
                 {showPassword ? '🙈' : '👁️'}
               </button>
             </div>
@@ -478,7 +475,11 @@ export default function Signup() {
           {loading ? 'Creating account...' : 'Create Account →'}
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: '12px', color: C.gray, margin: '12px 0 0 0' }}>
+        <p style={{ textAlign: 'center', fontSize: '11px', color: C.gray, margin: '8px 0 0 0' }}>
+          Free during beta · No credit card · Up and running in 30 seconds
+        </p>
+
+        <p style={{ textAlign: 'center', fontSize: '12px', color: C.gray, margin: '14px 0 0 0' }}>
           Already have an account? <Link to="/login" style={{ color: C.forest, fontWeight: '700', textDecoration: 'none' }}>Sign in</Link>
         </p>
       </div>

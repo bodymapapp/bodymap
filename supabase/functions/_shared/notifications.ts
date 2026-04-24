@@ -1,5 +1,5 @@
 // Shared SMS + logging helper for edge functions.
-// Only deploy via import — not callable directly.
+// Only deploy via import, not callable directly.
 
 export async function sendSmsViaTwilio(therapist, toPhone, message) {
   if (!therapist?.twilio_account_sid || !therapist?.twilio_auth_token || !therapist?.twilio_phone_number) {
@@ -43,7 +43,7 @@ export function shouldSend(therapist, audience, type, channel) {
   }
 }
 
-// Log a send attempt to notification_log (non-blocking — fire and forget)
+// Log a send attempt to notification_log (non-blocking, fire and forget)
 export async function logNotification(supabase, row) {
   try {
     await supabase.from('notification_log').insert(row);

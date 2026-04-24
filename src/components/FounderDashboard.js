@@ -160,7 +160,7 @@ export default function FounderDashboard() {
 
       const therapists = therapistRes.data;
       if (adminFlagMissing) {
-        console.warn("admin_flag column missing — run supabase/migrations/founder_admin_flag.sql to enable flagging");
+        console.warn("admin_flag column missing, run supabase/migrations/founder_admin_flag.sql to enable flagging");
       }
 
       const d7ms = now - 7 * DAY;
@@ -540,7 +540,7 @@ export default function FounderDashboard() {
           </div>
         </div>
 
-        {/* Thin stats strip — same info as before, 90% less vertical space */}
+        {/* Thin stats strip, same info as before, 90% less vertical space */}
         <div style={{
           display: "flex",
           flexWrap: "wrap",
@@ -678,7 +678,7 @@ function recommendAction(t) {
   const daysIdle = t.days_since_use;
 
   // Priority order: first match wins. Rare/celebratory states before nagging states.
-  // Welcome is NOT in this list — the auto-firing send-welcome edge function
+  // Welcome is NOT in this list, the auto-firing send-welcome edge function
   // already handles new signups. Adding it here would double-email them.
 
   // 1. Referral thank-you (highest priority, celebratory, one-off per referral batch)
@@ -785,7 +785,7 @@ function recommendAction(t) {
     };
   }
 
-  // 6. Check in (3+ days, still nothing — asks for full client list per HK's guidance)
+  // 6. Check in (3+ days, still nothing, asks for full client list per HK's guidance)
   if (noActivity && t.days_on_platform >= COLD_MIN_AGE_DAYS && !t.emailed_checkin) {
     return {
       key: "checkin",
@@ -1766,7 +1766,7 @@ const ACTIVATION_STEPS = [
 function ActivationSection({ rows, updateFlag, onAfterSend }) {
   const [onlyStuck, setOnlyStuck] = useState(false);
   const [sortKey, setSortKey] = useState("steps_done");
-  const [sortDir, setSortDir] = useState("asc"); // least-done first — these need help most
+  const [sortDir, setSortDir] = useState("asc"); // least-done first, these need help most
 
   // Aggregate: how many therapists completed each step
   const total = rows.length;
@@ -1943,10 +1943,10 @@ function ActivationRow({ t, idx, updateFlag, onAfterSend }) {
   const pct = Math.round((done / 5) * 100);
   const progressColor = done === 5 ? C.rise : done >= 3 ? C.gold : C.fall;
 
-  // Find first uncompleted step (ordered by the list) — that's what to push them toward
+  // Find first uncompleted step (ordered by the list), that's what to push them toward
   const nextStep = ACTIVATION_STEPS.find((s) => !t.steps?.[s.key]);
 
-  // Build the activation_nudge action on demand — grandma-voice, names the missing steps
+  // Build the activation_nudge action on demand, grandma-voice, names the missing steps
   const nudgeAction = buildActivationNudge(t);
 
   return (
@@ -1988,7 +1988,7 @@ function ActivationRow({ t, idx, updateFlag, onAfterSend }) {
         </div>
       </td>
 
-      {/* 5 step cells: each shows TWO things stacked —
+      {/* 5 step cells: each shows TWO things stacked , 
           top: did the therapist complete this step (✓ green or · gray)
           bottom: have I emailed them about it (📧 + date, or nothing) */}
       {ACTIVATION_STEPS.map((s) => {
@@ -2071,7 +2071,7 @@ function ActivationRow({ t, idx, updateFlag, onAfterSend }) {
 // ========================================================================
 
 function FlagBadge({ flag, isDummy, unsubscribed }) {
-  // Unsubscribed takes priority — most important signal
+  // Unsubscribed takes priority, most important signal
   if (unsubscribed) {
     return (
       <span style={{ marginLeft: 6, fontSize: 10, background: "#FCE8E6", color: "#8A2F2F", padding: "1px 6px", borderRadius: 10, fontWeight: 700 }} title="This therapist unsubscribed from marketing emails">UNSUBSCRIBED</span>
@@ -2143,7 +2143,7 @@ function buildActivationNudge(t) {
   const name = firstName(t);
 
   // Map each step key to a short, action-oriented phrase HK would actually write.
-  // Not the full label, not a list — just the one concrete thing they need to do.
+  // Not the full label, not a list, just the one concrete thing they need to do.
   const stepPhrase = {
     import:  "import your clients",
     service: "add your first service",
@@ -2158,7 +2158,7 @@ function buildActivationNudge(t) {
   const subject = `Quick hello from MyBodyMap`;
 
   // One voice, one template. Names the single most important next step.
-  // If more steps remain, mention there are a few but don't list them all — keeps it light.
+  // If more steps remain, mention there are a few but don't list them all, keeps it light.
   const moreStepsNote =
     missing.length > 1
       ? ` There are a couple more small things after that, but let's get this one first.`
@@ -2645,7 +2645,7 @@ function CommsBackfillButton({ onAfterImport }) {
       // Use alert so we know EXACTLY what came back, no matter what UI does next.
       const samplesStr = data?.diagnostics?.samples_inserted?.length
         ? "\n\nSamples inserted:\n" + data.diagnostics.samples_inserted.map((s) => `  ${s.type} → ${s.to} (${s.subject})`).join("\n")
-        : "\n\n(no samples this run — likely all were already logged)";
+        : "\n\n(no samples this run, likely all were already logged)";
       const unknownStr = data?.diagnostics?.sample_unknown_subjects?.length
         ? "\n\nUnknown subjects (skipped):\n" + data.diagnostics.sample_unknown_subjects.slice(0, 5).map((s) => "  " + s).join("\n")
         : "";

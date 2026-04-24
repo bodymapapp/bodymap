@@ -35,7 +35,7 @@ export default function DepositSuccess() {
         <div style={{width:72,height:72,borderRadius:'50%',background:'#DCFCE7',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:36}}>✅</div>
         <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:C.dark,margin:'0 0 8px'}}>Deposit paid!</h2>
         <p style={{color:C.gray,fontSize:14,lineHeight:1.7,margin:'0 0 28px'}}>
-          Your spot is confirmed. One last thing — fill your body map so your therapist knows exactly where to focus.
+          Your spot is confirmed. One last thing, fill your body map so your therapist knows exactly where to focus.
         </p>
         {ready ? (
           <a href={intakeUrl}

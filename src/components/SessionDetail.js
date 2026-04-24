@@ -257,7 +257,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notesToSave, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
 
-      // Fire post-session email (non-blocking — don't wait)
+      // Fire post-session email (non-blocking, don't wait)
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
       fetch(`${supabaseUrl}/functions/v1/send-post-session`, {
@@ -505,13 +505,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* SOAP Tab */}
           {soapTab === "soap" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes — private to you, never shared with clients.</p>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes, private to you, never shared with clients.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }} className="bm-session-grid">
                 {[
-                  { key: "S", label: "S — Subjective", hint: "What the client reports: pain level, area, sensation, changes since last visit..." },
-                  { key: "O", label: "O — Objective", hint: "What you observe and measure: tissue quality, ROM, postural findings..." },
-                  { key: "A", label: "A — Assessment", hint: "Your clinical interpretation: patterns, progress, response to treatment..." },
-                  { key: "P", label: "P — Plan", hint: "Next steps: techniques to use, areas to focus, frequency, referrals..." },
+                  { key: "S", label: "S, Subjective", hint: "What the client reports: pain level, area, sensation, changes since last visit..." },
+                  { key: "O", label: "O, Objective", hint: "What you observe and measure: tissue quality, ROM, postural findings..." },
+                  { key: "A", label: "A, Assessment", hint: "Your clinical interpretation: patterns, progress, response to treatment..." },
+                  { key: "P", label: "P, Plan", hint: "Next steps: techniques to use, areas to focus, frequency, referrals..." },
                 ].map(({ key, label, hint }) => (
                   <div key={key}>
                     <label style={{ fontSize: "12px", fontWeight: 700, color: C.darkGray, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</label>
@@ -547,7 +547,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* Private Notes Tab */}
           {soapTab === "notes" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>🔒 Private — only visible to you, never shared with clients.</p>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>🔒 Private, only visible to you, never shared with clients.</p>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
                 style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
               />
