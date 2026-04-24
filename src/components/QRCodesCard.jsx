@@ -120,82 +120,9 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
       {children /* optional input for custom panel */}
 
       {previewSrc ? (
-        <>
-          <div style={{ background: '#fff', padding: 8, borderRadius: 10, border: `1px solid ${C2.lightGray}`, marginBottom: 14 }}>
-            <img src={previewSrc} alt="QR code" style={{ width: 160, height: 160, display: 'block' }} />
-          </div>
-          <div style={{
-            width: '100%',
-            background: '#FAFAF7',
-            border: `1px solid ${C2.lightGray}`,
-            borderRadius: 6,
-            padding: '7px 10px',
-            fontSize: 11,
-            fontFamily: 'monospace',
-            color: C2.darkGray,
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            marginBottom: 10,
-          }}>
-            {url}
-          </div>
-          <div style={{ display: 'flex', gap: 6, width: '100%', marginBottom: 6 }}>
-            <button
-              onClick={copy}
-              style={{
-                flex: 1,
-                background: copied ? C2.forest : C2.sage,
-                color: '#fff',
-                border: 'none',
-                padding: '9px 8px',
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: 'pointer',
-                transition: 'background 0.2s',
-              }}
-            >
-              {copied ? '✓ Copied' : 'Copy link'}
-            </button>
-            <button
-              onClick={download}
-              disabled={downloading}
-              style={{
-                flex: 1,
-                background: C2.beige,
-                border: `1.5px solid ${C2.lightGray}`,
-                color: C2.darkGray,
-                padding: '9px 8px',
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: downloading ? 'wait' : 'pointer',
-              }}
-            >
-              {downloading ? '…' : '⬇️ Save'}
-            </button>
-          </div>
-          <button
-            onClick={printQR}
-            style={{
-              width: '100%',
-              background: 'transparent',
-              border: `1.5px solid ${C2.lightGray}`,
-              color: C2.darkGray,
-              padding: '9px 10px',
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            🖨️ Print
-          </button>
-          <p style={{ fontSize: 10, color: C2.gray, margin: '8px 0 0', lineHeight: 1.4 }}>
-            Downloads as 800×800 PNG. Prints sharp at any size.
-          </p>
-        </>
+        <div style={{ background: '#fff', padding: 8, borderRadius: 10, border: `1px solid ${C2.lightGray}`, marginBottom: 14 }}>
+          <img src={previewSrc} alt="QR code" style={{ width: 160, height: 160, display: 'block' }} />
+        </div>
       ) : (
         <div style={{
           width: 160,
@@ -210,10 +137,87 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
           marginBottom: 14,
           textAlign: 'center',
           padding: 16,
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic',
         }}>
-          Paste a link above to generate a QR code
+          Type a link above
         </div>
       )}
+
+      <div style={{
+        width: '100%',
+        background: '#FAFAF7',
+        border: `1px solid ${C2.lightGray}`,
+        borderRadius: 6,
+        padding: '7px 10px',
+        fontSize: 11,
+        fontFamily: 'monospace',
+        color: url ? C2.darkGray : C2.gray,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        marginBottom: 10,
+        minHeight: 18,
+      }}>
+        {url || '—'}
+      </div>
+      <div style={{ display: 'flex', gap: 6, width: '100%', marginBottom: 6 }}>
+        <button
+          onClick={copy}
+          disabled={!url}
+          style={{
+            flex: 1,
+            background: !url ? '#E5E7EB' : (copied ? C2.forest : C2.sage),
+            color: !url ? '#9CA3AF' : '#fff',
+            border: 'none',
+            padding: '9px 8px',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: !url ? 'not-allowed' : 'pointer',
+            transition: 'background 0.2s',
+          }}
+        >
+          {copied ? '✓ Copied' : 'Copy link'}
+        </button>
+        <button
+          onClick={download}
+          disabled={!url || downloading}
+          style={{
+            flex: 1,
+            background: !url ? '#F3F4F6' : C2.beige,
+            border: `1.5px solid ${C2.lightGray}`,
+            color: !url ? '#9CA3AF' : C2.darkGray,
+            padding: '9px 8px',
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: !url ? 'not-allowed' : (downloading ? 'wait' : 'pointer'),
+          }}
+        >
+          {downloading ? '…' : '⬇️ Save'}
+        </button>
+      </div>
+      <button
+        onClick={printQR}
+        disabled={!url}
+        style={{
+          width: '100%',
+          background: 'transparent',
+          border: `1.5px solid ${C2.lightGray}`,
+          color: !url ? '#9CA3AF' : C2.darkGray,
+          padding: '9px 10px',
+          borderRadius: 8,
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: !url ? 'not-allowed' : 'pointer',
+        }}
+      >
+        🖨️ Print
+      </button>
+      <p style={{ fontSize: 10, color: C2.gray, margin: '8px 0 0', lineHeight: 1.4 }}>
+        Downloads as 800×800 PNG. Prints sharp at any size.
+      </p>
     </div>
   );
 }
