@@ -46,7 +46,7 @@ serve(async (req) => {
       },
       {
         n: '5', title: 'Send your first intake',
-        body: `Pick one regular client. Text them your BodyMap link. Watch them fill out a visual body map on their phone in 60 seconds instead of scribbling on a clipboard. The first time you see it land in your dashboard is the moment this all clicks.`,
+        body: `Pick one regular client. Text them your MyBodyMap link. Watch them fill out a visual body map on their phone in 60 seconds instead of scribbling on a clipboard. The first time you see it land in your dashboard is the moment this all clicks.`,
         link: `${dashLink}`, cta: 'Send first intake'
       },
     ];
@@ -64,7 +64,7 @@ serve(async (req) => {
       <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;color:#1F2937;line-height:1.7;font-size:15px;">
 
         <div style="margin-bottom:24px;">
-          <span style="font-size:22px;font-weight:700;color:#1A3A28;">BodyMap</span>
+          <span style="font-size:22px;font-weight:700;color:#1A3A28;">MyBodyMap</span>
           <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence for Massage Therapists</span>
         </div>
 
@@ -85,7 +85,7 @@ serve(async (req) => {
         </p>
 
         <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 22px;">
-          BodyMap works best once these 5 things are in place. Each one takes a minute or two. You can do them in any order. You can stop after three and come back next week. Whatever fits the day.
+          MyBodyMap works best once these 5 things are in place. Each one takes a minute or two. You can do them in any order. You can stop after three and come back next week. Whatever fits the day.
         </p>
 
         ${stepsHtml}
@@ -112,7 +112,7 @@ serve(async (req) => {
 
         <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:28px;line-height:1.7;text-align:center;">
           Reply any time, we read every email.<br/>
-          <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
+          <span style="color:#D1D5DB;">The MyBodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
         </p>
       </div>
     `;
@@ -123,7 +123,7 @@ serve(async (req) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
       body: JSON.stringify({
-        from: 'The BodyMap Team <reminders@mybodymap.app>',
+        from: 'The MyBodyMap Team <reminders@mybodymap.app>',
         to: [email],
         bcc: ['bodymapdemo@gmail.com'],
         subject: subjectLine,

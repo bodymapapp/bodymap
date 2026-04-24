@@ -177,7 +177,7 @@ serve(async (req) => {
   </div>
 
   <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">
-    Practice Pulse by BodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a>
+    Practice Pulse by MyBodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a>
   </p>
 </div>
 </body></html>`;

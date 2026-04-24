@@ -3,11 +3,11 @@
 // and sends the right drip email based on which window they fall into.
 //
 // Sequence (counting from signup day):
-//   Day 2  - "3 reasons BodyMap might be a terrible idea for you" (pattern-interrupt honest framing)
+//   Day 2  - "3 reasons MyBodyMap might be a terrible idea for you" (pattern-interrupt honest framing)
 //   Day 5  - "Try your own body map, send one to yourself"
 //   Day 10 - Social proof: real quote from Terra
 //   Day 30 - Soft check-in honoring the long day, one sentence reply
-//   Day 60 - Referral ask: share BodyMap, get a shoutout (moved from Day 21)
+//   Day 60 - Referral ask: share MyBodyMap, get a shoutout (moved from Day 21)
 //
 // Dedupe: writes to drip_sends table with (therapist_id, drip_day) unique key.
 // If a row exists, we skip — prevents duplicate sends even if the cron runs twice.
@@ -41,13 +41,13 @@ function wrap(inner: string) {
   return `
     <div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;">
       <div style="margin-bottom:24px;">
-        <span style="font-size:20px;font-weight:700;color:#1A3A28;">BodyMap</span>
+        <span style="font-size:20px;font-weight:700;color:#1A3A28;">MyBodyMap</span>
         <span style="display:block;font-family:system-ui;font-size:11px;font-weight:700;color:#6B9E80;letter-spacing:0.12em;text-transform:uppercase;margin-top:2px;">Client Intelligence</span>
       </div>
       ${inner}
       <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:32px;line-height:1.7;text-align:center;">
         Reply any time, we read every email.<br/>
-        <span style="color:#D1D5DB;">The BodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
+        <span style="color:#D1D5DB;">The MyBodyMap Team &middot; <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></span>
       </p>
     </div>
   `;
@@ -60,9 +60,9 @@ function day2Email(firstName: string, dashLink: string) {
     <div style="background:#E8F0EA;border:1px solid #C8DCCC;border-radius:8px;padding:4px 10px;display:inline-block;margin-bottom:16px;">
       <span style="font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;text-transform:uppercase;letter-spacing:0.08em;">🌿 Day 2 · Unusual energy</span>
     </div>
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">3 reasons BodyMap might be a terrible idea for you</h2>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">3 reasons MyBodyMap might be a terrible idea for you</h2>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, every software company in the world sends you the same email. "Here are 17 reasons you need us." We got tired of writing it. You're probably tired of reading it. So let's flip it.</p>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Here are 3 reasons BodyMap might be a terrible idea for you. Said with love.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Here are 3 reasons MyBodyMap might be a terrible idea for you. Said with love.</p>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 4px;"><strong style="color:#1A3A28;">1. You have a deep, spiritual connection with your paper intake forms.</strong></p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Look, we get it. The crinkle. The pen ink. The little basket by the door. If clipping a fresh form to a clipboard is one of your favorite parts of the day, please do not let us ruin that for you. Nothing we build can compete with that basket. You have our respect.</p>
@@ -82,7 +82,7 @@ function day2Email(firstName: string, dashLink: string) {
     <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard →</a>
   `;
   return {
-    subject: `3 reasons BodyMap might be a terrible idea, ${firstName}`,
+    subject: `3 reasons MyBodyMap might be a terrible idea, ${firstName}`,
     html: wrap(inner),
   };
 }
@@ -97,7 +97,7 @@ function day5Email(firstName: string, customUrl: string, dashLink: string) {
 
     <p style="font-family:system-ui;font-size:17px;color:#1A3A28;line-height:1.7;margin:0 0 20px;font-weight:700;font-family:Georgia,serif;font-style:italic;">They actually try it themselves.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Take 60 seconds right now. Open your dashboard. Find your BodyMap link. Open it on your phone like you are a client booking with you for the first time.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Take 60 seconds right now. Open your dashboard. Find your MyBodyMap link. Open it on your phone like you are a client booking with you for the first time.</p>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">Walk through the intake. Tap your own shoulders. Mark the spot on your lower back that aches after a long day. Note the places on your body that carry the week.</p>
 
@@ -118,15 +118,15 @@ function day5Email(firstName: string, customUrl: string, dashLink: string) {
 }
 
 function day10Email(firstName: string, dashLink: string) {
-  // Real quote from Terra, a BodyMap user. Captures the core promise:
+  // Real quote from Terra, a MyBodyMap user. Captures the core promise:
   // it works without effort. Short email, one quote, one CTA.
   const inner = `
-    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about BodyMap</h2>
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on BodyMap sent this yesterday:</p>
+    <h2 style="font-size:24px;font-weight:700;color:#1A3A28;margin:0 0 12px;line-height:1.25;">What Terra said about MyBodyMap</h2>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Hey ${firstName}, a therapist on MyBodyMap sent this yesterday:</p>
 
     <div style="background:#FFFBEB;border-left:4px solid #F59E0B;border-radius:0 10px 10px 0;padding:20px;margin-bottom:24px;">
       <p style="font-family:Georgia,serif;font-size:19px;color:#1A3A28;line-height:1.6;margin:0 0 10px;font-style:italic;">"Damn I like that. Gets right to the point and I don't have to do anything. Sweet."</p>
-      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, BodyMap therapist</p>
+      <p style="font-family:system-ui;font-size:13px;color:#92400E;margin:0;">Terra, MyBodyMap therapist</p>
     </div>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">That's the whole idea. Your back office keeps working while you do the work on the table.</p>
@@ -134,7 +134,7 @@ function day10Email(firstName: string, dashLink: string) {
     <a href="${dashLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:12px 28px;border-radius:8px;text-decoration:none;">Open my dashboard</a>
   `;
   return {
-    subject: `${firstName}, what Terra said about BodyMap`,
+    subject: `${firstName}, what Terra said about MyBodyMap`,
     html: wrap(inner),
   };
 }
@@ -158,10 +158,15 @@ function day60Email(firstName: string, customUrl: string) {
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">Do you know another massage therapist out there who is buried under paper intake forms, chasing Venmo payments, wondering where their regulars went? Someone who would feel a little lighter if they found us?</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Send them your referral link:</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 14px;">Your personal referral link. Share it however feels natural.</p>
 
-    <div style="background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:16px 20px;margin:0 0 20px;">
-      <a href="${referralLink}" style="font-family:system-ui;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;text-decoration:none;">${referralLink}</a>
+    <div style="text-align:center;margin:0 0 14px;">
+      <a href="${referralLink}" style="display:inline-block;background:#2A5741;color:#fff;font-family:system-ui;font-size:14px;font-weight:700;padding:13px 32px;border-radius:10px;text-decoration:none;">Open your referral link →</a>
+    </div>
+
+    <div style="background:#F0FDF4;border:1.5px dashed #86EFAC;border-radius:10px;padding:12px 16px;margin:0 0 24px;text-align:center;">
+      <div style="font-family:system-ui;font-size:10px;color:#2A5741;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px;">Or copy and paste this anywhere</div>
+      <a href="${referralLink}" style="font-family:'Courier New',monospace;font-size:14px;color:#2A5741;font-weight:700;word-break:break-all;text-decoration:none;">${referralLink}</a>
     </div>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 8px;"><strong style="color:#1A3A28;">What they get:</strong> full Silver tier, free for life. No trial. No credit card. No "upgrade later" trick.</p>
@@ -188,7 +193,7 @@ function day30Email(firstName: string) {
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 16px;">So this one is short. Delete it if you want. Come back to it whenever. Or never.</p>
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 24px;">We just wanted to check in.</p>
 
-    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">It's been a month since you joined BodyMap. If you ever get a quiet minute, maybe over tea, maybe on a Sunday, we'd love to hear how it's going. Good, not-great, or somewhere in the middle.</p>
+    <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 20px;">It's been a month since you joined MyBodyMap. If you ever get a quiet minute, maybe over tea, maybe on a Sunday, we'd love to hear how it's going. Good, not-great, or somewhere in the middle.</p>
 
     <p style="font-family:system-ui;font-size:15px;color:#4B5563;line-height:1.7;margin:0 0 12px;">Just hit reply. One sentence. No form, no survey, no rating scale.</p>
 
@@ -286,7 +291,7 @@ serve(async (req) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
         body: JSON.stringify({
-          from: 'The BodyMap Team <reminders@mybodymap.app>',
+          from: 'The MyBodyMap Team <reminders@mybodymap.app>',
           to: [t.email],
           bcc: ['bodymapdemo@gmail.com'],
           subject: emailPayload.subject,

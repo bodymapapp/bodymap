@@ -81,7 +81,7 @@ serve(async (req) => {
 <div style="max-width:560px;margin:0 auto;padding:32px 16px;">
   <div style="text-align:center;margin-bottom:24px;">
     <span style="font-size:32px;">🌿</span>
-    <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:8px 0 0;">BodyMap</h1>
+    <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:8px 0 0;">MyBodyMap</h1>
   </div>
   <div style="background:#fff;border-radius:16px;padding:32px;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
     <h2 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#1A1A2E;margin:0 0 8px;">Great session today, ${clientFirstName} ✨</h2>
@@ -103,7 +103,7 @@ serve(async (req) => {
     <a href="${bookingUrl}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:14px 20px;text-align:center;font-size:15px;font-weight:700;margin-bottom:16px;">Book Your Next Session →</a>
     <p style="font-size:12px;color:#9CA3AF;text-align:center;margin:0;">Questions? Reply to this email or contact ${therapistName} directly.</p>
   </div>
-  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 0;">Sent by BodyMap · mybodymap.app</p>
+  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:24px 0 0;">Sent by MyBodyMap · mybodymap.app</p>
 </div>
 </body></html>`;
 

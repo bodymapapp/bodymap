@@ -1,5 +1,5 @@
 // Founder outreach. Admin-only edge function.
-// Sends a branded BodyMap email to a therapist from reminders@mybodymap.app
+// Sends a branded MyBodyMap email to a therapist from reminders@mybodymap.app
 // with reply-to bodymap01@gmail.com. Logs the send to notification_log.
 //
 // Request body: { therapist_id: string, action_type: ActionType, custom_subject?, custom_body? }
@@ -73,16 +73,29 @@ function buildMessage(
 
   const templates: Record<ActionType, { subject: string; lines: string[] }> = {
     welcome: {
-      // Kept for backward compat with any legacy calls. Dashboard no longer surfaces
-      // welcome — the auto-firing send-welcome edge function handles new signups.
-      subject: `Welcome to BodyMap, ${name}`,
+      subject: `${name}, the 60-second question that decides how this goes`,
       lines: [
         `Hi ${name},`,
         ``,
-        `MyBodyMap Team here. Welcome to BodyMap. First step to get value fast is to bring your full client list in.`,
+        `MyBodyMap Team here. We already sent you the real welcome email with all the steps. So this one is different.`,
         ``,
-        `Reply if you need help. Cheers!`,
+        `This is the honest one.`,
         ``,
+        `Here's what happens to most therapists who sign up for any new practice tool. They mean to set it up. The week gets busy. A client cancels last minute. Life happens. Three weeks later they realize they never actually used the thing, and they move on.`,
+        ``,
+        `There is one small thing that seems to prevent that pattern almost every time.`,
+        ``,
+        `Get your full client list in today. Not tomorrow. Not "when things slow down." Today.`,
+        ``,
+        `Once your real clients are in MyBodyMap, everything else follows. You see names you recognize. You send an intake to one of them. You watch their body map come back. It becomes real.`,
+        ``,
+        `If you have a CSV export from your current tool, send it to us as a reply to this email. Doesn't matter what format. Vagaro, MassageBook, Square, a messy spreadsheet, handwritten list you photographed. We will clean it up and load it in for you by tomorrow morning. No charge. No catch. Reply "import" and attach the file.`,
+        ``,
+        `Or, if you would rather do it yourself, this link takes you there now: https://mybodymap.app/dashboard`,
+        ``,
+        `Either way, today is the day this either becomes real or quietly fades. We are rooting for real.`,
+        ``,
+        `Cheers,`,
         `MyBodyMap Team`,
       ],
     },
@@ -97,7 +110,7 @@ function buildMessage(
         ``,
         `So we want to do something small and useful instead of sending another reminder.`,
         ``,
-        `Want us to import your client list for you? Send us a CSV export from your current tool, or even a photo of a handwritten list. We will get it into your BodyMap dashboard by tomorrow morning. No forms, no back-and-forth, just send whatever you have.`,
+        `Want us to import your client list for you? Send us a CSV export from your current tool, or even a photo of a handwritten list. We will get it into your MyBodyMap dashboard by tomorrow morning. No forms, no back-and-forth, just send whatever you have.`,
         ``,
         `Or if something else is in the way, hit reply and tell us. "The payments setup confused me." "I'm not sure which plan I need." "I just need more time." Any of those, we can help with in one message.`,
         ``,
@@ -112,7 +125,7 @@ function buildMessage(
       lines: [
         `Hi ${name},`,
         ``,
-        `MyBodyMap Team here. It has been about ${t.days_since_use ?? "a while"} days since you last opened BodyMap.`,
+        `MyBodyMap Team here. It has been about ${t.days_since_use ?? "a while"} days since you last opened MyBodyMap.`,
         ``,
         `We are not writing to drag you back. Your practice runs on your schedule, not ours.`,
         ``,
@@ -137,7 +150,7 @@ function buildMessage(
         ``,
         `MyBodyMap Team here. We are writing because of something real.`,
         ``,
-        `You have logged ${t.sessions_total} sessions on BodyMap so far. That is not a vanity number to us. That is ${t.sessions_total} clients who walked in, were seen, and walked out a little lighter.`,
+        `You have logged ${t.sessions_total} sessions on MyBodyMap so far. That is not a vanity number to us. That is ${t.sessions_total} clients who walked in, were seen, and walked out a little lighter.`,
         ``,
         `Somewhere right now, another massage therapist is typing a search into Google. "Is there anything better than paper forms." "How do I stop losing regulars." "Something for a solo practice that actually respects my time."`,
         ``,
@@ -181,7 +194,7 @@ function buildMessage(
         ``,
         `Okay we lied. We're going to try to talk you out of it. Just a little.`,
         ``,
-        `You haven't connected Stripe or Square yet. Which means when a client books through your BodyMap link, they can't actually pay you. Which means after a long day of holding space for everyone else, you still have to send the awkward "oh by the way, can you Venmo me" text. Which, fine. It's just one more small thing on top of a day that was already full.`,
+        `You haven't connected Stripe or Square yet. Which means when a client books through your MyBodyMap link, they can't actually pay you. Which means after a long day of holding space for everyone else, you still have to send the awkward "oh by the way, can you Venmo me" text. Which, fine. It's just one more small thing on top of a day that was already full.`,
         ``,
         `One minute in Settings and it's done. Clients pay the moment they book. You get to close the laptop and go back to the actual work.`,
         ``,
@@ -200,14 +213,14 @@ function buildMessage(
         ``,
         `We built this platform for a particular kind of therapist. Someone who cares about their clients' actual bodies, not just their booking calendar. Someone who notices when a regular's shoulders are tighter than last month. Someone who would rather be good than fast.`,
         ``,
-        `If that is you, and BodyMap fell short of that somehow, we want to know what happened. Not for a survey. For our next build.`,
+        `If that is you, and MyBodyMap fell short of that somehow, we want to know what happened. Not for a survey. For our next build.`,
         ``,
         `Pick whichever is easiest:`,
         ``,
         `- Hit reply with one sentence. What went wrong, what was missing, what you wish existed. We read every word.`,
         `- Or, if you'd like, we will get on a 15-minute call with you this week. No sales pitch. Just the two of us, listening. Reply with "call" and we'll send a link.`,
         ``,
-        `And if the honest answer is that life got busy and BodyMap slipped off the list, that is a fine answer too. We understand. Your hands matter more than our retention rate.`,
+        `And if the honest answer is that life got busy and MyBodyMap slipped off the list, that is a fine answer too. We understand. Your hands matter more than our retention rate.`,
         ``,
         `Whatever the reason, thank you for trying us. Really.`,
         ``,
@@ -224,7 +237,7 @@ function buildMessage(
         ``,
         `You're helping another therapist find something that actually fits how they practice. Thank you.`,
         ``,
-        `If there's anything we can do to make BodyMap better for you, reply and tell us.`,
+        `If there's anything we can do to make MyBodyMap better for you, reply and tell us.`,
         ``,
         `Cheers!`,
         `MyBodyMap Team`,
@@ -256,7 +269,7 @@ function buildMessage(
 
   const html = `
 <div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
-  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 BodyMap</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 MyBodyMap</div>
   ${tpl.lines.map((l) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
     Reply to this email and it reaches me directly.
@@ -367,7 +380,7 @@ serve(async (req) => {
     // Regenerate HTML from potentially edited text (preserves the branded card).
     const html = `
 <div style="font-family:Georgia,serif;max-width:560px;margin:24px auto;padding:32px 28px;background:#FFF9F3;border:1px solid #E8E4DC;border-radius:12px;color:#1F2937;line-height:1.6;font-size:15px">
-  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 BodyMap</div>
+  <div style="font-size:11px;font-weight:700;letter-spacing:0.14em;color:#6B9E80;text-transform:uppercase;margin-bottom:16px">🌿 MyBodyMap</div>
   ${bodyText.split("\n").map((l: string) => (l === "" ? "<br/>" : `<div>${escapeHtml(l)}</div>`)).join("")}
   <div style="margin-top:28px;padding-top:18px;border-top:1px solid #E8E4DC;font-size:12px;color:#9CA3AF">
     Reply to this email and it reaches me directly.
