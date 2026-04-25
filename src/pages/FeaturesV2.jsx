@@ -41,6 +41,27 @@ export default function FeaturesV2() {
     };
   }, []);
 
+  // Scroll to ribbon anchor on mount or hash change.
+  // Lets Home page deep-link to /features#ribbon-1 etc.
+  useEffect(() => {
+    const scrollToHash = () => {
+      const hash = window.location.hash;
+      if (!hash) return;
+      // Wait one frame so the ribbons have rendered.
+      requestAnimationFrame(() => {
+        const el = document.getElementById(hash.replace("#", ""));
+        if (el) {
+          // 90px offset to clear the fixed nav (~74px) + breathing.
+          const top = el.getBoundingClientRect().top + window.pageYOffset - 90;
+          window.scrollTo({ top, behavior: "smooth" });
+        }
+      });
+    };
+    scrollToHash();
+    window.addEventListener("hashchange", scrollToHash);
+    return () => window.removeEventListener("hashchange", scrollToHash);
+  }, []);
+
   return (
     <div className="bm-features-v2">
       <Nav />

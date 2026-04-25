@@ -12,7 +12,7 @@ import FeatureCard from "./FeatureCard";
  */
 export default function FeatureRibbon({ ribbon, onTap }) {
   return (
-    <section className="bm-feature-ribbon">
+    <section className="bm-feature-ribbon" id={`ribbon-${ribbon.id}`}>
       <header className="bm-feature-ribbon__head">
         <span className="bm-feature-ribbon__num">{ribbon.id}</span>
         <div className="bm-feature-ribbon__titles">
