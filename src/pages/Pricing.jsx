@@ -1,256 +1,366 @@
-import Nav from '../components/Nav';
-import Footer from '../components/Footer';
-import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+// src/pages/Pricing.jsx
+//
+// Pricing — editorial rebuild matching the FeaturesV2 design language.
+// Cream palette + Fraunces serif + Inter body + warm photo per tier.
+// Three tiers (Bronze, Silver, Gold). Silver is the highlight.
+// BETAONE coupon NOT shown publicly: therapists DM via IG/FB for a founder code.
 
-const STRIPE_SILVER = 'https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03';
-const STRIPE_SILVER_ANNUAL = 'https://buy.stripe.com/8x214obR89Pa4cw8rCeQM04';
-const STRIPE_GOLD   = 'REPLACE_WITH_NEW_STRIPE_LINK_49';
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import Nav from "../components/Nav";
+import Footer from "../components/Footer";
+import { useAuth } from "../contexts/AuthContext";
+import { photoForId } from "../data/featuresData";
 
-const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#F3F4F6', border:'#E5E7EB', gold:'#C9A84C' };
-const AUTO = { color:'#6B9E80', fontWeight:700 };
+const STRIPE_SILVER_MONTHLY = "https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03";
+const STRIPE_SILVER_ANNUAL  = "https://buy.stripe.com/8x214obR89Pa4cw8rCeQM04";
 
-const A = (text) => text; // marker for automated features
+const IG_URL = "https://www.instagram.com/mybodymap01/";
+const FB_URL = "https://www.facebook.com/profile.php?id=61568064032135";
+
+function buildTiers({ isAuthenticated, navigate, billingCycle }) {
+  const annualMode = billingCycle === "annual";
+
+  return [
+    {
+      id: "bronze",
+      name: "Bronze",
+      photo: photoForId("1.1"),
+      tagline: "Everything to run your practice. Free during beta.",
+      price: { amount: 0, period: "free" },
+      futurePrice: 9,
+      cta: isAuthenticated ? "Go to Dashboard" : "Start free. No card.",
+      ctaAction: () =>
+        isAuthenticated ? navigate("/dashboard") : navigate("/signup"),
+      features: [
+        "Unlimited clients & bookings",
+        "Automated booking page · 24/7 client self-serve",
+        "Automated body map intake · sent before every session",
+        "Automated email reminders · 24h notice, every client",
+        "Automated AI pre-session brief · ready before you walk in",
+        "Automated AI post-session brief · drafted for you after",
+        "MyBodyMap AI · chat with your client data",
+        "Visual body map · front & back, focus zones, medical flags",
+        "SOAP notes",
+        "Schedule · today, weekly, monthly views",
+        "Billing dashboard & Stripe payments",
+        "Pattern intelligence · first 5 sessions per client",
+        "Retention alerts · first 5 sessions per client",
+        "Practice snapshot · first 5 sessions per client",
+      ],
+      footnote: "Will be $9/mo for new signups when beta ends. You stay free, forever.",
+    },
+    {
+      id: "silver",
+      name: "Silver",
+      highlight: true,
+      photo: photoForId("3.3"),
+      badge: "Most popular",
+      tagline: "Unlimited history. Full pattern intelligence. The full moat.",
+      price: annualMode
+        ? { amount: 15, period: "/mo · billed annually" }
+        : { amount: 19, period: "/mo" },
+      cta: "Choose Silver",
+      ctaAction: () => {
+        window.location.href = annualMode
+          ? STRIPE_SILVER_ANNUAL
+          : STRIPE_SILVER_MONTHLY;
+      },
+      features: [
+        "Everything in Bronze, fully automated",
+        "Full session history · unlimited",
+        "Pattern intelligence · all sessions, compounds over time",
+        "Retention alerts · catches drifting clients before they leave",
+        "Revenue forecasting · projected income from booking pace",
+        "Longitudinal body map overlays · tension diff across sessions",
+        "Revenue gap intelligence · what empty slots cost you",
+        "Business analytics · busiest days, top services, trends",
+        "MyBodyMap AI with full history context",
+        "Priority support",
+      ],
+      founderNote:
+        "Limited founder codes available. The first 100 therapists get Silver free for 12 months. Message us on Instagram or Facebook and tell us about your practice.",
+    },
+    {
+      id: "gold",
+      name: "Gold",
+      comingSoon: true,
+      photo: photoForId("6.1"),
+      tagline: "Everything in Silver, now for your whole team.",
+      price: annualMode
+        ? { amount: 39, period: "/mo · billed annually" }
+        : { amount: 49, period: "/mo" },
+      cta: "Coming soon",
+      features: [
+        "Everything in Silver, automated",
+        "Up to 10 therapist profiles",
+        "Team schedule view · all therapists, one screen",
+        "Per-therapist analytics & billing",
+        "Shared client pool",
+        "Commission tracking",
+        "Staff access controls",
+        "Practice-wide reporting",
+      ],
+    },
+  ];
+}
+
+const FAQ = [
+  {
+    q: "Is Bronze really free?",
+    a: "Yes. Every tool on this page is free on Bronze during our beta. No credit card, no trial, no hidden limits. Bronze will eventually be $9/mo for new signups, but anyone who joins during beta stays free, forever, and gets grandfathered benefits when pricing starts.",
+  },
+  {
+    q: "How can you afford to offer this for free?",
+    a: "Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build now cost a fraction. We built MyBodyMap lean and pass that to you. We make money when you grow into Silver, and that only happens if Bronze genuinely helps you first.",
+  },
+  {
+    q: "What is the intelligence layer in Silver?",
+    a: "Silver analyzes your entire client history (tension patterns, retention risk, revenue trends, schedule gaps) and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use MyBodyMap, the smarter it gets.",
+  },
+  {
+    q: 'What does "first 5 sessions" mean on Bronze?',
+    a: "On Bronze, you get a taste of intelligence based on the last 5 sessions per client. On Silver, the intelligence goes back through every session you have ever recorded.",
+  },
+  {
+    q: "How do founder codes work?",
+    a: "We are looking for the first 100 therapists who genuinely want to help shape MyBodyMap. Message us on Instagram or Facebook with a few words about your practice. If you are a fit, we send you a code that gives you Silver free for 12 months.",
+  },
+  {
+    q: "When is Gold launching?",
+    a: "Gold is in development. Sign up for Bronze or Silver now and you get early access and founding pricing when it launches.",
+  },
+  {
+    q: "Can I switch plans anytime?",
+    a: "Yes. If you downgrade from Silver to Bronze, your full history is preserved. You just lose access to intelligence beyond 5 sessions until you re-upgrade.",
+  },
+];
 
 export default function Pricing() {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [openFaq, setOpenFaq] = useState(null);
 
-  const tiers = [
-    {
-      name: 'Bronze', emoji: '🥉', highlight: false,
-      price: { monthly: 0, annual: 0 },
-      futurePrice: 9,
-      tagline: 'Everything to run your practice, automated. Free while we are in beta.',
-      cta: isAuthenticated ? 'Go to Dashboard' : 'Start Free. No Card.',
-      ctaAction: () => isAuthenticated ? navigate('/dashboard') : navigate('/signup'),
-      features: [
-        { text: 'Unlimited clients & bookings', on: true },
-        { text: 'Automated booking page', on: true, auto: true, detail: 'Clients book themselves, 24/7' },
-        { text: 'Automated body map intake', on: true, auto: true, detail: 'Sent before every session, zero effort' },
-        { text: 'Automated email reminders', on: true, auto: true, detail: '24h notice to every client, automatically' },
-        { text: 'Automated AI pre-session brief', on: true, auto: true, detail: 'Client history ready before you walk in' },
-        { text: 'Automated AI post-session brief', on: true, auto: true, detail: 'Session notes drafted for you after' },
-        { text: 'MyBodyMap AI - chat with your client data', on: true },
-        { text: 'Visual body map - front & back', on: true, detail: 'Focus zones, avoid areas, medical flags' },
-        { text: 'SOAP notes', on: true },
-        { text: 'Schedule - today, weekly, monthly', on: true },
-        { text: 'Billing dashboard & Stripe payments', on: true },
-        { text: 'Automated pain pattern intelligence', on: true, auto: true, detail: 'First 5 sessions per client' },
-        { text: 'Automated retention alerts', on: true, auto: true, detail: 'First 5 sessions per client' },
-        { text: 'Business & billing performance snapshot', on: true, detail: 'First 5 sessions per client' },
-        { text: 'Full intelligence beyond 5 sessions', on: false },
-      ],
-    },
-    {
-      name: 'Silver', emoji: '🥈', highlight: true, badge: '🌿 Most popular',
-      price: { monthly: 19, annual: 15 },
-      tagline: 'Unlimited client history plus full pattern intelligence.',
-      cta: 'Choose Silver',
-      ctaAction: () => window.location.href = 'https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03',
-      promoCode: 'BETAONE',
-      promoNote: 'Founder codes available. Message us on Instagram or Facebook and tell us about your practice.',
-      promoLinks: [
-        { label: 'Instagram', url: 'https://www.instagram.com/mybodymap01/' },
-        { label: 'Facebook', url: 'https://www.facebook.com/profile.php?id=61568064032135' },
-      ],
-      features: [
-        { text: 'Everything in Bronze, fully automated', on: true },
-        { text: 'Full session history, unlimited', on: true },
-        { text: 'Automated pattern intelligence', on: true, auto: true, detail: 'All sessions, all clients, compounds over time' },
-        { text: 'Automated retention alerts', on: true, auto: true, detail: 'Catches drifting clients before they leave' },
-        { text: 'Automated revenue forecasting', on: true, auto: true, detail: 'Projected income based on booking pace' },
-        { text: 'Longitudinal body map overlays', on: true, detail: 'Visual tension diff across all sessions' },
-        { text: 'Revenue gap intelligence', on: true, detail: 'See exactly what empty slots cost you' },
-        { text: 'Business & billing analytics', on: true, detail: 'Busiest days, top services, revenue trends' },
-        { text: 'MyBodyMap AI with full history context', on: true, detail: 'Smarter answers, deeper insights' },
-        { text: 'Priority support', on: true },
-      ],
-    },
-    {
-      name: 'Gold', emoji: '🥇', highlight: false, comingSoon: true,
-      price: { monthly: 49, annual: 39 },
-      tagline: 'Everything in Silver, now for your whole team.',
-      cta: 'Coming Soon',
-      ctaAction: null,
-      features: [
-        { text: 'Everything in Silver - automated', on: true },
-        { text: 'Up to 10 therapist profiles', on: true },
-        { text: 'Team schedule view - all therapists, one screen', on: true },
-        { text: 'Per-therapist analytics & billing', on: true },
-        { text: 'Shared client pool', on: true },
-        { text: 'Commission tracking', on: true },
-        { text: 'Staff access controls', on: true },
-        { text: 'Practice-wide reporting', on: true },
-      ],
-    },
-  ];
+  const tiers = buildTiers({ isAuthenticated, navigate, billingCycle });
 
   return (
-    <div style={{ background:C.beige, minHeight:'100vh', fontFamily:'system-ui,sans-serif' }}>
+    <div className="bm-pricing-v2">
       <Nav />
 
-      <div style={{ textAlign:'center', padding:'72px 24px 48px' }}>
-        <div style={{ display:'inline-block', background:'#DCFCE7', color:C.forest, borderRadius:20, padding:'6px 16px', fontSize:13, fontWeight:700, marginBottom:20 }}>
-          🌿 Bronze is free during our beta. No credit card.
-        </div>
-        <h1 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(32px,5vw,52px)', fontWeight:700, color:C.dark, margin:'0 0 16px', lineHeight:1.15 }}>
-          Retain and Grow Your Client Base.<br/>Automate the Rest.
+      <header className="bm-pricing-v2-head">
+        <div className="bm-pricing-v2-eyebrow">Pricing</div>
+        <h1 className="bm-pricing-v2-title">
+          Built for therapists who want their <em>practice on autopilot.</em>
         </h1>
-        <p style={{ fontSize:17, color:C.gray, maxWidth:560, margin:'0 auto 12px', lineHeight:1.7 }}>
-          Back office on autopilot. Learn your clients' patterns over time and wow them with insights only you have. Built for massage therapists by massage therapists.
+        <p className="bm-pricing-v2-sub">
+          Free during beta. Honest pricing forever. No platform cut on your
+          earnings, no hidden fees, no surprise upgrades.
         </p>
-        <p style={{ fontSize:14, color:C.sage, fontWeight:700, maxWidth:480, margin:'0 auto 40px', lineHeight:1.6 }}>
-          Bronze is free during our beta. Every tool on this page, no credit card.
+
+        <div className="bm-pricing-v2-toggle" role="group" aria-label="Billing cycle">
+          <button
+            type="button"
+            className={`bm-pricing-v2-toggle__btn${billingCycle === "monthly" ? " is-active" : ""}`}
+            onClick={() => setBillingCycle("monthly")}
+            aria-pressed={billingCycle === "monthly"}
+          >
+            Monthly
+          </button>
+          <button
+            type="button"
+            className={`bm-pricing-v2-toggle__btn${billingCycle === "annual" ? " is-active" : ""}`}
+            onClick={() => setBillingCycle("annual")}
+            aria-pressed={billingCycle === "annual"}
+          >
+            Annual <span className="bm-pricing-v2-save">save 20%</span>
+          </button>
+        </div>
+      </header>
+
+      <main className="bm-pricing-v2-tiers">
+        {tiers.map((tier) => (
+          <PricingTier key={tier.id} tier={tier} />
+        ))}
+      </main>
+
+      <section className="bm-pricing-v2-trust">
+        <div className="bm-pricing-v2-trust__row">
+          <TrustItem
+            label="No platform cut"
+            detail="Stripe fees only. We never touch your earnings."
+          />
+          <TrustItem
+            label="Cancel anytime"
+            detail="One tap. No retention call. Your data stays yours."
+          />
+          <TrustItem
+            label="HIPAA-grade encryption"
+            detail="AES-256 at rest. TLS 1.3 in transit. Yours alone."
+          />
+          <TrustItem
+            label="Built for solo LMTs"
+            detail="Not for spas. Not for salons. For one therapist, you."
+          />
+        </div>
+      </section>
+
+      <section className="bm-pricing-v2-faq">
+        <h2 className="bm-pricing-v2-faq__title">Common questions</h2>
+        <div className="bm-pricing-v2-faq__list">
+          {FAQ.map((item, i) => (
+            <FaqItem
+              key={i}
+              q={item.q}
+              a={item.a}
+              isOpen={openFaq === i}
+              onToggle={() => setOpenFaq(openFaq === i ? null : i)}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="bm-pricing-v2-closing">
+        <h2>
+          Try it. Stay forever, or <em>walk away.</em>
+        </h2>
+        <p>
+          Start with Bronze. Free during beta. Move to Silver only when the
+          intelligence layer earns its keep.
         </p>
-      </div>
-
-      <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 24px 80px', display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(320px,1fr))', gap:24, alignItems:'start' }}>
-        {tiers.map((tier,ti) => (
-          <div key={tier.name} style={{ background:tier.highlight?C.forest:C.white, borderRadius:20, padding:32,
-            boxShadow:tier.highlight?'0 16px 48px rgba(42,87,65,0.25)':'0 2px 16px rgba(0,0,0,0.06)',
-            border:tier.highlight?'none':`1.5px solid ${C.border}`, position:'relative',
-            transform:tier.highlight?'scale(1.03)':'none' }}>
-            {tier.badge && (
-              <div style={{ position:'absolute', top:-12, left:'50%', transform:'translateX(-50%)',
-                background:C.gold, color:'#fff', borderRadius:20, padding:'4px 16px', fontSize:12, fontWeight:700, whiteSpace:'nowrap' }}>
-                {tier.badge}
-              </div>
-            )}
-            <div style={{ fontSize:28, marginBottom:8 }}>{tier.emoji}</div>
-            <div style={{ fontSize:22, fontWeight:700, color:tier.highlight?'#fff':C.dark, marginBottom:4 }}>{tier.name}</div>
-            <div style={{ fontSize:13, color:tier.highlight?'rgba(255,255,255,0.7)':C.gray, lineHeight:1.5, marginBottom:20 }}>{tier.tagline}</div>
-            <div style={{ display:'flex', alignItems:'flex-end', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-              <span style={{ fontSize:44, fontWeight:700, color:tier.highlight?'#fff':C.dark, lineHeight:1, fontFamily:'Georgia,serif' }}>
-                {tier.price.monthly === 0 ? 'Free' : `$${tier.price.monthly}`}
-              </span>
-              {tier.price.monthly === 0 && tier.futurePrice && (
-                <span style={{ fontSize:16, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:8, textDecoration:'line-through', fontFamily:'Georgia,serif', fontStyle:'italic' }}>
-                  ${tier.futurePrice}/mo
-                </span>
-              )}
-              {tier.price.monthly > 0 && <span style={{ fontSize:14, color:tier.highlight?'rgba(255,255,255,0.6)':C.gray, marginBottom:6 }}>/mo</span>}
-            </div>
-            {tier.price.monthly === 0 && tier.futurePrice
-              ? <div style={{ fontSize:13, fontWeight:700, color:tier.highlight?'#86EFAC':C.sage, marginBottom:20 }}>Free during beta</div>
-              : tier.price.monthly === 0
-              ? <div style={{ fontSize:13, fontWeight:700, color:tier.highlight?'#86EFAC':C.sage, marginBottom:20 }}>Free</div>
-              : <div style={{ fontSize:12, color:tier.highlight?'rgba(255,255,255,0.55)':C.gray, marginBottom:20 }}>billed monthly</div>
-            }
-            {tier.promoNote && (
-              <div style={{
-                fontSize:11,
-                color:tier.highlight?'rgba(255,255,255,0.85)':C.forest,
-                background:tier.highlight?'rgba(255,255,255,0.08)':'#F0FDF4',
-                border:tier.highlight?'1px solid rgba(255,255,255,0.15)':'1px solid #BBF7D0',
-                borderRadius:8,
-                padding:'10px 12px',
-                marginBottom:16,
-                lineHeight:1.5,
-                fontWeight:600,
-              }}>
-                <div style={{ marginBottom: tier.promoLinks ? 8 : 0 }}>✨ {tier.promoNote}</div>
-                {tier.promoLinks && (
-                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-                    {tier.promoLinks.map(link => (
-                      <a
-                        key={link.label}
-                        href={link.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display:'inline-flex',
-                          alignItems:'center',
-                          gap:4,
-                          padding:'5px 10px',
-                          borderRadius:6,
-                          background:tier.highlight?'rgba(255,255,255,0.15)':'#fff',
-                          color:tier.highlight?'#fff':C.forest,
-                          border:tier.highlight?'1px solid rgba(255,255,255,0.25)':'1px solid #86EFAC',
-                          textDecoration:'none',
-                          fontSize:11,
-                          fontWeight:700,
-                        }}>
-                        {link.label} →
-                      </a>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            {tier.comingSoon
-              ? <div style={{ background:'rgba(0,0,0,0.08)', borderRadius:12, padding:14, textAlign:'center', fontSize:14, fontWeight:600, color:C.gray, marginBottom:24 }}>Coming Soon</div>
-              : <button onClick={tier.ctaAction} style={{ width:'100%', padding:14, borderRadius:12, border:'none', cursor:'pointer', fontSize:15, fontWeight:700,
-                  background:tier.highlight?'#fff':C.forest, color:tier.highlight?C.forest:'#fff', marginBottom:24, transition:'all 0.15s' }}>
-                  {tier.cta}
-                </button>
-            }
-            <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-              {tier.features.map((f,i) => (
-                <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:10, opacity:f.on?1:0.35 }}>
-                  <span style={{ fontSize:13, flexShrink:0, marginTop:1, color:f.on?(tier.highlight?'#fff':C.forest):'#999' }}>{f.on?'✓':'✕'}</span>
-                  <div>
-                    <div style={{ fontSize:13, lineHeight:1.4, fontWeight:f.on?500:400,
-                      color:tier.highlight?(f.on?'#fff':'rgba(255,255,255,0.4)'):(f.on?C.dark:C.gray) }}>
-                      {f.auto
-                        ? <><span style={{ color:tier.highlight?'#86EFAC':C.sage, fontWeight:700 }}>Automated</span>{' '}{f.text.replace('Automated ','').replace('automated ','')}</>
-                        : f.text
-                      }
-                    </div>
-                    {f.detail && f.on && (
-                      <div style={{ fontSize:11, color:tier.highlight?'rgba(255,255,255,0.5)':C.gray, marginTop:1 }}>{f.detail}</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ maxWidth:680, margin:'0 auto', padding:'0 24px 80px' }}>
-        <h2 style={{ fontFamily:'Georgia,serif', fontSize:28, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:40 }}>Common questions</h2>
-        {[
-          { q:'Is Bronze really free?', a:"Yes. Every tool on this page is free on Bronze during our beta. No credit card, no trial, no hidden limits. Bronze will eventually be $9 per month for new signups, but anyone who joins during beta stays free and gets grandfathered benefits when pricing starts. We believe every therapist deserves professional tools." },
-          { q:'How can you afford to offer this for free?', a:"Honestly, because technology has changed. The capabilities that used to cost thousands of dollars a month to build and run (AI, automated emails, intelligent scheduling, body mapping) now cost a fraction of that. We built MyBodyMap lean and pass that directly to you. We make money when you grow into Silver. That only happens if Bronze genuinely helps you first. So we are fully aligned with your success." },
-          { q:'Why MyBodyMap and not the other scheduling tools?', bullets:['They charge for everything - reminders, SOAP notes, forms, and messaging are paywalled add-ons. On MyBodyMap they are all free on Bronze.','They require clients to create accounts or download an app just to book. That friction kills bookings. MyBodyMap clients book in 2 taps, no account, no app.','They have no intelligence. They store your data but never tell you anything useful with it. MyBodyMap surfaces patterns, flags retention risk, and forecasts revenue automatically.','They are built for salons and spas, not massage therapists. You pay for inventory management and loyalty points you will never use.','They push constant updates that break your workflow. Multiple competitors have reviews specifically about updates that caused missed bookings and dropped reminders. MyBodyMap is built for solo LMTs. Stable, focused, and fast.'] },
-          { q:'What is the intelligence layer in Silver?', a:"Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use MyBodyMap, the smarter it gets." },
-          { q:'What does first 5 sessions mean for intelligence on Bronze?', a:"On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use MyBodyMap." },
-          { q:'When is Gold launching?', a:"Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches." },
-          { q:'Can I switch plans anytime?', a:"Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade." },
-          { q:'What does "first 5 sessions" mean for intelligence?', a:'On Bronze, you get a taste of intelligence based on the last 5 sessions per client - automated pattern alerts, retention signals, and business snapshots. On Silver, the intelligence goes back through every session you have ever recorded, getting smarter the longer you use MyBodyMap.' },
-          { q:'What is the intelligence layer in Silver?', a:'Silver analyzes your entire client history - tension patterns, retention risk, revenue trends, schedule gaps - and automatically surfaces insights that help you earn more and keep clients longer. It compounds over time. The longer you use MyBodyMap, the smarter it gets.' },
-          { q:'When is Gold launching?', a:'Gold is in development. Sign up for Bronze or Silver now and you will get early access and founding pricing when it launches.' },
-          { q:'Can I switch plans anytime?', a:'Yes. If you downgrade from Silver to Bronze, your full history is preserved - you just lose access to intelligence beyond 5 sessions until you re-upgrade.' },
-        ].map((item) => (
-          <div key={item.q} style={{ borderBottom:`1px solid ${C.border}`, padding:'20px 0' }}>
-            <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{item.q}</div>
-            {item.a && <div style={{ fontSize:14, color:C.gray, lineHeight:1.7 }}>{item.a}</div>}
-            {item.bullets && (
-              <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:4 }}>
-                {item.bullets.map((b,i) => (
-                  <div key={i} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                    <span style={{ color:'#2A5741', fontWeight:700, flexShrink:0, marginTop:1 }}>{i+1}.</span>
-                    <span style={{ fontSize:14, color:C.gray, lineHeight:1.6 }}>{b}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ background:C.forest, padding:'64px 24px', textAlign:'center' }}>
-        <h2 style={{ fontFamily:'Georgia,serif', fontSize:'clamp(26px,4vw,40px)', fontWeight:700, color:'#fff', margin:'0 0 16px' }}>Start free today.</h2>
-        <p style={{ fontSize:16, color:'rgba(255,255,255,0.75)', margin:'0 0 28px' }}>No credit card. No setup fee. Your first client in 5 minutes.</p>
-        <button onClick={() => navigate('/signup')} style={{ background:'#fff', color:C.forest, border:'none', borderRadius:12, padding:'16px 40px', fontSize:16, fontWeight:700, cursor:'pointer' }}>
-          Get Started Free →
-        </button>
-      </div>
+        <a
+          href={isAuthenticated ? "/dashboard" : "/signup"}
+          className="bm-pricing-v2-cta"
+        >
+          Start free →
+        </a>
+      </section>
 
       <Footer />
     </div>
+  );
+}
+
+function PricingTier({ tier }) {
+  return (
+    <article
+      className={`bm-tier${tier.highlight ? " is-highlight" : ""}${tier.comingSoon ? " is-soon" : ""}`}
+    >
+      <div
+        className="bm-tier__photo"
+        style={{ backgroundImage: `url(${tier.photo})` }}
+      >
+        {tier.badge && <span className="bm-tier__badge">{tier.badge}</span>}
+        {tier.comingSoon && <span className="bm-tier__soon">Coming soon</span>}
+        <div className="bm-tier__overlay" />
+        <div className="bm-tier__name">{tier.name}</div>
+      </div>
+
+      <div className="bm-tier__body">
+        <p className="bm-tier__tagline">{tier.tagline}</p>
+
+        <div className="bm-tier__price-block">
+          {tier.price.amount === 0 ? (
+            <>
+              <span className="bm-tier__price-num">Free</span>
+              <span className="bm-tier__price-period">during beta</span>
+            </>
+          ) : (
+            <>
+              <span className="bm-tier__price-currency">$</span>
+              <span className="bm-tier__price-num">{tier.price.amount}</span>
+              <span className="bm-tier__price-period">{tier.price.period}</span>
+            </>
+          )}
+        </div>
+
+        {tier.footnote && (
+          <p className="bm-tier__footnote">{tier.footnote}</p>
+        )}
+
+        {tier.comingSoon ? (
+          <button type="button" className="bm-tier__cta is-disabled" disabled>
+            {tier.cta}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={`bm-tier__cta${tier.highlight ? " is-highlight" : ""}`}
+            onClick={tier.ctaAction}
+          >
+            {tier.cta}
+          </button>
+        )}
+
+        {tier.founderNote && (
+          <div className="bm-tier__founder">
+            <p className="bm-tier__founder-note">{tier.founderNote}</p>
+            <div className="bm-tier__founder-links">
+              <a href={IG_URL} target="_blank" rel="noopener noreferrer">
+                Instagram
+              </a>
+              <span aria-hidden="true">·</span>
+              <a href={FB_URL} target="_blank" rel="noopener noreferrer">
+                Facebook
+              </a>
+            </div>
+          </div>
+        )}
+
+        <ul className="bm-tier__features">
+          {tier.features.map((feat, i) => (
+            <li key={i} className="bm-tier__feature">
+              <CheckIcon />
+              <span>{feat}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
+  );
+}
+
+function TrustItem({ label, detail }) {
+  return (
+    <div className="bm-trust">
+      <div className="bm-trust__label">{label}</div>
+      <div className="bm-trust__detail">{detail}</div>
+    </div>
+  );
+}
+
+function FaqItem({ q, a, isOpen, onToggle }) {
+  return (
+    <div className={`bm-faq${isOpen ? " is-open" : ""}`}>
+      <button
+        type="button"
+        className="bm-faq__q"
+        onClick={onToggle}
+        aria-expanded={isOpen}
+      >
+        <span>{q}</span>
+        <span className="bm-faq__plus" aria-hidden="true">
+          {isOpen ? "−" : "+"}
+        </span>
+      </button>
+      {isOpen && <div className="bm-faq__a">{a}</div>}
+    </div>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg
+      className="bm-tier__check"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 8l3.5 3.5L13 5" />
+    </svg>
   );
 }
