@@ -3,7 +3,7 @@ import React from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import posthog from 'posthog-js';
 import ScrollToTop from './components/ScrollToTop';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
@@ -24,7 +24,6 @@ import AIDashboard from './components/AIDashboard';
 import ClientIntake from './pages/ClientIntake';
 import Demo from './pages/Demo';
 import WhyBodyMap from './pages/WhyBodyMap';
-import Atlas from './pages/Atlas';
 import BookingPage from './pages/BookingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
@@ -50,7 +49,7 @@ function App() {
           <Route path="/features" element={<FeaturesV2 />} />
           <Route path="/features-v2" element={<FeaturesV2 />} />
           <Route path="/features-old" element={<Features />} />
-          <Route path="/atlas" element={<Atlas />} />
+          <Route path="/atlas" element={<Navigate to="/" replace />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />

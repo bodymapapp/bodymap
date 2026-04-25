@@ -13,7 +13,6 @@ export default function Nav() {
   const links = [
     { to: "/", label: "Home" },
     { to: "/features", label: "Features" },
-    { to: "/atlas", label: "Atlas", badge: "new" },
     { to: "/why-bodymap", label: "Why MyBodyMap" },
     { to: "/pricing", label: "Pricing" },
     { to: "/contact", label: "Contact" },
