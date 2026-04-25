@@ -8,6 +8,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import Features from './pages/Features';
+import FeaturesV2 from './pages/FeaturesV2';
 import Pricing from './pages/Pricing';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
@@ -47,6 +48,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<Features />} />
+          <Route path="/features-v2" element={<FeaturesV2 />} />
           <Route path="/atlas" element={<Atlas />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />
