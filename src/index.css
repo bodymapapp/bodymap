@@ -2428,21 +2428,6 @@ section[id] {
   }
   .bm-home-ribbon--demo-right .bm-home-ribbon__copy { order: 1; }
   .bm-home-ribbon--demo-right .bm-home-ribbon__demo { order: 2; }
-
-  .bm-home-ribbon--demo-stacked .bm-home-ribbon__inner {
-    grid-template-columns: 1fr;
-    gap: 36px;
-  }
-  .bm-home-ribbon--demo-stacked .bm-home-ribbon__copy {
-    max-width: 720px;
-    margin: 0 auto;
-    text-align: center;
-  }
-  .bm-home-ribbon--demo-stacked .bm-home-ribbon__list {
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-  }
 }
 
 /* Copy column */
@@ -2527,6 +2512,10 @@ section[id] {
 .bm-home-ribbon__demo-frame {
   width: 100%;
   min-width: 0;
+  /* Prevent scroll jump when switching tabs in ribbon 3.
+     Pattern and AI demos have different natural heights — locking a min
+     stops the page from reflowing under the user's thumb when they tap. */
+  min-height: 480px;
   background: var(--bm-cream);
   border-radius: 18px;
   padding: 16px;
@@ -2536,13 +2525,7 @@ section[id] {
   overflow: hidden;
 }
 @media (min-width: 768px) {
-  .bm-home-ribbon__demo-frame { padding: 20px; border-radius: 22px; }
-}
-
-/* When stacked, give demos breathing room and a max width */
-.bm-home-ribbon--demo-stacked .bm-home-ribbon__demo-frame {
-  max-width: 880px;
-  margin: 0 auto;
+  .bm-home-ribbon__demo-frame { padding: 20px; border-radius: 22px; min-height: 520px; }
 }
 
 /* Demo tabs (carousel for ribbon 3 with 2 demos) */
@@ -2577,35 +2560,6 @@ section[id] {
   font-size: 12px;
   color: var(--bm-ink-fade);
   margin-left: auto;
-}
-
-/* Static photo "demo" for ribbons without an interactive component */
-.bm-home-ribbon__photo {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  background-size: cover;
-  background-position: center;
-  border-radius: 14px;
-  position: relative;
-  overflow: hidden;
-}
-.bm-home-ribbon__photo-caption {
-  position: absolute;
-  bottom: 14px;
-  left: 16px;
-  font-family: var(--bm-serif);
-  font-style: italic;
-  font-size: 14px;
-  color: var(--bm-cream);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  z-index: 1;
-}
-.bm-home-ribbon__photo::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 50%;
-  background: linear-gradient(to top, rgba(28, 43, 34, 0.55), transparent);
 }
 
 /* ── Closing CTA ────────────────────────────────────────────────── */

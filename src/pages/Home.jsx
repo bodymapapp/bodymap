@@ -33,31 +33,12 @@ import AutomationHub from "../components/demos/AutomationHub";
 // ───────────────────────────────────────────────────────────────────────
 const RIBBONS = [
   {
-    id: "1",
-    name: "Find & Book",
-    tagline: "How new clients discover you and schedule the first session.",
-    demos: [
-      // No interactive demo built for booking yet. Use a lifestyle moment
-      // until we ship a booking-page mockup.
-      { kind: "photo", photoId: "1.1", caption: "Your custom booking page" },
-    ],
-    layout: "demo-right", // demo on right, copy on left, on desktop
-    subFeatures: [
-      "Custom booking page at mybodymap.app/your-name",
-      "Services catalog with durations and add-ons",
-      "Cal.com sync, two-way",
-      "Deposits at booking via Stripe / Square",
-      "Website embed for your existing site",
-    ],
-    cta: "Find & Book features",
-  },
-  {
     id: "2",
     name: "Know Your Client",
     tagline:
       "The visual body map that no other massage platform offers, on your client's phone before they walk in.",
     demos: [{ kind: "component", component: BodyMapDemo, label: "Try the body map" }],
-    layout: "demo-left", // demo on left, copy on right
+    layout: "demo-left",
     subFeatures: [
       "Visual body map intake (front and back)",
       "Focus zones, avoid areas, pressure preferences",
@@ -77,7 +58,7 @@ const RIBBONS = [
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
       { kind: "component", component: AIDemo, label: "MyBodyMap AI chat" },
     ],
-    layout: "demo-stacked",
+    layout: "demo-right",
     subFeatures: [
       "Longitudinal heatmaps across all sessions",
       "MyBodyMap AI: chat with your client data",
@@ -92,7 +73,7 @@ const RIBBONS = [
     name: "Day-of-Session",
     tagline: "What the platform does during the hour you are working.",
     demos: [{ kind: "component", component: ScheduleDemo, label: "Today's schedule" }],
-    layout: "demo-stacked", // schedule is wide+short, looks best full width
+    layout: "demo-left",
     subFeatures: [
       "Today's schedule with color-coded services",
       "AI pre-session brief, 2 min before each session",
@@ -107,7 +88,7 @@ const RIBBONS = [
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
     demos: [{ kind: "component", component: AutomationHub, label: "Automation flows" }],
-    layout: "demo-stacked",
+    layout: "demo-right",
     subFeatures: [
       "Automated SMS + email reminders",
       "Post-session thank-you with rebook link",
@@ -122,7 +103,7 @@ const RIBBONS = [
     name: "Money & Protection",
     tagline: "Get paid. Stay protected. Run a real business.",
     demos: [{ kind: "component", component: BillingDemo, label: "Billing dashboard" }],
-    layout: "demo-stacked",
+    layout: "demo-left",
     subFeatures: [
       "Revenue dashboard, real-time",
       "Top 10 clients by lifetime spend",
@@ -131,21 +112,6 @@ const RIBBONS = [
       "HIPAA-grade encryption, AES-256",
     ],
     cta: "Money & Protection features",
-  },
-  {
-    id: "7",
-    name: "On Your Phone",
-    tagline: "The platform lives with you, quietly, everywhere.",
-    demos: [{ kind: "photo", photoId: "7.1", caption: "Install to home screen" }],
-    layout: "demo-right",
-    subFeatures: [
-      "Install to home screen (PWA)",
-      "Push notifications, configurable per event",
-      "Founding therapist emails, direct from the founder",
-      "Refer and reward via IG/FB DM",
-      "Switch from MindBody, Vagaro, Acuity in 15 minutes",
-    ],
-    cta: "On Your Phone features",
   },
 ];
 
@@ -239,7 +205,7 @@ export default function Home() {
         <div className="bm-home-tour-intro__inner">
           <div className="bm-home-tour-intro__eyebrow">The product tour</div>
           <h2 className="bm-home-tour-intro__title">
-            Seven parts of your practice. <em>One quiet platform.</em>
+            Five core moments. <em>One quiet platform.</em>
           </h2>
           <p className="bm-home-tour-intro__sub">
             Tap any demo below to try the actual product. From the body map
@@ -352,29 +318,10 @@ function HomeRibbon({ ribbon, isMobile }) {
             </div>
           )}
           <div className="bm-home-ribbon__demo-frame">
-            {activeDemo.kind === "component" ? (
-              <activeDemo.component />
-            ) : (
-              <DemoPhoto photoId={activeDemo.photoId} caption={activeDemo.caption} />
-            )}
+            <activeDemo.component />
           </div>
         </div>
       </div>
     </section>
-  );
-}
-
-// Static photo "demo" — used for ribbons without an interactive demo yet.
-function DemoPhoto({ photoId, caption }) {
-  const slug = `feature-${photoId.replace(/\./g, "-")}`;
-  return (
-    <div
-      className="bm-home-ribbon__photo"
-      style={{ backgroundImage: `url(/images/${slug}.jpg)` }}
-    >
-      {caption && (
-        <div className="bm-home-ribbon__photo-caption">{caption}</div>
-      )}
-    </div>
   );
 }
