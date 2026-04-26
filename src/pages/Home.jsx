@@ -19,12 +19,14 @@ import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 
 // Interactive product demos (extracted from legacy Features.jsx)
+import BookingDemo from "../components/demos/BookingDemo";
 import BodyMapDemo from "../components/demos/BodyMapDemo";
 import PatternDemo from "../components/demos/PatternDemo";
 import ScheduleDemo from "../components/demos/ScheduleDemo";
 import BillingDemo from "../components/demos/BillingDemo";
 import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
+import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
 // Ribbon configuration. Mirrors the 7 ribbons on /features but adapted
@@ -32,6 +34,21 @@ import AutomationHub from "../components/demos/AutomationHub";
 // that link into the relevant section of /features via anchor IDs.
 // ───────────────────────────────────────────────────────────────────────
 const RIBBONS = [
+  {
+    id: "1",
+    name: "Find & Book",
+    tagline: "How new clients discover you and schedule the first session.",
+    demos: [{ kind: "component", component: BookingDemo, label: "Try the booking page" }],
+    layout: "demo-right",
+    subFeatures: [
+      "Custom booking page at mybodymap.app/your-name",
+      "Services catalog with durations and add-ons",
+      "Cal.com sync, two-way",
+      "Deposits at booking via Stripe / Square",
+      "Website embed for your existing site",
+    ],
+    cta: "Find & Book features",
+  },
   {
     id: "2",
     name: "Know Your Client",
@@ -53,7 +70,7 @@ const RIBBONS = [
     name: "Client Intelligence",
     tagline:
       "Pattern recognition across visits and AI chat with your full client history. The core moat.",
-    // TWO demos — Pattern + AI — shown as a carousel with prev/next arrows.
+    // TWO demos — Pattern + AI — shown as a carousel.
     demos: [
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
       { kind: "component", component: AIDemo, label: "MyBodyMap AI chat" },
@@ -112,6 +129,21 @@ const RIBBONS = [
       "HIPAA-grade encryption, AES-256",
     ],
     cta: "Money & Protection features",
+  },
+  {
+    id: "7",
+    name: "On Your Phone",
+    tagline: "The platform lives with you, quietly, everywhere. Install to home screen, no app store.",
+    demos: [{ kind: "component", component: PhoneDemo, label: "On your phone" }],
+    layout: "demo-right",
+    subFeatures: [
+      "Install to home screen (PWA)",
+      "Push notifications, configurable per event",
+      "Founding therapist emails, direct from the founder",
+      "Refer and reward via IG/FB DM",
+      "Switch from MindBody, Vagaro, Acuity in 15 minutes",
+    ],
+    cta: "On Your Phone features",
   },
 ];
 
@@ -205,7 +237,7 @@ export default function Home() {
         <div className="bm-home-tour-intro__inner">
           <div className="bm-home-tour-intro__eyebrow">The product tour</div>
           <h2 className="bm-home-tour-intro__title">
-            Five core moments. <em>One quiet platform.</em>
+            Seven parts of your practice. <em>One quiet platform.</em>
           </h2>
           <p className="bm-home-tour-intro__sub">
             Tap any demo below to try the actual product. From the body map
