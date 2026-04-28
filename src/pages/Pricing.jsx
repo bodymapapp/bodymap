@@ -195,8 +195,8 @@ export default function Pricing() {
             detail="One tap. No retention call. Your data stays yours."
           />
           <TrustItem
-            label="Bank-grade encryption"
-            detail="Same security as online banking. Only you see your clients."
+            label="HIPAA encryption"
+            detail="Same standards as MassageBook and Vagaro. Your data stays yours."
           />
           <TrustItem
             label="Built for solo LMTs"
