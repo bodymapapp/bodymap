@@ -195,8 +195,8 @@ export default function Pricing() {
             detail="One tap. No retention call. Your data stays yours."
           />
           <TrustItem
-            label="HIPAA-grade encryption"
-            detail="AES-256 at rest. TLS 1.3 in transit. Yours alone."
+            label="Bank-grade encryption"
+            detail="Same security as online banking. Only you see your clients."
           />
           <TrustItem
             label="Built for solo LMTs"

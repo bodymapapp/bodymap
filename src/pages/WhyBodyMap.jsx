@@ -78,7 +78,7 @@ const ONLY_MBM = [
     id: "body-map-intake",
     title: "Visual body map intake, on the client's phone",
     body:
-      "Before they walk in, your client taps focus areas, avoid zones, and pressure preferences directly on a body diagram. You walk into the session already knowing where to start.",
+      "Your client taps where it hurts on a body diagram before walking in. You start the session already knowing where to focus.",
     proof:
       "MassageBook's body-chart annotation is locked behind their paid Premium SOAP plan, and it is for therapist notes after the session, not client intake. Vagaro, GlossGenius, Acuity, and ClinicSense use plain text intake forms only.",
     photoId: "2.1",
@@ -87,7 +87,7 @@ const ONLY_MBM = [
     id: "ai-chat",
     title: "AI chat with your full client history",
     body:
-      'Ask anything. <em>"What body areas has Sarah been flagging this year?"</em> <em>"Which clients have not booked in 60 days but used to come monthly?"</em> Trained only on your practice. Answers in seconds.',
+      'Ask anything. <em>"Which clients haven\'t booked in 60 days?"</em> Answers in seconds, trained only on your practice.',
     proof:
       "Noterro has AI for voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a clinical AI chat over your full client history. SimplePractice charges $35/mo extra for AI notes alone.",
     photoId: "3.3",
@@ -96,7 +96,7 @@ const ONLY_MBM = [
     id: "longitudinal",
     title: "Longitudinal pattern intelligence",
     body:
-      "Every body area a client has flagged across visits, layered into one visual. Spot the pattern emerging in their right shoulder over six months without scrolling through twelve session notes.",
+      "Every body area a client has flagged, layered into one visual. Spot the pattern in their right shoulder without scrolling through twelve notes.",
     proof:
       "No competitor offers a longitudinal heatmap view across all sessions. SOAP notes everywhere are stored chronologically and searched one-at-a-time. Pattern recognition across visits is not in their product set as of April 2026.",
     photoId: "3.1",
@@ -105,7 +105,7 @@ const ONLY_MBM = [
     id: "pre-session",
     title: "AI pre-session brief, two minutes before they arrive",
     body:
-      "A card surfaces on your phone: who is coming, where they have been hurting, what worked last time, what to ask, what to avoid. The brief a great manager would send. Except it is the AI, and it never forgets.",
+      "Who's coming. Where they've been hurting. What worked last time. The brief a great manager would send, except it never forgets.",
     proof:
       "No mainstream massage platform automatically generates a pre-session AI brief. MassageBook lets you review intake forms before the session, but you have to open them yourself, and they are static text.",
     photoId: "4.2",
@@ -114,7 +114,7 @@ const ONLY_MBM = [
     id: "free-tier",
     title: "All of it, free during beta",
     body:
-      "Bronze tier is free. Visual body map, AI chat, automated reminders, SOAP notes, billing, intake. Free forever for anyone who joins during beta.",
+      "Bronze is free. Body map, AI chat, reminders, SOAP notes, billing, intake. Free forever for anyone who joins now.",
     proof:
       "Solo therapists currently pay $20-70/month for partial versions of these tools across MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, and Noterro. Most charge extra for SOAP, marketing, or text reminders on top of the base plan.",
     photoId: "1.1",

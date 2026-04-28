@@ -126,7 +126,7 @@ const RIBBONS = [
       "Top 10 clients by lifetime spend",
       "Gift cards directly from your booking page",
       "ESIGN-compliant signed waivers, 7-year retention",
-      "HIPAA-grade encryption, AES-256",
+      "Bank-grade encryption (AES-256) on a SOC 2 Type II host",
     ],
     cta: "Money & Protection features",
   },
