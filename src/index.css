@@ -2898,3 +2898,187 @@ section[id] {
 /* ─────────────────────────────────────────────────────────────────────────
    End Security v2 styles
    ───────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Silver pre-checkout confirmation modal (Lever A)
+   Sits between "Choose Silver" tap and Stripe checkout, in our voice,
+   making the 12-months-free founder-code value explicit.
+   ───────────────────────────────────────────────────────────────────── */
+.bm-pricing-v2-confirm-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(28, 43, 34, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 1000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  animation: bm-pricing-v2-confirm-fade 0.2s ease-out;
+}
+@media (min-width: 768px) {
+  .bm-pricing-v2-confirm-modal {
+    align-items: center;
+    padding: 24px;
+  }
+}
+@keyframes bm-pricing-v2-confirm-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.bm-pricing-v2-confirm-modal__panel {
+  position: relative;
+  background: var(--bm-cream);
+  border-radius: 22px 22px 0 0;
+  padding: 28px 24px 24px;
+  width: 100%;
+  max-width: 100%;
+  max-height: 92vh;
+  overflow-y: auto;
+  box-shadow: 0 -12px 40px rgba(28, 43, 34, 0.18);
+  animation: bm-pricing-v2-confirm-slide 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (min-width: 768px) {
+  .bm-pricing-v2-confirm-modal__panel {
+    border-radius: 22px;
+    max-width: 480px;
+    padding: 36px 36px 32px;
+    box-shadow: 0 24px 60px rgba(28, 43, 34, 0.22);
+  }
+}
+@keyframes bm-pricing-v2-confirm-slide {
+  from { transform: translateY(40px); opacity: 0.4; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.bm-pricing-v2-confirm-modal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: var(--bm-ink-fade);
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.bm-pricing-v2-confirm-modal__close:hover {
+  background: var(--bm-cream-deep);
+  color: var(--bm-forest);
+}
+
+.bm-pricing-v2-confirm-modal__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--bm-gold-deep);
+  margin-bottom: 10px;
+}
+
+.bm-pricing-v2-confirm-modal__title {
+  font-family: var(--bm-serif);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--bm-forest);
+  margin: 0 0 22px;
+}
+@media (min-width: 768px) {
+  .bm-pricing-v2-confirm-modal__title { font-size: 30px; }
+}
+
+.bm-pricing-v2-confirm-modal__body p {
+  font-size: 14px;
+  color: var(--bm-ink);
+  line-height: 1.6;
+  margin: 0 0 12px;
+}
+@media (min-width: 768px) {
+  .bm-pricing-v2-confirm-modal__body p { font-size: 15px; }
+}
+.bm-pricing-v2-confirm-modal__body strong {
+  color: var(--bm-forest);
+  font-weight: 600;
+}
+.bm-pricing-v2-confirm-modal__note {
+  font-family: var(--bm-serif);
+  font-style: italic;
+  font-size: 13px !important;
+  color: var(--bm-ink-soft) !important;
+  background: var(--bm-cream-alt);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-top: 14px !important;
+}
+
+.bm-pricing-v2-confirm-modal__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.bm-pricing-v2-confirm-modal__continue {
+  background: var(--bm-forest);
+  color: var(--bm-cream);
+  border: none;
+  border-radius: 999px;
+  padding: 15px 24px;
+  font-family: var(--bm-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.bm-pricing-v2-confirm-modal__continue:hover {
+  background: var(--bm-ink);
+}
+.bm-pricing-v2-confirm-modal__continue:active {
+  transform: scale(0.98);
+}
+
+.bm-pricing-v2-confirm-modal__cancel {
+  background: transparent;
+  color: var(--bm-ink-soft);
+  border: 1.5px solid var(--bm-cream-deep);
+  border-radius: 999px;
+  padding: 13px 24px;
+  font-family: var(--bm-sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.bm-pricing-v2-confirm-modal__cancel:hover {
+  background: var(--bm-cream-alt);
+  color: var(--bm-forest);
+}
+
+.bm-pricing-v2-confirm-modal__help {
+  font-size: 12px !important;
+  color: var(--bm-ink-fade) !important;
+  text-align: center;
+  margin: 18px 0 0 !important;
+  line-height: 1.55 !important;
+}
+.bm-pricing-v2-confirm-modal__help a {
+  color: var(--bm-sage);
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 107, 84, 0.3);
+  text-underline-offset: 2px;
+}
+.bm-pricing-v2-confirm-modal__help a:hover {
+  color: var(--bm-forest);
+}

@@ -111,7 +111,9 @@ export const AuthProvider = ({ children }) => {
         phone: metadata.phone,
         custom_url: metadata.customUrl,
         password_hash: 'managed_by_supabase_auth',
-        plan: 'silver',
+        // Default new signups to Bronze (free tier) to match marketing.
+        // Stripe-paid flows above will upgrade to Silver via the justPaid path.
+        plan: 'bronze',
         trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       }]);
       if (dbError) throw dbError;

@@ -61,11 +61,10 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         ? { amount: 15, period: "/mo · billed annually" }
         : { amount: 19, period: "/mo" },
       cta: "Choose Silver",
-      ctaAction: () => {
-        window.location.href = annualMode
-          ? STRIPE_SILVER_ANNUAL
-          : STRIPE_SILVER_MONTHLY;
-      },
+      // ctaAction is set inside the component below so it can open the
+      // pre-checkout confirmation modal (which clarifies the 12-months-free
+      // founder-code value before Stripe takes over with its own copy).
+      ctaAction: null,
       features: [
         "Everything in Bronze, fully automated",
         "Full session history · unlimited",
@@ -145,8 +144,22 @@ export default function Pricing() {
   const navigate = useNavigate();
   const [billingCycle, setBillingCycle] = useState("monthly");
   const [openFaq, setOpenFaq] = useState(null);
+  const [showSilverConfirm, setShowSilverConfirm] = useState(false);
 
   const tiers = buildTiers({ isAuthenticated, navigate, billingCycle });
+
+  // Wire Silver tier's CTA to open the pre-checkout confirmation modal.
+  // Bronze keeps its existing ctaAction (signup or dashboard nav).
+  // Gold has no ctaAction (coming soon).
+  tiers.forEach((t) => {
+    if (t.id === "silver") {
+      t.ctaAction = () => setShowSilverConfirm(true);
+    }
+  });
+
+  // Stripe URLs the modal hands off to. Mirrors logic from buildTiers.
+  const stripeUrl =
+    billingCycle === "annual" ? STRIPE_SILVER_ANNUAL : STRIPE_SILVER_MONTHLY;
 
   return (
     <div className="bm-pricing-v2">
@@ -239,6 +252,14 @@ export default function Pricing() {
           Start free →
         </a>
       </section>
+
+      {showSilverConfirm && (
+        <SilverConfirmModal
+          stripeUrl={stripeUrl}
+          billingCycle={billingCycle}
+          onClose={() => setShowSilverConfirm(false)}
+        />
+      )}
 
       <Footer />
     </div>
@@ -366,5 +387,121 @@ function CheckIcon() {
     >
       <path d="M3 8l3.5 3.5L13 5" />
     </svg>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────
+// SilverConfirmModal — appears when therapist taps "Choose Silver."
+//
+// Why this modal exists:
+// Stripe checkout displays "7 days free, then $0.00 per month until coupon
+// expires" when BETAONE is applied. Therapists scanning that read it as a
+// 7-day trial and bail. This modal sits between the Pricing CTA and Stripe,
+// in our voice, explicitly stating the 12-months-free founder-code value
+// before Stripe takes over with its own confusing language.
+// ───────────────────────────────────────────────────────────────────────
+function SilverConfirmModal({ stripeUrl, billingCycle, onClose }) {
+  // Lock body scroll while modal is open
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  // Allow Esc key to close
+  React.useEffect(() => {
+    const handler = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  const continueToStripe = () => {
+    window.location.href = stripeUrl;
+  };
+
+  const priceLabel = billingCycle === "annual" ? "$15/mo billed annually" : "$19/mo";
+
+  return (
+    <div
+      className="bm-pricing-v2-confirm-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="silver-confirm-title"
+      onClick={onClose}
+    >
+      <div
+        className="bm-pricing-v2-confirm-modal__panel"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="bm-pricing-v2-confirm-modal__close"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+
+        <div className="bm-pricing-v2-confirm-modal__eyebrow">Before you continue</div>
+        <h2
+          id="silver-confirm-title"
+          className="bm-pricing-v2-confirm-modal__title"
+        >
+          Have your founder code ready?
+        </h2>
+
+        <div className="bm-pricing-v2-confirm-modal__body">
+          <p>
+            <strong>With a founder code:</strong> 12 months free. Then{" "}
+            {priceLabel}. Cancel anytime.
+          </p>
+          <p>
+            <strong>Without a code:</strong> {priceLabel} starting today.
+            Cancel anytime.
+          </p>
+          <p className="bm-pricing-v2-confirm-modal__note">
+            On the next screen, look for the "Add promo code" link to enter
+            your founder code.
+          </p>
+        </div>
+
+        <div className="bm-pricing-v2-confirm-modal__actions">
+          <button
+            type="button"
+            className="bm-pricing-v2-confirm-modal__continue"
+            onClick={continueToStripe}
+          >
+            Continue to checkout →
+          </button>
+          <button
+            type="button"
+            className="bm-pricing-v2-confirm-modal__cancel"
+            onClick={onClose}
+          >
+            Not yet, I need a code
+          </button>
+        </div>
+
+        <p className="bm-pricing-v2-confirm-modal__help">
+          No code? Message us on{" "}
+          <a
+            href="https://www.instagram.com/mybodymap01/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Instagram
+          </a>{" "}
+          or{" "}
+          <a
+            href="https://www.facebook.com/profile.php?id=61568064032135"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Facebook
+          </a>{" "}
+          and tell us about your practice.
+        </p>
+      </div>
+    </div>
   );
 }
