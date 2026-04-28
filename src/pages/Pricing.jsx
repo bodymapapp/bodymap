@@ -131,6 +131,10 @@ const FAQ = [
     a: "Gold is in development. Sign up for Bronze or Silver now and you get early access and founding pricing when it launches.",
   },
   {
+    q: "Is my client information secure?",
+    a: "Yes. Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated, hosted on a SOC 2 Type II audited platform, and only you can see your own clients. We never sell your data, and we never train AI on it across practices. One thing worth knowing: HIPAA the law only legally applies to therapists who bill insurance electronically or work directly with other healthcare providers. Most solo cash-pay therapists are not HIPAA covered entities, but we treat your client data with that level of care anyway.",
+  },
+  {
     q: "Can I switch plans anytime?",
     a: "Yes. If you downgrade from Silver to Bronze, your full history is preserved. You just lose access to intelligence beyond 5 sessions until you re-upgrade.",
   },

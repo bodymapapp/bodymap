@@ -12,6 +12,7 @@ import FeaturesV2 from './pages/FeaturesV2';
 import Pricing from './pages/Pricing';
 import Contact from './pages/Contact';
 import Privacy from './pages/Privacy';
+import Security from './pages/Security';
 import Terms from './pages/Terms';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
@@ -53,6 +54,7 @@ function App() {
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />
+          <Route path="/security" element={<Security />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />

@@ -24,7 +24,7 @@ export default function Footer() {
             <p style={{ fontWeight: "700", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", color: "rgba(255,255,255,0.5)" }}>Product</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <a href="/#features" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Features</a>
-              <Link to="/atlas" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>The Atlas</Link>
+              <Link to="/why-bodymap" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Why MyBodyMap</Link>
               <Link to="/pricing" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Pricing</Link>
             </div>
           </div>
@@ -32,6 +32,7 @@ export default function Footer() {
             <p style={{ fontWeight: "700", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", color: "rgba(255,255,255,0.5)" }}>Company</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               <Link to="/contact" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Contact</Link>
+              <Link to="/security" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Security</Link>
               <Link to="/privacy" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Privacy Policy</Link>
               <Link to="/terms" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Terms of Service</Link>
             </div>

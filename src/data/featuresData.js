@@ -340,8 +340,8 @@ export const RIBBONS = [
         id: "6.4",
         name: "Privacy & security",
         body: [
-          "HIPAA-encrypted, same standards as MassageBook and Vagaro. Only you see your clients.",
-          "Hosted on a SOC 2 Type II audited platform. Each therapist's data is fully isolated.",
+          "Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated. We never sell it, never train AI on it across practices.",
+          "<em>A note on HIPAA the law:</em> it generally applies to therapists who bill insurance electronically. Most solo cash-pay therapists are not legally covered, but we treat your data with that level of care anyway.",
         ],
         meta: "HIPAA encryption · SOC 2 Type II host",
       },

@@ -2627,3 +2627,274 @@ section[id] {
 /* ─────────────────────────────────────────────────────────────────────────
    End Home v2 styles
    ───────────────────────────────────────────────────────────────────── */
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Security v2 — /security page styles
+   Editorial rebuild matching FeaturesV2 design system.
+   Six pillars + honest HIPAA section + email CTA.
+   ───────────────────────────────────────────────────────────────────── */
+.bm-security-v2 {
+  background: var(--bm-cream);
+  color: var(--bm-ink);
+  font-family: var(--bm-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* Header */
+.bm-security-v2-head {
+  padding: 110px 22px 36px;
+  text-align: center;
+  border-bottom: 1px solid var(--bm-cream-deep);
+}
+.bm-security-v2-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--bm-sage);
+  margin-bottom: 14px;
+}
+.bm-security-v2-title {
+  font-family: var(--bm-serif);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1.08;
+  letter-spacing: -0.015em;
+  color: var(--bm-forest);
+  margin: 0 0 18px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.bm-security-v2-title em {
+  font-style: italic;
+  color: var(--bm-sage);
+}
+.bm-security-v2-sub {
+  font-size: 14px;
+  color: var(--bm-ink-soft);
+  max-width: 540px;
+  margin: 0 auto;
+  line-height: 1.65;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-head { padding: 140px 32px 56px; }
+  .bm-security-v2-title { font-size: 50px; }
+  .bm-security-v2-sub { font-size: 16px; max-width: 600px; }
+}
+
+/* Pillars */
+.bm-security-v2-pillars {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 48px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillars { padding: 72px 32px; gap: 16px; }
+}
+
+.bm-security-v2-pillar {
+  background: var(--bm-cream-alt);
+  border-radius: 18px;
+  border: 1px solid rgba(28, 43, 34, 0.06);
+  padding: 22px;
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillar { padding: 28px 32px; gap: 24px; }
+}
+
+.bm-security-v2-pillar__num {
+  font-family: var(--bm-serif);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 26px;
+  color: var(--bm-gold);
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillar__num { font-size: 32px; }
+}
+
+.bm-security-v2-pillar__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.bm-security-v2-pillar__title {
+  font-family: var(--bm-serif);
+  font-weight: 400;
+  font-size: 19px;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: var(--bm-forest);
+  margin: 0 0 6px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillar__title { font-size: 22px; }
+}
+
+.bm-security-v2-pillar__claim {
+  font-family: var(--bm-serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--bm-gold-deep);
+  margin: 0 0 12px;
+  letter-spacing: 0.005em;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillar__claim { font-size: 14px; }
+}
+
+.bm-security-v2-pillar__text {
+  font-size: 14px;
+  color: var(--bm-ink-soft);
+  line-height: 1.65;
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-pillar__text { font-size: 15px; }
+}
+
+/* HIPAA honest section */
+.bm-security-v2-hipaa {
+  background: var(--bm-cream-alt);
+  border-top: 1px solid var(--bm-cream-deep);
+  border-bottom: 1px solid var(--bm-cream-deep);
+  padding: 56px 22px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-hipaa { padding: 80px 32px; }
+}
+.bm-security-v2-hipaa__inner {
+  max-width: 720px;
+  margin: 0 auto;
+}
+.bm-security-v2-hipaa__eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--bm-gold-deep);
+  margin: 0 0 12px;
+}
+.bm-security-v2-hipaa__title {
+  font-family: var(--bm-serif);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--bm-forest);
+  margin: 0 0 28px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-hipaa__title { font-size: 36px; }
+}
+.bm-security-v2-hipaa__title em {
+  font-style: italic;
+  color: var(--bm-sage);
+}
+.bm-security-v2-hipaa__body p {
+  font-size: 15px;
+  color: var(--bm-ink);
+  line-height: 1.75;
+  margin: 0 0 16px;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-hipaa__body p { font-size: 16px; }
+}
+.bm-security-v2-hipaa__body p:last-child { margin-bottom: 0; }
+.bm-security-v2-hipaa__body strong {
+  color: var(--bm-forest);
+  font-weight: 600;
+}
+.bm-security-v2-hipaa__body a {
+  color: var(--bm-sage);
+  text-decoration: underline;
+  text-decoration-color: rgba(74, 107, 84, 0.4);
+  text-underline-offset: 3px;
+}
+.bm-security-v2-hipaa__body a:hover {
+  color: var(--bm-forest);
+  text-decoration-color: var(--bm-forest);
+}
+
+/* Closing block */
+.bm-security-v2-closing {
+  padding: 56px 24px 72px;
+  text-align: center;
+  background: var(--bm-forest);
+  color: var(--bm-cream);
+}
+@media (min-width: 768px) {
+  .bm-security-v2-closing { padding: 88px 32px 110px; }
+}
+.bm-security-v2-closing h2 {
+  font-family: var(--bm-serif);
+  font-weight: 400;
+  font-size: 28px;
+  line-height: 1.15;
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-closing h2 { font-size: 36px; }
+}
+.bm-security-v2-closing h2 em {
+  font-style: italic;
+  color: var(--bm-rose);
+}
+.bm-security-v2-closing p {
+  font-size: 14px;
+  color: rgba(249, 245, 238, 0.7);
+  max-width: 480px;
+  margin: 0 auto 28px;
+  line-height: 1.65;
+}
+@media (min-width: 768px) {
+  .bm-security-v2-closing p { font-size: 16px; }
+}
+.bm-security-v2-closing__ctas {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.bm-security-v2-cta-primary {
+  display: inline-block;
+  background: var(--bm-gold);
+  color: var(--bm-forest);
+  padding: 14px 30px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.bm-security-v2-cta-secondary {
+  display: inline-block;
+  background: transparent;
+  color: rgba(249, 245, 238, 0.85);
+  border: 1.5px solid rgba(249, 245, 238, 0.3);
+  padding: 14px 30px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.bm-security-v2-cta-primary:active,
+.bm-security-v2-cta-secondary:active {
+  transform: scale(0.97);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   End Security v2 styles
+   ───────────────────────────────────────────────────────────────────── */
