@@ -20,6 +20,12 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
   const [showMore, setShowMore] = useState(false);
   const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
 
+  // Hide MyBodyMap AI item when the therapist has turned AI features off
+  // in Settings. Other items stay visible. Defaults to visible when the
+  // flag is undefined (existing therapists not yet migrated).
+  const aiOff = therapist?.ai_enabled === false;
+  const moreItems = MORE_ITEMS.filter(item => !(aiOff && item.id === 'ai'));
+
   // Close drawer on back navigation
   useEffect(() => {
     const handler = () => setShowMore(false);
@@ -96,7 +102,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
 
           {/* Menu cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-            {MORE_ITEMS.map(item => {
+            {moreItems.map(item => {
               const isActive = active === item.id;
               return (
                 <button key={item.id} onClick={() => { onChange(item.id); setShowMore(false); }}

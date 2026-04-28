@@ -117,6 +117,14 @@ function BodySVG({ focusAreas = [], avoidAreas = [], heatmapFocus = {}, heatmapA
 
 export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const [notes, setNotes] = useState(session.therapist_notes || "");
+  // Track therapist's AI features setting so we can hide the pre/post-session
+  // brief buttons when AI is turned off in Settings.
+  const [aiEnabled, setAiEnabled] = useState(true);
+  useEffect(() => {
+    if (!session?.therapist_id) return;
+    supabase.from("therapists").select("ai_enabled").eq("id", session.therapist_id).maybeSingle()
+      .then(({ data }) => { if (data) setAiEnabled(data.ai_enabled !== false); });
+  }, [session?.therapist_id]);
   const [publicNotes, setPublicNotes] = useState(session.public_notes || "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -303,9 +311,11 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={() => window.open("/brief/pre/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>🖨️ Pre-Session Brief</button>
+          {aiEnabled && (
+            <button onClick={() => window.open("/brief/pre/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>🖨️ Pre-Session Brief</button>
+          )}
 
-          {session.completed && <button onClick={() => window.open("/brief/post/" + session.id, "_blank")} style={{ background: C.forest, color: C.white, border: "none", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📋 Post-Session Brief</button>}
+          {aiEnabled && session.completed && <button onClick={() => window.open("/brief/post/" + session.id, "_blank")} style={{ background: C.forest, color: C.white, border: "none", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📋 Post-Session Brief</button>}
 
           <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
             {session.completed ? "✓ Completed" : "⏳ Pending Review"}

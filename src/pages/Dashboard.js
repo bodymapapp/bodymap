@@ -672,10 +672,26 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [pulseSending, setPulseSending] = React.useState(false);
   const [pulseSent, setPulseSent] = React.useState(false);
 
+  // AI features master switch. Defaults TRUE so existing therapists are
+  // unchanged. Flipping to false hides MyBodyMap AI chat tab, pre-session
+  // brief buttons, and Practice Pulse from the dashboard. Data is preserved
+  // -- flipping back to true restores all surfaces.
+  const [aiEnabled, setAiEnabled] = React.useState(therapist?.ai_enabled !== false);
+
   async function togglePulse() {
     const newVal = !pulseEnabled;
     setPulseEnabled(newVal);
     await supabase.from('therapists').update({ practice_pulse_enabled: newVal }).eq('id', therapist.id);
+  }
+
+  async function toggleAi() {
+    const newVal = !aiEnabled;
+    setAiEnabled(newVal);
+    await supabase.from('therapists').update({ ai_enabled: newVal }).eq('id', therapist.id);
+    // Hard reload so all dashboard surfaces re-fetch the therapist row and
+    // re-render with AI tabs/buttons hidden or shown. Cheaper than threading
+    // a context update through every component that reads therapist.ai_enabled.
+    setTimeout(() => window.location.reload(), 400);
   }
 
   async function savePulseEmail() {
@@ -1144,7 +1160,26 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         )}
       </div>
 
-      {/* Practice Pulse */}
+      {/* AI Features master switch */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 AI Features</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>MyBodyMap AI chat, pre-session briefs, and the Practice Pulse digest. Turn off if you prefer a fully manual workflow. Your data is unchanged either way.</p>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={toggleAi}
+              style={{ width:40, height:22, borderRadius:11, background:aiEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:aiEnabled?21:3, transition:'left 0.2s' }} />
+            </button>
+            <span style={{ fontSize:13, fontWeight:600, color:aiEnabled?C2.forest:C2.gray }}>{aiEnabled ? 'AI features ON' : 'AI features OFF'}</span>
+          </div>
+        </div>
+        {!aiEnabled && (
+          <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
+        )}
+      </div>
+
+      {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
+      {aiEnabled && (
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 Practice Pulse</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
@@ -1175,6 +1210,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
         </button>
       </div>
+      )}
 
       {/* Push Notifications */}
       <PushNotificationsCard therapist={therapist} C2={C2} />
@@ -1408,7 +1444,9 @@ export default function Dashboard({ view }) {
             <button onClick={() => navigate('/dashboard')} style={{ flexShrink:0, background: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.sage : 'transparent', color: (view === 'clients' || view === 'sessions' || view === 'session-detail') ? C.white : C.gray, border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>Clients</button>
             <button onClick={() => navigate('/dashboard/schedule')} style={{ background: view === 'schedule' ? C.sage : 'transparent', color: view === 'schedule' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Schedule</button>
             <button onClick={() => navigate('/dashboard/billing')} style={{ background: view === 'billing' ? C.sage : 'transparent', color: view === 'billing' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Billing</button>
-            <button onClick={() => navigate('/dashboard/ai')} style={{ background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>AI</button>
+            {therapist?.ai_enabled !== false && (
+              <button onClick={() => navigate('/dashboard/ai')} style={{ background: view === 'ai' ? C.sage : 'transparent', color: view === 'ai' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>AI</button>
+            )}
             <button onClick={() => navigate('/dashboard/outreach')} style={{ background: view === 'outreach' ? C.sage : 'transparent', color: view === 'outreach' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Outreach</button>
             <button onClick={() => navigate('/dashboard/gifts')} style={{ background: view === 'gifts' ? C.sage : 'transparent', color: view === 'gifts' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Gifts</button>
             <button onClick={() => navigate('/dashboard/settings')} style={{ background: view === 'settings' ? C.sage : 'transparent', color: view === 'settings' ? C.white : C.gray, border: 'none', padding: '12px 24px', borderRadius: '8px', fontSize: '15px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>Settings</button>
@@ -1485,8 +1523,19 @@ export default function Dashboard({ view }) {
           {view === 'billing' && (
             <><BillingDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
           )}
-          {view === 'ai' && therapist && (
+          {view === 'ai' && therapist && therapist.ai_enabled !== false && (
             <><AIDashboard therapist={therapist} />{isMobile && <PageEnd />}</>
+          )}
+          {view === 'ai' && therapist && therapist.ai_enabled === false && (
+            <div style={{ maxWidth: 560, margin: '40px auto', padding: '32px 24px', background: C.white, borderRadius: 14, border: `1.5px solid ${C.lightGray}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.gray, marginBottom: 6 }}>AI features off</div>
+              <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.forest, margin: '0 0 10px' }}>MyBodyMap AI is turned off.</h2>
+              <p style={{ fontSize: 14, color: C.gray, lineHeight: 1.6, margin: '0 0 20px' }}>You turned off AI features in Settings. Turn them back on anytime to use the chat, pre-session briefs, and Practice Pulse digest. Your data is unchanged.</p>
+              <button onClick={() => navigate('/dashboard/settings')}
+                style={{ background: C.forest, color: C.white, border: 'none', borderRadius: 999, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Open Settings →
+              </button>
+            </div>
           )}
           {view === 'outreach' && therapist && (
             <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>

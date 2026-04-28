@@ -147,7 +147,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 📋 Open Session Record
               </a>
             )}
-            {appt.status==='intake-done' && appt.sessionId && appt.clientId && (
+            {appt.status==='intake-done' && appt.sessionId && appt.clientId && therapist?.ai_enabled !== false && (
               <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
                 style={{display:'block',background:'transparent',color:'#2A5741',border:'1.5px solid #2A5741',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center'}}>
                 🧭 Open Pre-Session Brief
