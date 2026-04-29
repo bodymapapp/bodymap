@@ -13,6 +13,8 @@ import GiftCertificates from '../components/GiftCertificates';
 import PackagesCard from '../components/PackagesCard';
 import MembershipsCard from '../components/MembershipsCard';
 import EventsCard from '../components/EventsCard';
+import SettingsHero from '../components/SettingsHero';
+import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -931,48 +933,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
   return (
     <div style={{ width: '100%' }}>
-      <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '26px', fontWeight: '700', color: C2.darkGray, margin: '0 0 28px 0' }}>
-        Account Settings
-      </h2>
+      <SettingsHero therapist={therapist} />
 
-      {/* Profile Completion Bar */}
-      {(() => {
-        const fields = [
-          { label: 'Full Name', done: !!(therapist?.full_name) },
-          { label: 'Business Name', done: !!(therapist?.business_name) },
-          { label: 'Intake URL', done: !!(therapist?.custom_url) },
-          { label: 'Phone Number', done: !!(therapist?.phone) },
-          { label: 'Email', done: !!(therapist?.email) },
-          { label: 'Profile Photo', done: !!(therapist?.photo_url) },
-        ];
-        const done = fields.filter(f => f.done).length;
-        const pct = Math.round((done / fields.length) * 100);
-        if (pct === 100) return null;
-        return (
-          <div style={{ background: '#fff', border: '1.5px solid #E8E4DC', borderRadius: '14px', padding: '20px 24px', marginBottom: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#1A1A2E' }}>Profile Completion</span>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#2A5741' }}>{pct}%</span>
-            </div>
-            <div style={{ background: '#E8E4DC', borderRadius: '99px', height: '8px', marginBottom: '14px' }}>
-              <div style={{ width: pct + '%', background: 'linear-gradient(90deg, #6B9E80, #2A5741)', borderRadius: '99px', height: '8px', transition: 'width 0.5s ease' }} />
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {fields.map(f => (
-                <span key={f.label} style={{ fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '99px', background: f.done ? '#F0FDF4' : '#FEF9F0', color: f.done ? '#2A5741' : '#92400E', border: f.done ? '1px solid #BBF7D0' : '1px solid #FDE68A' }}>
-                  {f.done ? '✓' : '+'} {f.label}
-                </span>
-              ))}
-            </div>
-            {!therapist?.phone && (
-              <p style={{ fontSize: '12px', color: '#6B7280', margin: '10px 0 0 0' }}>
-                💡 Add your phone number below - shown on client session briefs
-              </p>
-            )}
-          </div>
-        );
-      })()}
-
+      <SettingsSectionHeader
+        title="How I practice"
+        sub="The bones of your practice — who you are, when you work, what you offer."
+        sprigType="leaf"
+      />
 
       {/* Intake Link */}
       <div style={{ background: `linear-gradient(135deg, ${C2.forest}08, ${C2.sage}15)`, border: `1.5px solid ${C2.sage}40`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
@@ -1316,6 +1283,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         )}
       </div>
 
+      <SettingsSectionHeader
+        title="What I offer"
+        sub="Your menu — extras, bundles, and ways for clients to come back."
+        sprigType="dots"
+      />
+
       {/* Service Add-ons */}
       <ServiceAddonsCard therapist={therapist} />
 
@@ -1327,6 +1300,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Classes & Events — group sessions */}
       <EventsCard therapist={therapist} />
+
+      <SettingsSectionHeader
+        title="How I rest easier"
+        sub="Quiet help — automations, reminders, and AI working in the background."
+        sprigType="moon"
+      />
 
       {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
       {aiEnabled && (
@@ -1410,6 +1389,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
         }
       </div>
+
+      <SettingsSectionHeader
+        title="Account"
+        sub="Your login and plan."
+        sprigType="dots"
+      />
 
       {/* Change Password */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
@@ -1691,7 +1676,7 @@ export default function Dashboard({ view }) {
             <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>
           )}
           {view === 'settings' && (
-            <div style={{ paddingBottom: isMobile ? 120 : 0 }}>
+            <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 720, margin: '0 auto' }}>
               <div style={{ marginBottom:24 }}>
                 <ImportClients therapist={therapist} onComplete={() => {}} />
               </div>
