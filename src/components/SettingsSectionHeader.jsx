@@ -1,10 +1,8 @@
 // src/components/SettingsSectionHeader.jsx
 //
 // Italic-Fraunces categorical section header for the Settings page.
-// Sits between groups of cards: "How I practice", "What I offer",
-// "How I rest easier", "How I plug in".
-//
-// Includes a soft botanical sprig SVG to the left for editorial feel.
+// Now tappable: parent passes isOpen + onToggle and the header collapses
+// the entire section group below it. Chevron rotates 90deg when open.
 
 import React from "react";
 
@@ -12,9 +10,10 @@ const C = {
   forestInk: '#1F3A2C',
   sageMute: '#98A395',
   sage: '#6B9E80',
+  forest: '#2A5741',
 };
 
-export default function SettingsSectionHeader({ title, sub, count, sprigType = 'leaf' }) {
+export default function SettingsSectionHeader({ title, sub, count, sprigType = 'leaf', isOpen = true, onToggle }) {
   const SprigSVG = () => {
     if (sprigType === 'leaf') {
       return (
@@ -51,14 +50,33 @@ export default function SettingsSectionHeader({ title, sub, count, sprigType = '
     );
   };
 
+  const isClickable = typeof onToggle === 'function';
+
+  const handleClick = () => {
+    if (isClickable) onToggle();
+  };
+
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'baseline',
-      gap: 10,
-      margin: '32px 4px 12px',
-    }}>
-      <div style={{ position: 'relative', top: 4, flexShrink: 0 }}>
+    <div
+      onClick={handleClick}
+      role={isClickable ? 'button' : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      onKeyDown={(e) => {
+        if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        margin: '32px 4px 12px',
+        cursor: isClickable ? 'pointer' : 'default',
+        userSelect: 'none',
+      }}
+    >
+      <div style={{ flexShrink: 0, position: 'relative', top: 1 }}>
         <SprigSVG />
       </div>
       <div style={{ flex: 1 }}>
@@ -66,10 +84,11 @@ export default function SettingsSectionHeader({ title, sub, count, sprigType = '
           fontFamily: 'Georgia, "Times New Roman", serif',
           fontStyle: 'italic',
           fontWeight: 400,
-          fontSize: 19,
+          fontSize: 20,
           color: C.forestInk,
           margin: 0,
           letterSpacing: '-0.005em',
+          lineHeight: 1.2,
         }}>
           {title}
           {typeof count === 'number' && (
@@ -83,12 +102,31 @@ export default function SettingsSectionHeader({ title, sub, count, sprigType = '
             }}>{count}</span>
           )}
         </h3>
-        {sub && (
-          <p style={{ fontSize: 11.5, color: C.sageMute, margin: '2px 0 0', fontStyle: 'italic', lineHeight: 1.4 }}>
+        {sub && isOpen && (
+          <p style={{ fontSize: 12, color: C.sageMute, margin: '3px 0 0', fontStyle: 'italic', lineHeight: 1.4 }}>
             {sub}
           </p>
         )}
       </div>
+      {isClickable && (
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke={isOpen ? C.forest : '#B5BEB1'}
+          strokeWidth="1.7"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{
+            flexShrink: 0,
+            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+            transition: 'transform 0.2s, stroke 0.15s',
+          }}
+        >
+          <path d="M4 2l4 4-4 4" />
+        </svg>
+      )}
     </div>
   );
 }

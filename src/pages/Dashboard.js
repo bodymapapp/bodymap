@@ -807,6 +807,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
+  // Which major SECTION groups are open. Default all open so the page
+  // looks identical to before unless user collapses. Tap header to fold.
+  const [openSections, setOpenSections] = React.useState({
+    practice: true,
+    offer: true,
+    restEasier: true,
+    plugIn: true,
+    account: true,
+  });
+  const toggleSection = React.useCallback((key) => {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
@@ -948,8 +961,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         title="How I practice"
         sub="The bones of your practice — who you are, when you work, what you offer."
         sprigType="leaf"
+        isOpen={openSections.practice}
+        onToggle={() => toggleSection('practice')}
       />
 
+      {openSections.practice && (<>
       {/* Intake Link */}
       <CollapsibleSection
         id="intake"
@@ -1356,13 +1372,17 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
         )}
       </div></CollapsibleSection>
+      </>)}
 
       <SettingsSectionHeader
         title="What I offer"
         sub="Your menu — extras, bundles, and ways for clients to come back."
         sprigType="dots"
+        isOpen={openSections.offer}
+        onToggle={() => toggleSection('offer')}
       />
 
+      {openSections.offer && (<>
       {/* Service Add-ons */}
       <CollapsibleSection
         id="addons"
@@ -1406,12 +1426,17 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'events'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
 
       <SettingsSectionHeader
         title="How I rest easier"
         sub="Quiet help — automations, reminders, and AI working in the background."
         sprigType="moon"
+        isOpen={openSections.restEasier}
+        onToggle={() => toggleSection('restEasier')}
       />
+
+      {openSections.restEasier && (<>
 
       {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
       {aiEnabled && (
@@ -1541,13 +1566,17 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
         }
       </div></CollapsibleSection>
+      </>)}
 
       <SettingsSectionHeader
         title="Account"
         sub="Your login and plan."
         sprigType="dots"
+        isOpen={openSections.account}
+        onToggle={() => toggleSection('account')}
       />
 
+      {openSections.account && (<>
       {/* Change Password */}
       <CollapsibleSection
         id="password"
@@ -1605,6 +1634,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           </div>
         </div>
       </div></CollapsibleSection>
+      </>)}
     </div>
   );
 }
@@ -1841,10 +1871,10 @@ export default function Dashboard({ view }) {
           )}
           {view === 'settings' && (
             <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 920, margin: '0 auto' }}>
-              <div style={{ marginBottom:24 }}>
+              <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
+              <div style={{ marginTop:24 }}>
                 <ImportClients therapist={therapist} onComplete={() => {}} />
               </div>
-              <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
               {isMobile && <PageEnd />}
             </div>
           )}
