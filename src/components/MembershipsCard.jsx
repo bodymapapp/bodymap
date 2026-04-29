@@ -1,0 +1,147 @@
+// src/components/MembershipsCard.jsx
+//
+// Settings card for therapists to define recurring monthly memberships.
+// Triggered by Erica Pearre's Facebook question (April 2026): "Can you
+// sell packages?" -- HK confirmed both packages and memberships.
+//
+// MVP scope: CRUD for membership tier definitions only. Stripe recurring
+// billing wiring + monthly credit allocation come next session.
+
+import React from "react";
+import { supabase } from "../lib/supabase";
+
+const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+
+const PRESETS = [
+  { name: 'Monthly Member', monthly_price: 89, monthly_session_credits: 1, max_carryover_credits: 1, addon_discount_percent: 10, description: 'One session a month, 10% off add-ons' },
+  { name: 'Premium Member', monthly_price: 169, monthly_session_credits: 2, max_carryover_credits: 2, addon_discount_percent: 15, description: 'Two sessions a month, 15% off add-ons' },
+  { name: 'Custom...', monthly_price: 89, monthly_session_credits: 1, max_carryover_credits: 0, addon_discount_percent: 0, description: '' },
+];
+
+export default function MembershipsCard({ therapist }) {
+  const [memberships, setMemberships] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [draft, setDraft] = React.useState({ name:'', monthly_price:89, monthly_session_credits:1, max_carryover_credits:0, addon_discount_percent:0, description:'' });
+
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    supabase.from('memberships').select('*').eq('therapist_id', therapist.id)
+      .order('display_order').order('created_at')
+      .then(({ data }) => { setMemberships(data || []); setLoading(false); });
+  }, [therapist?.id]);
+
+  function handlePreset(name) {
+    if (name === 'Custom...') { setDraft({ name:'', monthly_price:89, monthly_session_credits:1, max_carryover_credits:0, addon_discount_percent:0, description:'' }); return; }
+    const p = PRESETS.find(x => x.name === name);
+    if (p) setDraft({ ...p });
+  }
+
+  async function addMembership() {
+    if (!draft.name.trim() || !draft.monthly_price) return;
+    setSaving(true);
+    const { data, error } = await supabase.from('memberships').insert({
+      therapist_id: therapist.id,
+      name: draft.name.trim(),
+      monthly_price: Number(draft.monthly_price),
+      monthly_session_credits: Number(draft.monthly_session_credits) || 1,
+      max_carryover_credits: Number(draft.max_carryover_credits) || 0,
+      addon_discount_percent: Number(draft.addon_discount_percent) || 0,
+      description: draft.description.trim() || null,
+      active: true,
+    }).select().single();
+    setSaving(false);
+    if (error) { alert('Could not save membership. Make sure the SQL migration has been applied.'); return; }
+    setMemberships(m => [...m, data]);
+    setDraft({ name:'', monthly_price:89, monthly_session_credits:1, max_carryover_credits:0, addon_discount_percent:0, description:'' });
+  }
+
+  async function toggleMembership(m) {
+    await supabase.from('memberships').update({ active: !m.active }).eq('id', m.id);
+    setMemberships(arr => arr.map(x => x.id === m.id ? { ...x, active: !x.active } : x));
+  }
+
+  async function deleteMembership(id) {
+    if (!window.confirm('Remove this membership? Existing subscribers stay active; this just stops new signups.')) return;
+    await supabase.from('memberships').delete().eq('id', id);
+    setMemberships(arr => arr.filter(x => x.id !== id));
+  }
+
+  return (
+    <div style={{ background:C.white, border:`1.5px solid ${C.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>🌟 Memberships</p>
+      <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Recurring monthly plans. Members get included sessions and optional discounts. Define tiers here; sign clients up from their profile.</p>
+
+      {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
+        <>
+          {memberships.length > 0 && (
+            <div style={{ marginBottom:16 }}>
+              {memberships.map(m => (
+                <div key={m.id} style={{ padding:'12px 14px', background:m.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C.lightGray}`, borderRadius:10, marginBottom:6, opacity:m.active?1:0.55 }}>
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:600, fontSize:14, color:C.forest }}>{m.name}</div>
+                      <div style={{ fontSize:12, color:C.gray, marginTop:2 }}>
+                        ${Number(m.monthly_price).toFixed(0)}/mo · {m.monthly_session_credits} session{m.monthly_session_credits !== 1 ? 's' : ''}/mo
+                        {m.addon_discount_percent > 0 ? ` · ${m.addon_discount_percent}% off add-ons` : ''}
+                        {m.max_carryover_credits > 0 ? ` · carry-over up to ${m.max_carryover_credits}` : ''}
+                      </div>
+                      {m.description && <div style={{ fontSize:12, color:C.gray, marginTop:2, fontStyle:'italic' }}>{m.description}</div>}
+                    </div>
+                    <button onClick={() => toggleMembership(m)} style={{ background:m.active?'#fff':C.sage, color:m.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                      {m.active ? 'Hide' : 'Show'}
+                    </button>
+                    <button onClick={() => deleteMembership(m.id)} style={{ background:'transparent', color:C.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }}>×</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background:C.beige, padding:14, borderRadius:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:C.forest, marginBottom:10 }}>Add a new tier</div>
+            <select onChange={e => handlePreset(e.target.value)} value=""
+              style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, marginBottom:8, background:'#fff' }}>
+              <option value="">Pick a preset or write your own…</option>
+              {PRESETS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <input type="text" value={draft.name} onChange={e => setDraft(d => ({ ...d, name:e.target.value }))}
+              placeholder="Tier name (e.g. Monthly Member)"
+              style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, marginBottom:8, boxSizing:'border-box' }} />
+            <input type="text" value={draft.description} onChange={e => setDraft(d => ({ ...d, description:e.target.value }))}
+              placeholder="What members get (optional)"
+              style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, marginBottom:8, boxSizing:'border-box' }} />
+            <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C.gray, fontWeight:600, display:'block', marginBottom:3 }}>$/month</label>
+                <input type="number" value={draft.monthly_price} onChange={e => setDraft(d => ({ ...d, monthly_price:e.target.value }))} min="0"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C.gray, fontWeight:600, display:'block', marginBottom:3 }}>Sessions/mo</label>
+                <input type="number" value={draft.monthly_session_credits} onChange={e => setDraft(d => ({ ...d, monthly_session_credits:e.target.value }))} min="0"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+              </div>
+            </div>
+            <div style={{ display:'flex', gap:8, marginBottom:8 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C.gray, fontWeight:600, display:'block', marginBottom:3 }}>Carry-over</label>
+                <input type="number" value={draft.max_carryover_credits} onChange={e => setDraft(d => ({ ...d, max_carryover_credits:e.target.value }))} min="0"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+              </div>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C.gray, fontWeight:600, display:'block', marginBottom:3 }}>Add-on % off</label>
+                <input type="number" value={draft.addon_discount_percent} onChange={e => setDraft(d => ({ ...d, addon_discount_percent:e.target.value }))} min="0" max="100"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+              </div>
+            </div>
+            <button onClick={addMembership} disabled={saving || !draft.name.trim() || !draft.monthly_price}
+              style={{ width:'100%', background:saving?C.sage:C.forest, color:'#fff', border:'none', borderRadius:8, padding:'10px', fontSize:13, fontWeight:700, cursor:'pointer', opacity:(draft.name.trim() && draft.monthly_price)?1:0.5 }}>
+              {saving ? 'Saving…' : '+ Add this membership'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

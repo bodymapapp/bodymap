@@ -10,6 +10,9 @@ import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
 import GiftCertificates from '../components/GiftCertificates';
+import PackagesCard from '../components/PackagesCard';
+import MembershipsCard from '../components/MembershipsCard';
+import EventsCard from '../components/EventsCard';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -1315,6 +1318,15 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Service Add-ons */}
       <ServiceAddonsCard therapist={therapist} />
+
+      {/* Packages — multi-session bundles */}
+      <PackagesCard therapist={therapist} />
+
+      {/* Memberships — recurring monthly tiers */}
+      <MembershipsCard therapist={therapist} />
+
+      {/* Classes & Events — group sessions */}
+      <EventsCard therapist={therapist} />
 
       {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
       {aiEnabled && (
