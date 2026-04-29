@@ -1031,6 +1031,7 @@ function InlineDivider() {
 // calls it once per therapist in sequence (not parallel) to avoid hitting
 // Resend's rate limits and to keep the notification_log clean.
 const BATCH_EMAIL_OPTIONS = [
+  { value: "product_update",    code: "E2.10", label: "Product update broadcast (Settings rebuild + new features)" },
   { value: "setup_nudge",       code: "E2.6", label: "Setup nudge (Stripe/Square)" },
   { value: "activation_nudge",  code: "E2.9", label: "Activation nudge (incomplete setup)" },
   { value: "welcome",           code: "E2.1", label: "Founder Welcome" },
@@ -1043,7 +1044,7 @@ const BATCH_EMAIL_OPTIONS = [
 ];
 
 function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
-  const [actionType, setActionType] = useState("setup_nudge");
+  const [actionType, setActionType] = useState("product_update");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null); // { done, total, results: [{id, name, status, error?}] }
 

@@ -37,7 +37,7 @@ const FROM = "MyBodyMap Team <reminders@mybodymap.app>";
 const REPLY_TO = "bodymap01@gmail.com";
 const BCC_FOUNDER = "bodymapdemo@gmail.com";
 
-type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou" | "activation_nudge";
+type ActionType = "welcome" | "checkin" | "reminder" | "testimonial" | "first_session" | "setup_nudge" | "churned" | "referral_thankyou" | "activation_nudge" | "product_update";
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -260,6 +260,35 @@ function buildMessage(
         ``,
         `Cheers,`,
         `MyBodyMap Team`,
+      ],
+    },
+    product_update: {
+      // Re-engagement broadcast for therapists who signed up but haven't
+      // returned. Announces the major Settings rebuild + new offerings.
+      // Single voice, founder-personal, ends with a clear ask.
+      subject: `${name}, MyBodyMap just got a major rebuild — worth a fresh look`,
+      lines: [
+        `Hi ${name},`,
+        ``,
+        `HK here, founder of MyBodyMap. Quick note because we shipped a major update this week and I want you to see it.`,
+        ``,
+        `What's new since you signed up:`,
+        ``,
+        `Settings is fully rebuilt. Half the clicks. Calmer flow. Your booking page link auto-updates when you change your business name. New welcome dashboard with your live practice stats up top.`,
+        ``,
+        `Add-ons live. Hot stones, aromatherapy, hot towels, extended sessions — clients can choose them right at booking time. Their cards are charged for the full amount.`,
+        ``,
+        `Packages, memberships, and group classes. Three things that change everything for a solo practice. 5-pack at a discount, monthly membership tiers, workshops you teach in your studio. All in Settings now.`,
+        ``,
+        `If you haven't logged in since signup, this is the right week to do it. Take 10 minutes, set up your services, drop in a couple of add-ons, see what feels good.`,
+        ``,
+        `Reply to this email with what you like, what feels off, what you wish was there. I read every response personally.`,
+        ``,
+        `Your dashboard: https://mybodymap.app/dashboard`,
+        ``,
+        `Cheers,`,
+        `HK`,
+        `Founder, MyBodyMap`,
       ],
     },
   };
