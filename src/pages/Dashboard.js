@@ -814,7 +814,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     offer: true,
     restEasier: true,
     plugIn: true,
-    account: true,
+    membership: true,
   });
   const toggleSection = React.useCallback((key) => {
     setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
@@ -966,6 +966,20 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       />
 
       {openSections.practice && (<>
+      {/* Import Clients — critical first feature for new therapists migrating
+          from Vagaro / MassageBook / Square. Sits at the top of How I practice
+          because it's the most important first action: you can't practice
+          well without your client list. */}
+      <CollapsibleSection
+        id="import"
+        label="Import existing clients"
+        summary="Bring your list from CSV — Vagaro, MassageBook, Square"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v10"/><path d="M8 8l4-4 4 4"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>}
+        isOpen={openRow === 'import'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ImportClients therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
+
       {/* Intake Link */}
       <CollapsibleSection
         id="intake"
@@ -1569,14 +1583,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </>)}
 
       <SettingsSectionHeader
-        title="Account"
-        sub="Your login and plan."
-        sprigType="dots"
-        isOpen={openSections.account}
-        onToggle={() => toggleSection('account')}
+        title="My membership"
+        sub="Your password and your plan with us."
+        sprigType="sun"
+        isOpen={openSections.membership}
+        onToggle={() => toggleSection('membership')}
       />
 
-      {openSections.account && (<>
+      {openSections.membership && (<>
       {/* Change Password */}
       <CollapsibleSection
         id="password"
@@ -1872,9 +1886,6 @@ export default function Dashboard({ view }) {
           {view === 'settings' && (
             <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 920, margin: '0 auto' }}>
               <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
-              <div style={{ marginTop:24 }}>
-                <ImportClients therapist={therapist} onComplete={() => {}} />
-              </div>
               {isMobile && <PageEnd />}
             </div>
           )}
