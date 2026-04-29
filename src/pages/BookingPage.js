@@ -173,6 +173,10 @@ export default function BookingPage() {
   const {slug}=useParams();
   const [therapist,setTherapist]=useState(null);
   const [services,setServices]=useState([]);
+  // Available add-ons for this therapist + the set the client has selected.
+  // Each entry in availableAddons is a row from service_addons.
+  const [availableAddons,setAvailableAddons]=useState([]);
+  const [selectedAddonIds,setSelectedAddonIds]=useState([]);
   const [availability,setAvailability]=useState([]);
   const [loading,setLoading]=useState(true);
   const [notFound,setNotFound]=useState(false);
@@ -204,20 +208,31 @@ export default function BookingPage() {
   const [blockedDates,setBlockedDates]=useState(new Set());
 
   useEffect(()=>{load();},[slug]);
-  useEffect(()=>{if(date&&svc)loadSlots();},[date,svc]);
+  // Compute effective service duration including any selected add-ons.
+  // Recalculated whenever the selection changes.
+  const effectiveDuration = svc
+    ? svc.duration + selectedAddonIds.reduce((sum,id)=>sum+(availableAddons.find(a=>a.id===id)?.extra_minutes||0), 0)
+    : 0;
+
+  useEffect(()=>{if(date&&svc)loadSlots();},[date,svc,effectiveDuration]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
     if(!t){setNotFound(true);setLoading(false);return;}
     setTherapist(t);
-    const [{data:s},{data:a},{data:bd}]=await Promise.all([
+    const [{data:s},{data:a},{data:bd},{data:addons}]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       supabase.from('blocked_days').select('date').eq('therapist_id',t.id),
+      // Service add-ons. May fail silently with empty array if the schema
+      // has not been applied yet — that is intentional, the booking flow
+      // continues to work without add-ons.
+      supabase.from('service_addons').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
     setBlockedDates(new Set((bd||[]).map(b=>b.date)));
+    setAvailableAddons(addons||[]);
     setLoading(false);
   }
 
@@ -239,16 +254,23 @@ export default function BookingPage() {
 
     let raw = [];
     for (const block of blocks) {
-      const blockSlots = generateSlots(block.start, block.end, svc.duration, booked, therapist.buffer_enabled ? (therapist.buffer_minutes || 15) : 0);
+      const blockSlots = generateSlots(block.start, block.end, effectiveDuration, booked, therapist.buffer_enabled ? (therapist.buffer_minutes || 15) : 0);
       raw = [...raw, ...blockSlots];
     }
     if (isToday) raw = raw.filter(s => s.minutes > nowMin + 30);
-    setSlots(scoreSlots(raw,booked,svc.duration));
+    setSlots(scoreSlots(raw,booked,effectiveDuration));
     setLoadingSlots(false);
   }
 
   async function submit() {
     setSubmitting(true);
+    // Snapshot add-on data for the booking. This is captured at booking time
+    // so future changes to add-on prices do not retroactively change what the
+    // client agreed to. Stored as JSONB for easy read.
+    const chosenAddons = availableAddons.filter(a => selectedAddonIds.includes(a.id));
+    const addonTotalPrice = chosenAddons.reduce((s,a)=>s+Number(a.price||0), 0);
+    const addonExtraMinutes = chosenAddons.reduce((s,a)=>s+Number(a.extra_minutes||0), 0);
+
     const {data:newBooking,error}=await supabase.from('bookings').insert({
       therapist_id:therapist.id, service_id:svc.id,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
@@ -257,6 +279,9 @@ export default function BookingPage() {
       partner_name: svc?.is_couples ? partner.name.trim() : null,
       partner_email: svc?.is_couples ? partner.email.trim().toLowerCase() : null,
       start_time:slot.start, end_time:slot.end,
+      addon_ids: chosenAddons.map(a => a.id),
+      addon_total_price: addonTotalPrice,
+      addon_extra_minutes: addonExtraMinutes,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
       status: depositRequired ? 'pending-deposit' : 'confirmed',
       deposit_required: depositRequired,
@@ -488,7 +513,47 @@ export default function BookingPage() {
           <div>
             <button onClick={()=>setStep(1)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Pick your time</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · {svc.duration} min · ${svc.price}</p>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{svc.name} · {svc.duration + selectedAddonIds.reduce((s,id)=>s+(availableAddons.find(a=>a.id===id)?.extra_minutes||0),0)} min · ${(Number(svc.price)+selectedAddonIds.reduce((s,id)=>s+Number(availableAddons.find(a=>a.id===id)?.price||0),0)).toFixed(0)}</p>
+
+            {availableAddons.length > 0 && (
+              <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
+                <div style={{fontSize:12,fontWeight:700,color:C.gray,textTransform:'uppercase',letterSpacing:'0.06em',marginBottom:4}}>Enhance your session</div>
+                <p style={{fontSize:12,color:C.gray,margin:'0 0 14px',lineHeight:1.5}}>Optional. Tap to add or remove.</p>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                  {availableAddons.map(a => {
+                    const selected = selectedAddonIds.includes(a.id);
+                    return (
+                      <button key={a.id}
+                        onClick={() => setSelectedAddonIds(ids => selected ? ids.filter(x=>x!==a.id) : [...ids, a.id])}
+                        style={{
+                          display:'flex',alignItems:'center',gap:12,
+                          background:selected ? '#F0FDF4' : '#fff',
+                          border:`2px solid ${selected ? C.forest : C.light}`,
+                          borderRadius:12, padding:'12px 14px', textAlign:'left', cursor:'pointer',
+                          fontFamily:'inherit', fontSize:14, transition:'all 0.15s',
+                        }}>
+                        <div style={{
+                          width:22,height:22,borderRadius:6,
+                          background:selected ? C.forest : '#fff',
+                          border:`2px solid ${selected ? C.forest : '#D1D5DB'}`,
+                          display:'flex',alignItems:'center',justifyContent:'center',
+                          color:'#fff',fontSize:14,fontWeight:700,flexShrink:0,
+                        }}>{selected ? '✓' : ''}</div>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontWeight:600,color:C.dark}}>{a.name}</div>
+                          {a.description && <div style={{fontSize:12,color:C.gray}}>{a.description}</div>}
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0,fontSize:13,fontWeight:600,color:C.forest}}>
+                          +${Number(a.price).toFixed(0)}
+                          {a.extra_minutes > 0 && <div style={{fontSize:10,color:C.gray,fontWeight:500}}>+{a.extra_minutes} min</div>}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
               <Cal availability={availability} selected={date} onSelect={setDate} blockedDates={blockedDates}/>
             </div>

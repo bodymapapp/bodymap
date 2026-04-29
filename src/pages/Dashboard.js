@@ -387,6 +387,141 @@ function ServicesAndAvailability({ therapist }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// ServiceAddonsCard
+//
+// Settings card where a therapist defines optional extras a client can
+// pick at booking — Hot Stones, Aromatherapy, Extended Time, etc.
+// Each add-on has a name, price, and optional extra minutes that get
+// added to the appointment slot when chosen. Lives in the service_addons
+// Supabase table.
+//
+// Triggered by Leslie Luna's FB question (April 2026): "Is there an
+// option for add-ons?" Same shape Vagaro and MassageBook offer.
+// ─────────────────────────────────────────────────────────────────────────
+function ServiceAddonsCard({ therapist }) {
+  const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+  const [addons, setAddons] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [draft, setDraft] = React.useState({ name:'', price:15, extra_minutes:0 });
+  const [saving, setSaving] = React.useState(false);
+
+  const PRESETS = [
+    { name:'Hot Stones', price:15, extra_minutes:0 },
+    { name:'Aromatherapy', price:10, extra_minutes:0 },
+    { name:'CBD Oil', price:15, extra_minutes:0 },
+    { name:'Cupping Therapy', price:25, extra_minutes:15 },
+    { name:'Extended Time +30 min', price:45, extra_minutes:30 },
+    { name:'Hot Towels', price:8, extra_minutes:0 },
+    { name:'Custom...', price:15, extra_minutes:0 },
+  ];
+
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    supabase.from('service_addons').select('*').eq('therapist_id', therapist.id).order('display_order').order('created_at')
+      .then(({ data }) => { setAddons(data || []); setLoading(false); });
+  }, [therapist?.id]);
+
+  function handlePreset(name) {
+    if (name === 'Custom...') { setDraft(d => ({ ...d, name:'' })); return; }
+    const p = PRESETS.find(x => x.name === name);
+    if (p) setDraft({ name:p.name, price:p.price, extra_minutes:p.extra_minutes });
+  }
+
+  async function addAddon() {
+    if (!draft.name.trim()) return;
+    setSaving(true);
+    const { data, error } = await supabase.from('service_addons').insert({
+      therapist_id: therapist.id,
+      name: draft.name.trim(),
+      price: Number(draft.price) || 0,
+      extra_minutes: Number(draft.extra_minutes) || 0,
+      active: true,
+    }).select().single();
+    setSaving(false);
+    if (error) {
+      alert('Could not save the add-on. The schema may not be applied yet — run the SQL migration in Supabase.');
+      return;
+    }
+    setAddons(a => [...a, data]);
+    setDraft({ name:'', price:15, extra_minutes:0 });
+  }
+
+  async function toggleAddon(addon) {
+    await supabase.from('service_addons').update({ active: !addon.active }).eq('id', addon.id);
+    setAddons(a => a.map(x => x.id === addon.id ? { ...x, active: !x.active } : x));
+  }
+
+  async function deleteAddon(id) {
+    if (!window.confirm('Remove this add-on? Existing bookings that include it are unaffected.')) return;
+    await supabase.from('service_addons').delete().eq('id', id);
+    setAddons(a => a.filter(x => x.id !== id));
+  }
+
+  return (
+    <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>✨ Service Add-ons</p>
+      <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Optional extras a client can add to any service when booking. Hot Stones, Aromatherapy, Extended Time. Each can change price and optionally extend the appointment.</p>
+
+      {loading ? (
+        <p style={{ fontSize:13, color:C2.gray }}>Loading…</p>
+      ) : (
+        <>
+          {addons.length > 0 && (
+            <div style={{ marginBottom:16 }}>
+              {addons.map(a => (
+                <div key={a.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:a.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C2.lightGray}`, borderRadius:10, marginBottom:6, opacity:a.active?1:0.55 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontWeight:600, fontSize:14, color:C2.forest }}>{a.name}</div>
+                    <div style={{ fontSize:12, color:C2.gray }}>+${Number(a.price).toFixed(0)}{a.extra_minutes > 0 ? ` · +${a.extra_minutes} min` : ''}</div>
+                  </div>
+                  <button onClick={() => toggleAddon(a)} style={{ background:a.active?'#fff':C2.sage, color:a.active?C2.gray:'#fff', border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                    {a.active ? 'Hide' : 'Show'}
+                  </button>
+                  <button onClick={() => deleteAddon(a.id)} style={{ background:'transparent', color:C2.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }} aria-label="Delete">×</button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{ background:C2.beige, padding:14, borderRadius:10 }}>
+            <div style={{ fontSize:12, fontWeight:700, color:C2.forest, marginBottom:10 }}>Add a new one</div>
+            <select onChange={e => handlePreset(e.target.value)} value={PRESETS.find(p => p.name === draft.name)?.name || ''}
+              style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, marginBottom:8, background:'#fff' }}>
+              <option value="">Pick a preset or write your own…</option>
+              {PRESETS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+            </select>
+            <input type="text" value={draft.name} onChange={e => setDraft(d => ({ ...d, name:e.target.value }))}
+              placeholder="Add-on name (e.g. Hot Stones)"
+              style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, marginBottom:8, boxSizing:'border-box' }} />
+            <div style={{ display:'flex', gap:8, marginBottom:10 }}>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C2.gray, fontWeight:600, display:'block', marginBottom:3 }}>Price</label>
+                <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                  <span style={{ color:C2.gray, fontSize:13 }}>$</span>
+                  <input type="number" value={draft.price} onChange={e => setDraft(d => ({ ...d, price:e.target.value }))}
+                    min="0" step="1"
+                    style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+                </div>
+              </div>
+              <div style={{ flex:1 }}>
+                <label style={{ fontSize:11, color:C2.gray, fontWeight:600, display:'block', marginBottom:3 }}>Extra minutes</label>
+                <input type="number" value={draft.extra_minutes} onChange={e => setDraft(d => ({ ...d, extra_minutes:e.target.value }))}
+                  min="0" step="5"
+                  style={{ width:'100%', padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, boxSizing:'border-box' }} />
+              </div>
+            </div>
+            <button onClick={addAddon} disabled={saving || !draft.name.trim()}
+              style={{ width:'100%', background:saving?C2.sage:C2.forest, color:'#fff', border:'none', borderRadius:8, padding:'10px', fontSize:13, fontWeight:700, cursor:draft.name.trim() ? 'pointer' : 'not-allowed', opacity:draft.name.trim()?1:0.5 }}>
+              {saving ? 'Saving…' : '+ Add this add-on'}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function BookingEmbedPanel({ customUrl }) {
   const [open, setOpen] = React.useState(false);
   const [copied, setCopied] = React.useState(false);
@@ -1177,6 +1312,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
         )}
       </div>
+
+      {/* Service Add-ons */}
+      <ServiceAddonsCard therapist={therapist} />
 
       {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
       {aiEnabled && (
