@@ -480,6 +480,35 @@ export default function FounderMassSms({ therapists }) {
 
       {!collapsed && (
         <div style={{ padding: "0 20px 20px", borderTop: `1px solid ${C.light}` }}>
+          {/* Quick toggle for testing -- prominent placement so HK can flip
+              it without scrolling to the filter row below. */}
+          <div style={{
+            marginTop: 16,
+            padding: "10px 14px",
+            background: includeAdmins ? "#FFFBEB" : C.softCream,
+            border: `1px solid ${includeAdmins ? "#FDE68A" : C.light}`,
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+          }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: C.dark, cursor: "pointer", flex: 1, minWidth: 0 }}>
+              <input
+                type="checkbox"
+                checked={includeAdmins}
+                onChange={(e) => setIncludeAdmins(e.target.checked)}
+                style={{ width: 16, height: 16, cursor: "pointer" }}
+              />
+              Test mode: include my test &amp; demo accounts in the broadcast list
+            </label>
+            {includeAdmins && (
+              <span style={{ fontSize: 11, color: "#92400E", fontWeight: 600, fontStyle: "italic" }}>
+                Test mode ON · your accounts now textable above
+              </span>
+            )}
+          </div>
+
           {/* Account audit -- shows EVERY row in the therapists table so HK
               can see who's missing and why. Toggle to expand. */}
           <AccountAudit therapists={therapists} includeAdmins={includeAdmins} />
@@ -587,10 +616,6 @@ export default function FounderMassSms({ therapists }) {
                 background: "#fff", outline: "none",
               }}
             />
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gray, cursor: "pointer" }}>
-              <input type="checkbox" checked={includeAdmins} onChange={(e) => setIncludeAdmins(e.target.checked)} />
-              Show test &amp; demo accounts
-            </label>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gray, cursor: "pointer" }}>
               <input type="checkbox" checked={hideSent} onChange={(e) => setHideSent(e.target.checked)} />
               Hide already texted
