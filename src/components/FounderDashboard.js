@@ -92,6 +92,11 @@ export default function FounderDashboard() {
 
   // Table 3 clickable-cell queue state. Cell keys are "therapistId:colKey".
   const [queuedCells, setQueuedCells] = useState(() => new Set());
+
+  // Which dashboard tables are expanded. Default all collapsed because the
+  // page is dense -- HK tap to drill in.
+  const [openTables, setOpenTables] = useState({ t1: false, t2: false, t3: false });
+  const toggleTable = (k) => setOpenTables((prev) => ({ ...prev, [k]: !prev[k] }));
   const toggleCell = (therapistId, colKey) => {
     const k = therapistId + ":" + colKey;
     setQueuedCells((prev) => {
@@ -458,6 +463,8 @@ export default function FounderDashboard() {
 
   const activateFilter = (key) => {
     setCohortFilter(cohortFilter === key ? "all" : key);
+    // Auto-open Table 1 since stat clicks filter the therapist roster
+    setOpenTables((prev) => ({ ...prev, t1: true }));
     // Smooth scroll to table
     setTimeout(() => {
       const el = document.getElementById("therapist-table");
@@ -606,50 +613,68 @@ export default function FounderDashboard() {
 
         <FounderMassSms therapists={data.therapists} />
 
-        <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
+        {/* ====== TABLE 1: Therapists ====== */}
+        <CollapsibleTableCard
+          number={1}
+          title="Therapists"
+          subtitle="Full roster. Activity, plan, flags, and recent sessions. Click column headers to sort."
+          summary={`${filtered.length} ${filtered.length === 1 ? "row" : "rows"}${cohortFilter !== "all" ? ` · filtered: ${filterLabel(cohortFilter)}` : ""}`}
+          isOpen={openTables.t1}
+          onToggle={() => toggleTable("t1")}
+          anchorId="therapist-table"
+        >
+          <BatchSendBar
+            selectedIds={selected}
+            rows={filtered}
+            onClearSelected={clearSelected}
+            onAfterSend={fetchAll}
+          />
+          <TherapistTable
+            rows={filtered}
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={onSort}
+            updateFlag={updateFlag}
+            onAfterSend={fetchAll}
+            selected={selected}
+            toggleSelected={toggleSelected}
+            selectAll={selectAll}
+            clearSelected={clearSelected}
+          />
+        </CollapsibleTableCard>
 
-        <CommsLogGrid
-          rows={filtered}
-          updateFlag={updateFlag}
-          onAfterBackfill={fetchAll}
-          queuedCells={queuedCells}
-          toggleCell={toggleCell}
-          clearQueue={clearQueue}
-          onAfterSend={fetchAll}
-        />
+        {/* ====== TABLE 2: Activation Checklist ====== */}
+        <CollapsibleTableCard
+          number={2}
+          title="Activation Checklist"
+          subtitle="Which therapists finished setup. Which are stuck. Therapists who complete all 5 steps see the full product. Those who don't, churn."
+          summary={`${filtered.filter(t => t?.steps_done === 5).length} of ${filtered.length} fully activated`}
+          isOpen={openTables.t2}
+          onToggle={() => toggleTable("t2")}
+        >
+          <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} hideOwnHeader />
+        </CollapsibleTableCard>
 
-        {/* ====== TABLE 1 ====== */}
-        <div id="therapist-table" style={{ marginTop: 36, marginBottom: 10 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
-            Table 1
-          </div>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: 20, color: C.dark, margin: "4px 0 0" }}>
-            Therapists
-          </h2>
-          <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0" }}>
-            Full roster. Activity, plan, flags, and recent sessions. Click column headers to sort.
-          </p>
-        </div>
-
-        <BatchSendBar
-          selectedIds={selected}
-          rows={filtered}
-          onClearSelected={clearSelected}
-          onAfterSend={fetchAll}
-        />
-
-        <TherapistTable
-          rows={filtered}
-          sortKey={sortKey}
-          sortDir={sortDir}
-          onSort={onSort}
-          updateFlag={updateFlag}
-          onAfterSend={fetchAll}
-          selected={selected}
-          toggleSelected={toggleSelected}
-          selectAll={selectAll}
-          clearSelected={clearSelected}
-        />
+        {/* ====== TABLE 3: Comms Log ====== */}
+        <CollapsibleTableCard
+          number={3}
+          title="Comms Log"
+          subtitle="Every email sent to each therapist. Auto sends (Welcome, Drip, Pulse) and manual founder outreach side by side. Hover any cell to see subject and date."
+          summary={`${filtered.length} therapists in the grid`}
+          isOpen={openTables.t3}
+          onToggle={() => toggleTable("t3")}
+        >
+          <CommsLogGrid
+            rows={filtered}
+            updateFlag={updateFlag}
+            onAfterBackfill={fetchAll}
+            queuedCells={queuedCells}
+            toggleCell={toggleCell}
+            clearQueue={clearQueue}
+            onAfterSend={fetchAll}
+            hideOwnHeader
+          />
+        </CollapsibleTableCard>
 
         {data.adminFlagMissing && (
           <div style={{ marginTop: 16, padding: "12px 16px", background: "#FEF9E7", border: "1px solid #E8C890", borderRadius: 8, fontSize: 12, color: "#7A5C1A" }}>
@@ -834,6 +859,87 @@ function recommendAction(t) {
 
 function firstName(t) {
   return (t.full_name || "").split(" ")[0] || "there";
+}
+
+// Collapsible card wrapper for the three main dashboard tables. Closed
+// state shows a single-row tappable header with the table number, title,
+// and one-line summary. Open state expands into the full table content.
+// Default styling matches the page's cream + sage palette.
+function CollapsibleTableCard({ number, title, subtitle, summary, isOpen, onToggle, anchorId, children }) {
+  return (
+    <div
+      id={anchorId}
+      style={{
+        marginTop: 24,
+        background: "#fff",
+        border: `1.5px solid ${C.light}`,
+        borderRadius: 14,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        onClick={onToggle}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          padding: "16px 20px",
+          cursor: "pointer",
+          userSelect: "none",
+          background: isOpen ? C.softCream : "#fff",
+          transition: "background 0.12s",
+        }}
+      >
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          background: C.forest, color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontFamily: "Georgia, serif", fontSize: 18, fontStyle: "italic",
+          flexShrink: 0,
+        }}>
+          {number}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage, marginBottom: 1 }}>
+            Table {number}
+          </div>
+          <div style={{ fontFamily: "Georgia, serif", fontSize: 18, color: C.dark, lineHeight: 1.2 }}>
+            {title}
+            {summary && (
+              <span style={{ fontFamily: "system-ui, sans-serif", fontSize: 12, color: C.gray, marginLeft: 10, fontWeight: 400 }}>
+                · {summary}
+              </span>
+            )}
+          </div>
+          {isOpen && subtitle && (
+            <p style={{ fontSize: 12, color: C.gray, margin: "4px 0 0", lineHeight: 1.4 }}>
+              {subtitle}
+            </p>
+          )}
+        </div>
+        <svg
+          width="14" height="14" viewBox="0 0 12 12" fill="none"
+          stroke={isOpen ? C.forest : "#9CA3AF"}
+          strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          style={{
+            flexShrink: 0,
+            transform: isOpen ? "rotate(90deg)" : "rotate(0deg)",
+            transition: "transform 0.18s",
+          }}
+        >
+          <path d="M4 2l4 4-4 4" />
+        </svg>
+      </div>
+      {isOpen && (
+        <div style={{ padding: "16px 20px 20px", borderTop: `1px solid ${C.light}` }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SectionLabel({ children }) {
@@ -1766,7 +1872,7 @@ const ACTIVATION_STEPS = [
   { key: "intake",  label: "First intake sent", short: "Intake",  icon: "📋" },
 ];
 
-function ActivationSection({ rows, updateFlag, onAfterSend }) {
+function ActivationSection({ rows, updateFlag, onAfterSend, hideOwnHeader = false }) {
   const [onlyStuck, setOnlyStuck] = useState(false);
   const [sortKey, setSortKey] = useState("steps_done");
   const [sortDir, setSortDir] = useState("asc"); // least-done first, these need help most
@@ -1805,7 +1911,8 @@ function ActivationSection({ rows, updateFlag, onAfterSend }) {
   if (total === 0) return null;
 
   return (
-    <div style={{ marginTop: 36 }}>
+    <div style={{ marginTop: hideOwnHeader ? 0 : 36 }}>
+      {!hideOwnHeader && (
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
@@ -1823,6 +1930,15 @@ function ActivationSection({ rows, updateFlag, onAfterSend }) {
           Only show stuck
         </label>
       </div>
+      )}
+      {hideOwnHeader && (
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: C.dark, cursor: "pointer", userSelect: "none", padding: "6px 10px", borderRadius: 8, background: onlyStuck ? C.softCream : "#fff", border: `1.5px solid ${C.light}` }}>
+          <input type="checkbox" checked={onlyStuck} onChange={(e) => setOnlyStuck(e.target.checked)} style={{ margin: 0 }} />
+          Only show stuck
+        </label>
+      </div>
+      )}
 
       {/* Rollup: completion % per step */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 8, marginBottom: 14 }}>
@@ -2756,7 +2872,7 @@ function CommsBackfillButton({ onAfterImport }) {
   );
 }
 
-function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCell, clearQueue, onAfterSend }) {
+function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCell, clearQueue, onAfterSend, hideOwnHeader = false }) {
   const [sortBy, setSortBy] = useState("name");
   const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
@@ -2868,7 +2984,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
 
   // Header area (always rendered so Table 3 shows up even if body errors)
   const header = (
-    <div style={{ marginTop: 36 }}>
+    <div style={{ marginTop: hideOwnHeader ? 0 : 36 }}>
       {/* Fixed diagnostic banner at top of Table 3. Survives scroll-to-top. */}
       <div style={{
         position: "sticky",
@@ -2885,6 +3001,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
       }}>
         DIAGNOSTIC: {totalHistoryRows} total comms across {rowsWithSends?.length ?? 0} visible therapists · {therapistsWithSends} therapist(s) have at least one send
       </div>
+      {!hideOwnHeader && (
       <div style={{ marginBottom: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sage }}>
           Table 3
@@ -2896,6 +3013,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
           Every email sent to each therapist. Auto sends (Welcome, Drip, Pulse) and manual founder outreach side by side. Hover any cell to see subject and date.
         </p>
       </div>
+      )}
     </div>
   );
 

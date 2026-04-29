@@ -136,15 +136,14 @@ export default function FounderMassSms({ therapists }) {
     saveTwilio(twilio);
   }, [twilio]);
 
-  // Build candidate list. Filter is_dummy unless includeAdmins is on AND
-  // the row is an admin email (HK's own accounts).
+  // Build candidate list. By default hide is_dummy accounts (test, demo,
+  // admin emails are all flagged is_dummy by isDummyEmail in the parent).
+  // When showTest is on, surface them with a 'TEST' badge so HK can verify
+  // his broadcast on his own demo account before sending to real users.
   const candidates = useMemo(() => {
     const list = (therapists || [])
       .filter((t) => {
-        const isAdmin = t.email && ADMIN_EMAILS.has(t.email.toLowerCase());
-        if (t.is_dummy && !isAdmin) return false;
-        if (t.is_dummy && isAdmin && !includeAdmins) return false;
-        if (!t.is_dummy && isAdmin && !includeAdmins) return false;
+        if (t.is_dummy && !includeAdmins) return false;
         return true;
       })
       .map((t) => {
@@ -158,6 +157,7 @@ export default function FounderMassSms({ therapists }) {
           plan: t.plan,
           rawPhone: t.phone,
           isAdmin,
+          isTest: !!t.is_dummy,
         };
       })
       .filter((t) => !!t.phone);
@@ -166,10 +166,7 @@ export default function FounderMassSms({ therapists }) {
   }, [therapists, includeAdmins]);
 
   const noPhoneCount = (therapists || []).filter((t) => {
-    const isAdmin = t.email && ADMIN_EMAILS.has(t.email.toLowerCase());
-    if (t.is_dummy && !isAdmin) return false;
-    if (t.is_dummy && isAdmin && !includeAdmins) return false;
-    if (!t.is_dummy && isAdmin && !includeAdmins) return false;
+    if (t.is_dummy && !includeAdmins) return false;
     return !normalizePhone(t.phone);
   }).length;
 
@@ -483,7 +480,7 @@ export default function FounderMassSms({ therapists }) {
             />
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gray, cursor: "pointer" }}>
               <input type="checkbox" checked={includeAdmins} onChange={(e) => setIncludeAdmins(e.target.checked)} />
-              Show my accounts
+              Show test &amp; demo accounts
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.gray, cursor: "pointer" }}>
               <input type="checkbox" checked={hideSent} onChange={(e) => setHideSent(e.target.checked)} />
@@ -653,13 +650,14 @@ export default function FounderMassSms({ therapists }) {
                       textDecoration: isSent ? "line-through" : "none",
                     }}>
                       {t.name}
-                      {t.isAdmin && (
+                      {t.isTest && (
                         <span style={{
                           marginLeft: 8, fontSize: 9, fontWeight: 700,
-                          background: C.gold, color: "#fff",
+                          background: t.isAdmin ? C.gold : "#9CA3AF",
+                          color: "#fff",
                           padding: "1px 6px", borderRadius: 99,
                           textTransform: "uppercase", letterSpacing: "0.04em",
-                        }}>You</span>
+                        }}>{t.isAdmin ? "You" : "Test"}</span>
                       )}
                       {t.plan && t.plan !== "free" && (
                         <span style={{
