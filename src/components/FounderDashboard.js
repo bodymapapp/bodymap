@@ -700,6 +700,217 @@ function filterLabel(key) {
   }[key] || key;
 }
 
+// Returns an action object suitable for SendModal given an action_type string
+// and a therapist row. Mirrors the templates in supabase/functions/founder-outreach.
+// Used by Table 3 cell-click flow so HK can edit subject + body before sending.
+function buildActionFor(actionType, t) {
+  const name = firstName(t);
+  const days_since_use = t.days_since_use;
+  const sessions_total = t.sessions_total || 0;
+
+  const dispatch = {
+    welcome: () => ({
+      key: "welcome",
+      label: "Founder Welcome",
+      button: "Send",
+      subject: `${name}, the 60-second question that decides how this goes`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `MyBodyMap Team here. We already sent you the real welcome email with all the steps. So this one is different.`,
+        ``,
+        `This is the honest one.`,
+        ``,
+        `Get your full client list in today. Not tomorrow. Today.`,
+        ``,
+        `If you have a CSV export from your current tool, send it to us as a reply. Vagaro, MassageBook, Square, a messy spreadsheet, anything. We will clean it and load it for you. Reply "import".`,
+        ``,
+        `Or do it yourself: https://mybodymap.app/dashboard`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    checkin: () => ({
+      key: "checkin",
+      label: "Check-in",
+      button: "Send",
+      subject: `${name}, how are your hands?`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `MyBodyMap Team here. Just checking in.`,
+        ``,
+        `Want us to import your client list for you? Send us a CSV from your current tool, or a photo of a handwritten list.`,
+        ``,
+        `Or if something else is in the way, hit reply and tell us.`,
+        ``,
+        `Take care of your hands this week.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    reminder: () => ({
+      key: "reminder",
+      label: "Reminder",
+      button: "Send",
+      subject: `${name}, still thinking about you`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `MyBodyMap Team here. It has been about ${days_since_use ?? "a while"} days since you last opened MyBodyMap.`,
+        ``,
+        `Want a 2-minute video walkthrough of what's new? Reply "yes video" and we will send one.`,
+        ``,
+        `Or tell us honestly if it didn't click. Either is useful.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    testimonial: () => ({
+      key: "testimonial",
+      label: "Testimonial ask",
+      button: "Send",
+      subject: `${name}, the kindest thing you could do for another therapist`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `MyBodyMap Team here. You have logged ${sessions_total} sessions on MyBodyMap so far.`,
+        ``,
+        `Would you share one sentence about how this works for you? Hit reply with how you would say it to a friend over coffee.`,
+        ``,
+        `Reply "pass" and we will never ask again.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    first_session: () => ({
+      key: "first_session",
+      label: "First session",
+      button: "Send",
+      subject: `Congrats on your first session, ${name}`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Just saw you logged your first session. Big moment.`,
+        ``,
+        `Tip: next time that client books, open their body map 30 seconds before they walk in.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    setup_nudge: () => ({
+      key: "setup_nudge",
+      label: "Setup nudge",
+      button: "Send",
+      subject: `${name}, some free career advice`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `You haven't connected Stripe or Square yet. Clients can't pay you when they book.`,
+        ``,
+        `One minute in Settings and it's done.`,
+        ``,
+        `Want a hand walking through it? Hit reply.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    churned: () => ({
+      key: "churned",
+      label: "Churned",
+      button: "Send",
+      subject: `${name}, we miss your hands`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Not writing to sell. We just noticed you have not been back in about ${days_since_use ?? "over a month"} days.`,
+        ``,
+        `If MyBodyMap fell short somehow, we want to know. Reply with one sentence, or "call" for a 15-minute slot.`,
+        ``,
+        `Whatever the reason, thank you for trying us.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    referral_thankyou: () => ({
+      key: "referral_thankyou",
+      label: "Referral thank-you",
+      button: "Send",
+      subject: `Thank you, ${name}`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Someone just signed up through your link. That means a lot.`,
+        ``,
+        `If there's anything we can do to make MyBodyMap better for you, reply and tell us.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    activation_nudge: () => ({
+      key: "activation_nudge",
+      label: "Activation nudge",
+      button: "Send",
+      subject: `${name}, small things left`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Just a quiet nudge. You've got a couple of setup steps left. No urgency.`,
+        ``,
+        `If something is in the way, tell us. We help in one reply.`,
+        ``,
+        `Reply "call" and we'll send a 15-minute slot.`,
+        ``,
+        `Cheers,`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+    product_update: () => ({
+      key: "product_update",
+      label: "Product update",
+      button: "Send",
+      subject: `${name}, MyBodyMap just got beautifully simpler`,
+      body: [
+        `Hi ${name},`,
+        ``,
+        `Joy from MyBodyMap. We rebuilt the platform for you this month.`,
+        ``,
+        `What's new across four areas:`,
+        ``,
+        `1. How you practice — your dashboard greets you with live stats. Setup went from 125 clicks to 25.`,
+        ``,
+        `2. What you offer — add-ons, packages, memberships, and group classes ready in Settings with smart defaults filled in.`,
+        ``,
+        `3. How you rest easier — AI features, Practice Pulse digest, and reminders running quietly in the background.`,
+        ``,
+        `4. Your membership — Bronze stays free for life. Silver and Gold unlock the full toolkit.`,
+        ``,
+        `Plus regional pricing intelligence, so you know what therapists in your zip charge before you set yours.`,
+        ``,
+        `10 minutes today. We think you'll love it.`,
+        ``,
+        `https://mybodymap.app/dashboard`,
+        ``,
+        `With care,`,
+        `Joy`,
+        `MyBodyMap Team`,
+      ].join("\n"),
+    }),
+  };
+
+  const fn = dispatch[actionType];
+  if (!fn) return null;
+  return fn();
+}
+
 function recommendAction(t) {
   const name = firstName(t);
   const noActivity = t.sessions_total === 0 && t.clients_total === 0;
@@ -2879,6 +3090,11 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
   const [sortBy, setSortBy] = useState("name");
   const [hideInactive, setHideInactive] = useState(false);
   const [renderError, setRenderError] = useState(null);
+  // Edit-then-send modal state for Table 3 manual cells. When set, opens the
+  // existing SendModal so HK can edit subject + body before firing one email.
+  const [editCell, setEditCell] = useState(null); // { therapist, actionKey, actionLabel } | null
+  const [editSending, setEditSending] = useState(false);
+  const [editError, setEditError] = useState("");
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(null);
 
@@ -3244,7 +3460,14 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
                     const isClickable = isManual && !hasSend && MANUAL_COL_TO_ACTION[col.key];
                     return (
                       <td key={col.key}
-                        onClick={isClickable ? function () { if (toggleCell) toggleCell(t.id, col.key); } : undefined}
+                        onClick={isClickable ? function () {
+                          // Open edit-then-send modal so HK can tweak subject + body
+                          // before firing one email. Mirrors Table 1 ActionCell pattern.
+                          const actionKey = MANUAL_COL_TO_ACTION[col.key];
+                          if (!actionKey) return;
+                          setEditCell({ therapist: t, actionKey: actionKey, actionLabel: col.label });
+                          setEditError("");
+                        } : undefined}
                         style={{
                           textAlign: "center",
                           padding: "6px 4px",
@@ -3272,7 +3495,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
                             <div style={{ fontSize: 9, color: "#92400E", lineHeight: 1.2, fontWeight: 700 }}>queued</div>
                           </div>
                         ) : isClickable ? (
-                          <div title={"Click to queue " + col.label + " for " + (t.business_name || t.email || "this therapist")}
+                          <div title={"Click to edit and send " + col.label + " to " + (t.business_name || t.email || "this therapist")}
                             style={{ width: 22, height: 22, borderRadius: 4, border: "2px solid " + C.forest, background: "#fff", color: C.forest, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, lineHeight: 1, margin: "0 auto" }}>+</div>
                         ) : (
                           <div style={{ fontSize: 11, color: "#D5D0C1" }}>.</div>
@@ -3317,6 +3540,47 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
         <div><span style={{ color: C.gold, fontWeight: 700 }}>Total 4-6</span> = watch</div>
         <div><span style={{ color: C.fall, fontWeight: 700 }}>Total 7+</span> = likely too many</div>
       </div>
+
+      {editCell && (() => {
+        const action = buildActionFor(editCell.actionKey, editCell.therapist);
+        if (!action) return null;
+        return (
+          <SendModal
+            t={editCell.therapist}
+            action={action}
+            sending={editSending}
+            errorMsg={editError}
+            onClose={() => { setEditCell(null); setEditError(""); }}
+            onSend={async ({ subject, body }) => {
+              if (editSending) return;
+              setEditSending(true);
+              setEditError("");
+              try {
+                const r = await supabase.functions.invoke("founder-outreach", {
+                  body: {
+                    therapist_id: editCell.therapist.id,
+                    action_type: editCell.actionKey,
+                    custom_subject: subject,
+                    custom_body: body,
+                  },
+                });
+                if (r.error) {
+                  setEditError(`transport: ${r.error.message || "unknown"}`);
+                } else if (!r.data?.ok) {
+                  setEditError(`${r.data?.step || "?"}: ${r.data?.error || "Send failed"}`);
+                } else {
+                  setEditCell(null);
+                  if (onAfterSend) { try { await onAfterSend(); } catch (_e) { /* non-blocking */ } }
+                }
+              } catch (e) {
+                setEditError(e?.message || "Send failed");
+              } finally {
+                setEditSending(false);
+              }
+            }}
+          />
+        );
+      })()}
     </>
   );
 }
