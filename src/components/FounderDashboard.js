@@ -2717,6 +2717,7 @@ const COMMS_OUTREACH_COLUMNS = [
   { key: "founder_outreach_churned",          label: "Churned",       group: "manual", short: "Ch"  },
   { key: "founder_outreach_referral_thankyou",label: "Referral thx",  group: "manual", short: "Rt"  },
   { key: "founder_outreach_activation_nudge", label: "Activation",    group: "manual", short: "An"  },
+  { key: "founder_outreach_product_update",   label: "Product update",group: "manual", short: "Pu"  },
 ];
 
 // Map Table 3 manual column keys to founder-outreach action_type values.
@@ -2731,6 +2732,7 @@ const MANUAL_COL_TO_ACTION = {
   founder_outreach_churned:           "churned",
   founder_outreach_referral_thankyou: "referral_thankyou",
   founder_outreach_activation_nudge:  "activation_nudge",
+  founder_outreach_product_update:    "product_update",
 };
 
 function commsDaysAgoShort(dateStr) {
