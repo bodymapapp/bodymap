@@ -47,7 +47,14 @@ const ADMIN_EMAILS = new Set([
   "harshk.mba@gmail.com",
 ]);
 
-const DEFAULT_MESSAGE = `Hey {name}, it's HK from MyBodyMap. Big update just shipped: Settings is fully rebuilt, plus Add-ons, Packages, Memberships, and Group Classes are live now. Worth a fresh look: mybodymap.app. Hit me back with any questions or what you'd like to see next.`;
+const DEFAULT_MESSAGE = `Hi {name}, MyBodyMap founder here. Major updates: mybodymap.app`;
+
+// Word count helper -- tokens separated by whitespace, ignoring punctuation-only.
+function countWords(text) {
+  if (!text) return 0;
+  const tokens = text.trim().split(/\s+/).filter(Boolean);
+  return tokens.length;
+}
 
 function normalizePhone(p) {
   if (!p) return null;
@@ -210,6 +217,19 @@ function AccountAudit({ therapists, includeAdmins }) {
 export default function FounderMassSms({ therapists }) {
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const [sentIds, setSentIds] = useState(() => loadSentSet());
+
+  // Channel: which app should the Text button open?
+  // - 'gvoice' (default): opens Google Voice in new tab + copies message to
+  //   clipboard. Avoids Mac Messages.app handing texts to iMessage.
+  // - 'sms': opens device default messaging app (Messages on Mac/iOS).
+  const [channel, setChannel] = useState(() => {
+    try { return localStorage.getItem("founder_sms_channel") || "gvoice"; }
+    catch { return "gvoice"; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("founder_sms_channel", channel); } catch { /* ignore */ }
+  }, [channel]);
+  const [copyToast, setCopyToast] = useState(""); // small inline confirmation after copy
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [includeAdmins, setIncludeAdmins] = useState(false);
   const [hideSent, setHideSent] = useState(false);
@@ -338,6 +358,32 @@ export default function FounderMassSms({ therapists }) {
 
   const smsUrl = (phone, personalizedMsg) =>
     `sms:${phone}?body=${encodeURIComponent(personalizedMsg)}`;
+
+  // Google Voice has no documented URL parameter to pre-fill recipient or
+  // message. Best we can do: open the messages page in a new tab and copy
+  // the personalized message to clipboard so the user pastes (one Cmd+V)
+  // after manually entering the phone in Voice's New Conversation dialog.
+  // The phone is always visible in the recipient row, easy to type.
+  const sendViaGoogleVoice = async (t, personalizedMsg) => {
+    try {
+      await navigator.clipboard.writeText(personalizedMsg);
+      setCopyToast(`Message copied for ${t.firstName}. Phone: ${t.phone}`);
+      setTimeout(() => setCopyToast(""), 5000);
+    } catch (e) {
+      setCopyToast("Couldn't copy message — open Voice and paste manually.");
+      setTimeout(() => setCopyToast(""), 5000);
+    }
+    window.open("https://voice.google.com/u/0/messages", "_blank", "noopener,noreferrer");
+    setTimeout(() => markSent(t.id), 350);
+  };
+
+  const copyJustPhone = async (t) => {
+    try {
+      await navigator.clipboard.writeText(t.phone);
+      setCopyToast(`Phone copied: ${t.phone}`);
+      setTimeout(() => setCopyToast(""), 3000);
+    } catch (e) { /* ignore */ }
+  };
 
   // ─── Guided sequence ──────────────────────────────────────────────
   const startSequence = () => {
@@ -480,10 +526,70 @@ export default function FounderMassSms({ therapists }) {
 
       {!collapsed && (
         <div style={{ padding: "0 20px 20px", borderTop: `1px solid ${C.light}` }}>
+          {/* Channel selector -- where do Text buttons send? Default Voice
+              so HK avoids Mac Messages.app handing texts off to iMessage
+              (which would come from his personal Apple ID, not his
+              MyBodyMap-founder voice). */}
+          <div style={{
+            marginTop: 16,
+            padding: "12px 14px",
+            background: "#fff",
+            border: `1px solid ${C.light}`,
+            borderRadius: 10,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.sage }}>
+              Send via
+            </span>
+            <div style={{ display: "inline-flex", gap: 0, border: `1px solid ${C.light}`, borderRadius: 8, overflow: "hidden", flexShrink: 0 }}>
+              <button
+                onClick={() => setChannel("gvoice")}
+                style={{
+                  padding: "7px 14px", fontSize: 12, fontWeight: 600,
+                  background: channel === "gvoice" ? C.forest : "#fff",
+                  color: channel === "gvoice" ? "#fff" : C.dark,
+                  border: "none", cursor: "pointer",
+                  borderRight: `1px solid ${C.light}`,
+                }}
+              >
+                Google Voice
+              </button>
+              <button
+                onClick={() => setChannel("sms")}
+                style={{
+                  padding: "7px 14px", fontSize: 12, fontWeight: 600,
+                  background: channel === "sms" ? C.forest : "#fff",
+                  color: channel === "sms" ? "#fff" : C.dark,
+                  border: "none", cursor: "pointer",
+                }}
+              >
+                Mac Messages
+              </button>
+            </div>
+            <span style={{ fontSize: 11, color: C.gray, flex: 1, minWidth: 200 }}>
+              {channel === "gvoice"
+                ? "Opens voice.google.com + copies message to clipboard. Type phone, paste message, send."
+                : "Opens Messages.app via sms: link. May route through iMessage from your personal number."}
+            </span>
+          </div>
+
+          {channel === "gvoice" && (
+            <div style={{
+              marginTop: 8, padding: "8px 12px",
+              background: "#FEF3C7", border: "1px solid #FDE68A",
+              borderRadius: 8, fontSize: 11, color: "#92400E", lineHeight: 1.5,
+            }}>
+              <strong>Heads up:</strong> Google Voice flags identical messages to many recipients as spam. Vary the wording slightly between sends, or space them out, to avoid temporary blocks.
+            </div>
+          )}
+
           {/* Quick toggle for testing -- prominent placement so HK can flip
               it without scrolling to the filter row below. */}
           <div style={{
-            marginTop: 16,
+            marginTop: 12,
             padding: "10px 14px",
             background: includeAdmins ? "#FFFBEB" : C.softCream,
             border: `1px solid ${includeAdmins ? "#FDE68A" : C.light}`,
@@ -534,7 +640,23 @@ export default function FounderMassSms({ therapists }) {
               }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 11, color: C.gray, gap: 8, flexWrap: "wrap" }}>
-              <span>{message.length} chars · {Math.ceil(message.length / 160)} SMS segment{Math.ceil(message.length / 160) === 1 ? "" : "s"}</span>
+              <span>
+                {(() => {
+                  const wc = countWords(message);
+                  const wcColor = wc <= 10 ? C.sage : wc <= 15 ? "#C59550" : C.rose;
+                  return (
+                    <>
+                      <span style={{ color: wcColor, fontWeight: 700 }}>{wc} word{wc === 1 ? "" : "s"}</span>
+                      {wc > 10 && (
+                        <span style={{ color: C.rose, marginLeft: 6 }}>
+                          · keep texts under 10 words
+                        </span>
+                      )}
+                      {" · "}{message.length} chars
+                    </>
+                  );
+                })()}
+              </span>
               <button
                 onClick={() => setMessage(DEFAULT_MESSAGE)}
                 style={{
@@ -728,6 +850,16 @@ export default function FounderMassSms({ therapists }) {
             </div>
           )}
 
+          {copyToast && (
+            <div style={{
+              marginBottom: 14, padding: "10px 14px",
+              background: "#F0FDF4", border: "1px solid #86EFAC",
+              borderRadius: 10, fontSize: 12, color: C.dark, fontWeight: 600,
+            }}>
+              ✓ {copyToast}
+            </div>
+          )}
+
           {/* Recipient list */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {filtered.length === 0 && (
@@ -831,19 +963,34 @@ export default function FounderMassSms({ therapists }) {
                       Undo
                     </button>
                   ) : t.hasPhone ? (
-                    <a
-                      href={smsUrl(t.phone, personalizedMsg)}
-                      onClick={() => { setTimeout(() => markSent(t.id), 250); }}
-                      style={{
-                        background: C.forest, color: "#fff",
-                        border: "none", padding: "7px 14px", borderRadius: 7,
-                        fontSize: 12, fontWeight: 600,
-                        textDecoration: "none", whiteSpace: "nowrap",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Text
-                    </a>
+                    channel === "gvoice" ? (
+                      <button
+                        onClick={() => sendViaGoogleVoice(t, personalizedMsg)}
+                        style={{
+                          background: C.forest, color: "#fff",
+                          border: "none", padding: "7px 14px", borderRadius: 7,
+                          fontSize: 12, fontWeight: 600,
+                          whiteSpace: "nowrap", cursor: "pointer",
+                        }}
+                        title="Opens Google Voice in new tab and copies message to clipboard"
+                      >
+                        Voice →
+                      </button>
+                    ) : (
+                      <a
+                        href={smsUrl(t.phone, personalizedMsg)}
+                        onClick={() => { setTimeout(() => markSent(t.id), 250); }}
+                        style={{
+                          background: C.forest, color: "#fff",
+                          border: "none", padding: "7px 14px", borderRadius: 7,
+                          fontSize: 12, fontWeight: 600,
+                          textDecoration: "none", whiteSpace: "nowrap",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Text
+                      </a>
+                    )
                   ) : t.email ? (
                     <a
                       href={`mailto:${t.email}?subject=${encodeURIComponent("Quick update from MyBodyMap")}&body=${encodeURIComponent(personalizedMsg)}`}
@@ -887,7 +1034,12 @@ export default function FounderMassSms({ therapists }) {
             background: "#fff", border: `1px solid ${C.light}`,
             borderRadius: 8, fontSize: 11, color: C.gray, lineHeight: 1.5,
           }}>
-            <strong style={{ color: C.dark }}>Three ways to send:</strong> (1) Tap "Text" on any row to open Messages pre-filled — one tap per person, comes from your number. (2) Check several rows and tap "Step through" to be guided through them one at a time. (3) Configure Twilio above and tap "Send via Twilio" to send all selected at once with no Messages handoff (~$0.01/text).
+            <strong style={{ color: C.dark }}>How sending works:</strong>{" "}
+            {channel === "gvoice" ? (
+              <>Tap "Voice →" on any row to open Google Voice in a new tab — the personalized message is auto-copied to your clipboard. In Voice, click <em>New conversation</em>, type the phone number shown in the row, click the message field, paste (Cmd+V), Send. Vary your wording slightly between sends to avoid Voice flagging duplicates as spam. Texts come from your Google Voice number, not your Apple ID.</>
+            ) : (
+              <>Tap "Text" on any row to open Messages.app pre-filled. On Mac this routes through iMessage and texts come from your personal Apple ID — switch to Google Voice mode above for founder-branded sends.</>
+            )}
           </div>
         </div>
       )}
