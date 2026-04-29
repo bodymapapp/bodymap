@@ -156,10 +156,7 @@ Last refreshed: 2026-04-29 — after Twilio setup discussion + Noterro research.
 ## INFRASTRUCTURE / OPERATIONAL
 
 ### Op-1. Admin RPC pipeline for Claude to run migrations directly
-**Why:** Claude can't run SQL via service role; HK has to copy-paste from chat to Supabase SQL editor for every migration.
-**Build:** Supabase exec_admin_sql function + service-role key in .env.local
-**Effort:** 1 hr
-**Status:** Paused — HK couldn't find service_role key during last attempt; resume when convenient
+**Status:** ✅ DONE — solved differently and better. GitHub Actions workflow `.github/workflows/deploy-edge-functions.yml` auto-deploys ALL Supabase Edge Functions whenever files in `supabase/functions/**` change on the main branch. Uses `SUPABASE_ACCESS_TOKEN` secret stored in GitHub repo settings (already configured). Claude pushes code → workflow deploys automatically → green checkmark visible at `github.com/bodymapapp/bodymap/actions`. **HK never needs to paste code into Supabase dashboard for Edge Function changes.** SQL migrations still require manual paste in Supabase SQL editor (separate concern, not yet automated).
 
 ### Op-2. Stripe Product display name fix
 **Issue:** Stripe checkout shows "BodyMap" not "MyBodyMap" (legal entity pulling through).

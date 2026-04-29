@@ -1258,6 +1258,12 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
   const [actionType, setActionType] = useState("product_update");
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(null); // { done, total, results: [{id, name, status, error?}] }
+  // Edit-before-batch-send: when set, opens SendModal pre-filled with the
+  // template. HK edits, hits Send, then runBatch fires with the same edited
+  // subject + body to ALL selected therapists. {name} is auto-substituted
+  // per recipient in the Edge Function.
+  const [editingTemplate, setEditingTemplate] = useState(null); // { subject, body } | null
+  const [pendingCustom, setPendingCustom] = useState(null); // { subject, body } | null - what runBatch should send
 
   const selectedRows = rows.filter((r) => selectedIds.has(r.id));
   const count = selectedRows.length;
@@ -1265,10 +1271,30 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
 
   const chosen = BATCH_EMAIL_OPTIONS.find((o) => o.value === actionType);
 
-  async function runBatch() {
+  // Open the edit modal pre-filled with the template for the FIRST selected
+  // therapist. The {name} placeholder is left as-is so it substitutes per
+  // recipient during the actual send. HK can replace any text he wants.
+  function openEditModal() {
+    const sample = selectedRows[0];
+    const action = buildActionFor(actionType, sample);
+    if (!action) {
+      window.alert("Could not build template for " + actionType);
+      return;
+    }
+    // Replace the first name with {name} placeholder so the substitution works
+    // for each recipient during send.
+    const sampleName = firstName(sample);
+    const genericSubject = action.subject.replace(new RegExp("\\b" + sampleName + "\\b", "g"), "{name}");
+    const genericBody = action.body.replace(new RegExp("\\b" + sampleName + "\\b", "g"), "{name}");
+    setEditingTemplate({ subject: genericSubject, body: genericBody });
+  }
+
+  async function runBatch(customOverride) {
     if (sending || count === 0) return;
 
-    const confirmMsg = `Send "${chosen.label}" (${chosen.code}) to ${count} therapist${count === 1 ? "" : "s"}?\n\nThis fires immediately. Emails cannot be unsent.`;
+    const useCustom = customOverride && customOverride.subject && customOverride.body;
+    const labelText = useCustom ? `${chosen.label} (edited)` : chosen.label;
+    const confirmMsg = `Send "${labelText}" (${chosen.code}) to ${count} therapist${count === 1 ? "" : "s"}?\n\nThis fires immediately. Emails cannot be unsent.`;
     if (!window.confirm(confirmMsg)) return;
 
     setSending(true);
@@ -1277,8 +1303,21 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
 
     for (const t of selectedRows) {
       try {
+        // Build per-recipient body. If HK edited the template, substitute
+        // {name} per therapist; otherwise let the Edge Function build the
+        // default template by passing only therapist_id + action_type.
+        const recipientName = firstName(t);
+        const requestBody = useCustom
+          ? {
+              therapist_id: t.id,
+              action_type: actionType,
+              custom_subject: customOverride.subject.replace(/\{name\}/g, recipientName),
+              custom_body: customOverride.body.replace(/\{name\}/g, recipientName),
+            }
+          : { therapist_id: t.id, action_type: actionType };
+
         const { data, error } = await supabase.functions.invoke("founder-outreach", {
-          body: { therapist_id: t.id, action_type: actionType },
+          body: requestBody,
         });
         if (error) {
           results.push({ id: t.id, name: t.business_name || t.full_name || t.email, status: "failed", error: error.message || "transport" });
@@ -1348,7 +1387,26 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
         </select>
 
         <button
-          onClick={runBatch}
+          onClick={openEditModal}
+          disabled={sending}
+          title="Edit subject and body once, then send to all selected"
+          style={{
+            padding: "7px 14px",
+            background: sending ? C.light : "#FFF9F3",
+            color: C.forest,
+            border: `1.5px solid ${C.forest}`,
+            borderRadius: 6,
+            cursor: sending ? "default" : "pointer",
+            fontSize: 13,
+            fontWeight: 700,
+            fontFamily: "system-ui",
+          }}
+        >
+          ✎ Edit &amp; Send
+        </button>
+
+        <button
+          onClick={() => runBatch(null)}
           disabled={sending}
           style={{
             padding: "7px 16px",
@@ -1422,6 +1480,27 @@ function BatchSendBar({ selectedIds, rows, onClearSelected, onAfterSend }) {
             </div>
           )}
         </div>
+      )}
+
+      {editingTemplate && (
+        <SendModal
+          t={selectedRows[0]}
+          action={{
+            key: actionType,
+            label: chosen.label,
+            button: `Send to ${count}`,
+            subject: editingTemplate.subject,
+            body: editingTemplate.body,
+          }}
+          sending={sending}
+          errorMsg=""
+          onClose={() => setEditingTemplate(null)}
+          onSend={({ subject, body }) => {
+            // Close modal then fire batch with the edited subject + body
+            setEditingTemplate(null);
+            runBatch({ subject, body });
+          }}
+        />
       )}
     </div>
   );
