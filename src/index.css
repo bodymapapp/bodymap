@@ -3082,3 +3082,20 @@ section[id] {
 .bm-pricing-v2-confirm-modal__help a:hover {
   color: var(--bm-forest);
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Settings collapse (Phase 1B): when a CollapsibleSection wraps a card
+   component (e.g. ServiceAddonsCard), this class on the wrapper strips
+   the inner card chrome so we don't get card-in-card visual nesting.
+   The eyebrow + content render directly inside the section's detail area.
+   ───────────────────────────────────────────────────────────────────── */
+.bm-section-bare > div {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 0 !important;
+  border-radius: 0 !important;
+}
+.bm-section-bare > div > p:first-child {
+  display: none;
+}

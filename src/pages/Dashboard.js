@@ -15,6 +15,7 @@ import MembershipsCard from '../components/MembershipsCard';
 import EventsCard from '../components/EventsCard';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
+import CollapsibleSection from '../components/CollapsibleSection';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -798,6 +799,14 @@ function ReferralCard({ therapist, C2 }) {
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const { updateProfile } = useAuth();
+
+  // Which row in Settings is currently expanded. null = all collapsed.
+  // Mobile-first: collapsed by default to kill the endless vertical scroll.
+  const [openRow, setOpenRow] = React.useState(null);
+  const toggleRow = React.useCallback((id) => {
+    setOpenRow(prev => prev === id ? null : id);
+  }, []);
+
   const [lapsedSaved, setLapsedSaved] = React.useState(false);
   const [fullName, setFullName] = React.useState(therapist?.full_name || '');
   const [businessName, setBusinessName] = React.useState(therapist?.business_name || '');
@@ -942,10 +951,15 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       />
 
       {/* Intake Link */}
-      <div style={{ background: `linear-gradient(135deg, ${C2.forest}08, ${C2.sage}15)`, border: `1.5px solid ${C2.sage}40`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.sage, margin: '0 0 8px 0' }}>
-          🔗 Your Client Intake Link
-        </p>
+      <CollapsibleSection
+        id="intake"
+        label="Client intake link"
+        summary={intakeUrl}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
+        isOpen={openRow === 'intake'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 14px 0' }}>
           Share this with clients - they tap it, fill their body map, you get it instantly.
         </p>
@@ -957,16 +971,29 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             {copied ? '✓ Copied!' : 'Copy Link'}
           </button>
         </div>
-      </div>
+      </div></CollapsibleSection>
 
       {/* QR Codes: Intake, Booking, Custom */}
-      <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} />
+      <CollapsibleSection
+        id="qrcodes"
+        label="QR codes"
+        summary="3 codes ready to print or share"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>}
+        isOpen={openRow === 'qrcodes'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} /></div></CollapsibleSection>
 
       {/* Profile Edit */}
-      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px', marginBottom: '20px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 16px 0' }}>
-          ✏️ Profile
-        </p>
+      <CollapsibleSection
+        id="profile"
+        label="Your info"
+        summary={`${therapist?.full_name || 'Add your name'}${therapist?.phone ? ' · ' + therapist.phone : ''}`}
+        status={therapist?.full_name && therapist?.phone ? 'done' : 'todo'}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="9" r="3.5"/><path d="M5 19c0-3.5 3-6 7-6s7 2.5 7 6"/></svg>}
+        isOpen={openRow === 'profile'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         {/* Photo Upload */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px', paddingBottom: '20px', borderBottom: `1px solid ${C2.lightGray}` }}>
           <div style={{ position: 'relative' }}>
@@ -1053,12 +1080,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <p style={{ fontSize: '12px', color: C2.gray, margin: 0 }}>Email: {therapist?.email}</p>
           </div>
         </div>
-      </div>
+      </div></CollapsibleSection>
 
 
       {/* Lapsed Threshold */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 12px 0' }}>🍂 Lapsed Threshold</p>
+      <CollapsibleSection
+        id="lapsed"
+        label="Lapsed client threshold"
+        summary={`${lapsedDays} days · clients flagged after this`}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 4v8l5 3"/><circle cx="12" cy="12" r="9"/></svg>}
+        isOpen={openRow === 'lapsed'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8 }}>
           <input type="number" min="1" max="365" value={lapsedDays}
             onChange={e => { const v=parseInt(e.target.value); if(!isNaN(v)) setLapsedDays(v); }}
@@ -1067,13 +1101,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           <p style={{ fontSize:'13px', color:C2.darkGray, margin:0 }}>days since last session before a client is flagged as lapsed</p>
           {lapsedSaved && <p style={{ fontSize:'12px', color:C2.forest, fontWeight:'600', margin:0 }}>✓ Saved</p>}
         </div>
-      </div>
+      </div></CollapsibleSection>
 
-      {/* Integrations Row - Cal.com + Stripe side by side */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:20 }} className="bm-integrations">
-        {/* Cal.com */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>📅 External Calendar (Optional)</p>
+      {/* Cal.com sync */}
+      <CollapsibleSection
+        id="cal"
+        label="Cal.com sync"
+        summary={(therapist?.cal_connected || therapist?.cal_api_key) ? "Connected · syncing automatically" : "Optional · two-way calendar"}
+        status={(therapist?.cal_connected || therapist?.cal_api_key) ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 4v4M16 4v4"/></svg>}
+        isOpen={openRow === 'cal'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
           <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Already using Cal.com for scheduling? Connect it here to sync bookings automatically. If you're using MyBodyMap's built-in booking, you don't need this.</p>
           {(therapist?.cal_connected || therapist?.cal_api_key) ? (
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
@@ -1109,11 +1148,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               </div>
             </div>
           )}
-        </div>
+      </div></CollapsibleSection>
 
-        {/* Stripe */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💳 Payments</p>
+        {/* Payments (Stripe / Square) */}
+        <CollapsibleSection
+          id="payments"
+          label="Payments"
+          summary={therapist?.stripe_account_connected ? "Stripe connected · cards on file" : "Connect Stripe or Square"}
+          status={therapist?.stripe_account_connected ? "done" : "attn"}
+          icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
+          isOpen={openRow === 'payments'}
+          onToggle={toggleRow}
+        ><div style={{ padding: '4px 4px' }}>
           <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Connect Stripe or Square to save cards on file and charge clients directly from the Clients tab.</p>
 
           {/* Stripe */}
@@ -1194,12 +1240,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               ⬛ Connect Square
             </button>
           )}
-        </div>
-      </div>
+        </div></CollapsibleSection>
 
       {/* Booking Link */}
-      <div style={{ background:`linear-gradient(135deg,${C2.forest}08,${C2.sage}15)`, border:`1.5px solid ${C2.sage}40`, borderRadius:14, padding:20, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.sage, margin:'0 0 6px' }}>📅 Your Booking Link</p>
+      <CollapsibleSection
+        id="booking"
+        label="Booking page"
+        summary={therapist?.custom_url ? `mybodymap.app/book/${therapist.custom_url}` : "Set your URL above"}
+        status={therapist?.custom_url ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
+        isOpen={openRow === 'booking'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
         <div className="bm-settings-btn-row" style={{ display:'flex', gap:8, alignItems:'center' }}>
           <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
@@ -1215,14 +1267,29 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
         {/* Embed on your website */}
         <BookingEmbedPanel customUrl={therapist?.custom_url} />
-      </div>
+      </div></CollapsibleSection>
 
       {/* Services + Availability */}
-      <ServicesAndAvailability therapist={therapist} />
+      <CollapsibleSection
+        id="services"
+        label="Services & hours"
+        summary="Your menu, weekly hours, deposits, buffer"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 9c2 4 5 4 7 4s5 0 7-4"/><path d="M5 13c2 4 5 4 7 4s5 0 7-4"/><path d="M12 4v3"/></svg>}
+        isOpen={openRow === 'services'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
 
       {/* SMS / Twilio */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>💬 SMS Outreach (via Twilio)</p>
+      <CollapsibleSection
+        id="twilio"
+        label="Custom SMS sender (Twilio)"
+        summary={therapist?.twilio_phone_number ? `Connected · ${therapist.twilio_phone_number}` : "Optional · advanced"}
+        status={therapist?.twilio_phone_number ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 5h14v11H10l-3 3v-3H5z"/></svg>}
+        isOpen={openRow === 'twilio'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 6px 0', lineHeight:1.5 }}>Send text messages to lapsed or due clients from a dedicated practice number. Your clients see a local number, not your personal phone.</p>
         <div style={{ background:C2.beige, borderRadius:8, padding:'10px 12px', marginBottom:14, fontSize:12, color:C2.gray, lineHeight:1.6 }}>
           <strong>Setup takes about 10 minutes:</strong><br/>
@@ -1263,11 +1330,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           </div>
         )}
-      </div>
+      </div></CollapsibleSection>
 
       {/* AI Features master switch */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 AI Features</p>
+      <CollapsibleSection
+        id="ai"
+        label="AI features"
+        summary={aiEnabled ? 'On · chat, briefs, patterns' : 'Off · all AI hidden'}
+        status={aiEnabled ? 'done' : 'todo'}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
+        isOpen={openRow === 'ai'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>MyBodyMap AI chat, pre-session briefs, and the Practice Pulse digest. Turn off if you prefer a fully manual workflow. Your data is unchanged either way.</p>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -1281,7 +1355,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         {!aiEnabled && (
           <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
         )}
-      </div>
+      </div></CollapsibleSection>
 
       <SettingsSectionHeader
         title="What I offer"
@@ -1290,16 +1364,48 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       />
 
       {/* Service Add-ons */}
-      <ServiceAddonsCard therapist={therapist} />
+      <CollapsibleSection
+        id="addons"
+        label="Add-ons"
+        summary="Hot stones, aromatherapy, hot towels…"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="15" cy="15" r="3"/><path d="M9 12v3M15 12V9"/></svg>}
+        isOpen={openRow === 'addons'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ServiceAddonsCard therapist={therapist} /></div></CollapsibleSection>
 
       {/* Packages — multi-session bundles */}
-      <PackagesCard therapist={therapist} />
+      <CollapsibleSection
+        id="packages"
+        label="Packages"
+        summary="Multi-session bundles"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="8" width="16" height="12" rx="1"/><path d="M4 12h16M12 8v12"/></svg>}
+        isOpen={openRow === 'packages'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><PackagesCard therapist={therapist} /></div></CollapsibleSection>
 
       {/* Memberships — recurring monthly tiers */}
-      <MembershipsCard therapist={therapist} />
+      <CollapsibleSection
+        id="memberships"
+        label="Memberships"
+        summary="Recurring monthly plans"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 6v6l4 2"/></svg>}
+        isOpen={openRow === 'memberships'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><MembershipsCard therapist={therapist} /></div></CollapsibleSection>
 
       {/* Classes & Events — group sessions */}
-      <EventsCard therapist={therapist} />
+      <CollapsibleSection
+        id="events"
+        label="Classes & events"
+        summary="Workshops, group sessions"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 19c0-2.5 2.2-4.5 5-4.5"/></svg>}
+        isOpen={openRow === 'events'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
 
       <SettingsSectionHeader
         title="How I rest easier"
@@ -1309,8 +1415,15 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
       {aiEnabled && (
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🌿 Practice Pulse</p>
+      <CollapsibleSection
+        id="pulse"
+        label="Practice Pulse"
+        summary={pulseEnabled ? "Daily 6 PM digest · email" : "Off"}
+        status={pulseEnabled ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
+        isOpen={openRow === 'pulse'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
@@ -1338,24 +1451,63 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
           {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
         </button>
-      </div>
+      </div></CollapsibleSection>
       )}
 
       {/* Push Notifications */}
-      <PushNotificationsCard therapist={therapist} C2={C2} />
+      <CollapsibleSection
+        id="push"
+        label="Push notifications"
+        summary="On-device alerts for new bookings"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 2H4l2-2V9z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>}
+        isOpen={openRow === 'push'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><PushNotificationsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
 
       {/* Referral */}
-      <ReferralCard therapist={therapist} C2={C2} />
+      <CollapsibleSection
+        id="referral"
+        label="Referrals"
+        summary={therapist?.referral_code ? `Code ${therapist.referral_code}` : "Earn from word-of-mouth"}
+        status={therapist?.referral_code ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><path d="M8 8l3 8M16 8l-3 8"/></svg>}
+        isOpen={openRow === 'referral'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ReferralCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
 
       {/* Waiver */}
-      <WaiverCard therapist={therapist} C2={C2} />
+      <CollapsibleSection
+        id="waiver"
+        label="Waiver text"
+        summary={therapist?.waiver_text ? "Custom waiver" : "Standard release · edit to customize"}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v4h4M9 12h7M9 16h5"/></svg>}
+        isOpen={openRow === 'waiver'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
 
       {/* Notifications */}
-      <NotificationPrefsCard therapist={therapist} C2={C2} />
+      <CollapsibleSection
+        id="notifs"
+        label="Notification preferences"
+        summary="Email alerts for events"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 5h14v10H7l-2 4z"/></svg>}
+        isOpen={openRow === 'notifs'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><NotificationPrefsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
 
       {/* Block Days Off */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>🚫 Block Days Off</p>
+      <CollapsibleSection
+        id="timeoff"
+        label="Time off"
+        summary={blockedDays.length === 0 ? "None scheduled" : `${blockedDays.length} day${blockedDays.length === 1 ? '' : 's'} blocked`}
+        status={blockedDays.length > 0 ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M9 4v4M15 4v4"/></svg>}
+        isOpen={openRow === 'timeoff'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
         <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
           <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
@@ -1388,7 +1540,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               ))}
             </div>
         }
-      </div>
+      </div></CollapsibleSection>
 
       <SettingsSectionHeader
         title="Account"
@@ -1397,8 +1549,15 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       />
 
       {/* Change Password */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 14px 0' }}>🔒 Change Password</p>
+      <CollapsibleSection
+        id="password"
+        label="Change password"
+        summary="Set a new password"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>}
+        isOpen={openRow === 'password'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <div style={{ display:'flex', flexDirection:'column', gap:10, maxWidth:360 }}>
           <input
             type="password" value={pwNew} onChange={e => setPwNew(e.target.value)}
@@ -1420,13 +1579,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           )}
         </div>
-      </div>
+      </div></CollapsibleSection>
 
       {/* Plan */}
-      <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '14px', padding: '24px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 12px 0' }}>
-          💳 Plan
-        </p>
+      <CollapsibleSection
+        id="plan"
+        label="Your plan"
+        summary={(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze · Free' : therapist?.plan === 'silver' ? 'Silver · $19/mo' : 'Gold · $49/mo'}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
+        isOpen={openRow === 'plan'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
@@ -1440,7 +1604,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             )}
           </div>
         </div>
-      </div>
+      </div></CollapsibleSection>
     </div>
   );
 }
@@ -1676,7 +1840,7 @@ export default function Dashboard({ view }) {
             <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>
           )}
           {view === 'settings' && (
-            <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 720, margin: '0 auto' }}>
+            <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 920, margin: '0 auto' }}>
               <div style={{ marginBottom:24 }}>
                 <ImportClients therapist={therapist} onComplete={() => {}} />
               </div>
