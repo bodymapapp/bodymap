@@ -110,6 +110,103 @@ function saveTwilio(creds) {
   }
 }
 
+// AccountAudit -- collapsible diagnostic panel that lists EVERY row in the
+// therapists table along with why it does or does not show in the broadcast
+// list. Helps HK quickly verify nothing is silently filtered out.
+function AccountAudit({ therapists, includeAdmins }) {
+  const [open, setOpen] = useState(false);
+  const list = therapists || [];
+
+  const enriched = list.map((t) => {
+    const phone = normalizePhone(t.phone);
+    const isAdmin = t.email && ADMIN_EMAILS.has(t.email.toLowerCase());
+    const isDummy = !!t.is_dummy;
+    const reasons = [];
+    if (isDummy && !includeAdmins) reasons.push("Hidden (test/demo)");
+    if (!phone) reasons.push("No phone");
+    if (!t.email) reasons.push("No email");
+    return {
+      id: t.id,
+      full_name: t.full_name,
+      business_name: t.business_name,
+      email: t.email,
+      phone,
+      isAdmin,
+      isDummy,
+      shown: !(isDummy && !includeAdmins),
+      reasons,
+    };
+  });
+
+  enriched.sort((a, b) => {
+    if (a.shown !== b.shown) return a.shown ? -1 : 1;
+    return (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "");
+  });
+
+  return (
+    <div style={{
+      marginTop: 16, marginBottom: 14,
+      background: "#fff", border: `1px solid ${C.light}`,
+      borderRadius: 10, overflow: "hidden",
+    }}>
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          display: "flex", alignItems: "center", gap: 10,
+          padding: "10px 14px", cursor: "pointer", userSelect: "none",
+        }}
+      >
+        <div style={{ flex: 1, fontSize: 12, fontWeight: 600, color: C.dark }}>
+          📋 Account audit · {list.length} total in database
+        </div>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"
+          stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+          style={{ transform: open ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.18s" }}>
+          <path d="M4 2l4 4-4 4" />
+        </svg>
+      </div>
+      {open && (
+        <div style={{ padding: "0 14px 14px", borderTop: `1px solid ${C.light}` }}>
+          <p style={{ fontSize: 11, color: C.gray, margin: "10px 0 12px", lineHeight: 1.5 }}>
+            Every row in the <code>therapists</code> table. If an account is missing here, it does not exist in Supabase. If it appears in yellow, the reason is shown on the right.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11, fontFamily: "monospace" }}>
+            {enriched.map((t) => (
+              <div key={t.id} style={{
+                display: "flex", gap: 8, alignItems: "center",
+                padding: "6px 10px", borderRadius: 6,
+                background: t.shown ? "#F0FDF4" : "#FEF3C7",
+                border: `1px solid ${t.shown ? "#BBF7D0" : "#FDE68A"}`,
+                flexWrap: "wrap",
+              }}>
+                <span style={{
+                  width: 8, height: 8, borderRadius: "50%",
+                  background: t.shown ? C.sage : "#92400E",
+                  flexShrink: 0,
+                }} />
+                <span style={{ flex: 1, minWidth: 200, color: C.dark, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <strong>{t.full_name || t.business_name || "(no name)"}</strong>
+                  {" · "}
+                  <span style={{ color: C.gray }}>{t.email || "(no email)"}</span>
+                  {" · "}
+                  <span style={{ color: C.gray }}>{t.phone || "(no phone)"}</span>
+                </span>
+                {t.isAdmin && <span style={{ background: C.gold, color: "#fff", padding: "1px 5px", borderRadius: 3, fontSize: 9, fontWeight: 700 }}>YOU</span>}
+                {t.isDummy && !t.isAdmin && <span style={{ background: "#9CA3AF", color: "#fff", padding: "1px 5px", borderRadius: 3, fontSize: 9, fontWeight: 700 }}>TEST</span>}
+                {t.reasons.length > 0 && (
+                  <span style={{ color: "#92400E", fontSize: 10 }}>
+                    {t.reasons.join(" · ")}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function FounderMassSms({ therapists }) {
   const [message, setMessage] = useState(DEFAULT_MESSAGE);
   const [sentIds, setSentIds] = useState(() => loadSentSet());
@@ -367,7 +464,7 @@ export default function FounderMassSms({ therapists }) {
           </div>
           <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
             {totalCount > 0
-              ? `${sentCount} of ${hasPhoneCount} textable · ${totalCount} total${noPhoneCount > 0 ? ` (${noPhoneCount} need phone)` : ""}${selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}`
+              ? `${sentCount} of ${hasPhoneCount} textable · ${totalCount} shown · ${(therapists || []).length} in database${selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}`
               : "Loading recipients…"}
           </div>
         </div>
@@ -383,6 +480,10 @@ export default function FounderMassSms({ therapists }) {
 
       {!collapsed && (
         <div style={{ padding: "0 20px 20px", borderTop: `1px solid ${C.light}` }}>
+          {/* Account audit -- shows EVERY row in the therapists table so HK
+              can see who's missing and why. Toggle to expand. */}
+          <AccountAudit therapists={therapists} includeAdmins={includeAdmins} />
+
           {/* Message editor */}
           <div style={{ marginTop: 16, marginBottom: 14 }}>
             <label style={{
