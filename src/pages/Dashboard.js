@@ -877,6 +877,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   }
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
+  const [newBookingUrl, setNewBookingUrl] = React.useState(null);
   const [calKey, setCalKey] = React.useState(therapist?.cal_api_key || '');
 
   // Blocked days
@@ -1097,8 +1098,44 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               setSaving(true);
               try {
                 const { supabase } = await import('../lib/supabase');
-                await supabase.from('therapists').update({ full_name: fullName, business_name: businessName, phone: phone }).eq('id', therapist.id);
-                setSaved(true); setTimeout(() => setSaved(false), 2500);
+
+                // If business name changed, regenerate the booking-link slug
+                // (custom_url) to match. Falls back to full_name if business
+                // name is empty. Slugify: lowercase, strip non-alphanumeric,
+                // truncate to 30. If the resulting slug is taken by another
+                // therapist, append -2, -3, etc. until unique.
+                const updates = { full_name: fullName, business_name: businessName, phone: phone };
+                let newSlug = null;
+                const businessOrName = (businessName || fullName).trim();
+                if (businessOrName) {
+                  const baseSlug = businessOrName.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30);
+                  // Only regenerate if the user's CURRENT slug looks auto-generated
+                  // from their old name (i.e. doesn't match the new base AND
+                  // isn't a custom hand-picked slug they care about).
+                  if (baseSlug && baseSlug !== therapist?.custom_url) {
+                    let candidate = baseSlug;
+                    let attempt = 1;
+                    while (attempt < 20) {
+                      const { data: clash } = await supabase.from('therapists')
+                        .select('id').eq('custom_url', candidate).neq('id', therapist.id).maybeSingle();
+                      if (!clash) break;
+                      attempt += 1;
+                      candidate = baseSlug + '-' + attempt;
+                    }
+                    newSlug = candidate;
+                    updates.custom_url = newSlug;
+                  }
+                }
+
+                await supabase.from('therapists').update(updates).eq('id', therapist.id);
+                if (newSlug) {
+                  setNewBookingUrl(`${window.location.origin}/book/${newSlug}`);
+                }
+                setSaved(true); setTimeout(() => { setSaved(false); setNewBookingUrl(null); }, 6000);
+                // Refresh page state so the rest of the dashboard sees the new slug
+                if (newSlug) {
+                  setTimeout(() => window.location.reload(), 1500);
+                }
               } catch(e) { console.error(e); }
               finally { setSaving(false); }
             }}
@@ -1110,6 +1147,15 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <p style={{ fontSize: '12px', color: C2.gray, margin: 0 }}>Email: {therapist?.email}</p>
           </div>
         </div>
+        {newBookingUrl && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 8 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#16A34A', margin: '0 0 4px' }}>Booking link updated</p>
+            <p style={{ fontSize: 13, color: C2.darkGray, margin: 0, fontFamily: 'monospace', wordBreak: 'break-all' }}>{newBookingUrl}</p>
+            <p style={{ fontSize: 11, color: C2.gray, margin: '6px 0 0', lineHeight: 1.4 }}>
+              Old links you've shared will stop working. Update your social profiles, business cards, and email signatures with this new link. Reloading dashboard…
+            </p>
+          </div>
+        )}
       </div></CollapsibleSection>
 
 
