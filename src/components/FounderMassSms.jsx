@@ -140,6 +140,11 @@ export default function FounderMassSms({ therapists }) {
   // admin emails are all flagged is_dummy by isDummyEmail in the parent).
   // When showTest is on, surface them with a 'TEST' badge so HK can verify
   // his broadcast on his own demo account before sending to real users.
+  //
+  // We do NOT filter out accounts without phones -- HK needs to SEE every
+  // account so he knows who's missing a phone (vs silently dropping them
+  // and being confused why the count is short). No-phone rows render with
+  // a disabled Text button and an Email button instead.
   const candidates = useMemo(() => {
     const list = (therapists || [])
       .filter((t) => {
@@ -148,27 +153,30 @@ export default function FounderMassSms({ therapists }) {
       })
       .map((t) => {
         const isAdmin = t.email && ADMIN_EMAILS.has(t.email.toLowerCase());
+        const phone = normalizePhone(t.phone);
         return {
           id: t.id,
           name: t.full_name || t.business_name || t.email || "Unknown",
           firstName: firstNameFrom(t.full_name || t.business_name),
           email: t.email,
-          phone: normalizePhone(t.phone),
+          phone,
           plan: t.plan,
           rawPhone: t.phone,
           isAdmin,
           isTest: !!t.is_dummy,
+          hasPhone: !!phone,
         };
-      })
-      .filter((t) => !!t.phone);
-    list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+      });
+    list.sort((a, b) => {
+      // Sort: phoneless accounts at the end so HK works through textable ones first
+      if (a.hasPhone !== b.hasPhone) return a.hasPhone ? -1 : 1;
+      return (a.name || "").localeCompare(b.name || "");
+    });
     return list;
   }, [therapists, includeAdmins]);
 
-  const noPhoneCount = (therapists || []).filter((t) => {
-    if (t.is_dummy && !includeAdmins) return false;
-    return !normalizePhone(t.phone);
-  }).length;
+  const noPhoneCount = candidates.filter((t) => !t.hasPhone).length;
+  const hasPhoneCount = candidates.filter((t) => t.hasPhone).length;
 
   const filtered = useMemo(() => {
     let list = candidates;
@@ -187,7 +195,7 @@ export default function FounderMassSms({ therapists }) {
   const sentCount = candidates.filter((t) => sentIds.has(t.id)).length;
   const totalCount = candidates.length;
   const selectedInFiltered = filtered.filter((t) => selectedIds.has(t.id)).length;
-  const allFilteredSelected = filtered.length > 0 && selectedInFiltered === filtered.length;
+  const allFilteredSelected = filtered.length > 0 && selectedInFiltered === filtered.filter((t) => t.hasPhone).length && filtered.filter((t) => t.hasPhone).length > 0;
   const twilioReady = !!(twilio.sid && twilio.token && twilio.from);
 
   const markSent = (id) => {
@@ -218,7 +226,7 @@ export default function FounderMassSms({ therapists }) {
   const selectAllFiltered = () => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      filtered.forEach((t) => next.add(t.id));
+      filtered.forEach((t) => { if (t.hasPhone) next.add(t.id); });
       return next;
     });
   };
@@ -359,7 +367,7 @@ export default function FounderMassSms({ therapists }) {
           </div>
           <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
             {totalCount > 0
-              ? `${sentCount} of ${totalCount} texted${noPhoneCount > 0 ? ` · ${noPhoneCount} without phone` : ""}${selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}`
+              ? `${sentCount} of ${hasPhoneCount} textable · ${totalCount} total${noPhoneCount > 0 ? ` (${noPhoneCount} need phone)` : ""}${selectedIds.size > 0 ? ` · ${selectedIds.size} selected` : ""}`
               : "Loading recipients…"}
           </div>
         </div>
@@ -631,13 +639,14 @@ export default function FounderMassSms({ therapists }) {
                   <input
                     type="checkbox"
                     checked={isSelected}
+                    disabled={!t.hasPhone}
                     onChange={() => toggleSelected(t.id)}
-                    style={{ flexShrink: 0, cursor: "pointer", width: 16, height: 16 }}
+                    style={{ flexShrink: 0, cursor: t.hasPhone ? "pointer" : "not-allowed", width: 16, height: 16 }}
                   />
                   <div style={{
                     width: 28, height: 28, borderRadius: "50%",
-                    background: isSent ? C.sage : C.light,
-                    color: isSent ? "#fff" : C.gray,
+                    background: isSent ? C.sage : (t.hasPhone ? C.light : "#FEE2E2"),
+                    color: isSent ? "#fff" : (t.hasPhone ? C.gray : C.rose),
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: 13, fontWeight: 600, flexShrink: 0,
                   }}>
@@ -667,9 +676,21 @@ export default function FounderMassSms({ therapists }) {
                           textTransform: "uppercase", letterSpacing: "0.04em",
                         }}>{t.plan}</span>
                       )}
+                      {!t.hasPhone && (
+                        <span style={{
+                          marginLeft: 6, fontSize: 9, fontWeight: 700,
+                          background: C.rose, color: "#fff",
+                          padding: "1px 6px", borderRadius: 99,
+                          textTransform: "uppercase", letterSpacing: "0.04em",
+                        }}>No phone</span>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>
-                      {t.phone} · "{previewSnippet}"
+                      {t.hasPhone
+                        ? `${t.phone} · "${previewSnippet}"`
+                        : (t.email
+                            ? `${t.email} · no phone on file`
+                            : "no phone or email on file")}
                     </div>
                   </div>
                   {isSent ? (
@@ -683,7 +704,7 @@ export default function FounderMassSms({ therapists }) {
                     >
                       Undo
                     </button>
-                  ) : (
+                  ) : t.hasPhone ? (
                     <a
                       href={smsUrl(t.phone, personalizedMsg)}
                       onClick={() => { setTimeout(() => markSent(t.id), 250); }}
@@ -697,6 +718,28 @@ export default function FounderMassSms({ therapists }) {
                     >
                       Text
                     </a>
+                  ) : t.email ? (
+                    <a
+                      href={`mailto:${t.email}?subject=${encodeURIComponent("Quick update from MyBodyMap")}&body=${encodeURIComponent(personalizedMsg)}`}
+                      onClick={() => { setTimeout(() => markSent(t.id), 250); }}
+                      style={{
+                        background: C.blue, color: "#fff",
+                        border: "none", padding: "7px 14px", borderRadius: 7,
+                        fontSize: 12, fontWeight: 600,
+                        textDecoration: "none", whiteSpace: "nowrap",
+                        cursor: "pointer",
+                      }}
+                      title="No phone on file — opens email instead"
+                    >
+                      Email
+                    </a>
+                  ) : (
+                    <span style={{
+                      fontSize: 11, color: C.gray, fontStyle: "italic",
+                      whiteSpace: "nowrap", padding: "7px 10px",
+                    }}>
+                      No contact
+                    </span>
                   )}
                 </div>
               );
@@ -707,9 +750,9 @@ export default function FounderMassSms({ therapists }) {
             <div style={{
               marginTop: 14, padding: "10px 12px",
               background: "#FEF3C7", border: "1px solid #FDE68A",
-              borderRadius: 8, fontSize: 12, color: "#92400E",
+              borderRadius: 8, fontSize: 12, color: "#92400E", lineHeight: 1.5,
             }}>
-              <strong>{noPhoneCount}</strong> therapist{noPhoneCount === 1 ? " has" : "s have"} no phone number on file. They'll need an email reach-out.
+              <strong>{noPhoneCount}</strong> {noPhoneCount === 1 ? "account has" : "accounts have"} no phone on file (shown at the bottom of the list with a "No phone" badge). Use the blue <strong>Email</strong> button to reach them via mailto:, or update their phone in Supabase to enable SMS.
             </div>
           )}
 
