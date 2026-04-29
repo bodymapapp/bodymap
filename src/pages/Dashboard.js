@@ -1884,7 +1884,7 @@ export default function Dashboard({ view }) {
             <><Outreach therapist={therapist} lapsedDays={lapsedDays} />{isMobile && <PageEnd />}</>
           )}
           {view === 'settings' && (
-            <div style={{ paddingBottom: isMobile ? 120 : 0, maxWidth: 920, margin: '0 auto' }}>
+            <div style={{ paddingBottom: isMobile ? 120 : 0 }}>
               <SettingsPanel therapist={therapist} lapsedDays={lapsedDays} setLapsedDays={setLapsedDays} />
               {isMobile && <PageEnd />}
             </div>

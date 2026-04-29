@@ -11,6 +11,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
+import FounderMassSms from "./FounderMassSms";
 
 const ADMIN_EMAILS = new Set([
   "bodymap01@gmail.com",
@@ -602,6 +603,8 @@ export default function FounderDashboard() {
             </span>
           </div>
         </div>
+
+        <FounderMassSms therapists={data.therapists} />
 
         <ActivationSection rows={filtered} updateFlag={updateFlag} onAfterSend={fetchAll} />
 
