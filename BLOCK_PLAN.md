@@ -217,5 +217,6 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - Settings v3 Phase 1A: Personal hero, botanical leaf, categorical headers → `cdf3a056`
 
 ## REFERENCE FILES IN REPO
-- `research/noterro-competitive-analysis-2026-04.md` — full Noterro deep-dive
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
+- `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
+- `research/noterro-competitive-analysis-2026-04.md` — full Noterro deep-dive
