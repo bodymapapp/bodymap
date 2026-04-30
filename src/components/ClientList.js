@@ -1,6 +1,7 @@
 // src/components/ClientList.js
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/supabase";
+import AddClientModal from "./AddClientModal";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -18,11 +19,13 @@ function getStatus(client, lapsedDays = 60) {
   return { label: "Active", color: "#2A5741", bg: "#E8F5EE", icon: "🌱" };
 }
 
-export default function ClientList({ therapistId, onSelectClient, plan = "free", lapsedDays = 60, customUrl = "" }) {
+export default function ClientList({ therapistId, therapist, onSelectClient, plan = "free", lapsedDays = 60, customUrl = "" }) {
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [justAddedToast, setJustAddedToast] = useState("");
   const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
   const isPaid = true; // All clients visible on all tiers - only pattern depth is tier-limited
 
@@ -209,9 +212,29 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
             <h2 style={{ fontFamily: "Georgia, serif", fontSize: "22px", fontWeight: "700", color: C.darkGray, margin: 0 }}>Your Clients</h2>
             <span style={{ fontSize: "14px", color: C.gray }}>{clients.filter(c => !c.do_not_rebook).length} active</span>
           </div>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clients..."
-            style={{ padding: "8px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: "8px", fontSize: "13px", width: "200px", outline: "none", background: C.beige }} />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              onClick={() => setShowAddModal(true)}
+              style={{
+                background: C.forest, color: "#fff", border: "none",
+                padding: "8px 16px", borderRadius: 8, fontSize: 13,
+                fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+              }}
+              title="Add an elderly or non-app client manually"
+            >
+              + Add client
+            </button>
+            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search clients..."
+              style={{ padding: "8px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: "8px", fontSize: "13px", width: "180px", outline: "none", background: C.beige }} />
+          </div>
         </div>
+
+        {/* Toast for just-added client */}
+        {justAddedToast && (
+          <div style={{ marginBottom: 14, padding: "10px 14px", background: "#F0FDF4", border: "1px solid #86EFAC", borderRadius: 10, fontSize: 13, color: C.forest, fontWeight: 600 }}>
+            ✓ {justAddedToast}
+          </div>
+        )}
 
         {/* Filter tabs */}
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -368,6 +391,21 @@ export default function ClientList({ therapistId, onSelectClient, plan = "free",
             )}
           </div>
         </div>
+      )}
+
+      {showAddModal && therapist && (
+        <AddClientModal
+          therapist={therapist}
+          onClose={() => setShowAddModal(false)}
+          onSaved={async (result) => {
+            const parts = ["Added " + (result.client?.name || "client")];
+            if (result.hadBooking) parts.push("session booked");
+            if (result.hadIntake) parts.push("intake saved");
+            setJustAddedToast(parts.join(", ") + ".");
+            setTimeout(() => setJustAddedToast(""), 5000);
+            await loadClients();
+          }}
+        />
       )}
     </div>
   );

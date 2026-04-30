@@ -1877,6 +1877,7 @@ export default function Dashboard({ view }) {
               />
               <ClientList
                 therapistId={therapist?.id}
+                therapist={therapist}
                 onSelectClient={(c) => navigate(`/dashboard/clients/${c.id}`)}
                 lapsedDays={lapsedDays}
                 customUrl={therapist?.custom_url || ''}
