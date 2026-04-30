@@ -72,6 +72,44 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
   const [age, setAge] = useState("");
   const [notes, setNotes] = useState("");
 
+  // Inline field-level validation. Touched flag prevents the error from
+  // showing while the user is still typing the first time. Validation runs
+  // on blur and on submit attempt.
+  const [touched, setTouched] = useState({ phone: false, email: false, age: false });
+
+  // Phone valid if blank (optional) OR exactly 10 digits (US format).
+  const phoneDigits = phone.replace(/\D/g, "");
+  const phoneError = phone && phoneDigits.length !== 10
+    ? `Phone needs to be 10 digits, got ${phoneDigits.length}.`
+    : "";
+
+  // Email valid if blank OR matches basic pattern. Conservative regex that
+  // catches obvious typos without rejecting unusual but valid addresses.
+  const emailError = email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())
+    ? "Please enter a valid email like name@example.com."
+    : "";
+
+  // Age valid if blank OR a whole number 1-120.
+  const ageError = (() => {
+    if (!age) return "";
+    const n = Number(age);
+    if (!Number.isFinite(n) || !Number.isInteger(n)) return "Age must be a whole number.";
+    if (n < 1 || n > 120) return "Age must be between 1 and 120.";
+    return "";
+  })();
+
+  const hasFieldErrors = !!(phoneError || emailError || ageError);
+
+  // Format phone visually as (XXX) XXX-XXXX while user types. Stripping
+  // non-digits internally, only formatting on display.
+  const formattedPhone = (() => {
+    const d = phoneDigits.slice(0, 10);
+    if (d.length === 0) return phone;
+    if (d.length <= 3) return `(${d}`;
+    if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+  })();
+
   // Step 2 state
   const [services, setServices] = useState([]);
   const [serviceId, setServiceId] = useState("");
@@ -109,7 +147,7 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
     return () => document.removeEventListener("keydown", handler);
   });
 
-  const canProceedFromStep1 = name.trim().length >= 2;
+  const canProceedFromStep1 = name.trim().length >= 2 && !hasFieldErrors;
 
   const toggleBodyPart = (id, side) => {
     if (side === "front") {
@@ -123,7 +161,12 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
     if (saving) return;
     if (!canProceedFromStep1) {
       setStep(1);
-      setError("Please enter the client's name.");
+      setTouched({ phone: true, email: true, age: true });
+      if (!name.trim() || name.trim().length < 2) {
+        setError("Please enter the client's name (at least 2 characters).");
+      } else {
+        setError("Please fix the highlighted fields before saving.");
+      }
       return;
     }
     setSaving(true);
@@ -346,31 +389,40 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
                   style={inputStyle}
                 />
               </Field>
-              <Field label="Phone number">
+              <Field label="Phone number" error={touched.phone ? phoneError : ""}>
                 <input
                   type="tel"
-                  value={phone}
+                  value={formattedPhone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="e.g. (713) 555-0142"
-                  style={inputStyle}
+                  onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
+                  placeholder="(713) 555-0142"
+                  inputMode="tel"
+                  style={{ ...inputStyle, borderColor: (touched.phone && phoneError) ? "#DC2626" : C.light }}
                 />
               </Field>
-              <Field label="Email">
+              <Field label="Email" error={touched.email ? emailError : ""}>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched((p) => ({ ...p, email: true }))}
                   placeholder="Optional"
-                  style={inputStyle}
+                  style={{ ...inputStyle, borderColor: (touched.email && emailError) ? "#DC2626" : C.light }}
                 />
               </Field>
-              <Field label="Age">
+              <Field label="Age" error={touched.age ? ageError : ""}>
                 <input
                   type="number"
                   value={age}
-                  onChange={(e) => setAge(e.target.value)}
+                  onChange={(e) => {
+                    // Only allow digits in the input, no letters or symbols
+                    const cleaned = e.target.value.replace(/[^\d]/g, "");
+                    setAge(cleaned);
+                  }}
+                  onBlur={() => setTouched((p) => ({ ...p, age: true }))}
                   placeholder="Optional, helps with care decisions"
-                  style={inputStyle}
+                  inputMode="numeric"
+                  style={{ ...inputStyle, borderColor: (touched.age && ageError) ? "#DC2626" : C.light }}
                   min="1"
                   max="120"
                 />
@@ -575,9 +627,16 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
             {step < 3 ? (
               <button
                 onClick={() => {
-                  if (step === 1 && !canProceedFromStep1) {
-                    setError("Please enter the client's name.");
-                    return;
+                  if (step === 1) {
+                    if (!name.trim() || name.trim().length < 2) {
+                      setError("Please enter the client's name (at least 2 characters).");
+                      return;
+                    }
+                    if (hasFieldErrors) {
+                      setTouched({ phone: true, email: true, age: true });
+                      setError("Please fix the highlighted fields before continuing.");
+                      return;
+                    }
                   }
                   setError("");
                   setStep(step + 1);
@@ -614,13 +673,18 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
   );
 }
 
-function Field({ label, required, children }) {
+function Field({ label, required, error, children }) {
   return (
     <div>
       <label style={{ display: "block", fontSize: 11, fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: C.sage, marginBottom: 6 }}>
         {label}{required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}
       </label>
       {children}
+      {error && (
+        <p style={{ fontSize: 11, color: "#DC2626", margin: "4px 2px 0", lineHeight: 1.4 }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 }
