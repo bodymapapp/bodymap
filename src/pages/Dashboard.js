@@ -17,6 +17,7 @@ import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import CollapsibleSection from '../components/CollapsibleSection';
 import StatsStrip from '../components/StatsStrip';
+import SeedDefaults from '../components/SeedDefaults';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -423,6 +424,15 @@ function ServiceAddonsCard({ therapist }) {
     { name:'Custom...', price:15, extra_minutes:0 },
   ];
 
+  // Top 5 most-requested add-ons by solo LMTs (researched median pricing).
+  const SEED_ADDONS = [
+    { name:'Hot Stones', price:15, extra_minutes:0 },
+    { name:'Aromatherapy', price:10, extra_minutes:0 },
+    { name:'Hot Towels', price:8, extra_minutes:0 },
+    { name:'Cupping Therapy', price:25, extra_minutes:15 },
+    { name:'Extended Time +30 min', price:45, extra_minutes:30 },
+  ];
+
   React.useEffect(() => {
     if (!therapist?.id) return;
     supabase.from('service_addons').select('*').eq('therapist_id', therapist.id).order('display_order').order('created_at')
@@ -465,6 +475,16 @@ function ServiceAddonsCard({ therapist }) {
     setAddons(a => a.filter(x => x.id !== id));
   }
 
+  async function seedDefaults(indices) {
+    const rows = indices.map(i => ({
+      therapist_id: therapist.id,
+      ...SEED_ADDONS[i],
+      active: true,
+    }));
+    const { data } = await supabase.from('service_addons').insert(rows).select();
+    if (data) setAddons(a => [...a, ...data]);
+  }
+
   return (
     <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
       <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>✨ Service Add-ons</p>
@@ -474,6 +494,16 @@ function ServiceAddonsCard({ therapist }) {
         <p style={{ fontSize:13, color:C2.gray }}>Loading…</p>
       ) : (
         <>
+          {addons.length === 0 && (
+            <SeedDefaults
+              title="Suggested add-ons"
+              items={SEED_ADDONS.map(p => ({
+                label: p.name,
+                sub: `+$${p.price}${p.extra_minutes > 0 ? ` · +${p.extra_minutes} min` : ''}`,
+              }))}
+              onSeed={seedDefaults}
+            />
+          )}
           {addons.length > 0 && (
             <div style={{ marginBottom:16 }}>
               {addons.map(a => (

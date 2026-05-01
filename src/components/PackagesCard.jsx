@@ -9,6 +9,7 @@
 
 import React from "react";
 import { supabase } from "../lib/supabase";
+import SeedDefaults from "./SeedDefaults";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -17,6 +18,16 @@ const PRESETS = [
   { name: '5-Session Bundle', session_count: 5, price: 425, description: 'Save $50 on 5 sessions' },
   { name: '10-Session Bundle', session_count: 10, price: 800, description: 'Save $150 on 10 sessions' },
   { name: 'Custom...', session_count: 5, price: 400, description: '' },
+];
+
+// Five default packages we offer to seed when a therapist hasn't built any.
+// Median pricing for solo LMTs ($85-90/session base, save $10-25 per 5 sessions).
+const SEED_PRESETS = [
+  { name: '3-Session Starter', session_count: 3, price: 270, description: 'Save $15 on 3 sessions, expires in 90 days', expires_in_days: 90 },
+  { name: '5-Session Bundle', session_count: 5, price: 425, description: 'Save $50 on 5 sessions, our most popular', expires_in_days: 180 },
+  { name: '10-Session Pack', session_count: 10, price: 800, description: 'Save $150 on 10 sessions', expires_in_days: 365 },
+  { name: 'Couples 3-Pack', session_count: 3, price: 540, description: 'For couples, save $30 on 3 sessions', expires_in_days: 180 },
+  { name: 'New Client Trio', session_count: 3, price: 240, description: 'First-time client special, $80 each', expires_in_days: 60 },
 ];
 
 export default function PackagesCard({ therapist }) {
@@ -67,6 +78,16 @@ export default function PackagesCard({ therapist }) {
     setPackages(arr => arr.filter(x => x.id !== id));
   }
 
+  async function seedDefaults(indices) {
+    const rows = indices.map(i => ({
+      therapist_id: therapist.id,
+      ...SEED_PRESETS[i],
+      active: true,
+    }));
+    const { data } = await supabase.from('packages').insert(rows).select();
+    if (data) setPackages(arr => [...arr, ...data]);
+  }
+
   const perSession = (p) => p.session_count > 0 ? (Number(p.price) / p.session_count).toFixed(0) : '0';
 
   return (
@@ -76,6 +97,16 @@ export default function PackagesCard({ therapist }) {
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
         <>
+          {packages.length === 0 && (
+            <SeedDefaults
+              title="Suggested packages"
+              items={SEED_PRESETS.map(p => ({
+                label: p.name,
+                sub: `${p.session_count} sessions · $${p.price} · ${p.description}`,
+              }))}
+              onSeed={seedDefaults}
+            />
+          )}
           {packages.length > 0 && (
             <div style={{ marginBottom:16 }}>
               {packages.map(p => (

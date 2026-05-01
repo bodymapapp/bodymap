@@ -10,6 +10,7 @@
 
 import React from "react";
 import { supabase } from "../lib/supabase";
+import SeedDefaults from "./SeedDefaults";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -18,6 +19,23 @@ const PRESETS = [
   { name: 'Self-Massage Workshop', capacity: 10, price: 45, description: '90-minute hands-on workshop, take home techniques' },
   { name: 'Couples Massage Class', capacity: 6, price: 75, description: 'Learn to massage your partner, 90 minutes' },
   { name: 'Custom...', capacity: 8, price: 35, description: '' },
+];
+
+// Five seed presets covering the most common solo-LMT classes / events.
+// Times default to next Saturday 10am-11am for the seed pass; therapist
+// can edit each event's date/time after creation.
+function seedSlot(weeksFromNow, hour) {
+  const d = new Date();
+  d.setDate(d.getDate() + 7 * weeksFromNow + (6 - d.getDay())); // next Saturday-ish
+  d.setHours(hour, 0, 0, 0);
+  return d.toISOString();
+}
+const SEED_PRESETS = [
+  { name: 'Stretch & Restore', capacity: 8, price: 35, description: '60-minute group stretch and breathwork', starts_at: seedSlot(1, 10), ends_at: seedSlot(1, 11) },
+  { name: 'Self-Massage Workshop', capacity: 10, price: 45, description: '90-minute hands-on workshop with take-home techniques', starts_at: seedSlot(2, 10), ends_at: seedSlot(2, 11) },
+  { name: 'Couples Massage Class', capacity: 6, price: 75, description: 'Learn to massage your partner, 90 minutes', starts_at: seedSlot(3, 14), ends_at: seedSlot(3, 15) },
+  { name: 'Restorative Yin Class', capacity: 12, price: 25, description: '75-minute floor practice for tight hips and lower back', starts_at: seedSlot(2, 17), ends_at: seedSlot(2, 18) },
+  { name: 'New Mom Self-Care Workshop', capacity: 8, price: 40, description: 'Postpartum stretches and tension release, 75 minutes', starts_at: seedSlot(4, 11), ends_at: seedSlot(4, 12) },
 ];
 
 // Default to one week from now at 10am-11am for new events
@@ -91,6 +109,16 @@ export default function EventsCard({ therapist }) {
     setEvents(arr => arr.filter(e => e.id !== id));
   }
 
+  async function seedDefaults(indices) {
+    const rows = indices.map(i => ({
+      therapist_id: therapist.id,
+      ...SEED_PRESETS[i],
+      status: 'draft',
+    }));
+    const { data } = await supabase.from('events').insert(rows).select();
+    if (data) setEvents(arr => [...arr, ...data]);
+  }
+
   function fmtEventTime(iso) {
     const d = new Date(iso);
     return d.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
@@ -111,6 +139,17 @@ export default function EventsCard({ therapist }) {
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
         <>
+          {events.length === 0 && (
+            <SeedDefaults
+              title="Suggested classes & events"
+              items={SEED_PRESETS.map(p => ({
+                label: p.name,
+                sub: `Capacity ${p.capacity} · $${p.price} · ${p.description}`,
+              }))}
+              onSeed={seedDefaults}
+              ctaLabel="Add all 5 as drafts (set dates after)"
+            />
+          )}
           {events.length > 0 && (
             <div style={{ marginBottom:16 }}>
               {events.map(e => {

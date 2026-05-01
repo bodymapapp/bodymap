@@ -9,6 +9,7 @@
 
 import React from "react";
 import { supabase } from "../lib/supabase";
+import SeedDefaults from "./SeedDefaults";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -16,6 +17,15 @@ const PRESETS = [
   { name: 'Monthly Member', monthly_price: 89, monthly_session_credits: 1, max_carryover_credits: 1, addon_discount_percent: 10, description: 'One session a month, 10% off add-ons' },
   { name: 'Premium Member', monthly_price: 169, monthly_session_credits: 2, max_carryover_credits: 2, addon_discount_percent: 15, description: 'Two sessions a month, 15% off add-ons' },
   { name: 'Custom...', monthly_price: 89, monthly_session_credits: 1, max_carryover_credits: 0, addon_discount_percent: 0, description: '' },
+];
+
+// Five seed presets covering the most common membership tiers solo LMTs sell.
+const SEED_PRESETS = [
+  { name: 'Wellness Monthly', monthly_price: 79, monthly_session_credits: 1, max_carryover_credits: 1, addon_discount_percent: 10, description: 'One 60-min session a month, 10% off add-ons' },
+  { name: 'Wellness Premium', monthly_price: 149, monthly_session_credits: 2, max_carryover_credits: 1, addon_discount_percent: 15, description: 'Two sessions a month, 15% off add-ons' },
+  { name: 'Wellness Plus', monthly_price: 219, monthly_session_credits: 3, max_carryover_credits: 1, addon_discount_percent: 20, description: 'Three sessions a month, 20% off add-ons' },
+  { name: 'Couples Monthly', monthly_price: 159, monthly_session_credits: 1, max_carryover_credits: 1, addon_discount_percent: 10, description: 'One couples session a month' },
+  { name: 'Quarterly Saver', monthly_price: 65, monthly_session_credits: 1, max_carryover_credits: 3, addon_discount_percent: 5, description: 'One session per month, carry over up to 3' },
 ];
 
 export default function MembershipsCard({ therapist }) {
@@ -67,6 +77,16 @@ export default function MembershipsCard({ therapist }) {
     setMemberships(arr => arr.filter(x => x.id !== id));
   }
 
+  async function seedDefaults(indices) {
+    const rows = indices.map(i => ({
+      therapist_id: therapist.id,
+      ...SEED_PRESETS[i],
+      active: true,
+    }));
+    const { data } = await supabase.from('memberships').insert(rows).select();
+    if (data) setMemberships(arr => [...arr, ...data]);
+  }
+
   return (
     <div style={{ background:C.white, border:`1.5px solid ${C.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
       <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>🌟 Memberships</p>
@@ -74,6 +94,16 @@ export default function MembershipsCard({ therapist }) {
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
         <>
+          {memberships.length === 0 && (
+            <SeedDefaults
+              title="Suggested memberships"
+              items={SEED_PRESETS.map(p => ({
+                label: p.name,
+                sub: `$${p.monthly_price}/mo · ${p.monthly_session_credits} session(s)/mo${p.addon_discount_percent > 0 ? ` · ${p.addon_discount_percent}% off add-ons` : ''}`,
+              }))}
+              onSeed={seedDefaults}
+            />
+          )}
           {memberships.length > 0 && (
             <div style={{ marginBottom:16 }}>
               {memberships.map(m => (
