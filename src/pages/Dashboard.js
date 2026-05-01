@@ -16,6 +16,7 @@ import EventsCard from '../components/EventsCard';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import CollapsibleSection from '../components/CollapsibleSection';
+import StatsStrip from '../components/StatsStrip';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -1652,32 +1653,33 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'timeoff'}
         onToggle={toggleRow}
       ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
-        <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
           <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
             min={new Date().toISOString().slice(0,10)}
-            style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', flex:'1', minWidth:140 }} />
+            placeholder="Choose a date"
+            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:15, outline:'none', background:'#fff', color:blockDate?C2.darkGray:C2.gray, boxSizing:'border-box', WebkitAppearance:'none', appearance:'none' }} />
           <input type="text" value={blockNote} onChange={e => setBlockNote(e.target.value)}
             placeholder="Reason (optional)"
-            style={{ padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:13, outline:'none', flex:'2', minWidth:160 }} />
+            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:14, outline:'none', boxSizing:'border-box' }} />
           <button onClick={addBlockedDay} disabled={!blockDate || blockSaving}
-            style={{ background:blockDate ? C2.forest : '#D1D5DB', color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:13, fontWeight:700, cursor:blockDate ? 'pointer' : 'not-allowed', whiteSpace:'nowrap' }}>
-            {blockSaving ? '...' : '+ Block Day'}
+            style={{ width:'100%', background:blockDate ? C2.forest : '#D1D5DB', color:'#fff', border:'none', padding:'13px 16px', borderRadius:10, fontSize:14, fontWeight:700, cursor:blockDate ? 'pointer' : 'not-allowed' }}>
+            {blockSaving ? 'Adding…' : '+ Block This Day'}
           </button>
         </div>
         {blockedDays.length === 0
           ? <div style={{ fontSize:12, color:C2.gray, fontStyle:'italic' }}>No days blocked. Clients can book any available date up to a year out.</div>
           : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
               {blockedDays.map(d => (
-                <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C2.beige, borderRadius:8, padding:'8px 12px' }}>
-                  <div>
-                    <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
+                <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C2.beige, borderRadius:8, padding:'10px 12px', gap:10 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
                       {new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
-                    </span>
-                    {d.note && <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>,  {d.note}</span>}
+                    </div>
+                    {d.note && <div style={{ fontSize:12, color:C2.gray, marginTop:2 }}>{d.note}</div>}
                   </div>
                   <button onClick={() => removeBlockedDay(d.id)}
-                    style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'4px 10px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+                    style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
                     Remove
                   </button>
                 </div>
@@ -1802,7 +1804,47 @@ export default function Dashboard({ view }) {
       // Lapsed clients for nudge
       const lapsedMs = (lapsedDays || 60) * 24 * 60 * 60 * 1000;
       const lapsedClients = (clients || []).filter(c => c.last_session_date && (Date.now() - new Date(c.last_session_date).getTime()) >= lapsedMs);
-      setStats({ clients: clients?.length || 0, sessions: sessions?.length || 0, services: services || [], availability: availability || [], lapsedClients });
+
+      // ─── Rolling 7-day and 30-day stats for the dashboard strip ───
+      // Industry standard (Stripe, Linear, Apple) uses rolling windows
+      // not calendar week/month, so the numbers never look small on
+      // partial periods.
+      const now = Date.now();
+      const d7 = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const d30 = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+      // New clients: created in window
+      const new7d = (clients || []).filter(c => c.created_at && c.created_at >= d7).length;
+      const new30d = (clients || []).filter(c => c.created_at && c.created_at >= d30).length;
+
+      // Sessions completed: session_date in window
+      const { data: recentSessions } = await supabase
+        .from('sessions')
+        .select('id, session_date, services(price)')
+        .eq('therapist_id', therapist.id)
+        .gte('session_date', d30.slice(0, 10));
+
+      const sessions7d = (recentSessions || []).filter(s => s.session_date >= d7.slice(0, 10)).length;
+      const sessions30d = (recentSessions || []).length;
+
+      // Earnings: sum of session.services.price for completed sessions in window.
+      // Sessions don't store actual paid amounts (price comes from service),
+      // but this is the same number a therapist sees on session detail rows
+      // so it stays internally consistent.
+      const earnings7d = (recentSessions || [])
+        .filter(s => s.session_date >= d7.slice(0, 10))
+        .reduce((sum, s) => sum + (s.services?.price || 0), 0);
+      const earnings30d = (recentSessions || [])
+        .reduce((sum, s) => sum + (s.services?.price || 0), 0);
+
+      setStats({
+        clients: clients?.length || 0,
+        sessions: sessions?.length || 0,
+        services: services || [],
+        availability: availability || [],
+        lapsedClients,
+        rolling: { new7d, new30d, sessions7d, sessions30d, earnings7d, earnings30d },
+      });
     } catch (err) { console.error(err); }
   }
 
@@ -1917,6 +1959,7 @@ export default function Dashboard({ view }) {
         }}>
           {view === 'clients' && (
             <>
+              <StatsStrip rolling={stats?.rolling} />
               <OnboardingChecklist
                 therapist={therapist}
                 services={stats?.services || []}
