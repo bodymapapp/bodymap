@@ -204,7 +204,12 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
-- Intake gate yields to approval gate when both are on (one submit, no orphan booking) → THIS COMMIT
+- Why-this-matters benefit framing on AI / Practice Pulse / Push (Ship 5) → `fc05975f`
+- Defaults seeding for Add-ons / Packages / Memberships / Classes (Ship 4) → `1f963c3e`
+- Settings IA refactor: 5 groups, taxonomy, time badges, search bar (Ship 3) → `53eb1beb`
+- Time off mobile-first stacked layout fix + Stats strip on dashboard (Ships 1+2) → `de624830`
+- Operating rhythm rule 9: never `git add -A`, always explicit paths → `f556b9c9`
+- Intake gate yields to approval gate when both are on (one submit, no orphan booking) → `791ace87`
 - Intake-before-booking gate: redirect new clients to intake form first → `48397be1`
 - Booking approval flow: pending requests panel + approve/decline + Joy emails → `006c7866`
 - Migration: booking approval + intake-before-booking gates + auto-run workflow → `9b98d31b`
