@@ -41,3 +41,19 @@ CREATE POLICY "outreach_sends_therapist_all" ON outreach_sends
 
 COMMENT ON TABLE outreach_sends IS
   'Campaign send history. One row per campaign, not per recipient.';
+
+-- ============================================================
+-- Client-side outreach unsubscribe.
+--
+-- Different from therapists.email_unsubscribed (founder broadcasts).
+-- This flags an individual client of a specific therapist as opted
+-- out of *that therapist's* marketing emails / SMS.
+-- ============================================================
+
+ALTER TABLE clients
+  ADD COLUMN IF NOT EXISTS outreach_unsubscribed boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS outreach_unsubscribed_at timestamptz;
+
+CREATE INDEX IF NOT EXISTS idx_clients_outreach_unsubscribed
+  ON clients(therapist_id) WHERE outreach_unsubscribed = false;
+

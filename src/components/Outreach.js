@@ -12,6 +12,33 @@ const SEGMENTS = [
   { id:'custom',   label:'Custom filter',    desc:'You define the conditions' },
 ];
 
+// Tokens that can be inserted into the message body and resolved per
+// recipient at send time. {name} and {link} are kept for backward
+// compatibility with messages saved before this upgrade.
+const TOKENS = [
+  { id:'first_name',  label:'First name',     hint:'Sarah' },
+  { id:'last_name',   label:'Last name',      hint:'Lee' },
+  { id:'business',    label:'Business',       hint:'your business name' },
+  { id:'therapist',   label:'You',            hint:'your name' },
+  { id:'last_visit',  label:'Last visit',     hint:'Mar 12' },
+  { id:'last_service',label:'Last service',   hint:'Deep Tissue' },
+  { id:'link',        label:'Booking link',   hint:'mybodymap.app/book/...' },
+];
+
+// AI campaign starters. Each is one tap — Claude drafts the email/SMS
+// body in the therapist's voice. Subject is also drafted for email
+// channel. Therapist can edit before sending.
+const AI_STARTERS = [
+  { id:'mothers_day',     label:"Mother's Day special",        emoji:'💐', prompt:"a Mother's Day special offer (e.g. discount, gift card, treat-yourself promo) running this May" },
+  { id:'vacation',        label:'Vacation closure',            emoji:'🏖️', prompt:"announcing you'll be on vacation and closed for a stretch of dates, asking clients to book ahead" },
+  { id:'new_service',     label:'New service launch',          emoji:'✨', prompt:"announcing a new service you've added to your menu, with an intro discount for existing clients" },
+  { id:'special_offer',   label:'Special offer / promo',       emoji:'🎁', prompt:"a limited-time special offer or seasonal discount to drive bookings this month" },
+  { id:'holiday_hours',   label:'Holiday hours',               emoji:'🗓️', prompt:"sharing your holiday schedule and any modified hours so clients can plan ahead" },
+  { id:'weather_closure', label:'Weather closure',             emoji:'❄️', prompt:"a same-day weather closure notice (snow, ice, storm) and offering to reschedule affected appointments" },
+  { id:'anniversary',     label:'Anniversary / milestone',     emoji:'🎉', prompt:"celebrating a practice milestone (e.g. one year in business, hundredth client) with thanks to your clients" },
+  { id:'lapsed_react',    label:'Reactivate lapsed clients',   emoji:'🌿', prompt:"a warm we-miss-you message to clients who haven't visited in a while, gently inviting them back without pressure" },
+];
+
 const TEMPLATES = [
   { id:'opening',  label:'You have an opening', text:'Hi {name}, I have an opening this week and thought of you. Would love to see you, grab a spot here: {link}' },
   { id:'checkin',  label:'Gentle check-in',     text:'Hi {name}, just checking in! It\'s been a while since your last visit. How are you feeling? I\'d love to help: {link}' },
@@ -45,6 +72,15 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   const [sent, setSent]           = useState(null);
   const [customLapsed, setCustomLapsed] = useState(lapsedDays);
   const [conditions, setConditions]     = useState([{ field:'days_since', op:'gt', value:60 }]);
+  // New: campaign subject (email only), AI starter modal state, send log
+  const [subject, setSubject]           = useState('');
+  const [aiStarterOpen, setAiStarterOpen] = useState(false);
+  const [aiStarterCategory, setAiStarterCategory] = useState(null);
+  const [aiStarterContext, setAiStarterContext] = useState('');
+  const [aiDrafting, setAiDrafting]     = useState(false);
+  const [aiError, setAiError]           = useState(null);
+  const [recentSends, setRecentSends]   = useState([]);
+  const messageRef = React.useRef(null);
 
   const twilioReady  = !!therapist?.twilio_phone_number;
   const bookingLink  = `https://mybodymap.app/book/${therapist?.custom_url || ''}`;
@@ -88,23 +124,153 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   }
 
   function getSegment() {
+    // Always exclude unsubscribed clients from segment counts so the
+    // count the therapist sees matches what'll actually receive.
+    const eligible = clients.filter(c => !c.outreach_unsubscribed);
     switch(segment) {
-      case 'lapsed':   return clients.filter(c => c.days_since_visit !== null && c.days_since_visit >= customLapsed);
-      case 'due':      return clients.filter(c => { const avg=avgInterval(c); return avg && c.days_since_visit && c.days_since_visit >= avg*1.2; });
-      case 'onetimer': return clients.filter(c => c.total_sessions === 1);
-      case 'frequent': return clients.filter(c => c.total_sessions >= 4);
-      case 'all':      return clients.filter(c => c.total_sessions >= 1);
-      case 'custom':   return clients.filter(c => conditions.every(cond => applyOp(getClientValue(c, cond.field), cond.op, Number(cond.value))));
+      case 'lapsed':   return eligible.filter(c => c.days_since_visit !== null && c.days_since_visit >= customLapsed);
+      case 'due':      return eligible.filter(c => { const avg=avgInterval(c); return avg && c.days_since_visit && c.days_since_visit >= avg*1.2; });
+      case 'onetimer': return eligible.filter(c => c.total_sessions === 1);
+      case 'frequent': return eligible.filter(c => c.total_sessions >= 4);
+      case 'all':      return eligible.filter(c => c.total_sessions >= 1);
+      case 'custom':   return eligible.filter(c => conditions.every(cond => applyOp(getClientValue(c, cond.field), cond.op, Number(cond.value))));
       default:         return [];
     }
   }
 
   const segmentClients = getSegment();
 
-  function buildMessage(client) {
-    const firstName = client.name?.split(' ')[0] || 'there';
-    return message.replace(/{name}/gi, firstName).replace(/{link}/gi, bookingLink);
+  // Resolve all {tokens} for a specific client. Backward compatible:
+  // {name} keeps working alongside the new {first_name} for messages
+  // saved before this upgrade.
+  function buildMessage(client, raw = message) {
+    const fullName = client.name || '';
+    const parts = fullName.split(' ');
+    const firstName = parts[0] || 'there';
+    const lastName = parts.slice(1).join(' ') || '';
+    const lastVisit = client.last_session_date
+      ? new Date(client.last_session_date).toLocaleDateString('en-US', { month:'short', day:'numeric' })
+      : '';
+    const lastService = client.last_service_name || '';
+    return raw
+      .replace(/\{name\}/gi, firstName)
+      .replace(/\{first_name\}/gi, firstName)
+      .replace(/\{last_name\}/gi, lastName)
+      .replace(/\{business\}/gi, therapist?.business_name || therapist?.full_name || '')
+      .replace(/\{therapist\}/gi, (therapist?.full_name || '').split(' ')[0] || '')
+      .replace(/\{last_visit\}/gi, lastVisit)
+      .replace(/\{last_service\}/gi, lastService)
+      .replace(/\{link\}/gi, bookingLink);
   }
+
+  function buildSubject(client, raw = subject) {
+    if (!raw) return '';
+    return buildMessage(client, raw);
+  }
+
+  // Insert token at cursor position in message textarea.
+  function insertToken(tokenId) {
+    const ta = messageRef.current;
+    const placeholder = `{${tokenId}}`;
+    if (!ta) {
+      setMessage(m => m + ' ' + placeholder);
+      return;
+    }
+    const start = ta.selectionStart || message.length;
+    const end = ta.selectionEnd || message.length;
+    const next = message.slice(0, start) + placeholder + message.slice(end);
+    setMessage(next);
+    setTemplate('custom');
+    requestAnimationFrame(() => {
+      ta.focus();
+      const pos = start + placeholder.length;
+      try { ta.setSelectionRange(pos, pos); } catch {}
+    });
+  }
+
+  // Ask Claude to draft a campaign body (and subject if email) for the
+  // selected starter category. The therapist can then edit freely.
+  async function generateAiDraft(category, contextNote) {
+    setAiDrafting(true);
+    setAiError(null);
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+    const anonKey     = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+    const toneLines = [
+      "Voice: warm, plain, feminine. Like a 70-year-old grandmother massage therapist talking to a regular client.",
+      "No em dashes anywhere. Use commas or periods.",
+      "Reading level: about 10th grade. No jargon. No 'synergy' or 'leverage'.",
+      "Sign-off: just the therapist's first name on its own line.",
+      "Do not include a subject line greeting like 'Dear' or 'Hello there.' Just open warmly.",
+    ].join("\n");
+
+    const tokenLines = [
+      "You may use these placeholder tokens which will be substituted per recipient:",
+      "{first_name}  - the client's first name",
+      "{business}    - the therapist's business name",
+      "{therapist}   - the therapist's first name",
+      "{last_visit}  - date of their last visit (e.g. 'Mar 12')",
+      "{link}        - the therapist's booking link",
+      "Use {first_name} naturally, e.g. 'Hi {first_name},'",
+    ].join("\n");
+
+    const businessName = therapist?.business_name || therapist?.full_name || 'this practice';
+    const therapistFirst = (therapist?.full_name || '').split(' ')[0] || 'the therapist';
+
+    const userMsg = [
+      `Draft a ${channel === 'email' ? 'campaign email' : 'campaign SMS'} for ${businessName}, a solo massage therapist.`,
+      `Topic: ${category.prompt}`,
+      contextNote ? `Specific details from the therapist: ${contextNote}` : '',
+      "",
+      tokenLines,
+      "",
+      toneLines,
+      "",
+      channel === 'email'
+        ? "Return JSON: { \"subject\": \"...\", \"body\": \"...\" }. The body should be 4-7 short paragraphs. End with the therapist's first name as sign-off. No HTML, just plain text with line breaks."
+        : `Return JSON: { "body": "..." }. Body must be under 160 characters total including the {link} placeholder. SMS is short and warm.`,
+      "Output JSON only, no commentary.",
+    ].filter(Boolean).join("\n");
+
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/bodymap-ai`, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey':anonKey },
+        body: JSON.stringify({
+          mode: 'public',
+          context: '',
+          messages: [{ role: 'user', content: userMsg }],
+        }),
+      });
+      const data = await res.json();
+      const text = data?.content?.[0]?.text || '';
+      const cleaned = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (parsed.body) setMessage(parsed.body);
+      if (parsed.subject && channel === 'email') setSubject(parsed.subject);
+      setTemplate('custom');
+      setAiStarterOpen(false);
+      setAiStarterCategory(null);
+      setAiStarterContext('');
+    } catch (err) {
+      console.error('AI draft failed:', err);
+      setAiError('Could not generate draft. Try again or write your own.');
+    }
+    setAiDrafting(false);
+  }
+
+  async function loadRecentSends() {
+    if (!therapistProp?.id) return;
+    const { data } = await supabase
+      .from('outreach_sends')
+      .select('id, channel, segment_label, subject, message, recipient_count, success_count, skipped_count, failed_count, ai_starter_id, test_mode, created_at')
+      .eq('therapist_id', therapistProp.id)
+      .order('created_at', { ascending: false })
+      .limit(15);
+    setRecentSends(data || []);
+  }
+
+  useEffect(() => { loadRecentSends(); }, [therapistProp?.id]);
 
   async function sendAll() {
     if (!message.trim()) return;
@@ -118,34 +284,67 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
     const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
     const anonKey     = process.env.REACT_APP_SUPABASE_ANON_KEY;
 
+    // Build text-to-html conversion: respect line breaks, escape HTML.
+    const escapeHtml = (s) => String(s).replace(/[&<>]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+    const textToHtml = (s) => escapeHtml(s).replace(/\n/g, '<br>');
+
     for (const client of targets) {
+      // Skip clients who unsubscribed from this therapist's outreach.
+      if (!testMode && client.outreach_unsubscribed) {
+        results.skipped++;
+        continue;
+      }
+
       const msg = testMode
-        ? message.replace(/{name}/gi, 'Sarah').replace(/{link}/gi, bookingLink)
+        ? buildMessage({ name:'Sarah Test', last_session_date:new Date().toISOString(), last_service_name:'Swedish Massage' })
         : buildMessage(client);
+      const subj = testMode
+        ? buildSubject({ name:'Sarah Test', last_session_date:new Date().toISOString(), last_service_name:'Swedish Massage' })
+        : buildSubject(client);
 
       try {
         if (channel === 'email') {
           const email = client.email;
           if (!email) { results.skipped++; continue; }
 
+          const finalSubject = subj.trim() || `A note from ${therapistName}`;
+          const messageHtml = textToHtml(msg);
           const emailHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:#F5F0E8;font-family:system-ui,sans-serif;">
 <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
   <div style="text-align:center;margin-bottom:20px;">
     <span style="font-size:28px;">🌿</span>
-    <h1 style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#2A5741;margin:6px 0 0;">${therapistName}</h1>
+    <h1 style="font-family:Georgia,serif;font-size:20px;font-weight:700;color:#2A5741;margin:6px 0 0;">${escapeHtml(therapistName)}</h1>
   </div>
   <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
-    <p style="font-size:16px;color:#1A1A2E;line-height:1.7;margin:0 0 20px;">${msg}</p>
+    <div style="font-size:16px;color:#1A1A2E;line-height:1.7;margin:0 0 20px;">${messageHtml}</div>
     <a href="${bookingLink}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:13px 20px;text-align:center;font-size:15px;font-weight:700;">Book a Session →</a>
   </div>
-  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 0;">Sent via MyBodyMap · <a href="https://mybodymap.app" style="color:#9CA3AF;">mybodymap.app</a></p>
+  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 6px;">Sent by ${escapeHtml(therapistName)} via MyBodyMap</p>
+  <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:0;">Don't want these? <a href="{unsubscribe_url}" style="color:#9CA3AF;text-decoration:underline;">Unsubscribe</a></p>
 </div></body></html>`;
+
+          const payload = {
+            from: `${therapistName} <outreach@mybodymap.app>`,
+            to: email,
+            subject: finalSubject,
+            html: emailHtml,
+            reply_to: therapist?.email,
+          };
+          // Only include unsubscribe-token IDs for real sends, not test mode
+          // (no real client to unsubscribe).
+          if (!testMode && client.id && therapistProp?.id) {
+            payload.client_id = client.id;
+            payload.therapist_id = therapistProp.id;
+          } else {
+            // Test mode: just remove the placeholder so it doesn't show literally.
+            payload.html = payload.html.replace('{unsubscribe_url}', '#');
+          }
 
           const res = await fetch(`${supabaseUrl}/functions/v1/send-outreach`, {
             method:'POST',
             headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey':anonKey },
-            body: JSON.stringify({ from:`${therapistName} <outreach@mybodymap.app>`, to:email, subject:`A note from ${therapistName}`, html:emailHtml, reply_to:therapist?.email }),
+            body: JSON.stringify(payload),
           });
           if (res.ok) results.success++; else results.failed++;
 
@@ -154,10 +353,14 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
           const phone = client.phone;
           if (!phone) { results.skipped++; continue; }
 
+          // Append STOP instructions for TCPA compliance on first send.
+          // Twilio auto-handles STOP keyword but the disclosure is required.
+          const smsBody = msg.length > 140 ? msg : `${msg}\n\nReply STOP to opt out.`;
+
           const res = await fetch(`${supabaseUrl}/functions/v1/send-sms`, {
             method:'POST',
             headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${anonKey}`, 'apikey':anonKey },
-            body: JSON.stringify({ to:phone, message:msg, account_sid:therapist?.twilio_account_sid, auth_token:therapist?.twilio_auth_token, from_number:therapist?.twilio_phone_number }),
+            body: JSON.stringify({ to:phone, message:smsBody, account_sid:therapist?.twilio_account_sid, auth_token:therapist?.twilio_auth_token, from_number:therapist?.twilio_phone_number }),
           });
           if (res.ok) results.success++; else results.failed++;
         }
@@ -168,6 +371,30 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
 
     setSent(results);
     setSending(false);
+
+    // Log to outreach_sends history (skip test sends).
+    if (!testMode && therapistProp?.id) {
+      try {
+        const segmentLabel = SEGMENTS.find(s => s.id === segment)?.label || segment;
+        await supabase.from('outreach_sends').insert({
+          therapist_id: therapistProp.id,
+          channel,
+          segment,
+          segment_label: segmentLabel,
+          subject: channel === 'email' ? (subject || `A note from ${therapistName}`) : null,
+          message,
+          recipient_count: targets.length,
+          success_count: results.success,
+          skipped_count: results.skipped,
+          failed_count: results.failed,
+          ai_starter_id: aiStarterCategory?.id || null,
+          test_mode: false,
+        });
+        loadRecentSends();
+      } catch (e) {
+        console.warn('outreach_sends log failed (non-fatal):', e);
+      }
+    }
   }
 
   const canSend = !sending && message.trim() &&
@@ -257,7 +484,13 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
 
       {/* Step 2 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginBottom:16 }}>
-        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Step 2, Your message</div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Step 2, Your message</div>
+          <button onClick={() => setAiStarterOpen(true)}
+            style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:'#fff', background:C.forest, border:'none', borderRadius:20, padding:'6px 14px', cursor:'pointer' }}>
+            ✨ AI starter
+          </button>
+        </div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
           {TEMPLATES.map(t => (
             <button key={t.id} onClick={() => { setTemplate(t.id); if(t.text) setMessage(t.text); }}
@@ -266,14 +499,93 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
             </button>
           ))}
         </div>
-        <textarea value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }} rows={channel==='sms'?3:4}
-          placeholder="Write your message... Use {name} for client's first name and {link} for your booking link."
+
+        {channel === 'email' && (
+          <div style={{ marginBottom:12 }}>
+            <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:5 }}>Subject</label>
+            <input type="text" value={subject} onChange={e => setSubject(e.target.value)}
+              placeholder={`A note from ${therapistName}`}
+              style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:14, fontFamily:'system-ui', boxSizing:'border-box', outline:'none' }} />
+          </div>
+        )}
+
+        <textarea ref={messageRef} value={message} onChange={e => { setMessage(e.target.value); setTemplate('custom'); }} rows={channel==='sms'?3:6}
+          placeholder={`Write your message... Tap a token below to insert it.`}
           style={{ width:'100%', padding:'12px', border:`1.5px solid ${C.light}`, borderRadius:10, fontSize:14, fontFamily:'system-ui', resize:'vertical', boxSizing:'border-box', outline:'none', lineHeight:1.6 }} />
-        <div style={{ display:'flex', justifyContent:'space-between', marginTop:6 }}>
-          <span style={{ fontSize:11, color:C.gray }}><strong>{'{name}'}</strong> → first name · <strong>{'{link}'}</strong> → booking link</span>
-          {channel==='sms' && <span style={{ fontSize:11, color:message.length>160?'#EF4444':C.gray }}>{message.length}/160</span>}
+
+        {/* Token chips: tap to insert at cursor */}
+        <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:8 }}>
+          <span style={{ fontSize:10, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.06em', alignSelf:'center', marginRight:4 }}>Insert</span>
+          {TOKENS.map(tok => (
+            <button key={tok.id} type="button" onClick={() => insertToken(tok.id)}
+              title={`Insert {${tok.id}} — example: ${tok.hint}`}
+              style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'4px 9px', borderRadius:8, border:`1px solid ${C.light}`, background:'#FAF7EE', color:C.forest, fontSize:11, fontWeight:600, cursor:'pointer', fontFamily:'ui-monospace, monospace' }}>
+              {`{${tok.id}}`}
+            </button>
+          ))}
         </div>
+
+        {channel==='sms' && (
+          <div style={{ display:'flex', justifyContent:'flex-end', marginTop:6 }}>
+            <span style={{ fontSize:11, color:message.length>160?'#EF4444':C.gray }}>{message.length}/160 (longer = 2 segments)</span>
+          </div>
+        )}
       </div>
+
+      {/* AI starter modal */}
+      {aiStarterOpen && (
+        <div onClick={() => !aiDrafting && setAiStarterOpen(false)}
+          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ background:'#fff', borderRadius:18, padding:24, maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
+              <div>
+                <h3 style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ AI campaign starter</h3>
+                <p style={{ fontSize:13, color:C.gray, margin:0, lineHeight:1.5 }}>Pick a topic. Claude will draft an email{channel==='email'?' (subject + body)':' message'} in your voice. You can edit before sending.</p>
+              </div>
+              <button onClick={() => !aiDrafting && setAiStarterOpen(false)} disabled={aiDrafting}
+                style={{ background:'none', border:'none', fontSize:22, color:C.gray, cursor:aiDrafting?'not-allowed':'pointer', padding:0, lineHeight:1 }}>×</button>
+            </div>
+
+            {!aiStarterCategory ? (
+              <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:6 }}>
+                {AI_STARTERS.map(s => (
+                  <button key={s.id} onClick={() => setAiStarterCategory(s)}
+                    style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 14px', border:`1.5px solid ${C.light}`, borderRadius:12, background:'#fff', cursor:'pointer', textAlign:'left', transition:'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#FAF7EE'; e.currentTarget.style.borderColor = C.forest; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = C.light; }}>
+                    <span style={{ fontSize:22 }}>{s.emoji}</span>
+                    <span style={{ fontSize:14, fontWeight:600, color:C.dark }}>{s.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div style={{ marginTop:6 }}>
+                <div style={{ background:'#FAF7EE', border:`1.5px solid ${C.light}`, borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+                  <div style={{ fontSize:12, fontWeight:700, color:C.dark, marginBottom:2 }}>{aiStarterCategory.emoji} {aiStarterCategory.label}</div>
+                </div>
+                <label style={{ display:'block', fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>Anything specific to mention? (Optional)</label>
+                <textarea value={aiStarterContext} onChange={e => setAiStarterContext(e.target.value)} rows={3}
+                  placeholder="e.g. dates I'll be closed, the discount amount, the new service name…"
+                  style={{ width:'100%', padding:'10px 12px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:13, fontFamily:'system-ui', resize:'vertical', boxSizing:'border-box', outline:'none' }} />
+                {aiError && (
+                  <div style={{ marginTop:10, padding:'10px 12px', background:'#FEF2F2', border:'1.5px solid #FECACA', borderRadius:8, fontSize:13, color:'#991B1B' }}>{aiError}</div>
+                )}
+                <div style={{ display:'flex', gap:8, marginTop:14 }}>
+                  <button onClick={() => { setAiStarterCategory(null); setAiError(null); }} disabled={aiDrafting}
+                    style={{ flex:1, padding:'11px', borderRadius:10, border:`1.5px solid ${C.light}`, background:'#fff', color:C.gray, fontSize:13, fontWeight:600, cursor:aiDrafting?'wait':'pointer' }}>
+                    ← Back
+                  </button>
+                  <button onClick={() => generateAiDraft(aiStarterCategory, aiStarterContext)} disabled={aiDrafting}
+                    style={{ flex:2, padding:'11px', borderRadius:10, border:'none', background:aiDrafting?C.sage:C.forest, color:'#fff', fontSize:13, fontWeight:700, cursor:aiDrafting?'wait':'pointer' }}>
+                    {aiDrafting ? 'Drafting...' : 'Draft this for me'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Step 3 */}
       <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}` }}>
@@ -318,14 +630,26 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         )}
 
         {/* Preview */}
-        {message.trim() && (
-          <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 14px', marginBottom:14, border:`1px solid ${C.light}` }}>
-            <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW, as Sarah would see it:</div>
-            <div style={{ fontSize:14, color:C.dark, lineHeight:1.7, wordBreak:'break-word' }}>
-              {message.replace(/{name}/gi, 'Sarah').replace(/{link}/gi, bookingLink)}
+        {message.trim() && (() => {
+          const sample = {
+            name: segmentClients[0]?.name || 'Sarah Lee',
+            last_session_date: segmentClients[0]?.last_session_date || new Date(Date.now() - 21*86400000).toISOString(),
+            last_service_name: segmentClients[0]?.last_service_name || 'Swedish Massage',
+          };
+          const previewSubject = channel === 'email' ? buildSubject(sample) : '';
+          const previewBody = buildMessage(sample, message);
+          return (
+            <div style={{ background:'#F9FAFB', borderRadius:10, padding:'12px 14px', marginBottom:14, border:`1px solid ${C.light}` }}>
+              <div style={{ fontSize:11, fontWeight:700, color:C.gray, marginBottom:6 }}>PREVIEW, as {sample.name.split(' ')[0]} would see it:</div>
+              {channel === 'email' && previewSubject && (
+                <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:6, paddingBottom:6, borderBottom:`1px solid ${C.light}` }}>{previewSubject}</div>
+              )}
+              <div style={{ fontSize:14, color:C.dark, lineHeight:1.7, wordBreak:'break-word', whiteSpace:'pre-wrap' }}>
+                {previewBody}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {sent && (
           <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
@@ -344,8 +668,58 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
            testMode ? `Send test ${channel === 'email' ? 'email' : 'text'} to me` :
            `Send to ${segmentClients.length} client${segmentClients.length!==1?'s':''} →`}
         </button>
-        {!testMode && <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>Clients without a {channel==='sms'?'phone number':'email address'} are automatically skipped.</p>}
+        {!testMode && <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>Clients without a {channel==='sms'?'phone number':'email address'} are automatically skipped. Unsubscribed clients are skipped too.</p>}
       </div>
+
+      {/* Recent campaigns history */}
+      {recentSends.length > 0 && (
+        <div style={{ background:C.white, borderRadius:14, padding:20, border:`1.5px solid ${C.light}`, marginTop:16 }}>
+          <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom:12 }}>Recent campaigns</div>
+          <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+            {recentSends.map(s => {
+              const when = new Date(s.created_at);
+              const dateStr = when.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+              const timeStr = when.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' });
+              const ageDays = Math.floor((Date.now() - when.getTime()) / 86400000);
+              const relStr = ageDays === 0 ? 'Today' : ageDays === 1 ? 'Yesterday' : `${dateStr}`;
+              return (
+                <div key={s.id} style={{ padding:'10px 12px', background:'#FAFAF6', border:`1px solid ${C.light}`, borderRadius:10 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap', marginBottom:3 }}>
+                    <span style={{ fontSize:12, fontWeight:700, color:C.dark }}>
+                      {relStr} {ageDays === 0 ? `at ${timeStr}` : ''}
+                    </span>
+                    <span style={{ fontSize:10, fontWeight:700, color:C.forest, background:'#F0FDF4', border:`1px solid ${C.light}`, padding:'1px 7px', borderRadius:10, textTransform:'uppercase', letterSpacing:'0.04em' }}>
+                      {s.channel}
+                    </span>
+                    <span style={{ fontSize:11, color:C.gray }}>· {s.segment_label || s.segment}</span>
+                    <span style={{ fontSize:11, fontWeight:600, color:C.gray, marginLeft:'auto' }}>
+                      {s.success_count}/{s.recipient_count} delivered
+                      {s.skipped_count > 0 ? `, ${s.skipped_count} skipped` : ''}
+                      {s.failed_count > 0 ? `, ${s.failed_count} failed` : ''}
+                    </span>
+                  </div>
+                  {s.subject && (
+                    <div style={{ fontSize:13, fontWeight:600, color:C.dark, marginBottom:2 }}>{s.subject}</div>
+                  )}
+                  <div style={{ fontSize:12, color:C.gray, lineHeight:1.5, overflow:'hidden', textOverflow:'ellipsis', display:'-webkit-box', WebkitLineClamp:2, WebkitBoxOrient:'vertical' }}>
+                    {s.message}
+                  </div>
+                  <button onClick={() => {
+                    setMessage(s.message);
+                    if (s.subject) setSubject(s.subject);
+                    setChannel(s.channel);
+                    setTemplate('custom');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                    style={{ fontSize:11, fontWeight:600, color:C.forest, background:'transparent', border:'none', padding:'4px 0 0', cursor:'pointer' }}>
+                    Use again ↑
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
