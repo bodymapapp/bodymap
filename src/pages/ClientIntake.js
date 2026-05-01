@@ -15,6 +15,11 @@ export default function ClientIntake() {
   const nameFromUrl = searchParams.get('name') || '';
   const emailFromUrl = searchParams.get('email') || '';
   const phoneFromUrl = searchParams.get('phone') || '';
+  // When ClientIntake is reached via the intake-before-booking gate,
+  // the BookingPage redirects here with return_to_book=<slug>. After
+  // a successful intake submission we send the client back to the
+  // booking page with intake_completed=1 so the gate is bypassed.
+  const returnToBookSlug = searchParams.get('return_to_book') || '';
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -121,7 +126,18 @@ export default function ClientIntake() {
         } catch (e) { /* non-blocking */ }
       }
 
-      // Step 5: Redirect to thank you page
+      // Step 5: Redirect to thank you page (or back to booking if the
+      // intake was triggered by the intake-before-booking gate).
+      if (returnToBookSlug) {
+        const params = new URLSearchParams({
+          intake_completed: '1',
+          name: intakeData.clientName || '',
+          email: intakeData.clientEmail || '',
+          phone: intakeData.clientPhone || '',
+        });
+        navigate(`/book/${returnToBookSlug}?${params.toString()}`);
+        return;
+      }
       navigate('/thank-you', { 
         state: { 
           therapistName: therapist.business_name,
