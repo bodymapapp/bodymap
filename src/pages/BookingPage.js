@@ -758,13 +758,19 @@ export default function BookingPage() {
               setIsRepeatClient(isRepeat);
 
               // Intake-before-booking gate. If the therapist has this on AND
-              // the client is new AND they have not just completed intake
-              // (signaled by intake_completed=1 URL param after redirect),
-              // bounce them to the intake form first. After intake submit,
-              // ClientIntake redirects back here with intake_completed=1 and
-              // their info prefilled.
+              // approval is OFF AND the client is new AND they have not just
+              // completed intake (signaled by intake_completed=1 URL param
+              // after redirect), bounce them to the intake form first. After
+              // intake submit, ClientIntake redirects back here with
+              // intake_completed=1 and their info prefilled.
+              //
+              // When require_approval is also ON, the gate is bypassed: the
+              // therapist may decline the request, so collecting intake first
+              // would waste the client's effort. Intake is requested after
+              // approval via the confirmation email. This keeps a single
+              // submit step in the most-common combined-toggle case.
               const urlIntakeDone = new URLSearchParams(window.location.search).get('intake_completed') === '1';
-              if (therapist.require_intake_before_booking && !isRepeat && !urlIntakeDone) {
+              if (therapist.require_intake_before_booking && !therapist.require_approval && !isRepeat && !urlIntakeDone) {
                 const params = new URLSearchParams({
                   return_to_book: slug,
                   name: form.name,

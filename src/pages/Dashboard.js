@@ -1363,7 +1363,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         summary={(() => {
           const a = !!therapist?.require_approval;
           const i = !!therapist?.require_intake_before_booking;
-          if (a && i) return 'Approval ON · Intake first ON';
+          if (a && i) return 'Approval ON · Intake collected after approval';
           if (a) return 'Approval required for new clients';
           if (i) return 'Intake required before booking';
           return 'Optional gates · both off';
@@ -1405,6 +1405,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <div style={{ flex:1 }}>
               <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Require intake form before booking</div>
               <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
+              {therapist?.require_approval && therapist?.require_intake_before_booking && (
+                <div style={{ fontSize:11, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', marginTop:8, lineHeight:1.5 }}>
+                  Heads up: while Approve new clients is also on, intake is collected from the client after you approve their request, not before. This way the client does not fill out an intake you might decline anyway. The approval email links them straight to the form.
+                </div>
+              )}
             </div>
           </div>
         </div>

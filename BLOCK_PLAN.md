@@ -204,6 +204,7 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
+- Intake gate yields to approval gate when both are on (one submit, no orphan booking) → THIS COMMIT
 - Intake-before-booking gate: redirect new clients to intake form first → `48397be1`
 - Booking approval flow: pending requests panel + approve/decline + Joy emails → `006c7866`
 - Migration: booking approval + intake-before-booking gates + auto-run workflow → `9b98d31b`
@@ -242,6 +243,8 @@ How HK and Claude work together every session. Survives compaction.
 6. **Never claim async work.** Claude only runs when HK is in chat. If a task needs 4 hours, say so and iterate commit by commit.
 
 7. **Customer-facing voice is always Joy / MyBodyMap Team.** Never HK or initials. Never em dashes anywhere.
+
+8. **Minimum-click principle. Apply to every flow, every screen, every feature.** Minimum clicks, minimum scrolling, minimum process steps, minimum cognitive load. If a user has to submit twice, scroll past explanation, or wonder "what now," the design has failed. Ask before building any flow: "How many taps from start to done? Can it be fewer?" This applies retroactively to anything we ship. Two-step flows that should be one-step flows are bugs.
 
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
