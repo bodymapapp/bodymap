@@ -1,0 +1,57 @@
+name: Deploy Supabase Migrations
+
+# Idempotent: every .sql file in supabase/migrations/ uses IF NOT EXISTS
+# guards so re-running is safe. Triggered on any push to main that
+# touches a migration file, or manually via workflow_dispatch.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/migrations/**.sql'
+      - '.github/workflows/deploy-migrations.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_REF: rmnqfrljoknmellbnpiy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run all migrations via Supabase Management API
+        run: |
+          set -e
+          FAILED=""
+          for f in supabase/migrations/*.sql; do
+            name=$(basename "$f")
+            echo "Running $name..."
+
+            # Read SQL and JSON-encode safely (handles quotes, newlines).
+            payload=$(jq -Rs '{query: .}' < "$f")
+
+            response=$(curl -s -w "\n%{http_code}" -X POST \
+              "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
+              -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$payload")
+
+            status=$(echo "$response" | tail -n1)
+            body=$(echo "$response" | sed '$d')
+
+            if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
+              echo "  ok ($status)"
+            else
+              echo "::error::Migration $name failed: HTTP $status"
+              echo "$body"
+              FAILED="$FAILED $name"
+            fi
+          done
+
+          if [ -n "$FAILED" ]; then
+            echo "::error::Failed migrations:$FAILED"
+            exit 1
+          fi
+          echo "All migrations applied successfully."
