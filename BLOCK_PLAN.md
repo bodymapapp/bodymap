@@ -246,6 +246,8 @@ How HK and Claude work together every session. Survives compaction.
 
 8. **Minimum-click principle. Apply to every flow, every screen, every feature.** Minimum clicks, minimum scrolling, minimum process steps, minimum cognitive load. If a user has to submit twice, scroll past explanation, or wonder "what now," the design has failed. Ask before building any flow: "How many taps from start to done? Can it be fewer?" This applies retroactively to anything we ship. Two-step flows that should be one-step flows are bugs.
 
+9. **Never use `git add -A` or `git add .`. Always stage explicit file paths.** Container starts fresh each session, `npm install` modifies `node_modules`, and a wildcard add will pull thousands of dependency files into the repo. Stage every change by its full path: `git add src/pages/Dashboard.js src/components/StatsStrip.js`. The `.gitignore` already excludes `node_modules/` as a backstop, but the explicit-paths rule is the primary defense.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
