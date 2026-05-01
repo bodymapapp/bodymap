@@ -808,6 +808,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
+  // Settings search: matches against label and summary text on every row,
+  // and on group headings. When active, expands all groups + filters rows
+  // via a CSS-like data-search-text match. Empty string = show everything.
+  const [settingsQuery, setSettingsQuery] = React.useState('');
+  const isSearching = settingsQuery.trim().length > 0;
+  const matchesSearch = React.useCallback((label, summary, taxonomy) => {
+    if (!isSearching) return true;
+    const q = settingsQuery.trim().toLowerCase();
+    const haystack = `${label || ''} ${summary || ''} ${taxonomy || ''}`.toLowerCase();
+    return haystack.includes(q);
+  }, [settingsQuery, isSearching]);
+
   // Which major SECTION groups are open. Default all open so the page
   // looks identical to before unless user collapses. Tap header to fold.
   const [openSections, setOpenSections] = React.useState({
@@ -959,66 +971,67 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     <div style={{ width: '100%' }}>
       <SettingsHero therapist={therapist} />
 
+      {/* Settings search. Top of page so it's the first place a therapist
+          looks if they remember a feature name but not its group. Matches
+          on label + summary across all rows. */}
+      <div style={{
+        position: 'relative',
+        marginBottom: 12,
+        background: '#fff',
+        border: '1px solid rgba(31,58,44,0.08)',
+        borderRadius: 12,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        padding: '0 14px',
+      }}>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+          <circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>
+        </svg>
+        <input
+          type="text"
+          value={settingsQuery}
+          onChange={(e) => setSettingsQuery(e.target.value)}
+          placeholder="Search settings (services, intake, AI, payments, time off…)"
+          style={{
+            flex: 1,
+            border: 'none',
+            outline: 'none',
+            padding: '12px 0',
+            fontSize: 14,
+            background: 'transparent',
+            color: '#1F3A2C',
+            minWidth: 0,
+          }}
+        />
+        {isSearching && (
+          <button
+            onClick={() => setSettingsQuery('')}
+            style={{
+              background: 'none', border: 'none', padding: 4, cursor: 'pointer',
+              color: '#6B7280', display: 'flex', flexShrink: 0,
+            }}
+            aria-label="Clear search"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        )}
+      </div>
+
       <SettingsSectionHeader
         title="How I practice"
-        sub="The bones of your practice — who you are, when you work, what you offer."
+        sub="The bones of your practice. Who you are, where clients find you, when you take days off."
         sprigType="leaf"
-        isOpen={openSections.practice}
+        isOpen={isSearching || openSections.practice}
         onToggle={() => toggleSection('practice')}
       />
 
-      {openSections.practice && (<>
-      {/* Import Clients — critical first feature for new therapists migrating
-          from Vagaro / MassageBook / Square. Sits at the top of How I practice
-          because it's the most important first action: you can't practice
-          well without your client list. */}
-      <CollapsibleSection
-        id="import"
-        label="Import existing clients"
-        summary="Bring your list from CSV — Vagaro, MassageBook, Square"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v10"/><path d="M8 8l4-4 4 4"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>}
-        isOpen={openRow === 'import'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><ImportClients therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
-
-      {/* Intake Link */}
-      <CollapsibleSection
-        id="intake"
-        label="Client intake link"
-        summary={intakeUrl}
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
-        isOpen={openRow === 'intake'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 14px 0' }}>
-          Share this with clients - they tap it, fill their body map, you get it instantly.
-        </p>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: '8px', padding: '10px 14px', fontSize: '13px', fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {intakeUrl}
-          </div>
-          <button onClick={copyLink} style={{ background: copied ? C2.forest : C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '14px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}>
-            {copied ? '✓ Copied!' : 'Copy Link'}
-          </button>
-        </div>
-      </div></CollapsibleSection>
-
-      {/* QR Codes: Intake, Booking, Custom */}
-      <CollapsibleSection
-        id="qrcodes"
-        label="QR codes"
-        summary="3 codes ready to print or share"
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>}
-        isOpen={openRow === 'qrcodes'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} /></div></CollapsibleSection>
-
-      {/* Profile Edit */}
+      {(isSearching || openSections.practice) && (<>
+      {matchesSearch('Your info', '', '1.1') && (<>
       <CollapsibleSection
         id="profile"
+        taxonomy="1.1"
+        timeBadge="~30s"
         label="Your info"
         summary={`${therapist?.full_name || 'Add your name'}${therapist?.phone ? ' · ' + therapist.phone : ''}`}
         status={therapist?.full_name && therapist?.phone ? 'done' : 'todo'}
@@ -1158,11 +1171,379 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           </div>
         )}
       </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Import existing clients', 'Bring your list from CSV — Vagaro, MassageBook, Square', '1.2') && (<>
+          well without your client list. */}
+      <CollapsibleSection
+        id="import"
+        taxonomy="1.2"
+        timeBadge="~2m"
+        label="Import existing clients"
+        summary="Bring your list from CSV — Vagaro, MassageBook, Square"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v10"/><path d="M8 8l4-4 4 4"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>}
+        isOpen={openRow === 'import'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ImportClients therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Client intake & QR codes', 'Share your link or QR codes for clients', '1.3') && (<>
+      <CollapsibleSection
+        id="intake_qr"
+        taxonomy="1.3"
+        timeBadge="~30s"
+        label="Client intake & QR codes"
+        summary="Your link plus 3 QR codes ready to share"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>}
+        isOpen={openRow === 'intake_qr'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize: 13, color: C2.gray, margin: '0 0 12px 0', lineHeight: 1.5 }}>
+          Share your intake link with clients, or print a QR code for your room or front desk.
+        </p>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
+          <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {intakeUrl}
+          </div>
+          <button onClick={copyLink} style={{ background: copied ? C2.forest : C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}>
+            {copied ? '✓ Copied' : 'Copy Link'}
+          </button>
+        </div>
+        <div style={{ borderTop: `1px solid ${C2.lightGray}`, margin: '0 0 14px' }} />
+        <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} />
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Booking page', '', '1.4') && (<>
+      <CollapsibleSection
+        id="booking"
+        taxonomy="1.4"
+        timeBadge="~1m"
+        label="Booking page"
+        summary={therapist?.custom_url ? `mybodymap.app/book/${therapist.custom_url}` : "Set your URL above"}
+        status={therapist?.custom_url ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
+        isOpen={openRow === 'booking'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
+        <div className="bm-settings-btn-row" style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+            {window.location.origin}/book/{therapist?.custom_url}
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/book/${therapist?.custom_url}`); }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'9px 16px', borderRadius:8, fontSize:'12px', fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
+            Copy
+          </button>
+          <a href={`/book/${therapist?.custom_url}`} target="_blank" rel="noreferrer" style={{ background:C2.forest, color:'#fff', border:'none', padding:'9px 14px', borderRadius:8, fontSize:'12px', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
+            Preview →
+          </a>
+        </div>
 
+        {/* Embed on your website */}
+        <BookingEmbedPanel customUrl={therapist?.custom_url} />
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Booking flow', '', '1.5') && (<>
+      <CollapsibleSection
+        id="bookingflow"
+        taxonomy="1.5"
+        label="Booking flow"
+        summary={(() => {
+          const a = !!therapist?.require_approval;
+          const i = !!therapist?.require_intake_before_booking;
+          if (a && i) return 'Approval ON · Intake collected after approval';
+          if (a) return 'Approval required for new clients';
+          if (i) return 'Intake required before booking';
+          return 'Optional gates · both off';
+        })()}
+        status={(therapist?.require_approval || therapist?.require_intake_before_booking) ? 'done' : 'todo'}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>}
+        isOpen={openRow === 'bookingflow'}
+        onToggle={toggleRow}
+      ><div style={{ padding:'4px 4px' }}>
+        <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Two optional gates for first-time clients only. Returning clients always book straight through.</p>
 
-      {/* Lapsed Threshold */}
+        {/* Approval gate */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
+            <button onClick={async () => {
+              const newVal = !therapist?.require_approval;
+              await supabase.from('therapists').update({ require_approval: newVal }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_approval?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_approval?21:3, transition:'left 0.2s' }} />
+            </button>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Approve new clients before they book</div>
+              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Intake-first gate */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
+            <button onClick={async () => {
+              const newVal = !therapist?.require_intake_before_booking;
+              await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_intake_before_booking?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_intake_before_booking?21:3, transition:'left 0.2s' }} />
+            </button>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Require intake form before booking</div>
+              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
+              {therapist?.require_approval && therapist?.require_intake_before_booking && (
+                <div style={{ fontSize:11, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', marginTop:8, lineHeight:1.5 }}>
+                  Heads up: while Approve new clients is also on, intake is collected from the client after you approve their request, not before. This way the client does not fill out an intake you might decline anyway. The approval email links them straight to the form.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Time off', '', '1.6') && (<>
+      <CollapsibleSection
+        id="timeoff"
+        taxonomy="1.6"
+        timeBadge="~1m"
+        label="Time off"
+        summary={blockedDays.length === 0 ? "None scheduled" : `${blockedDays.length} day${blockedDays.length === 1 ? '' : 's'} blocked`}
+        status={blockedDays.length > 0 ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M9 4v4M15 4v4"/></svg>}
+        isOpen={openRow === 'timeoff'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
+          <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
+            min={new Date().toISOString().slice(0,10)}
+            placeholder="Choose a date"
+            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:15, outline:'none', background:'#fff', color:blockDate?C2.darkGray:C2.gray, boxSizing:'border-box', WebkitAppearance:'none', appearance:'none' }} />
+          <input type="text" value={blockNote} onChange={e => setBlockNote(e.target.value)}
+            placeholder="Reason (optional)"
+            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:14, outline:'none', boxSizing:'border-box' }} />
+          <button onClick={addBlockedDay} disabled={!blockDate || blockSaving}
+            style={{ width:'100%', background:blockDate ? C2.forest : '#D1D5DB', color:'#fff', border:'none', padding:'13px 16px', borderRadius:10, fontSize:14, fontWeight:700, cursor:blockDate ? 'pointer' : 'not-allowed' }}>
+            {blockSaving ? 'Adding…' : '+ Block This Day'}
+          </button>
+        </div>
+        {blockedDays.length === 0
+          ? <div style={{ fontSize:12, color:C2.gray, fontStyle:'italic' }}>No days blocked. Clients can book any available date up to a year out.</div>
+          : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+              {blockedDays.map(d => (
+                <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C2.beige, borderRadius:8, padding:'10px 12px', gap:10 }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
+                      {new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
+                    </div>
+                    {d.note && <div style={{ fontSize:12, color:C2.gray, marginTop:2 }}>{d.note}</div>}
+                  </div>
+                  <button onClick={() => removeBlockedDay(d.id)}
+                    style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+        }
+      </div></CollapsibleSection>
+      </>)}
+      </>)}
+
+      <SettingsSectionHeader
+        title="What I offer"
+        sub="Your menu. Services, hours, add-ons, packages, memberships, classes, waiver."
+        sprigType="leaf"
+        isOpen={isSearching || openSections.offer}
+        onToggle={() => toggleSection('offer')}
+      />
+
+      {(isSearching || openSections.offer) && (<>
+      {matchesSearch('Services & hours', 'Your menu, weekly hours, deposits, buffer', '2.1') && (<>
+      <CollapsibleSection
+        id="services"
+        taxonomy="2.1"
+        timeBadge="~3m"
+        label="Services & hours"
+        summary="Your menu, weekly hours, deposits, buffer"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 9c2 4 5 4 7 4s5 0 7-4"/><path d="M5 13c2 4 5 4 7 4s5 0 7-4"/><path d="M12 4v3"/></svg>}
+        isOpen={openRow === 'services'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Add-ons', 'Hot stones, aromatherapy, hot towels…', '2.2') && (<>
+      <CollapsibleSection
+        id="addons"
+        taxonomy="2.2"
+        timeBadge="~2m"
+        label="Add-ons"
+        summary="Hot stones, aromatherapy, hot towels…"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="15" cy="15" r="3"/><path d="M9 12v3M15 12V9"/></svg>}
+        isOpen={openRow === 'addons'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><ServiceAddonsCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Packages', 'Multi-session bundles', '2.3') && (<>
+      <CollapsibleSection
+        id="packages"
+        taxonomy="2.3"
+        timeBadge="~3m"
+        label="Packages"
+        summary="Multi-session bundles"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="8" width="16" height="12" rx="1"/><path d="M4 12h16M12 8v12"/></svg>}
+        isOpen={openRow === 'packages'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><PackagesCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Memberships', 'Recurring monthly plans', '2.4') && (<>
+      <CollapsibleSection
+        id="memberships"
+        taxonomy="2.4"
+        timeBadge="~3m"
+        label="Memberships"
+        summary="Recurring monthly plans"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 6v6l4 2"/></svg>}
+        isOpen={openRow === 'memberships'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><MembershipsCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Classes & events', 'Workshops, group sessions', '2.5') && (<>
+      <CollapsibleSection
+        id="events"
+        taxonomy="2.5"
+        timeBadge="~3m"
+        label="Classes & events"
+        summary="Workshops, group sessions"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 19c0-2.5 2.2-4.5 5-4.5"/></svg>}
+        isOpen={openRow === 'events'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Waiver text', '', '2.6') && (<>
+      <CollapsibleSection
+        id="waiver"
+        taxonomy="2.6"
+        timeBadge="~1m"
+        label="Waiver text"
+        summary={therapist?.waiver_text ? "Custom waiver" : "Standard release · edit to customize"}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v4h4M9 12h7M9 16h5"/></svg>}
+        isOpen={openRow === 'waiver'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
+      </>)}
+      </>)}
+
+      <SettingsSectionHeader
+        title="How I rest easier"
+        sub="Quiet help working in the background. AI, retention nudges, reminders."
+        sprigType="leaf"
+        isOpen={isSearching || openSections.restEasier}
+        onToggle={() => toggleSection('restEasier')}
+      />
+
+      {(isSearching || openSections.restEasier) && (<>
+      {matchesSearch('AI features', '', '3.1') && (<>
+      <CollapsibleSection
+        id="ai"
+        taxonomy="3.1"
+        label="AI features"
+        summary={aiEnabled ? 'On · chat, briefs, patterns' : 'Off · all AI hidden'}
+        status={aiEnabled ? 'done' : 'todo'}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
+        isOpen={openRow === 'ai'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>MyBodyMap AI chat, pre-session briefs, and the Practice Pulse digest. Turn off if you prefer a fully manual workflow. Your data is unchanged either way.</p>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={toggleAi}
+              style={{ width:40, height:22, borderRadius:11, background:aiEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:aiEnabled?21:3, transition:'left 0.2s' }} />
+            </button>
+            <span style={{ fontSize:13, fontWeight:600, color:aiEnabled?C2.forest:C2.gray }}>{aiEnabled ? 'AI features ON' : 'AI features OFF'}</span>
+          </div>
+        </div>
+        {!aiEnabled && (
+          <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
+        )}
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Practice Pulse', '', '3.2') && (<>
+      <CollapsibleSection
+        id="pulse"
+        taxonomy="3.2"
+        label="Practice Pulse"
+        summary={pulseEnabled ? "Daily 6 PM digest · email" : "Off"}
+        status={pulseEnabled ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
+        isOpen={openRow === 'pulse'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+            <button onClick={togglePulse}
+              style={{ width:40, height:22, borderRadius:11, background:pulseEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:pulseEnabled?21:3, transition:'left 0.2s' }} />
+            </button>
+            <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON, sent at 6pm' : 'Daily Pulse OFF'}</span>
+          </div>
+        </div>
+        <div style={{ marginBottom:14 }}>
+          <label style={{ fontSize:12, fontWeight:700, color:C2.gray, display:'block', marginBottom:6 }}>Also send to (optional)</label>
+          <div style={{ display:'flex', gap:8 }}>
+            <input type="email" value={pulseEmail} onChange={e => setPulseEmail(e.target.value)}
+              placeholder="e.g. bodymap01@gmail.com"
+              style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff' }} />
+            <button onClick={savePulseEmail}
+              style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
+              {pulseEmailSaved ? '✓ Saved' : 'Save'}
+            </button>
+          </div>
+          <p style={{ fontSize:11, color:C2.gray, margin:'6px 0 0' }}>The Pulse always goes to your account email. Add a second address here if you check another inbox more often.</p>
+        </div>
+        <button onClick={sendTestPulse} disabled={pulseSending}
+          style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
+          {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
+        </button>
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Push notifications', 'On-device alerts for new bookings', '3.3') && (<>
+      <CollapsibleSection
+        id="push"
+        taxonomy="3.3"
+        label="Push notifications"
+        summary="On-device alerts for new bookings"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 2H4l2-2V9z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>}
+        isOpen={openRow === 'push'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><PushNotificationsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Notification preferences', 'Email alerts for events', '3.4') && (<>
+      <CollapsibleSection
+        id="notifs"
+        taxonomy="3.4"
+        label="Notification preferences"
+        summary="Email alerts for events"
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 5h14v10H7l-2 4z"/></svg>}
+        isOpen={openRow === 'notifs'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><NotificationPrefsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Lapsed client threshold', '', '3.5') && (<>
       <CollapsibleSection
         id="lapsed"
+        taxonomy="3.5"
+        timeBadge="~30s"
         label="Lapsed client threshold"
         summary={`${lapsedDays} days · clients flagged after this`}
         status="done"
@@ -1179,10 +1560,23 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           {lapsedSaved && <p style={{ fontSize:'12px', color:C2.forest, fontWeight:'600', margin:0 }}>✓ Saved</p>}
         </div>
       </div></CollapsibleSection>
+      </>)}
+      </>)}
 
-      {/* Cal.com sync */}
+      <SettingsSectionHeader
+        title="How I plug in"
+        sub="Connections to the tools and systems you already use."
+        sprigType="leaf"
+        isOpen={isSearching || openSections.plugIn}
+        onToggle={() => toggleSection('plugIn')}
+      />
+
+      {(isSearching || openSections.plugIn) && (<>
+      {matchesSearch('Cal.com sync', '', '4.1') && (<>
       <CollapsibleSection
         id="cal"
+        taxonomy="4.1"
+        timeBadge="~3m"
         label="Cal.com sync"
         summary={(therapist?.cal_connected || therapist?.cal_api_key) ? "Connected · syncing automatically" : "Optional · two-way calendar"}
         status={(therapist?.cal_connected || therapist?.cal_api_key) ? "done" : "todo"}
@@ -1226,10 +1620,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           )}
       </div></CollapsibleSection>
-
-        {/* Payments (Stripe / Square) */}
+      </>)}
+      {matchesSearch('Payments', '', '4.2') && (<>
         <CollapsibleSection
           id="payments"
+          taxonomy="4.2"
+          timeBadge="~5m"
           label="Payments"
           summary={therapist?.stripe_account_connected ? "Stripe connected · cards on file" : "Connect Stripe or Square"}
           status={therapist?.stripe_account_connected ? "done" : "attn"}
@@ -1318,107 +1714,12 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </button>
           )}
         </div></CollapsibleSection>
-
-      {/* Booking Link */}
-      <CollapsibleSection
-        id="booking"
-        label="Booking page"
-        summary={therapist?.custom_url ? `mybodymap.app/book/${therapist.custom_url}` : "Set your URL above"}
-        status={therapist?.custom_url ? "done" : "todo"}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
-        isOpen={openRow === 'booking'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
-        <div className="bm-settings-btn-row" style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {window.location.origin}/book/{therapist?.custom_url}
-          </div>
-          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/book/${therapist?.custom_url}`); }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'9px 16px', borderRadius:8, fontSize:'12px', fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-            Copy
-          </button>
-          <a href={`/book/${therapist?.custom_url}`} target="_blank" rel="noreferrer" style={{ background:C2.forest, color:'#fff', border:'none', padding:'9px 14px', borderRadius:8, fontSize:'12px', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
-            Preview →
-          </a>
-        </div>
-
-        {/* Embed on your website */}
-        <BookingEmbedPanel customUrl={therapist?.custom_url} />
-      </div></CollapsibleSection>
-
-      {/* Services + Availability */}
-      <CollapsibleSection
-        id="services"
-        label="Services & hours"
-        summary="Your menu, weekly hours, deposits, buffer"
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 9c2 4 5 4 7 4s5 0 7-4"/><path d="M5 13c2 4 5 4 7 4s5 0 7-4"/><path d="M12 4v3"/></svg>}
-        isOpen={openRow === 'services'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
-
-      {/* Booking flow controls: approval gate + intake-before-booking */}
-      <CollapsibleSection
-        id="bookingflow"
-        label="Booking flow"
-        summary={(() => {
-          const a = !!therapist?.require_approval;
-          const i = !!therapist?.require_intake_before_booking;
-          if (a && i) return 'Approval ON · Intake collected after approval';
-          if (a) return 'Approval required for new clients';
-          if (i) return 'Intake required before booking';
-          return 'Optional gates · both off';
-        })()}
-        status={(therapist?.require_approval || therapist?.require_intake_before_booking) ? 'done' : 'todo'}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>}
-        isOpen={openRow === 'bookingflow'}
-        onToggle={toggleRow}
-      ><div style={{ padding:'4px 4px' }}>
-        <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Two optional gates for first-time clients only. Returning clients always book straight through.</p>
-
-        {/* Approval gate */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
-            <button onClick={async () => {
-              const newVal = !therapist?.require_approval;
-              await supabase.from('therapists').update({ require_approval: newVal }).eq('id', therapist.id);
-              window.location.reload();
-            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_approval?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_approval?21:3, transition:'left 0.2s' }} />
-            </button>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Approve new clients before they book</div>
-              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Intake-first gate */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px' }}>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
-            <button onClick={async () => {
-              const newVal = !therapist?.require_intake_before_booking;
-              await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
-              window.location.reload();
-            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_intake_before_booking?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_intake_before_booking?21:3, transition:'left 0.2s' }} />
-            </button>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Require intake form before booking</div>
-              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
-              {therapist?.require_approval && therapist?.require_intake_before_booking && (
-                <div style={{ fontSize:11, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', marginTop:8, lineHeight:1.5 }}>
-                  Heads up: while Approve new clients is also on, intake is collected from the client after you approve their request, not before. This way the client does not fill out an intake you might decline anyway. The approval email links them straight to the form.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div></CollapsibleSection>
-
-      {/* SMS / Twilio */}
+      </>)}
+      {matchesSearch('Custom SMS sender (Twilio)', '', '4.3') && (<>
       <CollapsibleSection
         id="twilio"
+        taxonomy="4.3"
+        timeBadge="~10m"
         label="Custom SMS sender (Twilio)"
         summary={therapist?.twilio_phone_number ? `Connected · ${therapist.twilio_phone_number}` : "Optional · advanced"}
         status={therapist?.twilio_phone_number ? "done" : "todo"}
@@ -1467,152 +1768,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           </div>
         )}
       </div></CollapsibleSection>
-
-      {/* AI Features master switch */}
-      <CollapsibleSection
-        id="ai"
-        label="AI features"
-        summary={aiEnabled ? 'On · chat, briefs, patterns' : 'Off · all AI hidden'}
-        status={aiEnabled ? 'done' : 'todo'}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
-        isOpen={openRow === 'ai'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>MyBodyMap AI chat, pre-session briefs, and the Practice Pulse digest. Turn off if you prefer a fully manual workflow. Your data is unchanged either way.</p>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <button onClick={toggleAi}
-              style={{ width:40, height:22, borderRadius:11, background:aiEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:aiEnabled?21:3, transition:'left 0.2s' }} />
-            </button>
-            <span style={{ fontSize:13, fontWeight:600, color:aiEnabled?C2.forest:C2.gray }}>{aiEnabled ? 'AI features ON' : 'AI features OFF'}</span>
-          </div>
-        </div>
-        {!aiEnabled && (
-          <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The MyBodyMap AI tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
-        )}
-      </div></CollapsibleSection>
       </>)}
-
-      <SettingsSectionHeader
-        title="What I offer"
-        sub="Your menu — extras, bundles, and ways for clients to come back."
-        sprigType="dots"
-        isOpen={openSections.offer}
-        onToggle={() => toggleSection('offer')}
-      />
-
-      {openSections.offer && (<>
-      {/* Service Add-ons */}
-      <CollapsibleSection
-        id="addons"
-        label="Add-ons"
-        summary="Hot stones, aromatherapy, hot towels…"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="15" cy="15" r="3"/><path d="M9 12v3M15 12V9"/></svg>}
-        isOpen={openRow === 'addons'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><ServiceAddonsCard therapist={therapist} /></div></CollapsibleSection>
-
-      {/* Packages — multi-session bundles */}
-      <CollapsibleSection
-        id="packages"
-        label="Packages"
-        summary="Multi-session bundles"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="8" width="16" height="12" rx="1"/><path d="M4 12h16M12 8v12"/></svg>}
-        isOpen={openRow === 'packages'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><PackagesCard therapist={therapist} /></div></CollapsibleSection>
-
-      {/* Memberships — recurring monthly tiers */}
-      <CollapsibleSection
-        id="memberships"
-        label="Memberships"
-        summary="Recurring monthly plans"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 6v6l4 2"/></svg>}
-        isOpen={openRow === 'memberships'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><MembershipsCard therapist={therapist} /></div></CollapsibleSection>
-
-      {/* Classes & Events — group sessions */}
-      <CollapsibleSection
-        id="events"
-        label="Classes & events"
-        summary="Workshops, group sessions"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><circle cx="9" cy="9" r="3"/><circle cx="16" cy="9" r="3"/><path d="M4 19c0-2.5 2.2-4.5 5-4.5"/></svg>}
-        isOpen={openRow === 'events'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
-      </>)}
-
-      <SettingsSectionHeader
-        title="How I rest easier"
-        sub="Quiet help — automations, reminders, and AI working in the background."
-        sprigType="moon"
-        isOpen={openSections.restEasier}
-        onToggle={() => toggleSection('restEasier')}
-      />
-
-      {openSections.restEasier && (<>
-
-      {/* Practice Pulse — only shown when AI is enabled, since the digest is AI-generated */}
-      {aiEnabled && (
-      <CollapsibleSection
-        id="pulse"
-        label="Practice Pulse"
-        summary={pulseEnabled ? "Daily 6 PM digest · email" : "Off"}
-        status={pulseEnabled ? "done" : "todo"}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 5c4 4 5 7 5 10a5 5 0 0 1-10 0c0-3 1-6 5-10z"/></svg>}
-        isOpen={openRow === 'pulse'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-            <button onClick={togglePulse}
-              style={{ width:40, height:22, borderRadius:11, background:pulseEnabled?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:pulseEnabled?21:3, transition:'left 0.2s' }} />
-            </button>
-            <span style={{ fontSize:13, fontWeight:600, color:pulseEnabled?C2.forest:C2.gray }}>{pulseEnabled ? 'Daily Pulse ON, sent at 6pm' : 'Daily Pulse OFF'}</span>
-          </div>
-        </div>
-        <div style={{ marginBottom:14 }}>
-          <label style={{ fontSize:12, fontWeight:700, color:C2.gray, display:'block', marginBottom:6 }}>Also send to (optional)</label>
-          <div style={{ display:'flex', gap:8 }}>
-            <input type="email" value={pulseEmail} onChange={e => setPulseEmail(e.target.value)}
-              placeholder="e.g. bodymap01@gmail.com"
-              style={{ flex:1, padding:'8px 10px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff' }} />
-            <button onClick={savePulseEmail}
-              style={{ background:C2.sage, color:'#fff', border:'none', padding:'8px 16px', borderRadius:8, fontSize:12, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}>
-              {pulseEmailSaved ? '✓ Saved' : 'Save'}
-            </button>
-          </div>
-          <p style={{ fontSize:11, color:C2.gray, margin:'6px 0 0' }}>The Pulse always goes to your account email. Add a second address here if you check another inbox more often.</p>
-        </div>
-        <button onClick={sendTestPulse} disabled={pulseSending}
-          style={{ background:pulseSending?C2.sage:C2.beige, color:C2.forest, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer' }}>
-          {pulseSending ? 'Sending…' : pulseSent ? '✓ Sent! Check your email' : 'Send me a test Pulse now'}
-        </button>
-      </div></CollapsibleSection>
-      )}
-
-      {/* Push Notifications */}
-      <CollapsibleSection
-        id="push"
-        label="Push notifications"
-        summary="On-device alerts for new bookings"
-        status="todo"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 9a6 6 0 0 1 12 0v6l2 2H4l2-2V9z"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>}
-        isOpen={openRow === 'push'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><PushNotificationsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
-
-      {/* Referral */}
+      {matchesSearch('Referrals', '', '4.4') && (<>
       <CollapsibleSection
         id="referral"
+        taxonomy="4.4"
         label="Referrals"
         summary={therapist?.referral_code ? `Code ${therapist.referral_code}` : "Earn from word-of-mouth"}
         status={therapist?.referral_code ? "done" : "todo"}
@@ -1620,87 +1780,49 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'referral'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ReferralCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
-
-      {/* Waiver */}
-      <CollapsibleSection
-        id="waiver"
-        label="Waiver text"
-        summary={therapist?.waiver_text ? "Custom waiver" : "Standard release · edit to customize"}
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v4h4M9 12h7M9 16h5"/></svg>}
-        isOpen={openRow === 'waiver'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
-
-      {/* Notifications */}
-      <CollapsibleSection
-        id="notifs"
-        label="Notification preferences"
-        summary="Email alerts for events"
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 5h14v10H7l-2 4z"/></svg>}
-        isOpen={openRow === 'notifs'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><NotificationPrefsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
-
-      {/* Block Days Off */}
-      <CollapsibleSection
-        id="timeoff"
-        label="Time off"
-        summary={blockedDays.length === 0 ? "None scheduled" : `${blockedDays.length} day${blockedDays.length === 1 ? '' : 's'} blocked`}
-        status={blockedDays.length > 0 ? "done" : "todo"}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M9 4v4M15 4v4"/></svg>}
-        isOpen={openRow === 'timeoff'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Block entire days for vacations, personal days, or events. Clients cannot book on these dates.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:10, marginBottom:16 }}>
-          <input type="date" value={blockDate} onChange={e => setBlockDate(e.target.value)}
-            min={new Date().toISOString().slice(0,10)}
-            placeholder="Choose a date"
-            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:15, outline:'none', background:'#fff', color:blockDate?C2.darkGray:C2.gray, boxSizing:'border-box', WebkitAppearance:'none', appearance:'none' }} />
-          <input type="text" value={blockNote} onChange={e => setBlockNote(e.target.value)}
-            placeholder="Reason (optional)"
-            style={{ width:'100%', padding:'12px 14px', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, fontSize:14, outline:'none', boxSizing:'border-box' }} />
-          <button onClick={addBlockedDay} disabled={!blockDate || blockSaving}
-            style={{ width:'100%', background:blockDate ? C2.forest : '#D1D5DB', color:'#fff', border:'none', padding:'13px 16px', borderRadius:10, fontSize:14, fontWeight:700, cursor:blockDate ? 'pointer' : 'not-allowed' }}>
-            {blockSaving ? 'Adding…' : '+ Block This Day'}
-          </button>
-        </div>
-        {blockedDays.length === 0
-          ? <div style={{ fontSize:12, color:C2.gray, fontStyle:'italic' }}>No days blocked. Clients can book any available date up to a year out.</div>
-          : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {blockedDays.map(d => (
-                <div key={d.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', background:C2.beige, borderRadius:8, padding:'10px 12px', gap:10 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>
-                      {new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' })}
-                    </div>
-                    {d.note && <div style={{ fontSize:12, color:C2.gray, marginTop:2 }}>{d.note}</div>}
-                  </div>
-                  <button onClick={() => removeBlockedDay(d.id)}
-                    style={{ background:'#FEE2E2', color:'#DC2626', border:'none', borderRadius:6, padding:'6px 12px', fontSize:12, fontWeight:700, cursor:'pointer', flexShrink:0 }}>
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-        }
-      </div></CollapsibleSection>
+      </>)}
       </>)}
 
       <SettingsSectionHeader
         title="My membership"
         sub="Your password and your plan with us."
         sprigType="sun"
-        isOpen={openSections.membership}
+        isOpen={isSearching || openSections.membership}
         onToggle={() => toggleSection('membership')}
       />
 
-      {openSections.membership && (<>
-      {/* Change Password */}
+      {(isSearching || openSections.membership) && (<>
+      {matchesSearch('Your plan', '', '5.1') && (<>
+      <CollapsibleSection
+        id="plan"
+        taxonomy="5.1"
+        label="Your plan"
+        summary={(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze · Free' : therapist?.plan === 'silver' ? 'Silver · $19/mo' : 'Gold · $49/mo'}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
+        isOpen={openRow === 'plan'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
+              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver - $19/mo' : 'Gold - $49/mo'}
+            </p>
+            <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
+              {therapist?.plan === 'free' ? 'All tools included free. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
+            </p>
+            {therapist?.plan !== 'free' && (
+              <p style={{ fontSize: '12px', color: C2.gray, margin: 0, opacity: 0.7 }}>Cancel anytime. Access continues until end of billing period.</p>
+            )}
+          </div>
+        </div>
+      </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Change password', 'Set a new password', '5.2') && (<>
       <CollapsibleSection
         id="password"
+        taxonomy="5.2"
+        timeBadge="~1m"
         label="Change password"
         summary="Set a new password"
         status="done"
@@ -1730,31 +1852,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           )}
         </div>
       </div></CollapsibleSection>
-
-      {/* Plan */}
-      <CollapsibleSection
-        id="plan"
-        label="Your plan"
-        summary={(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze · Free' : therapist?.plan === 'silver' ? 'Silver · $19/mo' : 'Gold · $49/mo'}
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
-        isOpen={openRow === 'plan'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <p style={{ fontSize: '18px', fontWeight: '700', color: C2.darkGray, margin: '0 0 4px 0' }}>
-              {(!therapist?.plan || therapist?.plan === 'free') ? 'Bronze - Free' : therapist?.plan === 'silver' ? 'Silver - $19/mo' : 'Gold - $49/mo'}
-            </p>
-            <p style={{ fontSize: '13px', color: C2.gray, margin: '0 0 4px 0' }}>
-              {therapist?.plan === 'free' ? 'All tools included free. Upgrade to unlock unlimited.' : therapist?.plan === 'silver' ? 'Unlimited clients + full session history.' : 'All features including AI insights.'}
-            </p>
-            {therapist?.plan !== 'free' && (
-              <p style={{ fontSize: '12px', color: C2.gray, margin: 0, opacity: 0.7 }}>Cancel anytime. Access continues until end of billing period.</p>
-            )}
-          </div>
-        </div>
-      </div></CollapsibleSection>
+      </>)}
       </>)}
     </div>
   );

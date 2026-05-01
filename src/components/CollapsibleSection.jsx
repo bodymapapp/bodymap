@@ -52,6 +52,8 @@ export default function CollapsibleSection({
   isOpen,
   onToggle,
   hidden = false,
+  taxonomy,   // e.g. "1.1"
+  timeBadge,  // e.g. "~30s"
   children,
 }) {
   if (hidden) return null;
@@ -61,6 +63,8 @@ export default function CollapsibleSection({
   return (
     <div
       data-section-id={id}
+      data-taxonomy={taxonomy || ''}
+      data-search-text={`${label || ''} ${summary || ''}`.toLowerCase()}
       style={{
         background: '#fff',
         borderRadius: 14,
@@ -96,19 +100,53 @@ export default function CollapsibleSection({
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 14.5,
-            fontWeight: 500,
-            color: C.forestInk,
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
             margin: 0,
             lineHeight: 1.25,
           }}>
-            {label}
+            {taxonomy && (
+              <span style={{
+                fontSize: 11,
+                color: '#B5BEB1',
+                fontWeight: 500,
+                letterSpacing: '0.02em',
+                fontVariantNumeric: 'tabular-nums',
+                flexShrink: 0,
+              }}>{taxonomy}</span>
+            )}
+            <span style={{
+              fontSize: 14.5,
+              fontWeight: 500,
+              color: C.forestInk,
+              flex: 1,
+              minWidth: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {label}
+            </span>
+            {timeBadge && (
+              <span style={{
+                fontSize: 10.5,
+                color: '#8B6F25',
+                background: '#FAF4E8',
+                border: '1px solid rgba(201,168,76,0.3)',
+                padding: '2px 7px',
+                borderRadius: 10,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}>{timeBadge}</span>
+            )}
           </div>
           {summary && (
             <div style={{
               fontSize: 12,
               color: C.inkSoft,
-              margin: '2px 0 0',
+              margin: '3px 0 0',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
