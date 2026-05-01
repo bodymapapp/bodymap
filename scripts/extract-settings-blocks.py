@@ -34,16 +34,50 @@ while i < len(lines):
         m = re.search(r'id="([a-z]+)"', block_text[:300])
         if m:
             sect_id = m.group(1)
-            # Find leading comment line (the // … or {/* … */} immediately above)
+            # Walk backward to find any leading comment block. Multi-line
+            # JSX comments span several lines without each line starting
+            # with {/*, so we anchor on the closing */} and then walk up
+            # until we find the matching open. Single-line {/* ... */}
+            # comments are also handled.
             comment_start = start
-            for k in range(start - 1, max(start - 8, -1), -1):
-                stripped = lines[k].strip()
-                if stripped.startswith("{/*") or stripped.startswith("/*") or stripped.endswith("*/}"):
-                    comment_start = k
-                elif stripped == "":
+            k = start - 1
+            while k >= 0:
+                s = lines[k].strip()
+                if s == "":
+                    k -= 1
                     continue
-                else:
-                    break
+                if s.endswith("*/}"):
+                    # Found end of a JSX comment. Walk up until the open.
+                    end_k = k
+                    while k >= 0 and "{/*" not in lines[k]:
+                        k -= 1
+                    if k >= 0:
+                        comment_start = k
+                        k -= 1
+                        continue
+                    else:
+                        # No matching open found; bail out, don't include
+                        # the orphan closing line.
+                        break
+                if s.startswith("//"):
+                    comment_start = k
+                    k -= 1
+                    continue
+                if s.endswith("*/") and not s.startswith("/*"):
+                    # /* ... */ style block comment closing. Walk up.
+                    while k >= 0 and not lines[k].strip().startswith("/*"):
+                        k -= 1
+                    if k >= 0:
+                        comment_start = k
+                        k -= 1
+                        continue
+                    else:
+                        break
+                if s.startswith("/*") and s.endswith("*/"):
+                    comment_start = k
+                    k -= 1
+                    continue
+                break
             full_block = "\n".join(lines[comment_start:j+1])
             blocks[sect_id] = full_block
         i = j + 1

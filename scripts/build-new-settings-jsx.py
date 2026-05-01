@@ -44,16 +44,19 @@ def search_wrap(block_text, label, summary, taxonomy):
         if not started:
             if not s:
                 continue
-            if s.startswith("{/*") and not s.endswith("*/}"):
+            if "{/*" in s and "*/}" in s:
+                # single-line JSX comment, drop
+                continue
+            if s.startswith("{/*"):
                 in_jsx_comment = True
                 continue
             if in_jsx_comment:
                 if s.endswith("*/}"):
                     in_jsx_comment = False
                 continue
-            if s.startswith("{/*") and s.endswith("*/}"):
+            if s.startswith("/*") and s.endswith("*/"):
                 continue
-            if s.startswith("/*") and not s.endswith("*/"):
+            if s.startswith("/*"):
                 in_block_comment = True
                 continue
             if in_block_comment:
@@ -61,6 +64,11 @@ def search_wrap(block_text, label, summary, taxonomy):
                     in_block_comment = False
                 continue
             if s.startswith("//"):
+                continue
+            # Defensive: a line ending with */} or */ without a matching
+            # open above is an orphan continuation of a multi-line comment
+            # that escaped the extractor. Drop it silently.
+            if s.endswith("*/}") or s.endswith("*/"):
                 continue
             started = True
         clean.append(ln)

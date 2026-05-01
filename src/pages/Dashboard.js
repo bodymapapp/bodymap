@@ -1207,7 +1207,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div></CollapsibleSection>
       </>)}
       {matchesSearch('Import existing clients', 'Bring your list from CSV — Vagaro, MassageBook, Square', '1.2') && (<>
-          well without your client list. */}
       <CollapsibleSection
         id="import"
         taxonomy="1.2"
