@@ -10,6 +10,7 @@
 import React from "react";
 import { supabase } from "../lib/supabase";
 import SeedDefaults from "./SeedDefaults";
+import InlineEditField from "./InlineEditField";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -88,11 +89,22 @@ export default function PackagesCard({ therapist }) {
     if (data) setPackages(arr => [...arr, ...data]);
   }
 
+  async function updatePackage(id, patch) {
+    const prev = packages.find(p => p.id === id);
+    if (!prev) return;
+    setPackages(arr => arr.map(x => x.id === id ? { ...x, ...patch } : x));
+    const { error } = await supabase.from('packages').update(patch).eq('id', id);
+    if (error) {
+      console.error('updatePackage failed:', error);
+      setPackages(arr => arr.map(x => x.id === id ? prev : x));
+    }
+  }
+
   const perSession = (p) => p.session_count > 0 ? (Number(p.price) / p.session_count).toFixed(0) : '0';
 
   return (
     <div style={{ background:C.white, border:`1.5px solid ${C.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>📦 Packages</p>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>Packages</p>
       <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Multi-session bundles your clients buy upfront, like a 5-pack at a discount. Define them here, then sell to clients from their profile.</p>
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
@@ -114,9 +126,56 @@ export default function PackagesCard({ therapist }) {
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontWeight:600, fontSize:14, color:C.forest }}>{p.name}</div>
-                      <div style={{ fontSize:12, color:C.gray, marginTop:2 }}>
-                        {p.session_count} sessions · ${Number(p.price).toFixed(0)} total · ${perSession(p)}/session
-                        {p.expires_in_days ? ` · expires after ${p.expires_in_days} days` : ''}
+                      <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                        <InlineEditField
+                          value={Number(p.session_count)}
+                          type="number"
+                          suffix="sessions"
+                          min={1}
+                          max={50}
+                          step={1}
+                          width={32}
+                          fontSize={12}
+                          color={C.gray}
+                          ariaLabel={`Sessions in ${p.name}`}
+                          onSave={(v) => updatePackage(p.id, { session_count: v })}
+                        />
+                        <span style={{ color:'#D1D5DB' }}>·</span>
+                        <InlineEditField
+                          value={Number(p.price)}
+                          type="number"
+                          prefix="$"
+                          min={0}
+                          max={9999}
+                          step={10}
+                          width={56}
+                          fontSize={12}
+                          color={C.gray}
+                          ariaLabel={`Total price for ${p.name}`}
+                          onSave={(v) => updatePackage(p.id, { price: v })}
+                        />
+                        <span style={{ color:'#9CA3AF' }}>total</span>
+                        <span style={{ color:'#D1D5DB' }}>·</span>
+                        <span style={{ color:'#9CA3AF' }}>${perSession(p)}/session</span>
+                        {p.expires_in_days != null && (
+                          <>
+                            <span style={{ color:'#D1D5DB' }}>·</span>
+                            <span>expires after </span>
+                            <InlineEditField
+                              value={Number(p.expires_in_days)}
+                              type="number"
+                              suffix="days"
+                              min={1}
+                              max={3650}
+                              step={30}
+                              width={42}
+                              fontSize={12}
+                              color={C.gray}
+                              ariaLabel={`Expires after ${p.name}`}
+                              onSave={(v) => updatePackage(p.id, { expires_in_days: v })}
+                            />
+                          </>
+                        )}
                       </div>
                       {p.description && <div style={{ fontSize:12, color:C.gray, marginTop:2, fontStyle:'italic' }}>{p.description}</div>}
                     </div>

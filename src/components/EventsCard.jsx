@@ -11,6 +11,7 @@
 import React from "react";
 import { supabase } from "../lib/supabase";
 import SeedDefaults from "./SeedDefaults";
+import InlineEditField from "./InlineEditField";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -119,6 +120,17 @@ export default function EventsCard({ therapist }) {
     if (data) setEvents(arr => [...arr, ...data]);
   }
 
+  async function updateEvent(id, patch) {
+    const prev = events.find(e => e.id === id);
+    if (!prev) return;
+    setEvents(arr => arr.map(x => x.id === id ? { ...x, ...patch } : x));
+    const { error } = await supabase.from('events').update(patch).eq('id', id);
+    if (error) {
+      console.error('updateEvent failed:', error);
+      setEvents(arr => arr.map(x => x.id === id ? prev : x));
+    }
+  }
+
   function fmtEventTime(iso) {
     const d = new Date(iso);
     return d.toLocaleString('en-US', { weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
@@ -134,7 +146,7 @@ export default function EventsCard({ therapist }) {
 
   return (
     <div style={{ background:C.white, border:`1.5px solid ${C.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>👥 Classes & Events</p>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>Classes & Events</p>
       <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Group sessions, workshops, and classes. Schedule them here. Clients register via your booking page.</p>
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
@@ -165,9 +177,36 @@ export default function EventsCard({ therapist }) {
                         <div style={{ fontSize:12, color:C.gray }}>
                           {fmtEventTime(e.starts_at)} – {new Date(e.ends_at).toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}
                         </div>
-                        <div style={{ fontSize:12, color:C.gray, marginTop:2 }}>
-                          {e.capacity} spots · ${Number(e.price).toFixed(0)}/person
-                          {e.location ? ` · ${e.location}` : ''}
+                        <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                          <InlineEditField
+                            value={Number(e.capacity)}
+                            type="number"
+                            min={1}
+                            max={500}
+                            step={1}
+                            width={32}
+                            fontSize={12}
+                            color={C.gray}
+                            ariaLabel={`Capacity for ${e.name}`}
+                            onSave={(v) => updateEvent(e.id, { capacity: v })}
+                          />
+                          <span style={{ color:'#9CA3AF' }}>spots</span>
+                          <span style={{ color:'#D1D5DB' }}>·</span>
+                          <InlineEditField
+                            value={Number(e.price)}
+                            type="number"
+                            prefix="$"
+                            suffix="/person"
+                            min={0}
+                            max={9999}
+                            step={5}
+                            width={56}
+                            fontSize={12}
+                            color={C.gray}
+                            ariaLabel={`Price per person for ${e.name}`}
+                            onSave={(v) => updateEvent(e.id, { price: v })}
+                          />
+                          {e.location ? <><span style={{ color:'#D1D5DB' }}>·</span><span>{e.location}</span></> : null}
                         </div>
                         {e.description && <div style={{ fontSize:12, color:C.gray, marginTop:2, fontStyle:'italic' }}>{e.description}</div>}
                       </div>

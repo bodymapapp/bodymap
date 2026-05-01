@@ -10,6 +10,7 @@
 import React from "react";
 import { supabase } from "../lib/supabase";
 import SeedDefaults from "./SeedDefaults";
+import InlineEditField from "./InlineEditField";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -87,9 +88,20 @@ export default function MembershipsCard({ therapist }) {
     if (data) setMemberships(arr => [...arr, ...data]);
   }
 
+  async function updateMembership(id, patch) {
+    const prev = memberships.find(m => m.id === id);
+    if (!prev) return;
+    setMemberships(arr => arr.map(x => x.id === id ? { ...x, ...patch } : x));
+    const { error } = await supabase.from('memberships').update(patch).eq('id', id);
+    if (error) {
+      console.error('updateMembership failed:', error);
+      setMemberships(arr => arr.map(x => x.id === id ? prev : x));
+    }
+  }
+
   return (
     <div style={{ background:C.white, border:`1.5px solid ${C.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>🌟 Memberships</p>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>Memberships</p>
       <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Recurring monthly plans. Members get included sessions and optional discounts. Define tiers here; sign clients up from their profile.</p>
 
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
@@ -111,10 +123,54 @@ export default function MembershipsCard({ therapist }) {
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{ fontWeight:600, fontSize:14, color:C.forest }}>{m.name}</div>
-                      <div style={{ fontSize:12, color:C.gray, marginTop:2 }}>
-                        ${Number(m.monthly_price).toFixed(0)}/mo · {m.monthly_session_credits} session{m.monthly_session_credits !== 1 ? 's' : ''}/mo
-                        {m.addon_discount_percent > 0 ? ` · ${m.addon_discount_percent}% off add-ons` : ''}
-                        {m.max_carryover_credits > 0 ? ` · carry-over up to ${m.max_carryover_credits}` : ''}
+                      <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                        <InlineEditField
+                          value={Number(m.monthly_price)}
+                          type="number"
+                          prefix="$"
+                          suffix="/mo"
+                          min={0}
+                          max={9999}
+                          step={5}
+                          width={56}
+                          fontSize={12}
+                          color={C.gray}
+                          ariaLabel={`Monthly price for ${m.name}`}
+                          onSave={(v) => updateMembership(m.id, { monthly_price: v })}
+                        />
+                        <span style={{ color:'#D1D5DB' }}>·</span>
+                        <InlineEditField
+                          value={Number(m.monthly_session_credits)}
+                          type="number"
+                          min={1}
+                          max={31}
+                          step={1}
+                          width={28}
+                          fontSize={12}
+                          color={C.gray}
+                          ariaLabel={`Sessions per month for ${m.name}`}
+                          onSave={(v) => updateMembership(m.id, { monthly_session_credits: v })}
+                        />
+                        <span style={{ color:'#9CA3AF' }}>session{m.monthly_session_credits !== 1 ? 's' : ''}/mo</span>
+                        {(m.addon_discount_percent > 0 || true) && (
+                          <>
+                            <span style={{ color:'#D1D5DB' }}>·</span>
+                            <InlineEditField
+                              value={Number(m.addon_discount_percent) || 0}
+                              type="number"
+                              suffix="%"
+                              min={0}
+                              max={100}
+                              step={5}
+                              width={32}
+                              fontSize={12}
+                              color={C.gray}
+                              ariaLabel={`Add-on discount for ${m.name}`}
+                              onSave={(v) => updateMembership(m.id, { addon_discount_percent: v })}
+                            />
+                            <span style={{ color:'#9CA3AF' }}>off add-ons</span>
+                          </>
+                        )}
                       </div>
                       {m.description && <div style={{ fontSize:12, color:C.gray, marginTop:2, fontStyle:'italic' }}>{m.description}</div>}
                     </div>

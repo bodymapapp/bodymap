@@ -19,6 +19,7 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
 import SeedDefaults from '../components/SeedDefaults';
+import InlineEditField from '../components/InlineEditField';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -132,6 +133,19 @@ function ServicesAndAvailability({ therapist }) {
     setServices(s => s.filter(x => x.id !== id));
   }
 
+  // Inline-edit save for service price / duration. Optimistic update,
+  // rollback on error.
+  async function updateService(id, patch) {
+    const prev = services.find(s => s.id === id);
+    if (!prev) return;
+    setServices(s => s.map(x => x.id === id ? { ...x, ...patch } : x));
+    const { error } = await supabase.from('services').update(patch).eq('id', id);
+    if (error) {
+      console.error('updateService failed:', error);
+      setServices(s => s.map(x => x.id === id ? prev : x));
+    }
+  }
+
   async function toggleDay(dow) {
     const existing = availability.find(a => a.day_of_week === dow);
     if (existing) {
@@ -202,7 +216,7 @@ function ServicesAndAvailability({ therapist }) {
     <div style={{ marginBottom:20 }}>
       {/* Services */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💆 Services</p>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>Services</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Clients choose from these when booking online.</p>
 
         {/* Existing services */}
@@ -210,9 +224,37 @@ function ServicesAndAvailability({ therapist }) {
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
             {services.map(svc => (
               <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
-                <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                   <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
-                  <span style={{ fontSize:12, color:C2.gray, marginLeft:8 }}>{svc.duration} min · ${svc.price}</span>
+                  <span style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6 }}>
+                    <InlineEditField
+                      value={svc.duration}
+                      type="number"
+                      suffix="min"
+                      min={5}
+                      max={480}
+                      step={5}
+                      width={48}
+                      fontSize={12}
+                      color={C2.gray}
+                      ariaLabel={`Duration for ${svc.name}`}
+                      onSave={(v) => updateService(svc.id, { duration: v })}
+                    />
+                    <span style={{ color:'#D1D5DB' }}>·</span>
+                    <InlineEditField
+                      value={svc.price}
+                      type="number"
+                      prefix="$"
+                      min={0}
+                      max={9999}
+                      step={5}
+                      width={56}
+                      fontSize={12}
+                      color={C2.gray}
+                      ariaLabel={`Price for ${svc.name}`}
+                      onSave={(v) => updateService(svc.id, { price: v })}
+                    />
+                  </span>
                 </div>
                 <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                   {svc.active ? 'On' : 'Off'}
@@ -476,6 +518,17 @@ function ServiceAddonsCard({ therapist }) {
     setAddons(a => a.filter(x => x.id !== id));
   }
 
+  async function updateAddon(id, patch) {
+    const prev = addons.find(a => a.id === id);
+    if (!prev) return;
+    setAddons(a => a.map(x => x.id === id ? { ...x, ...patch } : x));
+    const { error } = await supabase.from('service_addons').update(patch).eq('id', id);
+    if (error) {
+      console.error('updateAddon failed:', error);
+      setAddons(a => a.map(x => x.id === id ? prev : x));
+    }
+  }
+
   async function seedDefaults(indices) {
     const rows = indices.map(i => ({
       therapist_id: therapist.id,
@@ -488,7 +541,7 @@ function ServiceAddonsCard({ therapist }) {
 
   return (
     <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:24, marginBottom:20 }}>
-      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>✨ Service Add-ons</p>
+      <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 6px 0' }}>Add-ons</p>
       <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Optional extras a client can add to any service when booking. Hot Stones, Aromatherapy, Extended Time. Each can change price and optionally extend the appointment.</p>
 
       {loading ? (
@@ -511,7 +564,36 @@ function ServiceAddonsCard({ therapist }) {
                 <div key={a.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:a.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C2.lightGray}`, borderRadius:10, marginBottom:6, opacity:a.active?1:0.55 }}>
                   <div style={{ flex:1, minWidth:0 }}>
                     <div style={{ fontWeight:600, fontSize:14, color:C2.forest }}>{a.name}</div>
-                    <div style={{ fontSize:12, color:C2.gray }}>+${Number(a.price).toFixed(0)}{a.extra_minutes > 0 ? ` · +${a.extra_minutes} min` : ''}</div>
+                    <div style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6, marginTop:2 }}>
+                      <InlineEditField
+                        value={Number(a.price)}
+                        type="number"
+                        prefix="+$"
+                        min={0}
+                        max={999}
+                        step={5}
+                        width={50}
+                        fontSize={12}
+                        color={C2.gray}
+                        ariaLabel={`Price for ${a.name}`}
+                        onSave={(v) => updateAddon(a.id, { price: v })}
+                      />
+                      <span style={{ color:'#D1D5DB' }}>·</span>
+                      <InlineEditField
+                        value={Number(a.extra_minutes) || 0}
+                        type="number"
+                        prefix="+"
+                        suffix="min"
+                        min={0}
+                        max={120}
+                        step={5}
+                        width={42}
+                        fontSize={12}
+                        color={C2.gray}
+                        ariaLabel={`Extra minutes for ${a.name}`}
+                        onSave={(v) => updateAddon(a.id, { extra_minutes: v })}
+                      />
+                    </div>
                   </div>
                   <button onClick={() => toggleAddon(a)} style={{ background:a.active?'#fff':C2.sage, color:a.active?C2.gray:'#fff', border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                     {a.active ? 'Hide' : 'Show'}
@@ -699,7 +781,7 @@ function PushNotificationsCard({ therapist, C2 }) {
   return (
     <div style={{ background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 14, padding: 24, marginBottom: 20 }}>
       <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>
-        🔔 Push Notifications
+        Push Notifications
       </p>
       <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
         <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:4 }}>Why this matters</div>
@@ -843,17 +925,114 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
-  // Settings search: matches against label and summary text on every row,
-  // and on group headings. When active, expands all groups + filters rows
-  // via a CSS-like data-search-text match. Empty string = show everything.
+  // Settings search: matches against label, summary, taxonomy, and a
+  // hand-curated synonym map so common search terms ('billing', 'price',
+  // 'subscription') route to the right rows even though the literal
+  // word isn't in the label.
   const [settingsQuery, setSettingsQuery] = React.useState('');
   const isSearching = settingsQuery.trim().length > 0;
+
+  // Synonym aliases: the key is a search term the user is likely to type,
+  // the value is one or more taxonomy IDs that should match.
+  const SEARCH_ALIASES = React.useMemo(() => ({
+    billing:        ['5.1', '4.2'],
+    subscription:   ['5.1'],
+    price:          ['2.1', '2.2', '2.3', '2.4', '2.5'],
+    pricing:        ['2.1', '2.2', '2.3', '2.4', '2.5'],
+    money:          ['4.2', '5.1'],
+    pay:            ['4.2', '2.1'],
+    stripe:         ['4.2'],
+    square:         ['4.2'],
+    twilio:         ['4.3'],
+    sms:            ['4.3', '3.4'],
+    text:           ['4.3'],
+    email:          ['3.4'],
+    notification:   ['3.3', '3.4'],
+    notifications:  ['3.3', '3.4'],
+    alert:          ['3.3'],
+    intake:         ['1.3', '1.5'],
+    waiver:         ['2.6', '1.5'],
+    schedule:       ['2.1', '1.6'],
+    hours:          ['2.1'],
+    vacation:       ['1.6'],
+    'days off':     ['1.6'],
+    'time off':     ['1.6'],
+    holiday:        ['1.6'],
+    cal:            ['4.1'],
+    calendar:       ['4.1'],
+    booking:        ['1.4', '1.5'],
+    approval:       ['1.5'],
+    qr:             ['1.3'],
+    photo:          ['1.1'],
+    profile:        ['1.1'],
+    name:           ['1.1'],
+    business:       ['1.1', '1.4'],
+    'lapsed':       ['3.5'],
+    pulse:          ['3.2'],
+    'practice pulse': ['3.2'],
+    digest:         ['3.2'],
+    referral:       ['4.4'],
+    refer:          ['4.4'],
+    import:         ['1.2'],
+    csv:            ['1.2'],
+    vagaro:         ['1.2'],
+    massagebook:    ['1.2'],
+    password:       ['5.2'],
+    plan:           ['5.1'],
+    silver:         ['5.1'],
+    gold:           ['5.1'],
+    addon:          ['2.2'],
+    'add-on':       ['2.2'],
+    'add on':       ['2.2'],
+    package:        ['2.3'],
+    membership:     ['2.4', '5.1'],
+    class:          ['2.5'],
+    classes:        ['2.5'],
+    event:          ['2.5'],
+    workshop:       ['2.5'],
+    ai:             ['3.1'],
+    chat:           ['3.1'],
+    push:           ['3.3'],
+  }), []);
+
   const matchesSearch = React.useCallback((label, summary, taxonomy) => {
     if (!isSearching) return true;
     const q = settingsQuery.trim().toLowerCase();
     const haystack = `${label || ''} ${summary || ''} ${taxonomy || ''}`.toLowerCase();
-    return haystack.includes(q);
-  }, [settingsQuery, isSearching]);
+    if (haystack.includes(q)) return true;
+    // Check aliases: if the query matches an alias key (or a key contains
+    // the query as a substring), see if this row's taxonomy is in the
+    // alias's target list.
+    for (const [aliasKey, taxIds] of Object.entries(SEARCH_ALIASES)) {
+      if (aliasKey.includes(q) || q.includes(aliasKey)) {
+        if (taxIds.includes(taxonomy)) return true;
+      }
+    }
+    return false;
+  }, [settingsQuery, isSearching, SEARCH_ALIASES]);
+
+  // Per-group match maps so we can hide entire group headers when no row
+  // inside them matches the active search. Drives both the section
+  // header visibility and the SettingsGroup panel render.
+  const groupMatches = React.useMemo(() => {
+    if (!isSearching) {
+      return { practice: true, offer: true, restEasier: true, plugIn: true, membership: true, anyMatch: true };
+    }
+    const groups = {
+      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV — Vagaro, MassageBook, Square','1.2'],['Client intake & QR codes','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
+      offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Waiver text','','2.6']],
+      restEasier:  [['AI features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
+      plugIn:      [['Cal.com sync','','4.1'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
+      membership:  [['Your plan','','5.1'],['Change password','Set a new password','5.2']],
+    };
+    const result = { anyMatch: false };
+    for (const [key, rows] of Object.entries(groups)) {
+      const has = rows.some(([l,s,t]) => matchesSearch(l, s, t));
+      result[key] = has;
+      if (has) result.anyMatch = true;
+    }
+    return result;
+  }, [isSearching, matchesSearch]);
 
   // Which major SECTION groups are open. Default all open so the page
   // looks identical to before unless user collapses. Tap header to fold.
@@ -1053,6 +1232,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         )}
       </div>
 
+      {groupMatches.practice && (<>
       <SettingsSectionHeader
         title="How I practice"
         sub="The bones of your practice. Who you are, where clients find you, when you take days off."
@@ -1384,7 +1564,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div></CollapsibleSection>
       </>)}
       </SettingsGroup></>)}
+      </>)}
 
+      {groupMatches.offer && (<>
       <SettingsSectionHeader
         title="What I offer"
         sub="Your menu. Services, hours, add-ons, packages, memberships, classes, waiver."
@@ -1473,7 +1655,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
       </>)}
       </SettingsGroup></>)}
+      </>)}
 
+      {groupMatches.restEasier && (<>
       <SettingsSectionHeader
         title="How I rest easier"
         sub="Quiet help working in the background. AI, retention nudges, reminders."
@@ -1604,7 +1788,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div></CollapsibleSection>
       </>)}
       </SettingsGroup></>)}
+      </>)}
 
+      {groupMatches.plugIn && (<>
       <SettingsSectionHeader
         title="How I plug in"
         sub="Connections to the tools and systems you already use."
@@ -1824,7 +2010,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       ><div className="bm-section-bare"><ReferralCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
       </>)}
       </SettingsGroup></>)}
+      </>)}
 
+      {groupMatches.membership && (<>
       <SettingsSectionHeader
         title="My membership"
         sub="Your password and your plan with us."
@@ -1896,6 +2084,27 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       </div></CollapsibleSection>
       </>)}
       </SettingsGroup></>)}
+      </>)}
+
+      {/* Empty state when search returns nothing across all groups. */}
+      {isSearching && !groupMatches.anyMatch && (
+        <div style={{
+          background:'#fff',
+          border:'0.5px solid rgba(31,58,44,0.07)',
+          borderRadius:14,
+          padding:'40px 24px',
+          textAlign:'center',
+          marginTop:8,
+        }}>
+          <div style={{ fontSize:34, marginBottom:10, opacity:0.5 }}>🔍</div>
+          <div style={{ fontFamily:'Georgia,serif', fontSize:18, fontWeight:600, color:'#1F3A2C', marginBottom:6 }}>
+            No settings match "{settingsQuery.trim()}"
+          </div>
+          <div style={{ fontSize:13, color:'#6F7B6C', maxWidth:340, margin:'0 auto', lineHeight:1.5 }}>
+            Try a different word, or tap the × to see everything again. Common terms work too: billing, schedule, payments, time off, intake.
+          </div>
+        </div>
+      )}
     </div>
   );
 }
