@@ -1356,6 +1356,60 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
 
+      {/* Booking flow controls: approval gate + intake-before-booking */}
+      <CollapsibleSection
+        id="bookingflow"
+        label="Booking flow"
+        summary={(() => {
+          const a = !!therapist?.require_approval;
+          const i = !!therapist?.require_intake_before_booking;
+          if (a && i) return 'Approval ON · Intake first ON';
+          if (a) return 'Approval required for new clients';
+          if (i) return 'Intake required before booking';
+          return 'Optional gates · both off';
+        })()}
+        status={(therapist?.require_approval || therapist?.require_intake_before_booking) ? 'done' : 'todo'}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>}
+        isOpen={openRow === 'bookingflow'}
+        onToggle={toggleRow}
+      ><div style={{ padding:'4px 4px' }}>
+        <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Two optional gates for first-time clients only. Returning clients always book straight through.</p>
+
+        {/* Approval gate */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
+            <button onClick={async () => {
+              const newVal = !therapist?.require_approval;
+              await supabase.from('therapists').update({ require_approval: newVal }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_approval?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_approval?21:3, transition:'left 0.2s' }} />
+            </button>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Approve new clients before they book</div>
+              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Intake-first gate */}
+        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px' }}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
+            <button onClick={async () => {
+              const newVal = !therapist?.require_intake_before_booking;
+              await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
+              window.location.reload();
+            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_intake_before_booking?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_intake_before_booking?21:3, transition:'left 0.2s' }} />
+            </button>
+            <div style={{ flex:1 }}>
+              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Require intake form before booking</div>
+              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
+            </div>
+          </div>
+        </div>
+      </div></CollapsibleSection>
+
       {/* SMS / Twilio */}
       <CollapsibleSection
         id="twilio"

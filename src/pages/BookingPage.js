@@ -187,7 +187,16 @@ export default function BookingPage() {
   const [existingBooked,setExistingBooked]=useState([]);
   const [slot,setSlot]=useState(null);
   const [loadingSlots,setLoadingSlots]=useState(false);
-  const [form,setForm]=useState({name:'',email:'',phone:'',sms_opted_in:false});
+  const [form,setForm]=useState(() => {
+    // Prefill from URL params after intake-before-booking redirect.
+    const sp = new URLSearchParams(window.location.search);
+    return {
+      name: sp.get('name') || '',
+      email: sp.get('email') || '',
+      phone: sp.get('phone') || '',
+      sms_opted_in: false,
+    };
+  });
   const [partner,setPartner]=useState({name:'',email:''});
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
@@ -206,6 +215,12 @@ export default function BookingPage() {
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
   const [blockedDates,setBlockedDates]=useState(new Set());
+  // Approval flow: when therapist.require_approval is on AND this is a new
+  // client (no prior booking match), the booking is created as
+  // 'pending-approval' instead of 'confirmed'. Deposits are skipped at
+  // request time, the therapist sends a payment link after approving.
+  const [requiresApproval,setRequiresApproval]=useState(false);
+  const [pendingApproval,setPendingApproval]=useState(false);
 
   useEffect(()=>{load();},[slug]);
   // Compute effective service duration including any selected add-ons.
@@ -283,9 +298,9 @@ export default function BookingPage() {
       addon_total_price: addonTotalPrice,
       addon_extra_minutes: addonExtraMinutes,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
-      status: depositRequired ? 'pending-deposit' : 'confirmed',
-      deposit_required: depositRequired,
-      deposit_amount: depositRequired ? depositAmount : 0,
+      status: requiresApproval ? 'pending-approval' : (depositRequired ? 'pending-deposit' : 'confirmed'),
+      deposit_required: requiresApproval ? false : depositRequired,
+      deposit_amount: requiresApproval ? 0 : (depositRequired ? depositAmount : 0),
       deposit_paid: false,
     }).select().single();
     setSubmitting(false);
@@ -317,14 +332,26 @@ export default function BookingPage() {
           },
           body: JSON.stringify({
             therapist_id: therapist.id,
-            title: `New booking · ${form.name.trim().split(' ')[0]} 🌿`,
-            body: `${bookingDateFmt} at ${slot.start} · ${svc.name} (${svc.duration} min)`,
+            title: requiresApproval
+              ? `New booking REQUEST · ${form.name.trim().split(' ')[0]} 🌿`
+              : `New booking · ${form.name.trim().split(' ')[0]} 🌿`,
+            body: requiresApproval
+              ? `Tap to approve or decline · ${bookingDateFmt} at ${slot.start} · ${svc.name}`
+              : `${bookingDateFmt} at ${slot.start} · ${svc.name} (${svc.duration} min)`,
             url: '/dashboard/schedule',
             tag: `new-booking-${bid}`,
           }),
         }
       ).catch(() => {}); // fire-and-forget
     } catch (e) { /* never block booking on push failure */ }
+
+    // Approval-required path: short-circuit the deposit + couples-partner flow.
+    // Therapist will approve from the dashboard, payment link is sent then.
+    if (requiresApproval) {
+      setPendingApproval(true);
+      setConfirmed(true);
+      return;
+    }
 
     if(depositRequired && therapist.stripe_account_id) {
       console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
@@ -415,6 +442,35 @@ export default function BookingPage() {
   if(notFound) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'system-ui'}}>
       <div style={{textAlign:'center'}}><div style={{fontSize:48,marginBottom:16}}>🌿</div><h2 style={{fontFamily:'Georgia,serif',color:C.dark,margin:'0 0 8px'}}>Page not found</h2><p style={{color:C.gray}}>This booking link doesn't exist.</p></div>
+    </div>
+  );
+
+  if(confirmed && pendingApproval) return (
+    <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',padding:24,fontFamily:'system-ui'}}>
+      <div style={{background:C.white,borderRadius:24,padding:'40px 32px',maxWidth:440,width:'100%',boxShadow:'0 8px 48px rgba(0,0,0,0.1)'}}>
+        <div style={{width:72,height:72,borderRadius:'50%',background:'#FFFBEB',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 20px',fontSize:36}}>🌿</div>
+        <h2 style={{fontFamily:'Georgia,serif',fontSize:26,fontWeight:700,color:C.dark,margin:'0 0 8px',textAlign:'center'}}>Request submitted</h2>
+        <p style={{color:C.gray,fontSize:14,lineHeight:1.7,textAlign:'center',margin:'0 0 20px'}}>
+          Your request for <strong>{svc.name}</strong> on <strong>{fmtShort(date)}</strong> at <strong>{slot.display}</strong> has been sent to {therapist.business_name||therapist.full_name}.
+        </p>
+        <div style={{background:'linear-gradient(135deg,#FFFBEB,#FEF3C7)',border:'1.5px solid #FDE68A',borderRadius:14,padding:'18px 20px',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:6}}>What happens next</div>
+          <div style={{fontSize:13,color:'#78350F',lineHeight:1.6}}>
+            {therapist.full_name?.split(' ')[0]||'Your therapist'} will review your request and reply by email. Most replies come within 24 hours.
+          </div>
+        </div>
+        <div style={{background:'linear-gradient(135deg,#F0FDF4,#DCFCE7)',border:'1.5px solid #86EFAC',borderRadius:14,padding:'20px',marginBottom:16}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#2A5741',marginBottom:6}}>📋 Save time, fill your intake now</div>
+          <div style={{fontSize:13,color:'#374151',marginBottom:14,lineHeight:1.5}}>
+            Filling your body map now means you are ready to go the moment your request is approved.
+          </div>
+          <a href={`/${therapist.custom_url}?name=${encodeURIComponent(form.name)}&email=${encodeURIComponent(form.email)}&phone=${encodeURIComponent(form.phone)}${bookingId?'&booking_id='+bookingId:''}`}
+            style={{display:'block',background:C.forest,color:'#fff',borderRadius:10,padding:'13px 20px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+            Fill My Intake Form →
+          </a>
+        </div>
+        <p style={{fontSize:11,color:C.gray,textAlign:'center',margin:0}}>Confirmation will be sent to {form.email}</p>
+      </div>
     </div>
   );
 
@@ -700,7 +756,33 @@ export default function BookingPage() {
                 if (byName?.length) isRepeat = true;
               }
               setIsRepeatClient(isRepeat);
-              const needsDeposit=therapist.deposit_enabled&&!isRepeat&&!giftCert;
+
+              // Intake-before-booking gate. If the therapist has this on AND
+              // the client is new AND they have not just completed intake
+              // (signaled by intake_completed=1 URL param after redirect),
+              // bounce them to the intake form first. After intake submit,
+              // ClientIntake redirects back here with intake_completed=1 and
+              // their info prefilled.
+              const urlIntakeDone = new URLSearchParams(window.location.search).get('intake_completed') === '1';
+              if (therapist.require_intake_before_booking && !isRepeat && !urlIntakeDone) {
+                const params = new URLSearchParams({
+                  return_to_book: slug,
+                  name: form.name,
+                  email: form.email,
+                  phone: form.phone,
+                });
+                window.location.href = `/${therapist.custom_url}?${params.toString()}`;
+                return;
+              }
+
+              // Approval-required gate. New clients submit a request, returning
+              // clients book directly. When approval is on, deposits are
+              // skipped at request time, the therapist sends a payment link
+              // after approving.
+              const needsApproval = !!therapist.require_approval && !isRepeat;
+              setRequiresApproval(needsApproval);
+
+              const needsDeposit = !needsApproval && therapist.deposit_enabled && !isRepeat && !giftCert;
               setDepositRequired(needsDeposit);
               if(needsDeposit){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
@@ -747,8 +829,8 @@ export default function BookingPage() {
         {step===4&&!depositClientSecret&&!depositLoading&&(
           <div>
             <button onClick={()=>setStep(3)} style={{background:'none',border:'none',color:C.gray,fontSize:13,cursor:'pointer',padding:'0 0 12px',display:'flex',alignItems:'center',gap:4}}>‹ Back</button>
-            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Confirm your booking</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Everything look right? Tap confirm to lock it in.</p>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>{requiresApproval ? 'Submit your request' : 'Confirm your booking'}</h2>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>{requiresApproval ? `${therapist.full_name?.split(' ')[0] || 'Your therapist'} reviews each new client before confirming. You will hear back soon.` : 'Everything look right? Tap confirm to lock it in.'}</p>
             <div style={{background:C.white,borderRadius:16,padding:22,marginBottom:14}}>
               {[
                 ['Service',svc.name],['Duration',`${svc.duration} min`],['Date',fmtDate(date)],
@@ -762,7 +844,16 @@ export default function BookingPage() {
                 </div>
               ))}
             </div>
-            {depositRequired&&!giftCert&&(
+            {requiresApproval&&(
+              <div style={{marginBottom:14,background:'#FFFBEB',border:'1.5px solid #FDE68A',borderRadius:12,padding:'14px 16px',display:'flex',gap:10,alignItems:'flex-start'}}>
+                <span style={{fontSize:18,flexShrink:0}}>🌿</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:3}}>This is a request, not a confirmed booking</div>
+                  <div style={{fontSize:12,color:'#78350F',lineHeight:1.5}}>{therapist.full_name?.split(' ')[0] || 'Your therapist'} reviews each new client. You will get an email when your request is approved or declined. No payment is taken right now.</div>
+                </div>
+              </div>
+            )}
+            {!requiresApproval&&depositRequired&&!giftCert&&(
               <div style={{marginBottom:14,background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:12,padding:'16px',display:'flex',gap:12,alignItems:'flex-start'}}>
                 <span style={{fontSize:22,flexShrink:0}}>💳</span>
                 <div>
@@ -790,9 +881,9 @@ export default function BookingPage() {
             )}
             <button onClick={submit} disabled={submitting}
               style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-              {submitting?'Confirming…':depositRequired?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'}
+              {submitting?(requiresApproval?'Sending…':'Confirming…'):(requiresApproval?'Send Request':(depositRequired?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'))}
             </button>
-            {!depositRequired&&!isRepeatClient&&(
+            {!requiresApproval&&!depositRequired&&!isRepeatClient&&(
               <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
                 No payment now. You'll fill your intake form right after booking.
               </p>

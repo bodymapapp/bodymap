@@ -709,6 +709,10 @@ export default function ScheduleDashboard({ therapist }) {
   const [subView,setSubView]=useState('today');
   const [dayOffset,setDayOffset]=useState(0);
   const [realBookings,setRealBookings]=useState(null);
+  const [pendingApprovalBookings,setPendingApprovalBookings]=useState([]);
+  const [actioningId,setActioningId]=useState(null);
+  const [declineFor,setDeclineFor]=useState(null); // booking id we're collecting decline reason for
+  const [declineReason,setDeclineReason]=useState('');
   const [loading,setLoading]=useState(true);
   const [today] = useState(getToday);
   const SAMPLE = makeSample(today);
@@ -767,12 +771,37 @@ export default function ScheduleDashboard({ therapist }) {
         .order('booking_date')
         .order('start_time');
 
-      if (error || !bookings?.length) { setRealBookings([]); setLoading(false); return; }
+      if (error || !bookings?.length) { setRealBookings([]); setPendingApprovalBookings([]); setLoading(false); return; }
+
+      // Split pending-approval rows out so they live in their own panel.
+      // The confirmed schedule should not show requests as if they were
+      // already on the books.
+      const pendingRows = (bookings || []).filter(b => b.status === 'pending-approval');
+      const confirmedRows = (bookings || []).filter(b => b.status !== 'pending-approval');
+
+      setPendingApprovalBookings(pendingRows.map(b => ({
+        id: b.id,
+        client: b.client_name,
+        email: (b.client_email || '').toLowerCase().trim(),
+        phone: b.client_phone || '',
+        date: b.booking_date,
+        time: b.start_time ? fmt12(b.start_time.slice(0,5)) : '',
+        startTime: (b.start_time || '').slice(0,5),
+        service: b.services?.name || 'Session',
+        duration: b.services?.duration || 60,
+        price: b.services?.price || 0,
+        sms_opted_in: !!b.sms_opted_in,
+        created_at: b.created_at,
+      })));
+
+      // Continue with confirmedRows for the main schedule mapping below.
+      const bookingsForSchedule = confirmedRows;
+      if (!bookingsForSchedule.length) { setRealBookings([]); setLoading(false); return; }
 
       // Single condition: a booking has intake done if and only if a session
       // exists with booking_id = this booking's id. ClientIntake now always
       // resolves booking_id at save time, so this is the only check needed.
-      const bookingIds = bookings.map(b => b.id);
+      const bookingIds = bookingsForSchedule.map(b => b.id);
       const { data: sessions } = await supabase
         .from('sessions')
         .select('id, booking_id, client_id')
@@ -785,7 +814,7 @@ export default function ScheduleDashboard({ therapist }) {
         if (s.booking_id) sessionMap[s.booking_id] = { id: s.id, client_id: s.client_id };
       });
 
-      const mapped = bookings.map(b => {
+      const mapped = bookingsForSchedule.map(b => {
         const bd = new Date(b.booking_date + 'T12:00:00'); bd.setHours(0,0,0,0);
         const [h, m] = (b.start_time || '00:00').slice(0,5).split(':').map(Number);
         const sessionInfo = sessionMap[b.id] || null;
@@ -832,6 +861,39 @@ export default function ScheduleDashboard({ therapist }) {
       setRealBookings([]);
     }
     setLoading(false);
+  }
+
+  async function handleApproval(bookingId, action, reason) {
+    setActioningId(bookingId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/booking-approval`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ booking_id: bookingId, action, reason: reason || null }),
+        }
+      );
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json.error || 'Could not update the request. Please try again.');
+        setActioningId(null);
+        return;
+      }
+      setActioningId(null);
+      setDeclineFor(null);
+      setDeclineReason('');
+      fetchBookings();
+    } catch (e) {
+      console.error('booking-approval error:', e);
+      setActioningId(null);
+      alert('Something went wrong. Please try again.');
+    }
   }
 
   // FIX: only show sample when upcoming real bookings < 3 (not total)
@@ -925,6 +987,72 @@ export default function ScheduleDashboard({ therapist }) {
             }
           </div>
         )}
+
+      {/* Pending booking requests, only shown when therapist has approval
+          required and at least one new-client request is waiting. */}
+      {pendingApprovalBookings.length > 0 && (
+        <div style={{background:'#FFFBEB',border:'1.5px solid #FDE68A',borderRadius:14,padding:'18px 18px 14px',marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+            <span style={{fontSize:18}}>🌿</span>
+            <div style={{fontSize:15,fontWeight:700,color:'#92400E',fontFamily:'Georgia,serif'}}>
+              Pending requests <span style={{background:'#FDE68A',color:'#92400E',borderRadius:20,padding:'2px 9px',fontSize:12,marginLeft:4}}>{pendingApprovalBookings.length}</span>
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:10}}>
+            {pendingApprovalBookings.map(req => {
+              const reqDate = new Date(req.date + 'T12:00:00');
+              const dateLabel = reqDate.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+              const isDeclining = declineFor === req.id;
+              const isActioning = actioningId === req.id;
+              return (
+                <div key={req.id} style={{background:'#fff',borderRadius:10,padding:'14px 14px 12px',border:'1px solid #FDE68A'}}>
+                  <div style={{display:'flex',alignItems:'flex-start',gap:10,marginBottom:10}}>
+                    <div style={{width:38,height:38,borderRadius:'50%',background:ac(req.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,flexShrink:0}}>{initials(req.client)}</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontSize:14,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif'}}>{req.client}</div>
+                      <div style={{fontSize:12,color:'#6B7280',marginTop:1}}>{dateLabel} at {req.time} · {req.service} ({req.duration} min)</div>
+                      <div style={{fontSize:11,color:'#9CA3AF',marginTop:1}}>{req.email}{req.phone ? ` · ${req.phone}` : ''}</div>
+                    </div>
+                  </div>
+                  {!isDeclining ? (
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={() => handleApproval(req.id, 'approve')}
+                        disabled={isActioning}
+                        style={{flex:1,background:isActioning?'#86EFAC':'#16A34A',color:'#fff',border:'none',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:700,cursor:isActioning?'wait':'pointer',whiteSpace:'nowrap'}}>
+                        {isActioning ? '…' : '✓ Approve'}
+                      </button>
+                      <button onClick={() => { setDeclineFor(req.id); setDeclineReason(''); }}
+                        disabled={isActioning}
+                        style={{flex:1,background:'#fff',color:'#DC2626',border:'1.5px solid #FECACA',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:700,cursor:isActioning?'not-allowed':'pointer',whiteSpace:'nowrap'}}>
+                        Decline
+                      </button>
+                    </div>
+                  ) : (
+                    <div>
+                      <textarea value={declineReason} onChange={e=>setDeclineReason(e.target.value)}
+                        placeholder="Optional message to the client (they will see this in their email)"
+                        rows={3}
+                        style={{width:'100%',padding:'9px 11px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,resize:'vertical',fontFamily:'system-ui',outline:'none',boxSizing:'border-box',marginBottom:8}} />
+                      <div style={{display:'flex',gap:8}}>
+                        <button onClick={() => handleApproval(req.id, 'decline', declineReason.trim() || null)}
+                          disabled={isActioning}
+                          style={{flex:1,background:isActioning?'#FECACA':'#DC2626',color:'#fff',border:'none',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:700,cursor:isActioning?'wait':'pointer'}}>
+                          {isActioning ? '…' : 'Send decline'}
+                        </button>
+                        <button onClick={() => { setDeclineFor(null); setDeclineReason(''); }}
+                          disabled={isActioning}
+                          style={{background:'#F3F4F6',color:'#6B7280',border:'none',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:600,cursor:isActioning?'not-allowed':'pointer'}}>
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Stats, compact on mobile */}
       {window.innerWidth < 768 ? (
