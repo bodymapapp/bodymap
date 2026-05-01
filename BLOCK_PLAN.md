@@ -204,6 +204,11 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
+- Outreach upgraded: AI starter (8 categories), expanded tokens, subject, unsubscribe, history → `9fd7ffa9`
+- Migration: outreach_sends history + clients.outreach_unsubscribed → `cc0c77b9`
+- Settings: tappable inline edit, smarter search with synonyms, emoji-free polish → `70f07c66`
+- Settings visual upgrade: Apple Settings style grouped panels → `69ced7ac`
+- Fix: leaked '*/}' comment fragment + helper-script hardening → `3cf1bb67`
 - Why-this-matters benefit framing on AI / Practice Pulse / Push (Ship 5) → `fc05975f`
 - Defaults seeding for Add-ons / Packages / Memberships / Classes (Ship 4) → `1f963c3e`
 - Settings IA refactor: 5 groups, taxonomy, time badges, search bar (Ship 3) → `53eb1beb`
