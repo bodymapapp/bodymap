@@ -16,6 +16,7 @@ import EventsCard from '../components/EventsCard';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import CollapsibleSection from '../components/CollapsibleSection';
+import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
 import SeedDefaults from '../components/SeedDefaults';
 import OnboardingChecklist from '../components/OnboardingChecklist';
@@ -1060,7 +1061,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={() => toggleSection('practice')}
       />
 
-      {(isSearching || openSections.practice) && (<>
+      {(isSearching || openSections.practice) && (<><SettingsGroup>
       {matchesSearch('Your info', '', '1.1') && (<>
       <CollapsibleSection
         id="profile"
@@ -1382,7 +1383,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         }
       </div></CollapsibleSection>
       </>)}
-      </>)}
+      </SettingsGroup></>)}
 
       <SettingsSectionHeader
         title="What I offer"
@@ -1392,7 +1393,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={() => toggleSection('offer')}
       />
 
-      {(isSearching || openSections.offer) && (<>
+      {(isSearching || openSections.offer) && (<><SettingsGroup>
       {matchesSearch('Services & hours', 'Your menu, weekly hours, deposits, buffer', '2.1') && (<>
       <CollapsibleSection
         id="services"
@@ -1471,7 +1472,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={toggleRow}
       ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
       </>)}
-      </>)}
+      </SettingsGroup></>)}
 
       <SettingsSectionHeader
         title="How I rest easier"
@@ -1481,7 +1482,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={() => toggleSection('restEasier')}
       />
 
-      {(isSearching || openSections.restEasier) && (<>
+      {(isSearching || openSections.restEasier) && (<><SettingsGroup>
       {matchesSearch('AI features', '', '3.1') && (<>
       <CollapsibleSection
         id="ai"
@@ -1602,7 +1603,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div></CollapsibleSection>
       </>)}
-      </>)}
+      </SettingsGroup></>)}
 
       <SettingsSectionHeader
         title="How I plug in"
@@ -1612,7 +1613,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={() => toggleSection('plugIn')}
       />
 
-      {(isSearching || openSections.plugIn) && (<>
+      {(isSearching || openSections.plugIn) && (<><SettingsGroup>
       {matchesSearch('Cal.com sync', '', '4.1') && (<>
       <CollapsibleSection
         id="cal"
@@ -1822,7 +1823,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ReferralCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
       </>)}
-      </>)}
+      </SettingsGroup></>)}
 
       <SettingsSectionHeader
         title="My membership"
@@ -1832,7 +1833,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={() => toggleSection('membership')}
       />
 
-      {(isSearching || openSections.membership) && (<>
+      {(isSearching || openSections.membership) && (<><SettingsGroup>
       {matchesSearch('Your plan', '', '5.1') && (<>
       <CollapsibleSection
         id="plan"
@@ -1894,7 +1895,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div></CollapsibleSection>
       </>)}
-      </>)}
+      </SettingsGroup></>)}
     </div>
   );
 }

@@ -1,46 +1,87 @@
 // src/components/CollapsibleSection.jsx
 //
-// The expand-on-tap row that turns Settings from a 22-card scroll into a
-// summary list. Closed state shows: status dot + label + live summary +
-// chevron. Open state additionally renders children below.
+// Apple Settings style expandable row. Closed: status indicator,
+// icon, label + summary line, time badge inline, chevron.
+// Open: same row chrome plus body content below.
 //
-// Designed mobile-first (380px) but holds at desktop (max-width container
-// imposed by parent). Tap target is the entire summary row (min-height 56px
-// for accessibility on the 70-year-old persona).
+// Visual hierarchy (calmest -> loudest, from screenshot critique):
+//   - Taxonomy "1.1" tiny mono number, top-left of icon column,
+//     dim sage gray. Doesn't compete with the label.
+//   - Icon: 22px sage stroke, left of label
+//   - Label: 15px regular, forest ink, primary
+//   - Summary: 12.5px gray, secondary, with optional time badge
+//     INLINE before the summary text (chip is now small and pale)
+//   - Status dot: only shown for "todo" or "attn", hidden when "done"
+//     (cleaner, less green-checkmark fatigue)
+//   - Chevron: 10px, very light, only stroke
+//
+// `grouped` prop (default true): drops per-row border, radius, and
+// marginBottom so rows can sit inside a SettingsGroup container with
+// hairline dividers.
 
 import React from "react";
 
 const C = {
   cream: '#FAF4E8',
   creamSoft: '#FAF7EE',
+  pageBeige: '#FBF8F1',
   forest: '#2A5741',
   forestInk: '#1F3A2C',
-  sage: '#6B9E80',
-  sageMute: '#98A395',
+  sage: '#7A9C84',
+  sageMute: '#9CB0A0',
   gold: '#C9A84C',
-  goldText: '#8B6F25',
-  border: 'rgba(31,58,44,0.08)',
-  borderHover: 'rgba(31,58,44,0.14)',
+  goldText: '#B0902F',
+  goldChip: '#FBF4DC',
+  goldChipBorder: 'rgba(201,168,76,0.22)',
+  border: 'rgba(31,58,44,0.07)',
+  borderHover: 'rgba(31,58,44,0.12)',
   ink: '#1F3A2C',
-  inkSoft: '#6B7C68',
+  inkSoft: '#6F7B6C',
+  numTaxonomy: '#A8B3A4',
 };
 
-function StatusDot({ status }) {
-  if (status === 'done') {
-    return (
-      <div style={{ width: 16, height: 16, borderRadius: '50%', background: C.forest, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="#F0EAD9" strokeWidth="2.5" strokeLinecap="round"><path d="M3 6l2 2 4-4"/></svg>
-      </div>
-    );
-  }
+function StatusIndicator({ status }) {
+  // Don't show anything for "done" — completed setup is uneventful by
+  // default. This calms the right edge of every row.
+  if (status === 'done') return null;
   if (status === 'attn') {
     return (
-      <div style={{ width: 16, height: 16, borderRadius: '50%', background: C.gold, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke={C.forest} strokeWidth="2.4" strokeLinecap="round"><path d="M6 3v3M6 8.5h.01"/></svg>
+      <div style={{
+        width: 14, height: 14, borderRadius: '50%',
+        background: C.gold, display: 'flex',
+        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+      }}>
+        <svg width="8" height="8" viewBox="0 0 12 12" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+          <path d="M6 3v3M6 8.5h.01"/>
+        </svg>
       </div>
     );
   }
-  return <div style={{ width: 16, height: 16, borderRadius: '50%', border: `1.4px solid #C8CDC4`, flexShrink: 0 }} />;
+  // todo: hollow ring, calm
+  return (
+    <div style={{
+      width: 13, height: 13, borderRadius: '50%',
+      border: `1.4px solid #C8CDC4`, flexShrink: 0,
+    }} />
+  );
+}
+
+function TimeChip({ children }) {
+  return (
+    <span style={{
+      fontSize: 10.5,
+      color: C.goldText,
+      background: C.goldChip,
+      border: `1px solid ${C.goldChipBorder}`,
+      padding: '2px 7px',
+      borderRadius: 9,
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      letterSpacing: '0.01em',
+      verticalAlign: 'middle',
+      marginRight: 6,
+    }}>{children}</span>
+  );
 }
 
 export default function CollapsibleSection({
@@ -54,11 +95,20 @@ export default function CollapsibleSection({
   hidden = false,
   taxonomy,   // e.g. "1.1"
   timeBadge,  // e.g. "~30s"
+  grouped = true,
   children,
 }) {
   if (hidden) return null;
 
   const handleClick = () => onToggle && onToggle(id);
+
+  const rowChrome = grouped ? {} : {
+    background: '#fff',
+    borderRadius: 14,
+    marginBottom: 8,
+    overflow: 'hidden',
+    border: `0.5px solid ${C.border}`,
+  };
 
   return (
     <div
@@ -66,12 +116,9 @@ export default function CollapsibleSection({
       data-taxonomy={taxonomy || ''}
       data-search-text={`${label || ''} ${summary || ''}`.toLowerCase()}
       style={{
-        background: '#fff',
-        borderRadius: 14,
-        marginBottom: 8,
-        overflow: 'hidden',
-        border: `0.5px solid ${C.border}`,
-        transition: 'border-color 0.15s',
+        ...rowChrome,
+        transition: 'background 0.12s',
+        background: isOpen ? C.creamSoft : (grouped ? 'transparent' : '#fff'),
       }}
     >
       <div
@@ -83,97 +130,92 @@ export default function CollapsibleSection({
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: '14px 16px',
+          padding: '12px 14px',
           cursor: 'pointer',
           userSelect: 'none',
-          minHeight: 56,
-          background: isOpen ? C.creamSoft : '#fff',
-          transition: 'background 0.12s',
+          minHeight: 54,
         }}
-        onMouseEnter={(e) => { if (!isOpen) e.currentTarget.style.background = C.creamSoft; }}
-        onMouseLeave={(e) => { if (!isOpen) e.currentTarget.style.background = '#fff'; }}
       >
-        {icon && (
-          <div style={{ width: 24, height: 24, color: C.sage, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {icon}
-          </div>
-        )}
+        {/* Taxonomy + icon column. Stacks them vertically: the taxonomy
+            number sits above the icon as a tiny mono cap, not inline
+            with the label so it doesn't compete. */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          width: 28,
+          flexShrink: 0,
+          gap: 2,
+        }}>
+          {taxonomy && (
+            <span style={{
+              fontSize: 9.5,
+              color: C.numTaxonomy,
+              fontWeight: 600,
+              letterSpacing: '0.02em',
+              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              fontVariantNumeric: 'tabular-nums',
+              lineHeight: 1,
+            }}>{taxonomy}</span>
+          )}
+          {icon && (
+            <div style={{
+              width: 22, height: 22, color: C.sage,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              {icon}
+            </div>
+          )}
+        </div>
+
+        {/* Label + summary column */}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 8,
-            margin: 0,
-            lineHeight: 1.25,
+            fontSize: 15,
+            fontWeight: 500,
+            color: C.forestInk,
+            lineHeight: 1.3,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            letterSpacing: '-0.005em',
           }}>
-            {taxonomy && (
-              <span style={{
-                fontSize: 11,
-                color: '#B5BEB1',
-                fontWeight: 500,
-                letterSpacing: '0.02em',
-                fontVariantNumeric: 'tabular-nums',
-                flexShrink: 0,
-              }}>{taxonomy}</span>
-            )}
-            <span style={{
-              fontSize: 14.5,
-              fontWeight: 500,
-              color: C.forestInk,
-              flex: 1,
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-            }}>
-              {label}
-            </span>
-            {timeBadge && (
-              <span style={{
-                fontSize: 10.5,
-                color: '#8B6F25',
-                background: '#FAF4E8',
-                border: '1px solid rgba(201,168,76,0.3)',
-                padding: '2px 7px',
-                borderRadius: 10,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-                flexShrink: 0,
-              }}>{timeBadge}</span>
-            )}
+            {label}
           </div>
-          {summary && (
+          {(summary || timeBadge) && (
             <div style={{
-              fontSize: 12,
+              fontSize: 12.5,
               color: C.inkSoft,
               margin: '3px 0 0',
               whiteSpace: 'nowrap',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              lineHeight: 1.3,
+              lineHeight: 1.35,
             }}>
+              {timeBadge && <TimeChip>{timeBadge}</TimeChip>}
               {summary}
             </div>
           )}
         </div>
-        <StatusDot status={status} />
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 12 12"
-          fill="none"
-          stroke={isOpen ? C.forest : '#B5BEB1'}
-          strokeWidth="1.7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          style={{
-            flexShrink: 0,
-            transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-            transition: 'transform 0.18s',
-          }}
-        >
-          <path d="M4 2l4 4-4 4" />
-        </svg>
+
+        {/* Right rail: status indicator + chevron */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <StatusIndicator status={status} />
+          <svg
+            width="10" height="10" viewBox="0 0 12 12"
+            fill="none"
+            stroke={isOpen ? C.forest : '#B5BEB1'}
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{
+              transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.18s',
+            }}
+          >
+            <path d="M4 2l4 4-4 4"/>
+          </svg>
+        </div>
       </div>
 
       {isOpen && (
