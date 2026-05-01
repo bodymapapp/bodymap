@@ -251,6 +251,18 @@ export const RIBBONS = [
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
     cards: [
       {
+        id: "5.0",
+        name: "Personalized campaign emails",
+        automated: false,
+        link: "/campaigns",
+        linkLabel: "See it in action",
+        body: [
+          "One message, every recipient sees their own first name, last visit, last service. Pick a segment (lapsed, regulars, never-rebooked, custom). Tap an AI starter (Mother's Day, vacation, new service, special offer, holiday hours, weather closure, anniversary, reactivate-lapsed) and Claude drafts the email in your voice.",
+          'MassageBook publicly admits this works in their automated emails but not their campaigns. We do both.',
+        ],
+        meta: "Email · 8 AI starters · 7 personalization tokens · Send history",
+      },
+      {
         id: "5.1",
         name: "Automated reminders",
         automated: true,

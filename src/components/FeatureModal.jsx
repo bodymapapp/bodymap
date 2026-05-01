@@ -108,6 +108,25 @@ export default function FeatureModal({ card, ribbon, onClose }) {
             {card.meta && (
               <div className="bm-feature-modal__meta">{card.meta}</div>
             )}
+            {card.link && (
+              <a
+                href={card.link}
+                style={{
+                  display: "inline-block",
+                  marginTop: 16,
+                  background: "#2A5741",
+                  color: "#fff",
+                  textDecoration: "none",
+                  padding: "11px 20px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  boxShadow: "0 2px 8px rgba(42,87,65,0.20)",
+                }}
+              >
+                {card.linkLabel || "Learn more"} →
+              </a>
+            )}
           </div>
         </div>
       )}
