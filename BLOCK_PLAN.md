@@ -15,6 +15,7 @@ Last refreshed: 2026-04-29 — after Twilio setup discussion + Noterro research.
 1. **Twilio setup in progress** — HK has authorized investing. Step-by-step in the Twilio dashboard tonight. After purchase + creds, he will plug in to MyBodyMap and broadcast to 23 textable users.
 2. **A2P 10DLC registration** — required for US production sends. Sole proprietor low-volume path. ~$4 brand fee + $10/mo campaign. 1-3 business days approval.
 3. **Mass broadcast pending** — wait until Twilio number provisioned + 10DLC approved before sending to all 23.
+4. **Notify Leela** — booking approval and intake-before-booking gates are live. She signed up after the FB thread. Joy DM: "Hey Leela, the approval and intake-first toggles you wanted are live in your Settings under How I practice → Booking flow. Both default OFF so nothing changes unless you turn them on. Holler if anything looks off."
 
 ## TIER A — ship in next 2-4 weeks (highest leverage)
 
@@ -203,6 +204,10 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
+- Intake-before-booking gate: redirect new clients to intake form first → `48397be1`
+- Booking approval flow: pending requests panel + approve/decline + Joy emails → `006c7866`
+- Migration: booking approval + intake-before-booking gates + auto-run workflow → `9b98d31b`
+- Operating rhythm: tappable A/B/C decisions, no implementation detail in plans → `085ae0b9`
 - Mass SMS: Google Voice channel + 10-word default + Noterro research → `35b830b4`
 - Settings: auto-update booking-link slug when business name changes → `3bab2aaa`
 - Mass SMS: prominent test mode toggle → `af1a4c40`
