@@ -700,6 +700,10 @@ function PushNotificationsCard({ therapist, C2 }) {
       <p style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em', color: C2.gray, margin: '0 0 6px 0' }}>
         🔔 Push Notifications
       </p>
+      <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 14px', marginBottom:12 }}>
+        <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:4 }}>Why this matters</div>
+        <p style={{ fontSize:12, color:'#166534', margin:0, lineHeight:1.55 }}>The faster you reply to a new booking or a client message, the more likely they stay. A 5-minute reply turns a maybe into a yes. Push lets you respond from your phone the moment something happens, instead of finding out hours later when you check email.</p>
+      </div>
       <p style={{ fontSize: '12px', color: C2.gray, margin: '0 0 16px 0', lineHeight: 1.5 }}>
         Get a tap on your phone when something matters, a new booking, a client reply, a gift card redemption. Works on your iPhone after you install MyBodyMap to your home screen.
       </p>
@@ -1490,7 +1494,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'ai'}
         onToggle={toggleRow}
       ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>MyBodyMap AI chat, pre-session briefs, and the Practice Pulse digest. Turn off if you prefer a fully manual workflow. Your data is unchanged either way.</p>
+        <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:4 }}>Why this matters</div>
+          <p style={{ fontSize:12, color:'#166534', margin:0, lineHeight:1.55 }}>Pre-session briefs save 10 minutes of prep before each appointment. AI chat answers questions like "who's overdue?" without you scrolling through your client list. Pattern detection flags clients showing the same complaint for the third time. All trained on your own session notes, never shared.</p>
+        </div>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Your data is unchanged either way. Turn off if you prefer a fully manual workflow.</p>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <button onClick={toggleAi}
@@ -1516,7 +1524,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'pulse'}
         onToggle={toggleRow}
       ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent to you each evening, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
+        <div style={{ background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:10, padding:'12px 14px', marginBottom:14 }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#15803D', marginBottom:4 }}>Why this matters</div>
+          <p style={{ fontSize:12, color:'#166534', margin:0, lineHeight:1.55 }}>Most therapists check their schedule reactively. Practice Pulse turns that into a 60-second evening review. You see who's coming tomorrow (so you can prep), who's been quiet 30+ days (so you can reach out before they're gone), and which sessions need follow-up notes. One email replaces six places you'd otherwise have to look.</p>
+        </div>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>A short daily email sent at 6pm, sessions today, who's coming tomorrow, who's overdue, and who just went quiet. Opens in 10 seconds.</p>
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
           <div style={{ display:'flex', alignItems:'center', gap:10 }}>
             <button onClick={togglePulse}
