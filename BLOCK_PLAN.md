@@ -216,6 +216,28 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - Settings v3 Phase 1B: Collapse-on-tap rows → `3c71bc0d`
 - Settings v3 Phase 1A: Personal hero, botanical leaf, categorical headers → `cdf3a056`
 
+## OPERATING RHYTHM (HARD RULES)
+
+How HK and Claude work together every session. Survives compaction.
+
+1. **Plans surface tradeoffs, not implementation detail.** No "files touched" lists. No code paths. No migration column names in the plan. HK does not need to know which file is being edited. He needs to know what is being built, what it costs, and what tradeoffs exist.
+
+2. **Decisions are tappable.** Every decision HK makes is presented as A / B / C (or 1 / 2 / 3). HK reviews on iPhone. He should never have to type a sentence to make a choice.
+
+3. **Plans answer four questions only:**
+   - What is being built (one or two sentences per feature)
+   - What tradeoffs exist (the real choices)
+   - How long it takes (honest hours)
+   - What order things ship in
+
+4. **Confirm scope before code.** For anything multi-hour, lay out the plan, get HK's tap-decisions, then build. Do not start coding while waiting for decisions.
+
+5. **Report after shipping in 3-5 lines.** What shipped, the commit SHA, what to test, anything that needs HK's manual touch.
+
+6. **Never claim async work.** Claude only runs when HK is in chat. If a task needs 4 hours, say so and iterate commit by commit.
+
+7. **Customer-facing voice is always Joy / MyBodyMap Team.** Never HK or initials. Never em dashes anywhere.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
