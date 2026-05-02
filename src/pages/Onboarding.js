@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { seedNewTherapistDefaults } from '../lib/seedDefaults';
 
 const C = { sage: '#6B9E80', forest: '#2A5741', gray: '#6B7280', darkGray: '#1F2937', lightGray: '#F9FAFB', red: '#DC2626' };
 
@@ -95,6 +96,10 @@ export default function Onboarding() {
     }, { onConflict: 'id' }).select().single();
     if (dbError) { setError(dbError.message); setLoading(false); return; }
     if (data) {
+      // Auto-seed catalog defaults so the dashboard isn't a blank canvas.
+      // Backs the "Up and running in 2 minutes" marketing claim. Idempotent
+      // (safe even if user re-onboards) and non-blocking.
+      seedNewTherapistDefaults(user.id).catch(() => {});
       // Fire welcome email (server-side edge function handles BCC to bodymapdemo@gmail.com).
       // Non-blocking, don't make the dashboard redirect wait.
       try {

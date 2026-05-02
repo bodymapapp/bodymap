@@ -1,6 +1,7 @@
 // src/contexts/AuthContext.js
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '../lib/supabase';
+import { seedNewTherapistDefaults } from '../lib/seedDefaults';
 
 const AuthContext = createContext({});
 export const useAuth = () => useContext(AuthContext);
@@ -45,6 +46,10 @@ export const AuthProvider = ({ children }) => {
                   plan: 'silver',
                   trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
                 }]);
+                // Auto-seed catalog defaults so the dashboard isn't a blank canvas.
+                // Backs the "Up and running in 2 minutes" marketing claim. Idempotent
+                // and non-blocking; if any seed step fails, signup still completes.
+                seedNewTherapistDefaults(u.id).catch(() => {});
                 // Welcome email (non-blocking), edge function BCCs bodymapdemo@gmail.com
                 try {
                   const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
@@ -117,6 +122,10 @@ export const AuthProvider = ({ children }) => {
         trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
       }]);
       if (dbError) throw dbError;
+      // Auto-seed catalog defaults so the dashboard isn't a blank canvas.
+      // Backs the "Up and running in 2 minutes" marketing claim. Idempotent
+      // and non-blocking; if any seed step fails, signup still completes.
+      seedNewTherapistDefaults(authData.user.id).catch(() => {});
       // Fetch back to confirm insert and set state
       const { data: newT } = await supabase.from('therapists').select('*').eq('id', authData.user.id).single();
       if (newT) setTherapist(newT);
