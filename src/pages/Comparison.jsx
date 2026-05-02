@@ -260,7 +260,7 @@ function CategoryCard({ cat }) {
       overflow: "hidden",
       marginBottom: 12,
     }}>
-      {/* Card header bar */}
+      {/* Card header bar — title only, no subtitle */}
       <div style={{
         display: "flex", alignItems: "baseline", gap: 10,
         padding: "10px 14px",
@@ -269,10 +269,10 @@ function CategoryCard({ cat }) {
       }}>
         <span style={{ fontSize: 11, color: C.gold, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em" }}>{cat.id}</span>
         <h3 style={{ fontFamily: "Georgia, serif", fontSize: 15.5, fontWeight: 700, color: C.forestInk, margin: 0, letterSpacing: "-0.005em" }}>{cat.name}</h3>
-        <span style={{ fontSize: 11.5, color: C.inkSofter, marginLeft: "auto" }}>{cat.sub}</span>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      {/* Scroll container with bounded height — what makes <thead position:sticky> fire */}
+      <div style={{ overflow: "auto", maxHeight: 520 }}>
         <table style={{ width: "100%", minWidth: 720, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "32%" }} />
@@ -280,14 +280,15 @@ function CategoryCard({ cat }) {
           </colgroup>
           <thead>
             <tr>
-              <th style={{ padding: "8px 12px 6px", borderBottom: `1.5px solid ${C.borderStrong}`, textAlign: "left" }}>
+              <th style={{ position: "sticky", top: 0, zIndex: 2, background: "#fff", padding: "8px 12px 6px", borderBottom: `1.5px solid ${C.borderStrong}`, textAlign: "left" }}>
                 <span style={{ fontSize: 10, color: C.inkSofter, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Feature</span>
               </th>
               {PLATFORMS.map((p) => (
                 <th key={p.id} style={{
+                  position: "sticky", top: 0, zIndex: 2,
                   padding: "6px 4px",
                   borderBottom: `1.5px solid ${p.highlight ? C.forest : C.borderStrong}`,
-                  background: p.highlight ? C.yesBg : "transparent",
+                  background: p.highlight ? C.yesBg : "#fff",
                   textAlign: "center",
                   lineHeight: 1.15,
                 }}>
@@ -305,20 +306,17 @@ function CategoryCard({ cat }) {
               return (
                 <tr key={i}>
                   <td style={{
-                    padding: "8px 12px",
+                    padding: "10px 12px",
                     fontSize: 12.5,
                     color: C.ink,
                     borderBottom: isLast ? "none" : `1px solid ${C.border}`,
                     lineHeight: 1.4,
                   }}>
-                    <div>{row.f}</div>
-                    {row.note && (
-                      <span style={{ fontSize: 10.5, color: C.inkSofter, fontStyle: "italic", display: "block", marginTop: 2, lineHeight: 1.35 }}>{row.note}</span>
-                    )}
+                    {row.f}
                   </td>
                   {PLATFORMS.map((p) => (
                     <td key={p.id} style={{
-                      textAlign: "center", padding: "7px 4px",
+                      textAlign: "center", padding: "8px 4px",
                       borderBottom: isLast ? "none" : `1px solid ${C.border}`,
                       background: p.highlight ? "rgba(232, 240, 234, 0.4)" : "transparent",
                     }}>
@@ -381,7 +379,6 @@ export default function Comparison() {
             <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
               <span style={{ fontSize: 11, color: C.gold, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em" }}>0.0</span>
               <h3 style={{ fontFamily: "Georgia, serif", fontSize: 15.5, fontWeight: 700, color: C.forestInk, margin: 0, letterSpacing: "-0.005em" }}>Five questions therapists ask first</h3>
-              <span style={{ fontSize: 11.5, color: C.inkSofter, marginLeft: "auto" }}>Quick scan before the categories</span>
             </div>
           </div>
           <div style={{ overflowX: "auto" }}>
