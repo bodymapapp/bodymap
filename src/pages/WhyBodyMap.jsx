@@ -257,6 +257,19 @@ export default function WhyBodyMap() {
         </p>
       </section>
 
+      {/* Switcher CTA: empathetic ask after they have seen the cost comparison */}
+      <section className="bm-why-v2-switcher">
+        <div className="bm-why-v2-switcher__inner">
+          <h2 className="bm-why-v2-switcher__title">Already paying for one of these?</h2>
+          <p className="bm-why-v2-switcher__body">
+            We import directly from MassageBook, Vagaro, GlossGenius, Mindbody, and Square. Your client list moves over instantly. Up and running in 2 minutes. Bronze stays free forever, so you can run both side by side until you're sure.
+          </p>
+          <Link to="/signup" className="bm-why-v2-switcher__cta">
+            Start free, no card →
+          </Link>
+        </div>
+      </section>
+
       {/* Closing CTA */}
       <section className="bm-why-v2-closing">
         <h2>

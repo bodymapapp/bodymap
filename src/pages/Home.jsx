@@ -224,6 +224,24 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── SWITCHER BAND: empathetic CTA for therapists frustrated with current platform ── */}
+      <section className="bm-home-switcher">
+        <div className="bm-home-switcher__inner">
+          <div className="bm-home-switcher__copy">
+            <div className="bm-home-switcher__eyebrow">Already paying $20-99 a month somewhere else?</div>
+            <h2 className="bm-home-switcher__title">
+              Coming from MassageBook, Vagaro, or somewhere else?
+            </h2>
+            <p className="bm-home-switcher__body">
+              Bring your client list, your booking link, your standards. Up and running in 2 minutes. No card to start.
+            </p>
+          </div>
+          <Link to="/signup" className="bm-home-switcher__cta">
+            Start your switch →
+          </Link>
+        </div>
+      </section>
+
       {/* ── LIFESTYLE MOMENT 1: settling-in band between hero and product ── */}
       <section className="bm-home-band">
         <p className="bm-home-band__quote">

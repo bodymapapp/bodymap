@@ -1250,6 +1250,27 @@ section[id] {
   color: var(--bm-rose);
 }
 
+/* ── Switcher strip: reassurance for shoppers between header and tier cards ── */
+.bm-pricing-v2-switcher {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 22px;
+}
+.bm-pricing-v2-switcher__text {
+  background: var(--bm-cream-alt);
+  border: 1px solid var(--bm-cream-deep);
+  border-radius: 14px;
+  padding: 14px 20px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--bm-ink-soft);
+  margin: 0;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .bm-pricing-v2-switcher__text { font-size: 14.5px; padding: 16px 24px; }
+}
+
 /* ── Tier cards ── */
 .bm-pricing-v2-tiers {
   display: flex;
@@ -2128,6 +2149,56 @@ section[id] {
   .bm-why-v2-cost__footnote { font-size: 12px; }
 }
 
+/* Switcher block: empathetic CTA between cost comparison and closing */
+.bm-why-v2-switcher {
+  padding: 40px 24px 32px;
+  background: var(--bm-cream-alt);
+  border-top: 1px solid var(--bm-cream-deep);
+}
+@media (min-width: 768px) {
+  .bm-why-v2-switcher { padding: 56px 32px 48px; }
+}
+.bm-why-v2-switcher__inner {
+  max-width: 720px;
+  margin: 0 auto;
+  text-align: center;
+}
+.bm-why-v2-switcher__title {
+  font-family: var(--bm-serif);
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--bm-forest-deep);
+  margin: 0 0 12px;
+  letter-spacing: -0.012em;
+}
+@media (min-width: 768px) {
+  .bm-why-v2-switcher__title { font-size: 32px; }
+}
+.bm-why-v2-switcher__body {
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--bm-ink-soft);
+  max-width: 580px;
+  margin: 0 auto 24px;
+}
+.bm-why-v2-switcher__cta {
+  display: inline-block;
+  background: var(--bm-forest);
+  color: #fff;
+  padding: 13px 28px;
+  border-radius: 999px;
+  font-size: 14.5px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 6px 18px rgba(42, 87, 65, 0.22);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.bm-why-v2-switcher__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(42, 87, 65, 0.28);
+}
+
 /* Closing block */
 .bm-why-v2-closing {
   padding: 48px 24px 64px;
@@ -2316,6 +2387,77 @@ section[id] {
 }
 @media (min-width: 900px) {
   .bm-home-hero__photo img { max-height: 72vh; }
+}
+
+/* ── Switcher band: empathetic CTA for therapists frustrated with current platform ── */
+.bm-home-switcher {
+  padding: 36px 22px;
+  background: var(--bm-cream-alt);
+  border-top: 1px solid var(--bm-cream-deep);
+  border-bottom: 1px solid var(--bm-cream-deep);
+}
+@media (min-width: 768px) { .bm-home-switcher { padding: 48px 32px; } }
+.bm-home-switcher__inner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-start;
+}
+@media (min-width: 768px) {
+  .bm-home-switcher__inner {
+    flex-direction: row;
+    align-items: center;
+    gap: 32px;
+  }
+}
+.bm-home-switcher__copy { flex: 1; }
+.bm-home-switcher__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bm-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  margin-bottom: 8px;
+}
+.bm-home-switcher__title {
+  font-family: var(--bm-serif);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bm-forest-deep);
+  margin: 0 0 8px;
+  letter-spacing: -0.012em;
+}
+@media (min-width: 768px) {
+  .bm-home-switcher__title { font-size: 26px; }
+}
+.bm-home-switcher__body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--bm-ink-soft);
+  margin: 0;
+  max-width: 580px;
+}
+.bm-home-switcher__cta {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bm-forest);
+  color: #fff;
+  text-decoration: none;
+  padding: 13px 26px;
+  border-radius: 99px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(42, 87, 65, 0.22);
+  transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.bm-home-switcher__cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(42, 87, 65, 0.28);
 }
 
 /* ── Lifestyle moment band ──────────────────────────────────────── */

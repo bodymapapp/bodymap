@@ -224,7 +224,7 @@ function FeedbackModal({ open, onClose, prefillFeature = null, prefillCategory =
             </div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>What's wrong or missing?</label>
             <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4}
-              placeholder={feedbackType === "inaccuracy" ? "e.g. MassageBook actually does support visual body maps as of April 2026 — I just used it." : "Be specific so we can verify and update fast."}
+              placeholder={feedbackType === "inaccuracy" ? "e.g. MassageBook actually does support visual body maps as of April 2026. I just used it." : "Be specific so we can verify and update fast."}
               style={{ width: "100%", padding: "11px 13px", border: `1.5px solid ${C.border}`, borderRadius: 10, fontSize: 14, fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", outline: "none", marginBottom: 12 }} />
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
               <div>
@@ -439,12 +439,17 @@ export default function Comparison() {
         </div>
       </section>
 
-      {/* CTA — compact */}
+      {/* CTA — switcher framing now that visitor has compared */}
       <section style={{ maxWidth: 720, margin: "0 auto", padding: "8px 20px 36px" }}>
-        <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestDeep} 100%)`, color: "#fff", borderRadius: 16, padding: "26px 22px", textAlign: "center", boxShadow: "0 12px 36px rgba(42,87,65,0.22)" }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#FBF4DC", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 8 }}>30-day free trial · no card</div>
-          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(20px, 3vw, 26px)", fontWeight: 700, margin: "0 0 10px", lineHeight: 1.25 }}>See how MyBodyMap fits your practice.</h2>
-          <Link to="/signup" style={{ display: "inline-block", background: "#fff", color: C.forest, textDecoration: "none", padding: "11px 26px", borderRadius: 10, fontWeight: 700, fontSize: 14 }}>
+        <div style={{ background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestDeep} 100%)`, color: "#fff", borderRadius: 16, padding: "30px 24px", textAlign: "center", boxShadow: "0 12px 36px rgba(42,87,65,0.22)" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "#FBF4DC", textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 10 }}>Compared. Decided. Ready?</div>
+          <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(22px, 3.5vw, 28px)", fontWeight: 700, margin: "0 0 14px", lineHeight: 1.25 }}>
+            Switching takes about as long as making coffee.
+          </h2>
+          <p style={{ fontSize: 14.5, lineHeight: 1.6, color: "rgba(255,255,255,0.85)", margin: "0 auto 22px", maxWidth: 480 }}>
+            If you're already on one of the six platforms above, bring your client list, your booking link, your standards. Up and running in 2 minutes. 30-day free trial on Silver and Gold. Bronze stays free forever.
+          </p>
+          <Link to="/signup" style={{ display: "inline-block", background: "#fff", color: C.forest, textDecoration: "none", padding: "12px 28px", borderRadius: 10, fontWeight: 700, fontSize: 14.5 }}>
             Start free →
           </Link>
         </div>

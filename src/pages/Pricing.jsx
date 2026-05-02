@@ -195,6 +195,13 @@ export default function Pricing() {
         </div>
       </header>
 
+      {/* Switcher strip: low-friction reassurance for therapists shopping comparatively */}
+      <section className="bm-pricing-v2-switcher">
+        <p className="bm-pricing-v2-switcher__text">
+          Switching from MassageBook ($20+), Vagaro ($25+), GlossGenius ($24+), or Mindbody ($99+)? Free CSV migration. Up and running in 2 minutes. Run side by side on Bronze until you're sure.
+        </p>
+      </section>
+
       <main className="bm-pricing-v2-tiers">
         {tiers.map((tier) => (
           <PricingTier key={tier.id} tier={tier} />
