@@ -210,7 +210,9 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
-- Service + add-on descriptions: tap-to-edit in Settings, surface on booking page (Leela request) → THIS COMMIT
+- Comparison page at /comparison (gated from nav until HK approves) + 60-row community sheet starter data → THIS COMMIT
+- Campaigns demo video live: 30s walkthrough with music → `e2b01825`
+- Service + add-on descriptions: tap-to-edit in Settings, surface on booking page (Leela request) → `65357cfa`
 - Campaigns landing page at /campaigns + Features card 5.0 → `23948b35`
 - Outreach upgraded: AI starter (8 categories), expanded tokens, subject, unsubscribe, history → `9fd7ffa9`
 - Migration: outreach_sends history + clients.outreach_unsubscribed → `cc0c77b9`

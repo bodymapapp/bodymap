@@ -26,6 +26,7 @@ import ClientIntake from './pages/ClientIntake';
 import Demo from './pages/Demo';
 import WhyBodyMap from './pages/WhyBodyMap';
 import Campaigns from './pages/Campaigns';
+import Comparison from './pages/Comparison';
 import BookingPage from './pages/BookingPage';
 import DepositSuccess from './pages/DepositSuccess';
 import ThankYou from './pages/ThankYou';
@@ -52,6 +53,7 @@ function App() {
           <Route path="/features-v2" element={<FeaturesV2 />} />
           <Route path="/features-old" element={<Features />} />
           <Route path="/campaigns" element={<Campaigns />} />
+          <Route path="/comparison" element={<Comparison />} />
           <Route path="/atlas" element={<Navigate to="/" replace />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/contact" element={<Contact />} />
