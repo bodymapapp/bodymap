@@ -428,7 +428,7 @@ How HK and Claude work together every session. Survives compaction.
    - **Not salesy.** No "game-changer," no "level up," no urgency, no exclamation marks beyond one per message.
    - **One soft CTA, not two.** Pick comparison link OR signup link. Never both.
    - **No jargon.** No "platform-powered," "intelligence layer," "AI-driven." Say what it does in human words.
-   - **No competitor bashing.** Always charitable about MassageBook, Vagaro, Noterro, etc.
+   - **Don't name competitors unless directly asked.** No comparing, no minimizing, no "X is fine if..." Stay focused on what we offer. The poster doesn't need our take on other tools.
    - Reading-level test: a 70-year-old grandma should understand every sentence on first read. If she'd squint, rewrite.
 
 8. **Minimum-click principle. Apply to every flow, every screen, every feature.** Minimum clicks, minimum scrolling, minimum process steps, minimum cognitive load. If a user has to submit twice, scroll past explanation, or wonder "what now," the design has failed. Ask before building any flow: "How many taps from start to done? Can it be fewer?" This applies retroactively to anything we ship. Two-step flows that should be one-step flows are bugs.
