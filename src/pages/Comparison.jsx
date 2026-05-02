@@ -488,7 +488,7 @@ export default function Comparison() {
       <Nav />
 
       {/* Compact hero */}
-      <header style={{ maxWidth: 920, margin: "0 auto", padding: "32px 20px 20px", textAlign: "center" }}>
+      <header style={{ maxWidth: 920, margin: "0 auto", padding: "110px 20px 20px", textAlign: "center" }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>Side by side · community verified</div>
         <h1 style={{
           fontFamily: "Georgia, 'Iowan Old Style', serif",
@@ -499,9 +499,18 @@ export default function Comparison() {
         }}>
           Solo massage software, <em style={{ color: C.gold, fontStyle: "italic" }}>compared honestly.</em>
         </h1>
-        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 580, margin: "0 auto" }}>
+        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 580, margin: "0 auto 14px" }}>
           Seven platforms. Tap <strong style={{ color: C.forest }}>Verify</strong> on rows you can confirm. Tap <strong style={{ color: C.forest }}>⚠ Wrong?</strong> to suggest a correction. Each card screenshots cleanly.
         </p>
+        <a href="/comparison/printable" style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          background: C.forest, color: "#fff", textDecoration: "none",
+          padding: "8px 18px", borderRadius: 99,
+          fontSize: 13, fontWeight: 700,
+          boxShadow: "0 4px 12px rgba(42,87,65,0.18)",
+        }}>
+          <span style={{ fontSize: 14 }}>📄</span> Get the one-page printable
+        </a>
       </header>
 
       {/* Community verification scoreboard — compact */}
