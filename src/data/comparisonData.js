@@ -76,11 +76,11 @@ export const CATEGORIES = [
   {
     id: "3.1",
     name: "Client Intelligence",
-    sub: "Pattern detection & AI",
+    sub: "Pattern detection & smart drafts",
     rows: [
       { f: "Pattern intelligence (heatmap of recurring complaint areas)",                    bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive. Last 5 sessions free; full history on Silver." },
-      { f: "AI pre-session brief",                                                           bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive in this comparison set." },
-      { f: "AI chat over your client list",                                                  bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive in this comparison set." },
+      { f: "pre-session brief",                                                           bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive in this comparison set." },
+      { f: "Platform chat over your client list",                                                  bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive in this comparison set." },
       { f: "Voice-to-text SOAP scribe",                                                      bm:"no",      mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"yes",  note:"Noterro Scribe: dictate notes; AI structures into SOAP fields." },
       { f: "Lapsed-client identification",                                                   bm:"yes",     mb:"yes",  vg:"yes",     gg:"yes",  ac:"tbc",  mi:"yes",  no:"yes" },
       { f: "Daily pulse / digest email to therapist",                                        bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive: 6pm summary." },
@@ -104,7 +104,7 @@ export const CATEGORIES = [
     rows: [
       { f: "Per-recipient personalized campaign emails",                                     bm:"yes",     mb:"no",   vg:"yes",     gg:"yes",  ac:"no",   mi:"yes",  no:"yes",  note:"MassageBook support confirmed they don't, May 1 2026 (Regina FB thread)." },
       { f: "Per-recipient personalized campaign SMS",                                        bm:"planned", mb:"yes",  vg:"addon",   gg:"yes",  ac:"no",   mi:"yes",  no:"yes",  note:"Vagaro: text marketing $20/mo add-on." },
-      { f: "AI campaign starter (one-tap drafts)",                                           bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive: 8 categories." },
+      { f: "Campaign starter (one-tap drafts)",                                           bm:"yes",     mb:"no",   vg:"no",      gg:"no",   ac:"no",   mi:"no",   no:"no",   note:"MyBodyMap exclusive: 8 categories." },
       { f: "Drip / welcome sequences",                                                       bm:"yes",     mb:"yes",  vg:"yes",     gg:"yes",  ac:"addon", mi:"yes",  no:"yes" },
       { f: "Lapsed-client outreach",                                                         bm:"yes",     mb:"yes",  vg:"yes",     gg:"yes",  ac:"tbc",  mi:"yes",  no:"yes" },
       { f: "Birthday / anniversary auto-touches",                                            bm:"planned", mb:"yes",  vg:"yes",     gg:"yes",  ac:"tbc",  mi:"yes",  no:"yes" },

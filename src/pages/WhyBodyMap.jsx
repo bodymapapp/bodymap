@@ -9,7 +9,7 @@
 //
 // Competitor claims rebuilt from verified research (April 2026):
 // - MassageBook ($20/mo basic): has SOAP notes, intake forms, marketing.
-//   Body-chart annotation only on PAID Premium SOAP plan. No AI features.
+//   Body-chart annotation only on PAID Premium SOAP plan. No Platform features.
 // - Vagaro ($30/mo + add-ons, real cost ~$50-70): basic plain-text SOAP,
 //   custom intake forms, salon-first interface. No body chart. No AI.
 // - GlossGenius ($24/mo Standard, $48 Gold): no SOAP notes at all,
@@ -22,9 +22,9 @@
 //
 // VERIFIED unique to MyBodyMap (no competitor has all of these):
 // 1. Visual body map for CLIENT-SIDE intake (clients tap on a body diagram)
-// 2. AI chat with full client data ("ask anything about Sarah's history")
+// 2. Platform chat with full client data ("ask anything about Sarah's history")
 // 3. Longitudinal pattern intelligence across all sessions, automated
-// 4. AI pre-session brief auto-generated 2 min before each session
+// 4. pre-session brief auto-generated 2 min before each session
 // 5. Free tier (Bronze) with ALL of the above included.
 
 import React, { useState } from "react";
@@ -85,11 +85,11 @@ const ONLY_MBM = [
   },
   {
     id: "ai-chat",
-    title: "AI chat with your full client history",
+    title: "Platform chat with your full client history",
     body:
       'Ask anything. <em>"Which clients haven\'t booked in 60 days?"</em> Answers in seconds, trained only on your practice.',
     proof:
-      "Noterro has AI for voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a clinical AI chat over your full client history. SimplePractice charges $35/mo extra for AI notes alone.",
+      "Noterro has voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a clinical Platform chat over your full client history. SimplePractice charges $35/mo extra for Platform notes alone.",
     photoId: "3.3",
   },
   {
@@ -103,18 +103,18 @@ const ONLY_MBM = [
   },
   {
     id: "pre-session",
-    title: "AI pre-session brief, two minutes before they arrive",
+    title: "pre-session brief, two minutes before they arrive",
     body:
       "Who's coming. Where they've been hurting. What worked last time. The brief a great manager would send, except it never forgets.",
     proof:
-      "No mainstream massage platform automatically generates a pre-session AI brief. MassageBook lets you review intake forms before the session, but you have to open them yourself, and they are static text.",
+      "No mainstream massage platform automatically generates a pre-session brief. MassageBook lets you review intake forms before the session, but you have to open them yourself, and they are static text.",
     photoId: "4.2",
   },
   {
     id: "free-tier",
     title: "All of it, free during beta",
     body:
-      "Bronze is free. Body map, AI chat, reminders, SOAP notes, billing, intake. Free forever for anyone who joins now.",
+      "Bronze is free. Body map, Platform chat, reminders, SOAP notes, billing, intake. Free forever for anyone who joins now.",
     proof:
       "Therapists currently pay $20-70/month for partial versions of these tools across MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, and Noterro. Most charge extra for SOAP, marketing, or text reminders on top of the base plan.",
     photoId: "1.1",
@@ -159,12 +159,12 @@ const COST_COMPARISON = [
   {
     name: "Noterro",
     price: "$33/mo",
-    note: "AI voice-to-chart for SOAP notes. Limited retention/marketing automation.",
+    note: "voice-to-chart for SOAP notes. Limited retention/marketing automation.",
   },
   {
     name: "MyBodyMap Bronze",
     price: "Free",
-    note: "Everything above plus visual body map, AI chat, longitudinal patterns. Free during beta.",
+    note: "Everything above plus visual body map, Platform chat, longitudinal patterns. Free during beta.",
     highlight: true,
   },
 ];

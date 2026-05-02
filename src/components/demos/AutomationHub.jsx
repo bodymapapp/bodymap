@@ -39,7 +39,7 @@ function AutomationHub() {
       trigger:"Client hasn't booked in 30 days",
       steps:[
         { icon:"🔍", label:"MyBodyMap detects", desc:"Automatically flags clients whose visit interval has broken" },
-        { icon:"🤖", label:"AI drafts message", desc:"Personalized SMS using their name, last focus area, and session history" },
+        { icon:"🤖", label:"Platform drafts message", desc:"Personalized SMS using their name, last focus area, and session history" },
         { icon:"✋", label:"You approve", desc:"One tap to review and send - or edit before sending" },
         { icon:"📱", label:"Client receives", desc:"Personal message arrives. They tap the intake link. They book." },
       ],
@@ -52,7 +52,7 @@ function AutomationHub() {
       steps:[
         { icon:"📅", label:"Session detected", desc:"MyBodyMap sees an upcoming appointment from your schedule" },
         { icon:"⚡", label:"Brief auto-assembled", desc:"All session history, body maps, patterns, and preferences compiled" },
-        { icon:"🧠", label:"AI adds insight", desc:"Pattern trends and pressure changes highlighted for the therapist" },
+        { icon:"🧠", label:"Platform adds insight", desc:"Pattern trends and pressure changes highlighted for the therapist" },
         { icon:"📲", label:"Ready on your phone", desc:"Open the pre-session brief in one tap before you walk in" },
       ],
       result:"walk in knowing everything. zero prep time."

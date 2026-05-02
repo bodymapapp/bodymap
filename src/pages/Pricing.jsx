@@ -37,9 +37,9 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         "Automated booking page · 24/7 client self-serve",
         "Automated body map intake · sent before every session",
         "Automated email reminders · 24h notice, every client",
-        "Automated AI pre-session brief · ready before you walk in",
-        "Automated AI post-session brief · drafted for you after",
-        "MyBodyMap AI · chat with your client data",
+        "Automated pre-session brief · ready before you walk in",
+        "Automated post-session brief · drafted for you after",
+        "MyBodyMap Platform · chat with your client data",
         "Visual body map · front & back, focus zones, medical flags",
         "SOAP notes",
         "Schedule · today, weekly, monthly views",
@@ -74,7 +74,7 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         "Longitudinal body map overlays · tension diff across sessions",
         "Revenue gap intelligence · what empty slots cost you",
         "Business analytics · busiest days, top services, trends",
-        "MyBodyMap AI with full history context",
+        "MyBodyMap Platform with full history context",
         "Priority support",
       ],
       founderNote:
@@ -131,7 +131,7 @@ const FAQ = [
   },
   {
     q: "Is my client information secure?",
-    a: "Yes. Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated, hosted on a SOC 2 Type II audited platform, and only you can see your own clients. We never sell your data, and we never train AI on it across practices. One thing worth knowing: HIPAA the law only legally applies to therapists who bill insurance electronically or work directly with other healthcare providers. Most solo cash-pay therapists are not HIPAA covered entities, but we treat your client data with that level of care anyway.",
+    a: "Yes. Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated, hosted on a SOC 2 Type II audited platform, and only you can see your own clients. We never sell your data, and we never train the platform on it across practices. One thing worth knowing: HIPAA the law only legally applies to therapists who bill insurance electronically or work directly with other healthcare providers. Most solo cash-pay therapists are not HIPAA covered entities, but we treat your client data with that level of care anyway.",
   },
   {
     q: "Can I switch plans anytime?",

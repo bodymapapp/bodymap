@@ -1259,7 +1259,7 @@ const AIC = ({ children, style = {} }) => (
     {children}
   </div>
 );
-const AIB = ({ label = "AI Insight" }) => (
+const AIB = ({ label = "Platform Insight" }) => (
   <div
     style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12 }}
   >

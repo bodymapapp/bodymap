@@ -25,7 +25,7 @@ const TOKENS = [
   { id:'link',        label:'Booking link',   hint:'mybodymap.app/book/...' },
 ];
 
-// AI campaign starters. Each is one tap — Claude drafts the email/SMS
+// Platform campaign starters. Each is one tap — Claude drafts the email/SMS
 // body in the therapist's voice. Subject is also drafted for email
 // channel. Therapist can edit before sending.
 const AI_STARTERS = [
@@ -72,7 +72,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   const [sent, setSent]           = useState(null);
   const [customLapsed, setCustomLapsed] = useState(lapsedDays);
   const [conditions, setConditions]     = useState([{ field:'days_since', op:'gt', value:60 }]);
-  // New: campaign subject (email only), AI starter modal state, send log
+  // New: campaign subject (email only), Platform starter modal state, send log
   const [subject, setSubject]           = useState('');
   const [aiStarterOpen, setAiStarterOpen] = useState(false);
   const [aiStarterCategory, setAiStarterCategory] = useState(null);
@@ -253,7 +253,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       setAiStarterCategory(null);
       setAiStarterContext('');
     } catch (err) {
-      console.error('AI draft failed:', err);
+      console.error('Platform draft failed:', err);
       setAiError('Could not generate draft. Try again or write your own.');
     }
     setAiDrafting(false);
@@ -488,7 +488,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
           <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>Step 2, Your message</div>
           <button onClick={() => setAiStarterOpen(true)}
             style={{ display:'inline-flex', alignItems:'center', gap:6, fontSize:12, fontWeight:700, color:'#fff', background:C.forest, border:'none', borderRadius:20, padding:'6px 14px', cursor:'pointer' }}>
-            ✨ AI starter
+            ✨ Platform starter
           </button>
         </div>
         <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:12 }}>
@@ -532,7 +532,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         )}
       </div>
 
-      {/* AI starter modal */}
+      {/* Platform starter modal */}
       {aiStarterOpen && (
         <div onClick={() => !aiDrafting && setAiStarterOpen(false)}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
@@ -540,8 +540,8 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
             style={{ background:'#fff', borderRadius:18, padding:24, maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.2)' }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
               <div>
-                <h3 style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ AI campaign starter</h3>
-                <p style={{ fontSize:13, color:C.gray, margin:0, lineHeight:1.5 }}>Pick a topic. Claude will draft an email{channel==='email'?' (subject + body)':' message'} in your voice. You can edit before sending.</p>
+                <h3 style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ Campaign starter</h3>
+                <p style={{ fontSize:13, color:C.gray, margin:0, lineHeight:1.5 }}>Pick a topic. The platform will draft an email{channel==='email'?' (subject + body)':' message'} in your voice. You can edit before sending.</p>
               </div>
               <button onClick={() => !aiDrafting && setAiStarterOpen(false)} disabled={aiDrafting}
                 style={{ background:'none', border:'none', fontSize:22, color:C.gray, cursor:aiDrafting?'not-allowed':'pointer', padding:0, lineHeight:1 }}>×</button>

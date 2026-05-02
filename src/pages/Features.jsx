@@ -233,7 +233,7 @@ function PatternDemo() {
       </div>
 
       <div style={{ background:"linear-gradient(135deg, #F0FDF4, #DCFCE7)", border:"1px solid #86EFAC", borderRadius:10, padding:"12px 16px", fontSize:12, color:"#1A3A28", lineHeight:1.5 }}>
-        🤖 <strong>AI Insight:</strong> Sarah has a chronic lower back pattern (9/10 sessions) with escalating pressure preference. Her left shoulder shows worsening trend - worth addressing proactively in next session.
+        🤖 <strong>Platform Insight:</strong> Sarah has a chronic lower back pattern (9/10 sessions) with escalating pressure preference. Her left shoulder shows worsening trend - worth addressing proactively in next session.
       </div>
     </div>
   );
@@ -590,7 +590,7 @@ function AIDemo() {
   ];
 
   const [messages, setMessages] = useState([
-    { role:"assistant", content:"Hi! I'm MyBodyMap AI. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
+    { role:"assistant", content:"Hi! I'm MyBodyMap Platform. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -622,9 +622,9 @@ function AIDemo() {
         body:JSON.stringify({ messages:updated.map(m=>({role:m.role,content:m.content})), context:"", mode:"public" })
       });
       const data = await res.json();
-      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see MyBodyMap AI at its best." }]);
+      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see MyBodyMap Platform at its best." }]);
     } catch {
-      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see MyBodyMap AI in action." }]);
+      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see MyBodyMap Platform in action." }]);
     }
     setLoading(false);
   };
@@ -636,7 +636,7 @@ function AIDemo() {
       <div style={{ background:`linear-gradient(135deg, ${C.forest}, #1A3A28)`, padding:"14px 20px", display:"flex", alignItems:"center", gap:10 }}>
         <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🌿</div>
         <div>
-          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>MyBodyMap AI</div>
+          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>MyBodyMap Platform</div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)" }}>Powered by your real practice data</div>
         </div>
         <div style={{ marginLeft:"auto", background:"rgba(255,255,255,0.15)", borderRadius:20, padding:"3px 10px", fontSize:10, color:"#fff", fontWeight:700 }}>● Live Demo</div>
@@ -696,7 +696,7 @@ function AutomationHub() {
       trigger:"Client hasn't booked in 30 days",
       steps:[
         { icon:"🔍", label:"MyBodyMap detects", desc:"Automatically flags clients whose visit interval has broken" },
-        { icon:"🤖", label:"AI drafts message", desc:"Personalized SMS using their name, last focus area, and session history" },
+        { icon:"🤖", label:"Platform drafts message", desc:"Personalized SMS using their name, last focus area, and session history" },
         { icon:"✋", label:"You approve", desc:"One tap to review and send - or edit before sending" },
         { icon:"📱", label:"Client receives", desc:"Personal message arrives. They tap the intake link. They book." },
       ],
@@ -709,7 +709,7 @@ function AutomationHub() {
       steps:[
         { icon:"📅", label:"Session detected", desc:"MyBodyMap sees an upcoming appointment from your schedule" },
         { icon:"⚡", label:"Brief auto-assembled", desc:"All session history, body maps, patterns, and preferences compiled" },
-        { icon:"🧠", label:"AI adds insight", desc:"Pattern trends and pressure changes highlighted for the therapist" },
+        { icon:"🧠", label:"Platform adds insight", desc:"Pattern trends and pressure changes highlighted for the therapist" },
         { icon:"📲", label:"Ready on your phone", desc:"Open the pre-session brief in one tap before you walk in" },
       ],
       result:"walk in knowing everything. zero prep time."
@@ -787,7 +787,7 @@ function AutomationHub() {
 // ── GROWTH ENGINE ─────────────────────────────────────────────────────────────
 function GrowthEngine() {
   const retention = [
-    { icon:"🔮", title:"Churn Prediction", desc:"MyBodyMap AI detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
+    { icon:"🔮", title:"Churn Prediction", desc:"MyBodyMap Platform detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
     { icon:"📈", title:"Pressure Trend Alerts", desc:"When a client's pressure preference escalates (3→5 over 8 sessions), MyBodyMap flags it. You adjust before they find someone who does deep tissue better." },
     { icon:"💌", title:"Milestone Moments", desc:"10th session, 1-year anniversary, returning after a break - MyBodyMap identifies these moments and drafts a personalized message. Clients feel seen." },
     { icon:"🎁", title:"Re-engagement Campaigns", desc:"One tap launches a personalized outreach to all lapsed clients - not a mass text, a message that references their specific body history." },
@@ -859,7 +859,7 @@ function SectionNav() {
     { id:"postsession", label:"Post-Session",           n:10 },
     { id:"billing",     label:"Billing",                n:11 },
     { id:"gifts",       label:"Gift Cards",             n:12 },
-    { id:"ai",          label:"MyBodyMap AI",             n:13 },
+    { id:"ai",          label:"MyBodyMap Platform",             n:13 },
     { id:"mobile",      label:"On Your Phone",          n:14 },
     { id:"automation",  label:"Automation",             n:15 },
     { id:"growth",      label:"Growth Engine",          n:16 },
@@ -1180,7 +1180,7 @@ export default function Features() {
                     { icon:"📍", title:"Body Area Frequency", desc:"Track exactly which areas clients focus on across every session. Lower back 9 of 10 visits isn't a preference - it's a chronic condition. Treat it accordingly." },
                     { icon:"📈", title:"Pressure Trend Tracking", desc:"When a client's pressure tolerance escalates from 3 to 5 over 8 sessions, MyBodyMap shows you the trend. You adapt before they have to ask." },
                     { icon:"⚠️", title:"Avoid Area Memory", desc:"A client avoided their knees every single session. Do you remember that after 6 months? MyBodyMap does. Permanently." },
-                    { icon:"🤖", title:"AI Pattern Summary", desc:"After each session, MyBodyMap AI summarizes what's changing in this client's body - in plain language, without you asking." },
+                    { icon:"🤖", title:"Pattern Summary", desc:"After each session, MyBodyMap Platform summarizes what's changing in this client's body - in plain language, without you asking." },
                   ].map((f,i)=>(
                     <div key={i} style={{ display:"flex", gap:14 }}>
                       <div style={{ width:40, height:40, borderRadius:10, background:"rgba(107,158,128,0.15)", border:"1px solid rgba(107,158,128,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{f.icon}</div>
@@ -1601,12 +1601,12 @@ export default function Features() {
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>MyBodyMap AI</div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>MyBodyMap Platform</div>
               <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:20 }}>
-                An AI That Knows Your Clients.<br/>Not Just Massage in General.
+                A Platform That Knows Your Clients.<br/>Not Just Massage in General.
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. MyBodyMap AI does.
+                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. The MyBodyMap Platform does.
               </p>
             </div>
           </FadeIn>
@@ -1624,7 +1624,7 @@ export default function Features() {
                     { q:"Which clients need re-engagement?", a:"Flags lapsed clients by name, with days since last visit and pattern context", tag:"Retention" },
                     { q:"Draft an SMS for Monica", a:"Writes a personalized message using her body history, not a generic template", tag:"Automation" },
                     { q:"How is my revenue trending?", a:"Compares 30-day collected vs expected, highlights your best clients", tag:"Billing" },
-                    { q:"What patterns does Sarah have?", a:"Surfaces her body area frequency, pressure trend, and AI insight in seconds", tag:"Patterns" },
+                    { q:"What patterns does Sarah have?", a:"Surfaces her body area frequency, pressure trend, and Platform insight in seconds", tag:"Patterns" },
                   ].map(({q,a,tag})=>(
                     <div key={q} style={{ background:"#fff", borderRadius:14, padding:"16px 20px", boxShadow:"0 2px 8px rgba(0,0,0,0.06)", border:`1px solid ${C.border}` }}>
                       <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
@@ -1636,7 +1636,7 @@ export default function Features() {
                   ))}
                 </div>
                 <div style={{ background:"#FEF3C7", borderRadius:12, padding:"14px 18px", fontSize:13, color:"#92400E", lineHeight:1.5 }}>
-                  💡 The demo uses sample data. When you're logged in, MyBodyMap AI has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
+                  💡 The demo uses sample data. When you're logged in, MyBodyMap Platform has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
                 </div>
               </div>
             </FadeIn>

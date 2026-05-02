@@ -1,7 +1,7 @@
 // src/components/demos/CampaignsDemo.jsx
 //
 // Demo for the Relationships ribbon on the home page. Carousel partner
-// to AutomationHub. Shows the 8-category AI campaign starter as a
+// to AutomationHub. Shows the 8-category Campaign starter as a
 // magic moment: tap a category, watch the message write itself
 // word-by-word, send button activates.
 //

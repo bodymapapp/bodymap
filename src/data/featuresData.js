@@ -163,10 +163,10 @@ export const RIBBONS = [
       },
       {
         id: "3.3",
-        name: "MyBodyMap AI chat",
+        name: "MyBodyMap Platform chat",
         body: [
           'Ask anything about a client. <em>"What body areas has Sarah been flagging the most this year?"</em> <em>"Which clients have not booked in 60+ days but used to come monthly?"</em>',
-          "The AI reads every intake, session note, and booking history. Trained only on your practice. Answers in seconds, in plain English.",
+          "The platform reads every intake, session note, and booking history. Trained only on your practice. Answers in seconds, in plain English.",
         ],
         meta: "Private to your practice · Never trained on others",
       },
@@ -212,7 +212,7 @@ export const RIBBONS = [
         automated: true,
         body: [
           "Two minutes before each session, a card surfaces: who is coming, where they have been hurting, what worked last time, what to ask about, what to avoid.",
-          "It is the brief a great manager would send you. Except it is the AI, and it never forgets.",
+          "It is the brief a great manager would send you. Except it is the platform, and it never forgets.",
         ],
         meta: "Auto-generates · 2 min before session",
       },
@@ -257,10 +257,10 @@ export const RIBBONS = [
         link: "/campaigns",
         linkLabel: "See it in action",
         body: [
-          "One message, every recipient sees their own first name, last visit, last service. Pick a segment (lapsed, regulars, never-rebooked, custom). Tap an AI starter (Mother's Day, vacation, new service, special offer, holiday hours, weather closure, anniversary, reactivate-lapsed) and Claude drafts the email in your voice.",
+          "One message, every recipient sees their own first name, last visit, last service. Pick a segment (lapsed, regulars, never-rebooked, custom). Tap an Platform starter (Mother's Day, vacation, new service, special offer, holiday hours, weather closure, anniversary, reactivate-lapsed) and the platform drafts the email in your voice.",
           'MassageBook publicly admits this works in their automated emails but not their campaigns. We do both.',
         ],
-        meta: "Email · 8 AI starters · 7 personalization tokens · Send history",
+        meta: "Email · 8 Platform starters · 7 personalization tokens · Send history",
       },
       {
         id: "5.1",
@@ -352,7 +352,7 @@ export const RIBBONS = [
         id: "6.4",
         name: "Privacy & security",
         body: [
-          "Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated. We never sell it, never train AI on it across practices.",
+          "Your client data is HIPAA-encrypted, the same security standards used by MassageBook, Vagaro, and online banking. Each therapist's data is fully isolated. We never sell it, never train the platform on it across practices.",
           "<em>A note on HIPAA the law:</em> it generally applies to therapists who bill insurance electronically. Most solo cash-pay therapists are not legally covered, but we treat your data with that level of care anyway.",
         ],
         meta: "HIPAA encryption · SOC 2 Type II host",

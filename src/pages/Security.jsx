@@ -39,10 +39,10 @@ const PILLARS = [
       "Your client data is yours. We do not sell it, license it, or share it with third parties for marketing or analytics. The only times we touch your data are: (1) to make MyBodyMap work for you, (2) when legally compelled by a court, and (3) to fix a bug if you ask us for help and grant access. That is it.",
   },
   {
-    title: "AI is trained only on your practice",
-    claim: "MyBodyMap AI never crosses practice boundaries.",
+    title: "The platform is trained only on your practice",
+    claim: "MyBodyMap Platform never crosses practice boundaries.",
     body:
-      "When you ask MyBodyMap AI a question about your client history, it sees only your data. It is not trained or fine-tuned on other therapists' clients. Your patterns, your notes, your client base stay isolated to you. The AI gets smarter at YOUR practice without your data ever leaving it.",
+      "When you ask the platform a question about your client history, it sees only your data. It is not trained or fine-tuned on other therapists' clients. Your patterns, your notes, your client base stay isolated to you. The The platform gets smarter at YOUR practice without your data ever leaving it.",
   },
   {
     title: "If you delete a client, it is actually deleted",

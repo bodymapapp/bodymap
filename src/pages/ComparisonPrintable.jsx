@@ -52,9 +52,9 @@ const PRINTABLE_ROWS = [
   // Where MyBodyMap is unique
   { f: "Visual body map intake (front & back, tap-to-mark)",       bm:"yes",     mb:"yes",  vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"yes",   star: true },
   { f: "Pattern intelligence (heatmap of recurring areas)",        bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
-  { f: "AI pre-session brief from history",                        bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
+  { f: "pre-session brief from history",                        bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
   { f: "Personalized campaign emails (per-recipient)",             bm:"yes",     mb:"no",   vg:"yes",    gg:"yes",   ac:"no",    mi:"yes",   no:"yes",   star: true },
-  { f: "AI campaign starter (one-tap drafts)",                     bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
+  { f: "Campaign starter (one-tap drafts)",                     bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
   { f: "Daily evening pulse digest",                               bm:"yes",     mb:"no",   vg:"no",     gg:"no",    ac:"no",    mi:"no",    no:"no",    star: true },
   { f: "Approve/decline bookings (one-toggle)",                    bm:"yes",     mb:"tbc",  vg:"yes",    gg:"yes",   ac:"yes",   mi:"yes",   no:"tbc" },
   { f: "Require intake before booking (one-toggle)",               bm:"yes",     mb:"tbc",  vg:"tbc",    gg:"tbc",   ac:"tbc",   mi:"tbc",   no:"tbc" },

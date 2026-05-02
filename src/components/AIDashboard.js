@@ -188,7 +188,7 @@ ${clientSummaries.join('\n')}
       // Welcome message
       setMessages([{
         role: 'assistant',
-        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm MyBodyMap AI. I have access to your full practice data - ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends.`,
+        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm MyBodyMap Platform. I have access to your full practice data - ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends.`,
         timestamp: Date.now()
       }]);
     } catch (err) {
@@ -284,7 +284,7 @@ ${clientSummaries.join('\n')}
       {!keyboardOpen && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap AI</h2>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap Platform</h2>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
           </div>
           <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
@@ -298,7 +298,7 @@ ${clientSummaries.join('\n')}
         <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '4px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#2A5741', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🌿</div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>MyBodyMap AI</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>MyBodyMap Platform</span>
           </div>
           <button onClick={() => inputRef.current?.blur()} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
             Done
@@ -354,7 +354,7 @@ ${clientSummaries.join('\n')}
           </button>
         </div>
         {!isMobile && <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 6 }}>
-          Press Enter to send · Shift+Enter for new line · Powered by Claude AI
+          Press Enter to send · Shift+Enter for new line · Powered by MyBodyMap Platform
         </div>}
       </div>
     </div>

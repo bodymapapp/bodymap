@@ -70,16 +70,16 @@ const RIBBONS = [
     id: "3",
     name: "Client Intelligence",
     tagline:
-      "Pattern recognition across visits and AI chat with your full client history. The core moat.",
+      "Pattern recognition across visits and Platform chat with your full client history. The core moat.",
     // TWO demos — Pattern + AI — shown as a carousel.
     demos: [
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
-      { kind: "component", component: AIDemo, label: "MyBodyMap AI chat" },
+      { kind: "component", component: AIDemo, label: "MyBodyMap Platform chat" },
     ],
     layout: "demo-right",
     subFeatures: [
       "Longitudinal heatmaps across all sessions",
-      "MyBodyMap AI: chat with your client data",
+      "MyBodyMap Platform: chat with your client data",
       "Pattern detection on body areas trending up",
       "Practice Pulse: daily 6am morning brief",
       "Lapsed client alerts before they drift away",
@@ -94,7 +94,7 @@ const RIBBONS = [
     layout: "demo-left",
     subFeatures: [
       "Today's schedule with color-coded services",
-      "AI pre-session brief, 2 min before each session",
+      "pre-session brief, 2 min before each session",
       "Voice-to-text SOAP notes",
       "Quick client lookup by name, phone, or email",
       "Mobile-first UX, every screen thumb-reachable",
@@ -105,7 +105,7 @@ const RIBBONS = [
     id: "5",
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
-    // TWO demos shown as a carousel: workflow automations + AI campaign starter.
+    // TWO demos shown as a carousel: workflow automations + Campaign starter.
     demos: [
       { kind: "component", component: AutomationHub, label: "Automation flows" },
       { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
@@ -264,8 +264,8 @@ export default function Home() {
           </h2>
           <p className="bm-home-tour-intro__sub">
             Tap any demo below to try the actual product. From the body map
-            intake your clients fill out before they arrive, to the AI that
-            chats with your client history, to the schedule and billing on
+            intake your clients fill out before they arrive, to the platform
+            that chats with your client history, to the schedule and billing on
             your phone. No screenshots. The real thing.
           </p>
         </div>

@@ -7,7 +7,7 @@
 //   1. Hero: eyebrow, headline, sub, primary CTA
 //   2. Video embed slot: Supademo demo or MP4 fallback
 //   3. The case: 3 short proof cards
-//   4. AI starter explainer: 8 categories
+//   4. Platform starter explainer: 8 categories
 //   5. Token list: visible proof of personalization
 //   6. CTA: free Silver year for first 100 founders
 //
@@ -46,7 +46,7 @@ const PROOF_CARDS = [
     body: "MassageBook publicly admits this works in automated emails but not campaign emails. We do both. Your subject line and body can use first name, last name, last visit date, last service, and your booking link. Every recipient gets their own version.",
   },
   {
-    eyebrow: "AI starter",
+    eyebrow: "Platform starter",
     title: "Eight one-tap drafts in your voice",
     body: "Pick Mother's Day special, vacation closure, new service launch, special offer, holiday hours, weather closure, anniversary, or reactivate-lapsed. Add any specifics you want mentioned. Get a finished draft you can edit and send in 30 seconds.",
   },
@@ -116,7 +116,7 @@ export default function Campaigns() {
           maxWidth: 640,
           margin: "0 auto 28px",
         }}>
-          One message. Each client sees their own name, their last visit, their last service. Pick a segment, draft with AI in your voice, send in under a minute.
+          One message. Each client sees their own name, their last visit, their last service. Pick a segment, draft instantly in your voice, send in under a minute.
         </p>
         <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
           <Link to="/signup" style={{
@@ -197,7 +197,7 @@ export default function Campaigns() {
                 Demo coming this week
               </div>
               <div style={{ fontSize: 14, maxWidth: 380, lineHeight: 1.6 }}>
-                A short walkthrough of the campaign builder, AI starter, and personalized send. Sign up to try it on your own client list.
+                A short walkthrough of the campaign builder, Platform starter, and personalized send. Sign up to try it on your own client list.
               </div>
             </div>
           )}
