@@ -35,6 +35,7 @@ function AutomationHub() {
   const flows = [
     {
       icon:"🍂",
+      shortLabel:"Lapsed",
       title:"Lapsed Client Re-engagement",
       trigger:"Client hasn't booked in 30 days",
       steps:[
@@ -47,6 +48,7 @@ function AutomationHub() {
     },
     {
       icon:"📋",
+      shortLabel:"Pre-Session",
       title:"Pre-Session Intelligence",
       trigger:"Client appointment is in under 24 hours",
       steps:[
@@ -59,6 +61,7 @@ function AutomationHub() {
     },
     {
       icon:"💌",
+      shortLabel:"Post-Session",
       title:"Post-Session Client Summary",
       trigger:"Therapist marks session complete",
       steps:[
@@ -71,6 +74,7 @@ function AutomationHub() {
     },
     {
       icon:"🌟",
+      shortLabel:"New",
       title:"New Client First Impression",
       trigger:"New client books for the first time",
       steps:[
@@ -87,10 +91,10 @@ function AutomationHub() {
 
   return (
     <div ref={ref}>
-      <div style={{ display:"flex", gap:8, marginBottom:28, flexWrap:"wrap" }}>
+      <div style={{ display:"flex", gap:6, marginBottom:18, overflowX:"auto", paddingBottom:4, scrollSnapType:"x mandatory" }}>
         {flows.map((f,i)=>(
-          <button key={i} onClick={()=>setActive(i)} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 18px", borderRadius:50, border:`1.5px solid ${active===i?C.forest:C.border}`, background:active===i?C.forest:"#fff", color:active===i?"#fff":C.dark, fontSize:13, fontWeight:600, cursor:"pointer", transition:"all 0.2s" }}>
-            <span>{f.icon}</span> {f.title.split(" ").slice(0,2).join(" ")}
+          <button key={i} onClick={()=>setActive(i)} style={{ display:"flex", alignItems:"center", gap:5, padding:"6px 12px", borderRadius:50, border:`1.5px solid ${active===i?C.forest:C.border}`, background:active===i?C.forest:"#fff", color:active===i?"#fff":C.dark, fontSize:12, fontWeight:600, cursor:"pointer", transition:"background 0.2s, color 0.2s, border-color 0.2s", whiteSpace:"nowrap", flexShrink:0, scrollSnapAlign:"start" }}>
+            <span style={{ fontSize:13 }}>{f.icon}</span> {f.shortLabel || f.title.split(" ").slice(0,2).join(" ")}
           </button>
         ))}
       </div>
