@@ -20,6 +20,7 @@ import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
 import SeedDefaults from '../components/SeedDefaults';
 import InlineEditField from '../components/InlineEditField';
+import InlineEditDescription from '../components/InlineEditDescription';
 import OnboardingChecklist from '../components/OnboardingChecklist';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -223,43 +224,53 @@ function ServicesAndAvailability({ therapist }) {
         {services.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
             {services.map(svc => (
-              <div key={svc.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
-                <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                  <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
-                  <span style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6 }}>
-                    <InlineEditField
-                      value={svc.duration}
-                      type="number"
-                      suffix="min"
-                      min={5}
-                      max={480}
-                      step={5}
-                      width={48}
-                      fontSize={12}
-                      color={C2.gray}
-                      ariaLabel={`Duration for ${svc.name}`}
-                      onSave={(v) => updateService(svc.id, { duration: v })}
-                    />
-                    <span style={{ color:'#D1D5DB' }}>·</span>
-                    <InlineEditField
-                      value={svc.price}
-                      type="number"
-                      prefix="$"
-                      min={0}
-                      max={9999}
-                      step={5}
-                      width={56}
-                      fontSize={12}
-                      color={C2.gray}
-                      ariaLabel={`Price for ${svc.name}`}
-                      onSave={(v) => updateService(svc.id, { price: v })}
-                    />
-                  </span>
+              <div key={svc.id} style={{ padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
+                    <span style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6 }}>
+                      <InlineEditField
+                        value={svc.duration}
+                        type="number"
+                        suffix="min"
+                        min={5}
+                        max={480}
+                        step={5}
+                        width={48}
+                        fontSize={12}
+                        color={C2.gray}
+                        ariaLabel={`Duration for ${svc.name}`}
+                        onSave={(v) => updateService(svc.id, { duration: v })}
+                      />
+                      <span style={{ color:'#D1D5DB' }}>·</span>
+                      <InlineEditField
+                        value={svc.price}
+                        type="number"
+                        prefix="$"
+                        min={0}
+                        max={9999}
+                        step={5}
+                        width={56}
+                        fontSize={12}
+                        color={C2.gray}
+                        ariaLabel={`Price for ${svc.name}`}
+                        onSave={(v) => updateService(svc.id, { price: v })}
+                      />
+                    </span>
+                  </div>
+                  <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
+                    {svc.active ? 'On' : 'Off'}
+                  </button>
+                  <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:15, padding:'2px 4px', flexShrink:0, lineHeight:1 }}>×</button>
                 </div>
-                <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
-                  {svc.active ? 'On' : 'Off'}
-                </button>
-                <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:15, padding:'2px 4px', flexShrink:0, lineHeight:1 }}>×</button>
+                <div style={{ marginTop:6 }}>
+                  <InlineEditDescription
+                    value={svc.description}
+                    placeholder="Add a description so clients know what it is (optional)"
+                    onSave={(v) => updateService(svc.id, { description: v })}
+                    ariaLabel={`Description for ${svc.name}`}
+                  />
+                </div>
               </div>
             ))}
           </div>
@@ -561,44 +572,54 @@ function ServiceAddonsCard({ therapist }) {
           {addons.length > 0 && (
             <div style={{ marginBottom:16 }}>
               {addons.map(a => (
-                <div key={a.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:a.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C2.lightGray}`, borderRadius:10, marginBottom:6, opacity:a.active?1:0.55 }}>
-                  <div style={{ flex:1, minWidth:0 }}>
-                    <div style={{ fontWeight:600, fontSize:14, color:C2.forest }}>{a.name}</div>
-                    <div style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6, marginTop:2 }}>
-                      <InlineEditField
-                        value={Number(a.price)}
-                        type="number"
-                        prefix="+$"
-                        min={0}
-                        max={999}
-                        step={5}
-                        width={50}
-                        fontSize={12}
-                        color={C2.gray}
-                        ariaLabel={`Price for ${a.name}`}
-                        onSave={(v) => updateAddon(a.id, { price: v })}
-                      />
-                      <span style={{ color:'#D1D5DB' }}>·</span>
-                      <InlineEditField
-                        value={Number(a.extra_minutes) || 0}
-                        type="number"
-                        prefix="+"
-                        suffix="min"
-                        min={0}
-                        max={120}
-                        step={5}
-                        width={42}
-                        fontSize={12}
-                        color={C2.gray}
-                        ariaLabel={`Extra minutes for ${a.name}`}
-                        onSave={(v) => updateAddon(a.id, { extra_minutes: v })}
-                      />
+                <div key={a.id} style={{ padding:'10px 12px', background:a.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C2.lightGray}`, borderRadius:10, marginBottom:6, opacity:a.active?1:0.55 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:600, fontSize:14, color:C2.forest }}>{a.name}</div>
+                      <div style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6, marginTop:2 }}>
+                        <InlineEditField
+                          value={Number(a.price)}
+                          type="number"
+                          prefix="+$"
+                          min={0}
+                          max={999}
+                          step={5}
+                          width={50}
+                          fontSize={12}
+                          color={C2.gray}
+                          ariaLabel={`Price for ${a.name}`}
+                          onSave={(v) => updateAddon(a.id, { price: v })}
+                        />
+                        <span style={{ color:'#D1D5DB' }}>·</span>
+                        <InlineEditField
+                          value={Number(a.extra_minutes) || 0}
+                          type="number"
+                          prefix="+"
+                          suffix="min"
+                          min={0}
+                          max={120}
+                          step={5}
+                          width={42}
+                          fontSize={12}
+                          color={C2.gray}
+                          ariaLabel={`Extra minutes for ${a.name}`}
+                          onSave={(v) => updateAddon(a.id, { extra_minutes: v })}
+                        />
+                      </div>
                     </div>
+                    <button onClick={() => toggleAddon(a)} style={{ background:a.active?'#fff':C2.sage, color:a.active?C2.gray:'#fff', border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
+                      {a.active ? 'Hide' : 'Show'}
+                    </button>
+                    <button onClick={() => deleteAddon(a.id)} style={{ background:'transparent', color:C2.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }} aria-label="Delete">×</button>
                   </div>
-                  <button onClick={() => toggleAddon(a)} style={{ background:a.active?'#fff':C2.sage, color:a.active?C2.gray:'#fff', border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
-                    {a.active ? 'Hide' : 'Show'}
-                  </button>
-                  <button onClick={() => deleteAddon(a.id)} style={{ background:'transparent', color:C2.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }} aria-label="Delete">×</button>
+                  <div style={{ marginTop:6 }}>
+                    <InlineEditDescription
+                      value={a.description}
+                      placeholder="Add a description so clients know what it is (optional)"
+                      onSave={(v) => updateAddon(a.id, { description: v })}
+                      ariaLabel={`Description for ${a.name}`}
+                    />
+                  </div>
                 </div>
               ))}
             </div>

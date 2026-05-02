@@ -1,7 +1,7 @@
 # MyBodyMap Block Plan
 **Living document. Survives compaction. Update freely.**
 
-Last refreshed: 2026-04-29 — after Twilio setup discussion + Noterro research.
+Last refreshed: 2026-05-01 — after Outreach campaigns ship + Campaigns landing page.
 
 ## Current state
 - 28 therapists signed up. ~5 active. Most never returned after signup.
@@ -10,12 +10,18 @@ Last refreshed: 2026-04-29 — after Twilio setup discussion + Noterro research.
 - Settings full-width parity with Clients/Schedule/Billing tabs.
 - Auto-update booking-link slug when business name changes.
 - Mass SMS message template is now ≤10 words with "MyBodyMap founder" branding.
+- Settings IA refactor (5 groups, taxonomy, time badges, search bar, Apple Settings panel style, inline edit on prices/durations) shipped.
+- Outreach campaign upgrades shipped: AI starter (8 categories), expanded tokens, subject line, unsubscribe link, history. The marquee differentiator vs MassageBook (Regina FB thread).
+- Campaigns landing page live at /campaigns + Features card 5.0 linking to it.
 
 ## Active fires
 1. **Twilio setup in progress** — HK has authorized investing. Step-by-step in the Twilio dashboard tonight. After purchase + creds, he will plug in to MyBodyMap and broadcast to 23 textable users.
 2. **A2P 10DLC registration** — required for US production sends. Sole proprietor low-volume path. ~$4 brand fee + $10/mo campaign. 1-3 business days approval.
 3. **Mass broadcast pending** — wait until Twilio number provisioned + 10DLC approved before sending to all 23.
-4. **Notify Leela** — booking approval and intake-before-booking gates are live. She signed up after the FB thread. Joy DM: "Hey Leela, the approval and intake-first toggles you wanted are live in your Settings under How I practice → Booking flow. Both default OFF so nothing changes unless you turn them on. Holler if anything looks off."
+4. **Notify Leela** — booking approval + intake-before-booking gates AND the new service/add-on description fields she just asked for are live. Joy DM ready when feature ships.
+5. **Notify Regina** — campaigns demo page is live at /campaigns. After CapCut video is embedded, share the URL on the FB thread or DM directly.
+6. **Campaigns demo video** — HK is making a CapCut version with music (Supademo paywalled audio). When ready, swap `DEMO_EMBED_URL` (iframe) or `DEMO_MP4_URL` ('/videos/campaigns-demo.mp4') in `src/pages/Campaigns.jsx` to flip placeholder → live video.
+7. **Ashton's medical massage photo storage** — deferred. HK wants to think through HIPAA implications first. Sketched 3 paths in chat (per-session / per-client timeline / both) plus consent flow + signed-URL storage. Revisit after Twilio.
 
 ## TIER A — ship in next 2-4 weeks (highest leverage)
 
@@ -204,6 +210,8 @@ cd ~/Documents/bodymap && npm run build && git add . && git commit -m "msg" && g
 - custom_url: hk5
 
 ## RECENT SHIPS (newest first)
+- Service + add-on descriptions: tap-to-edit in Settings, surface on booking page (Leela request) → THIS COMMIT
+- Campaigns landing page at /campaigns + Features card 5.0 → `23948b35`
 - Outreach upgraded: AI starter (8 categories), expanded tokens, subject, unsubscribe, history → `9fd7ffa9`
 - Migration: outreach_sends history + clients.outreach_unsubscribed → `cc0c77b9`
 - Settings: tappable inline edit, smarter search with synonyms, emoji-free polish → `70f07c66`

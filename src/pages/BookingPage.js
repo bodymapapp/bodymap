@@ -545,12 +545,12 @@ export default function BookingPage() {
                     onMouseEnter={e=>{e.currentTarget.style.borderColor=C.forest;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(42,87,65,0.12)';}}
                     onMouseLeave={e=>{e.currentTarget.style.borderColor=C.light;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
-                      <div style={{flex:1}}>
+                      <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:16,fontWeight:700,color:C.dark,marginBottom:6}}>{s.name}</div>
-                        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:s.description?8:0}}>
                           <span style={{background:'#F0FDF4',color:'#16A34A',borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:600}}>⏱ {s.duration} min</span>
-                          {s.description&&<span style={{fontSize:12,color:C.gray,padding:'3px 0'}}>{s.description}</span>}
                         </div>
+                        {s.description&&<div style={{fontSize:13,color:C.gray,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{s.description}</div>}
                       </div>
                       <div style={{textAlign:'right',flexShrink:0}}>
                         <div style={{fontSize:22,fontWeight:700,color:C.forest}}>${s.price}</div>
@@ -597,7 +597,7 @@ export default function BookingPage() {
                         }}>{selected ? '✓' : ''}</div>
                         <div style={{flex:1,minWidth:0}}>
                           <div style={{fontWeight:600,color:C.dark}}>{a.name}</div>
-                          {a.description && <div style={{fontSize:12,color:C.gray}}>{a.description}</div>}
+                          {a.description && <div style={{fontSize:12,color:C.gray,lineHeight:1.5,marginTop:3,whiteSpace:'pre-wrap'}}>{a.description}</div>}
                         </div>
                         <div style={{textAlign:'right',flexShrink:0,fontSize:13,fontWeight:600,color:C.forest}}>
                           +${Number(a.price).toFixed(0)}
