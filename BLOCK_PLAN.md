@@ -420,6 +420,17 @@ How HK and Claude work together every session. Survives compaction.
 
 7. **Customer-facing voice is always Joy / MyBodyMap Team.** Never HK or initials. Never em dashes anywhere.
 
+   **PERSONA — applies to ALL customer-facing copy (FB comments, emails, SMS, in-product, marketing, blog posts):**
+   - Audience is a 70-year-old grandma LMT. Tired. Tech-cautious. Skim-reading on phone.
+   - **5-10 sentences max** for any FB comment, DM, or email body.
+   - **~10 words per sentence** average. Short. Clear. Plain words.
+   - **Empathetic first.** Recognize the moment before recommending anything.
+   - **Not salesy.** No "game-changer," no "level up," no urgency, no exclamation marks beyond one per message.
+   - **One soft CTA, not two.** Pick comparison link OR signup link. Never both.
+   - **No jargon.** No "platform-powered," "intelligence layer," "AI-driven." Say what it does in human words.
+   - **No competitor bashing.** Always charitable about MassageBook, Vagaro, Noterro, etc.
+   - Reading-level test: a 70-year-old grandma should understand every sentence on first read. If she'd squint, rewrite.
+
 8. **Minimum-click principle. Apply to every flow, every screen, every feature.** Minimum clicks, minimum scrolling, minimum process steps, minimum cognitive load. If a user has to submit twice, scroll past explanation, or wonder "what now," the design has failed. Ask before building any flow: "How many taps from start to done? Can it be fewer?" This applies retroactively to anything we ship. Two-step flows that should be one-step flows are bugs.
 
 9. **Never use `git add -A` or `git add .`. Always stage explicit file paths.** Container starts fresh each session, `npm install` modifies `node_modules`, and a wildcard add will pull thousands of dependency files into the repo. Stage every change by its full path: `git add src/pages/Dashboard.js src/components/StatsStrip.js`. The `.gitignore` already excludes `node_modules/` as a backstop, but the explicit-paths rule is the primary defense.
