@@ -332,6 +332,20 @@ export default function Comparison() {
   const [feedbackPrefill, setFeedbackPrefill] = useState({ feature: null, category: null });
   const voterIdRef = useRef(null);
 
+  // Sticky header tracking. The matrix's natural <thead> sits in
+  // page flow. When it scrolls out of viewport, we render a
+  // fixed-position floating header above the page that mirrors
+  // the same column structure. This is the only reliable way to
+  // get a true page-viewport sticky header on a horizontally-
+  // scrolling table without breaking the page-scroll UX.
+  const matrixWrapperRef = useRef(null);
+  const matrixScrollRef = useRef(null);
+  const headerRowRef = useRef(null);
+  const [floatingHeaderVisible, setFloatingHeaderVisible] = useState(false);
+  const [floatingHeaderLeft, setFloatingHeaderLeft] = useState(0);
+  const [floatingHeaderWidth, setFloatingHeaderWidth] = useState(0);
+  const [floatingScrollX, setFloatingScrollX] = useState(0);
+
   // Total feature rows for progress bar denominator
   const totalRows = useMemo(
     () => CATEGORIES.reduce((sum, cat) => sum + cat.rows.length, 0),
@@ -402,6 +416,39 @@ export default function Comparison() {
     setFeedbackOpen(false);
     setFeedbackPrefill({ feature: null, category: null });
   }
+
+  // Show / hide the floating sticky header based on scroll position.
+  // The header appears when the original <thead> has scrolled above
+  // the viewport top AND the matrix bottom is still on-screen.
+  useEffect(() => {
+    function update() {
+      const headerEl = headerRowRef.current;
+      const wrapperEl = matrixWrapperRef.current;
+      const scrollEl = matrixScrollRef.current;
+      if (!headerEl || !wrapperEl) return;
+      const headerRect = headerEl.getBoundingClientRect();
+      const wrapperRect = wrapperEl.getBoundingClientRect();
+      // Show floating header when original thead is above the viewport
+      // top, and the matrix bottom is still below the top of the viewport.
+      const stuck = headerRect.bottom < 0 && wrapperRect.bottom > 80;
+      setFloatingHeaderVisible(stuck);
+      // Track horizontal layout so the floating header aligns with
+      // the actual matrix column on the page.
+      setFloatingHeaderLeft(wrapperRect.left);
+      setFloatingHeaderWidth(wrapperRect.width);
+      if (scrollEl) setFloatingScrollX(scrollEl.scrollLeft);
+    }
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    const scrollEl = matrixScrollRef.current;
+    if (scrollEl) scrollEl.addEventListener("scroll", update, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+      if (scrollEl) scrollEl.removeEventListener("scroll", update);
+    };
+  }, []);
 
   return (
     <div style={{ background: C.cream, minHeight: "100vh" }}>
@@ -506,46 +553,89 @@ export default function Comparison() {
           </div>
         </div>
 
-        {/* Bounded-height container with overflow:auto on both axes — this is what makes <thead position:sticky> actually work */}
-        <div style={{
+        {/* Floating sticky header — fixed-position clone shown when the
+            real thead has scrolled above the viewport. Mirrors the matrix
+            columns exactly via shared min-width and synced horizontal scroll. */}
+        {floatingHeaderVisible && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: floatingHeaderLeft,
+            width: floatingHeaderWidth,
+            zIndex: 100,
+            background: "#fff",
+            boxShadow: "0 4px 16px rgba(31,58,44,0.10)",
+            borderBottom: `1px solid ${C.borderStrong}`,
+            overflow: "hidden",
+            pointerEvents: "none",
+          }}>
+            <div style={{
+              transform: `translateX(${-floatingScrollX}px)`,
+              minWidth: 820,
+            }}>
+              <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "34%" }} />
+                  {PLATFORMS.map((p) => <col key={p.id} style={{ width: `${66 / PLATFORMS.length}%` }} />)}
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th style={{ background: "#fff", padding: "12px 8px", textAlign: "left" }}>
+                      <span style={{ fontSize: 11, color: C.inkSofter, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Feature</span>
+                    </th>
+                    {PLATFORMS.map((p) => (
+                      <th key={p.id} style={{ background: p.highlight ? C.yesBg : "#fff", padding: "10px 4px", textAlign: "center", lineHeight: 1.2 }}>
+                        <div style={{ fontSize: p.highlight ? 12.5 : 12, fontWeight: 700, color: p.highlight ? C.forest : C.forestInk }}>{p.name}</div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: p.highlight ? C.forest : C.inkSofter, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+                          ${p.priceFrom}<span style={{ fontSize: 9 }}>/mo</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Matrix wrapper — horizontal scroll on narrow viewports, no
+            vertical bound. The page itself scrolls vertically; the
+            floating header above handles the sticky-header job. */}
+        <div ref={matrixWrapperRef} style={{
           background: "#fff",
           borderRadius: 18,
           border: `1px solid ${C.border}`,
           padding: "0 8px",
           boxShadow: "0 6px 28px rgba(31,58,44,0.06)",
-          maxHeight: "75vh",
-          overflow: "auto",
+          overflow: "hidden",
           position: "relative",
         }}>
+          <div ref={matrixScrollRef} style={{ overflowX: "auto", overflowY: "visible" }}>
           <table style={{ width: "100%", minWidth: 820, borderCollapse: "separate", borderSpacing: 0, tableLayout: "fixed" }}>
             <colgroup>
-              <col style={{ width: "30%" }} />
-              {PLATFORMS.map((p) => <col key={p.id} style={{ width: `${56 / PLATFORMS.length}%` }} />)}
-              <col style={{ width: "14%" }} />
+              <col style={{ width: "34%" }} />
+              {PLATFORMS.map((p) => <col key={p.id} style={{ width: `${66 / PLATFORMS.length}%` }} />)}
             </colgroup>
-            <thead>
+            <thead ref={headerRowRef}>
               <tr>
-                <th style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", padding: "12px 8px", borderBottom: `2px solid ${C.borderStrong}`, textAlign: "left" }}>
+                <th style={{ background: "#fff", padding: "12px 8px", borderBottom: `2px solid ${C.borderStrong}`, textAlign: "left" }}>
                   <span style={{ fontSize: 11, color: C.inkSofter, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>Feature</span>
                 </th>
                 {PLATFORMS.map((p) => (
-                  <th key={p.id} style={{ position: "sticky", top: 0, zIndex: 5, background: p.highlight ? C.yesBg : "#fff", padding: "10px 4px", borderBottom: `2px solid ${p.highlight ? C.forest : C.borderStrong}`, textAlign: "center", lineHeight: 1.2 }}>
+                  <th key={p.id} style={{ background: p.highlight ? C.yesBg : "#fff", padding: "10px 4px", borderBottom: `2px solid ${p.highlight ? C.forest : C.borderStrong}`, textAlign: "center", lineHeight: 1.2 }}>
                     <div style={{ fontSize: p.highlight ? 12.5 : 12, fontWeight: 700, color: p.highlight ? C.forest : C.forestInk }}>{p.name}</div>
                     <div style={{ fontSize: 10, fontWeight: 600, color: p.highlight ? C.forest : C.inkSofter, marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
                       ${p.priceFrom}<span style={{ fontSize: 9 }}>/mo</span>
                     </div>
                   </th>
                 ))}
-                <th style={{ position: "sticky", top: 0, zIndex: 5, background: "#fff", padding: "10px 4px", borderBottom: `2px solid ${C.borderStrong}`, textAlign: "center" }}>
-                  <span style={{ fontSize: 11, color: C.inkSofter, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em" }}>You</span>
-                </th>
               </tr>
             </thead>
             <tbody>
               {CATEGORIES.map((cat) => (
                 <React.Fragment key={cat.id}>
                   <tr>
-                    <td colSpan={PLATFORMS.length + 2} style={{ padding: "20px 8px 10px" }}>
+                    <td colSpan={PLATFORMS.length + 1} style={{ padding: "20px 8px 10px" }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 10, paddingBottom: 8, borderBottom: `1px solid ${C.borderStrong}` }}>
                         <span style={{ fontSize: 11, color: C.gold, fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace", fontWeight: 700, fontVariantNumeric: "tabular-nums", letterSpacing: "0.02em" }}>{cat.id}</span>
                         <h3 style={{ fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: C.forestInk, margin: 0, letterSpacing: "-0.005em" }}>{cat.name}</h3>
@@ -556,18 +646,13 @@ export default function Comparison() {
                   {cat.rows.map((row, i) => (
                     <tr key={`${cat.id}-${i}`}>
                       <td style={{ padding: "13px 8px", fontSize: 13.5, color: C.ink, borderBottom: `1px solid ${C.border}`, lineHeight: 1.4 }}>
-                        {row.f}
+                        <div>{row.f}</div>
                         {row.note && (
                           <span style={{ fontSize: 11, color: C.inkSofter, fontStyle: "italic", display: "block", marginTop: 2, lineHeight: 1.4 }}>{row.note}</span>
                         )}
-                      </td>
-                      {PLATFORMS.map((p) => (
-                        <td key={p.id} style={{ textAlign: "center", padding: "13px 4px", borderBottom: `1px solid ${C.border}`, background: p.highlight ? "rgba(232, 240, 234, 0.4)" : "transparent" }}>
-                          <Mark value={row[p.id]} highlight={p.highlight} />
-                        </td>
-                      ))}
-                      <td style={{ padding: "10px 4px", borderBottom: `1px solid ${C.border}`, textAlign: "center", whiteSpace: "nowrap" }}>
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        {/* Inline verify + flag controls — always visible
+                            in the first column even on mobile horizontal scroll. */}
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 7 }}>
                           <VerifyButton
                             feature={row.f}
                             categoryId={cat.id}
@@ -579,21 +664,30 @@ export default function Comparison() {
                             onClick={(e) => { e.stopPropagation(); openFeedbackForRow(row.f, cat.id); }}
                             title="Flag this row as inaccurate"
                             style={{
-                              display: "inline-flex", alignItems: "center", justifyContent: "center",
-                              width: 22, height: 22, borderRadius: 11,
+                              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+                              padding: "3px 9px", borderRadius: 12,
                               background: "transparent", color: C.inkSofter,
-                              border: `1px solid ${C.border}`, cursor: "pointer", padding: 0,
-                              fontSize: 13, lineHeight: 1, fontWeight: 600,
+                              border: `1px solid ${C.border}`, cursor: "pointer",
+                              fontSize: 11, fontWeight: 600,
                             }}
-                          >×</button>
+                          >
+                            <span style={{ fontSize: 11, lineHeight: 1 }}>⚠</span>
+                            <span>Wrong?</span>
+                          </button>
                         </div>
                       </td>
+                      {PLATFORMS.map((p) => (
+                        <td key={p.id} style={{ textAlign: "center", padding: "13px 4px", borderBottom: `1px solid ${C.border}`, background: p.highlight ? "rgba(232, 240, 234, 0.4)" : "transparent" }}>
+                          <Mark value={row[p.id]} highlight={p.highlight} />
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </React.Fragment>
               ))}
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Below-table CTA strip */}
