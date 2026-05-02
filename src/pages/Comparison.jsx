@@ -1,36 +1,30 @@
 // src/pages/Comparison.jsx
 //
-// v6 — per-category card architecture for screenshot-shareability.
+// v7 — per-category cards, dropped per-row verify/wrong buttons.
 //
 // PROBLEMS BEING SOLVED:
-//   1. The sticky header keeps not working in practice. Every fix
-//      addresses one edge case and breaks another. The real solution
-//      is to make sticky unnecessary by keeping each section short
-//      enough to fit in a viewport with its own visible header.
-//   2. HK explicitly asked for screenshot-shareable. A single 60-row
-//      table that scrolls 4 screens isn't shareable. Seven small
-//      per-category cards each fit in a phone screenshot.
+//   1. Sticky header was never the right solution. Per-category
+//      cards each have their own visible platform-name header so
+//      no sticky needed at all.
+//   2. Per-row Verify and Wrong? buttons added clutter without real
+//      value. Therapists weren't going to vote on 50+ rows. The
+//      'Help us improve' floating button + feedback modal is the
+//      right level of community input.
 //   3. Padding was bloated. Tightened everywhere.
 //
 // ARCHITECTURE:
 //   Each of the 7 taxonomy categories renders as its own card, with
 //   its own platform-name column header sitting right above its rows.
-//   No sticky needed. Each card is its own screenshot.
+//   Each card is its own screenshot.
 //
-// KEPT FROM v5:
-//   - Per-row Verify + Wrong? buttons (gamification visible)
-//   - Community progress scoreboard at top
-//   - Feedback modal
-//   - Quick answers panel as separate top card
-//   - All comparison data in src/data/comparisonData.js
-//
-// REMOVED:
-//   - Pricing grid section (price now shows in each card's column header)
-//   - Annual savings cards section (extra noise; can come back later)
-//   - Floating-position sticky-header logic (~50 lines of JS)
-//   - "You" rightmost column in matrix (buttons moved into feature cell)
+// FEATURES:
+//   - Pricing strip in each card header (price visible per platform)
+//   - Quick-answers card at top with 5 most-asked questions
+//   - Floating "Help us improve" button bottom-right -> feedback modal
+//   - Feedback modal posts to comparison_feedback Supabase table
+//   - Prominent CTA to /comparison/printable for sharing
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
@@ -66,22 +60,6 @@ const C = {
   plannedBg: "#F5EBC7",
   tbc: "#9CB0A0",
 };
-
-// Stable anonymous voter id stored in localStorage.
-function getOrCreateVoterId() {
-  if (typeof window === "undefined") return "ssr";
-  try {
-    const KEY = "mbm_comparison_voter_id";
-    let id = window.localStorage.getItem(KEY);
-    if (!id) {
-      id = crypto?.randomUUID?.() || `v${Date.now()}${Math.random().toString(36).slice(2, 12)}`;
-      window.localStorage.setItem(KEY, id);
-    }
-    return id;
-  } catch {
-    return `v${Date.now()}${Math.random().toString(36).slice(2, 12)}`;
-  }
-}
 
 function Mark({ value, highlight = false, compact = false }) {
   const dim = compact ? 20 : 22;
@@ -160,37 +138,6 @@ function Mark({ value, highlight = false, compact = false }) {
     );
   }
   return null;
-}
-
-function VerifyButton({ feature, categoryId, voted, count, onVote }) {
-  const [busy, setBusy] = useState(false);
-  async function handleClick(e) {
-    e.stopPropagation();
-    if (voted || busy) return;
-    setBusy(true);
-    await onVote(feature, categoryId);
-    setBusy(false);
-  }
-  return (
-    <button onClick={handleClick} disabled={voted || busy} title={voted ? "Thanks for verifying" : "Mark this row as accurate based on your experience"} style={{
-      display: "inline-flex", alignItems: "center", gap: 4,
-      background: voted ? C.yesBg : "transparent",
-      color: voted ? C.forest : C.inkSofter,
-      border: `1px solid ${voted ? C.forest : C.border}`,
-      borderRadius: 10, padding: "2px 7px",
-      fontSize: 10, fontWeight: 600, cursor: voted ? "default" : "pointer",
-      lineHeight: 1, whiteSpace: "nowrap", flexShrink: 0,
-      transition: "all 0.15s",
-    }}>
-      <svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M2.5 6l2.5 2.5L9.5 3.5"/>
-      </svg>
-      <span>{voted ? "Verified" : "Verify"}</span>
-      {count > 0 && (
-        <span style={{ background: voted ? C.forest : C.beige, color: voted ? "#fff" : C.inkSoft, fontSize: 9, fontWeight: 700, padding: "1px 4px", borderRadius: 7, fontVariantNumeric: "tabular-nums" }}>{count}</span>
-      )}
-    </button>
-  );
 }
 
 function FeedbackModal({ open, onClose, prefillFeature = null, prefillCategory = null }) {
@@ -303,7 +250,7 @@ function FeedbackModal({ open, onClose, prefillFeature = null, prefillCategory =
 // CategoryCard — one card per taxonomy category. Self-contained, dense,
 // screenshot-shareable. Each card has its own platform-name column
 // header at the top, so no sticky positioning is needed.
-function CategoryCard({ cat, voteCounts, myVotes, onVerify, onWrongRow }) {
+function CategoryCard({ cat }) {
   return (
     <div style={{
       background: "#fff",
@@ -358,39 +305,16 @@ function CategoryCard({ cat, voteCounts, myVotes, onVerify, onWrongRow }) {
               return (
                 <tr key={i}>
                   <td style={{
-                    padding: "7px 12px",
+                    padding: "8px 12px",
                     fontSize: 12.5,
                     color: C.ink,
                     borderBottom: isLast ? "none" : `1px solid ${C.border}`,
-                    lineHeight: 1.35,
+                    lineHeight: 1.4,
                   }}>
                     <div>{row.f}</div>
                     {row.note && (
-                      <span style={{ fontSize: 10.5, color: C.inkSofter, fontStyle: "italic", display: "block", marginTop: 1, lineHeight: 1.3 }}>{row.note}</span>
+                      <span style={{ fontSize: 10.5, color: C.inkSofter, fontStyle: "italic", display: "block", marginTop: 2, lineHeight: 1.35 }}>{row.note}</span>
                     )}
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginTop: 4 }}>
-                      <VerifyButton
-                        feature={row.f}
-                        categoryId={cat.id}
-                        voted={myVotes.has(row.f)}
-                        count={voteCounts[row.f] || 0}
-                        onVote={onVerify}
-                      />
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onWrongRow(row.f, cat.id); }}
-                        title="Flag this row as inaccurate"
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 3,
-                          padding: "2px 7px", borderRadius: 10,
-                          background: "transparent", color: C.inkSofter,
-                          border: `1px solid ${C.border}`, cursor: "pointer",
-                          fontSize: 10, fontWeight: 600, lineHeight: 1, whiteSpace: "nowrap",
-                        }}
-                      >
-                        <span style={{ fontSize: 10, lineHeight: 1 }}>⚠</span>
-                        <span>Wrong?</span>
-                      </button>
-                    </div>
                   </td>
                   {PLATFORMS.map((p) => (
                     <td key={p.id} style={{
@@ -412,71 +336,8 @@ function CategoryCard({ cat, voteCounts, myVotes, onVerify, onWrongRow }) {
 }
 
 export default function Comparison() {
-  const [voteCounts, setVoteCounts] = useState({});
-  const [myVotes, setMyVotes] = useState(new Set());
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [feedbackPrefill, setFeedbackPrefill] = useState({ feature: null, category: null });
-  const voterIdRef = useRef(null);
-
-  const totalRows = useMemo(
-    () => CATEGORIES.reduce((sum, cat) => sum + cat.rows.length, 0),
-    []
-  );
-
-  const verifiedRowCount = useMemo(
-    () => Object.values(voteCounts).filter((n) => n > 0).length,
-    [voteCounts]
-  );
-  const verifiedPct = totalRows ? Math.round((verifiedRowCount / totalRows) * 100) : 0;
-
-  useEffect(() => {
-    voterIdRef.current = getOrCreateVoterId();
-    let cancelled = false;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from("comparison_row_votes")
-          .select("feature_label, voter_id, vote_type")
-          .eq("vote_type", "verify");
-        if (cancelled || error) return;
-        const counts = {};
-        const mine = new Set();
-        for (const r of data || []) {
-          counts[r.feature_label] = (counts[r.feature_label] || 0) + 1;
-          if (r.voter_id === voterIdRef.current) mine.add(r.feature_label);
-        }
-        setVoteCounts(counts);
-        setMyVotes(mine);
-      } catch (e) {
-        console.warn("vote load failed:", e);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  async function handleVerify(featureLabel, categoryId) {
-    if (myVotes.has(featureLabel)) return;
-    setMyVotes((prev) => new Set(prev).add(featureLabel));
-    setVoteCounts((prev) => ({ ...prev, [featureLabel]: (prev[featureLabel] || 0) + 1 }));
-    try {
-      const { error } = await supabase.from("comparison_row_votes").insert({
-        feature_label: featureLabel,
-        category_id: categoryId,
-        voter_id: voterIdRef.current,
-        vote_type: "verify",
-      });
-      if (error && error.code !== "23505") throw error;
-    } catch (e) {
-      console.warn("verify save failed:", e);
-      setMyVotes((prev) => { const s = new Set(prev); s.delete(featureLabel); return s; });
-      setVoteCounts((prev) => ({ ...prev, [featureLabel]: Math.max(0, (prev[featureLabel] || 0) - 1) }));
-    }
-  }
-
-  function openFeedbackForRow(featureLabel, categoryId) {
-    setFeedbackPrefill({ feature: featureLabel, category: categoryId });
-    setFeedbackOpen(true);
-  }
 
   function closeFeedback() {
     setFeedbackOpen(false);
@@ -488,8 +349,8 @@ export default function Comparison() {
       <Nav />
 
       {/* Compact hero */}
-      <header style={{ maxWidth: 920, margin: "0 auto", padding: "110px 20px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>Side by side · community verified</div>
+      <header style={{ maxWidth: 920, margin: "0 auto", padding: "110px 20px 24px", textAlign: "center" }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 8 }}>Side by side</div>
         <h1 style={{
           fontFamily: "Georgia, 'Iowan Old Style', serif",
           fontSize: "clamp(26px, 4.5vw, 38px)",
@@ -499,36 +360,19 @@ export default function Comparison() {
         }}>
           Solo massage software, <em style={{ color: C.gold, fontStyle: "italic" }}>compared honestly.</em>
         </h1>
-        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 580, margin: "0 auto 14px" }}>
-          Seven platforms. Tap <strong style={{ color: C.forest }}>Verify</strong> on rows you can confirm. Tap <strong style={{ color: C.forest }}>⚠ Wrong?</strong> to suggest a correction. Each card screenshots cleanly.
+        <p style={{ fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 580, margin: "0 auto 16px" }}>
+          Seven platforms. Verified pricing and features as of May 2026. Each card screenshots cleanly for sharing.
         </p>
         <a href="/comparison/printable" style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           background: C.forest, color: "#fff", textDecoration: "none",
-          padding: "8px 18px", borderRadius: 99,
+          padding: "9px 20px", borderRadius: 99,
           fontSize: 13, fontWeight: 700,
           boxShadow: "0 4px 12px rgba(42,87,65,0.18)",
         }}>
           <span style={{ fontSize: 14 }}>📄</span> Get the one-page printable
         </a>
       </header>
-
-      {/* Community verification scoreboard — compact */}
-      <section style={{ maxWidth: 720, margin: "0 auto 16px", padding: "0 20px" }}>
-        <div style={{ background: "#fff", border: `1px solid ${C.border}`, borderRadius: 14, padding: "10px 14px", display: "flex", alignItems: "center", gap: 12, boxShadow: "0 2px 8px rgba(31,58,44,0.04)" }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, color: C.inkSofter, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>Community verification</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
-              <span style={{ fontFamily: "Georgia, serif", fontSize: 18, fontWeight: 700, color: C.forestInk, fontVariantNumeric: "tabular-nums" }}>{verifiedRowCount}</span>
-              <span style={{ fontSize: 12, color: C.inkSofter }}>of {totalRows} rows verified</span>
-            </div>
-            <div style={{ marginTop: 5, height: 4, background: C.beige, borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${verifiedPct}%`, background: `linear-gradient(90deg, ${C.sage} 0%, ${C.forest} 100%)`, borderRadius: 2, transition: "width 0.4s ease" }} />
-            </div>
-          </div>
-          <div style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700, color: C.forest, fontVariantNumeric: "tabular-nums" }}>{verifiedPct}%</div>
-        </div>
-      </section>
 
       {/* Quick answers — its own card */}
       <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 20px 12px" }}>
@@ -582,14 +426,7 @@ export default function Comparison() {
       {/* Per-category cards — each one screenshot-shareable */}
       <section style={{ maxWidth: 1040, margin: "0 auto", padding: "0 20px 12px" }}>
         {CATEGORIES.map((cat) => (
-          <CategoryCard
-            key={cat.id}
-            cat={cat}
-            voteCounts={voteCounts}
-            myVotes={myVotes}
-            onVerify={handleVerify}
-            onWrongRow={openFeedbackForRow}
-          />
+          <CategoryCard key={cat.id} cat={cat} />
         ))}
       </section>
 
@@ -619,7 +456,7 @@ export default function Comparison() {
       {/* Disclaimer */}
       <section style={{ maxWidth: 720, margin: "0 auto 28px", padding: "0 20px" }}>
         <p style={{ fontSize: 11, color: C.inkSofter, textAlign: "center", lineHeight: 1.55, margin: 0, fontStyle: "italic" }}>
-          Comparison based on publicly available pricing and feature documentation as of May 2026. Pricing and features change. Verify directly with each provider before signing up. We are not 100% certain of every cell — that is why we ask the community to help us improve. Tap any row's Verify button to confirm or Wrong? to flag a correction.
+          Comparison based on publicly available pricing and feature documentation as of May 2026. Pricing and features change frequently. Confirm directly with each provider before signing up. Cells marked with a dash are awaiting community confirmation. Spotted something off? Use the "Help us improve" button below to flag it.
         </p>
       </section>
 
