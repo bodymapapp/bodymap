@@ -26,6 +26,7 @@ import ScheduleDemo from "../components/demos/ScheduleDemo";
 import BillingDemo from "../components/demos/BillingDemo";
 import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
+import CampaignsDemo from "../components/demos/CampaignsDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -104,13 +105,17 @@ const RIBBONS = [
     id: "5",
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
-    demos: [{ kind: "component", component: AutomationHub, label: "Automation flows" }],
+    // TWO demos shown as a carousel: workflow automations + AI campaign starter.
+    demos: [
+      { kind: "component", component: AutomationHub, label: "Automation flows" },
+      { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
+    ],
     layout: "demo-right",
     subFeatures: [
       "Automated SMS + email reminders",
       "Post-session thank-you with rebook link",
+      "One-tap campaign drafts in 8 categories",
       "Lapsed client outreach, weekly digest",
-      "Loyalty rewards punch card",
       "5-dimension feedback aggregated over time",
     ],
     cta: "Relationships features",

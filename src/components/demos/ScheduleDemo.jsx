@@ -12,9 +12,27 @@ const C = {
   gray: "#6B7280", lightGray: "#F3F4F6", border: "#E5E7EB",
 };
 
+// Fade in when scrolled into view. Mirrors the pattern in PatternDemo.
+function useFadeIn(threshold = 0.1) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) setVisible(true); }),
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
 function ScheduleDemo() {
   const [view, setView] = useState("daily");
   const [selectedAppt, setSelectedAppt] = useState(0);
+  const [ref, visible] = useFadeIn();
 
   const appts = [
     { time:"9:00 AM", name:"Sarah M.", dur:"60 min", status:"intake-done", focus:"Neck & Shoulders", sessions:7, initials:"SM" },
@@ -49,12 +67,12 @@ function ScheduleDemo() {
   ];
 
   return (
-    <div style={{ background:"#fff", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 48px rgba(0,0,0,0.14)", maxWidth:480, margin:"0 auto" }}>
-      <div style={{ background:C.forest, padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <div style={{ fontSize:15, fontWeight:700, color:"#fff" }}>📅 Schedule</div>
+    <div ref={ref} style={{ background:"#fff", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 48px rgba(0,0,0,0.14)", maxWidth:480, margin:"0 auto" }}>
+      <div style={{ background:C.forest, padding:"12px 16px" }}>
+        <div style={{ fontSize:14, fontWeight:700, color:"#fff", marginBottom:10 }}>📅 Schedule</div>
         <div style={{ display:"flex", gap:4 }}>
           {["daily","weekly","monthly","insights"].map(v=>(
-            <button key={v} onClick={()=>setView(v)} style={{ background:view===v?"rgba(255,255,255,0.25)":"transparent", color:"#fff", border:"none", borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer", opacity:view===v?1:0.7 }}>
+            <button key={v} onClick={()=>setView(v)} style={{ flex:1, background:view===v?"rgba(255,255,255,0.25)":"transparent", color:"#fff", border:"none", borderRadius:6, padding:"6px 4px", fontSize:11, fontWeight:600, cursor:"pointer", opacity:view===v?1:0.7 }}>
               {v.charAt(0).toUpperCase()+v.slice(1)}
             </button>
           ))}
@@ -66,7 +84,7 @@ function ScheduleDemo() {
           <>
             <div style={{ display:"flex", gap:6, marginBottom:14 }}>
               {["Today 5","Tmrw 2","Wed 3","Thu 1","Fri 4"].map((d,i)=>(
-                <button key={i} style={{ flex:1, background:i===0?C.forest:"#F9FAFB", color:i===0?"#fff":C.gray, border:`1.5px solid ${i===0?C.forest:C.border}`, borderRadius:8, padding:"6px 2px", fontSize:10, fontWeight:600, cursor:"pointer" }}>
+                <button key={i} style={{ flex:1, background:i===0?C.forest:"#F9FAFB", color:i===0?"#fff":C.gray, border:`1.5px solid ${i===0?C.forest:C.border}`, borderRadius:8, padding:"6px 2px", fontSize:10, fontWeight:600, cursor:"pointer", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(-6px)", transition:`opacity 0.4s ease ${i*0.06}s, transform 0.4s ease ${i*0.06}s` }}>
                   {d.split(" ").map((t,j)=><div key={j}>{t}</div>)}
                 </button>
               ))}
@@ -76,7 +94,7 @@ function ScheduleDemo() {
                 const sc = STATUS[a.status];
                 const isSel = selectedAppt===i;
                 return (
-                  <div key={i}>
+                  <div key={i} style={{ opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(8px)", transition:`opacity 0.5s ease ${0.3+i*0.08}s, transform 0.5s ease ${0.3+i*0.08}s` }}>
                     <div onClick={()=>setSelectedAppt(isSel?-1:i)} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", borderRadius:10, background:"#F9FAFB", border:`1.5px solid ${isSel?C.forest:C.border}`, cursor:"pointer", borderLeft:`3px solid ${sc.border}` }}>
                       <div style={{ minWidth:58, fontSize:11, fontWeight:700, color:C.dark }}>{a.time}</div>
                       <div style={{ width:28, height:28, borderRadius:"50%", background:C.forest, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700, flexShrink:0 }}>{a.initials}</div>

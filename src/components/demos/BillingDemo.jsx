@@ -12,8 +12,26 @@ const C = {
   gray: "#6B7280", lightGray: "#F3F4F6", border: "#E5E7EB",
 };
 
+// Fade in when scrolled into view. Mirrors the pattern in PatternDemo.
+function useFadeIn(threshold = 0.1) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      (entries) => entries.forEach((e) => { if (e.isIntersecting) setVisible(true); }),
+      { threshold }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
 function BillingDemo() {
   const [view, setView] = useState("daily");
+  const [ref, visible] = useFadeIn();
   const today = [
     { name:"Sarah M.", time:"9:00 AM", expected:85, actual:85, status:"paid" },
     { name:"Jennifer K.", time:"10:30 AM", expected:110, actual:null, status:"pending" },
@@ -33,12 +51,12 @@ function BillingDemo() {
   ];
 
   return (
-    <div style={{ background:"#fff", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 48px rgba(0,0,0,0.14)", maxWidth:480, margin:"0 auto" }}>
-      <div style={{ background:"#1A3A28", padding:"14px 20px", display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-        <div style={{ fontSize:15, fontWeight:700, color:"#fff" }}>💰 Billing</div>
+    <div ref={ref} style={{ background:"#fff", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 48px rgba(0,0,0,0.14)", maxWidth:480, margin:"0 auto" }}>
+      <div style={{ background:"#1A3A28", padding:"12px 16px" }}>
+        <div style={{ fontSize:14, fontWeight:700, color:"#fff", marginBottom:10 }}>💰 Billing</div>
         <div style={{ display:"flex", gap:4 }}>
           {["daily","weekly","yearly","insights"].map(v=>(
-            <button key={v} onClick={()=>setView(v)} style={{ background:view===v?"rgba(255,255,255,0.25)":"transparent", color:"#fff", border:"none", borderRadius:6, padding:"4px 10px", fontSize:11, fontWeight:600, cursor:"pointer", opacity:view===v?1:0.7 }}>
+            <button key={v} onClick={()=>setView(v)} style={{ flex:1, background:view===v?"rgba(255,255,255,0.25)":"transparent", color:"#fff", border:"none", borderRadius:6, padding:"6px 4px", fontSize:11, fontWeight:600, cursor:"pointer", opacity:view===v?1:0.7 }}>
               {v.charAt(0).toUpperCase()+v.slice(1)}
             </button>
           ))}
@@ -48,11 +66,11 @@ function BillingDemo() {
         {view==="daily" && (
           <>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-              <div style={{ background:"#F0FDF4", borderRadius:10, padding:"12px 14px" }}>
+              <div style={{ background:"#F0FDF4", borderRadius:10, padding:"12px 14px", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(6px)", transition:"opacity 0.5s ease, transform 0.5s ease" }}>
                 <div style={{ fontSize:20, fontWeight:700, color:C.forest, fontFamily:"Georgia,serif" }}>$280</div>
                 <div style={{ fontSize:11, color:C.gray }}>Collected today</div>
               </div>
-              <div style={{ background:"#FEF3C7", borderRadius:10, padding:"12px 14px" }}>
+              <div style={{ background:"#FEF3C7", borderRadius:10, padding:"12px 14px", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(6px)", transition:"opacity 0.5s ease 0.08s, transform 0.5s ease 0.08s" }}>
                 <div style={{ fontSize:20, fontWeight:700, color:"#D97706", fontFamily:"Georgia,serif" }}>$195</div>
                 <div style={{ fontSize:11, color:C.gray }}>Pending today</div>
               </div>
@@ -61,7 +79,7 @@ function BillingDemo() {
               {today.map((s,i)=>{
                 const sc = STATUS[s.status];
                 return (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", background:"#F9FAFB", borderRadius:10 }}>
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 12px", background:"#F9FAFB", borderRadius:10, opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(8px)", transition:`opacity 0.5s ease ${0.2+i*0.07}s, transform 0.5s ease ${0.2+i*0.07}s` }}>
                     <div style={{ width:28, height:28, borderRadius:"50%", background:C.forest, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:10, fontWeight:700 }}>{s.name.split(" ").map(w=>w[0]).join("")}</div>
                     <div style={{ flex:1 }}>
                       <div style={{ fontSize:12, fontWeight:700, color:C.dark }}>{s.name}</div>
@@ -146,8 +164,8 @@ function BillingDemo() {
         {view==="insights" && (
           <>
             <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, marginBottom:14 }}>
-              {[{l:"30-Day Revenue",v:"$5,440",sub:"+18% vs prior month",color:C.forest},{l:"Collection Rate",v:"89%",sub:"industry avg: 82%",color:"#16A34A"},{l:"Avg Session Value",v:"$91",sub:"up from $85",color:C.sage},{l:"Outstanding",v:"$170",sub:"2 sessions",color:"#DC2626"}].map(s=>(
-                <div key={s.l} style={{ background:"#F9FAFB", borderRadius:8, padding:"10px 12px" }}>
+              {[{l:"30-Day Revenue",v:"$5,440",sub:"+18% vs prior month",color:C.forest},{l:"Collection Rate",v:"89%",sub:"industry avg: 82%",color:"#16A34A"},{l:"Avg Session Value",v:"$91",sub:"up from $85",color:C.sage},{l:"Outstanding",v:"$170",sub:"2 sessions",color:"#DC2626"}].map((s,i)=>(
+                <div key={s.l} style={{ background:"#F9FAFB", borderRadius:8, padding:"10px 12px", opacity:visible?1:0, transform:visible?"translateY(0)":"translateY(8px)", transition:`opacity 0.5s ease ${i*0.08}s, transform 0.5s ease ${i*0.08}s` }}>
                   <div style={{ fontSize:16, fontWeight:700, color:s.color, fontFamily:"Georgia,serif" }}>{s.v}</div>
                   <div style={{ fontSize:11, fontWeight:600, color:C.dark }}>{s.l}</div>
                   <div style={{ fontSize:10, color:C.gray }}>{s.sub}</div>
@@ -162,7 +180,7 @@ function BillingDemo() {
                   <span style={{ fontSize:12, fontWeight:700, color:C.forest }}>${c.revenue}</span>
                 </div>
                 <div style={{ background:"#E5E7EB", borderRadius:99, height:5 }}>
-                  <div style={{ width:`${(c.revenue/595)*100}%`, background:C.forest, borderRadius:99, height:5 }}/>
+                  <div style={{ width:visible?`${(c.revenue/595)*100}%`:"0%", background:C.forest, borderRadius:99, height:5, transition:`width ${0.7+i*0.1}s ease ${0.4+i*0.1}s` }}/>
                 </div>
               </div>
             ))}
