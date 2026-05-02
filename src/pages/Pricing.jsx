@@ -216,8 +216,8 @@ export default function Pricing() {
             detail="Same standards as MassageBook and Vagaro. Your data stays yours."
           />
           <TrustItem
-            label="Built for solo LMTs"
-            detail="Not for spas. Not for salons. For one therapist, you."
+            label="Built for massage therapists"
+            detail="Not for spas. Not for salons. For your practice, however it grows."
           />
         </div>
       </section>

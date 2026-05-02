@@ -116,7 +116,7 @@ const ONLY_MBM = [
     body:
       "Bronze is free. Body map, AI chat, reminders, SOAP notes, billing, intake. Free forever for anyone who joins now.",
     proof:
-      "Solo therapists currently pay $20-70/month for partial versions of these tools across MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, and Noterro. Most charge extra for SOAP, marketing, or text reminders on top of the base plan.",
+      "Therapists currently pay $20-70/month for partial versions of these tools across MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, and Noterro. Most charge extra for SOAP, marketing, or text reminders on top of the base plan.",
     photoId: "1.1",
   },
 ];
@@ -139,7 +139,7 @@ const COST_COMPARISON = [
   {
     name: "Jane App",
     price: "$54–99/mo",
-    note: "Strong clinical tools but priced for multi-disciplinary clinics, not solo LMTs.",
+    note: "Strong clinical tools but priced for multi-disciplinary clinics, not smaller practices.",
   },
   {
     name: "ClinicSense Standard",
@@ -237,12 +237,12 @@ export default function WhyBodyMap() {
         <div className="bm-why-v2-cost__intro">
           <p className="bm-why-v2-cost__eyebrow">The honest cost picture</p>
           <h2 className="bm-why-v2-cost__title">
-            What solo therapists are paying <em>this month.</em>
+            What therapists are paying <em>this month.</em>
           </h2>
           <p className="bm-why-v2-cost__sub">
             Pricing pulled directly from each platform's published pricing as of
             April 2026. Add-on costs are noted where they meaningfully change
-            the picture for a solo LMT.
+            the picture for a working practice.
           </p>
         </div>
         <div className="bm-why-v2-cost__list">
@@ -253,7 +253,7 @@ export default function WhyBodyMap() {
         <p className="bm-why-v2-cost__footnote">
           Sources: each platform's official pricing page. Independent reviews
           from MBLEx Guide, ROXO Hub, BusyBook, Pabau, GlossyStack, and Software
-          Advice cross-referenced for solo-LMT real-world cost.
+          Advice cross-referenced for real-world cost.
         </p>
       </section>
 

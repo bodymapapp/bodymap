@@ -23,7 +23,7 @@
 //   - MyBodyMap: live product
 
 export const PLATFORMS = [
-  { id: "bm",  name: "MyBodyMap",   tagline: "Solo LMTs, retention-first",        priceFrom: 0,   highlight: true },
+  { id: "bm",  name: "MyBodyMap",   tagline: "Massage therapists, retention-first",  priceFrom: 0,   highlight: true },
   { id: "mb",  name: "MassageBook", tagline: "Massage-specific, broad",            priceFrom: 20 },
   { id: "vg",  name: "Vagaro",      tagline: "Spa & beauty, multi-staff",          priceFrom: 25 },
   { id: "gg",  name: "GlossGenius", tagline: "Beauty-first, design-led",           priceFrom: 24 },

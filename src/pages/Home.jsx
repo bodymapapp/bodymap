@@ -175,7 +175,7 @@ export default function Home() {
 
   // SEO
   useEffect(() => {
-    document.title = "MyBodyMap · Practice on autopilot for solo massage therapists";
+    document.title = "MyBodyMap · Practice on autopilot for massage therapists";
   }, []);
 
   return (

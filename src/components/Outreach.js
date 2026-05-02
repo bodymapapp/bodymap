@@ -218,7 +218,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
     const therapistFirst = (therapist?.full_name || '').split(' ')[0] || 'the therapist';
 
     const userMsg = [
-      `Draft a ${channel === 'email' ? 'campaign email' : 'campaign SMS'} for ${businessName}, a solo massage therapist.`,
+      `Draft a ${channel === 'email' ? 'campaign email' : 'campaign SMS'} for ${businessName}, a massage therapy practice.`,
       `Topic: ${category.prompt}`,
       contextNote ? `Specific details from the therapist: ${contextNote}` : '',
       "",

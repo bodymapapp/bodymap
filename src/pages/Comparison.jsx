@@ -356,7 +356,7 @@ export default function Comparison() {
           color: C.forestInk,
           margin: "0 0 10px", letterSpacing: "-0.022em",
         }}>
-          Solo massage software, <em style={{ color: C.gold, fontStyle: "italic" }}>compared honestly.</em>
+          Massage software, <em style={{ color: C.gold, fontStyle: "italic" }}>compared honestly.</em>
         </h1>
         <p style={{ fontSize: 14.5, lineHeight: 1.55, color: C.inkSoft, maxWidth: 580, margin: "0 auto 16px" }}>
           Seven platforms. Verified pricing and features as of May 2026. Each card screenshots cleanly for sharing.

@@ -153,7 +153,7 @@ export default function ComparisonPrintable() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14, paddingBottom: 14, borderBottom: `1px solid ${C.border}` }}>
             <div>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: C.gold, textTransform: "uppercase", letterSpacing: "0.18em", marginBottom: 4 }}>
-                Solo massage software
+                Massage software
               </div>
               <h1 style={{ fontFamily: "Georgia, serif", fontSize: 26, fontWeight: 700, color: C.forestInk, margin: "0 0 4px", letterSpacing: "-0.018em", lineHeight: 1.15 }}>
                 Compared <em style={{ color: C.gold, fontStyle: "italic" }}>honestly.</em>
