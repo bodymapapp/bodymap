@@ -36,7 +36,8 @@ const C = {
 // the embed block below with a CapCut-exported MP4. The component
 // renders a placeholder when DEMO_EMBED_URL is empty.
 const DEMO_EMBED_URL = "";   // e.g. "https://app.supademo.com/embed/<id>"
-const DEMO_MP4_URL = "";     // e.g. "/videos/campaigns-demo.mp4"
+const DEMO_MP4_URL = "/videos/campaigns-demo.mp4";
+const DEMO_POSTER_URL = "/videos/campaigns-demo-poster.jpg";
 
 const PROOF_CARDS = [
   {
@@ -157,7 +158,7 @@ export default function Campaigns() {
           overflow: "hidden",
           boxShadow: "0 12px 40px rgba(31,58,44,0.10)",
           border: `1px solid ${C.border}`,
-          aspectRatio: "16/10",
+          aspectRatio: "16/9",
           position: "relative",
         }}>
           {DEMO_EMBED_URL ? (
@@ -171,9 +172,11 @@ export default function Campaigns() {
           ) : DEMO_MP4_URL ? (
             <video
               src={DEMO_MP4_URL}
+              poster={DEMO_POSTER_URL}
               controls
               playsInline
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              preload="metadata"
+              style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
           ) : (
             <div style={{
