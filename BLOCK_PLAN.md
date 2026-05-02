@@ -1,18 +1,19 @@
 # MyBodyMap Block Plan
 **Living document. Survives compaction. Update freely.**
 
-Last refreshed: 2026-05-01 — after Outreach campaigns ship + Campaigns landing page.
+Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison v7 + 4 switcher CTAs + AI/Claude→MyBodyMap Platform brand swap + AutomationHub overflow fixes + new CampaignsDemo + Tier S items added from FB Massage Therapists Community thread (May 1-2).
 
 ## Current state
 - 28 therapists signed up. ~5 active. Most never returned after signup.
-- Settings v3 Phase 1A + 1B + 1C shipped (hero, leaf, collapsible rows AND collapsible major sections, welcome-at-top, Import Clients as 1st row in How I practice, Account renamed to "My membership").
-- Founder dashboard: numbered collapsible tables (Therapists / Activation / Comms Log) + Mass SMS broadcast tool with Account Audit, Test Mode toggle, channel selector (Google Voice / Mac Messages), word counter, multi-select, guided sequence, and Twilio batch send (paste creds → send 100+ in one click).
-- Settings full-width parity with Clients/Schedule/Billing tabs.
-- Auto-update booking-link slug when business name changes.
-- Mass SMS message template is now ≤10 words with "MyBodyMap founder" branding.
-- Settings IA refactor (5 groups, taxonomy, time badges, search bar, Apple Settings panel style, inline edit on prices/durations) shipped.
-- Outreach campaign upgrades shipped: AI starter (8 categories), expanded tokens, subject line, unsubscribe link, history. The marquee differentiator vs MassageBook (Regina FB thread).
-- Campaigns landing page live at /campaigns + Features card 5.0 linking to it.
+- Tier A0 (smart defaults at signup) SHIPPED. New therapists land in dashboard with 3 services, business hours, 5 add-ons, 5 memberships, 5 packages pre-seeded. Booking page accepts real bookings immediately on first dashboard load.
+- Comparison page v7 at /comparison: per-card sticky thead, dropped Verify/Wrong gamification, dropped row notes + subtitles, 7 platform cards each screenshot-shareable.
+- /comparison/printable one-page artifact: 15-row curated matrix, "Verified May 2026" badge, screenshot or PDF for FB groups + AMTA handouts.
+- 4 empathetic switcher CTAs live (Home / WhyBodyMap / Comparison / Pricing). Headline promise: "Up and running in 2 minutes" — now backed by Tier A0.
+- "Solo" framing removed from public surfaces (broadens to multi-practice operators like Terra).
+- AI / Claude → MyBodyMap Platform brand swap shipped across 22 files.
+- New CampaignsDemo wired into Relationships ribbon as carousel partner with AutomationHub.
+- AutomationHub overflow + Schedule/Billing top-bar fixes shipped with Pattern-style animations.
+- 4 Facebook marketing graphics built (1080x1350) for Bo Ma persona Facebook + Instagram posting.
 
 ## Active fires
 1. **Twilio setup in progress** — HK has authorized investing. Step-by-step in the Twilio dashboard tonight. After purchase + creds, he will plug in to MyBodyMap and broadcast to 23 textable users.
@@ -23,19 +24,116 @@ Last refreshed: 2026-05-01 — after Outreach campaigns ship + Campaigns landing
 6. **Campaigns demo video** — HK is making a CapCut version with music (Supademo paywalled audio). When ready, swap `DEMO_EMBED_URL` (iframe) or `DEMO_MP4_URL` ('/videos/campaigns-demo.mp4') in `src/pages/Campaigns.jsx` to flip placeholder → live video.
 7. **Ashton's medical massage photo storage** — deferred. HK wants to think through HIPAA implications first. Sketched 3 paths in chat (per-session / per-client timeline / both) plus consent flow + signed-URL storage. Revisit after Twilio.
 
+## TIER S — DISTRIBUTION (do this week, not products)
+
+**Context:** Distribution is the unsolved problem, not product. The May 1-2 FB Massage Therapists Community thread surfaced an active shopping conversation where therapists are LITERALLY asking "MassageBook vs Vagaro vs Noterro" right now. Pricing pain is dominant ("MassageBook just raised prices, very disappointing"). Free Bronze tier is the answer to a question they're asking out loud. These items are about being present in those conversations, not building more product.
+
+### S1. FB-comment template for shopping threads
+**Why:** HK is already commenting in software-comparison threads. Standardize the response so each comment takes 60 seconds, lands the same way, and reads as helpful (not promotional).
+**Build:** Three-sentence template saved as a snippet:
+1. Lead with empathy ("Totally hear the MassageBook pricing frustration. We've been tracking this in the community.")
+2. One specific differentiator (free Bronze tier + visual body map intake; never deflate someone else's choice)
+3. Soft CTA (link to /comparison or /why-bodymap, not /signup)
+Plus a "do not say" list: don't slam other tools, don't repeat the link in multiple comments in same thread, don't reply within seconds (looks like a bot).
+**Effort:** 30 min (write template + create swipe file in Notes)
+**Status:** Queued
+
+### S2. Daily 15-min FB sweep
+**Why:** Anonymous participant's "Vagaro vs MassageBook vs Noterro" thread had 30+ replies. Being one of the first 5 helpful comments is high-leverage real estate. Time-sensitive: most threads die after 24 hr.
+**Build:** HK commits to a daily 15-min slot (suggest: morning coffee). Open Massage Therapists and Bodyworkers Community + similar groups. Scan for "what software," "MassageBook problem," "just rented space," "no ad budget." Comment on each within 6 hr of original post using S1 template.
+**Effort:** 15 min/day, indefinite
+**Tracking:** Note in a journal which threads converted to /comparison or /signup visits (server-side referrer tracking).
+**Status:** Operational habit, not a code build. Just a commitment.
+
+### S3. "Just rented a space" landing page
+**Why:** Vicky L's original post is the universal LMT story: 20 years experience, just rented, anxious, no ad budget, doesn't know niche. The community reply thread is the freest market research possible — 30+ pieces of advice, with Google Business Page repeated 8+ times. This archetype is HK's exact ICP.
+**Build:** New landing page at /just-rented-a-space (or /new-practice). Opens with that emotional hook. Walks through:
+- Free Bronze tier (no ad spend needed)
+- Google Business Page tactic (community's #1 advice)
+- Referral system (community's #2 advice)
+- The "5 things free that grow a practice" checklist
+- Closes with "Sign up takes 2 minutes" (now truthful post-A0)
+This is the page HK links in FB comments to that specific archetype.
+**Effort:** 2-3 hr
+**Files:** `src/pages/JustRentedSpace.jsx`, route in App.js, link from /comparison + /why-bodymap
+**Status:** Queued
+
+### S4. /comparison page surface Vagaro/Mindbody positioning
+**Why:** Sasha Gong's reply in the thread was effectively a Vagaro sales pitch ("1.5-2% on overall sale, $10/mo daily deals, great for tax filing"). She's selling Vagaro better than Vagaro does. Don't fight Vagaro on multi-staff salon ops; redirect — Vagaro is great if you run a salon with chairs and product retail. MyBodyMap is for therapists who want intelligence-driven retention. Reframe.
+**Build:** Add a "Best fit for" line per platform on /comparison, written as specific use-case statements:
+- Vagaro: "Multi-staff salon, retail-heavy, packages-driven"
+- Mindbody: "Multi-location studios, classes, enterprise needs"
+- MassageBook: "Solo + small clinic, broad massage features"
+- Noterro: "Clinical/medical massage, insurance billing"
+- MyBodyMap: "Solo + small practice, retention-first, body-map intelligence"
+**Effort:** 1 hr
+**Files:** src/data/comparisonData.js (add `bestFor` field), src/pages/Comparison.jsx (render in card header)
+**Status:** Queued
+
+### S5. The "$0 ad budget playbook" blog post
+**Why:** The FB thread is a gold mine of community wisdom. Compress it into a single canonical post, weave MyBodyMap in as the underlying platform without making the post about MyBodyMap. SEO compound interest, organic share-ability, builds Bo Ma authority in the niche.
+**Build:** Blog post at `/blog/no-ad-budget-playbook` (or similar). Sections:
+1. The reality (no money to advertise, just rented space)
+2. Google Business Page setup (community-recommended, MyBodyMap auto-syncs booking link)
+3. The referral system (free massage in exchange for 2 referrals — pattern from the thread)
+4. Local FB group presence (the community's organic growth playbook)
+5. Apartment building flyer drop (Julie Rattelmueller's tactic)
+6. Chamber of commerce + local business cards
+7. The retention math (one $90 client retained = $1,080/year; one ad spend that converts = $90 once)
+Closing soft CTA: free Bronze tier on MyBodyMap.
+Paraphrase the thread, never quote (copyright safety). Joy persona voice.
+**Effort:** 90 min draft + 30 min HK edit
+**Files:** New `src/pages/blog/NoAdBudgetPlaybook.jsx` or a static markdown route
+**Status:** Queued
+
+### S6. Two more blog posts from the same thread
+**Why:** One thread, three posts. Compound content from the same source.
+**Builds:**
+- "What 30 therapists told us about Google Business, referrals, and FB groups" (community wisdom roundup)
+- "Software shopping for solo LMTs: what therapists actually say" (paraphrased consensus, links to /comparison)
+**Effort:** 90 min each
+**Status:** Queued behind S5
+
 ## TIER A — ship in next 2-4 weeks (highest leverage)
 
 ### A0. Smart defaults at signup *(was Phase 2)*
-**Why:** New therapists arrive at a blank Settings page and bounce. With smart defaults they land 80% configured.
-**Build:** Pre-fill on signup:
-- Hours: Mon-Fri 9-5
-- 3 services pre-toggled with median pricing: Swedish 60min $90, Deep Tissue 60min $100, Hot Stone 90min $135
-- 4 add-ons pre-toggled: Hot Stones $15, Aromatherapy $10, Hot Towels $8, Extended +30min $45
-- AI features ON
-- Practice Pulse ON
-- Buffer 15 min between sessions
-**Effort:** 2 hr
-**Files:** Signup.js handler, supabase migration to insert default rows for new therapist_id
+**Why:** New therapists arrived at a blank Settings page and bounced. Now they land 80% configured and the "Up and running in 2 minutes" marketing claim is truthful.
+**Status:** ✅ SHIPPED (commit `27326c70`, May 2). Auto-seeds 3 services, Mon-Sat business hours, 5 add-ons, 5 memberships, 5 packages on every new therapist row. Idempotent + non-blocking. Wired into all 3 signup paths (regular email, Google paid, Google free Onboarding). New module: `src/lib/seedDefaults.js`.
+
+### A5. Google Business Page integration *(from FB community thread May 1-2)*
+**Why:** Community's #1 advice for "no ad budget" therapists, repeated 8+ times in the thread ("Get on Google. Free. Highest-leverage tactic"). Therapists already know they need it but find the setup intimidating. We can solve that. Also benefits MyBodyMap directly: their MyBodyMap booking link becomes the "Book Now" button on Google.
+**Build:**
+- Settings card "Connect Google Business" with a guided 4-step checklist (Claim → Verify → Add booking link → Add hours)
+- Deep links to Google's setup wizard for each step
+- Field for therapist to paste their Google Business Profile URL once claimed
+- Auto-include the Google link in booking confirmation emails ("View us on Google" footer)
+- Phase 2 (later): auto-pull Google review count + rating into therapist's MyBodyMap profile
+**Effort:** 3-4 hr for Phase 1 (the checklist + URL field + email integration)
+**Files:** New SettingsCard component, addition to therapist row schema (google_business_url), edge function update for booking confirmation template
+**Status:** Queued, HIGH PRIORITY (biggest perceived value-add from the FB thread)
+
+### A6. Referral rewards system *(was queued as feature 7.5; now elevated)*
+**Why:** Multiple variants of this in the FB thread: "free massage in exchange for 2 referrals," "10% off referrals," "$5 per referred friend." Therapists are doing this manually with sticky notes. Build it natively. Speaks to the universal "no ad money, need referrals" pain.
+**Build:**
+- Each client gets a unique referral link from their MyBodyMap account view
+- New client signs up via that link → both parties tagged
+- Configurable reward (% off / $ off / free service / free add-on) applied to next booking automatically
+- Therapist sees referral chain in client view
+- Optional: Joy auto-sends thank-you email to the referrer
+**Effort:** 4-5 hr
+**Files:** new `referrals` table, BookingPage referral source detection, client view referral link UI, Settings reward config
+**Status:** Queued, elevated priority
+
+### A7. Welcome flyer auto-generator *(from FB community thread)*
+**Why:** Julie Rattelmueller's reply: large apartment buildings give a welcome folder to new tenants with local business flyers. Brilliant zero-cost tactic. We can't automate the flyer drop, but we CAN generate the flyer.
+**Build:**
+- "Generate marketing flyer" button in Settings
+- Auto-generates a printable PDF with: therapist photo + name, 2-line intro, 3 services + prices, booking QR code, address, phone
+- Uses the same brand tokens as the rest of the platform (cream + forest, Georgia serif, leaf illustration)
+- Therapist downloads, prints at home, drops at apartment buildings + cafes + chiropractor offices
+- Effort: 5 min for therapist. Marketing leverage: huge.
+**Effort:** 2-3 hr
+**Files:** New edge function `generate-flyer-pdf` (or client-side PDF via jsPDF), Settings card UI, downloads to /mnt/user-data/outputs equivalent in browser
 **Status:** Queued
 
 ### A1. Voice-to-SOAP scribe via Claude API *(from Noterro analysis)*
@@ -133,6 +231,36 @@ Last refreshed: 2026-05-01 — after Outreach campaigns ship + Campaigns landing
 **Files:** SettingsPanel
 **Status:** Queued
 
+### B7. "Find your niche" guided wizard *(from FB community thread)*
+**Why:** Vicky L's original post: "I can do a lot of modalities so I sort of get lost when I have to think of a target group." Barb Goodwin-Stewart's reply was gold: "Your niche isn't modalities. It's a community of people with similar issues and demographics." We can build that exact insight directly into the product.
+**Build:** 5-question wizard inside Settings (or as part of Onboarding):
+1. What conditions do you most love treating? (multi-select)
+2. What demographics show up most? (women 30-50 / new moms / men's sports / older adults / etc)
+3. Where in your community are these people? (yoga studios / chiros / corporate offices / etc)
+4. What's a result you've seen 3+ times that surprised you?
+5. What would you turn down if you could?
+Output: a one-paragraph positioning statement the therapist can paste into:
+- Google Business description
+- Facebook page bio
+- Instagram bio
+- Website "About" section
+Example output: "I help women in their 40s and 50s navigate perimenopause through targeted myofascial release and Swedish massage. Most of my clients come to me for sleep issues and tension headaches and stay because the work makes a real difference."
+**Effort:** 5-6 hr (wizard + output template + Claude API call to generate paragraph)
+**Files:** New `src/components/NicheWizard.jsx`, Onboarding step optional, Settings card
+**Status:** Queued
+
+### B8. Per-therapist SEO landing pages *(growth loop)*
+**Why:** Multiple therapists in the thread asked about SEO. Each MyBodyMap therapist already collects services + location + bio. Auto-generate indexable per-therapist landing pages = free SEO boost for every paying user. Hidden growth loop: more pages indexed → more therapists discoverable on Google → more sign-ups.
+**Build:**
+- For every therapist with a complete profile, generate `mybodymap.app/[slug]/[service]` pages
+- Each page is server-rendered with: therapist bio, location, the specific service, price, booking link, photo
+- Robots.txt + sitemap.xml include all such pages
+- Schema.org LocalBusiness markup for Google indexing
+- Title/meta tags optimized: "Deep Tissue Massage in Houston, TX | Joy Smith - MyBodyMap"
+**Effort:** 3-4 hr (sitemap generation + dynamic page route + SEO schema)
+**Files:** New dynamic route `/[therapist]/[service]`, sitemap generator edge function, robots.txt update
+**Status:** Queued
+
 ## TIER C — only if demand surfaces
 
 ### C1. Insurance billing (CMS-1500 / TELUS eClaims)
@@ -159,6 +287,34 @@ Last refreshed: 2026-05-01 — after Outreach campaigns ship + Campaigns landing
 ### C5. HIPAA roadmap decision
 **Why:** $1,000/mo Supabase Team + HIPAA add-on for real BAA. Could be Silver/Gold differentiator if invested.
 **Status:** Defer until paid users hit ~30+
+
+### C6. Client risk flags / safety screening *(from FB thread - LaVonna's safety thread)*
+**Why:** LaVonna Gates Mills mentioned she doesn't take male clients without a referral because Google/Yelp brought her "happy ending" inquiries. This is a SAFETY pain we don't currently address. Real for solo female LMTs especially.
+**Build:** Therapist-toggleable flags inside booking approval flow:
+- "New client with no referral source" → flag for manual approval
+- "Booking notes contain suggestive language" → keyword filter (massage industry trained list) flags for approval
+- "Phone number in flagged carrier prefix list" → optional, configurable
+- All flags surface as "review carefully" badges in pending booking queue, not auto-decline
+**Effort:** 4-6 hr
+**Risk:** False positives could decline legitimate male clients. Build with restraint and an explicit override.
+**Status:** Capture for now. Don't build without significant product strategy first.
+
+### C7. "We don't gatekeep modality" positioning *(from FB thread)*
+**Why:** The thread surfaced wide modality fragmentation: tantric massage, RAPID NeuroFascial Reset, hypnotherapy, retreat-style sessions, energy bodywork. Salon-shaped competitors (Vagaro, GlossGenius) struggle here. MyBodyMap can adapt because we use generic services + custom names.
+**Build:** Add a single line to /comparison + /why-bodymap: "Whatever you practice, we adapt. Tantric, RAPID, energy work, retreat sessions, hypnotherapy. We don't gatekeep modality."
+**Effort:** 30 min copy + placement
+**Status:** Queued
+
+### C8. Cash discount toggle on booking page *(from FB thread - payment processing pain)*
+**Why:** The Dawn Hyde thread on payment processors had 30+ replies. Multiple therapists offer cash discounts, charge processing fees back, or refuse cards entirely to keep margin. We can let them surface this at booking time.
+**Build:**
+- Settings toggle "Offer cash discount?" → input cash discount % (default 5%)
+- Booking page shows: "Pay $90 cash or $95 card" at checkout
+- Booking record stores `payment_intent: cash | card` so therapist knows what to expect at session
+- Stripe Connect Express flow only fires for card payments
+**Effort:** 2-3 hr
+**Files:** Settings card, BookingPage.js checkout step, bookings table column
+**Status:** Queued
 
 ## INFRASTRUCTURE / OPERATIONAL
 
