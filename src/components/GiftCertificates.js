@@ -160,7 +160,12 @@ export default function GiftCertificates({ therapist }) {
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) return;
     setCreating(true);
     const code = genCode();
-    const { error } = await supabase.from('gift_certificates').insert({
+
+    // Insert the row first, with .select().single() so we get the new row
+    // id back. We need the id to pass to the send-gift-certificate edge
+    // function, which pulls everything else it needs (therapist info,
+    // amount, code, message) from the database itself.
+    const { data: inserted, error } = await supabase.from('gift_certificates').insert({
       therapist_id: therapist.id,
       code,
       amount: parseFloat(form.amount),
@@ -171,15 +176,41 @@ export default function GiftCertificates({ therapist }) {
       message: form.message || null,
       status: 'active',
       created_at: new Date().toISOString(),
-    });
-    setCreating(false);
-    if (!error) {
-      setForm({ amount: '', recipient_name: '', recipient_email: '', purchaser_name: '', message: '' });
-      setShowForm(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-      load();
+    }).select().single();
+
+    if (error || !inserted) {
+      setCreating(false);
+      return;
     }
+
+    // Fire the email if a recipient address was provided. Non-blocking:
+    // we don't await the send before clearing the form. If the email
+    // fails, the gift cert still exists and can be resent later from
+    // the row card. (notification_log captures failures.)
+    if (form.recipient_email && form.recipient_email.trim()) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
+        if (accessToken && supabaseUrl) {
+          fetch(`${supabaseUrl}/functions/v1/send-gift-certificate`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ gift_certificate_id: inserted.id }),
+          }).catch(() => { /* swallow; logged in notification_log */ });
+        }
+      } catch { /* non-blocking */ }
+    }
+
+    setCreating(false);
+    setForm({ amount: '', recipient_name: '', recipient_email: '', purchaser_name: '', message: '' });
+    setShowForm(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+    load();
   }
 
   async function deactivate(id) {
