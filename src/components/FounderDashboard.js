@@ -1559,6 +1559,12 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
       <th
         onClick={() => sortable && onSort(key)}
         style={{
+          position: "sticky",
+          top: 0,
+          background: C.softCream,
+          zIndex: 3,
+          borderBottom: `1.5px solid ${C.light}`,
+          boxShadow: "0 1px 0 rgba(0,0,0,0.04)",
           padding: "10px 12px",
           textAlign: "left",
           fontWeight: 700,
@@ -1618,7 +1624,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
               {header("sessions_total", "Sessions")}
               {header("clients_total", "Clients")}
               {header("momentum", "Momentum 7d")}
-              <th style={{ padding: "10px 12px", textAlign: "left", fontWeight: 700, color: C.gray, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
+              <th style={{ position: "sticky", top: 0, background: C.softCream, zIndex: 3, borderBottom: `1.5px solid ${C.light}`, boxShadow: "0 1px 0 rgba(0,0,0,0.04)", padding: "10px 12px", textAlign: "left", fontWeight: 700, color: C.gray, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.06em", whiteSpace: "nowrap" }}>
                 Recommended action
               </th>
             </tr>
