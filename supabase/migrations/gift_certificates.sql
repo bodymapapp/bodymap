@@ -19,11 +19,13 @@ create index if not exists gift_certificates_code_idx on gift_certificates(code)
 
 alter table gift_certificates enable row level security;
 
+drop policy if exists "Therapist owns their certificates" on gift_certificates;
 create policy "Therapist owns their certificates"
   on gift_certificates for all
   using (therapist_id = auth.uid())
   with check (therapist_id = auth.uid());
 
+drop policy if exists "Public can read by code" on gift_certificates;
 create policy "Public can read by code"
   on gift_certificates for select
   using (true);
