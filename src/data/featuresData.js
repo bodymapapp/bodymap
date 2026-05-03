@@ -333,6 +333,7 @@ export const RIBBONS = [
         id: "6.2",
         name: "Gift cards",
         automated: true,
+        videoUrl: "/videos/gift-cards.mp4",
         body: [
           "Sell beautiful gift cards directly from your booking page. Recipient gets an instant email with a code; redeems at booking; you get paid right away.",
           "Travels where flowers cannot. The kind of small thing that makes a regular client feel like they have an actual relationship with you.",

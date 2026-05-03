@@ -134,6 +134,11 @@ export default function GiftCertificates({ therapist }) {
   const [showForm, setShowForm] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(null);
+  // Resend-email button state. resendingId tracks which row's button is
+  // currently in-flight (for spinner). resendResult shows the most recent
+  // success/failure feedback for ~4 seconds after a resend completes.
+  const [resendingId, setResendingId] = useState(null);
+  const [resendResult, setResendResult] = useState(null);
   const [previewCert, setPreviewCert] = useState(null);
 
   useEffect(() => {
@@ -156,15 +161,55 @@ export default function GiftCertificates({ therapist }) {
     setLoading(false);
   }
 
+  // Sends (or re-sends) the recipient email for a given gift certificate row.
+  // Returns { ok: true } on success, { ok: false, reason } on failure.
+  // Logs every failure visibly to the browser console so HK can see what
+  // is going wrong instead of silent swallowing.
+  async function sendRecipientEmail(certId, { force = false } = {}) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
+      if (!accessToken) {
+        console.error('[gift-card-email] no auth token, cannot send');
+        return { ok: false, reason: 'no_auth' };
+      }
+      if (!supabaseUrl) {
+        console.error('[gift-card-email] REACT_APP_SUPABASE_URL not set in build');
+        return { ok: false, reason: 'no_url' };
+      }
+      const res = await fetch(`${supabaseUrl}/functions/v1/send-gift-certificate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ gift_certificate_id: certId, force }),
+      });
+      if (!res.ok) {
+        let body = '';
+        try { body = await res.text(); } catch { /* ignore */ }
+        console.error(`[gift-card-email] send failed: HTTP ${res.status}`, body);
+        return { ok: false, reason: `http_${res.status}`, body };
+      }
+      const data = await res.json();
+      if (data?.skipped) {
+        console.info('[gift-card-email] already sent earlier; pass force:true to resend');
+        return { ok: true, skipped: true };
+      }
+      console.info('[gift-card-email] sent successfully', data);
+      return { ok: true };
+    } catch (err) {
+      console.error('[gift-card-email] exception:', err);
+      return { ok: false, reason: 'exception', error: String(err) };
+    }
+  }
+
   async function create() {
     if (!form.amount || isNaN(form.amount) || parseFloat(form.amount) <= 0) return;
     setCreating(true);
     const code = genCode();
 
-    // Insert the row first, with .select().single() so we get the new row
-    // id back. We need the id to pass to the send-gift-certificate edge
-    // function, which pulls everything else it needs (therapist info,
-    // amount, code, message) from the database itself.
     const { data: inserted, error } = await supabase.from('gift_certificates').insert({
       therapist_id: therapist.id,
       code,
@@ -179,30 +224,22 @@ export default function GiftCertificates({ therapist }) {
     }).select().single();
 
     if (error || !inserted) {
+      console.error('[gift-card] insert failed:', error);
       setCreating(false);
       return;
     }
 
-    // Fire the email if a recipient address was provided. Non-blocking:
-    // we don't await the send before clearing the form. If the email
-    // fails, the gift cert still exists and can be resent later from
-    // the row card. (notification_log captures failures.)
+    // Fire email send. Awaited so we surface failures, but kept short
+    // so the UX still feels snappy. If it takes >3s, the form already
+    // cleared; that's acceptable.
     if (form.recipient_email && form.recipient_email.trim()) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const accessToken = session?.access_token;
-        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
-        if (accessToken && supabaseUrl) {
-          fetch(`${supabaseUrl}/functions/v1/send-gift-certificate`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${accessToken}`,
-            },
-            body: JSON.stringify({ gift_certificate_id: inserted.id }),
-          }).catch(() => { /* swallow; logged in notification_log */ });
-        }
-      } catch { /* non-blocking */ }
+      const result = await sendRecipientEmail(inserted.id);
+      if (!result.ok) {
+        // Don't block the success state — gift card exists, email can
+        // be resent from the row card. But surface a soft warning so
+        // the user knows to retry.
+        console.warn('[gift-card-email] create succeeded but email send failed; resend from the row card');
+      }
     }
 
     setCreating(false);
@@ -211,6 +248,18 @@ export default function GiftCertificates({ therapist }) {
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     load();
+  }
+
+  // Resend the email for an existing gift certificate. Used by the
+  // "Resend email" button on each active gift cert row card.
+  // Sets per-row state so the button shows pending/sent feedback.
+  async function resendEmail(certId) {
+    setResendingId(certId);
+    setResendResult(null);
+    const result = await sendRecipientEmail(certId, { force: true });
+    setResendingId(null);
+    setResendResult({ certId, ok: result.ok, reason: result.reason });
+    setTimeout(() => setResendResult(null), 4000);
   }
 
   async function deactivate(id) {
@@ -478,6 +527,47 @@ export default function GiftCertificates({ therapist }) {
                         }}>
                         {copied === cert.code ? '✓ Code copied' : '📋 Copy code'}
                       </button>
+                      {/* Resend email button. Only shown if a recipient email
+                          was captured. Idempotency check on the server is
+                          bypassed via force:true so the button always triggers
+                          a fresh send. Per-row spinner via resendingId. */}
+                      {cert.recipient_email && (
+                        <button onClick={() => resendEmail(cert.id)}
+                          disabled={resendingId === cert.id}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 6,
+                            background: (resendResult?.certId === cert.id && resendResult?.ok)
+                              ? '#F0FDF4'
+                              : (resendResult?.certId === cert.id && !resendResult?.ok)
+                                ? '#FEF2F2'
+                                : '#fff',
+                            border: `1.5px solid ${
+                              (resendResult?.certId === cert.id && resendResult?.ok)
+                                ? '#86EFAC'
+                                : (resendResult?.certId === cert.id && !resendResult?.ok)
+                                  ? '#FCA5A5'
+                                  : C.light
+                            }`,
+                            color: (resendResult?.certId === cert.id && resendResult?.ok)
+                              ? C.forest
+                              : (resendResult?.certId === cert.id && !resendResult?.ok)
+                                ? '#DC2626'
+                                : C.gray,
+                            borderRadius: 20,
+                            padding: '7px 14px',
+                            fontSize: 12, fontWeight: 600,
+                            cursor: resendingId === cert.id ? 'wait' : 'pointer',
+                            opacity: resendingId === cert.id ? 0.7 : 1,
+                          }}>
+                          {resendingId === cert.id
+                            ? '⏳ Sending...'
+                            : (resendResult?.certId === cert.id && resendResult?.ok)
+                              ? '✓ Email sent'
+                              : (resendResult?.certId === cert.id && !resendResult?.ok)
+                                ? '✗ Send failed'
+                                : '✉️ Resend email'}
+                        </button>
+                      )}
                       {cert.remaining < cert.amount && (
                         <div style={{ fontSize: 12, color: C.gray, fontStyle: 'italic' }}>
                           ${cert.remaining?.toFixed(0)} of ${cert.amount?.toFixed(0)} remaining

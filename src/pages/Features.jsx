@@ -1577,6 +1577,23 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
+          {/* Demo video showing the gift card creation flow. Autoplays muted
+              and loops so it acts like an animated illustration rather than
+              a video the user has to play. playsInline lets it autoplay on
+              iOS without going fullscreen. */}
+          <FadeIn delay={0.05}>
+            <div style={{ maxWidth:680, margin:"0 auto 40px", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 40px rgba(232,92,121,0.18)", border:"1.5px solid rgba(251,207,232,0.6)", background:"#fff" }}>
+              <video
+                src="/videos/gift-cards.mp4"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
+                style={{ display:"block", width:"100%", height:"auto" }}
+              />
+            </div>
+          </FadeIn>
           <FadeIn delay={0.1}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
               {[
