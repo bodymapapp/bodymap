@@ -1590,7 +1590,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
   };
 
   return (
-    <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
+    <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12 }}>
       <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh" }}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1280 }}>
           <thead>
@@ -2274,7 +2274,7 @@ function ActivationSection({ rows, updateFlag, onAfterSend, hideOwnHeader = fals
       </div>
 
       {/* Per-therapist table */}
-      <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
+      <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12 }}>
         <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh" }}>
           <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 900 }}>
             <thead>
@@ -3472,12 +3472,15 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Georgia, serif", fontSize: 12 }}>
           <thead>
             <tr style={{ background: C.softCream }}>
-              <th style={{ textAlign: "left", padding: "10px 10px", borderBottom: "1.5px solid " + C.dark, position: "sticky", left: 0, background: C.softCream, zIndex: 2, minWidth: 260 }}>
+              <th style={{ textAlign: "left", padding: "10px 10px", borderBottom: "1.5px solid " + C.dark, position: "sticky", top: 0, left: 0, background: C.softCream, zIndex: 4, minWidth: 260 }}>
                 Therapist
               </th>
               {COMMS_OUTREACH_COLUMNS.map(function (col, i) {
                 return (
                   <th key={col.key} title={col.label} style={{
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 3,
                     textAlign: "center",
                     padding: "8px 4px",
                     borderBottom: "1.5px solid " + C.dark,
@@ -3489,6 +3492,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
                     textTransform: "uppercase",
                     width: 54,
                     whiteSpace: "nowrap",
+                    background: C.softCream,
                   }}>
                     {col.short}
                     <div style={{ fontSize: 9, fontWeight: 400, color: C.gray, textTransform: "none", letterSpacing: 0, marginTop: 2 }}>
@@ -3497,7 +3501,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
                   </th>
                 );
               })}
-              <th style={{ textAlign: "center", padding: "8px 10px", borderBottom: "1.5px solid " + C.dark, borderLeft: "2px solid " + C.dark, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.dark, textTransform: "uppercase", width: 60 }}>
+              <th style={{ position: "sticky", top: 0, zIndex: 3, textAlign: "center", padding: "8px 10px", borderBottom: "1.5px solid " + C.dark, borderLeft: "2px solid " + C.dark, fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", color: C.dark, textTransform: "uppercase", width: 60, background: C.softCream }}>
                 Total
               </th>
             </tr>
