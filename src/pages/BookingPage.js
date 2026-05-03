@@ -686,14 +686,16 @@ export default function BookingPage() {
                   {errors[k]&&<div style={{fontSize:11,color:C.danger,marginTop:4}}>{errors[k]}</div>}
                 </div>
               ))}
-              {/* SMS consent (TCPA), only shown if phone is filled */}
+              {/* SMS consent (TCPA + Twilio 10DLC compliance).
+                  Names MyBodyMap as the platform sender, includes HELP/STOP language,
+                  and links Privacy Policy + Terms inline at the consent moment. */}
               {form.phone && form.phone.replace(/\D/g,'').length >= 10 && (
                 <label style={{display:'flex',alignItems:'flex-start',gap:10,padding:'12px 14px',background:'#F9FAF9',border:`1px solid ${C.light}`,borderRadius:10,cursor:'pointer'}}>
                   <input type="checkbox" checked={!!form.sms_opted_in}
                     onChange={e=>setForm(f=>({...f,sms_opted_in:e.target.checked}))}
                     style={{marginTop:2,accentColor:'#2A5741',width:16,height:16,flexShrink:0,cursor:'pointer'}}/>
                   <div style={{fontSize:12,color:C.gray,lineHeight:1.5}}>
-                    It's OK to text me appointment reminders and confirmations at this number. Message and data rates may apply. Reply STOP anytime to opt out.
+                    Yes, I agree to receive appointment reminders, confirmations, and follow-up messages from my therapist via the MyBodyMap platform at this number. Message frequency varies. Message and data rates may apply. Reply HELP for help, reply STOP anytime to opt out. See <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{color:'#2A5741',textDecoration:'underline'}} onClick={e=>e.stopPropagation()}>Privacy Policy</a> and <a href="/terms" target="_blank" rel="noopener noreferrer" style={{color:'#2A5741',textDecoration:'underline'}} onClick={e=>e.stopPropagation()}>Terms</a>.
                   </div>
                 </label>
               )}
