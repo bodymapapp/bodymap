@@ -1085,7 +1085,10 @@ function CollapsibleTableCard({ number, title, subtitle, summary, isOpen, onTogg
         background: "#fff",
         border: `1.5px solid ${C.light}`,
         borderRadius: 14,
-        overflow: "hidden",
+        // overflow:hidden was here for clean rounded corners but it breaks
+        // position:sticky on descendant table headers. Removed. Inner
+        // children that needed corner clipping (like the colored header
+        // band) handle it themselves with their own border-radius.
       }}
     >
       <div
