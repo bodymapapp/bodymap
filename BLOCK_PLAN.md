@@ -420,6 +420,15 @@ How HK and Claude work together every session. Survives compaction.
 
 7. **Customer-facing voice is always Joy / MyBodyMap Team.** Never HK or initials. Never em dashes anywhere.
 
+   **POSITIONING — applies to ALL customer-facing copy. Drift is a recurring failure mode; check every post against this list before sending.**
+   - **Always "we", never "I".** "I am building" reads as one-person side project; no business owner trusts client data to a single person. We built. We make. We help. Plural voice signals real platform.
+   - **Never "small platform" or "small tool" or any size-diminishing adjective.** Kills marketing interest and signals scrappiness. MyBodyMap is a platform, period. Size adjectives are forbidden.
+   - **"Tool" is forbidden. "Platform" only.** (Already in copy standards but worth restating because it gets dropped under pressure.)
+   - **Never lead with "free" in marketing copy.** "Free to start", "free Bronze tier", "no card needed" all read as desperation when leading. Bronze tier is real, but it's a feature mentioned mid-copy or later, never a hook.
+   - **No "we just launched", "we're new", "early days", "scrappy", "indie", "side project", "in stealth", "MVP", "young company".** All diminish. Position as established and intentional.
+   - **Retention-first framing** for every benefit statement. Not efficiency. Not productivity. Not time-saving as a primary frame. The frame is: clients keep coming back, sessions feel more present, relationships deepen.
+   - **Ask language for support posts: "share with a therapist you know"** — never "follow our page", "support a small business", or "give us a chance". Ask for a referral, not a charity.
+
    **PERSONA — applies to ALL customer-facing copy (FB comments, emails, SMS, in-product, marketing, blog posts):**
    - Audience is a 70-year-old grandma LMT. Tired. Tech-cautious. Skim-reading on phone.
    - **5-10 sentences max** for any FB comment, DM, or email body.
