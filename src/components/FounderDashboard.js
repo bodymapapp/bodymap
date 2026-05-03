@@ -1515,10 +1515,15 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
     );
   }
 
-  // Sticky header styles. Position sticky works relative to nearest scrolling ancestor.
-  // The page itself is the vertical scroller, so top:0 pins to viewport as user scrolls.
-  // For horizontal scroll inside the overflow-x wrapper, left:0 pins the first column
-  // within that container.
+  // Sticky header styles. The table wrapper above each table now has
+  // overflowY:"auto" with a maxHeight cap, so each table scrolls inside
+  // its own box. position:sticky + top:0 pins the header to the top of
+  // that scrolling container (NOT the viewport). This means the header
+  // stays visible no matter how far down the user scrolls within the
+  // table — even with 30+ therapists.
+  //
+  // For horizontal scroll within the same wrapper, left:0 pins the
+  // first column within the container.
   const stickyHead = {
     position: "sticky",
     top: 0,
@@ -1583,7 +1588,7 @@ function TherapistTable({ rows, sortKey, sortDir, onSort, updateFlag, onAfterSen
 
   return (
     <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
-      <div style={{ overflowX: "auto" }}>
+      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh" }}>
         <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 1280 }}>
           <thead>
             <tr>
@@ -2267,7 +2272,7 @@ function ActivationSection({ rows, updateFlag, onAfterSend, hideOwnHeader = fals
 
       {/* Per-therapist table */}
       <div style={{ background: "#fff", border: `1.5px solid ${C.light}`, borderRadius: 12, overflow: "hidden" }}>
-        <div style={{ overflowX: "auto" }}>
+        <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh" }}>
           <table style={{ width: "100%", borderCollapse: "separate", borderSpacing: 0, fontSize: 13, minWidth: 900 }}>
             <thead>
               <tr>
@@ -3460,7 +3465,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
         </div>
       </div>
 
-      <div style={{ overflowX: "auto", border: "1px solid " + C.light, borderRadius: 8, background: "#fff" }}>
+      <div style={{ overflowX: "auto", overflowY: "auto", maxHeight: "70vh", border: "1px solid " + C.light, borderRadius: 8, background: "#fff" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Georgia, serif", fontSize: 12 }}>
           <thead>
             <tr style={{ background: C.softCream }}>
