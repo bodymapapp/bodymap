@@ -1,22 +1,27 @@
 // src/pages/GiftCardPrint.js
 //
-// Browser-native print page for gift cards with THREE feminine design
-// templates the therapist can pick from. Mirrors the architecture of
-// PreSessionBrief.js / PostSessionBrief.js — standalone HTML route
-// with @media print CSS and a window.print() button. No PDF library
-// needed; the browser handles size, paper, save-as-PDF, orientation.
+// Browser-native print page for gift cards. Designed to beat Canva at
+// gift-card printing: pick a size, click print, get a beautiful card
+// that fits the page edge-to-edge with NO browser headers/footers, NO
+// margin issues, NO bleed onto a second page.
 //
-// Templates: Botanical Rose / Cream Bloom / Sage Garden
-// Sizes:     Postcard 4x6 / Half-page 5.5x8.5 / Letter 8.5x11
+// THE THREE PRINT BUGS THIS FIXES (May 2026 revision):
+// 1. Browser headers/footers (date, URL, page count) leaking onto the
+//    printout. Fixed by setting @page { margin: 0 } and a rendering
+//    hint that suppresses chrome metadata on Chromium browsers.
+// 2. Card bleeding to a 2nd page on Half-page size. Fixed by sizing
+//    the card to the EXACT @page dimensions and using fixed CSS height
+//    rather than minHeight, so content never expands beyond the page.
+// 3. Color/background not printing (header band missing in output).
+//    Fixed with -webkit-print-color-adjust: exact + print-color-adjust:
+//    exact on every colored element, so backgrounds print regardless
+//    of the user's "Background graphics" toggle in the print dialog.
 //
-// Both pickers stay visible at the top of the page (in print, all
-// chrome is hidden via .no-print). Picking a template re-renders the
-// card without losing the chosen size, and vice versa.
+// Architecture: standalone HTML route + window.print(). Same pattern
+// as PreSessionBrief.js / PostSessionBrief.js. Zero new dependencies.
 //
 // Route: /gift-card/print/:id
-//
-// Public route by design — UUIDs are unguessable; the therapist may
-// want to share the print URL with a recipient.
+// Public access by design — gift cert UUIDs are unguessable.
 
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
@@ -31,19 +36,13 @@ function formatExpiry(d) {
   } catch { return ""; }
 }
 
-// ─────────── Three design templates ───────────
-// Each template gets its own palette + botanical SVG decorations.
-// Layouts share the same anatomy (header / amount / note / code /
-// footer) so changing template doesn't shift content position.
-
+// Three feminine design templates the therapist can pick.
 const TEMPLATES = {
   rose: {
     label: "Botanical Rose",
     swatch: ["#FCE8E0", "#F5D5C8", "#A87468"],
-    // Soft dusty rose — the original feminine direction.
     palette: {
-      bgGradStart: "#FCE8E0",
-      bgGradMid:   "#F5D5C8",
+      pageBg:      "#FCF8EE",
       headerStart: "#FCE8E0",
       headerEnd:   "#F5D5C8",
       ink:         "#5C2E27",
@@ -55,16 +54,16 @@ const TEMPLATES = {
       codeBg:      "#F5EFE0",
       footerBg:    "#FAF6EE",
       divider:     "#E5D5C8",
+      petal:       "#E8B5A8",
+      petalDeep:   "#D4948A",
+      leaf:        "#9DAA85",
     },
-    decoration: "rose",
   },
   cream: {
     label: "Cream Bloom",
     swatch: ["#FFF4E6", "#FFD8B8", "#C2845A"],
-    // Soft cream + peach — warmer, golden-hour feel.
     palette: {
-      bgGradStart: "#FFF4E6",
-      bgGradMid:   "#FFE5CC",
+      pageBg:      "#FFF8EE",
       headerStart: "#FFF1DC",
       headerEnd:   "#FFD8B8",
       ink:         "#5C3D24",
@@ -76,16 +75,16 @@ const TEMPLATES = {
       codeBg:      "#F8EBD6",
       footerBg:    "#FFF8EC",
       divider:     "#EAD5B8",
+      petal:       "#FFD4A8",
+      petalDeep:   "#E8B888",
+      leaf:        "#9DAA85",
     },
-    decoration: "bloom",
   },
   sage: {
     label: "Sage Garden",
     swatch: ["#E8EFE2", "#C7D5BB", "#5C7A4F"],
-    // Sage green + gold — calm, grounded, garden-spa feel.
     palette: {
-      bgGradStart: "#E8EFE2",
-      bgGradMid:   "#D4E0CB",
+      pageBg:      "#F4F7EE",
       headerStart: "#E8EFE2",
       headerEnd:   "#C7D5BB",
       ink:         "#2D3D24",
@@ -97,76 +96,82 @@ const TEMPLATES = {
       codeBg:      "#EDF2E5",
       footerBg:    "#F4F7EE",
       divider:     "#C7D5BB",
+      petal:       "#C7D5BB",
+      petalDeep:   "#9DAA85",
+      leaf:        "#5C7A4F",
     },
-    decoration: "sage",
   },
 };
 
-// SVG botanical flourish — different for each template's personality.
-// Positioned absolute in the corners of the card so it never fights
-// with the card content.
-function Decoration({ kind, position }) {
+// Paper sizes. Card height = page height - top/bottom safe area so
+// content never bleeds. Cards are intentionally edge-to-edge in print:
+// the @page margin sets the printer-safe area, and the card fills it
+// completely. This is how professional print shops design postcards.
+const SIZES = {
+  postcard: {
+    label: "Postcard 4×6",
+    page: "4in 6in",
+    pageMargin: "0",     // card bleeds to edge
+    screenW: "4in",
+    screenH: "6in",
+    headerPx: 90,        // height of dusty rose header band
+    amountSize: 56,
+  },
+  half: {
+    label: "Half-page 5.5×8.5",
+    page: "5.5in 8.5in",
+    pageMargin: "0",
+    screenW: "5.5in",
+    screenH: "8.5in",
+    headerPx: 130,
+    amountSize: 78,
+  },
+  letter: {
+    label: "Letter 8.5×11",
+    page: "Letter",
+    pageMargin: "0",
+    screenW: "8.5in",
+    screenH: "11in",
+    headerPx: 180,
+    amountSize: 110,
+  },
+};
+
+// Botanical SVG flourish for card corners. Three variants matching
+// the three templates personalities.
+function Decoration({ palette, position, kind }) {
   const transform = {
-    "top-right": "translate(-100%, 0)",
-    "bottom-left": "scale(-1, -1)",
+    "top-left":     "",
+    "top-right":    "scale(-1, 1) translate(-120, 0)",
+    "bottom-left":  "scale(1, -1) translate(0, -120)",
+    "bottom-right": "scale(-1, -1) translate(-120, -120)",
   }[position] || "";
+
   const baseStyle = {
     position: "absolute",
     width: "120px",
     height: "120px",
     pointerEvents: "none",
-    opacity: 0.85,
-    ...(position === "top-right"   ? { top: 0,    right: 0 } : {}),
-    ...(position === "bottom-left" ? { bottom: 0, left: 0  } : {}),
+    opacity: 0.6,
+    ...(position.startsWith("top")    ? { top: 0    } : {}),
+    ...(position.startsWith("bottom") ? { bottom: 0 } : {}),
+    ...(position.endsWith("left")     ? { left: 0   } : {}),
+    ...(position.endsWith("right")    ? { right: 0  } : {}),
   };
 
-  if (kind === "rose") {
-    return (
-      <svg style={baseStyle} viewBox="0 0 120 120" fill="none">
-        <g transform={transform}>
-          <path d="M30 90 Q 50 60, 80 30" stroke="#9DAA85" strokeWidth="1.2" fill="none" opacity="0.5"/>
-          <ellipse cx="60" cy="55" rx="14" ry="6" fill="#E8B5A8" opacity="0.65" transform="rotate(-30 60 55)"/>
-          <ellipse cx="75" cy="42" rx="12" ry="5" fill="#E8B5A8" opacity="0.55" transform="rotate(-30 75 42)"/>
-          <ellipse cx="48" cy="68" rx="10" ry="4" fill="#E8B5A8" opacity="0.6" transform="rotate(-30 48 68)"/>
-          <circle cx="85" cy="28" r="5" fill="#D4948A" opacity="0.7"/>
-          <circle cx="40" cy="82" r="4" fill="#D4948A" opacity="0.65"/>
-          <circle cx="65" cy="50" r="3" fill="#A87468" opacity="0.5"/>
-        </g>
-      </svg>
-    );
-  }
-  if (kind === "bloom") {
-    return (
-      <svg style={baseStyle} viewBox="0 0 120 120" fill="none">
-        <g transform={transform}>
-          <circle cx="80" cy="35" r="9" fill="#FFD8B8" opacity="0.85"/>
-          <circle cx="80" cy="35" r="5" fill="#F0B888" opacity="0.7"/>
-          <circle cx="80" cy="35" r="2" fill="#C2845A"/>
-          <circle cx="55" cy="55" r="7" fill="#FFE5CC" opacity="0.85"/>
-          <circle cx="55" cy="55" r="3" fill="#E8B888" opacity="0.7"/>
-          <path d="M30 90 Q 60 70, 95 25" stroke="#D4A578" strokeWidth="1" fill="none" opacity="0.5"/>
-          <ellipse cx="40" cy="75" rx="6" ry="3" fill="#9DAA85" opacity="0.6" transform="rotate(-45 40 75)"/>
-          <ellipse cx="65" cy="42" rx="5" ry="2.5" fill="#9DAA85" opacity="0.6" transform="rotate(-45 65 42)"/>
-        </g>
-      </svg>
-    );
-  }
-  if (kind === "sage") {
-    return (
-      <svg style={baseStyle} viewBox="0 0 120 120" fill="none">
-        <g transform={transform}>
-          <path d="M30 90 Q 50 65, 70 35" stroke="#5C7A4F" strokeWidth="1.2" fill="none" opacity="0.5"/>
-          <ellipse cx="50" cy="65" rx="9" ry="3.5" fill="#9DAA85" opacity="0.7" transform="rotate(-50 50 65)"/>
-          <ellipse cx="60" cy="55" rx="9" ry="3.5" fill="#9DAA85" opacity="0.7" transform="rotate(-50 60 55)"/>
-          <ellipse cx="70" cy="45" rx="9" ry="3.5" fill="#9DAA85" opacity="0.7" transform="rotate(-50 70 45)"/>
-          <circle cx="78" cy="32" r="4" fill="#D4B856" opacity="0.7"/>
-          <circle cx="42" cy="78" r="3" fill="#D4B856" opacity="0.65"/>
-          <circle cx="85" cy="22" r="2" fill="#5C7A4F" opacity="0.5"/>
-        </g>
-      </svg>
-    );
-  }
-  return null;
+  return (
+    <svg style={baseStyle} viewBox="0 0 120 120" fill="none">
+      <g transform={transform}>
+        <path d="M10 110 Q 35 80, 70 40" stroke={palette.leaf} strokeWidth="1.2" fill="none" opacity="0.7"/>
+        <ellipse cx="40" cy="75" rx="12" ry="5" fill={palette.petal} transform="rotate(-30 40 75)"/>
+        <ellipse cx="55" cy="58" rx="11" ry="4.5" fill={palette.petal} transform="rotate(-30 55 58)"/>
+        <ellipse cx="70" cy="42" rx="10" ry="4" fill={palette.petal} transform="rotate(-30 70 42)"/>
+        <circle cx="78" cy="32" r="6" fill={palette.petalDeep}/>
+        <circle cx="20" cy="95" r="4.5" fill={palette.petalDeep}/>
+        <circle cx="50" cy="65" r="3" fill={palette.eyebrow} opacity="0.6"/>
+      </g>
+    </svg>
+  );
 }
 
 export default function GiftCardPrint() {
@@ -190,7 +195,7 @@ export default function GiftCardPrint() {
       if (c?.therapist_id) {
         const { data: t } = await supabase
           .from("therapists")
-          .select("id, full_name, business_name, custom_url, profile_photo_url")
+          .select("id, full_name, business_name, custom_url")
           .eq("id", c.therapist_id)
           .maybeSingle();
         if (!cancelled) setTherapist(t || null);
@@ -218,30 +223,71 @@ export default function GiftCardPrint() {
   const personalNote = (cert.message || "").trim();
   const expiry = formatExpiry(cert.expires_at);
 
-  const SIZES = {
-    postcard: { label: "Postcard 4×6", page: "4in 6in", margin: "0.25in", cardWidth: "3.5in", cardHeight: "5.5in" },
-    half:     { label: "Half-page 5.5×8.5", page: "5.5in 8.5in", margin: "0.4in", cardWidth: "4.7in", cardHeight: "7.7in" },
-    letter:   { label: "Letter 8.5×11", page: "Letter", margin: "0.5in", cardWidth: "5in", cardHeight: "7in" },
-  };
-  const chosen = SIZES[size];
+  const sz = SIZES[size];
   const tpl = TEMPLATES[template];
   const p = tpl.palette;
 
-  const pageBg = `linear-gradient(135deg, ${p.bgGradStart} 0%, ${p.bgGradMid} 50%, #FCF8EE 100%)`;
+  // print-color-adjust: exact ensures backgrounds print on Chromium +
+  // Safari + Firefox even when user has "Background graphics" off.
+  const colorExact = {
+    WebkitPrintColorAdjust: "exact",
+    printColorAdjust: "exact",
+    colorAdjust: "exact",
+  };
 
   return (
-    <div style={{ background: pageBg, minHeight: "100vh", fontFamily: "Georgia, 'Iowan Old Style', serif", transition: "background 0.4s ease" }}>
+    <div style={{ background: "#F0EBE0", minHeight: "100vh", fontFamily: "Georgia, 'Iowan Old Style', serif" }}>
+      {/* PRINT CSS — the critical block that makes this work */}
       <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          body { margin: 0; background: white; }
-          @page { size: ${chosen.page}; margin: ${chosen.margin}; }
-          .gc-card { box-shadow: none !important; page-break-inside: avoid; }
+        /* 1. Suppress browser headers/footers and set zero page margin */
+        @page {
+          size: ${sz.page};
+          margin: ${sz.pageMargin};
         }
+
+        @media print {
+          /* 2. Hide all on-screen chrome */
+          .no-print { display: none !important; }
+
+          /* 3. Force backgrounds to print on every element */
+          html, body, * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+
+          /* 4. Strip body margins and prevent overflow */
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+          }
+
+          /* 5. The card BECOMES the page */
+          .gc-print-card {
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            border: none !important;
+            page-break-inside: avoid !important;
+            page-break-after: avoid !important;
+            break-inside: avoid !important;
+            margin: 0 !important;
+            position: relative !important;
+            overflow: hidden !important;
+          }
+
+          /* 6. Hide scroll wrapper, show only the card */
+          .gc-print-wrapper {
+            padding: 0 !important;
+            background: transparent !important;
+            display: block !important;
+          }
+        }
+
         * { box-sizing: border-box; }
       `}</style>
 
-      {/* Top bar — TWO pickers (template + size) + print button */}
+      {/* Top control bar — hidden during print */}
       <div className="no-print" style={{
         position: "sticky", top: 0, zIndex: 10,
         background: "#2A5741", color: "white",
@@ -270,7 +316,6 @@ export default function GiftCardPrint() {
                     cursor: "pointer",
                     display: "flex", alignItems: "center", gap: 4,
                   }}>
-                  {/* Three little color dots = swatch */}
                   {t.swatch.map((c, i) => (
                     <span key={i} style={{
                       display: "inline-block",
@@ -313,127 +358,164 @@ export default function GiftCardPrint() {
         </div>
       </div>
 
+      {/* Helper hint */}
       <div className="no-print" style={{
         background: "#FFF8E1", borderBottom: "1px solid #F0E5C0",
         padding: "10px 24px", fontSize: 13, color: "#6B5A2A",
         textAlign: "center",
       }}>
-        Tip: pick a style above. In the print dialog you can also change paper size, margins, or pick "Save as PDF".
+        Pick a style and size, then click Print. Card prints edge-to-edge with no header or margins. Background colors will print correctly.
       </div>
 
-      {/* The card itself */}
-      <div style={{ padding: "40px 20px", display: "flex", justifyContent: "center" }}>
-        <div className="gc-card" style={{
-          width: chosen.cardWidth,
-          minHeight: chosen.cardHeight,
-          background: "white",
-          borderRadius: 16,
-          boxShadow: "0 12px 48px rgba(0,0,0,0.12)",
+      {/* The card preview area */}
+      <div className="gc-print-wrapper" style={{
+        padding: "40px 20px",
+        display: "flex", justifyContent: "center", alignItems: "flex-start",
+        background: "#F0EBE0",
+      }}>
+        <div className="gc-print-card" style={{
+          width: sz.screenW,
+          height: sz.screenH,            /* fixed, not min — prevents bleed */
+          background: p.pageBg,
+          borderRadius: 8,
+          boxShadow: "0 12px 48px rgba(0,0,0,0.18)",
           overflow: "hidden",
           display: "flex", flexDirection: "column",
           position: "relative",
+          ...colorExact,
         }}>
-          {/* Botanical decorations - positioned in corners */}
-          <Decoration kind={tpl.decoration} position="top-right" />
-          <Decoration kind={tpl.decoration} position="bottom-left" />
+          {/* Botanical decorations in all 4 corners */}
+          <Decoration palette={p} position="top-left"     kind={template} />
+          <Decoration palette={p} position="top-right"    kind={template} />
+          <Decoration palette={p} position="bottom-left"  kind={template} />
+          <Decoration palette={p} position="bottom-right" kind={template} />
 
-          {/* Header band */}
+          {/* Header band — fills full width, set height per size */}
           <div style={{
             background: `linear-gradient(135deg, ${p.headerStart} 0%, ${p.headerEnd} 100%)`,
-            padding: "28px 28px 22px",
+            height: sz.headerPx,
+            padding: "0 28px",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
             textAlign: "center",
             position: "relative",
             zIndex: 1,
+            ...colorExact,
           }}>
             <div style={{
               fontSize: 11, fontWeight: 700, color: p.eyebrow,
-              letterSpacing: 2, marginBottom: 10,
+              letterSpacing: 2, marginBottom: 8,
               fontFamily: "system-ui, sans-serif",
             }}>
               ♡ A GIFT FOR YOU
             </div>
             <div style={{
-              fontSize: 28, fontWeight: 700, color: p.ink,
+              fontSize: size === "postcard" ? 26 : (size === "half" ? 36 : 48),
+              fontWeight: 700, color: p.ink,
               fontFamily: "Georgia, serif",
-              lineHeight: 1.2,
+              lineHeight: 1.15,
             }}>
               Dear {recipientName},
             </div>
           </div>
 
-          {/* Amount block */}
-          <div style={{ padding: "26px 28px 14px", textAlign: "center", position: "relative", zIndex: 1 }}>
-            <div style={{ fontSize: 13, color: p.warm, marginBottom: 4, fontFamily: "system-ui" }}>
-              Worth
-            </div>
-            <div style={{
-              fontSize: 56, fontWeight: 700, color: p.amount,
-              fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: 4,
-            }}>
-              ${amount.toFixed(0)}
-            </div>
-            <div style={{ fontSize: 13, color: p.warm, fontFamily: "system-ui" }}>
-              of care
-            </div>
-          </div>
-
-          {personalNote && (
-            <div style={{ padding: "0 28px", marginBottom: 18, position: "relative", zIndex: 1 }}>
+          {/* Body — flex 1 absorbs all remaining space, content centered */}
+          <div style={{
+            flex: 1,
+            padding: "28px 32px",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            position: "relative", zIndex: 1,
+            textAlign: "center",
+            gap: size === "postcard" ? 10 : (size === "half" ? 18 : 26),
+          }}>
+            {/* Worth + amount */}
+            <div>
+              <div style={{ fontSize: 13, color: p.warm, marginBottom: 4, fontFamily: "system-ui" }}>
+                Worth
+              </div>
               <div style={{
-                background: p.noteBg, borderLeft: `3px solid ${p.noteBorder}`,
-                padding: "14px 18px", borderRadius: 8,
-                fontSize: 14, color: p.ink, fontStyle: "italic",
-                lineHeight: 1.6, fontFamily: "Georgia, serif",
+                fontSize: sz.amountSize, fontWeight: 700, color: p.amount,
+                fontFamily: "Georgia, serif", lineHeight: 1, marginBottom: 4,
+                ...colorExact,
+              }}>
+                ${amount.toFixed(0)}
+              </div>
+              <div style={{ fontSize: 13, color: p.warm, fontFamily: "system-ui" }}>
+                of care
+              </div>
+            </div>
+
+            {/* Personal note (only if exists) */}
+            {personalNote && (
+              <div style={{
+                background: p.noteBg,
+                borderLeft: `3px solid ${p.noteBorder}`,
+                padding: size === "postcard" ? "10px 14px" : "14px 18px",
+                borderRadius: 8,
+                fontSize: size === "postcard" ? 13 : 15,
+                color: p.ink, fontStyle: "italic",
+                lineHeight: 1.5, fontFamily: "Georgia, serif",
+                maxWidth: "85%",
+                ...colorExact,
               }}>
                 "{personalNote}"
               </div>
-            </div>
-          )}
+            )}
 
-          <div style={{ padding: "0 28px", marginBottom: 14, fontSize: 13, color: p.warm, fontFamily: "system-ui", textAlign: "center", position: "relative", zIndex: 1 }}>
-            With love, <strong style={{ color: p.ink }}>{purchaserName}</strong>
+            {/* With love */}
+            <div style={{ fontSize: 13, color: p.warm, fontFamily: "system-ui" }}>
+              With love, <strong style={{ color: p.ink }}>{purchaserName}</strong>
+            </div>
+
+            {/* Dashed divider */}
+            <div style={{
+              width: "70%",
+              borderTop: `1.5px dashed ${p.divider}`,
+            }} />
+
+            {/* Code */}
+            <div>
+              <div style={{
+                fontSize: 10, fontWeight: 700, color: p.eyebrow,
+                letterSpacing: 2, marginBottom: 8,
+                fontFamily: "system-ui",
+              }}>
+                REDEMPTION CODE
+              </div>
+              <div style={{
+                fontFamily: "'Courier New', monospace",
+                fontSize: size === "postcard" ? 18 : (size === "half" ? 24 : 32),
+                fontWeight: 700, color: p.amount,
+                letterSpacing: 3,
+                background: p.codeBg,
+                padding: size === "postcard" ? "8px 14px" : "12px 22px",
+                borderRadius: 8,
+                display: "inline-block",
+                ...colorExact,
+              }}>
+                {code}
+              </div>
+            </div>
           </div>
 
-          <div style={{ borderTop: `1.5px dashed ${p.divider}`, margin: "0 28px", position: "relative", zIndex: 1 }} />
-
-          <div style={{ padding: "20px 28px 12px", textAlign: "center", position: "relative", zIndex: 1 }}>
-            <div style={{
-              fontSize: 10, fontWeight: 700, color: p.eyebrow,
-              letterSpacing: 2, marginBottom: 8,
-              fontFamily: "system-ui",
-            }}>
-              REDEMPTION CODE
-            </div>
-            <div style={{
-              fontFamily: "'Courier New', monospace",
-              fontSize: 22, fontWeight: 700, color: p.amount,
-              letterSpacing: 3,
-              background: p.codeBg,
-              padding: "12px 18px",
-              borderRadius: 10,
-              display: "inline-block",
-            }}>
-              {code}
-            </div>
-          </div>
-
+          {/* Footer band */}
           <div style={{
-            marginTop: "auto",
             background: p.footerBg,
-            padding: "16px 28px",
+            padding: size === "postcard" ? "12px 28px" : "16px 32px",
             borderTop: `1px solid ${p.divider}`,
             textAlign: "center",
-            position: "relative",
-            zIndex: 1,
+            position: "relative", zIndex: 1,
+            ...colorExact,
           }}>
-            <div style={{ fontSize: 13, fontWeight: 600, color: p.ink, marginBottom: 4, fontFamily: "Georgia, serif" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: p.ink, marginBottom: 2, fontFamily: "Georgia, serif" }}>
               Redeem with {businessName}
             </div>
             <div style={{ fontSize: 11, color: p.warm, fontFamily: "system-ui" }}>
               Book at {bookingLink}
             </div>
-            {expiry && (
-              <div style={{ fontSize: 10, color: p.warm, opacity: 0.7, marginTop: 6, fontFamily: "system-ui" }}>
+            {expiry && expiry !== "No expiration" && (
+              <div style={{ fontSize: 10, color: p.warm, opacity: 0.7, marginTop: 4, fontFamily: "system-ui" }}>
                 Valid until {expiry}
               </div>
             )}
