@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444', amber:'#F59E0B' };
 
@@ -539,7 +540,17 @@ export default function BookingPage() {
             {services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
-                {services.map(s=>(
+                {(() => {
+                  // Apply cycle scheduling filter if therapist has it on.
+                  // Returns the original services array unchanged otherwise.
+                  // Filter is by TODAY's phase — meaning the menu reflects
+                  // what she's offering this week. Future-dated bookings still
+                  // pick from today's available menu (V1 simplification).
+                  const visibleServices = applyCycleFilter(therapist, services);
+                  if (visibleServices.length === 0 && services.length > 0) {
+                    return <div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available right now. Check back in a few days.</div>;
+                  }
+                  return visibleServices.map(s=>(
                   <button key={s.id} onClick={()=>{setSvc(s);setStep(2);}}
                     style={{background:C.white,border:`2px solid ${C.light}`,borderRadius:16,padding:'18px 20px',textAlign:'left',cursor:'pointer',width:'100%',transition:'all 0.15s',outline:'none'}}
                     onMouseEnter={e=>{e.currentTarget.style.borderColor=C.forest;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(42,87,65,0.12)';}}
@@ -558,7 +569,8 @@ export default function BookingPage() {
                       </div>
                     </div>
                   </button>
-                ))}
+                ));
+                })()}
               </div>
             }
           </div>

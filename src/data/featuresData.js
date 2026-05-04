@@ -82,6 +82,15 @@ export const RIBBONS = [
         ],
         meta: "iframe embed · 1-click copy",
       },
+      {
+        id: "1.8",
+        name: "Cycle-aligned scheduling",
+        body: [
+          "For practitioners who plan their work around their menstrual cycle. Tag each service to the phases you want to offer it in: menstrual, follicular, ovulatory, luteal. The booking page automatically shows clients only the services you have available that week.",
+          "Clients never see your cycle info. They just see fewer or different services on certain days, naturally. Your privacy is protected, and you do not have to fight a rigid 7-day calendar that does not match your body.",
+        ],
+        meta: "Optional · Customizable phase ranges · Privacy-first",
+      },
     ],
   },
   {

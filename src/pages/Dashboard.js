@@ -22,6 +22,7 @@ import SeedDefaults from '../components/SeedDefaults';
 import InlineEditField from '../components/InlineEditField';
 import InlineEditDescription from '../components/InlineEditDescription';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import CycleScheduling from '../components/CycleScheduling';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
 import BMLogo from '../components/BMLogo';
@@ -271,6 +272,52 @@ function ServicesAndAvailability({ therapist }) {
                     ariaLabel={`Description for ${svc.name}`}
                   />
                 </div>
+                {/* Phase tags — only render when cycle scheduling is on.
+                    Each chip toggles whether the service is available in that
+                    phase. NULL or empty array = always available. */}
+                {therapist?.cycle_scheduling_enabled && (
+                  <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}`, display:'flex', flexWrap:'wrap', alignItems:'center', gap:6 }}>
+                    <span style={{ fontSize:11, color:C2.gray, fontWeight:600, marginRight:4 }}>Available in:</span>
+                    {[
+                      { key:'menstrual',  label:'Menstrual',  color:'#C99488' },
+                      { key:'follicular', label:'Follicular', color:'#D4A578' },
+                      { key:'ovulatory',  label:'Ovulatory',  color:'#9DAA85' },
+                      { key:'luteal',     label:'Luteal',     color:'#A87468' },
+                    ].map(ph => {
+                      const phases = svc.phases || [];
+                      const allOff = phases.length === 0; // null/empty = all (always available)
+                      const isOn = allOff || phases.includes(ph.key);
+                      const togglePhase = () => {
+                        let next;
+                        if (allOff) {
+                          // Currently "all phases" — turn this one OFF, others stay on
+                          next = ['menstrual','follicular','ovulatory','luteal'].filter(p => p !== ph.key);
+                        } else if (isOn) {
+                          next = phases.filter(p => p !== ph.key);
+                          if (next.length === 0) next = null; // empty = all (back to default)
+                        } else {
+                          next = [...phases, ph.key];
+                          if (next.length === 4) next = null; // all four = back to "always"
+                        }
+                        updateService(svc.id, { phases: next });
+                      };
+                      return (
+                        <button key={ph.key} onClick={togglePhase} style={{
+                          background: isOn ? ph.color : 'transparent',
+                          color: isOn ? '#fff' : C2.gray,
+                          border: `1.5px solid ${isOn ? ph.color : C2.lightGray}`,
+                          borderRadius: 999,
+                          padding: '3px 10px',
+                          fontSize: 11, fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.15s',
+                        }}>
+                          {ph.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1646,6 +1693,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'services'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Cycle-aligned scheduling', 'Filter services by menstrual cycle phase', '2.1b') && (<>
+      <CollapsibleSection
+        id="cycle"
+        taxonomy="2.1b"
+        timeBadge="~2m"
+        label="Cycle-aligned scheduling"
+        summary={therapist?.cycle_scheduling_enabled ? "On — services filtered by phase" : "Off — optional, plan around your cycle"}
+        status={therapist?.cycle_scheduling_enabled ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l4 4"/></svg>}
+        isOpen={openRow === 'cycle'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><CycleScheduling therapist={therapist} /></div></CollapsibleSection>
       </>)}
       {matchesSearch('Add-ons', 'Hot stones, aromatherapy, hot towels…', '2.2') && (<>
       <CollapsibleSection
