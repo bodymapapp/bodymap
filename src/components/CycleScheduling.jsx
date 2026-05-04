@@ -46,6 +46,7 @@ export default function CycleScheduling({ therapist }) {
   const [startDate, setStartDate] = useState(therapist?.cycle_start_date || '');
   const [avgLength, setAvgLength] = useState(therapist?.cycle_avg_length || 28);
   const [overrides, setOverrides] = useState(therapist?.cycle_phase_overrides || null);
+  const [horizonDays, setHorizonDays] = useState(therapist?.booking_horizon_days || '');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
@@ -203,6 +204,56 @@ export default function CycleScheduling({ therapist }) {
                 />
                 <span style={{ fontSize: 13, color: C.gray }}>days (most are 28)</span>
               </div>
+            </div>
+
+            {/* Booking horizon — bound how far in advance clients can book.
+                Especially useful for cycle-aligned therapists who want to
+                cap drift. NULL/empty = unlimited. */}
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 600, color: C.ink, display: 'block', marginBottom: 4 }}>
+                Limit how far ahead clients can book
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  type="number"
+                  min="1" max="365"
+                  placeholder="No limit"
+                  value={horizonDays}
+                  onChange={(e) => setHorizonDays(e.target.value)}
+                  onBlur={() => {
+                    const v = parseInt(horizonDays, 10);
+                    save({ booking_horizon_days: Number.isFinite(v) && v > 0 ? v : null });
+                  }}
+                  style={{
+                    width: 90,
+                    padding: '8px 10px',
+                    border: `1.5px solid ${C.light}`,
+                    borderRadius: 8,
+                    fontSize: 14,
+                    fontFamily: 'system-ui',
+                  }}
+                />
+                <span style={{ fontSize: 13, color: C.gray }}>days out (try 30 if your cycle drifts)</span>
+              </div>
+              <p style={{ fontSize: 11, color: C.gray, margin: '4px 0 0 0', lineHeight: 1.5 }}>
+                Leave blank for no limit. With a 30-day window, even if your cycle shifts a few days, no future booking is more than a phase off from where you planned.
+              </p>
+            </div>
+
+            {/* Reassurance: existing bookings are NEVER affected by cycle
+                changes. Once a client has confirmed a booking, the service
+                is locked in regardless of how the therapist later updates
+                her cycle dates. The cycle filter only runs when a NEW
+                client is picking a service to book. */}
+            <div style={{
+              background: '#F0FDF4',
+              border: '1px solid #86EFAC',
+              borderRadius: 10,
+              padding: '10px 14px',
+              fontSize: 12, color: '#166534',
+              lineHeight: 1.5,
+            }}>
+              <strong>You can update cycle day 1 anytime.</strong> Already-booked appointments are never affected. Cycle filtering only applies to NEW bookings, so shifting your start date never cancels or moves a confirmed session.
             </div>
           </div>
 

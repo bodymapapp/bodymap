@@ -49,7 +49,7 @@ function scoreSlots(slots, existingBooked, dur) {
   }).sort((a,b) => b.score - a.score);
 }
 
-function Cal({availability, selected, onSelect, blockedDates=new Set()}) {
+function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=null}) {
   const today=new Date(); today.setHours(0,0,0,0);
   const [yr,setYr]=useState(today.getFullYear());
   const [mo,setMo]=useState(today.getMonth());
@@ -76,7 +76,11 @@ function Cal({availability, selected, onSelect, blockedDates=new Set()}) {
           const nowTime = new Date();
           const isToday2 = dt.toDateString() === today.toDateString();
           const pastLastSlot = isToday2 && nowTime.getHours() >= 17;
-          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds);
+          // Booking horizon: if therapist set a max-days-out limit, dates
+          // beyond that are disabled. Used by cycle-aligned therapists to
+          // bound how far ahead bookings can drift from her current phase.
+          const beyondHorizon = maxDate && dt > maxDate;
+          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds)||beyondHorizon;
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
             style={{padding:'9px 2px',borderRadius:8,border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
@@ -623,7 +627,23 @@ export default function BookingPage() {
             )}
 
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
-              <Cal availability={availability} selected={date} onSelect={setDate} blockedDates={blockedDates}/>
+              <Cal
+                availability={availability}
+                selected={date}
+                onSelect={setDate}
+                blockedDates={blockedDates}
+                maxDate={(() => {
+                  // If therapist has set a booking horizon (e.g. 30 days for
+                  // cycle-aligned scheduling), compute the cutoff date here.
+                  // Returns a Date, or null for unlimited.
+                  const days = therapist?.booking_horizon_days;
+                  if (!days || days < 1) return null;
+                  const max = new Date();
+                  max.setHours(0, 0, 0, 0);
+                  max.setDate(max.getDate() + days);
+                  return max;
+                })()}
+              />
             </div>
             {date&&(
               <div style={{background:C.white,borderRadius:16,padding:20}}>
