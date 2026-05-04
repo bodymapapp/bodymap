@@ -28,6 +28,7 @@ import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
 import CampaignsDemo from "../components/demos/CampaignsDemo";
 import GiftCardDemo from "../components/demos/GiftCardDemo";
+import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -40,11 +41,22 @@ const RIBBONS = [
     id: "1",
     name: "Find & Book",
     tagline: "How new clients discover you and schedule the first session.",
-    demos: [{ kind: "component", component: BookingDemo, label: "Try the booking page" }],
+    // TWO demos for Find & Book carousel: standard booking flow first
+    // (familiar baseline), then cycle-aligned scheduling — our one-of-one
+    // differentiator that no other booking platform offers as of May 2026.
+    // We list cycle scheduling SECOND in the carousel so the standard
+    // booking demo loads first for visitors who don't know what cycle
+    // scheduling is, but cycle gets its own pill label so curious users
+    // can tap right to it.
+    demos: [
+      { kind: "component", component: BookingDemo, label: "Try the booking page" },
+      { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
+    ],
     layout: "demo-right",
     subFeatures: [
       "Custom booking page at mybodymap.app/your-name",
       "Services catalog with durations and add-ons",
+      "Cycle-aligned scheduling (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
       "Website embed for your existing site",
@@ -190,6 +202,52 @@ export default function Home() {
   return (
     <div className="bm-home-v2">
       <Nav />
+
+      {/* ── ANNOUNCEMENT BANNER ──────────────────────────────────────────
+          Top-of-page strip highlighting our newest one-of-one feature:
+          cycle-aligned scheduling. Feminine + professional palette
+          (cream/rose gradient, dusty rose ink, sage moon icon). Subtle
+          enough to not compete with the hero CTAs but visible enough that
+          a returning visitor sees something has changed. Links into the
+          dedicated section on /features so curious clicks land somewhere
+          real instead of bouncing back to a sales pitch.
+          
+          Designed to be retired or swapped out as new launches happen. */}
+      <Link to="/features#cycle" style={{ textDecoration: "none" }}>
+        <div style={{
+          background: "linear-gradient(90deg, #FCF8EE 0%, #FCE8E0 50%, #FAF6EE 100%)",
+          borderBottom: "1px solid #E8C5B5",
+          padding: "10px 20px",
+          textAlign: "center",
+          fontSize: 13,
+          color: "#5C2E27",
+          cursor: "pointer",
+          transition: "filter 0.15s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.97)")}
+        onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
+        >
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+            <span style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
+              color: "#A87468",
+              background: "#fff",
+              border: "1px solid #E8C5B5",
+              padding: "2px 8px",
+              borderRadius: 99,
+            }}>
+              JUST SHIPPED
+            </span>
+            <span style={{ fontWeight: 600 }}>🌙 Cycle-aligned scheduling</span>
+            <span style={{ color: "#7A5C53" }}>
+              · plan your work around your cycle, not against it
+            </span>
+            <span style={{ color: "#A87468", fontWeight: 700 }}>
+              See how →
+            </span>
+          </span>
+        </div>
+      </Link>
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section className="bm-home-hero">

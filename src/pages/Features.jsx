@@ -850,20 +850,21 @@ function SectionNav() {
     { id:"bodymap",     label:"Body Map",               n:1  },
     { id:"pattern",     label:"Pattern Intelligence",   n:2  },
     { id:"booking",     label:"Online Booking",         n:3  },
-    { id:"deposits",    label:"Deposits",               n:4  },
-    { id:"intake",      label:"Client Intake",          n:5  },
-    { id:"returning",   label:"Returning Clients",      n:6  },
-    { id:"schedule",    label:"Schedule",               n:7  },
-    { id:"reminders",   label:"Reminders",              n:8  },
-    { id:"outreach",    label:"Smart Outreach",         n:9  },
-    { id:"postsession", label:"Post-Session",           n:10 },
-    { id:"billing",     label:"Billing",                n:11 },
-    { id:"gifts",       label:"Gift Cards",             n:12 },
-    { id:"ai",          label:"MyBodyMap Platform",             n:13 },
-    { id:"mobile",      label:"On Your Phone",          n:14 },
-    { id:"automation",  label:"Automation",             n:15 },
-    { id:"growth",      label:"Growth Engine",          n:16 },
-    { id:"portability", label:"Switching",              n:17 },
+    { id:"cycle",       label:"Cycle-Aligned",          n:4  },
+    { id:"deposits",    label:"Deposits",               n:5  },
+    { id:"intake",      label:"Client Intake",          n:6  },
+    { id:"returning",   label:"Returning Clients",      n:7  },
+    { id:"schedule",    label:"Schedule",               n:8  },
+    { id:"reminders",   label:"Reminders",              n:9  },
+    { id:"outreach",    label:"Smart Outreach",         n:10 },
+    { id:"postsession", label:"Post-Session",           n:11 },
+    { id:"billing",     label:"Billing",                n:12 },
+    { id:"gifts",       label:"Gift Cards",             n:13 },
+    { id:"ai",          label:"MyBodyMap Platform",             n:14 },
+    { id:"mobile",      label:"On Your Phone",          n:15 },
+    { id:"automation",  label:"Automation",             n:16 },
+    { id:"growth",      label:"Growth Engine",          n:17 },
+    { id:"portability", label:"Switching",              n:18 },
   ];
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 280);
@@ -1238,6 +1239,91 @@ export default function Features() {
 
 
       {/* INTAKE */}
+
+      {/* CYCLE-ALIGNED SCHEDULING — only platform that does this. */}
+      <section id="cycle" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"linear-gradient(135deg, #FCF8EE 0%, #FCE8E0 50%, #FAF6EE 100%)" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{
+                display:"inline-block",
+                fontSize:11, fontWeight:700, letterSpacing:1.5,
+                color:"#A87468", background:"#fff",
+                border:"1px solid #E8C5B5",
+                padding:"4px 12px", borderRadius:99,
+                marginBottom:16,
+              }}>
+                ONLY ON MYBODYMAP
+              </div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Cycle-Aligned Scheduling</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Plan around your body,<br/><em style={{ color:"#A87468" }}>not against it.</em>
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:640, margin:"0 auto", lineHeight:1.7 }}>
+                Every other booking platform forces a rigid 7-day calendar. We let you tag each service to the menstrual cycle phases you want to offer it in. Your booking page automatically shows clients only the services you have available that week.
+              </p>
+            </div>
+          </FadeIn>
+
+          {/* Two-column hero: image left, copy right */}
+          <FadeIn delay={0.1}>
+            <div style={{
+              display:"grid",
+              gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))",
+              gap:32,
+              alignItems:"center",
+              marginBottom:48,
+              background:"#fff",
+              borderRadius:20,
+              padding:24,
+              boxShadow:"0 12px 48px rgba(140, 74, 63, 0.10)",
+            }}>
+              <div>
+                <img
+                  src="/images/feature-1-7.jpg"
+                  alt="A peaceful moment for cycle-aligned scheduling"
+                  style={{
+                    width:"100%",
+                    aspectRatio:"4/3",
+                    objectFit:"cover",
+                    borderRadius:14,
+                    display:"block",
+                  }}
+                />
+              </div>
+              <div>
+                <h3 style={{ fontFamily:"Georgia, serif", fontSize:24, fontWeight:700, color:C.dark, marginBottom:14, lineHeight:1.2 }}>
+                  Your services follow your phases.
+                </h3>
+                <p style={{ fontSize:14, color:C.gray, lineHeight:1.7, marginBottom:14 }}>
+                  Tag <strong style={{ color:"#A87468" }}>deep tissue</strong> for your follicular and ovulatory weeks when energy peaks. Tag <strong style={{ color:"#A87468" }}>gentle relaxation</strong> for menstrual and luteal weeks. The booking page reads today's date, calculates which phase you are in, and shows clients only the services you have on offer that week.
+                </p>
+                <p style={{ fontSize:14, color:C.gray, lineHeight:1.7 }}>
+                  Clients <strong>never see your cycle info</strong>. They just see fewer or different services on certain days, naturally. Your privacy is protected, and you no longer have to fight a calendar that does not match your body.
+                </p>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* Four feature cards */}
+          <FadeIn delay={0.2}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🌸", title:"Four phases, your tags", desc:"Tag each service with the phases you want to offer it: menstrual, follicular, ovulatory, or luteal. Default phase day ranges are pre-filled, customizable if your cycle behaves differently." },
+                { icon:"🛡️", title:"Privacy by design", desc:"Clients never see phase names or any biographical info. The booking page just shows fewer or different services on certain days." },
+                { icon:"🌙", title:"Move cycle day 1 anytime", desc:"Cycles fluctuate. Update your start date in one tap. Already-confirmed appointments are never affected, only future bookings." },
+                { icon:"📅", title:"Limit how far ahead", desc:"Cap bookings at 30 days out so cycle drift never misaligns far-future appointments. Or leave unlimited if you prefer." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"#fff", borderRadius:16, padding:24, border:"1px solid #F5D5C8" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
 
       {/* AUTOMATED REMINDERS */}
       {/* DEPOSITS */}
