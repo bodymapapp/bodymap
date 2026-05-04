@@ -3,18 +3,17 @@ import React, { useState, useEffect, useRef } from 'react';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const STEPS = [
-  // view values map to real /dashboard/* routes in App.js. The hash on
-  // 'settings#import' triggers an auto-open of the import collapsible
-  // section via the useEffect in Dashboard.js (looks for location.hash).
-  // For 'intake', view is empty string so we navigate to /dashboard root,
-  // which is the clients view (where the New Session / Send Intake actions
-  // live). Previously these used view:'import' and view:'clients' which
-  // routed to non-existent URLs and silently failed.
+  // view values map to real /dashboard/* routes in App.js. Hashes like
+  // 'settings#import' trigger auto-open of that collapsible section in
+  // SettingsPanel via location.hash useEffect. Without hashes, navigating
+  // from /dashboard/* back to /dashboard or /dashboard/settings often
+  // produces no visible change on mobile (URL already matches), so the
+  // user thinks the button is broken. Deep-links solve this.
   { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'settings#import' },
-  { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Go to Settings', view:'settings' },
-  { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Go to Settings', view:'settings' },
-  { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings' },
-  { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Go to Clients', view:'' },
+  { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Review', view:'settings#services' },
+  { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Review', view:'settings#bookingflow' },
+  { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings#payments' },
+  { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Get my link', view:'settings#intake_qr' },
 ];
 
 function Confetti({ active }) {
@@ -103,9 +102,23 @@ export default function OnboardingChecklist({ therapist, services, availability,
         <button onClick={toggleCollapse} style={{background:'transparent',border:'none',color:C.gray,cursor:'pointer',fontSize:12,fontWeight:600,padding:'0 0 0 12px',whiteSpace:'nowrap'}}>▲ hide</button>
       </div>
 
-      <div style={{height:5,background:C.light,borderRadius:3,marginBottom:16,overflow:'hidden'}}>
+      <div style={{height:5,background:C.light,borderRadius:3,marginBottom:14,overflow:'hidden'}}>
         <div style={{height:'100%',width:`${(done/total)*100}%`,background:`linear-gradient(90deg,${C.sage},${C.forest})`,borderRadius:3,transition:'width 0.5s ease'}}/>
       </div>
+
+      {/* Explanatory note when at least one step is auto-checked (i.e. the
+          seed defaults filled it in for the new therapist). Tells the user
+          why some boxes are pre-ticked and that they can still customize
+          via the Review button on each checked row. */}
+      {done>0 && !allDone && (
+        <div style={{
+          fontSize:12, color:C.gray, lineHeight:1.5,
+          background:'#FFF8E1', border:'1px solid #F0E5C0',
+          borderRadius:8, padding:'10px 12px', marginBottom:12,
+        }}>
+          ✨ Items already checked were pre-filled to get you started. Tap <strong>Review</strong> on any to customize for your practice.
+        </div>
+      )}
 
       <div style={{display:'flex',flexDirection:'column',gap:8}}>
         {STEPS.map(step=>{
@@ -119,9 +132,19 @@ export default function OnboardingChecklist({ therapist, services, availability,
                 <div style={{fontSize:13,fontWeight:700,color:isChecked?C.forest:C.dark,textDecoration:isChecked?'line-through':'none'}}>{step.label}</div>
                 {!isChecked&&<div style={{fontSize:11,color:C.gray,marginTop:1}}>{step.desc}</div>}
               </div>
-              {!isChecked&&(
+              {/* Action button. For unchecked items, primary forest button.
+                  For checked items WITH a view (so user can customize),
+                  ghost-style "Review" button. Items with no view (e.g. if
+                  we ever add one without a settings destination) hide the
+                  button when checked. */}
+              {!isChecked && (
                 <button onClick={()=>onNavigate(step.view)} style={{background:C.forest,color:'#fff',border:'none',borderRadius:8,padding:'6px 12px',fontSize:11,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
                   {step.action} →
+                </button>
+              )}
+              {isChecked && step.view && (
+                <button onClick={()=>onNavigate(step.view)} style={{background:'transparent',color:C.forest,border:`1px solid ${C.forest}`,borderRadius:8,padding:'5px 11px',fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>
+                  Review
                 </button>
               )}
             </div>
