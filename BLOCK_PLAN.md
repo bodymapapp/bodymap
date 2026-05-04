@@ -455,6 +455,20 @@ How HK and Claude work together every session. Survives compaction.
 
 8. **Minimum-click principle. Apply to every flow, every screen, every feature.** Minimum clicks, minimum scrolling, minimum process steps, minimum cognitive load. If a user has to submit twice, scroll past explanation, or wonder "what now," the design has failed. Ask before building any flow: "How many taps from start to done? Can it be fewer?" This applies retroactively to anything we ship. Two-step flows that should be one-step flows are bugs.
 
+9. **Every new feature lands on Home + Features page within the same ship.** A feature that exists in the dashboard but isn't visible to prospects on the marketing pages is invisible to growth. Hard rule, no exceptions.
+
+   **The flow:**
+   1. Build the feature in product
+   2. Confirm marketing surface plan with HK before writing copy: which Features category it slots into (taxonomy stays the 7 we have), which ribbon on Home, what visual asset
+   3. Add to Features page in the right category, with a similar visual style to the existing rows in that category
+   4. Add to Home page as either a new ribbon or as a sub-item under an existing ribbon
+   5. SVG with subtle animation on Home (matching the existing PatternDemo / AutomationHub / CampaignsDemo aesthetic). Ask HK to provide a reference picture if there's an existing brand visual that should match
+   6. Both pages updated in the same commit as the feature ship, never deferred to a later session
+
+   **Taxonomy is locked.** Seven categories: (1) Find & Book, (2) Know Your Client, (3) Client Intelligence, (4) Day-of-Session, (5) Relationships, (6) Money & Protection, (7) On Your Phone. New features fit into existing categories; do not invent an eighth category without explicit HK approval.
+
+   **Why this rule exists:** Distribution is the unsolved problem, not product. Every feature that doesn't land on the marketing surface is invisible to the people who would pay for it. Shipping the dashboard work without the marketing work is the failure mode that's been recurring; this rule closes it.
+
 9. **Never use `git add -A` or `git add .`. Always stage explicit file paths.** Container starts fresh each session, `npm install` modifies `node_modules`, and a wildcard add will pull thousands of dependency files into the repo. Stage every change by its full path: `git add src/pages/Dashboard.js src/components/StatsStrip.js`. The `.gitignore` already excludes `node_modules/` as a backstop, but the explicit-paths rule is the primary defense.
 
 ## REFERENCE FILES IN REPO
