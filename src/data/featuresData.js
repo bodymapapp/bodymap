@@ -312,6 +312,18 @@ export const RIBBONS = [
         ],
         meta: "Aggregate-only view · Never per-session",
       },
+      {
+        id: "5.6",
+        name: "Gift cards",
+        automated: true,
+        videoUrl: "/videos/gift-cards.mp4",
+        body: [
+          "Sell beautiful gift cards directly from your booking page. Recipient gets an instant email with a code; redeems at booking; you get paid right away.",
+          "Print-ready in any size. Postcard, half-page, wallet, or custom. The therapist picks; the browser handles the dialog. No more wrestling with Canva margins.",
+          "Travels where flowers cannot. The kind of small thing that makes a regular client feel like they have an actual relationship with you.",
+        ],
+        meta: "Custom amounts · Print or email · Stripe-powered",
+      },
     ],
   },
   {
@@ -328,17 +340,6 @@ export const RIBBONS = [
           "Built for the therapist who became one because they did not want to look at spreadsheets.",
         ],
         meta: "Real-time · Exportable for taxes",
-      },
-      {
-        id: "6.2",
-        name: "Gift cards",
-        automated: true,
-        videoUrl: "/videos/gift-cards.mp4",
-        body: [
-          "Sell beautiful gift cards directly from your booking page. Recipient gets an instant email with a code; redeems at booking; you get paid right away.",
-          "Travels where flowers cannot. The kind of small thing that makes a regular client feel like they have an actual relationship with you.",
-        ],
-        meta: "Custom amounts · Stripe-powered",
       },
       {
         id: "6.3",

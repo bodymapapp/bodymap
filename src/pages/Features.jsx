@@ -1563,12 +1563,14 @@ export default function Features() {
         </div>
       </section>
 
-      {/* GIFT CARDS */}
+      {/* GIFT CARDS — taxonomy: Relationships (5.6). Lives near other
+          relationship surfaces (outreach, post-session) on the Features
+          page despite the visual ID="gifts" anchor. */}
       <section id="gifts" style={{ scrollMarginTop:"112px", padding:"90px 24px", background:"linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FFF9F3 100%)", position:"relative", overflow:"hidden" }}>
         <div style={{ maxWidth:1100, margin:"0 auto", position:"relative", zIndex:2 }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:52 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:"#E85C79", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>♡ Gift Cards</div>
+              <div style={{ fontSize:13, fontWeight:700, color:"#E85C79", textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>♡ Gift Cards · Relationships</div>
               <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
                 Give the gift of <em style={{ color:"#E85C79", fontStyle:"italic" }}>feeling good.</em>
               </h2>
@@ -1577,10 +1579,8 @@ export default function Features() {
               </p>
             </div>
           </FadeIn>
-          {/* Demo video showing the gift card creation flow. Autoplays muted
-              and loops so it acts like an animated illustration rather than
-              a video the user has to play. playsInline lets it autoplay on
-              iOS without going fullscreen. */}
+
+          {/* Demo video showing the gift card creation flow. */}
           <FadeIn delay={0.05}>
             <div style={{ maxWidth:680, margin:"0 auto 40px", borderRadius:20, overflow:"hidden", boxShadow:"0 12px 40px rgba(232,92,121,0.18)", border:"1.5px solid rgba(251,207,232,0.6)", background:"#fff" }}>
               <video
@@ -1594,11 +1594,83 @@ export default function Features() {
               />
             </div>
           </FadeIn>
+
+          {/* PRINT-READY HERO - new prominent block for the print feature.
+              When HK provides a beautiful reference picture of a printed
+              card, swap the placeholder block below with an <img> tag.
+              Until then, a styled placeholder communicates the position. */}
+          <FadeIn delay={0.08}>
+            <div style={{ maxWidth:980, margin:"0 auto 48px", display:"grid", gridTemplateColumns:"minmax(0,1fr) minmax(280px, 0.85fr)", gap:40, alignItems:"center" }} className="bm-feat-2col">
+              <div>
+                <div style={{ fontSize:11, fontWeight:700, color:"#A87468", letterSpacing:"0.16em", marginBottom:10, textTransform:"uppercase" }}>NEW · Print-ready</div>
+                <h3 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(24px, 3vw, 34px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:14 }}>
+                  Print in any size. <em style={{ color:"#8C4A3F", fontStyle:"italic" }}>Therapist's choice.</em>
+                </h3>
+                <p style={{ fontSize:15, color:C.gray, lineHeight:1.7, marginBottom:18 }}>
+                  Postcard 4×6. Half-page 5.5×8.5. Letter. Custom anything. The browser print dialog handles size, margins, save-as-PDF, and orientation. No more wrestling with Canva, no missing buttons, no half-sheet mistakes.
+                </p>
+                <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                  {["Postcard 4×6", "Half-page", "Letter", "Custom"].map((s,i)=> (
+                    <div key={s} style={{
+                      background: i===0 ? "#8C4A3F" : "rgba(255,255,255,0.8)",
+                      color: i===0 ? "#fff" : "#7A5C53",
+                      border: `1.5px solid ${i===0 ? "#8C4A3F" : "rgba(232,92,121,0.3)"}`,
+                      padding:"6px 14px", borderRadius:99,
+                      fontSize:12, fontWeight:600,
+                    }}>
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* IMAGE PLACEHOLDER — HK to provide a reference photo of the
+                  printed gift card. Replace the inner div with <img src="..." />
+                  when the asset arrives. */}
+              <div style={{
+                aspectRatio: "4 / 5",
+                background: "linear-gradient(135deg, #FCE8E0 0%, #F5D5C8 50%, #FCF8EE 100%)",
+                borderRadius: 18,
+                boxShadow: "0 16px 48px rgba(140, 74, 63, 0.20)",
+                border: "1.5px solid rgba(251,207,232,0.5)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                position: "relative", overflow: "hidden",
+              }}>
+                {/* Inner placeholder card — visual stand-in until photo lands */}
+                <div style={{
+                  width: "75%", aspectRatio: "4 / 6",
+                  background: "#fff", borderRadius: 12,
+                  boxShadow: "0 8px 24px rgba(140,74,63,0.18)",
+                  display: "flex", flexDirection: "column",
+                  overflow: "hidden",
+                  transform: "rotate(-2deg)",
+                }}>
+                  <div style={{ background: "linear-gradient(135deg, #FCE8E0, #F5D5C8)", padding: "16px", textAlign: "center" }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, color: "#A87468", letterSpacing: 1.5, marginBottom: 6 }}>♡ A GIFT FOR YOU</div>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 16, fontStyle: "italic", color: "#5C2E27", fontWeight: 700 }}>Dear friend,</div>
+                  </div>
+                  <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 16 }}>
+                    <div style={{ fontFamily: "Georgia, serif", fontSize: 36, fontWeight: 700, color: "#2A5741", lineHeight: 1 }}>$120</div>
+                    <div style={{ fontSize: 10, color: "#7A5C53", marginTop: 4 }}>of care</div>
+                  </div>
+                  <div style={{ borderTop: "1.5px dashed #E5D5C8", padding: 12, textAlign: "center" }}>
+                    <div style={{ fontFamily: "Courier, monospace", fontSize: 11, fontWeight: 700, color: "#2A5741", letterSpacing: 2 }}>JX7K-MN42</div>
+                  </div>
+                </div>
+                {/* Tiny floating note for HK */}
+                <div style={{ position: "absolute", bottom: 10, right: 12, fontSize: 10, color: "rgba(140,74,63,0.5)", fontStyle: "italic", fontFamily: "system-ui" }}>
+                  reference photo coming
+                </div>
+              </div>
+            </div>
+          </FadeIn>
+
           <FadeIn delay={0.1}>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
               {[
                 { icon:"🌸", title:"Beautiful by default", desc:"Every card comes with a rose-and-cream design, botanical flourishes, and space for a personal note. Nothing feels transactional." },
                 { icon:"💌", title:"Live preview as you create", desc:"See the gift card build in real time as you fill in the recipient, amount, and message. What you see is what they'll receive." },
+                { icon:"🖨️", title:"Print or email, any size", desc:"Postcard, half-page, letter, custom — therapist picks. The browser print dialog handles save-as-PDF too. No Canva margins, no missing buttons." },
                 { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200, or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
                 { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. MyBodyMap makes it as easy as texting your booking link, and each redemption brings a new client." },
               ].map(({icon,title,desc}) => (

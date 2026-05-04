@@ -27,6 +27,7 @@ import BillingDemo from "../components/demos/BillingDemo";
 import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
 import CampaignsDemo from "../components/demos/CampaignsDemo";
+import GiftCardDemo from "../components/demos/GiftCardDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -105,10 +106,14 @@ const RIBBONS = [
     id: "5",
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
-    // TWO demos shown as a carousel: workflow automations + Campaign starter.
+    // THREE demos shown as a carousel: workflow automations, campaign
+    // starter, and gift cards (which now lives in Relationships per
+    // taxonomy update May 2026 — gift cards are a relationship lever,
+    // not a money-protection one).
     demos: [
       { kind: "component", component: AutomationHub, label: "Automation flows" },
       { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
+      { kind: "component", component: GiftCardDemo, label: "Gift cards" },
     ],
     layout: "demo-right",
     subFeatures: [
@@ -116,7 +121,7 @@ const RIBBONS = [
       "Post-session thank-you with rebook link",
       "One-tap campaign drafts in 8 categories",
       "Lapsed client outreach, weekly digest",
-      "5-dimension feedback aggregated over time",
+      "Gift cards: print-ready in any size or email instantly",
     ],
     cta: "Relationships features",
   },

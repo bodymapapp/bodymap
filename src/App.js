@@ -36,6 +36,7 @@ import CareSummary from './pages/CareSummary';
 import AdminFunnel from './pages/AdminFunnel';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
+import GiftCardPrint from './pages/GiftCardPrint';
 import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
 import FounderDashboard from './components/FounderDashboard';
@@ -79,6 +80,7 @@ function App() {
           <Route path="/summary/:code" element={<CareSummary />} />
           <Route path="/brief/pre/:sessionId" element={<PreSessionBrief />} />
           <Route path="/brief/post/:sessionId" element={<PostSessionBrief />} />
+          <Route path="/gift-card/print/:id" element={<GiftCardPrint />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard/cal-connect" element={<ProtectedRoute><CalConnect /></ProtectedRoute>} />
           <Route path="/dashboard/stripe-connect" element={<ProtectedRoute><StripeConnect /></ProtectedRoute>} />

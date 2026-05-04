@@ -527,6 +527,22 @@ export default function GiftCertificates({ therapist }) {
                         }}>
                         {copied === cert.code ? '✓ Code copied' : '📋 Copy code'}
                       </button>
+                      {/* Print button: opens the standalone print page in a new
+                          tab. Therapist picks size in the in-page selector and
+                          uses the browser print dialog. Available on every
+                          active gift cert regardless of recipient_email. */}
+                      <button onClick={() => window.open(`/gift-card/print/${cert.id}`, '_blank')}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          background: '#fff',
+                          border: `1.5px solid ${C.light}`,
+                          color: C.gray,
+                          borderRadius: 20,
+                          padding: '7px 14px',
+                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}>
+                        🖨️ Print
+                      </button>
                       {/* Resend email button. Only shown if a recipient email
                           was captured. Idempotency check on the server is
                           bypassed via force:true so the button always triggers
