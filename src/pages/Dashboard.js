@@ -438,59 +438,134 @@ function ServicesAndAvailability({ therapist }) {
         )}
       </div>
 
-      {/* Working Hours - Time Blocks */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>🕐 Working Hours</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Toggle days on/off. Add blocks for each working period, e.g. 9–12 and 1–5 for a lunch break.</p>
-        <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+      {/* Working Hours - Time Blocks
+          Compressed layout: one tight row per day so all 7 days fit in
+          a single screen on most phones. Day label + toggle live on the
+          left, time inputs on the right. Multi-block days wrap onto a
+          second line. Off days collapse to a single 32px row instead
+          of the full padded card from the previous design. */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:'14px 16px' }}>
+        <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
+          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:0 }}>🕐 Working Hours</p>
+          <p style={{ fontSize:'11px', color:C2.gray, margin:0 }}>Tap a day to enable. + adds a break.</p>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           {DAYS.map(({ id: dow, label }) => {
             const avail = availability.find(a => a.day_of_week === dow);
             const isOn = avail?.active;
             const blocks = avail ? getBlocks(avail) : [];
             return (
-              <div key={dow} style={{ background:isOn?'#F9FAFB':'transparent', borderRadius:12, border:`1px solid ${isOn?C2.lightGray:'transparent'}`, padding:'10px 14px', transition:'all 0.15s' }}>
-                {/* Day toggle row */}
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom: isOn ? 10 : 0 }}>
+              <div key={dow} style={{
+                background: isOn ? '#F9FAFB' : 'transparent',
+                borderRadius: 8,
+                padding: isOn ? '6px 10px' : '4px 10px',
+                transition: 'all 0.15s',
+              }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                  {/* Day toggle pill — compact */}
                   <button onClick={() => toggleDay(dow)}
-                    style={{ width:38, height:20, borderRadius:10, background:isOn?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, transition:'background 0.2s' }}>
-                    <div style={{ width:14, height:14, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:isOn?21:3, transition:'left 0.2s' }} />
+                    style={{
+                      width: 30, height: 18, borderRadius: 10,
+                      background: isOn ? C2.forest : '#D1D5DB',
+                      border: 'none', cursor: 'pointer',
+                      position: 'relative', flexShrink: 0,
+                      transition: 'background 0.2s',
+                    }}>
+                    <div style={{
+                      width: 12, height: 12, borderRadius: '50%',
+                      background: '#fff', position: 'absolute',
+                      top: 3, left: isOn ? 15 : 3,
+                      transition: 'left 0.2s',
+                    }}/>
                   </button>
-                  <span style={{ fontSize:13, fontWeight:700, color:isOn?C2.darkGray:'#C4C4C4', minWidth:30 }}>{label}</span>
-                  {!isOn && <span style={{ fontSize:12, color:'#D1D5DB' }}>Off</span>}
-                  {isOn && (
-                    <span style={{ fontSize:11, color:C2.gray, marginLeft:'auto' }}>
-                      {blocks.map(b => `${b.start}–${b.end}`).join('  ·  ')}
-                    </span>
+                  <span style={{
+                    fontSize: 13, fontWeight: 700,
+                    color: isOn ? C2.darkGray : '#C4C4C4',
+                    width: 30, flexShrink: 0,
+                  }}>{label}</span>
+
+                  {!isOn && (
+                    <span style={{ fontSize: 12, color: '#D1D5DB' }}>Off</span>
+                  )}
+
+                  {/* Time blocks inline on the same row when day is on */}
+                  {isOn && avail && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap', flex:1 }}>
+                      {blocks.map((block, idx) => (
+                        <div key={idx} style={{ display:'flex', alignItems:'center', gap:4 }}>
+                          <input type="time" value={block.start}
+                            onChange={e => updateBlock(avail, idx, 'start', e.target.value)}
+                            style={{
+                              padding: '3px 6px',
+                              border: `1px solid ${C2.lightGray}`,
+                              borderRadius: 6,
+                              fontSize: 12,
+                              outline: 'none',
+                              background: '#fff',
+                              width: 96,
+                            }}/>
+                          <span style={{ fontSize: 11, color: C2.gray }}>–</span>
+                          <input type="time" value={block.end}
+                            onChange={e => updateBlock(avail, idx, 'end', e.target.value)}
+                            style={{
+                              padding: '3px 6px',
+                              border: `1px solid ${C2.lightGray}`,
+                              borderRadius: 6,
+                              fontSize: 12,
+                              outline: 'none',
+                              background: '#fff',
+                              width: 96,
+                            }}/>
+                          {blocks.length > 1 && (
+                            <button onClick={() => removeBlock(avail, idx)}
+                              style={{
+                                background: 'transparent', border: 'none',
+                                color: '#EF4444', cursor: 'pointer',
+                                fontSize: 14, padding: '0 2px',
+                                lineHeight: 1, flexShrink: 0,
+                              }}>×</button>
+                          )}
+                        </div>
+                      ))}
+                      <button onClick={() => addBlock(avail)}
+                        title="Add a break"
+                        style={{
+                          background: 'transparent',
+                          border: `1px dashed ${C2.lightGray}`,
+                          borderRadius: 6,
+                          width: 22, height: 22,
+                          fontSize: 13, fontWeight: 700,
+                          color: C2.sage,
+                          cursor: 'pointer',
+                          padding: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          flexShrink: 0,
+                        }}>+</button>
+                    </div>
                   )}
                 </div>
-                {/* Time blocks */}
-                {isOn && avail && (
-                  <div style={{ paddingLeft:48, display:'flex', flexDirection:'column', gap:6 }}>
-                    {blocks.map((block, idx) => (
-                      <div key={idx} style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                        <input type="time" value={block.start}
-                          onChange={e => updateBlock(avail, idx, 'start', e.target.value)}
-                          style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff', flexShrink:0 }} />
-                        <span style={{ fontSize:13, color:C2.gray }}>–</span>
-                        <input type="time" value={block.end}
-                          onChange={e => updateBlock(avail, idx, 'end', e.target.value)}
-                          style={{ padding:'6px 8px', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, fontSize:14, outline:'none', background:'#fff', flexShrink:0 }} />
-                        {blocks.length > 1 && (
-                          <button onClick={() => removeBlock(avail, idx)}
-                            style={{ background:'transparent', border:'none', color:'#EF4444', cursor:'pointer', fontSize:16, padding:'0 4px', lineHeight:1, flexShrink:0 }}>×</button>
-                        )}
-                      </div>
-                    ))}
-                    <button onClick={() => addBlock(avail)}
-                      style={{ alignSelf:'flex-start', background:'transparent', border:`1.5px dashed ${C2.lightGray}`, borderRadius:8, padding:'5px 12px', fontSize:12, fontWeight:600, color:C2.sage, cursor:'pointer', marginTop:2 }}>
-                      + Add block
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })}
         </div>
+      </div>
+
+      {/* Cycle-aligned scheduling — lives inside Services & hours rather
+          than as a separate Settings section. This keeps related "what
+          you offer + when" controls together: services menu, working
+          hours, cycle filter. The CycleScheduling component handles its
+          own collapse via the master toggle, so off-state takes very
+          little space. Per-phase chips on each service render up above
+          in the services rows when the toggle is ON. */}
+      <div style={{
+        background: C2.white,
+        border: `1.5px solid ${C2.lightGray}`,
+        borderRadius: 14,
+        padding: '14px 16px',
+        marginTop: 14,
+      }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 10px' }}>🌙 Cycle-aligned scheduling (optional)</p>
+        <CycleScheduling therapist={therapist} />
       </div>
     </div>
   );
@@ -1000,31 +1075,42 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   // for the 'Import Clients' onboarding step — clicking lands the user
   // directly on the import form instead of inside Settings somewhere.
   //
-  // Two important details:
+  // Three important details:
   // 1. Depends on location.hash (from useLocation) so the effect re-runs
   //    when the user clicks a deep-link from somewhere else inside the
-  //    /dashboard/settings page (mount alone wouldn't catch that).
+  //    /dashboard/settings page.
   // 2. Two-step scroll: first setOpenRow expands the section, then on
   //    next render we scroll. We use requestAnimationFrame instead of
   //    setTimeout because mobile timers are unreliable and rAF fires
   //    after layout, when the section is actually visible.
+  // 3. After the scroll, CLEAR the hash so subsequent re-renders (e.g.
+  //    when a child save updates auth context and re-renders the panel)
+  //    don't re-fire this effect and re-jump the page. HK reported the
+  //    page jumping when clicking the cycle scheduling toggle — caused
+  //    by the toggle's save call triggering a re-render that re-ran
+  //    this effect with the original hash still present.
   React.useEffect(() => {
     const hash = (location.hash || '').replace('#', '');
     if (!hash) return;
     setOpenRow(hash);
-    // Double rAF: first frame opens the section, second frame measures
-    // the now-expanded element so scrollIntoView lands precisely.
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById(hash);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          // Brief highlight pulse so the user sees WHERE they landed.
           el.style.boxShadow = '0 0 0 3px rgba(42, 87, 65, 0.35)';
           el.style.transition = 'box-shadow 0.6s ease';
           setTimeout(() => {
             el.style.boxShadow = '';
           }, 1800);
+        }
+        // Clear the hash so we don't re-scroll on every subsequent render.
+        // Use replaceState (not navigate) to avoid adding a history entry.
+        if (window.history.replaceState) {
+          window.history.replaceState(
+            null, '',
+            window.location.pathname + window.location.search
+          );
         }
       });
     });
@@ -1693,19 +1779,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'services'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ServicesAndAvailability therapist={therapist} /></div></CollapsibleSection>
-      </>)}
-      {matchesSearch('Cycle-aligned scheduling', 'Filter services by menstrual cycle phase', '2.1b') && (<>
-      <CollapsibleSection
-        id="cycle"
-        taxonomy="2.1b"
-        timeBadge="~2m"
-        label="Cycle-aligned scheduling"
-        summary={therapist?.cycle_scheduling_enabled ? "On — services filtered by phase" : "Off — optional, plan around your cycle"}
-        status={therapist?.cycle_scheduling_enabled ? "done" : "todo"}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l4 4"/></svg>}
-        isOpen={openRow === 'cycle'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><CycleScheduling therapist={therapist} /></div></CollapsibleSection>
       </>)}
       {matchesSearch('Add-ons', 'Hot stones, aromatherapy, hot towels…', '2.2') && (<>
       <CollapsibleSection

@@ -17,7 +17,7 @@
 // component handles the master toggle, cycle dates, and ranges only.
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { phaseFromDate, defaultPhaseRanges } from '../lib/cycleScheduling';
 
 const C = {
@@ -41,6 +41,7 @@ const PHASES = [
 ];
 
 export default function CycleScheduling({ therapist }) {
+  const { updateProfile } = useAuth();
   const [enabled, setEnabled] = useState(!!therapist?.cycle_scheduling_enabled);
   const [startDate, setStartDate] = useState(therapist?.cycle_start_date || '');
   const [avgLength, setAvgLength] = useState(therapist?.cycle_avg_length || 28);
@@ -49,26 +50,34 @@ export default function CycleScheduling({ therapist }) {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
 
+  // Keep local state synced with prop changes (e.g. after updateProfile
+  // updates the auth context, the therapist prop changes and we want our
+  // inputs to reflect the saved values, not stale pre-save state).
+  useEffect(() => {
+    setEnabled(!!therapist?.cycle_scheduling_enabled);
+  }, [therapist?.cycle_scheduling_enabled]);
+
   // Compute default phase ranges live from current cycle length so the
   // therapist sees the math update as she changes the input.
   const defaults = defaultPhaseRanges(avgLength);
   const effective = overrides || defaults;
 
-  // Save with debounce when any input changes.
+  // Save via updateProfile (NOT direct supabase.update). updateProfile
+  // both writes to DB and updates the in-memory auth context, so when
+  // the therapist navigates away and back, the toggle state survives.
+  // Direct supabase.update writes to DB but leaves the cached therapist
+  // object stale — caused HK to see "did not save after I moved around".
   const save = useCallback(async (patch) => {
     if (!therapist?.id) return;
     setSaving(true);
-    const { error } = await supabase
-      .from('therapists')
-      .update(patch)
-      .eq('id', therapist.id);
+    const result = await updateProfile(patch);
     setSaving(false);
-    if (error) {
-      console.error('CycleScheduling save failed:', error);
+    if (result?.error) {
+      console.error('CycleScheduling save failed:', result.error);
       return;
     }
     setSavedAt(Date.now());
-  }, [therapist?.id]);
+  }, [therapist?.id, updateProfile]);
 
   // Persist toggle changes immediately. Other inputs save on blur.
   useEffect(() => {
