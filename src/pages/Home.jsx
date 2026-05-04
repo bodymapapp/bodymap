@@ -227,7 +227,7 @@ export default function Home() {
           
           Designed to be retired or swapped out as new launches happen. */}
       <Link to="/features#cycle" style={{ textDecoration: "none" }}>
-        <div style={{
+        <div className="bm-launch-banner" style={{
           background: "linear-gradient(90deg, #FCF8EE 0%, #FCE8E0 50%, #FAF6EE 100%)",
           borderBottom: "1px solid #E8C5B5",
           padding: "10px 20px",
@@ -240,6 +240,12 @@ export default function Home() {
         onMouseEnter={(e) => (e.currentTarget.style.filter = "brightness(0.97)")}
         onMouseLeave={(e) => (e.currentTarget.style.filter = "none")}
         >
+          <style>{`
+            @media (max-width: 520px) {
+              .bm-launch-banner { padding: 8px 12px !important; font-size: 12px !important; }
+              .bm-launch-banner .bm-launch-subtitle { display: none !important; }
+            }
+          `}</style>
           <span style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
             <span style={{
               fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
@@ -248,14 +254,15 @@ export default function Home() {
               border: "1px solid #E8C5B5",
               padding: "2px 8px",
               borderRadius: 99,
+              flexShrink: 0,
             }}>
               JUST SHIPPED
             </span>
             <span style={{ fontWeight: 600 }}>🌙 Cycle-aligned scheduling</span>
-            <span style={{ color: "#7A5C53" }}>
+            <span className="bm-launch-subtitle" style={{ color: "#7A5C53" }}>
               · plan your work around your cycle, not against it
             </span>
-            <span style={{ color: "#A87468", fontWeight: 700 }}>
+            <span style={{ color: "#A87468", fontWeight: 700, flexShrink: 0 }}>
               See how →
             </span>
           </span>

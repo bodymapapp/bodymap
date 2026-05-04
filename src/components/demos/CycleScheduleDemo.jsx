@@ -120,17 +120,19 @@ export default function CycleScheduleDemo() {
       borderRadius: 20,
       padding: 22,
       boxShadow: "0 12px 48px rgba(140, 74, 63, 0.14)",
-      maxWidth: 460,
+      maxWidth: 460, width: "100%", boxSizing: "border-box",
       margin: "0 auto",
       border: "1.5px solid rgba(252, 232, 224, 0.6)",
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>🌙 Cycle-aligned scheduling</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, minWidth: 0 }}>🌙 Cycle-aligned scheduling</div>
         <div style={{
           background: "linear-gradient(135deg, #FBF4DC, #F5E0CC)",
           color: "#A87468",
           borderRadius: 20, padding: "3px 10px",
           fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+          flexShrink: 0,
+          whiteSpace: "nowrap",
         }}>
           ONLY ON MYBODYMAP
         </div>
@@ -140,7 +142,12 @@ export default function CycleScheduleDemo() {
       </div>
 
       {/* Animated cycle wheel + service list */}
-      <div style={{
+      {/* Wheel + service list. Uses a CSS class with media query so the
+          layout reflows cleanly on mobile (stacks vertically below 480px,
+          SVG shrinks to fit). Inline styles can't do media queries on
+          their own, so we put the responsive grid rules in a <style>
+          block keyed by a unique class name. */}
+      <div className="bm-cycle-demo-grid" style={{
         position: "relative",
         background: `linear-gradient(135deg, ${C.cream} 0%, #F5E8DD 100%)`,
         borderRadius: 14,
@@ -150,8 +157,26 @@ export default function CycleScheduleDemo() {
         gap: 14,
         alignItems: "center",
       }}>
-        {/* SVG wheel */}
-        <svg viewBox="0 0 260 260" width="260" height="260" style={{ display: "block" }}>
+        <style>{`
+          @media (max-width: 480px) {
+            .bm-cycle-demo-grid {
+              grid-template-columns: 1fr !important;
+              gap: 12px !important;
+              padding: 12px !important;
+            }
+            .bm-cycle-demo-grid > svg {
+              width: 100% !important;
+              max-width: 240px !important;
+              height: auto !important;
+              margin: 0 auto !important;
+            }
+            .bm-cycle-demo-services {
+              min-height: auto !important;
+            }
+          }
+        `}</style>
+        {/* SVG wheel — width set in pixels for desktop, overridden to 100% on mobile via media query above */}
+        <svg viewBox="0 0 260 260" width="260" height="260" style={{ display: "block", maxWidth: "100%" }}>
           <defs>
             <filter id="cycleSoftShadow" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="2" />
@@ -245,7 +270,7 @@ export default function CycleScheduleDemo() {
         </svg>
 
         {/* Right column: service list, fades in/out as phase rotates */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 200 }}>
+        <div className="bm-cycle-demo-services" style={{ display: "flex", flexDirection: "column", gap: 8, minHeight: 200 }}>
           <div style={{
             fontSize: 10, fontWeight: 700, color: C.gray,
             letterSpacing: 1.5, marginBottom: 2,

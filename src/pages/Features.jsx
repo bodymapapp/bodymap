@@ -1756,7 +1756,7 @@ export default function Features() {
               {[
                 { icon:"🌸", title:"Beautiful by default", desc:"Every card comes with a rose-and-cream design, botanical flourishes, and space for a personal note. Nothing feels transactional." },
                 { icon:"💌", title:"Live preview as you create", desc:"See the gift card build in real time as you fill in the recipient, amount, and message. What you see is what they'll receive." },
-                { icon:"🖨️", title:"Print or email, any size", desc:"Postcard, half-page, letter, custom — therapist picks. The browser print dialog handles save-as-PDF too. No Canva margins, no missing buttons." },
+                { icon:"🖨️", title:"Print or email, any size", desc:"Postcard, half-page, letter, custom. Therapist picks. The browser print dialog handles save-as-PDF too. No Canva margins, no missing buttons." },
                 { icon:"🎁", title:"One-tap preset amounts", desc:"$65, $85, $120, $150, $200, or any custom amount. Clients and purchasers can redeem at booking or in-person with a unique code." },
                 { icon:"💝", title:"Mother's Day to Christmas", desc:"Gift card sales spike around holidays. MyBodyMap makes it as easy as texting your booking link, and each redemption brings a new client." },
               ].map(({icon,title,desc}) => (

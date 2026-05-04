@@ -250,24 +250,26 @@ export default function PreferencesDemo() {
       borderRadius: 20,
       padding: 22,
       boxShadow: "0 12px 48px rgba(157, 170, 133, 0.16)",
-      maxWidth: 460,
+      maxWidth: 460, width: "100%", boxSizing: "border-box",
       margin: "0 auto",
       border: "1.5px solid rgba(220, 232, 210, 0.7)",
     }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink }}>📋 Full Client Intake</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, minWidth: 0 }}>📋 Full Client Intake</div>
         <div style={{
           background: "linear-gradient(135deg, #F0FDF4, #DCFCE7)",
           color: "#166534",
           borderRadius: 20, padding: "3px 10px",
           fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+          flexShrink: 0,
+          whiteSpace: "nowrap",
         }}>
           BEFORE THEY ARRIVE
         </div>
       </div>
       <div style={{ fontSize: 12, color: C.gray, marginBottom: 14 }}>
-        Body map, preferences, medical, waiver — all in one form. Captured once, remembered every visit.
+        Body map, preferences, medical, and waiver. All in one form. Captured once, remembered every visit.
       </div>
 
       {/* MACRO GRID — top layer, the visual index of the entire intake.
