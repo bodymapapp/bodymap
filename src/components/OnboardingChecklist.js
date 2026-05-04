@@ -3,11 +3,18 @@ import React, { useState, useEffect, useRef } from 'react';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const STEPS = [
-  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'import'   },
+  // view values map to real /dashboard/* routes in App.js. The hash on
+  // 'settings#import' triggers an auto-open of the import collapsible
+  // section via the useEffect in Dashboard.js (looks for location.hash).
+  // For 'intake', view is empty string so we navigate to /dashboard root,
+  // which is the clients view (where the New Session / Send Intake actions
+  // live). Previously these used view:'import' and view:'clients' which
+  // routed to non-existent URLs and silently failed.
+  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'settings#import' },
   { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Go to Settings', view:'settings' },
   { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Go to Settings', view:'settings' },
   { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings' },
-  { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Go to Clients', view:'clients' },
+  { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Go to Clients', view:'' },
 ];
 
 function Confetti({ active }) {

@@ -946,6 +946,24 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
+  // Hash-based deep-link to a specific Settings collapsible section.
+  // OnboardingChecklist links like /dashboard/settings#import use this to
+  // auto-open the row matching the hash and scroll it into view. Critical
+  // for the 'Import Clients' onboarding step — clicking lands the user
+  // directly on the import form instead of inside Settings somewhere.
+  // SettingsPanel only mounts when view==='settings', so we can run this
+  // unconditionally on mount.
+  React.useEffect(() => {
+    const hash = (window.location.hash || '').replace('#', '');
+    if (!hash) return;
+    setOpenRow(hash);
+    // Wait one tick for the section to render expanded before scrolling.
+    setTimeout(() => {
+      const el = document.getElementById(hash);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  }, []);
+
   // Settings search: matches against label, summary, taxonomy, and a
   // hand-curated synonym map so common search terms ('billing', 'price',
   // 'subscription') route to the right rows even though the literal
@@ -2336,7 +2354,7 @@ export default function Dashboard({ view }) {
                 availability={stats?.availability || []}
                 sessions={stats?.sessions || 0}
                 clients={stats?.clients || 0}
-                onNavigate={(v) => navigate(`/dashboard/${v}`)}
+                onNavigate={(v) => navigate(v ? `/dashboard/${v}` : '/dashboard')}
               />
               <ActivationNudge sessions={stats?.sessions || 0} />
               <LapsedClientAlert
