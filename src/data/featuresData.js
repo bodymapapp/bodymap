@@ -28,6 +28,21 @@ export const RIBBONS = [
       },
       {
         id: "1.2",
+        name: "Cycle-aligned scheduling",
+        // Image: currently using feature-1-7.jpg as a stand-in placeholder.
+        // HK to provide a thematic image (calm, feminine, professional —
+        // moon imagery or cyclic motion suggested) when the next batch of
+        // 10-20 marketing images is generated. Tracked in BLOCK_PLAN
+        // active fire #8.
+        image: "/images/feature-1-7.jpg",
+        body: [
+          "For practitioners who plan their work around their menstrual cycle. Tag each service to the phases you want to offer it in: menstrual, follicular, ovulatory, luteal. The booking page automatically shows clients only the services you have available that week.",
+          "Clients never see your cycle info. They just see fewer or different services on certain days, naturally. Your privacy is protected, and you do not have to fight a rigid 7-day calendar that does not match your body.",
+        ],
+        meta: "Only on MyBodyMap · Customizable phase ranges · Privacy-first",
+      },
+      {
+        id: "1.3",
         name: "Services catalog",
         body: [
           "Every service you offer with the right duration, price, and add-ons. Your 60-min deep tissue. Your 90-min prenatal. Your hot stone upgrade.",
@@ -36,7 +51,7 @@ export const RIBBONS = [
         meta: "Add unlimited services · Edit anytime",
       },
       {
-        id: "1.3",
+        id: "1.4",
         name: "Availability & hours",
         body: [
           "Set when you work, when you take a break, when you absolutely will not be disturbed. Recurring weekly schedule plus one-off changes for vacations or sick days.",
@@ -45,7 +60,7 @@ export const RIBBONS = [
         meta: "Time-zone aware · Buffer time supported",
       },
       {
-        id: "1.4",
+        id: "1.5",
         name: "Deposits at booking",
         automated: true,
         body: [
@@ -55,7 +70,7 @@ export const RIBBONS = [
         meta: "Powered by Stripe / Square · No platform cut",
       },
       {
-        id: "1.5",
+        id: "1.6",
         name: "Cal.com sync",
         automated: true,
         body: [
@@ -65,7 +80,7 @@ export const RIBBONS = [
         meta: "Two-way sync · Auto-conflict detection",
       },
       {
-        id: "1.6",
+        id: "1.7",
         name: "Blocked days",
         body: [
           "One tap to mark a day off. Holidays, retreats, sick days, dentist appointments. Booking page automatically shows the next available slot.",
@@ -74,22 +89,13 @@ export const RIBBONS = [
         meta: "Recurring blocks supported",
       },
       {
-        id: "1.7",
+        id: "1.8",
         name: "Website embed",
         body: [
           "One line of code drops your full booking flow into your existing website. Squarespace, Wix, WordPress, custom HTML, all supported.",
           "Your site keeps its design, but booking happens through MyBodyMap behind the scenes.",
         ],
         meta: "iframe embed · 1-click copy",
-      },
-      {
-        id: "1.8",
-        name: "Cycle-aligned scheduling",
-        body: [
-          "For practitioners who plan their work around their menstrual cycle. Tag each service to the phases you want to offer it in: menstrual, follicular, ovulatory, luteal. The booking page automatically shows clients only the services you have available that week.",
-          "Clients never see your cycle info. They just see fewer or different services on certain days, naturally. Your privacy is protected, and you do not have to fight a rigid 7-day calendar that does not match your body.",
-        ],
-        meta: "Optional · Customizable phase ranges · Privacy-first",
       },
     ],
   },

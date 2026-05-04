@@ -23,10 +23,17 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 5. **Notify Regina** — campaigns demo page is live at /campaigns. After CapCut video is embedded, share the URL on the FB thread or DM directly.
 6. **Campaigns demo video** — HK is making a CapCut version with music (Supademo paywalled audio). When ready, swap `DEMO_EMBED_URL` (iframe) or `DEMO_MP4_URL` ('/videos/campaigns-demo.mp4') in `src/pages/Campaigns.jsx` to flip placeholder → live video.
 7. **Ashton's medical massage photo storage** — deferred. HK wants to think through HIPAA implications first. Sketched 3 paths in chat (per-session / per-client timeline / both) plus consent flow + signed-URL storage. Revisit after Twilio.
-8. **Need revised reference pictures from HK** — two marketing visuals are placeholder right now and need real photographic/illustrated assets:
-   - **Gift cards Features page hero** — currently shows a stylized mock card in a dusty rose gradient placeholder div in the right column of the print-ready hero block (`src/pages/Features.jsx`, GIFT CARDS section). Need a beautiful product photograph or hero illustration of a printed gift card on a real surface (wood table, linen cloth, hand holding it). Replace inner div with `<img src="..." alt="..." />`.
-   - **Campaigns Features page hero** — campaigns ribbon currently uses an embedded animated demo. HK has flagged it could use a calmer hero photo too. Define what's needed when HK shares thoughts.
-   When HK provides assets, drop them in `public/images/` and wire them in. Until then, placeholders are styled to look intentional but should not ship to a public marketing push.
+8. **Marketing image batch — HK to generate 10-20 in one go.** As we add features, multiple placeholder/duplicate images accumulate. Better to ask HK for a batch all at once than nibble one image at a time. Current list (last updated May 2026):
+
+   **PLACEHOLDERS using duplicated existing images (need real assets):**
+   - **Gift cards Features page hero** — uses placeholder div with stylized mock card in dusty rose gradient (`src/pages/Features.jsx`, GIFT CARDS section). Need a product photograph: printed gift card on wood/linen/hand. Replace placeholder div with `<img>`.
+   - **Campaigns Features page hero** — uses embedded animated demo. Could use a calmer companion hero photo. Style: practitioner looking at her phone, warm ambient light, not generic stock.
+   - **Cycle-aligned scheduling Features hero (1.2)** — currently using `feature-1-7.jpg` as a stand-in (originally meant for "Website embed"). Need its own thematic image: moon/cyclic motion, woman with eyes closed, calm botanical. Feminine + professional. (Wired in `src/pages/Features.jsx` GIFT CARDS section is unrelated; cycle uses its own section id="cycle".)
+   - **Cycle-aligned scheduling Home demo placeholder** — already covered by the animated SVG (`CycleScheduleDemo.jsx`), no photo needed unless we add a quote card.
+
+   **WHEN HK READY:** generate the above 3 images (4-5 if HK wants extras), name them `feature-1-2.jpg`, `feature-cycle.jpg`, etc., drop into `public/images/`, replace the placeholder references. Image specs: 543×464 JPEG (matches existing assets), warm cream/sage palette, no text overlay, no obvious AI artifacts.
+
+   **PROCESS RULE:** going forward, whenever I duplicate an existing image as a placeholder, log it here so the batch grows in one place. Don't make HK chase image asks one at a time.
 
 ## TIER S — DISTRIBUTION (do this week, not products)
 

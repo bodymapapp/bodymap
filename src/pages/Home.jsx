@@ -29,6 +29,7 @@ import AutomationHub from "../components/demos/AutomationHub";
 import CampaignsDemo from "../components/demos/CampaignsDemo";
 import GiftCardDemo from "../components/demos/GiftCardDemo";
 import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
+import PreferencesDemo from "../components/demos/PreferencesDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -68,13 +69,23 @@ const RIBBONS = [
     name: "Know Your Client",
     tagline:
       "The visual body map that no other massage platform offers, on your client's phone before they walk in.",
-    demos: [{ kind: "component", component: BodyMapDemo, label: "Try the body map" }],
+    // TWO demos: body map (the patent-pending core moat) + client
+    // preferences. Preferences was added to Home after HK heard repeated
+    // praise from early therapists about it — particularly "level of
+    // conversation" which most platforms either don't ask or bury inside
+    // a generic notes field. The PreferencesDemo highlights conversation
+    // as the standout with a "THE STANDOUT" pill and rose accent.
+    demos: [
+      { kind: "component", component: BodyMapDemo, label: "Body map intake" },
+      { kind: "component", component: PreferencesDemo, label: "Preferences" },
+    ],
     layout: "demo-left",
     subFeatures: [
       "Visual body map intake (front and back)",
       "Focus zones, avoid areas, pressure preferences",
-      "Medical flags & allergies",
-      "Signed waivers bundled in, ESIGN compliant",
+      "Level of conversation (quiet vs happy to chat)",
+      "Music, lighting, draping, oils & scent preferences",
+      "Medical flags, allergies, signed waivers (ESIGN)",
       "Pre-fills automatically on return",
     ],
     cta: "Know Your Client features",
