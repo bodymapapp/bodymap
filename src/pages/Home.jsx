@@ -106,14 +106,13 @@ const RIBBONS = [
     id: "5",
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
-    // THREE demos shown as a carousel: workflow automations, campaign
-    // starter, and gift cards (which now lives in Relationships per
-    // taxonomy update May 2026 — gift cards are a relationship lever,
-    // not a money-protection one).
+    // THREE demos shown as a carousel. ORDER: Gift cards is the
+    // hero (newest, highest-pull marketing surface), then Campaigns,
+    // then Automation. Updated May 2026 per HK directive.
     demos: [
-      { kind: "component", component: AutomationHub, label: "Automation flows" },
-      { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
       { kind: "component", component: GiftCardDemo, label: "Gift cards" },
+      { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
+      { kind: "component", component: AutomationHub, label: "Automation flows" },
     ],
     layout: "demo-right",
     subFeatures: [

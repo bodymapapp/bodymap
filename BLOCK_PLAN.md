@@ -23,6 +23,10 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 5. **Notify Regina** — campaigns demo page is live at /campaigns. After CapCut video is embedded, share the URL on the FB thread or DM directly.
 6. **Campaigns demo video** — HK is making a CapCut version with music (Supademo paywalled audio). When ready, swap `DEMO_EMBED_URL` (iframe) or `DEMO_MP4_URL` ('/videos/campaigns-demo.mp4') in `src/pages/Campaigns.jsx` to flip placeholder → live video.
 7. **Ashton's medical massage photo storage** — deferred. HK wants to think through HIPAA implications first. Sketched 3 paths in chat (per-session / per-client timeline / both) plus consent flow + signed-URL storage. Revisit after Twilio.
+8. **Need revised reference pictures from HK** — two marketing visuals are placeholder right now and need real photographic/illustrated assets:
+   - **Gift cards Features page hero** — currently shows a stylized mock card in a dusty rose gradient placeholder div in the right column of the print-ready hero block (`src/pages/Features.jsx`, GIFT CARDS section). Need a beautiful product photograph or hero illustration of a printed gift card on a real surface (wood table, linen cloth, hand holding it). Replace inner div with `<img src="..." alt="..." />`.
+   - **Campaigns Features page hero** — campaigns ribbon currently uses an embedded animated demo. HK has flagged it could use a calmer hero photo too. Define what's needed when HK shares thoughts.
+   When HK provides assets, drop them in `public/images/` and wire them in. Until then, placeholders are styled to look intentional but should not ship to a public marketing push.
 
 ## TIER S — DISTRIBUTION (do this week, not products)
 

@@ -274,46 +274,6 @@ export const RIBBONS = [
       },
       {
         id: "5.2",
-        name: "Post-session follow-up",
-        automated: true,
-        body: [
-          "Thank-you message goes out automatically the morning after. Includes a one-tap rebook link, a self-care reminder you can customize, and a quick feedback prompt.",
-          "The kind of follow-through that makes clients tell their friends.",
-        ],
-        meta: "Auto-sent · Customizable copy",
-      },
-      {
-        id: "5.3",
-        name: "Lapsed client outreach",
-        automated: true,
-        body: [
-          'When a regular stops booking for 30, 60, 90 days, the platform flags them. You get a weekly reminder list with a one-tap "send the gentle nudge" template.',
-          "Most lapsed clients come back if you reach out. Most therapists never do because they forget. We remember for you.",
-        ],
-        meta: "Weekly digest · One-tap send",
-      },
-      {
-        id: "5.4",
-        name: "Loyalty rewards",
-        automated: true,
-        body: [
-          "Built-in punch card. After N sessions, the next one is discounted, free, or upgraded. Your call. Tracked automatically, redeemed at booking.",
-          "No paper card to lose, no spreadsheet to maintain.",
-        ],
-        meta: "Configurable thresholds · Auto-redeem",
-      },
-      {
-        id: "5.5",
-        name: "5-dimension feedback",
-        automated: true,
-        body: [
-          "Quick post-session check across pressure, focus area, communication, environment, and overall. Anonymous to you, aggregated over time, surfaces the trend, not the one bad day.",
-          "The feedback you actually want to see.",
-        ],
-        meta: "Aggregate-only view · Never per-session",
-      },
-      {
-        id: "5.6",
         name: "Gift cards",
         automated: true,
         videoUrl: "/videos/gift-cards.mp4",
@@ -323,6 +283,46 @@ export const RIBBONS = [
           "Travels where flowers cannot. The kind of small thing that makes a regular client feel like they have an actual relationship with you.",
         ],
         meta: "Custom amounts · Print or email · Stripe-powered",
+      },
+      {
+        id: "5.3",
+        name: "Post-session follow-up",
+        automated: true,
+        body: [
+          "Thank-you message goes out automatically the morning after. Includes a one-tap rebook link, a self-care reminder you can customize, and a quick feedback prompt.",
+          "The kind of follow-through that makes clients tell their friends.",
+        ],
+        meta: "Auto-sent · Customizable copy",
+      },
+      {
+        id: "5.4",
+        name: "Lapsed client outreach",
+        automated: true,
+        body: [
+          'When a regular stops booking for 30, 60, 90 days, the platform flags them. You get a weekly reminder list with a one-tap "send the gentle nudge" template.',
+          "Most lapsed clients come back if you reach out. Most therapists never do because they forget. We remember for you.",
+        ],
+        meta: "Weekly digest · One-tap send",
+      },
+      {
+        id: "5.5",
+        name: "Loyalty rewards",
+        automated: true,
+        body: [
+          "Built-in punch card. After N sessions, the next one is discounted, free, or upgraded. Your call. Tracked automatically, redeemed at booking.",
+          "No paper card to lose, no spreadsheet to maintain.",
+        ],
+        meta: "Configurable thresholds · Auto-redeem",
+      },
+      {
+        id: "5.6",
+        name: "5-dimension feedback",
+        automated: true,
+        body: [
+          "Quick post-session check across pressure, focus area, communication, environment, and overall. Anonymous to you, aggregated over time, surfaces the trend, not the one bad day.",
+          "The feedback you actually want to see.",
+        ],
+        meta: "Aggregate-only view · Never per-session",
       },
     ],
   },
