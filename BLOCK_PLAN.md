@@ -430,6 +430,18 @@ How HK and Claude work together every session. Survives compaction.
    - **Retention-first framing** for every benefit statement. Not efficiency. Not productivity. Not time-saving as a primary frame. The frame is: clients keep coming back, sessions feel more present, relationships deepen.
    - **Ask language for support posts: "share with a therapist you know"** — never "follow our page", "support a small business", or "give us a chance". Ask for a referral, not a charity.
 
+   **HK VOICE PATTERNS — for FB comments / DMs / community responses where HK speaks as MyBodyMap:**
+   - **Address by name first.** "@Kellie @Jessica" or "Hi Jessica and Kellie" before any content. Peer-to-peer, not broadcast.
+   - **Acknowledge the pattern, not just the person.** "Since this keeps coming up in the MT/LMT community" or "this comes up a lot from solo practitioners" signals listening over selling.
+   - **Concrete commitment with timeline.** "My team will build this week, ideally in the next 24 hours" beats "we're working on something soon." Confidence + specificity.
+   - **Frame as hypothesis, invite correction.** "Here is what I think you are looking for: [list]" then "anything else?" The reader becomes a co-creator, not a target.
+   - **Comma-flow lists for concrete features.** "Logo, business name, expiry, code, amount and a personal note" reads natural. Avoid bullet lists in FB comments — too formal.
+   - **Open-ended close, repeated softly.** "Anything else let me know...anything else you would like to see?" The repetition lands as warmth, not sales pressure.
+   - **Lowercase casual where appropriate.** mybodymap.app, my team, the feature. Not THE FEATURE or YourBrand™.
+   - **Ellipses for pacing**, sparingly. Three dots = a pause that invites a reply. Don't overuse.
+   - **Use "my team" not "we"** when speaking on behalf of the build org in community comments. Reads as a real human leading a team, not a faceless brand. (In product copy and emails, plural "we" still applies — these are different surfaces.)
+   - **Never say "DM me" or "email me at..."** — keeps the conversation public so other therapists with the same pain see the answer.
+
    **PERSONA — applies to ALL customer-facing copy (FB comments, emails, SMS, in-product, marketing, blog posts):**
    - Audience is a 70-year-old grandma LMT. Tired. Tech-cautious. Skim-reading on phone.
    - **5-10 sentences max** for any FB comment, DM, or email body.
