@@ -40,6 +40,18 @@ export default function Onboarding() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Live phone formatter — same as Signup.js. As the user types, this
+  // strips non-digits and reformats to (xxx) xxx-xxxx. Critical for
+  // iPhone users on type="tel" keyboards because that keypad has a
+  // "+ * #" row instead of dashes; without this helper, users end up
+  // with phone fields like "945+233+5453" and think the form is broken.
+  const formatPhone = (d) => {
+    d = d.replace(/\D/g, '').substring(0, 10);
+    if (d.length <= 3) return d;
+    if (d.length <= 6) return `(${d.slice(0,3)}) ${d.slice(3)}`;
+    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  };
+
   const handleBusinessChange = (v) => {
     setBusinessName(v);
     setCustomUrl(v.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 30));
@@ -48,8 +60,14 @@ export default function Onboarding() {
   const handleSubmit = async () => {
     if (!businessName.trim()) { setError('Please enter your business name'); return; }
     if (!customUrl || customUrl.length < 3) { setError('Custom URL must be at least 3 characters'); return; }
+    // Phone is optional at onboarding (matches Signup behavior). If they
+    // typed something but it's incomplete, ask them to fix it or clear it.
+    // Otherwise blank is fine — they can add it in Settings later.
     const phoneDigits = (phone || '').replace(/\D/g, '');
-    if (phoneDigits.length < 10) { setError('Please enter a valid phone number. We will use it to text you account updates.'); return; }
+    if (phoneDigits.length > 0 && phoneDigits.length < 10) {
+      setError('Phone number must be at least 10 digits, or leave it blank.');
+      return;
+    }
     setLoading(true);
     setError('');
     const fullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || '';
@@ -145,10 +163,10 @@ export default function Onboarding() {
           </div>
         </div>
         <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '13px', fontWeight: '600', color: C.darkGray, display: 'block', marginBottom: '6px' }}>Phone Number <span style={{ color: '#B44A3A' }}>*</span></label>
-          <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(512) 555-1234" type="tel" required
+          <label style={{ fontSize: '13px', fontWeight: '600', color: C.darkGray, display: 'block', marginBottom: '6px' }}>Phone Number <span style={{ fontSize: '11px', color: C.gray, fontWeight: 500 }}>(optional)</span></label>
+          <input value={phone} onChange={e => setPhone(formatPhone(e.target.value))} placeholder="(512) 555-1234" type="tel"
             style={{ width: '100%', padding: '12px', border: '1.5px solid #E5E7EB', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
-          <p style={{ fontSize: '11px', color: C.sage, margin: '4px 0 0 0' }}>So we can text you account updates. We will never share it.</p>
+          <p style={{ fontSize: '11px', color: C.sage, margin: '4px 0 0 0' }}>If you share it, we will only use it for account updates. You can always add this later in Settings.</p>
         </div>
         <button onClick={handleSubmit} disabled={loading}
           style={{ width: '100%', padding: '14px', background: C.forest, color: 'white', border: 'none', borderRadius: '8px', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
