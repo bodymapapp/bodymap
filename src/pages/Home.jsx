@@ -69,15 +69,17 @@ const RIBBONS = [
     name: "Know Your Client",
     tagline:
       "The visual body map that no other massage platform offers, on your client's phone before they walk in.",
-    // TWO demos: body map (the patent-pending core moat) + client
-    // preferences. Preferences was added to Home after HK heard repeated
-    // praise from early therapists about it — particularly "level of
-    // conversation" which most platforms either don't ask or bury inside
-    // a generic notes field. The PreferencesDemo highlights conversation
-    // as the standout with a "THE STANDOUT" pill and rose accent.
+    // TWO demos: body map (the patent-pending core moat) + full client
+    // intake. The intake demo was added to Home after HK heard repeated
+    // praise from early therapists about the preferences page. First
+    // version of the demo only showed preferences, which made therapists
+    // think that was the entire intake. Rebuilt with macro grid on top
+    // (Body Map / Preferences / Medical / Waiver, with field counts) and
+    // a scroll panel below showing actual form fields. Conversation level
+    // highlighted as the standout (rose border, "THE STANDOUT" pill).
     demos: [
       { kind: "component", component: BodyMapDemo, label: "Body map intake" },
-      { kind: "component", component: PreferencesDemo, label: "Preferences" },
+      { kind: "component", component: PreferencesDemo, label: "Full intake form" },
     ],
     layout: "demo-left",
     subFeatures: [
