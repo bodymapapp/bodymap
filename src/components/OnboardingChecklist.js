@@ -11,7 +11,7 @@ const STEPS = [
   // user thinks the button is broken. Deep-links solve this.
   { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'settings#import' },
   { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Review', view:'settings#services' },
-  { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Review', view:'settings#bookingflow' },
+  { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Review', view:'settings#services' },
   { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings#payments' },
   { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Get my link', view:'settings#intake_qr' },
 ];

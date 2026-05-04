@@ -1,6 +1,6 @@
 // src/pages/Dashboard.js
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import ClientList from '../components/ClientList';
@@ -938,6 +938,7 @@ function ReferralCard({ therapist, C2 }) {
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const { updateProfile } = useAuth();
+  const location = useLocation();
 
   // Which row in Settings is currently expanded. null = all collapsed.
   // Mobile-first: collapsed by default to kill the endless vertical scroll.
@@ -951,18 +952,36 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   // auto-open the row matching the hash and scroll it into view. Critical
   // for the 'Import Clients' onboarding step — clicking lands the user
   // directly on the import form instead of inside Settings somewhere.
-  // SettingsPanel only mounts when view==='settings', so we can run this
-  // unconditionally on mount.
+  //
+  // Two important details:
+  // 1. Depends on location.hash (from useLocation) so the effect re-runs
+  //    when the user clicks a deep-link from somewhere else inside the
+  //    /dashboard/settings page (mount alone wouldn't catch that).
+  // 2. Two-step scroll: first setOpenRow expands the section, then on
+  //    next render we scroll. We use requestAnimationFrame instead of
+  //    setTimeout because mobile timers are unreliable and rAF fires
+  //    after layout, when the section is actually visible.
   React.useEffect(() => {
-    const hash = (window.location.hash || '').replace('#', '');
+    const hash = (location.hash || '').replace('#', '');
     if (!hash) return;
     setOpenRow(hash);
-    // Wait one tick for the section to render expanded before scrolling.
-    setTimeout(() => {
-      const el = document.getElementById(hash);
-      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 120);
-  }, []);
+    // Double rAF: first frame opens the section, second frame measures
+    // the now-expanded element so scrollIntoView lands precisely.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(hash);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          // Brief highlight pulse so the user sees WHERE they landed.
+          el.style.boxShadow = '0 0 0 3px rgba(42, 87, 65, 0.35)';
+          el.style.transition = 'box-shadow 0.6s ease';
+          setTimeout(() => {
+            el.style.boxShadow = '';
+          }, 1800);
+        }
+      });
+    });
+  }, [location.hash]);
 
   // Settings search: matches against label, summary, taxonomy, and a
   // hand-curated synonym map so common search terms ('billing', 'price',

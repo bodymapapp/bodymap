@@ -112,6 +112,7 @@ export default function CollapsibleSection({
 
   return (
     <div
+      id={id}
       data-section-id={id}
       data-taxonomy={taxonomy || ''}
       data-search-text={`${label || ''} ${summary || ''}`.toLowerCase()}
