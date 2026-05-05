@@ -919,6 +919,66 @@ export default function BookingPage() {
                 <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back! As a returning client, no deposit is required, your booking is confirmed instantly.</span>
               </div>
             )}
+            {/* Cancellation policy display — when therapist has the policy
+                enabled, the client sees the auto-generated (or custom)
+                policy text right before confirming. Shown to all clients
+                regardless of first-timer / regular status, since the
+                policy applies to everyone. Phase 2 will add card capture
+                here for therapists who require it. */}
+            {therapist?.cancellation_policy_enabled && therapist?.cancellation_policy && (
+              <div style={{
+                marginBottom: 14,
+                background: '#FAF6EE',
+                border: '1px solid #E5D5C8',
+                borderRadius: 12,
+                padding: '14px 16px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 16 }}>🕐</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#5C2E27' }}>Cancellation policy</span>
+                </div>
+                <pre style={{
+                  margin: 0,
+                  fontSize: 12,
+                  fontFamily: 'inherit',
+                  whiteSpace: 'pre-wrap',
+                  color: '#1F2937',
+                  lineHeight: 1.6,
+                }}>{(() => {
+                  const p = therapist.cancellation_policy;
+                  if (p.custom_text && p.custom_text.trim().length > 0) return p.custom_text;
+                  // Inline mini-version of generatePolicyText to avoid
+                  // an extra import in this large file.
+                  const lines = [];
+                  const c1 = p.cancel_24h_plus_percent ?? 0;
+                  const c2 = p.cancel_2_to_24h_percent ?? 0;
+                  const c3 = p.cancel_under_2h_percent ?? 0;
+                  if (c1 > 0 || c2 > 0 || c3 > 0) {
+                    lines.push('If you cancel:');
+                    lines.push(c1 === 0 ? '  • More than 24 hours ahead: no charge' : `  • More than 24 hours ahead: ${c1}% of session`);
+                    if (c2 > 0) lines.push(`  • Within 24 hours of the appointment: ${c2}% of session`);
+                    if (c3 > 0) lines.push(`  • Within 2 hours of the appointment: ${c3}% of session`);
+                    lines.push('');
+                  }
+                  const r1 = p.reschedule_24h_plus_percent ?? 0;
+                  const r2 = p.reschedule_under_24h_percent ?? 0;
+                  if (r1 > 0 || r2 > 0) {
+                    lines.push('If you reschedule:');
+                    lines.push(r1 === 0 ? '  • More than 24 hours ahead: no charge' : `  • More than 24 hours ahead: ${r1}% of session`);
+                    if (r2 > 0) lines.push(`  • Within 24 hours of the appointment: ${r2}% of session`);
+                    lines.push('');
+                  }
+                  const ns = p.no_show_percent ?? 0;
+                  if (ns > 0) {
+                    lines.push(`If you do not show up: ${ns}% of session.`);
+                  }
+                  return lines.join('\n').trim() || 'Please honor your appointment time.';
+                })()}</pre>
+                <div style={{ fontSize: 10, color: '#7A5C53', marginTop: 8, fontStyle: 'italic' }}>
+                  By confirming, you agree to the policy above.
+                </div>
+              </div>
+            )}
             <button onClick={submit} disabled={submitting}
               style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
               {submitting?(requiresApproval?'Sending…':'Confirming…'):(requiresApproval?'Send Request':(depositRequired?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'))}

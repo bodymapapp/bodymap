@@ -34,6 +34,7 @@ import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
 import NotificationPrefsCard from '../components/NotificationPrefsCard';
 import QRCodesCard from '../components/QRCodesCard';
+import CancellationPolicy from '../components/CancellationPolicy';
 
 // Mobile page-end indicator
 function PageEnd() {
@@ -2163,6 +2164,21 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </button>
           )}
         </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.2.5') && (<>
+      <CollapsibleSection
+        id="cancellation"
+        taxonomy="4.2.5"
+        timeBadge="~3m"
+        label="Cancellation policy"
+        summary={therapist?.cancellation_policy_enabled ? "On · clients see policy at booking" : "Off · protect your time from late cancels"}
+        status={therapist?.cancellation_policy_enabled ? "done" : "todo"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 2v10l4 4"/><circle cx="12" cy="12" r="10"/></svg>}
+        isOpen={openRow === 'cancellation'}
+        onToggle={toggleRow}
+      >
+        <CancellationPolicy therapist={therapist} />
+      </CollapsibleSection>
       </>)}
       {matchesSearch('Custom SMS sender (Twilio)', '', '4.3') && (<>
       <CollapsibleSection

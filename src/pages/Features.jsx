@@ -1503,13 +1503,14 @@ export default function Features() {
             </div>
           </FadeIn>
 
-          {/* Four feature cards */}
+          {/* Five feature cards */}
           <FadeIn delay={0.2}>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:20 }}>
               {[
                 { icon:"🗺️", title:"Body Map · always on", desc:"The visual front and back body diagram is the differentiator. Every client gets it. Cannot be hidden." },
                 { icon:"🎯", title:"10 preferences, fully editable", desc:"Pressure, goal, table temp, room temp, music, lighting, conversation, draping, oils, medical notes. Hide any. Rename any. Edit any option." },
                 { icon:"🩺", title:"Medical checklist · 12 conditions built-in", desc:"High blood pressure, blood clots, recent surgery, pregnancy, and more. Each one individually toggleable. Add your own." },
+                { icon:"✨", title:"7 question types you can add", desc:"Pick-one, pick-many, checkbox list, short text, long text, yes/no checkbox, section header. New questions appear after preferences in the client flow." },
                 { icon:"🔒", title:"Optional HIPAA mode", desc:"Stronger consent line before medical questions. Audit log every time medical notes are viewed. Turn on if you operate under HIPAA." },
               ].map(({icon,title,desc}) => (
                 <div key={title} style={{ background:"#fff", borderRadius:16, padding:24, border:"1px solid #F5D5C8" }}>

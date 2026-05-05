@@ -121,9 +121,9 @@ export const RIBBONS = [
         image: "/images/feature-1-7.jpg",
         body: [
           "One page that mirrors the entire client intake. Five sections in the order your client experiences them: body map, preferences, medical conditions, waiver, and any custom questions you add. Tap to rename. Toggle to hide. The body map and waiver always stay because those are the differentiator and the legal protection.",
-          "12 common medical conditions built in, each individually editable: high blood pressure, blood clots, recent surgery, pregnancy, and more. Plus an optional HIPAA mode that adds stronger consent language and an audit log every time medical notes are viewed.",
+          "Add your own questions in seven formats: pick-one chips, pick-many chips, checkbox lists, short text, long text, yes/no, or section headers. 12 common medical conditions built in (high blood pressure, blood clots, recent surgery, pregnancy, and more), each individually editable. Plus an optional HIPAA mode that adds stronger consent and a view audit log.",
         ],
-        meta: "WYSIWYG editor · 12 medical conditions built-in · HIPAA mode optional",
+        meta: "Seven question types · 12 medical conditions built-in · HIPAA mode optional",
       },
       {
         id: "2.3",
@@ -367,6 +367,15 @@ export const RIBBONS = [
           "Built for the therapist who became one because they did not want to look at spreadsheets.",
         ],
         meta: "Real-time · Exportable for taxes",
+      },
+      {
+        id: "6.2",
+        name: "Cancellation policy",
+        body: [
+          "Set what happens when a client cancels, reschedules, or no-shows. Like hotels and airlines do. Plain English rules: <em>more than 24 hours before, no charge. Within 24 hours, 50%. Within 2 hours, 100%. No-show, 100%.</em> Sensible defaults are pre-filled, change any percent in one tap.",
+          "Clients see your policy at booking, in plain English, before they confirm. Optionally require new clients (or returning clients) to put a card on file so the policy can charge automatically if it triggers. Your time is as valuable as a hotel room.",
+        ],
+        meta: "Plain-English rules · Card on file optional · Auto-charge in next deploy",
       },
       {
         id: "6.3",
