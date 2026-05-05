@@ -168,6 +168,15 @@ function SectionHeading({ icon, title, count, accent }) {
 // One preference field — compact card.
 function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
   const isDefault = field.kind === 'default';
+  // Inline soft-delete confirm state. Replaces the old window.confirm()
+  // browser modal with a small "Delete? [Yes] [No]" affordance right
+  // next to the × button. Auto-cancels after 5s if user walks away.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const t = setTimeout(() => setConfirmingDelete(false), 5000);
+    return () => clearTimeout(t);
+  }, [confirmingDelete]);
 
   const updateLabel = (label) => onPatch({ label });
   const updateOption = (idx, patch) => {
@@ -185,6 +194,59 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
     opts.push({ v, label: `Option ${opts.length + 1}` });
     onPatch({ options: opts });
   };
+
+  // Header type — visual section divider, not a question. Renders very
+  // differently from question types.
+  if (field.type === 'header') {
+    return (
+      <div style={{
+        background: 'transparent',
+        padding: '14px 4px 4px',
+        marginBottom: 4,
+        position: 'relative',
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          paddingBottom: 6,
+          borderBottom: `2px solid ${C.beige}`,
+        }}>
+          <Toggle on={!isHidden} onChange={onToggleHidden} ariaLabel={`Visible: ${field.label}`} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <InlineEdit
+              value={field.label}
+              onSave={updateLabel}
+              placeholder="Section header"
+              style={{
+                fontSize: 13, fontWeight: 800, color: C.forest,
+                letterSpacing: 0.5, textTransform: 'uppercase',
+                textDecoration: isHidden ? 'line-through' : 'none',
+              }}
+            />
+          </div>
+          {!isDefault && (
+            <DeleteAffordance
+              confirming={confirmingDelete}
+              onClick={() => setConfirmingDelete(true)}
+              onConfirm={() => { setConfirmingDelete(false); onDelete(); }}
+              onCancel={() => setConfirmingDelete(false)}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Determine label suffix that hints at the type. Helps therapists
+  // see at a glance whether they configured single/multi/checklist.
+  const typeHint = (
+    field.type === 'chips' ? 'pick one' :
+    field.type === 'chips_multi' ? 'pick many' :
+    field.type === 'checklist' ? 'check all that apply' :
+    field.type === 'text' ? 'short answer' :
+    field.type === 'textarea' ? 'long answer' :
+    field.type === 'checkbox' ? 'yes / no' :
+    null
+  );
 
   return (
     <div style={{
@@ -215,24 +277,31 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
               textDecoration: isHidden ? 'line-through' : 'none',
             }}
           />
+          {typeHint && !isHidden && (
+            <div style={{ fontSize: 9, color: C.gray, fontStyle: 'italic', paddingLeft: 5, marginTop: -2 }}>
+              {typeHint}
+            </div>
+          )}
         </div>
         {!isDefault && (
-          <button onClick={onDelete} aria-label="Remove" style={{
-            background: 'transparent', color: C.red,
-            border: 'none', cursor: 'pointer',
-            fontSize: 16, lineHeight: 1, padding: '0 4px',
-            flexShrink: 0,
-          }}>×</button>
+          <DeleteAffordance
+            confirming={confirmingDelete}
+            onClick={() => setConfirmingDelete(true)}
+            onConfirm={() => { setConfirmingDelete(false); onDelete(); }}
+            onCancel={() => setConfirmingDelete(false)}
+          />
         )}
       </div>
 
-      {!isHidden && (field.type === 'chips' || field.type === 'chips_multi') && (
+      {/* CHIPS (single-select) — pill row with one pre-selected to show
+          the single-select behavior. Inline edit on each label. */}
+      {!isHidden && field.type === 'chips' && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginLeft: 44 }}>
           {(field.options || []).map((opt, idx) => (
             <div key={idx} style={{
               display: 'inline-flex', alignItems: 'center', gap: 2,
-              background: '#F9FAFB',
-              border: `1.5px solid ${C.light}`,
+              background: idx === 0 ? '#F0FDF4' : '#F9FAFB',
+              border: `1.5px solid ${idx === 0 ? C.sage : C.light}`,
               borderRadius: 99,
               padding: '2px 8px',
             }}>
@@ -241,13 +310,11 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
                 onSave={(label) => updateOption(idx, { label })}
                 style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
               />
-              <button
-                onClick={() => removeOption(idx)}
-                style={{
-                  background: 'transparent', border: 'none',
-                  color: C.gray, cursor: 'pointer',
-                  fontSize: 12, lineHeight: 1, padding: '0 2px',
-                }}>×</button>
+              <button onClick={() => removeOption(idx)} style={{
+                background: 'transparent', border: 'none',
+                color: C.gray, cursor: 'pointer',
+                fontSize: 12, lineHeight: 1, padding: '0 2px',
+              }}>×</button>
             </div>
           ))}
           <button onClick={addOption} style={{
@@ -262,7 +329,92 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
         </div>
       )}
 
-      {!isHidden && (field.type === 'text' || field.type === 'textarea') && (
+      {/* CHIPS_MULTI — same pill row but visually shows multiple "selected"
+          to communicate multi-select. Two pills get the sage selected
+          background instead of one. */}
+      {!isHidden && field.type === 'chips_multi' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center', marginLeft: 44 }}>
+          {(field.options || []).map((opt, idx) => (
+            <div key={idx} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 2,
+              background: idx < 2 ? '#F0FDF4' : '#F9FAFB',
+              border: `1.5px solid ${idx < 2 ? C.sage : C.light}`,
+              borderRadius: 99,
+              padding: '2px 8px',
+            }}>
+              {idx < 2 && <span style={{ color: C.sage, fontSize: 10, lineHeight: 1 }}>✓</span>}
+              <InlineEdit
+                value={opt.label}
+                onSave={(label) => updateOption(idx, { label })}
+                style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
+              />
+              <button onClick={() => removeOption(idx)} style={{
+                background: 'transparent', border: 'none',
+                color: C.gray, cursor: 'pointer',
+                fontSize: 12, lineHeight: 1, padding: '0 2px',
+              }}>×</button>
+            </div>
+          ))}
+          <button onClick={addOption} style={{
+            background: 'transparent',
+            border: `1.5px dashed ${C.sage}`,
+            color: C.sage,
+            borderRadius: 99,
+            padding: '2px 8px',
+            fontSize: 11, fontWeight: 600,
+            cursor: 'pointer',
+          }}>+</button>
+        </div>
+      )}
+
+      {/* CHECKLIST — vertical list, each row has a checkbox icon. THIS
+          is the rendering HK called out as missing. */}
+      {!isHidden && field.type === 'checklist' && (
+        <div style={{ marginLeft: 44, display: 'flex', flexDirection: 'column', gap: 4 }}>
+          {(field.options || []).map((opt, idx) => (
+            <div key={idx} style={{
+              display: 'flex', alignItems: 'center', gap: 7,
+              padding: '3px 6px',
+              background: '#F9FAFB',
+              border: `1px solid ${C.light}`,
+              borderRadius: 6,
+            }}>
+              {/* Checkbox icon — preview of what client will see */}
+              <span style={{
+                width: 14, height: 14, borderRadius: 3,
+                border: `1.5px solid ${C.gray}`,
+                display: 'inline-block', flexShrink: 0,
+                background: '#fff',
+              }}/>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <InlineEdit
+                  value={opt.label}
+                  onSave={(label) => updateOption(idx, { label })}
+                  style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
+                />
+              </div>
+              <button onClick={() => removeOption(idx)} style={{
+                background: 'transparent', border: 'none',
+                color: C.gray, cursor: 'pointer',
+                fontSize: 13, lineHeight: 1, padding: '0 4px',
+              }}>×</button>
+            </div>
+          ))}
+          <button onClick={addOption} style={{
+            background: 'transparent',
+            border: `1.5px dashed ${C.sage}`,
+            color: C.sage,
+            borderRadius: 6,
+            padding: '4px 8px',
+            fontSize: 11, fontWeight: 600,
+            cursor: 'pointer',
+            alignSelf: 'flex-start',
+          }}>+ Add item</button>
+        </div>
+      )}
+
+      {/* TEXT (short) — dashed input box preview, single line */}
+      {!isHidden && field.type === 'text' && (
         <div style={{ marginLeft: 44 }}>
           <div style={{
             background: '#F9FAFB',
@@ -271,28 +423,97 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
             padding: '5px 9px',
             fontSize: 11, color: '#9CA3AF',
             fontStyle: 'italic',
-            minHeight: field.type === 'textarea' ? 28 : 22,
+            minHeight: 22,
           }}>
             <InlineEdit
               value={field.placeholder || ''}
               onSave={(placeholder) => onPatch({ placeholder })}
-              placeholder="Placeholder text"
+              placeholder="Type a placeholder hint..."
               style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}
             />
           </div>
         </div>
       )}
 
-      {!isHidden && field.type === 'checkbox' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: C.gray, marginLeft: 44 }}>
-          <span style={{
-            width: 14, height: 14, borderRadius: 3,
-            border: `1.5px solid ${C.light}`,
-            display: 'inline-block', flexShrink: 0,
-          }}/>
-          Yes/no checkbox
+      {/* TEXTAREA (long) — bigger dashed input box preview */}
+      {!isHidden && field.type === 'textarea' && (
+        <div style={{ marginLeft: 44 }}>
+          <div style={{
+            background: '#F9FAFB',
+            border: `1px dashed ${C.light}`,
+            borderRadius: 6,
+            padding: '8px 10px',
+            fontSize: 11, color: '#9CA3AF',
+            fontStyle: 'italic',
+            minHeight: 44,
+            display: 'flex', alignItems: 'flex-start',
+          }}>
+            <InlineEdit
+              value={field.placeholder || ''}
+              onSave={(placeholder) => onPatch({ placeholder })}
+              placeholder="Type a placeholder hint... (long answer)"
+              style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}
+            />
+          </div>
         </div>
       )}
+
+      {/* CHECKBOX (yes/no) — actual checkbox preview with the question
+          label as caption. Shows what client will see. */}
+      {!isHidden && field.type === 'checkbox' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          marginLeft: 44,
+          padding: '4px 8px',
+          background: '#F9FAFB',
+          border: `1px solid ${C.light}`,
+          borderRadius: 6,
+        }}>
+          <span style={{
+            width: 16, height: 16, borderRadius: 3,
+            border: `1.5px solid ${C.gray}`,
+            display: 'inline-block', flexShrink: 0,
+            background: '#fff',
+          }}/>
+          <span style={{ fontSize: 11, color: C.ink, fontStyle: 'italic' }}>
+            Client sees a single yes/no checkbox here
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Inline soft delete affordance — replaces window.confirm. Two states:
+// idle (× button) and confirming (Delete? Yes / No buttons).
+function DeleteAffordance({ confirming, onClick, onConfirm, onCancel }) {
+  if (!confirming) {
+    return (
+      <button onClick={onClick} aria-label="Remove" style={{
+        background: 'transparent', color: C.red,
+        border: 'none', cursor: 'pointer',
+        fontSize: 16, lineHeight: 1, padding: '0 4px',
+        flexShrink: 0,
+      }}>×</button>
+    );
+  }
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+      <span style={{ fontSize: 10, color: C.red, fontWeight: 600 }}>Delete?</span>
+      <button onClick={onConfirm} aria-label="Confirm delete" style={{
+        background: C.red, color: '#fff',
+        border: 'none', borderRadius: 5,
+        cursor: 'pointer',
+        fontSize: 10, fontWeight: 700, padding: '3px 8px',
+        flexShrink: 0,
+      }}>Yes</button>
+      <button onClick={onCancel} aria-label="Cancel delete" style={{
+        background: 'transparent', color: C.gray,
+        border: `1px solid ${C.light}`, borderRadius: 5,
+        cursor: 'pointer',
+        fontSize: 10, fontWeight: 600, padding: '3px 8px',
+        flexShrink: 0,
+      }}>No</button>
     </div>
   );
 }
@@ -301,6 +522,13 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
 // each as its own row since they need a hide toggle each.
 function ConditionRow({ condition, onPatch, onDelete, onToggleHidden }) {
   const isDefault = condition.kind === 'default';
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  useEffect(() => {
+    if (!confirmingDelete) return;
+    const t = setTimeout(() => setConfirmingDelete(false), 5000);
+    return () => clearTimeout(t);
+  }, [confirmingDelete]);
+
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
@@ -324,12 +552,12 @@ function ConditionRow({ condition, onPatch, onDelete, onToggleHidden }) {
         />
       </div>
       {!isDefault && (
-        <button onClick={onDelete} aria-label="Remove" style={{
-          background: 'transparent', color: C.red,
-          border: 'none', cursor: 'pointer',
-          fontSize: 14, lineHeight: 1, padding: '0 4px',
-          flexShrink: 0,
-        }}>×</button>
+        <DeleteAffordance
+          confirming={confirmingDelete}
+          onClick={() => setConfirmingDelete(true)}
+          onConfirm={() => { setConfirmingDelete(false); onDelete(); }}
+          onCancel={() => setConfirmingDelete(false)}
+        />
       )}
     </div>
   );
@@ -417,7 +645,9 @@ export default function IntakeEditor() {
   };
 
   const deleteField = (id) => {
-    if (!window.confirm('Remove this question?')) return;
+    // Confirmation handled inline in FieldCard via DeleteAffordance.
+    // By the time this fires, the user has tapped Yes on the inline
+    // soft confirm. So execute directly.
     setSchema((prev) => {
       const next = { ...prev, fields: prev.fields.filter((f) => f.id !== id) };
       queueSave(next);
@@ -448,7 +678,7 @@ export default function IntakeEditor() {
   };
 
   const deleteCondition = (idx) => {
-    if (!window.confirm('Remove this condition?')) return;
+    // Confirmation handled inline in ConditionRow.
     const list = conditions.filter((_, i) => i !== idx);
     setSchema((prev) => {
       const next = { ...prev, medical_conditions: list };
