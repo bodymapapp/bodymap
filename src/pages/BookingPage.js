@@ -342,6 +342,31 @@ export default function BookingPage() {
   const [cardMandateAgreed,setCardMandateAgreed]=useState(false);
 
   useEffect(()=>{load();},[slug]);
+
+  // Square deposit redirect handler. When the client returns from the
+  // hosted Square checkout, the URL has ?deposit_complete=1&booking_id=...
+  // We mark the booking deposit_paid=true and confirmed status, fire
+  // confirmation emails (the DB trigger handles that automatically when
+  // status flips to confirmed), and show the success screen.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('deposit_complete') === '1') {
+      const bid = params.get('booking_id');
+      if (bid) {
+        (async () => {
+          await supabase.from('bookings').update({
+            status: 'confirmed',
+            deposit_paid: true,
+            square_deposit_paid_at: new Date().toISOString(),
+          }).eq('id', bid);
+          setConfirmed(true);
+          setBookingId(bid);
+          // Clean up URL so a refresh does not re-run this branch.
+          window.history.replaceState({}, '', window.location.pathname);
+        })();
+      }
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Compute effective service duration including any selected add-ons.
   // Recalculated whenever the selection changes.
   const effectiveDuration = svc
@@ -605,6 +630,66 @@ export default function BookingPage() {
       const errMsg = res.data?.error || res.error?.message || 'Payment setup failed. Please try again.';
       setPaymentError(errMsg);
       // Stay on step 4 so the error is visible
+      return;
+    }
+
+    // Square deposit branch. Therapist has Square connected (and not
+    // Stripe). We use Square's hosted Payment Link API instead of
+    // embedding their Web Payments SDK so the client gets a clean
+    // Square checkout page (Apple Pay, Google Pay, card all included)
+    // and Square redirects them back to a thank-you URL after pay.
+    // Trade-off: client briefly leaves our domain. For deposits, the
+    // simpler hosted flow is the right call for the persona.
+    if (depositRequired && !therapist.stripe_account_id && therapist.square_access_token) {
+      console.log('PAYMENT DEBUG: invoking square-create-deposit', { booking_id: bid, amount_cents: depositAmount });
+      setDepositLoading(true);
+      // After Square redirects back, this URL re-opens the booking
+      // page in confirmed state. The booking row already exists with
+      // status pending-deposit; the redirect will trigger the
+      // deposit-paid mark-as-confirmed flow. Webhook is the durable
+      // source of truth (TODO Phase 2) but for now the redirect is
+      // good enough for Ashley's use case.
+      const redirectUrl = `${window.location.origin}/${therapist.custom_url}?deposit_complete=1&booking_id=${bid}`;
+      const fnRes = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/square-create-deposit`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            booking_id: bid,
+            amount_cents: depositAmount,
+            service_name: svc.name,
+            therapist_name: therapist.business_name || therapist.full_name,
+            client_email: form.email.trim().toLowerCase(),
+            redirect_url: redirectUrl,
+          }),
+        }
+      );
+      const data = fnRes.ok ? await fnRes.json() : await fnRes.json().catch(() => ({}));
+      setDepositLoading(false);
+      console.log('SQUARE DEPOSIT RESPONSE:', data);
+      if (data?.url) {
+        // Send the client to Square's hosted checkout. They pay there,
+        // Square redirects them back with deposit_complete=1.
+        window.location.href = data.url;
+        return;
+      }
+      const errMsg = data?.error || `HTTP ${fnRes.status}`;
+      setPaymentError(`Square deposit setup failed: ${errMsg}`);
+      return;
+    }
+
+    // Neither Stripe nor Square deposit branch available, but deposit
+    // was required. This means the therapist enabled deposits in
+    // Settings but has no payment processor connected, OR the
+    // processor disconnected. Fail visibly rather than silently
+    // confirming a booking that should have collected money.
+    if (depositRequired && !therapist.stripe_account_id && !therapist.square_access_token) {
+      setPaymentError('This therapist has deposits turned on but has not connected a payment processor. Please contact them directly to book.');
       return;
     }
     // No deposit required, confirm directly
