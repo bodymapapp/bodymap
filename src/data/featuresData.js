@@ -162,6 +162,15 @@ export const RIBBONS = [
         ],
         meta: "HIPAA-encrypted · Private to you",
       },
+      {
+        id: "2.7",
+        name: "QR codes for everything",
+        body: [
+          "Print-ready QR codes for your intake form and your booking page, sized to put on your table, your front desk, or your business card. Clients scan with their phone camera, no app needed.",
+          "Plus save unlimited custom QR codes for any link you reuse: your website, Instagram, Yelp reviews page, a special promo, a Google form. Save once, reprint forever. Each one is downloadable, printable, and the URL is always one tap to copy.",
+        ],
+        meta: "High-resolution print · Unlimited saved QR codes · Mobile-friendly",
+      },
     ],
   },
   {

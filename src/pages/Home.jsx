@@ -90,6 +90,7 @@ const RIBBONS = [
       "Music, lighting, draping, oils & scent preferences",
       "Medical conditions checklist + optional HIPAA mode",
       "Pre-fills automatically on return",
+      "Print-ready QR codes for intake, booking, and unlimited custom links",
     ],
     cta: "Know Your Client features",
   },
