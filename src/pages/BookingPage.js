@@ -174,6 +174,100 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuc
   );
 }
 
+// Stripe Card Element for SAVING a card on file (no charge now). Uses
+// confirmCardSetup against a SetupIntent client_secret. Used by the
+// cancellation policy flow when a therapist requires a card on file
+// at booking time. The card is later charged off_session if a
+// cancellation/reschedule/no-show triggers a fee.
+function StripeCardSetupForm({ clientSecret, stripeAccountId, mandateAgreed, onSuccess, onError }) {
+  const divRef = useRef(null);
+  const stripeRef = useRef(null);
+  const cardRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
+
+  useEffect(() => {
+    if (!clientSecret || !divRef.current) return;
+    let alive = true;
+
+    const init = async () => {
+      if (!window.Stripe) {
+        await new Promise(resolve => {
+          const s = document.createElement('script');
+          s.src = 'https://js.stripe.com/v3/';
+          s.onload = resolve;
+          document.head.appendChild(s);
+        });
+      }
+      if (!alive || !divRef.current) return;
+
+      stripeRef.current = window.Stripe(
+        process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+        stripeAccountId ? { stripeAccount: stripeAccountId } : {}
+      );
+      const elements = stripeRef.current.elements();
+      cardRef.current = elements.create('card', {
+        style: {
+          base: {
+            fontSize: '16px',
+            fontFamily: 'system-ui, sans-serif',
+            color: '#1A1A2E',
+            '::placeholder': { color: '#9CA3AF' },
+          },
+          invalid: { color: '#EF4444' },
+        },
+      });
+      cardRef.current.on('ready', () => { if (alive) setReady(true); });
+      cardRef.current.mount(divRef.current);
+    };
+
+    init();
+    return () => {
+      alive = false;
+      try { if (cardRef.current) cardRef.current.destroy(); } catch(e) {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const save = async () => {
+    if (!stripeRef.current || !cardRef.current) return;
+    if (!mandateAgreed) {
+      onError('Please confirm you agree to the policy above before saving your card.');
+      return;
+    }
+    setProcessing(true);
+    const { error, setupIntent } = await stripeRef.current.confirmCardSetup(clientSecret, {
+      payment_method: { card: cardRef.current },
+    });
+    if (error) {
+      onError(error.message);
+      setProcessing(false);
+      return;
+    }
+    if (setupIntent?.status === 'succeeded') {
+      onSuccess({ payment_method_id: setupIntent.payment_method });
+    } else {
+      onError('Card setup did not complete. Please try again.');
+    }
+    setProcessing(false);
+  };
+
+  return (
+    <div>
+      <div style={{background:C.white,borderRadius:14,padding:'20px',marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray,marginBottom:12}}>CARD ON FILE</div>
+        <div ref={divRef} style={{padding:'14px',border:`1.5px solid ${C.light}`,borderRadius:10,background:'#FAFAFA'}}/>
+        {!ready && <div style={{textAlign:'center',padding:'12px 0 4px',color:C.gray,fontSize:13}}>Loading…</div>}
+      </div>
+      <button onClick={save} disabled={!ready||processing||!mandateAgreed}
+        style={{width:'100%',background:!ready||processing||!mandateAgreed?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:!ready||processing||!mandateAgreed?'default':'pointer',transition:'background 0.2s',boxShadow:'0 4px 20px rgba(42,87,65,0.25)'}}>
+        {processing?'Saving card…':(mandateAgreed?'Save card':'Agree to authorization above to continue')}
+      </button>
+      <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10}}>🔒 Secured by Stripe. Your card is not charged now. We only charge if the cancellation policy above triggers a fee.</p>
+    </div>
+  );
+}
+
 export default function BookingPage() {
   const {slug}=useParams();
   const [therapist,setTherapist]=useState(null);
@@ -226,6 +320,26 @@ export default function BookingPage() {
   // request time, the therapist sends a payment link after approving.
   const [requiresApproval,setRequiresApproval]=useState(false);
   const [pendingApproval,setPendingApproval]=useState(false);
+
+  // Cancellation policy Phase 2: card on file. When the therapist's policy
+  // has card_required_first_timers (and this is a new client) OR
+  // card_required_regulars (and this is a returning client) on, the
+  // client must save a card before they can confirm the booking. The
+  // card is captured via a SetupIntent on the therapist's connected
+  // Stripe account, then stored as payment_method_id on the clients
+  // table. The booking row gets a snapshot of the payment_method_id
+  // and customer_id at insert time.
+  const [cardOnFileRequired,setCardOnFileRequired]=useState(false);
+  const [cardSavedPaymentMethodId,setCardSavedPaymentMethodId]=useState(null);
+  const [cardSavedCustomerId,setCardSavedCustomerId]=useState(null);
+  const [cardSavedClientId,setCardSavedClientId]=useState(null);
+  const [cardSavedLast4,setCardSavedLast4]=useState(null);
+  const [cardSavedBrand,setCardSavedBrand]=useState(null);
+  const [cardSetupClientSecret,setCardSetupClientSecret]=useState(null);
+  const [cardSetupAccountId,setCardSetupAccountId]=useState(null);
+  const [cardCapturing,setCardCapturing]=useState(false);
+  const [cardError,setCardError]=useState(null);
+  const [cardMandateAgreed,setCardMandateAgreed]=useState(false);
 
   useEffect(()=>{load();},[slug]);
   // Compute effective service duration including any selected add-ons.
@@ -282,6 +396,91 @@ export default function BookingPage() {
     setLoadingSlots(false);
   }
 
+  // Cancellation policy Phase 2: kicks off the card-on-file capture flow.
+  // Calls save-card-on-booking edge function which upserts the client
+  // record, creates a Stripe Customer on the therapist's connected
+  // account, creates a SetupIntent, and returns a client_secret.
+  // The frontend then renders StripeCardSetupForm using that secret.
+  async function initCardSetup() {
+    if (!therapist?.stripe_account_id) {
+      setCardError('This therapist has not connected Stripe yet, so a card on file cannot be saved. Please contact them directly.');
+      return;
+    }
+    if (!cardMandateAgreed) {
+      setCardError('Please confirm you agree to the policy and authorization above.');
+      return;
+    }
+    setCardCapturing(true);
+    setCardError(null);
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/save-card-on-booking`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            stripe_account_id: therapist.stripe_account_id,
+            client_name: form.name.trim(),
+            client_email: form.email.trim().toLowerCase(),
+            client_phone: form.phone,
+            mandate_text: cardMandateText(),
+          }),
+        }
+      );
+      const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+      if (!res.ok || data.error) {
+        setCardError(data.error || `HTTP ${res.status}`);
+        setCardCapturing(false);
+        return;
+      }
+      setCardSetupClientSecret(data.client_secret);
+      setCardSetupAccountId(data.account_id);
+      setCardSavedCustomerId(data.customer_id);
+      setCardSavedClientId(data.client_id);
+    } catch (e) {
+      setCardError(String(e));
+    }
+    setCardCapturing(false);
+  }
+
+  // The mandate text is what the client agrees to when checking the box.
+  // Captured at agreement time and snapshotted on the clients record
+  // (card_mandate_text + card_mandate_agreed_at + card_mandate_ip_hash).
+  // Plain English on purpose, the policy details are above this in the
+  // UI so we do not repeat numbers here, just the authorization frame.
+  function cardMandateText() {
+    const therapistName = therapist?.business_name || therapist?.full_name || 'the therapist';
+    return [
+      `By saving my card and confirming this booking, I authorize ${therapistName} to charge this card per the cancellation policy shown above if I cancel late, reschedule late, or do not show up to my appointment.`,
+      ``,
+      `My card is not charged at booking. It is only charged if the policy triggers a fee.`,
+      ``,
+      `I can update or remove my card on file by contacting ${therapistName} directly.`,
+    ].join('\n');
+  }
+
+  function onCardSaveSuccess({ payment_method_id }) {
+    setCardSavedPaymentMethodId(payment_method_id);
+    setCardSetupClientSecret(null); // clear so the form unmounts
+    setCardError(null);
+    // Persist the payment_method_id on the clients record. The edge
+    // function already created the Stripe Customer and recorded the
+    // mandate; this last step links the actual saved card back to the
+    // client row so future bookings recognize them as a returning
+    // client with a card already on file.
+    if (cardSavedClientId) {
+      supabase.from('clients').update({
+        payment_method_id,
+        card_saved_at: new Date().toISOString(),
+      }).eq('id', cardSavedClientId).then(() => {});
+    }
+  }
+
   async function submit() {
     setSubmitting(true);
     // Snapshot add-on data for the booking. This is captured at booking time
@@ -307,6 +506,11 @@ export default function BookingPage() {
       deposit_required: requiresApproval ? false : depositRequired,
       deposit_amount: requiresApproval ? 0 : (depositRequired ? depositAmount : 0),
       deposit_paid: false,
+      // Cancellation policy Phase 2: snapshot the card on file at booking
+      // time. Even if the client later changes their card, we charge what
+      // they agreed to at this booking.
+      card_on_file_payment_method_id: cardSavedPaymentMethodId || null,
+      card_on_file_customer_id: cardSavedCustomerId || null,
     }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
@@ -864,6 +1068,25 @@ export default function BookingPage() {
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
               }
+
+              // Cancellation policy Phase 2: card on file gating.
+              // The card capture flow is engaged when:
+              //   1. Therapist has the cancellation policy enabled
+              //   2. Therapist has Stripe connected
+              //   3. The relevant card_required toggle is on for this client class
+              //   4. We are not in approval-required mode (in that case, the
+              //      booking is pending-approval and the cancellation charge
+              //      cannot fire yet anyway; therapist can request the card
+              //      via payment link after she approves)
+              const policy = therapist.cancellation_policy || {};
+              const policyEnabled = !!therapist.cancellation_policy_enabled;
+              const stripeReady = !!therapist.stripe_account_id;
+              const policyRequiresFirstTimers = !!policy.card_required_first_timers;
+              const policyRequiresRegulars = !!policy.card_required_regulars;
+              const cardNeeded = policyEnabled && stripeReady && !needsApproval &&
+                ((isRepeat && policyRequiresRegulars) || (!isRepeat && policyRequiresFirstTimers));
+              setCardOnFileRequired(cardNeeded);
+
               setStep(4);
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>
               Review Booking →
@@ -1015,9 +1238,141 @@ export default function BookingPage() {
                 </div>
               </div>
             )}
-            <button onClick={submit} disabled={submitting}
-              style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-              {submitting?(requiresApproval?'Sending…':'Confirming…'):(requiresApproval?'Send Request':(depositRequired?`✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`:'✓ Confirm Booking'))}
+
+            {/* CANCELLATION POLICY PHASE 2: card on file capture.
+                Three sub-states governed by cardOnFileRequired,
+                cardSavedPaymentMethodId, and cardSetupClientSecret:
+
+                  STATE A: required, not yet started
+                    Show mandate text + agreement checkbox + "Authorize" button.
+                    Clicking Authorize calls save-card-on-booking edge function.
+
+                  STATE B: required, edge function called, card form mounted
+                    cardSetupClientSecret is non-null. Show StripeCardSetupForm.
+                    On success, payment_method_id is saved on the clients record
+                    and we move to STATE C.
+
+                  STATE C: required, card saved
+                    Show green ✓ "Card saved on file" badge.
+                    Confirm button below is now enabled. */}
+            {cardOnFileRequired && !cardSavedPaymentMethodId && !cardSetupClientSecret && (
+              <div style={{
+                marginBottom: 14,
+                background: '#FFFBEB',
+                border: '1.5px solid #FCD34D',
+                borderRadius: 12,
+                padding: '16px 18px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 16 }}>💳</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#78350F' }}>Card on file required</span>
+                </div>
+                <div style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.6, whiteSpace: 'pre-wrap', marginBottom: 12 }}>
+                  {cardMandateText()}
+                </div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={cardMandateAgreed}
+                    onChange={e => { setCardMandateAgreed(e.target.checked); setCardError(null); }}
+                    style={{ marginTop: 3, cursor: 'pointer' }}
+                  />
+                  <span style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.5 }}>
+                    I agree to the cancellation policy and authorize this card to be charged if a fee is triggered.
+                  </span>
+                </label>
+                <button
+                  onClick={initCardSetup}
+                  disabled={!cardMandateAgreed || cardCapturing}
+                  style={{
+                    width: '100%',
+                    background: !cardMandateAgreed || cardCapturing ? C.sage : C.forest,
+                    color: C.white,
+                    border: 'none',
+                    borderRadius: 12,
+                    padding: '14px',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: !cardMandateAgreed || cardCapturing ? 'default' : 'pointer',
+                  }}>
+                  {cardCapturing ? 'Setting up…' : 'Authorize and enter card'}
+                </button>
+              </div>
+            )}
+
+            {cardOnFileRequired && cardSetupClientSecret && !cardSavedPaymentMethodId && (
+              <div style={{ marginBottom: 14 }}>
+                <div style={{
+                  background: '#FFFBEB',
+                  border: '1.5px solid #FCD34D',
+                  borderRadius: 12,
+                  padding: '12px 16px',
+                  marginBottom: 12,
+                  fontSize: 11,
+                  color: '#78350F',
+                  lineHeight: 1.5,
+                }}>
+                  By saving your card you authorize charges per the cancellation policy above. Card is not charged now.
+                </div>
+                <StripeCardSetupForm
+                  clientSecret={cardSetupClientSecret}
+                  stripeAccountId={cardSetupAccountId}
+                  mandateAgreed={cardMandateAgreed}
+                  onSuccess={onCardSaveSuccess}
+                  onError={msg => setCardError(msg)}
+                />
+              </div>
+            )}
+
+            {cardOnFileRequired && cardSavedPaymentMethodId && (
+              <div style={{
+                marginBottom: 14,
+                background: '#F0FDF4',
+                border: '1.5px solid #86EFAC',
+                borderRadius: 12,
+                padding: '14px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%', background: '#16A34A',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: '#fff', fontSize: 16, fontWeight: 700, flexShrink: 0,
+                }}>✓</div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#14532D' }}>Card saved on file</div>
+                  <div style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>Only charged if the policy above triggers a fee.</div>
+                </div>
+              </div>
+            )}
+
+            {cardError && (
+              <div style={{
+                marginBottom: 12,
+                background: '#FEF2F2',
+                border: '1.5px solid #FECACA',
+                borderRadius: 10,
+                padding: '12px 14px',
+                fontSize: 13,
+                color: '#991B1B',
+                lineHeight: 1.5,
+              }}>
+                ⚠️ <strong>Card error:</strong> {cardError}
+              </div>
+            )}
+
+            <button onClick={submit} disabled={submitting || (cardOnFileRequired && !cardSavedPaymentMethodId)}
+              style={{width:'100%',background:(submitting || (cardOnFileRequired && !cardSavedPaymentMethodId))?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:(submitting || (cardOnFileRequired && !cardSavedPaymentMethodId))?'default':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
+              {submitting
+                ? (requiresApproval?'Sending…':'Confirming…')
+                : (cardOnFileRequired && !cardSavedPaymentMethodId
+                    ? 'Save card above to continue'
+                    : (requiresApproval
+                        ? 'Send Request'
+                        : (depositRequired
+                            ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
+                            : '✓ Confirm Booking')))}
             </button>
             {!requiresApproval&&!depositRequired&&!isRepeatClient&&(
               <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
