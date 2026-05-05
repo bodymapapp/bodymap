@@ -120,10 +120,10 @@ export const RIBBONS = [
         // stand-in. Tracked in BLOCK_PLAN active fire #8 image batch.
         image: "/images/feature-1-7.jpg",
         body: [
-          "Every practice is different. Hide questions you cannot answer (no cooling table? hide the cool option). Edit any label in your own words. Add brand-new questions specific to your practice.",
-          "Plus a structured medical conditions checklist with 12 common contraindications built-in (high blood pressure, blood clots, recent surgery, pregnancy, and more) and an optional HIPAA mode that adds stronger consent and a view audit log.",
+          "One page that mirrors the entire client intake. Five sections in the order your client experiences them: body map, preferences, medical conditions, waiver, and any custom questions you add. Tap to rename. Toggle to hide. The body map and waiver always stay because those are the differentiator and the legal protection.",
+          "12 common medical conditions built in, each individually editable: high blood pressure, blood clots, recent surgery, pregnancy, and more. Plus an optional HIPAA mode that adds stronger consent language and an audit log every time medical notes are viewed.",
         ],
-        meta: "WYSIWYG editor · Add unlimited questions · Hide what you do not need",
+        meta: "WYSIWYG editor · 12 medical conditions built-in · HIPAA mode optional",
       },
       {
         id: "2.3",

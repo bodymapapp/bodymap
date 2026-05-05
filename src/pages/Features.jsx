@@ -852,19 +852,20 @@ function SectionNav() {
     { id:"booking",     label:"Online Booking",         n:3  },
     { id:"cycle",       label:"Cycle-Aligned",          n:4  },
     { id:"deposits",    label:"Deposits",               n:5  },
-    { id:"intake",      label:"Client Intake",          n:6  },
-    { id:"returning",   label:"Returning Clients",      n:7  },
-    { id:"schedule",    label:"Schedule",               n:8  },
-    { id:"reminders",   label:"Reminders",              n:9  },
-    { id:"outreach",    label:"Smart Outreach",         n:10 },
-    { id:"postsession", label:"Post-Session",           n:11 },
-    { id:"billing",     label:"Billing",                n:12 },
-    { id:"gifts",       label:"Gift Cards",             n:13 },
-    { id:"ai",          label:"MyBodyMap Platform",             n:14 },
-    { id:"mobile",      label:"On Your Phone",          n:15 },
-    { id:"automation",  label:"Automation",             n:16 },
-    { id:"growth",      label:"Growth Engine",          n:17 },
-    { id:"portability", label:"Switching",              n:18 },
+    { id:"intake",       label:"Client Intake",          n:6  },
+    { id:"intake-editor",label:"Customize Intake",       n:7  },
+    { id:"returning",    label:"Returning Clients",      n:8  },
+    { id:"schedule",     label:"Schedule",               n:9  },
+    { id:"reminders",    label:"Reminders",              n:10 },
+    { id:"outreach",     label:"Smart Outreach",         n:11 },
+    { id:"postsession",  label:"Post-Session",           n:12 },
+    { id:"billing",      label:"Billing",                n:13 },
+    { id:"gifts",        label:"Gift Cards",             n:14 },
+    { id:"ai",           label:"MyBodyMap Platform",     n:15 },
+    { id:"mobile",       label:"On Your Phone",          n:16 },
+    { id:"automation",   label:"Automation",             n:17 },
+    { id:"growth",       label:"Growth Engine",          n:18 },
+    { id:"portability",  label:"Switching",              n:19 },
   ];
   useEffect(() => {
     const onScroll = () => setVisible(window.scrollY > 280);
@@ -1431,6 +1432,94 @@ export default function Features() {
               </div>
             </FadeIn>
           </div>
+        </div>
+      </section>
+
+      {/* CUSTOMIZE YOUR INTAKE — WYSIWYG editor that mirrors the entire
+          intake (body map + preferences + medical conditions + waiver +
+          custom). Built in response to kateastrophic on r/MassageTherapists
+          who asked to hide questions and add a structured medical checklist. */}
+      <section id="intake-editor" style={{ scrollMarginTop:"112px", padding:"80px 24px", background:"linear-gradient(180deg, #FAF6EE 0%, #F5E8DD 100%)" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:48 }}>
+              <div style={{
+                display:"inline-block",
+                fontSize:11, fontWeight:700, letterSpacing:1.5,
+                color:"#A87468", background:"#fff",
+                border:"1px solid #E8C5B5",
+                padding:"4px 12px", borderRadius:99,
+                marginBottom:16,
+              }}>
+                JUST SHIPPED
+              </div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Customize your intake</div>
+              <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,4vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:16 }}>
+                Every practice is different.<br/><em style={{ color:"#A87468" }}>Your intake should be too.</em>
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, maxWidth:680, margin:"0 auto", lineHeight:1.7 }}>
+                One page. The whole intake, in the order your client experiences it. Hide what you cannot deliver, edit any label in your own words, add brand-new questions specific to your practice. Plus a structured medical checklist and an optional HIPAA mode.
+              </p>
+            </div>
+          </FadeIn>
+
+          {/* Two-column hero: image left, copy right */}
+          <FadeIn delay={0.1}>
+            <div style={{
+              display:"grid",
+              gridTemplateColumns:"repeat(auto-fit, minmax(320px, 1fr))",
+              gap:32,
+              alignItems:"center",
+              marginBottom:48,
+              background:"#fff",
+              borderRadius:20,
+              padding:24,
+              boxShadow:"0 12px 48px rgba(140, 74, 63, 0.10)",
+            }}>
+              <div>
+                <img
+                  src="/images/feature-1-7.jpg"
+                  alt="Customize your client intake form"
+                  style={{
+                    width:"100%",
+                    aspectRatio:"4/3",
+                    objectFit:"cover",
+                    borderRadius:14,
+                    display:"block",
+                  }}
+                />
+              </div>
+              <div>
+                <h3 style={{ fontFamily:"Georgia, serif", fontSize:24, fontWeight:700, color:C.dark, marginBottom:14, lineHeight:1.2 }}>
+                  Five sections, your words.
+                </h3>
+                <p style={{ fontSize:14, color:C.gray, lineHeight:1.7, marginBottom:14 }}>
+                  The editor mirrors the exact flow your client sees: <strong style={{ color:"#A87468" }}>body map, preferences, medical conditions, waiver,</strong> and any questions you add. Tap a label to rename. Toggle to hide. Add option chips with a tap.
+                </p>
+                <p style={{ fontSize:14, color:C.gray, lineHeight:1.7 }}>
+                  No cooling on your table? Hide the Cool option on Table Temperature. Want to ask about hydration? Add your own question. The body map and waiver always stay in place because those are non-negotiable: the differentiator and the legal protection.
+                </p>
+              </div>
+            </div>
+          </FadeIn>
+
+          {/* Four feature cards */}
+          <FadeIn delay={0.2}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))", gap:20 }}>
+              {[
+                { icon:"🗺️", title:"Body Map · always on", desc:"The visual front and back body diagram is the differentiator. Every client gets it. Cannot be hidden." },
+                { icon:"🎯", title:"10 preferences, fully editable", desc:"Pressure, goal, table temp, room temp, music, lighting, conversation, draping, oils, medical notes. Hide any. Rename any. Edit any option." },
+                { icon:"🩺", title:"Medical checklist · 12 conditions built-in", desc:"High blood pressure, blood clots, recent surgery, pregnancy, and more. Each one individually toggleable. Add your own." },
+                { icon:"🔒", title:"Optional HIPAA mode", desc:"Stronger consent line before medical questions. Audit log every time medical notes are viewed. Turn on if you operate under HIPAA." },
+              ].map(({icon,title,desc}) => (
+                <div key={title} style={{ background:"#fff", borderRadius:16, padding:24, border:"1px solid #F5D5C8" }}>
+                  <div style={{ fontSize:28, marginBottom:12 }}>{icon}</div>
+                  <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:8 }}>{title}</div>
+                  <div style={{ fontSize:13, color:C.gray, lineHeight:1.7 }}>{desc}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
         </div>
       </section>
 
