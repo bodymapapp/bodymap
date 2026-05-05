@@ -283,7 +283,14 @@ export default function BookingPage() {
   // hosted Stripe Checkout or Square Payment Link.
   const [packagesList,setPackagesList]=useState([]);
   const [membershipsList,setMembershipsList]=useState([]);
-  const [offerModal,setOfferModal]=useState(null); // { type: 'package'|'membership', item }
+  // Offers section starts collapsed by default. Most clients are
+  // booking single sessions, so the package and membership cards
+  // should not push the service list below the fold on mobile. The
+  // header summarizes what is inside (count + price hint) so therapists
+  // who want to highlight the offers can rename their package well
+  // and the value still reads at a glance.
+  const [offersExpanded,setOffersExpanded]=useState(false);
+  const [offerModal,setOfferModal]=useState(null);
   const [offerForm,setOfferForm]=useState({ name: '', email: '', phone: '' });
   const [offerLoading,setOfferLoading]=useState(false);
   const [offerError,setOfferError]=useState(null);
@@ -1032,109 +1039,153 @@ export default function BookingPage() {
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like, no account needed.</p>
 
-            {/* OFFERS: packages + memberships. Shows only if therapist
-                has at least one active package or membership. Each
-                card opens a small modal where the client enters name
-                + email + phone, then is sent to hosted checkout. */}
+            {/* OFFERS: packages + memberships. Collapsed by default
+                so the booking flow stays short on mobile. The header
+                row is tappable; tapping toggles offersExpanded. The
+                count and lowest-price hint give clients a reason to
+                tap without forcing them to scroll a long list. */}
             {(packagesList.length > 0 || membershipsList.length > 0) && (
-              <div style={{ marginBottom: 28 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                  <span style={{ fontSize: 18 }}>🎁</span>
-                  <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 17, fontWeight: 700, color: C.dark, margin: 0 }}>Save with a package or membership</h3>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {packagesList.map((p) => (
+              <div style={{ marginBottom: 24 }}>
+                {(() => {
+                  const totalCount = packagesList.length + membershipsList.length;
+                  const allPrices = [
+                    ...packagesList.map(p => Number(p.price)),
+                    ...membershipsList.map(m => Number(m.monthly_price)),
+                  ].filter(p => !isNaN(p) && p > 0);
+                  const lowestPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
+                  return (
                     <button
-                      key={p.id}
-                      onClick={() => openOffer('package', p)}
+                      onClick={() => setOffersExpanded(!offersExpanded)}
                       style={{
+                        width: '100%',
                         background: '#FAF5EE',
-                        border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                        border: `1.5px solid ${offersExpanded ? C.forest : (C.beige || '#E8DCC4')}`,
                         borderRadius: 14,
                         padding: '14px 16px',
-                        textAlign: 'left',
                         cursor: 'pointer',
-                        width: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        textAlign: 'left',
                         transition: 'all 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.beige || '#E8DCC4'; e.currentTarget.style.transform = 'none'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                            📦 {p.name}
-                          </div>
-                          <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
-                            {p.session_count} sessions
-                            {p.expires_in_days ? ` · expires ${p.expires_in_days} days from purchase` : ''}
-                          </div>
-                          {p.description && (
-                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
-                              {p.description}
-                            </div>
-                          )}
+                      }}>
+                      <span style={{ fontSize: 22, flexShrink: 0 }}>🎁</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 2 }}>
+                          Save with a package or membership
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(p.price).toFixed(0)}</div>
-                          <div style={{ fontSize: 10, color: C.gray }}>upfront</div>
+                        <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.4 }}>
+                          {totalCount} option{totalCount !== 1 ? 's' : ''}
+                          {lowestPrice !== null ? ` · from $${lowestPrice.toFixed(0)}` : ''}
+                          {' · tap to '}{offersExpanded ? 'hide' : 'see'}
                         </div>
                       </div>
+                      <span style={{
+                        fontSize: 18,
+                        color: C.forest,
+                        transform: offersExpanded ? 'rotate(180deg)' : 'none',
+                        transition: 'transform 0.2s',
+                        flexShrink: 0,
+                      }}>⌄</span>
                     </button>
-                  ))}
-                  {membershipsList.map((m) => (
-                    <button
-                      key={m.id}
-                      onClick={() => openOffer('membership', m)}
-                      style={{
-                        background: '#F0F9F4',
-                        border: '1.5px solid #B5D4BE',
-                        borderRadius: 14,
-                        padding: '14px 16px',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        width: '100%',
-                        transition: 'all 0.15s',
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#B5D4BE'; e.currentTarget.style.transform = 'none'; }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                            💚 {m.name}
-                          </div>
-                          <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
-                            {m.monthly_session_credits} session{m.monthly_session_credits !== 1 ? 's' : ''} per month
-                            {m.addon_discount_percent > 0 ? ` · ${m.addon_discount_percent}% off add-ons` : ''}
-                          </div>
-                          {m.description && (
-                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
-                              {m.description}
+                  );
+                })()}
+
+                {offersExpanded && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    {packagesList.map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => openOffer('package', p)}
+                        style={{
+                          background: '#FAF5EE',
+                          border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                          borderRadius: 14,
+                          padding: '14px 16px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          width: '100%',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.beige || '#E8DCC4'; e.currentTarget.style.transform = 'none'; }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                              📦 {p.name}
                             </div>
-                          )}
+                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+                              {p.session_count} sessions
+                              {p.expires_in_days ? ` · expires ${p.expires_in_days} days from purchase` : ''}
+                            </div>
+                            {p.description && (
+                              <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
+                                {p.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(p.price).toFixed(0)}</div>
+                            <div style={{ fontSize: 10, color: C.gray }}>upfront</div>
+                          </div>
                         </div>
-                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                          <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(m.monthly_price).toFixed(0)}</div>
-                          <div style={{ fontSize: 10, color: C.gray }}>per month</div>
+                      </button>
+                    ))}
+                    {membershipsList.map((m) => (
+                      <button
+                        key={m.id}
+                        onClick={() => openOffer('membership', m)}
+                        style={{
+                          background: '#F0F9F4',
+                          border: '1.5px solid #B5D4BE',
+                          borderRadius: 14,
+                          padding: '14px 16px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          width: '100%',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#B5D4BE'; e.currentTarget.style.transform = 'none'; }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                              💚 {m.name}
+                            </div>
+                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+                              {m.monthly_session_credits} session{m.monthly_session_credits !== 1 ? 's' : ''} per month
+                              {m.addon_discount_percent > 0 ? ` · ${m.addon_discount_percent}% off add-ons` : ''}
+                            </div>
+                            {m.description && (
+                              <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
+                                {m.description}
+                              </div>
+                            )}
+                          </div>
+                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(m.monthly_price).toFixed(0)}</div>
+                            <div style={{ fontSize: 10, color: C.gray }}>per month</div>
+                          </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <p style={{ fontSize: 11, color: C.gray, margin: '10px 0 0', textAlign: 'center' }}>
-                  Or skip this and book a single session below.
-                </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
-            {(packagesList.length > 0 || membershipsList.length > 0) && (
+            {/* "Single sessions" divider only renders when offers are
+                expanded — collapsed view does not need a divider since
+                the offers card itself acts as a section header. */}
+            {(packagesList.length > 0 || membershipsList.length > 0) && offersExpanded && (
               <div style={{
                 fontSize: 13, fontWeight: 700, color: C.dark, textTransform: 'uppercase', letterSpacing: '0.5px',
                 margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8,
               }}>
                 <span style={{ flex: 1, height: 1, background: C.light }} />
-                <span style={{ color: C.gray, fontWeight: 600, letterSpacing: '0.08em' }}>Single sessions</span>
+                <span style={{ color: C.gray, fontWeight: 600, letterSpacing: '0.08em' }}>Or a single session</span>
                 <span style={{ flex: 1, height: 1, background: C.light }} />
               </div>
             )}
