@@ -1362,22 +1362,46 @@ export default function BookingPage() {
               </div>
             )}
 
-            <button onClick={submit} disabled={submitting || (cardOnFileRequired && !cardSavedPaymentMethodId)}
-              style={{width:'100%',background:(submitting || (cardOnFileRequired && !cardSavedPaymentMethodId))?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:(submitting || (cardOnFileRequired && !cardSavedPaymentMethodId))?'default':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-              {submitting
-                ? (requiresApproval?'Sending…':'Confirming…')
-                : (cardOnFileRequired && !cardSavedPaymentMethodId
-                    ? 'Save card above to continue'
+            {/* While card-on-file capture is in progress (mandate panel
+                showing or Stripe form mounted but card not yet saved),
+                hide the bottom Confirm button. The card-on-file box is
+                the sole primary action until a card is saved. Replacing
+                with a small hint preserves the user's mental model that
+                booking confirmation comes after the card step. Once the
+                card is saved, the green ✓ badge appears above and the
+                full Confirm Booking button reappears here. */}
+            {cardOnFileRequired && !cardSavedPaymentMethodId ? (
+              <p style={{
+                fontSize: 12,
+                color: C.gray,
+                textAlign: 'center',
+                marginTop: 4,
+                lineHeight: 1.6,
+                padding: '12px 16px',
+                background: '#FAFAF7',
+                border: `1px dashed ${C.light}`,
+                borderRadius: 10,
+              }}>
+                After saving your card above, the Confirm Booking button will appear here.
+              </p>
+            ) : (
+              <>
+                <button onClick={submit} disabled={submitting}
+                  style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
+                  {submitting
+                    ? (requiresApproval?'Sending…':'Confirming…')
                     : (requiresApproval
                         ? 'Send Request'
                         : (depositRequired
                             ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
-                            : '✓ Confirm Booking')))}
-            </button>
-            {!requiresApproval&&!depositRequired&&!isRepeatClient&&(
-              <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
-                No payment now. You'll fill your intake form right after booking.
-              </p>
+                            : '✓ Confirm Booking'))}
+                </button>
+                {!requiresApproval&&!depositRequired&&!isRepeatClient&&!cardOnFileRequired&&(
+                  <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
+                    No payment now. You'll fill your intake form right after booking.
+                  </p>
+                )}
+              </>
             )}
             {paymentError&&(
               <div style={{marginTop:12,background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px',fontSize:13,color:'#991B1B',lineHeight:1.5}}>
