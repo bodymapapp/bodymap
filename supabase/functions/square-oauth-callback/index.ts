@@ -1,3 +1,14 @@
+// supabase/functions/square-oauth-callback/index.ts
+//
+// Receives the redirect from Square after a therapist authorizes our
+// app to access their Square account. Square redirects with no auth
+// header (it does not know about our Supabase JWTs), so this function
+// must be deployed with --no-verify-jwt. Authentication is established
+// by the OAuth code (proven via Square token exchange) plus the state
+// parameter which carries the therapist_id we issued at OAuth start.
+//
+// Listed in NO_JWT_FUNCTIONS in .github/workflows/deploy-edge-functions.yml.
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 

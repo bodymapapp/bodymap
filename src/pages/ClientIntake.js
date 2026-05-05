@@ -105,6 +105,13 @@ export default function ClientIntake() {
         med_flag: intakeData.medFlag || 'none',
         med_note: intakeData.medNote || null,
         client_notes: intakeData.notes || null,
+        // Custom schema additions: medical conditions checklist (text[])
+        // and custom_intake_answers (jsonb keyed by field id). Both nullable.
+        // The columns were added in supabase/migrations/intake_schema.sql.
+        medical_conditions: Array.isArray(intakeData.medicalConditions) ? intakeData.medicalConditions : null,
+        custom_intake_answers: intakeData.customAnswers && Object.keys(intakeData.customAnswers).length > 0
+          ? intakeData.customAnswers
+          : null,
         completed: false
       });
 
@@ -306,6 +313,7 @@ export default function ClientIntake() {
 
   return (
     <Demo 
+      therapist={therapist}
       therapistName={therapist.full_name || therapist.business_name}
       businessName={therapist.business_name}
       waiverEnabled={therapist.waiver_enabled !== false}

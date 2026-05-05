@@ -743,13 +743,16 @@ export default function IntakeEditor() {
 
       <div style={{ maxWidth: 720, margin: '0 auto', padding: '14px 12px' }}>
 
-        {/* Phase 1 honesty banner */}
+        {/* Honesty banner. Some schema features are live, some still pending.
+            Updated May 5 2026 after Demo.jsx hide-flag wiring + medical
+            conditions checklist render. Full schema-driven render with
+            custom questions and edited option labels still pending. */}
         <div style={{
           background: '#FEF3C7', border: '1px solid #FCD34D',
           borderRadius: 8, padding: '7px 11px', marginBottom: 10,
           fontSize: 11, color: '#78350F', lineHeight: 1.5,
         }}>
-          <strong>Heads up:</strong> changes save now. The live client intake will use these in our next deploy.
+          <strong>Heads up:</strong> hiding preferences and the medical conditions checklist are live now. Editing labels, editing option text, and custom questions arrive in the next deploy.
         </div>
 
         {/* Progress card */}
