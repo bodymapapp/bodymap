@@ -353,6 +353,10 @@ export default function BookingPage() {
     // Approval-required path: short-circuit the deposit + couples-partner flow.
     // Therapist will approve from the dashboard, payment link is sent then.
     if (requiresApproval) {
+      // Fire booking confirmation emails (request-received variant — the
+      // edge function detects status='pending-approval' and adjusts copy).
+      // Non-blocking; UI confirms immediately even if email send is slow.
+      fireBookingConfirmation(bid);
       setPendingApproval(true);
       setConfirmed(true);
       return;
@@ -424,7 +428,36 @@ export default function BookingPage() {
         });
       } catch(e) { /* non-blocking */ }
     }
+    // Fire booking confirmation emails (client + therapist) for the
+    // no-deposit instant-confirm path. Non-blocking; UI confirms
+    // immediately even if email send is slow. Triggered by Lindsey
+    // Thomas reporting practice bookings produced no confirmation
+    // email — root cause was that this send was never wired.
+    fireBookingConfirmation(bid);
     setConfirmed(true);
+  }
+
+  // Fire-and-forget helper that calls the send-booking-confirmation
+  // edge function. Errors are logged but never block the UI confirm.
+  // Used by all three booking confirmation paths (no-deposit, deposit-
+  // paid, and request-approval).
+  async function fireBookingConfirmation(theBookingId) {
+    if (!theBookingId) return;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-booking-confirmation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ booking_id: theBookingId }),
+      });
+    } catch (e) {
+      console.warn('send-booking-confirmation invocation failed:', e);
+    }
   }
 
   async function checkGiftCode() {
@@ -440,6 +473,9 @@ export default function BookingPage() {
 
   async function onDepositSuccess() {
     await supabase.from('bookings').update({deposit_paid:true,status:'confirmed'}).eq('id',bookingId);
+    // Now that deposit is paid and status flipped to confirmed, fire
+    // the confirmation emails. This is the deposit-required path.
+    fireBookingConfirmation(bookingId);
     setConfirmed(true);
   }
 
