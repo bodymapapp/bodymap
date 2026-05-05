@@ -3,13 +3,14 @@
 // Fired after a booking is created (or approved, or deposit-paid) to:
 //   1. Send confirmation email to the CLIENT  (if therapist's notification_prefs.client.booking_confirmation.email is on)
 //   2. Send "new booking" notification to the THERAPIST (if notification_prefs.therapist.new_booking.email is on)
-//   3. Log every attempt to notification_log
+//   3. Log every attempt (including skips and failures) to notification_log
 //
-// Triggered by Lindsey Thomas reporting that no booking confirmation
-// emails were arriving for practice bookings she made. Root cause: the
-// Settings UI showed toggles for these notifications, the toggle states
-// persisted to therapists.notification_prefs, but no edge function was
-// ever wired to actually fire the emails. Feature was half-built.
+// VERBOSE LOGGING: Every decision point logs to console.log so we can
+// trace exactly what happened in Supabase Edge Function logs. The
+// previous version was silent on success and we had a Lindsey Thomas
+// case where the function returned 200 but no emails landed and no
+// Resend record existed. Could not diagnose without re-running with
+// added prints. This version makes that scenario impossible.
 //
 // Defaults are conservative: if notification_prefs is missing or the
 // specific channel boolean is missing, we still send (because that
@@ -35,38 +36,38 @@ const C = {
 };
 
 // Read a notification pref boolean with sensible default-on fallback.
-// audience: "client" | "therapist", type: e.g. "booking_confirmation",
-// channel: "email" | "sms" | "app_alert"
-function shouldSend(therapist: any, audience: string, type: string, channel: string): boolean {
+function shouldSend(therapist: any, audience: string, type: string, channel: string): { send: boolean; reason: string } {
   const prefs = therapist?.notification_prefs;
-  if (!prefs || typeof prefs !== "object") return true;
-  const a = prefs[audience];
-  if (!a || typeof a !== "object") return true;
+  if (!prefs) return { send: true, reason: "no_prefs_default_on" };
+  // Supabase JSONB usually returns a parsed object, but if it returns
+  // a JSON string somehow, parse it.
+  let parsed: any = prefs;
+  if (typeof prefs === "string") {
+    try {
+      parsed = JSON.parse(prefs);
+    } catch (_e) {
+      return { send: true, reason: "prefs_unparseable_default_on" };
+    }
+  }
+  if (!parsed || typeof parsed !== "object") return { send: true, reason: "prefs_not_object_default_on" };
+  const a = parsed[audience];
+  if (!a || typeof a !== "object") return { send: true, reason: `${audience}_missing_default_on` };
   const t = a[type];
-  if (!t || typeof t !== "object") return true;
-  if (typeof t[channel] !== "boolean") return true;
-  return t[channel];
+  if (!t || typeof t !== "object") return { send: true, reason: `${audience}.${type}_missing_default_on` };
+  if (typeof t[channel] !== "boolean") return { send: true, reason: `${audience}.${type}.${channel}_missing_default_on` };
+  if (t[channel]) return { send: true, reason: "pref_explicit_on" };
+  return { send: false, reason: "pref_explicit_off" };
 }
 
-// Format a booking_date (YYYY-MM-DD) + start_time (HH:MM:SS) into
-// a friendly "Tuesday, May 5 at 2:30 PM" string. The bookings table
-// stores these as two separate columns, not a single timestamp.
-function formatAppointment(dateStr: string, timeStr: string, tz: string = "America/Chicago"): { date: string; time: string; full: string } {
+function formatAppointment(dateStr: string, timeStr: string, _tz: string = "America/Chicago"): { date: string; time: string; full: string } {
   try {
-    // Combine date + time into an ISO string. Treat as local time in
-    // the therapist's timezone — booking_date and start_time were
-    // recorded in the therapist's local timezone at booking creation.
     const isoStr = `${dateStr}T${(timeStr || "00:00:00").slice(0, 8)}`;
     const d = new Date(isoStr);
     if (isNaN(d.getTime())) {
       return { date: dateStr, time: timeStr || "", full: `${dateStr} ${timeStr || ""}`.trim() };
     }
-    const date = d.toLocaleDateString("en-US", {
-      weekday: "long", month: "long", day: "numeric",
-    });
-    const time = d.toLocaleTimeString("en-US", {
-      hour: "numeric", minute: "2-digit",
-    });
+    const date = d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+    const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     return { date, time, full: `${date} at ${time}` };
   } catch (_e) {
     return { date: dateStr, time: timeStr || "", full: `${dateStr} ${timeStr || ""}`.trim() };
@@ -79,7 +80,47 @@ function escapeHtml(s: string): string {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#39;");
+    .replace(/'/g, "&#39;");
+}
+
+// RFC 5322: display names with special characters need to be quoted.
+// Quote always (defensive). Escape any embedded quotes in the name.
+function quotedFrom(displayName: string, email: string): string {
+  const safe = String(displayName || "").replace(/"/g, "");
+  return `"${safe}" <${email}>`;
+}
+
+// Send a Resend email and capture the response carefully. Returns
+// { ok, status, id?, errorBody? } where errorBody is the raw text
+// of the response if Resend did not return success JSON.
+async function resendSend(apiKey: string, payload: any): Promise<{ ok: boolean; status: number; id?: string; errorBody?: string; rawText?: string }> {
+  let res: Response;
+  try {
+    res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) {
+    console.error("[resend] fetch threw:", String(e));
+    return { ok: false, status: 0, errorBody: `fetch_threw: ${String(e)}` };
+  }
+
+  const status = res.status;
+  // Read as text first so we never crash on non-JSON responses.
+  let text = "";
+  try { text = await res.text(); } catch (_e) { text = ""; }
+
+  let parsed: any = null;
+  try { parsed = JSON.parse(text); } catch (_e) { parsed = null; }
+
+  if (res.ok && parsed?.id) {
+    return { ok: true, status, id: parsed.id, rawText: text.slice(0, 200) };
+  }
+  return { ok: false, status, errorBody: text.slice(0, 500), rawText: text.slice(0, 500) };
 }
 
 serve(async (req) => {
@@ -89,18 +130,29 @@ serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
   const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
+  console.log("[send-booking-confirmation] invoked", {
+    has_resend_key: !!RESEND_API_KEY,
+    has_supabase_url: !!SUPABASE_URL,
+    has_service_key: !!SUPABASE_SERVICE_KEY,
+  });
+
   if (!RESEND_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.error("[fatal] missing env vars");
     return new Response(
-      JSON.stringify({ error: "missing_env" }),
+      JSON.stringify({ error: "missing_env", detail: { resend: !!RESEND_API_KEY, url: !!SUPABASE_URL, key: !!SUPABASE_SERVICE_KEY } }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  const debug: Record<string, any> = {};
 
   try {
     const body = await req.json();
     const { booking_id } = body;
+    debug.booking_id = booking_id;
+    console.log("[step] received booking_id:", booking_id);
+
     if (!booking_id) {
       return new Response(
         JSON.stringify({ error: "missing_booking_id" }),
@@ -108,9 +160,6 @@ serve(async (req) => {
       );
     }
 
-    // Fetch booking + therapist + service in one go. Booking has client
-    // info denormalized (client_name, client_email, client_phone) so we
-    // do not need to join clients here.
     const { data: booking, error: bErr } = await supabase
       .from("bookings")
       .select("*, therapists(*), services(*)")
@@ -118,18 +167,29 @@ serve(async (req) => {
       .maybeSingle();
 
     if (bErr || !booking) {
-      console.error("send-booking-confirmation: booking lookup failed", bErr);
+      console.error("[error] booking lookup failed", { bErr: bErr?.message, booking_id });
       return new Response(
-        JSON.stringify({ error: "booking_not_found", details: bErr?.message }),
+        JSON.stringify({ error: "booking_not_found", details: bErr?.message, debug }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const therapist = booking.therapists;
     const service = booking.services;
+    debug.therapist_id = therapist?.id || null;
+    debug.therapist_email = therapist?.email || null;
+    debug.therapist_name = therapist?.business_name || therapist?.full_name || null;
+    debug.service_name = service?.name || null;
+    debug.client_email = booking.client_email || null;
+    debug.booking_status = booking.status || null;
+    debug.has_notification_prefs = !!therapist?.notification_prefs;
+    debug.notification_prefs_type = typeof therapist?.notification_prefs;
+
+    console.log("[step] booking loaded", debug);
+
     if (!therapist) {
       return new Response(
-        JSON.stringify({ error: "therapist_not_found" }),
+        JSON.stringify({ error: "therapist_not_found", debug }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -141,45 +201,69 @@ serve(async (req) => {
     const clientName = booking.client_name || "Client";
     const clientFirstName = clientName.split(" ")[0];
     const clientEmail = booking.client_email;
-    // Service price/name come from the joined services row. Bookings
-    // table only has service_id, not denormalized name/price.
     const serviceName = service?.name || "Massage session";
     const servicePrice = service?.price;
     const intakeUrl = `https://mybodymap.app/${therapist.custom_url}?name=${encodeURIComponent(clientName)}&email=${encodeURIComponent(clientEmail || "")}&booking_id=${booking.id}`;
     const dashboardUrl = `https://mybodymap.app/dashboard`;
-    // Status uses hyphenated forms in the DB: 'pending-approval',
-    // 'pending-deposit', 'confirmed', 'cancelled'
     const status = booking.status || "confirmed";
     const isPendingApproval = status === "pending-approval";
 
     const results: Record<string, any> = { client_email: null, therapist_email: null };
 
     // ---------- 1. CLIENT CONFIRMATION EMAIL ----------
-    if (clientEmail && shouldSend(therapist, "client", "booking_confirmation", "email")) {
-      const subject = isPendingApproval
-        ? `Request received: ${serviceName} with ${therapistName}`
-        : `Booking confirmed: ${serviceName} with ${therapistName}`;
+    {
+      const decision = shouldSend(therapist, "client", "booking_confirmation", "email");
+      const hasEmail = !!clientEmail;
+      console.log("[client_email] decision", { hasEmail, decision });
+      debug.client_decision = { hasEmail, ...decision };
 
-      const headerLine = isPendingApproval
-        ? "Your request was received"
-        : "Your booking is confirmed";
+      if (!hasEmail) {
+        results.client_email = { skipped: "no_client_email" };
+        await supabase.from("notification_log").insert({
+          therapist_id: therapist.id,
+          notification_type: "booking_confirmation",
+          audience: "client",
+          channel: "email",
+          recipient: null,
+          status: "skipped",
+          subject: "(skipped: no client email)",
+          body_snippet: `Booking ${booking.id} had no client_email`,
+          booking_id: booking.id,
+        }).then((r: any) => { if (r.error) console.error("[log] skip insert failed", r.error); });
+      } else if (!decision.send) {
+        results.client_email = { skipped: "pref_off", reason: decision.reason };
+        await supabase.from("notification_log").insert({
+          therapist_id: therapist.id,
+          notification_type: "booking_confirmation",
+          audience: "client",
+          channel: "email",
+          recipient: clientEmail,
+          status: "skipped",
+          subject: `(skipped: ${decision.reason})`,
+          body_snippet: `Therapist has booking_confirmation.email turned off`,
+          booking_id: booking.id,
+        }).then((r: any) => { if (r.error) console.error("[log] skip insert failed", r.error); });
+      } else {
+        const subject = isPendingApproval
+          ? `Request received: ${serviceName} with ${therapistName}`
+          : `Booking confirmed: ${serviceName} with ${therapistName}`;
+        const headerLine = isPendingApproval ? "Your request was received" : "Your booking is confirmed";
+        const subText = isPendingApproval
+          ? `${therapistFirstName} will review and reply soon. Most replies come within 24 hours.`
+          : `We will see you on ${escapeHtml(apt.date)} at ${escapeHtml(apt.time)}.`;
 
-      const subText = isPendingApproval
-        ? `${therapistFirstName} will review and reply soon. Most replies come within 24 hours.`
-        : `We will see you on ${escapeHtml(apt.date)} at ${escapeHtml(apt.time)}.`;
-
-      const policyHtml = (therapist.cancellation_policy_enabled && therapist.cancellation_policy)
-        ? `
-          <div style="background:${C.cream};border:1px solid ${C.beige};border-radius:10px;padding:14px 16px;margin:16px 0;">
-            <div style="font-size:12px;font-weight:700;color:${C.rose};margin-bottom:6px;">CANCELLATION POLICY</div>
-            <div style="font-size:13px;color:${C.ink};line-height:1.6;">
-              Need to change plans? Please let ${escapeHtml(therapistFirstName)} know as early as possible. Late cancellations and no-shows may be charged per the policy you agreed to at booking.
+        const policyHtml = (therapist.cancellation_policy_enabled && therapist.cancellation_policy)
+          ? `
+            <div style="background:${C.cream};border:1px solid ${C.beige};border-radius:10px;padding:14px 16px;margin:16px 0;">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${C.gray};margin-bottom:6px;">A note about changes</div>
+              <div style="font-size:13px;color:${C.ink};line-height:1.6;">
+                Need to change plans? Please let ${escapeHtml(therapistFirstName)} know as early as possible. Late cancellations and no-shows may be charged per the policy you agreed to at booking.
+              </div>
             </div>
-          </div>
-        `
-        : "";
+          `
+          : "";
 
-      const html = `
+        const html = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:${C.beige};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${C.ink};">
@@ -201,7 +285,7 @@ serve(async (req) => {
         </div>
       </div>
 
-      ${status !== "pending_approval" ? `
+      ${!isPendingApproval ? `
       <div style="background:#F0FDF4;border:1px solid #86EFAC;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
         <div style="font-size:13px;font-weight:700;color:${C.forest};margin-bottom:6px;">📋 Save time, fill your intake now</div>
         <div style="font-size:13px;color:${C.ink};line-height:1.6;margin-bottom:12px;">
@@ -223,26 +307,19 @@ serve(async (req) => {
   </div>
 </body></html>`;
 
-      const fromAddr = `${therapistName} <reminders@mybodymap.app>`;
-      const replyTo = therapist.email || undefined;
+        const fromAddr = quotedFrom(therapistName, "reminders@mybodymap.app");
+        const replyTo = therapist.email || undefined;
 
-      try {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
-          },
-          body: JSON.stringify({
-            from: fromAddr,
-            to: [clientEmail],
-            ...(replyTo ? { reply_to: replyTo } : {}),
-            subject,
-            html,
-          }),
+        console.log("[client_email] sending via Resend", { to: clientEmail, from: fromAddr, replyTo });
+        const sendResult = await resendSend(RESEND_API_KEY, {
+          from: fromAddr,
+          to: [clientEmail],
+          ...(replyTo ? { reply_to: replyTo } : {}),
+          subject,
+          html,
         });
-        const data = await res.json();
-        results.client_email = { ok: res.ok, id: data?.id, error: res.ok ? null : data };
+        console.log("[client_email] resend result", sendResult);
+        results.client_email = sendResult;
 
         await supabase.from("notification_log").insert({
           therapist_id: therapist.id,
@@ -250,27 +327,54 @@ serve(async (req) => {
           audience: "client",
           channel: "email",
           recipient: clientEmail,
-          status: res.ok ? "sent" : "failed",
-          provider_id: data?.id || null,
+          status: sendResult.ok ? "sent" : "failed",
+          provider_id: sendResult.id || null,
           subject,
-          body_snippet: `${serviceName} on ${apt.date}`,
+          body_snippet: sendResult.ok ? `${serviceName} on ${apt.date}` : `RESEND_ERROR: ${(sendResult.errorBody || "").slice(0, 200)}`,
           booking_id: booking.id,
-        });
-      } catch (e) {
-        console.error("Client email send failed:", e);
-        results.client_email = { ok: false, error: String(e) };
+        }).then((r: any) => { if (r.error) console.error("[log] insert failed", r.error); });
       }
-    } else {
-      results.client_email = { skipped: !clientEmail ? "no_email" : "pref_off" };
     }
 
     // ---------- 2. THERAPIST "NEW BOOKING" EMAIL ----------
-    if (therapist.email && shouldSend(therapist, "therapist", "new_booking", "email")) {
-      const subject = isPendingApproval
-        ? `New booking REQUEST: ${clientName} wants ${serviceName}`
-        : `New booking: ${clientName} booked ${serviceName}`;
+    {
+      const decision = shouldSend(therapist, "therapist", "new_booking", "email");
+      const hasEmail = !!therapist.email;
+      console.log("[therapist_email] decision", { hasEmail, decision });
+      debug.therapist_decision = { hasEmail, ...decision };
 
-      const html = `
+      if (!hasEmail) {
+        results.therapist_email = { skipped: "no_therapist_email" };
+        await supabase.from("notification_log").insert({
+          therapist_id: therapist.id,
+          notification_type: "new_booking",
+          audience: "therapist",
+          channel: "email",
+          recipient: null,
+          status: "skipped",
+          subject: "(skipped: therapist has no email on file)",
+          body_snippet: `Therapist record missing email column`,
+          booking_id: booking.id,
+        }).then((r: any) => { if (r.error) console.error("[log] skip insert failed", r.error); });
+      } else if (!decision.send) {
+        results.therapist_email = { skipped: "pref_off", reason: decision.reason };
+        await supabase.from("notification_log").insert({
+          therapist_id: therapist.id,
+          notification_type: "new_booking",
+          audience: "therapist",
+          channel: "email",
+          recipient: therapist.email,
+          status: "skipped",
+          subject: `(skipped: ${decision.reason})`,
+          body_snippet: `Therapist has new_booking.email turned off`,
+          booking_id: booking.id,
+        }).then((r: any) => { if (r.error) console.error("[log] skip insert failed", r.error); });
+      } else {
+        const subject = isPendingApproval
+          ? `New booking REQUEST: ${clientName} wants ${serviceName}`
+          : `New booking: ${clientName} booked ${serviceName}`;
+
+        const html = `
 <!DOCTYPE html>
 <html><head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;background:${C.beige};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:${C.ink};">
@@ -296,22 +400,16 @@ serve(async (req) => {
   </div>
 </body></html>`;
 
-      try {
-        const res = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${RESEND_API_KEY}`,
-          },
-          body: JSON.stringify({
-            from: "MyBodyMap <reminders@mybodymap.app>",
-            to: [therapist.email],
-            subject,
-            html,
-          }),
+        const fromAddr = quotedFrom("MyBodyMap", "reminders@mybodymap.app");
+        console.log("[therapist_email] sending via Resend", { to: therapist.email, from: fromAddr });
+        const sendResult = await resendSend(RESEND_API_KEY, {
+          from: fromAddr,
+          to: [therapist.email],
+          subject,
+          html,
         });
-        const data = await res.json();
-        results.therapist_email = { ok: res.ok, id: data?.id, error: res.ok ? null : data };
+        console.log("[therapist_email] resend result", sendResult);
+        results.therapist_email = sendResult;
 
         await supabase.from("notification_log").insert({
           therapist_id: therapist.id,
@@ -319,29 +417,25 @@ serve(async (req) => {
           audience: "therapist",
           channel: "email",
           recipient: therapist.email,
-          status: res.ok ? "sent" : "failed",
-          provider_id: data?.id || null,
+          status: sendResult.ok ? "sent" : "failed",
+          provider_id: sendResult.id || null,
           subject,
-          body_snippet: `${clientName} booked ${serviceName} on ${apt.date}`,
+          body_snippet: sendResult.ok ? `${clientName} booked ${serviceName} on ${apt.date}` : `RESEND_ERROR: ${(sendResult.errorBody || "").slice(0, 200)}`,
           booking_id: booking.id,
-        });
-      } catch (e) {
-        console.error("Therapist email send failed:", e);
-        results.therapist_email = { ok: false, error: String(e) };
+        }).then((r: any) => { if (r.error) console.error("[log] insert failed", r.error); });
       }
-    } else {
-      results.therapist_email = { skipped: !therapist.email ? "no_email" : "pref_off" };
     }
 
+    console.log("[done] returning ok", { results, debug });
     return new Response(
-      JSON.stringify({ ok: true, results }),
+      JSON.stringify({ ok: true, results, debug }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
 
   } catch (err) {
-    console.error("send-booking-confirmation error:", err);
+    console.error("[fatal] uncaught error:", String(err));
     return new Response(
-      JSON.stringify({ error: String(err) }),
+      JSON.stringify({ error: String(err), debug }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
