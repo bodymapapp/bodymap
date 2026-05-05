@@ -122,27 +122,26 @@ export default function MembershipsCard({ therapist }) {
               {memberships.map(m => (
                 <div key={m.id} style={{ padding:'12px 14px', background:m.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C.lightGray}`, borderRadius:10, marginBottom:6, opacity:m.active?1:0.55 }}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      {/* Editable membership name. Same Ashley Scalzulli
-                          ask as PackagesCard: title was display-only,
-                          had to recreate to rename. Now inline-editable.
-                          Wrapped in a block-level div so the title sits
-                          on its own line and the meta-row pills drop
-                          below cleanly. */}
-                      <div style={{ display: 'block', marginBottom: 4 }}>
-                        <InlineEditField
-                          value={m.name}
-                          type="text"
-                          width="100%"
-                          align="left"
-                          fontSize={14}
-                          fontWeight={600}
-                          color={C.forest}
-                          ariaLabel={`Edit membership name`}
-                          onSave={(v) => updateMembership(m.id, { name: String(v).trim() })}
-                        />
-                      </div>
-                      <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                    {/* Inner content column — flex-direction: column with
+                        explicit gap so each child gets its own row.
+                        Bulletproof against InlineEditField's negative
+                        margins (-3px hover padding compensation) which
+                        previously collapsed the apparent vertical gap. */}
+                    <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', gap:8 }}>
+                      {/* Title — own row */}
+                      <InlineEditField
+                        value={m.name}
+                        type="text"
+                        width="100%"
+                        align="left"
+                        fontSize={14}
+                        fontWeight={600}
+                        color={C.forest}
+                        ariaLabel={`Edit membership name`}
+                        onSave={(v) => updateMembership(m.id, { name: String(v).trim() })}
+                      />
+                      {/* Meta row */}
+                      <div style={{ fontSize:12, color:C.gray, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                         <InlineEditField
                           value={Number(m.monthly_price)}
                           type="number"
@@ -191,18 +190,13 @@ export default function MembershipsCard({ therapist }) {
                           </>
                         )}
                       </div>
-                      {/* Editable description. Was display-only and only
-                          shown when non-empty. Now always rendered so
-                          therapists can ADD a description to existing
-                          memberships, not just edit ones that had one. */}
-                      <div style={{ marginTop:4 }}>
-                        <InlineEditDescription
-                          value={m.description || ''}
-                          placeholder="Add a description (optional)"
-                          ariaLabel={`Edit description for ${m.name}`}
-                          onSave={(v) => updateMembership(m.id, { description: String(v).trim() || null })}
-                        />
-                      </div>
+                      {/* Description — own row, always rendered */}
+                      <InlineEditDescription
+                        value={m.description || ''}
+                        placeholder="Add a description (optional)"
+                        ariaLabel={`Edit description for ${m.name}`}
+                        onSave={(v) => updateMembership(m.id, { description: String(v).trim() || null })}
+                      />
                     </div>
                     <button onClick={() => toggleMembership(m)} style={{ background:m.active?'#fff':C.sage, color:m.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {m.active ? 'Hide' : 'Show'}
