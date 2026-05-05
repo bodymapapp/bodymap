@@ -160,6 +160,7 @@ const RIBBONS = [
       "Revenue dashboard, real-time",
       "Top 10 clients by lifetime spend",
       "Gift cards directly from your booking page",
+      "Cancellation policy: charge for late cancels, reschedules, no-shows",
       "ESIGN-compliant signed waivers, 7-year retention",
       "HIPAA-encrypted, same standards as MassageBook and Vagaro",
     ],
