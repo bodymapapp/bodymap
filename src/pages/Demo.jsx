@@ -2575,6 +2575,17 @@ const PrefScreen = ({
   hasPhone = false,
   smsOptIn = false,
   setSmsOptIn = () => {},
+  // Schema-driven render props. These flow from BodyMapApp where the
+  // schema is derived from the therapist's intake_schema and
+  // selectedConditions/customAnswers are tracked as state for inclusion
+  // in the onSubmit payload.
+  schema = { fields: [], medical_checklist_enabled: false },
+  showMedicalChecklist = false,
+  medicalConditionsList = [],
+  selectedConditions = [],
+  setSelectedConditions = () => {},
+  customAnswers = {},
+  setCustomAnswers = () => {},
 }) => {
   const [showWaiver, setShowWaiver] = useState(false);
   const upd = (k, v) => setPrefs((p) => ({ ...p, [k]: v }));
@@ -4847,6 +4858,13 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
           hasPhone={!clientInfo.contact.includes('@') && !!clientInfo.contact}
           smsOptIn={smsOptIn}
           setSmsOptIn={setSmsOptIn}
+          schema={schema}
+          showMedicalChecklist={showMedicalChecklist}
+          medicalConditionsList={medicalConditionsList}
+          selectedConditions={selectedConditions}
+          setSelectedConditions={setSelectedConditions}
+          customAnswers={customAnswers}
+          setCustomAnswers={setCustomAnswers}
         />
       </div>
     ),
