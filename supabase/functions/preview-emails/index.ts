@@ -108,7 +108,7 @@ function e11Welcome(firstName: string) {
     <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">Cheers,</p>
     <p style="font-family:system-ui;font-size:14px;color:#6B7280;line-height:1.7;margin:0;">MyBodyMap Team</p>
     <div style="margin-top:26px;text-align:center;">
-      <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life (founding therapist)</span>
+      <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life</span>
     </div>
   `;
   return { subject: `Welcome home, ${firstName}. 5 steps, any order, no hurry.`, html: wrap(inner) };

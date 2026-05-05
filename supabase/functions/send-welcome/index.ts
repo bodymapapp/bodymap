@@ -124,7 +124,7 @@ serve(async (req) => {
 
         <!-- Silver badge, kept subtle -->
         <div style="margin-top:26px;text-align:center;">
-          <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life (founding therapist)</span>
+          <span style="display:inline-block;background:#F0FDF4;border:1px solid #86EFAC;border-radius:20px;padding:5px 12px;font-family:system-ui;font-size:11px;font-weight:700;color:#2A5741;">🌿 Silver tier · Free for life</span>
         </div>
 
         <p style="font-family:system-ui;font-size:12px;color:#9CA3AF;margin-top:28px;line-height:1.7;text-align:center;">
