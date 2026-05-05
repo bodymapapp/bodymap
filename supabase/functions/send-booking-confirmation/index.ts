@@ -149,14 +149,33 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { booking_id } = body;
+    // Accept either {booking_id: "..."} (frontend fire-and-forget call)
+    // or {type: "INSERT", record: {id: "..."}} (Supabase Database Webhook).
+    // The webhook fires automatically on every bookings INSERT — that path
+    // is the bulletproof one because it does not depend on any frontend
+    // wiring. The frontend call still works as a fallback for legacy or
+    // out-of-band booking creation.
+    const booking_id = body.booking_id || body.record?.id || body.old_record?.id;
     debug.booking_id = booking_id;
-    console.log("[step] received booking_id:", booking_id);
+    debug.payload_shape = body.booking_id ? "frontend" : (body.record ? "db_webhook" : "unknown");
+    console.log("[step] received payload, shape:", debug.payload_shape, "booking_id:", booking_id);
 
     if (!booking_id) {
       return new Response(
-        JSON.stringify({ error: "missing_booking_id" }),
+        JSON.stringify({ error: "missing_booking_id", received_keys: Object.keys(body) }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // For DB webhook, only fire on INSERT — UPDATE webhooks would re-send
+    // confirmations every time the booking is touched, which is wrong.
+    // The webhook also fires for status changes (deposit-paid, cancelled,
+    // etc.) which we handle elsewhere.
+    if (body.type && body.type !== "INSERT") {
+      console.log("[skip] ignoring webhook type:", body.type);
+      return new Response(
+        JSON.stringify({ ok: true, skipped: "non_insert_webhook", type: body.type }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
