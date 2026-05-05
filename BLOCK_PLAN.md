@@ -54,6 +54,24 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
    - Estimated time: 6-8 hours for a careful build with testing.
    - Phase 1 yellow banner in Settings/CancellationPolicy reads "Card capture and auto-charging come in the next deploy" — remove banner when Phase 2 ships.
 
+12. **Verify booking confirmation trigger end-to-end** — DB trigger `bookings_fire_confirmation` is installed (May 5, 2026, post-Lindsey-Thomas debugging session). `tgenabled: O`. Function `public.fire_booking_confirmation` has the service role key inline and calls `send-booking-confirmation` via pg_net on every confirmed/pending-approval INSERT. Not yet tested with a fresh booking.
+   - Test plan: open bodymapdemo booking page in incognito, make a quick test booking, query `notification_log` within 60 seconds. Should see two new rows (client + therapist) with `status='sent'`. Email should arrive in inbox.
+   - If trigger does not fire: check pg_net._http_response for the call ID, check edge function logs.
+   - When verified: delete this fire and add one-line note to the deploy/runbook.
+
+13. **Apology email to therapists whose real clients got late confirmation emails today** — May 5 backfill released ~50 retroactive booking confirmation emails. Most are test bookings (Healing Hands, Under the Trees demo, fake @email.com addresses) but some real client emails for Terra Irving, Sarah Feinstein, Lindsey Thomas, and Run Performance Pro went out for bookings that may have been weeks old.
+   - Action: identify which therapists had real-client bookings in the backfill batch. Query notification_log WHERE sent_at BETWEEN today's backfill window AND status='sent', join to bookings, exclude obvious test patterns.
+   - Send each affected therapist the apology message in Joy voice (drafted in chat May 5):
+     > Hi [name], A quick note. Earlier today I was working through a small system issue, and as part of fixing it, I released some booking confirmation emails to your clients that should have gone out at the time of booking but did not. If any of them reach out confused, please let them know it was a system issue on our end. The emails are real (those bookings are correct), they just arrived late. I caught the issue, fixed it, and put a permanent safeguard in place so this cannot happen again. Going forward, the email goes the moment a client books. No browser, no waiting, no chance of missing. With care, Joy.
+   - Effort: 30 min (build the affected list + send 5-8 personalized emails).
+
+14. **Resend quota / plan upgrade decision** — May 5 backfill + product update broadcast likely blew through Resend free tier's 100 emails/day cap. Some product update emails may not have left.
+   - Action: open Resend → Sending tab → filter to today, count delivered vs rejected/failed. Identify any product update sends that did not deliver and queue them to resend tomorrow (after midnight UTC quota reset) or after a plan upgrade.
+   - Decision: stay on free + spread sends across days OR upgrade to Resend Pro ($20/mo, 50,000/mo cap). At current scale upgrade probably not yet needed but worth deciding before next big outreach.
+   - Effort: 15 min audit + decision.
+
+15. **Future consideration: replay any product update sends that failed** — depends on outcome of fire #14. If specific dormant signups did not receive the product update due to quota exhaustion, queue a re-send tomorrow with same content. Do NOT re-send to those who did receive (would be a duplicate spammy email).
+
 ## TIER S — DISTRIBUTION (do this week, not products)
 
 **Context:** Distribution is the unsolved problem, not product. The May 1-2 FB Massage Therapists Community thread surfaced an active shopping conversation where therapists are LITERALLY asking "MassageBook vs Vagaro vs Noterro" right now. Pricing pain is dominant ("MassageBook just raised prices, very disappointing"). Free Bronze tier is the answer to a question they're asking out loud. These items are about being present in those conversations, not building more product.
