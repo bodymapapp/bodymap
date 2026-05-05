@@ -1,23 +1,23 @@
 // src/pages/IntakeEditor.jsx
 //
-// WYSIWYG-ish editor for the client intake form. Therapist sees the
-// fields exactly as her clients will see them, with edit controls that
-// reveal on hover/tap. She can:
-//   - Hide / show any default question (toggle switch, NOT an eye icon)
+// WYSIWYG editor for the client intake form.
+//
+// V2 (after HK feedback on first cut):
+// - Compressed field cards (less padding so 10 questions don't feel
+//   like an endless scroll)
+// - Progress indicator at top (X of N visible to clients)
+// - "Saving..." indicator fires immediately on any change, not after
+//   the 600ms debounce completes
+// - Order matches the live intake (Demo.jsx PS sections)
+//
+// Therapists can:
+//   - Hide / show any default question (toggle switch, NOT eye icon)
 //   - Edit the label of any question
 //   - Edit, rename, add, or remove the answer options on chip fields
 //   - Add brand-new custom questions of any type
 //   - Delete custom questions she added
 //   - Toggle the structured medical conditions checklist on/off
 //   - Toggle HIPAA mode (adds stronger consent + audit log)
-//
-// Default questions can be hidden but not deleted — preserves stable
-// answer field IDs so historical sessions stay readable when therapist
-// flips a question back on later.
-//
-// Save is debounced to 600ms so rapid edits don't hammer Supabase.
-// All state lives locally during edit; saves write the whole schema
-// each time (jsonb column, small payload, simpler than diffing).
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -44,8 +44,8 @@ const C = {
   bg:     '#F9FAFB',
 };
 
-// Visible toggle switch — modern look, not the old "eye" icon HK
-// flagged. Used everywhere we need on/off state in this editor.
+// Modern toggle switch — replaces the old-school eye icon HK flagged.
+// Compact 36x20 size to keep field cards dense.
 function Toggle({ on, onChange, ariaLabel }) {
   return (
     <button
@@ -53,7 +53,7 @@ function Toggle({ on, onChange, ariaLabel }) {
       aria-label={ariaLabel}
       style={{
         position: 'relative',
-        width: 40, height: 22,
+        width: 36, height: 20,
         borderRadius: 999,
         background: on ? C.forest : '#D1D5DB',
         border: 'none', cursor: 'pointer',
@@ -63,8 +63,8 @@ function Toggle({ on, onChange, ariaLabel }) {
       }}>
       <span style={{
         position: 'absolute',
-        top: 2, left: on ? 20 : 2,
-        width: 18, height: 18, borderRadius: '50%',
+        top: 2, left: on ? 18 : 2,
+        width: 16, height: 16, borderRadius: '50%',
         background: '#fff',
         transition: 'left 0.18s',
         boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
@@ -101,9 +101,9 @@ function InlineEdit({ value, onSave, placeholder = '', style = {}, ariaLabel = '
         aria-label={ariaLabel}
         style={{
           ...style,
-          padding: '4px 6px',
+          padding: '3px 5px',
           border: `1.5px solid ${C.forest}`,
-          borderRadius: 6,
+          borderRadius: 5,
           outline: 'none',
           fontFamily: 'inherit',
           fontSize: style.fontSize || 14,
@@ -124,10 +124,10 @@ function InlineEdit({ value, onSave, placeholder = '', style = {}, ariaLabel = '
       style={{
         ...style,
         cursor: 'text',
-        padding: '4px 6px',
-        borderRadius: 6,
+        padding: '3px 5px',
+        borderRadius: 5,
         display: 'inline-block',
-        minHeight: 24,
+        minHeight: 22,
         borderBottom: `1px dashed transparent`,
       }}
       onMouseEnter={(e) => (e.currentTarget.style.borderBottom = `1px dashed ${C.gray}`)}
@@ -138,13 +138,12 @@ function InlineEdit({ value, onSave, placeholder = '', style = {}, ariaLabel = '
   );
 }
 
-// One field card — renders the field as the client would see it, with
-// edit controls layered on top.
+// One field card — compact rendering. Padding tightened from 16 to 10
+// after HK feedback that the editor felt endless.
 function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
   const isDefault = field.kind === 'default';
 
   const updateLabel = (label) => onPatch({ label });
-  const updateHelp  = (help)  => onPatch({ help });
   const updateOption = (idx, patch) => {
     const opts = [...(field.options || [])];
     opts[idx] = { ...opts[idx], ...patch };
@@ -164,78 +163,66 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
   return (
     <div style={{
       background: isHidden ? '#F9FAFB' : '#fff',
-      border: `1.5px solid ${isHidden ? C.light : C.beige}`,
-      borderRadius: 12,
-      padding: 16,
-      marginBottom: 12,
-      opacity: isHidden ? 0.55 : 1,
+      border: `1px solid ${isHidden ? C.light : C.beige}`,
+      borderRadius: 10,
+      padding: '10px 12px',
+      marginBottom: 8,
+      opacity: isHidden ? 0.6 : 1,
       transition: 'opacity 0.2s, background 0.2s',
-      position: 'relative',
     }}>
-      {/* Top row: visibility toggle + (optional) delete button */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Toggle on={!isHidden} onChange={onToggleHidden} ariaLabel={`Visible to clients: ${field.label}`} />
-          <span style={{ fontSize: 11, color: C.gray, fontWeight: 600 }}>
-            {isHidden ? 'Hidden from clients' : 'Visible to clients'}
-          </span>
-        </div>
-        {!isDefault && (
-          <button onClick={onDelete} style={{
-            marginLeft: 'auto',
-            background: 'transparent', color: C.red,
-            border: `1px solid ${C.red}`, borderRadius: 6,
-            padding: '4px 10px', fontSize: 11, fontWeight: 600,
-            cursor: 'pointer',
-          }}>Remove</button>
-        )}
-        {isDefault && (
-          <span style={{
-            marginLeft: 'auto',
-            fontSize: 10, color: C.gray, fontWeight: 600,
-            background: C.cream, padding: '3px 8px', borderRadius: 99,
-          }}>Built-in</span>
-        )}
-      </div>
-
-      {/* Editable label */}
-      <div style={{ marginBottom: 4 }}>
-        <InlineEdit
-          value={field.label}
-          onSave={updateLabel}
-          placeholder="Question label"
-          ariaLabel="Edit question label"
-          style={{ fontSize: 14, fontWeight: 700, color: C.ink }}
-        />
-      </div>
-
-      {/* Editable help text */}
-      {(field.help !== undefined || isDefault) && (
-        <div style={{ marginBottom: 10 }}>
+      {/* Top row: toggle + label + (delete or built-in chip) — all on one line */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        marginBottom: field.type === 'header' ? 0 : 8,
+      }}>
+        <Toggle on={!isHidden} onChange={onToggleHidden} ariaLabel={`Visible to clients: ${field.label}`} />
+        <div style={{ flex: 1, minWidth: 0 }}>
           <InlineEdit
-            value={field.help || ''}
-            onSave={updateHelp}
-            placeholder="Optional help text shown under the question"
-            style={{ fontSize: 12, color: C.gray }}
+            value={field.label}
+            onSave={updateLabel}
+            placeholder="Question label"
+            ariaLabel="Edit question label"
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: C.ink,
+              textDecoration: isHidden ? 'line-through' : 'none',
+            }}
           />
         </div>
-      )}
+        {!isDefault ? (
+          <button onClick={onDelete} aria-label="Remove this question" style={{
+            background: 'transparent', color: C.red,
+            border: 'none', cursor: 'pointer',
+            fontSize: 16, lineHeight: 1, padding: '0 4px',
+            flexShrink: 0,
+          }}>×</button>
+        ) : (
+          <span style={{
+            fontSize: 9, color: C.gray, fontWeight: 600,
+            background: C.cream, padding: '2px 7px', borderRadius: 99,
+            flexShrink: 0,
+          }}>BUILT-IN</span>
+        )}
+      </div>
 
-      {/* Type-specific renderer */}
-      {(field.type === 'chips' || field.type === 'chips_multi' || field.type === 'checklist') && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+      {/* Type-specific renderer (skip if hidden — saves vertical space) */}
+      {!isHidden && (field.type === 'chips' || field.type === 'chips_multi' || field.type === 'checklist') && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center', marginLeft: 46 }}>
           {(field.options || []).map((opt, idx) => (
             <div key={idx} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
+              display: 'inline-flex', alignItems: 'center', gap: 2,
               background: '#F9FAFB',
               border: `1.5px solid ${C.light}`,
               borderRadius: 99,
-              padding: '4px 10px',
+              padding: '3px 8px',
             }}>
               <InlineEdit
                 value={opt.label}
                 onSave={(label) => updateOption(idx, { label })}
-                style={{ fontSize: 12, fontWeight: 500, color: C.ink, padding: '0 2px' }}
+                style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
                 ariaLabel={`Edit option ${opt.label}`}
               />
               <button
@@ -244,8 +231,7 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
                 style={{
                   background: 'transparent', border: 'none',
                   color: C.gray, cursor: 'pointer',
-                  fontSize: 14, lineHeight: 1, padding: '0 2px',
-                  marginLeft: 2,
+                  fontSize: 13, lineHeight: 1, padding: '0 2px',
                 }}>×</button>
             </div>
           ))}
@@ -254,51 +240,42 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
             border: `1.5px dashed ${C.sage}`,
             color: C.sage,
             borderRadius: 99,
-            padding: '4px 10px',
-            fontSize: 12, fontWeight: 600,
+            padding: '3px 8px',
+            fontSize: 11, fontWeight: 600,
             cursor: 'pointer',
-          }}>+ Add option</button>
+          }}>+</button>
         </div>
       )}
 
-      {(field.type === 'text' || field.type === 'textarea') && (
-        <div style={{ marginTop: 4 }}>
+      {!isHidden && (field.type === 'text' || field.type === 'textarea') && (
+        <div style={{ marginLeft: 46 }}>
           <div style={{
             background: '#F9FAFB',
             border: `1px dashed ${C.light}`,
-            borderRadius: 8,
-            padding: '10px 12px',
-            fontSize: 12, color: '#9CA3AF',
+            borderRadius: 6,
+            padding: '6px 10px',
+            fontSize: 11, color: '#9CA3AF',
             fontStyle: 'italic',
-            minHeight: field.type === 'textarea' ? 60 : 32,
+            minHeight: field.type === 'textarea' ? 32 : 24,
           }}>
             <InlineEdit
               value={field.placeholder || ''}
               onSave={(placeholder) => onPatch({ placeholder })}
-              placeholder="Add placeholder text shown to client"
-              style={{ fontSize: 12, color: '#9CA3AF', fontStyle: 'italic' }}
+              placeholder="Placeholder text"
+              style={{ fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' }}
             />
           </div>
         </div>
       )}
 
-      {field.type === 'checkbox' && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.gray }}>
+      {!isHidden && field.type === 'checkbox' && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, color: C.gray, marginLeft: 46 }}>
           <span style={{
-            width: 16, height: 16, borderRadius: 4,
+            width: 14, height: 14, borderRadius: 3,
             border: `1.5px solid ${C.light}`,
             display: 'inline-block', flexShrink: 0,
           }}/>
-          Client will see a yes/no checkbox here
-        </div>
-      )}
-
-      {field.type === 'header' && (
-        <div style={{
-          fontSize: 11, color: C.gray, fontStyle: 'italic',
-          marginTop: 4,
-        }}>
-          Visual section header. No input.
+          Yes/no checkbox
         </div>
       )}
     </div>
@@ -351,24 +328,20 @@ export default function IntakeEditor() {
   const { therapist, updateProfile } = useAuth();
   const [schema, setSchema] = useState(() => effectiveSchema(therapist));
   const [adding, setAdding] = useState(false);
-  const [savedAt, setSavedAt] = useState(null);
+  // Two-state save indicator: "saving" fires immediately on any edit;
+  // "savedAt" fires when the debounced save completes. HK reported the
+  // first version felt unresponsive because the indicator only updated
+  // after 600ms of debounce — so any rapid change felt like nothing
+  // was happening.
   const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const saveTimer = useRef(null);
-
-  // Re-sync if therapist context updates (e.g. after a save)
-  useEffect(() => {
-    if (therapist?.intake_schema) {
-      // Don't blow away in-progress edits; only sync if local hasn't changed
-      // since last save. Keeping it simple: sync on therapist id change only.
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [therapist?.id]);
 
   // Debounced save: 600ms after the last change.
   const queueSave = useCallback((next) => {
+    setSaving(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      setSaving(true);
       const result = await updateProfile({ intake_schema: next });
       setSaving(false);
       if (result?.error) {
@@ -422,6 +395,14 @@ export default function IntakeEditor() {
     queueSave(DEFAULT_SCHEMA);
   };
 
+  // Completion stats: how many fields are visible to clients vs total.
+  // Plus medical checklist + HIPAA toggle status. Used by the progress
+  // bar at top of the editor so therapists see how customized they are.
+  const visibleFields = schema.fields.filter((f) => !f.hidden);
+  const totalFields = schema.fields.length;
+  const customFields = schema.fields.filter((f) => f.kind === 'custom').length;
+  const completionPct = totalFields === 0 ? 0 : Math.round((visibleFields.length / totalFields) * 100);
+
   return (
     <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 60 }}>
       {/* Top bar */}
@@ -442,37 +423,65 @@ export default function IntakeEditor() {
             <div style={{ fontSize: 11, color: C.gray }}>What clients see, in your words</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: C.gray }}>
-          {saving ? 'Saving...' : (savedAt ? '✓ Saved' : 'No changes yet')}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 11, color: saving ? C.gray : (savedAt ? C.forest : C.gray), fontWeight: 600 }}>
+          {saving ? '· Saving…' : (savedAt ? '✓ Saved' : 'No changes yet')}
         </div>
       </div>
 
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '20px 16px' }}>
+      <div style={{ maxWidth: 720, margin: '0 auto', padding: '16px 14px' }}>
 
-        {/* Honest status banner: editor saves changes, but the live
-            client intake still uses the default schema as of this ship.
-            Wire-up of Demo.jsx to read this schema is the next ship.
-            Removed once production renders custom schemas. */}
+        {/* Honest status banner (Phase 1: editor saves but Demo.jsx live render not wired yet) */}
         <div style={{
           background: '#FEF3C7', border: '1px solid #FCD34D',
-          borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-          fontSize: 12, color: '#78350F', lineHeight: 1.5,
+          borderRadius: 10, padding: '8px 12px', marginBottom: 12,
+          fontSize: 11, color: '#78350F', lineHeight: 1.5,
         }}>
-          <strong>Heads up:</strong> changes save to your account now. The live client intake will start using your customizations in our next deploy (this week). We will email you when it goes live.
+          <strong>Heads up:</strong> changes save now. The live client intake will use these in our next deploy this week. We will email you when it goes live.
         </div>
 
-        {/* Master toggles */}
-        <div style={{ background: '#fff', borderRadius: 14, padding: 16, marginBottom: 16, border: `1px solid ${C.light}` }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: 1.5, marginBottom: 10 }}>
+        {/* PROGRESS BAR — visible-fields completion plus a one-line summary
+            of how customized the intake is. Replaces the "endless scroll"
+            feeling HK called out by giving therapists an at-a-glance view
+            of how much they've already done. */}
+        <div style={{
+          background: '#fff',
+          borderRadius: 10,
+          padding: '10px 12px',
+          marginBottom: 12,
+          border: `1px solid ${C.light}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, fontSize: 12 }}>
+            <span style={{ fontWeight: 700, color: C.ink }}>Your intake at a glance</span>
+            <span style={{ color: C.gray }}>{visibleFields.length} of {totalFields} visible</span>
+          </div>
+          {/* progress bar */}
+          <div style={{ height: 5, background: C.light, borderRadius: 3, overflow: 'hidden', marginBottom: 6 }}>
+            <div style={{
+              height: '100%',
+              width: `${completionPct}%`,
+              background: `linear-gradient(90deg, ${C.sage}, ${C.forest})`,
+              transition: 'width 0.3s ease',
+            }}/>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, fontSize: 10, color: C.gray }}>
+            {schema.medical_checklist_enabled && <span style={{ background: C.cream, padding: '2px 7px', borderRadius: 99 }}>🩺 Medical checklist on</span>}
+            {schema.hipaa_mode && <span style={{ background: C.cream, padding: '2px 7px', borderRadius: 99 }}>🔒 HIPAA mode on</span>}
+            {customFields > 0 && <span style={{ background: C.cream, padding: '2px 7px', borderRadius: 99 }}>+{customFields} custom {customFields === 1 ? 'question' : 'questions'}</span>}
+          </div>
+        </div>
+
+        {/* Master toggles — compressed into a single card */}
+        <div style={{ background: '#fff', borderRadius: 10, padding: 12, marginBottom: 12, border: `1px solid ${C.light}` }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 1.5, marginBottom: 8 }}>
             INTAKE MODE
           </div>
 
           {/* Medical checklist toggle */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 2 }}>Medical conditions checklist</div>
-              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.5 }}>
-                Adds a structured checklist of common contraindications: high blood pressure, blood clots, recent surgery, pregnancy, etc. {DEFAULT_MEDICAL_CONDITIONS.length} conditions by default.
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 1 }}>Medical conditions checklist</div>
+              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.4 }}>
+                Adds {DEFAULT_MEDICAL_CONDITIONS.length} common contraindications: high BP, blood clots, recent surgery, pregnancy, etc.
               </div>
             </div>
             <Toggle
@@ -485,9 +494,9 @@ export default function IntakeEditor() {
           {/* HIPAA mode toggle */}
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 2 }}>HIPAA mode</div>
-              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.5 }}>
-                Turn on if you operate under HIPAA. Adds a stronger consent line before medical questions and logs every time medical notes are viewed.
+              <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 1 }}>HIPAA mode</div>
+              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.4 }}>
+                Adds stronger consent and logs every time medical notes are viewed. Turn on if you operate under HIPAA.
               </div>
             </div>
             <Toggle
@@ -498,18 +507,18 @@ export default function IntakeEditor() {
           </div>
         </div>
 
-        {/* Help banner */}
+        {/* Help banner — compact one-liner */}
         <div style={{
           background: '#FFF8E1', border: '1px solid #F0E5C0',
-          borderRadius: 10, padding: '10px 14px', marginBottom: 16,
-          fontSize: 12, color: '#6B5A2A', lineHeight: 1.5,
+          borderRadius: 8, padding: '8px 12px', marginBottom: 10,
+          fontSize: 11, color: '#6B5A2A', lineHeight: 1.5,
         }}>
-          ✨ Tap any question label to rename it. Tap an option chip to rename it. Use the toggles to hide questions you do not need. Add new questions at the bottom.
+          ✨ Tap a label or chip to rename. Toggle to hide. Add new at the bottom.
         </div>
 
         {/* Section: questions */}
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: 1.5, marginBottom: 8, padding: '0 4px' }}>
-          QUESTIONS YOUR CLIENTS SEE
+        <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: 1.5, marginBottom: 6, padding: '0 4px' }}>
+          QUESTIONS YOUR CLIENTS SEE — IN ORDER
         </div>
 
         {schema.fields.map((field) => (
@@ -527,18 +536,18 @@ export default function IntakeEditor() {
         <button onClick={() => setAdding(true)} style={{
           width: '100%',
           background: '#fff', border: `1.5px dashed ${C.sage}`,
-          borderRadius: 12, padding: '14px 18px',
-          color: C.sage, fontSize: 14, fontWeight: 700,
-          cursor: 'pointer', marginBottom: 14,
+          borderRadius: 10, padding: '10px 16px',
+          color: C.sage, fontSize: 13, fontWeight: 700,
+          cursor: 'pointer', marginBottom: 10,
         }}>
           + Add a new question
         </button>
 
         {/* Reset link */}
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
           <button onClick={reset} style={{
             background: 'transparent', border: 'none',
-            color: C.gray, fontSize: 12, cursor: 'pointer',
+            color: C.gray, fontSize: 11, cursor: 'pointer',
             textDecoration: 'underline',
           }}>Reset to default questions</button>
         </div>
