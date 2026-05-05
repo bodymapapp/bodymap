@@ -2165,10 +2165,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           )}
         </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.2.5') && (<>
+      {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.3') && (<>
       <CollapsibleSection
         id="cancellation"
-        taxonomy="4.2.5"
+        taxonomy="4.3"
         timeBadge="~3m"
         label="Cancellation policy"
         summary={therapist?.cancellation_policy_enabled ? "On · clients see policy at booking" : "Off · protect your time from late cancels"}
@@ -2180,10 +2180,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <CancellationPolicy therapist={therapist} />
       </CollapsibleSection>
       </>)}
-      {matchesSearch('Custom SMS sender (Twilio)', '', '4.3') && (<>
+      {matchesSearch('Custom SMS sender (Twilio)', '', '4.4') && (<>
       <CollapsibleSection
         id="twilio"
-        taxonomy="4.3"
+        taxonomy="4.4"
         timeBadge="~10m"
         label="Custom SMS sender (Twilio)"
         summary={therapist?.twilio_phone_number ? `Connected · ${therapist.twilio_phone_number}` : "Optional · advanced"}
@@ -2234,10 +2234,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         )}
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Referrals', '', '4.4') && (<>
+      {matchesSearch('Referrals', '', '4.5') && (<>
       <CollapsibleSection
         id="referral"
-        taxonomy="4.4"
+        taxonomy="4.5"
         label="Referrals"
         summary={therapist?.referral_code ? `Code ${therapist.referral_code}` : "Earn from word-of-mouth"}
         status={therapist?.referral_code ? "done" : "todo"}
