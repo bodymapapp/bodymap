@@ -247,19 +247,11 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     finally { setLoading(false); }
   }
 
-  // Delete a session row. Available for both incomplete and completed
-  // sessions. Confirmation copy adapts: incomplete (intake-only) entries
-  // are common test artifacts and the wording is gentler; completed
-  // sessions are real history and the warning is sharper. Therapists
-  // sometimes need to remove a completed session too (test booking,
-  // duplicate, accidental marking).
-  async function handleDeleteSession(sessionId, isCompleted) {
-    const ok = window.confirm(
-      isCompleted
-        ? 'Delete this completed session?\n\nThis is real client history. Deleting it is permanent and removes the body map, preferences, and all notes attached to this session. Use only for true mistakes (test entries, duplicates, accidental completions).'
-        : 'Delete this incomplete intake?\n\nThis cannot be undone. Use this to clean up test intakes (e.g., a friend filled the form to test your booking flow). Real intakes from clients should usually be kept.'
-    );
-    if (!ok) return;
+  // Delete a session row. Confirmation happens INLINE in the row
+  // itself via a confirm pill (handled in SessionRow), so this function
+  // just performs the delete. The row only calls handleDeleteSession
+  // after the therapist taps Yes on the inline pill.
+  async function handleDeleteSession(sessionId) {
     const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
     if (error) {
       alert('Could not delete: ' + error.message);
@@ -575,7 +567,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
               key={session.id}
               session={session}
               onSelect={onSelectSession}
-              onDelete={() => handleDeleteSession(session.id, !!session.completed)}
+              onDelete={() => handleDeleteSession(session.id)}
             />
           ))}
         </div>
@@ -586,18 +578,25 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
 function SessionRow({ session, onSelect, onDelete }) {
   const [hovered, setHovered] = useState(false);
-  const focusCount = (session.front_focus?.length || 0) + (session.back_focus?.length || 0);
-  const avoidCount = (session.front_avoid?.length || 0) + (session.back_avoid?.length || 0);
+  // Inline confirm state. When therapist taps the × button we do not
+  // immediately delete and we do not pop a modal. Instead we replace
+  // the × button with a tiny pill containing the question and Yes/No
+  // buttons, all within the row itself. Tapping Yes calls onDelete
+  // and resets. Tapping No just resets. This keeps the interaction
+  // contained in the row context the therapist is already looking
+  // at — no modal flashing in from elsewhere on the screen.
+  const [confirming, setConfirming] = useState(false);
 
   return (
     <div
-      onClick={() => onSelect(session)}
+      onClick={() => { if (!confirming) onSelect(session); }}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => { setHovered(false); /* Auto-cancel confirm on mouse out keeps this from sticking forever. */ if (confirming) setConfirming(false); }}
       style={{
         background: C.white, borderRadius: "12px", padding: "16px 20px",
         border: `1.5px solid ${hovered ? "#6B9E80" : C.lightGray}`,
-        cursor: "pointer", transition: "all 0.15s ease",
+        cursor: confirming ? "default" : "pointer",
+        transition: "all 0.15s ease",
         boxShadow: hovered ? "0 4px 16px rgba(42,87,65,0.1)" : "0 1px 3px rgba(0,0,0,0.04)",
         display: "flex", alignItems: "center", gap: "8px", overflow: "hidden"
       }}
@@ -609,41 +608,96 @@ function SessionRow({ session, onSelect, onDelete }) {
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           {session.goal && <span style={{ fontSize: "13px", color: "#6B7280" }}>Goal: <strong>{session.goal}</strong></span>}
           {session.pressure && <span style={{ fontSize: "13px", color: "#6B7280" }}>Pressure: <strong>{session.pressure}/5</strong></span>}
-          {focusCount > 0 && <span style={{ fontSize: "13px", color: "#6B9E80" }}>🟢 {focusCount} focus</span>}
-          {avoidCount > 0 && <span style={{ fontSize: "13px", color: "#EF4444" }}>🔴 {avoidCount} avoid</span>}
+          {focusCountText(session)}
         </div>
       </div>
-      <span style={{
-        background: session.completed ? "#D1FAE5" : "#E8F5EE",
-        color: session.completed ? "#065F46" : "#2A5741",
-        padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap"
-      }}>
-        {session.completed ? "✅ Complete" : "🧭 Intake Done"}
-      </span>
-      {/* Delete button. Available for any session, completed or not.
-          Visible on row hover. Stops propagation so the click does not
-          also open the session. The handler decides which confirm copy
-          to show based on completed flag. */}
-      {onDelete && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          title={session.completed ? "Delete this completed session" : "Delete this incomplete intake"}
+
+      {confirming ? (
+        // ----- INLINE CONFIRM PILL -----
+        // Replaces × + › arrow with the question and Yes/No. Stops
+        // propagation so taps on the buttons or the surrounding pill
+        // do not also trigger row click.
+        <div
+          onClick={(e) => e.stopPropagation()}
           style={{
-            background: hovered ? "#FEF2F2" : "transparent",
-            border: hovered ? "1px solid #FECACA" : "1px solid transparent",
-            color: hovered ? "#DC2626" : "transparent",
-            width: 28, height: 28,
-            borderRadius: "50%",
-            cursor: "pointer",
-            fontSize: 14,
-            fontWeight: 700,
-            padding: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.15s",
-          }}
-        >×</button>
+            display: "flex", alignItems: "center", gap: 6,
+            background: "#FEF2F2",
+            border: "1.5px solid #FECACA",
+            borderRadius: 999,
+            padding: "4px 6px 4px 12px",
+          }}>
+          <span style={{ fontSize: 12, color: "#991B1B", fontWeight: 600, whiteSpace: "nowrap" }}>
+            {session.completed ? "Delete this session?" : "Delete this intake?"}
+          </span>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete && onDelete(); setConfirming(false); }}
+            style={{
+              background: "#DC2626", color: "#fff",
+              border: "none", borderRadius: 999,
+              padding: "4px 12px",
+              fontSize: 12, fontWeight: 700,
+              cursor: "pointer",
+            }}>
+            Yes
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); setConfirming(false); }}
+            style={{
+              background: "transparent", color: "#6B7280",
+              border: "1px solid #D1D5DB", borderRadius: 999,
+              padding: "3px 11px",
+              fontSize: 12, fontWeight: 600,
+              cursor: "pointer",
+            }}>
+            No
+          </button>
+        </div>
+      ) : (
+        <>
+          <span style={{
+            background: session.completed ? "#D1FAE5" : "#E8F5EE",
+            color: session.completed ? "#065F46" : "#2A5741",
+            padding: "4px 12px", borderRadius: "20px", fontSize: "12px", fontWeight: "600", whiteSpace: "nowrap"
+          }}>
+            {session.completed ? "✅ Complete" : "🧭 Intake Done"}
+          </span>
+          {/* × delete button. On click, opens the inline confirm pill
+              instead of deleting immediately or popping a modal. */}
+          {onDelete && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
+              title={session.completed ? "Delete this completed session" : "Delete this incomplete intake"}
+              style={{
+                background: hovered ? "#FEF2F2" : "transparent",
+                border: hovered ? "1px solid #FECACA" : "1px solid transparent",
+                color: hovered ? "#DC2626" : "transparent",
+                width: 28, height: 28,
+                borderRadius: "50%",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 700,
+                padding: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all 0.15s",
+              }}
+            >×</button>
+          )}
+          <span style={{ color: hovered ? "#6B9E80" : "#E8E4DC", fontSize: "20px", transition: "color 0.15s" }}>›</span>
+        </>
       )}
-      <span style={{ color: hovered ? "#6B9E80" : "#E8E4DC", fontSize: "20px", transition: "color 0.15s" }}>›</span>
     </div>
+  );
+}
+
+// Helper used inside SessionRow to render the focus/avoid counts
+// without duplicating the calculation across both branches.
+function focusCountText(session) {
+  const focusCount = (session.front_focus?.length || 0) + (session.back_focus?.length || 0);
+  const avoidCount = (session.front_avoid?.length || 0) + (session.back_avoid?.length || 0);
+  return (
+    <>
+      {focusCount > 0 && <span style={{ fontSize: "13px", color: "#6B9E80" }}>🟢 {focusCount} focus</span>}
+      {avoidCount > 0 && <span style={{ fontSize: "13px", color: "#EF4444" }}>🔴 {avoidCount} avoid</span>}
+    </>
   );
 }
