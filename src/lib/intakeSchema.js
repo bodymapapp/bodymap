@@ -49,6 +49,10 @@ export const DEFAULT_SCHEMA = {
   version: SCHEMA_VERSION,
   medical_checklist_enabled: true,
   hipaa_mode: false,
+  // Per-condition customization. NULL/missing = use DEFAULT_MEDICAL_CONDITIONS.
+  // When therapist edits any condition, the full list is persisted.
+  // Each condition: { v, label, hidden, kind: 'default'|'custom' }
+  medical_conditions: null,
   fields: [
     {
       id: 'pressure',
@@ -180,8 +184,24 @@ export function effectiveSchema(therapist) {
     version: custom.version || SCHEMA_VERSION,
     medical_checklist_enabled: custom.medical_checklist_enabled !== false,
     hipaa_mode: !!custom.hipaa_mode,
+    medical_conditions: custom.medical_conditions || null,
     fields: custom.fields,
   };
+}
+
+// Get the effective medical conditions list (custom or default).
+// Adds kind='default' to default ones for downstream rendering logic.
+export function effectiveMedicalConditions(schema) {
+  if (schema?.medical_conditions && Array.isArray(schema.medical_conditions)) {
+    return schema.medical_conditions;
+  }
+  return DEFAULT_MEDICAL_CONDITIONS.map((c) => ({ ...c, hidden: false, kind: 'default' }));
+}
+
+// Generate a new custom medical condition skeleton.
+export function makeCustomCondition() {
+  const v = `cust_${Math.random().toString(36).slice(2, 7)}`;
+  return { v, label: 'New condition', kind: 'custom', hidden: false };
 }
 
 // Generate a new custom field skeleton for the editor. Used when the
