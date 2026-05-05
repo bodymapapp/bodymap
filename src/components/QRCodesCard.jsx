@@ -75,22 +75,42 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
     if (!url) return;
     const w = window.open('', '_blank');
     if (!w) return;
+    // Print template fixed 2026-05-05: previous version overflowed to
+    // a second page because:
+    //   1. img max-width:600px + 40px body padding pushed total height
+    //      past ~8in, leaving the URL footer to spill onto page 2
+    //   2. flex column + justify-content:center caused unpredictable
+    //      vertical positioning, making overflow worse
+    //   3. No @page rule meant the browser used full default margins
+    //      (~1in each side) on top of the body padding
+    // New approach: explicit @page sizing, compact 3.5in image,
+    // page-break-inside:avoid wrapper so the whole card stays on
+    // one page no matter what.
     w.document.write(`
       <!DOCTYPE html>
       <html><head>
         <title>${title} QR Code</title>
         <style>
-          body { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px; font-family:system-ui; }
-          h1 { margin:0 0 6px; font-size:22px; color:#1F2937; }
-          p { margin:0 0 24px; font-size:13px; color:#6B7280; }
-          img { max-width:600px; width:100%; height:auto; }
-          .url { margin-top:18px; font-size:12px; color:#6B7280; word-break:break-all; }
+          @page { size: letter portrait; margin: 0.5in; }
+          html, body { margin: 0; padding: 0; }
+          body { font-family: system-ui, -apple-system, sans-serif; text-align: center; color: #1F2937; }
+          .print-card { page-break-inside: avoid; padding: 24px 0; }
+          h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
+          .subtitle { margin: 0 0 18px; font-size: 13px; color: #6B7280; }
+          img { width: 3.5in; height: 3.5in; max-width: 100%; display: block; margin: 0 auto; }
+          .url { margin: 16px auto 0; font-size: 11px; color: #6B7280; word-break: break-all; max-width: 5in; }
+          @media print {
+            .print-card { padding: 0; }
+            body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          }
         </style>
       </head><body>
-        ${businessName ? `<h1>${businessName}</h1>` : ''}
-        <p>${subtitle || title}</p>
-        <img src="${hiresSrc}" alt="${title}" />
-        <div class="url">${url}</div>
+        <div class="print-card">
+          ${businessName ? `<h1>${businessName}</h1>` : ''}
+          <div class="subtitle">${subtitle || title}</div>
+          <img src="${hiresSrc}" alt="${title}" />
+          <div class="url">${url}</div>
+        </div>
       </body></html>
     `);
     w.document.close();
