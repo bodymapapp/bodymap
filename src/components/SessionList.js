@@ -247,6 +247,25 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     finally { setLoading(false); }
   }
 
+  // Delete an incomplete session row. Used to clean up test intakes
+  // (e.g., a friend filled the form to test the booking flow). Only
+  // available for sessions where completed=false; completed sessions
+  // are real history and should not be deleted from this UI.
+  // Confirmation is a single window.confirm to keep this fast for the
+  // common case of "I see a phantom test session, get rid of it".
+  async function handleDeleteSession(sessionId) {
+    const ok = window.confirm(
+      'Delete this incomplete intake?\n\nThis cannot be undone. Use this to clean up test intakes (e.g., a friend filled the form to test your booking flow). Real intakes from clients should usually be kept.'
+    );
+    if (!ok) return;
+    const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
+    if (error) {
+      alert('Could not delete: ' + error.message);
+      return;
+    }
+    await loadSessions();
+  }
+
   return (
     <div>
       {/* Edit client modal */}
@@ -442,13 +461,21 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
         {[
-          { label: "Total Sessions", value: sessions.length, color: C.forest },
+          // "Total" shows the raw row count so the math always reconciles
+          // with Complete + Intake Done. Sublabel makes it clear that this
+          // is "all sessions on record" — intakes count toward this total
+          // even before the session is marked complete. Common confusion
+          // point: a friend tests the intake → row appears here.
+          { label: "Total", sublabel: "intakes + completed", value: sessions.length, color: C.forest },
           { label: "✅ Complete", value: sessions.filter(s => s.completed).length, color: C.sage },
           { label: "🧭 Intake Done", value: sessions.filter(s => !s.completed).length, color: C.forest },
         ].map((stat, i) => (
           <div key={i} style={{ background: C.white, borderRadius: "12px", padding: "16px", border: `1px solid ${C.lightGray}`, textAlign: "center" }}>
             <p style={{ fontSize: "24px", fontWeight: "700", color: stat.color, margin: "0 0 4px 0" }}>{stat.value}</p>
             <p style={{ fontSize: "12px", color: C.gray, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>{stat.label}</p>
+            {stat.sublabel && (
+              <p style={{ fontSize: "10px", color: C.gray, margin: "2px 0 0", textTransform: "none", letterSpacing: 0, fontStyle: "italic", opacity: 0.8 }}>{stat.sublabel}</p>
+            )}
           </div>
         ))}
       </div>
@@ -542,7 +569,12 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {sessions.map(session => (
-            <SessionRow key={session.id} session={session} onSelect={onSelectSession} />
+            <SessionRow
+              key={session.id}
+              session={session}
+              onSelect={onSelectSession}
+              onDelete={!session.completed ? () => handleDeleteSession(session.id) : null}
+            />
           ))}
         </div>
       )}
@@ -550,7 +582,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   );
 }
 
-function SessionRow({ session, onSelect }) {
+function SessionRow({ session, onSelect, onDelete }) {
   const [hovered, setHovered] = useState(false);
   const focusCount = (session.front_focus?.length || 0) + (session.back_focus?.length || 0);
   const avoidCount = (session.front_avoid?.length || 0) + (session.back_avoid?.length || 0);
@@ -586,6 +618,28 @@ function SessionRow({ session, onSelect }) {
       }}>
         {session.completed ? "✅ Complete" : "🧭 Intake Done"}
       </span>
+      {/* Delete button. Only available for incomplete sessions
+          (intake-only entries that may be tests). Visible on row hover.
+          Stops propagation so the click does not also open the session. */}
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          title="Delete this incomplete intake (use for test entries)"
+          style={{
+            background: hovered ? "#FEF2F2" : "transparent",
+            border: hovered ? "1px solid #FECACA" : "1px solid transparent",
+            color: hovered ? "#DC2626" : "transparent",
+            width: 28, height: 28,
+            borderRadius: "50%",
+            cursor: "pointer",
+            fontSize: 14,
+            fontWeight: 700,
+            padding: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.15s",
+          }}
+        >×</button>
+      )}
       <span style={{ color: hovered ? "#6B9E80" : "#E8E4DC", fontSize: "20px", transition: "color 0.15s" }}>›</span>
     </div>
   );
