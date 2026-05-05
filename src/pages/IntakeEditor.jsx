@@ -474,8 +474,14 @@ export default function IntakeEditor() {
 
   // Counts for the progress card. Body Map + Waiver are always present
   // and not hideable, so they always count toward "visible" totals.
+  // Counts for the progress card and section headings.
+  // visiblePrefs/totalDefaultFields drive the Preferences section header
+  // ("8 of 10 visible"). customPrefs counts visible custom questions
+  // for Section 5. Body Map and Waiver always count toward "visible"
+  // totals since they are non-hideable.
   const visiblePrefs = schema.fields.filter((f) => !f.hidden && f.kind === 'default').length;
   const customPrefs = schema.fields.filter((f) => !f.hidden && f.kind === 'custom').length;
+  const totalDefaultFields = schema.fields.filter((f) => f.kind === 'default').length;
   const totalPrefs = schema.fields.length;
   const visibleConditions = schema.medical_checklist_enabled ? conditions.filter((c) => !c.hidden).length : 0;
   const totalConditions = schema.medical_checklist_enabled ? conditions.length : 0;
@@ -586,9 +592,13 @@ export default function IntakeEditor() {
           </div>
         </div>
 
-        {/* === SECTION 2: Preferences === */}
-        <SectionHeading icon="🎯" title="Step 2 · Preferences" count={`${visiblePrefs} of ${totalPrefs} visible`} />
-        {schema.fields.map((field) => (
+        {/* === SECTION 2: Preferences (DEFAULT FIELDS ONLY) ===
+            Custom fields render in Section 5 below, right next to the
+            "+ Add" button so a newly-added question appears exactly
+            where the therapist tapped — not 5 screens above in the
+            preferences list. */}
+        <SectionHeading icon="🎯" title="Step 2 · Preferences" count={`${visiblePrefs} of ${totalDefaultFields} visible`} />
+        {schema.fields.filter((f) => f.kind === 'default').map((field) => (
           <FieldCard
             key={field.id}
             field={field}
@@ -652,8 +662,23 @@ export default function IntakeEditor() {
           }}>Edit waiver text →</button>
         </div>
 
-        {/* === SECTION 5: Add a new question === */}
-        <SectionHeading icon="✨" title="Add your own questions" />
+        {/* === SECTION 5: Your own questions ===
+            Custom fields render here, ABOVE the Add button so a new
+            question appears directly above where the therapist tapped.
+            Plus a friendly empty state if no custom questions yet. */}
+        <SectionHeading icon="✨" title="Step 5 · Your own questions" count={customPrefs > 0 ? `${customPrefs} custom` : 'None yet'} />
+
+        {schema.fields.filter((f) => f.kind === 'custom').map((field) => (
+          <FieldCard
+            key={field.id}
+            field={field}
+            isHidden={!!field.hidden}
+            onToggleHidden={() => updateField(field.id, { hidden: !field.hidden })}
+            onPatch={(patch) => updateField(field.id, patch)}
+            onDelete={() => deleteField(field.id)}
+          />
+        ))}
+
         <button onClick={() => setAdding(true)} style={{
           width: '100%',
           background: '#fff', border: `1.5px dashed ${C.sage}`,

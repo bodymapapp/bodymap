@@ -30,6 +30,7 @@ import CampaignsDemo from "../components/demos/CampaignsDemo";
 import GiftCardDemo from "../components/demos/GiftCardDemo";
 import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
 import PreferencesDemo from "../components/demos/PreferencesDemo";
+import IntakeEditorDemo from "../components/demos/IntakeEditorDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -69,17 +70,17 @@ const RIBBONS = [
     name: "Know Your Client",
     tagline:
       "The visual body map that no other massage platform offers, on your client's phone before they walk in.",
-    // TWO demos: body map (the patent-pending core moat) + full client
-    // intake. The intake demo was added to Home after HK heard repeated
-    // praise from early therapists about the preferences page. First
-    // version of the demo only showed preferences, which made therapists
-    // think that was the entire intake. Rebuilt with macro grid on top
-    // (Body Map / Preferences / Medical / Waiver, with field counts) and
-    // a scroll panel below showing actual form fields. Conversation level
-    // highlighted as the standout (rose border, "THE STANDOUT" pill).
+    // THREE demos: body map (the patent-pending core moat) + full client
+    // intake (client view) + intake editor (therapist view).
+    // Body Map is what clients tap first. PreferencesDemo shows the same
+    // intake from the client's tap-through experience. IntakeEditorDemo
+    // shows what the THERAPIST sees when she customizes the form: same
+    // sections, but with toggle switches and editable labels. Three pills,
+    // three angles on the same intake feature.
     demos: [
       { kind: "component", component: BodyMapDemo, label: "Body map intake" },
       { kind: "component", component: PreferencesDemo, label: "Full intake form" },
+      { kind: "component", component: IntakeEditorDemo, label: "Edit your intake" },
     ],
     layout: "demo-left",
     subFeatures: [
