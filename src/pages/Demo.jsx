@@ -53,6 +53,58 @@ const DEFAULT_PREFS = {
   medFlag: "none",
 };
 
+// ---------------------------------------------------------------
+// Schema-driven render maps
+// ---------------------------------------------------------------
+//
+// FIELD_ICONS: per-field-id icon for the section header. Schema does
+// not store icons, so we keep them client-side. Custom-added fields
+// fall back to a generic ✨ icon.
+const FIELD_ICONS = {
+  pressure: '💆',
+  goal: '🎯',
+  table_temp: '🌡️',
+  room_temp: '🌿',
+  music: '🎵',
+  lighting: '💡',
+  conversation: '🗣️',
+  draping: '🛏️',
+  oils: '🌸',
+  medical_notes: '📋',
+};
+
+// OPTION_ICONS: per-field-id, per-option-value icon for the chip.
+// Therapists can edit option labels but keep the icon mapped to the
+// stable value (v) key. If a therapist adds a new custom option, it
+// renders with a generic bullet icon.
+const OPTION_ICONS = {
+  goal:         { relax: '😌', pain: '💊', athletic: '🏃', stress: '🧘', injury: '🩹', rehab: '🩹' },
+  table_temp:   { cool: '❄️', neutral: '😊', warm: '☀️', hot: '🔥' },
+  room_temp:    { cool: '🌬️', comfortable: '✅', neutral: '✅', warm: '🌞' },
+  music:        { silence: '🔇', soft: '🎵', nature: '🌿', upbeat: '🎶' },
+  lighting:     { dark: '🌑', dim: '🌓', normal: '💡' },
+  conversation: { quiet: '🤫', open: '💬' },
+  draping:      { standard: '🛏️', extra: '🔒' },
+  oils:         { none: '✅', noscent: '🚫', allergy: '⚠️' },
+};
+
+// SCHEMA_TO_PREFS_KEY: maps stable schema field id (snake_case) to
+// the existing camelCase keys in the prefs state object. Default
+// fields land in prefs (which feeds straight to the sessions table
+// columns). Custom-added fields go into customAnswers (jsonb).
+const SCHEMA_TO_PREFS_KEY = {
+  pressure: 'pressure',
+  goal: 'goal',
+  table_temp: 'tableTemp',
+  room_temp: 'roomTemp',
+  music: 'music',
+  lighting: 'lighting',
+  conversation: 'conversation',
+  draping: 'draping',
+  oils: 'oilPref',
+  // medical_notes is handled specially (textarea + chip toggle compound)
+};
+
 // Claude API
 const SYSTEM = `You are a wellness session preference observer for MyBodyMap. Notice patterns in self-reported preferences only.
 RULES: Never diagnose. Never use: diagnosis, condition, injury, treatment, syndrome, disorder, symptom, prognosis, risk.
@@ -2558,212 +2610,29 @@ const PrefScreen = ({
       >
         Help your therapist create the perfect session
       </p>
-      {/* Each Card below honors the therapist's intake_schema. When a
-          field is marked hidden in /dashboard/intake/edit, we skip it
-          here. Multi-field cards (temperature, music+lighting,
-          conversation+draping) hide the card entirely only when ALL of
-          their fields are hidden, otherwise show only the visible
-          half. Custom-added (kind:'custom') fields are not rendered in
-          this minimum-fix pass; full schema-driven rendering lands in
-          a follow-on session. */}
-      {!isFieldHidden('pressure') && (
-        <Card>
-          <PS icon="💆" title="Pressure" />
-          <Slider value={prefs.pressure} onChange={(v) => upd("pressure", v)} />
-        </Card>
-      )}
-      {!isFieldHidden('goal') && (
-        <Card>
-          <PS icon="🎯" title="Session Goal" />
-          <div style={{ display: "flex", gap: 6 }}>
-            {[
-              { v: "relax", i: "😌", l: "Relax" },
-              { v: "pain", i: "💊", l: "Pain Relief" },
-              { v: "athletic", i: "🏃", l: "Athletic" },
-              { v: "stress", i: "🧘", l: "Stress" },
-              { v: "injury", i: "🩹", l: "Rehab" },
-            ].map((o) => (
-              <PT
-                key={o.v}
-                icon={o.i}
-                label={o.l}
-                selected={prefs.goal === o.v}
-                onClick={() => upd("goal", o.v)}
-              />
-            ))}
-          </div>
-        </Card>
-      )}
-      {(!isFieldHidden('table_temp') || !isFieldHidden('room_temp')) && (
-        <Card>
-          {!isFieldHidden('table_temp') && (
-            <>
-              <PS icon="🌡️" title="Table Temperature" />
-              <div style={{ display: "flex", gap: 6, marginBottom: !isFieldHidden('room_temp') ? 16 : 0 }}>
-                {[
-                  { v: "cool", i: "❄️", l: "Cool" },
-                  { v: "neutral", i: "😊", l: "Neutral" },
-                  { v: "warm", i: "☀️", l: "Warm" },
-                  { v: "hot", i: "🔥", l: "Hot" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.tableTemp === o.v}
-                    onClick={() => upd("tableTemp", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          {!isFieldHidden('room_temp') && (
-            <>
-              <PS icon="🌿" title="Room Temperature" />
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { v: "cool", i: "🌬️", l: "Cool" },
-                  { v: "comfortable", i: "✅", l: "Comfortable" },
-                  { v: "warm", i: "🌞", l: "Warm" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.roomTemp === o.v}
-                    onClick={() => upd("roomTemp", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      )}
-      {(!isFieldHidden('music') || !isFieldHidden('lighting')) && (
-        <Card>
-          {!isFieldHidden('music') && (
-            <>
-              <PS icon="🎵" title="Music" />
-              <div style={{ display: "flex", gap: 6, marginBottom: !isFieldHidden('lighting') ? 16 : 0 }}>
-                {[
-                  { v: "silence", i: "🔇", l: "Silence" },
-                  { v: "soft", i: "🎵", l: "Soft" },
-                  { v: "nature", i: "🌿", l: "Nature" },
-                  { v: "upbeat", i: "🎶", l: "Upbeat" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.music === o.v}
-                    onClick={() => upd("music", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          {!isFieldHidden('lighting') && (
-            <>
-              <PS icon="💡" title="Lighting" />
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { v: "dark", i: "🌑", l: "Very Dim" },
-                  { v: "dim", i: "🌓", l: "Soft" },
-                  { v: "normal", i: "💡", l: "Normal" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.lighting === o.v}
-                    onClick={() => upd("lighting", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      )}
-      {(!isFieldHidden('conversation') || !isFieldHidden('draping')) && (
-        <Card>
-          {!isFieldHidden('conversation') && (
-            <>
-              <PS icon="🗣️" title="Conversation" />
-              <div style={{ display: "flex", gap: 6, marginBottom: !isFieldHidden('draping') ? 16 : 0 }}>
-                {[
-                  { v: "quiet", i: "🤫", l: "Quiet please" },
-                  { v: "open", i: "💬", l: "Happy to chat" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.conversation === o.v}
-                    onClick={() => upd("conversation", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-          {!isFieldHidden('draping') && (
-            <>
-              <PS icon="🛏️" title="Draping" />
-              <div style={{ display: "flex", gap: 6 }}>
-                {[
-                  { v: "standard", i: "🛏️", l: "Standard" },
-                  { v: "extra", i: "🔒", l: "Extra Coverage" },
-                ].map((o) => (
-                  <PT
-                    key={o.v}
-                    icon={o.i}
-                    label={o.l}
-                    selected={prefs.draping === o.v}
-                    onClick={() => upd("draping", o.v)}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </Card>
-      )}
-      {!isFieldHidden('oils') && (
-        <Card>
-          <PS icon="🌸" title="Oil & Fragrance" />
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            {[
-              { v: "none", i: "✅", l: "No Issues" },
-              { v: "noscent", i: "🚫", l: "Fragrance-free" },
-              { v: "allergy", i: "⚠️", l: "Allergies" },
-            ].map((o) => (
-              <PT
-                key={o.v}
-                icon={o.i}
-                label={o.l}
-                selected={prefs.oilPref === o.v}
-                onClick={() => upd("oilPref", o.v)}
-              />
-            ))}
-          </div>
-          {prefs.oilPref === "allergy" && (
-            <Inp
-              placeholder="Describe your allergy..."
-              value={prefs.allergyNote || ""}
-              onChange={(e) => upd("allergyNote", e.target.value)}
-            />
-          )}
-        </Card>
-      )}
-      {/* Medical conditions checklist. Renders when the therapist has
-          medical_checklist_enabled in the schema (default true). The
-          list itself comes from effectiveMedicalConditions which
-          returns the therapist's customized list if they edited it,
-          otherwise the 12 default contraindications. Each condition
-          can be hidden by the therapist; we filter those out here.
-          Selected values land in sessions.medical_conditions (text[]).
-          This card was previously NOT rendered to clients despite
-          existing in the editor — Ashley's complaint May 5 2026 was
-          that her customizations to this list never reached the
-          client side. */}
+      {/* Schema-driven render. Each visible field in the therapist's
+          intake_schema becomes a Card via the SchemaField component
+          above. Default fields (pressure, oils, medical_notes) keep
+          their special compound widgets; everything else renders by
+          field.type. Custom-added fields land here too with their
+          values stored in customAnswers (jsonb). Hidden fields are
+          filtered out before render so they never appear. */}
+      {schema.fields
+        .filter((f) => !f.hidden)
+        .map((field) => (
+          <SchemaField
+            key={field.id}
+            field={field}
+            prefs={prefs}
+            upd={upd}
+            customAnswers={customAnswers}
+            setCustomAnswers={setCustomAnswers}
+          />
+        ))}
+      {/* Medical conditions checklist. Renders after the schema
+          loop, in its own Card. Lives outside schema.fields because
+          its data shape is a fixed list of conditions that the
+          therapist can prune/extend, not a typed form field. */}
       {showMedicalChecklist && medicalConditionsList.filter((c) => !c.hidden).length > 0 && (
         <Card>
           <PS icon="⚕️" title="Medical conditions" />
@@ -2809,42 +2678,6 @@ const PrefScreen = ({
           </div>
           <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, margin: "10px 0 0", lineHeight: 1.4 }}>
             ℹ️ This is shared only with your therapist. MyBodyMap is a communication tool, not a medical service.
-          </p>
-        </Card>
-      )}
-      {!isFieldHidden('medical_notes') && (
-        <Card>
-          <PS icon="📋" title="Medical or Injury Notes" />
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            {[
-              { v: "none", i: "✅", l: "Nothing to note" },
-              { v: "yes", i: "⚠️", l: "I have a note" },
-            ].map((o) => (
-              <PT
-                key={o.v}
-                icon={o.i}
-                label={o.l}
-                selected={prefs.medFlag === o.v}
-                onClick={() => upd("medFlag", o.v)}
-              />
-            ))}
-          </div>
-          {prefs.medFlag === "yes" && (
-            <TA
-              placeholder="Describe any areas of awareness your therapist should know about..."
-              value={prefs.medNote || ""}
-              onChange={(e) => upd("medNote", e.target.value)}
-            />
-          )}
-          <p
-            style={{
-              fontFamily: F.body,
-              fontSize: 11,
-              color: C.textLight,
-              marginTop: 8,
-            }}
-          >
-            ℹ️ MyBodyMap is a communication tool, not a medical service.
           </p>
         </Card>
       )}
@@ -4442,6 +4275,293 @@ const SummaryScreen = ({ clientInfo, bodyMap, onViewTherapist, onReset }) => {
   );
 };
 
+// ---------------------------------------------------------------
+// SchemaField: renders one intake field per the therapist's custom
+// schema. Default fields (pressure, oils, medical_notes) keep their
+// special compound widgets (slider, conditional textarea). Other
+// default fields and all custom fields render generically by
+// field.type using the same UI primitives (Card, PS, PT, Inp, TA).
+//
+// Why this exists: therapists edit field labels, options, and add
+// custom questions in /dashboard/intake/edit. Before this refactor
+// those edits saved but never reached the client view because the
+// render was hardcoded. Now the schema is the single source of
+// truth and the editor is honored end to end.
+// ---------------------------------------------------------------
+function SchemaField({ field, prefs, upd, customAnswers, setCustomAnswers }) {
+  const isCustom = field.kind === 'custom';
+  const icon = FIELD_ICONS[field.id] || (isCustom ? '✨' : '•');
+  const prefsKey = SCHEMA_TO_PREFS_KEY[field.id];
+
+  // For default fields, the value lives in prefs and the storage key
+  // is determined by SCHEMA_TO_PREFS_KEY. For custom fields, the
+  // value lives in customAnswers keyed by field.id.
+  const getValue = () => {
+    if (!isCustom && prefsKey) return prefs[prefsKey];
+    return customAnswers[field.id];
+  };
+  const setValue = (v) => {
+    if (!isCustom && prefsKey) {
+      upd(prefsKey, v);
+    } else {
+      setCustomAnswers((prev) => ({ ...prev, [field.id]: v }));
+    }
+  };
+
+  // ----- SPECIAL: pressure stays as a 1-5 slider for granularity -----
+  // Schema may say chips, but the slider has been the established
+  // pressure UX since launch. We honor the label from schema (so
+  // therapists can rename it) but keep the slider widget.
+  if (field.id === 'pressure') {
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        <Slider value={prefs.pressure} onChange={(v) => upd('pressure', v)} />
+      </Card>
+    );
+  }
+
+  // ----- SPECIAL: oils is chips + conditional allergy textarea -----
+  if (field.id === 'oils') {
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
+          {(field.options || []).map((opt) => (
+            <PT
+              key={opt.v}
+              icon={(OPTION_ICONS.oils && OPTION_ICONS.oils[opt.v]) || '•'}
+              label={opt.label}
+              selected={prefs.oilPref === opt.v}
+              onClick={() => upd('oilPref', opt.v)}
+            />
+          ))}
+        </div>
+        {prefs.oilPref === 'allergy' && (
+          <Inp
+            placeholder="Describe your allergy..."
+            value={prefs.allergyNote || ''}
+            onChange={(e) => upd('allergyNote', e.target.value)}
+          />
+        )}
+      </Card>
+    );
+  }
+
+  // ----- SPECIAL: medical_notes is yes/no toggle + conditional textarea -----
+  if (field.id === 'medical_notes') {
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+          {[
+            { v: 'none', i: '✅', l: 'Nothing to note' },
+            { v: 'yes',  i: '⚠️', l: 'I have a note' },
+          ].map((o) => (
+            <PT
+              key={o.v}
+              icon={o.i}
+              label={o.l}
+              selected={prefs.medFlag === o.v}
+              onClick={() => upd('medFlag', o.v)}
+            />
+          ))}
+        </div>
+        {prefs.medFlag === 'yes' && (
+          <TA
+            placeholder={field.placeholder || 'Describe any areas of awareness your therapist should know about...'}
+            value={prefs.medNote || ''}
+            onChange={(e) => upd('medNote', e.target.value)}
+          />
+        )}
+        <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, marginTop: 8 }}>
+          ℹ️ MyBodyMap is a communication tool, not a medical service.
+        </p>
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: header (visual section divider) -----
+  if (field.type === 'header') {
+    return (
+      <div style={{ margin: '12px 4px 4px', fontFamily: F.body, fontSize: 13, fontWeight: 800, color: C.green, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+        {field.label}
+      </div>
+    );
+  }
+
+  // ----- GENERIC: chips (single-select pills) -----
+  if (field.type === 'chips') {
+    const value = getValue();
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(field.options || []).map((opt) => {
+            const optIcon = (OPTION_ICONS[field.id] && OPTION_ICONS[field.id][opt.v]) || '•';
+            return (
+              <PT
+                key={opt.v}
+                icon={optIcon}
+                label={opt.label}
+                selected={value === opt.v}
+                onClick={() => setValue(opt.v)}
+              />
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: chips_multi (multi-select pills) -----
+  if (field.type === 'chips_multi') {
+    const value = getValue() || [];
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(field.options || []).map((opt) => {
+            const selected = value.includes(opt.v);
+            const optIcon = (OPTION_ICONS[field.id] && OPTION_ICONS[field.id][opt.v]) || '•';
+            return (
+              <PT
+                key={opt.v}
+                icon={optIcon}
+                label={opt.label}
+                selected={selected}
+                onClick={() =>
+                  setValue(selected ? value.filter((x) => x !== opt.v) : [...value, opt.v])
+                }
+              />
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: text (single-line input) -----
+  if (field.type === 'text') {
+    const value = getValue();
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <Inp
+          placeholder={field.placeholder || ''}
+          value={value || ''}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: textarea (multi-line input) -----
+  if (field.type === 'textarea') {
+    const value = getValue();
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <TA
+          placeholder={field.placeholder || ''}
+          value={value || ''}
+          onChange={(e) => setValue(e.target.value)}
+        />
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: checkbox (single yes/no) -----
+  if (field.type === 'checkbox') {
+    const value = !!getValue();
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        <label style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 14px',
+          background: value ? C.sagePale : C.cardBg,
+          border: `1.5px solid ${value ? C.sage : C.border}`,
+          borderRadius: 10, cursor: 'pointer',
+          fontFamily: F.body, fontSize: 14, color: C.text,
+        }}>
+          <input
+            type="checkbox"
+            checked={value}
+            onChange={(e) => setValue(e.target.checked)}
+            style={{ width: 18, height: 18, accentColor: C.green, cursor: 'pointer' }}
+          />
+          <span>{field.help || 'Yes'}</span>
+        </label>
+      </Card>
+    );
+  }
+
+  // ----- GENERIC: checklist (multi-select list with checkboxes) -----
+  if (field.type === 'checklist') {
+    const value = getValue() || [];
+    return (
+      <Card>
+        <PS icon={icon} title={field.label} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {(field.options || []).map((opt) => {
+            const checked = value.includes(opt.v);
+            return (
+              <label key={opt.v} style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '10px 12px',
+                background: checked ? C.sagePale : C.cardBg,
+                border: `1.5px solid ${checked ? C.sage : C.border}`,
+                borderRadius: 10, cursor: 'pointer',
+                fontFamily: F.body, fontSize: 14, color: C.text,
+              }}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) =>
+                    setValue(e.target.checked ? [...value, opt.v] : value.filter((x) => x !== opt.v))
+                  }
+                  style={{ width: 18, height: 18, accentColor: C.green, cursor: 'pointer', flexShrink: 0 }}
+                />
+                <span style={{ flex: 1 }}>{opt.label}</span>
+              </label>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  }
+
+  // Unknown field type: render nothing rather than crash. Could
+  // happen if a future schema version is loaded by an older client.
+  return null;
+}
+
 // Main App
 export default function BodyMapApp({ therapist = null, therapistName = "Your Therapist", businessName = "", waiverEnabled = false, waiverText = '', onSubmit = null, getLastSession = null, initialName = "", initialEmail = "", initialPhone = "" }) {
   // Custom intake schema. Therapists customize this in /dashboard/intake/edit;
@@ -4453,15 +4573,6 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
   const schema = effectiveSchema(therapist);
   const medicalConditionsList = effectiveMedicalConditions(schema);
   const showMedicalChecklist = schema.medical_checklist_enabled !== false;
-  // Helper: is this default field hidden by the therapist's schema? Used
-  // to conditionally skip rendering of the hardcoded preference cards
-  // below. Custom-added fields (kind: 'custom') are not yet rendered in
-  // this minimum-fix pass; they will land in the full schema-driven
-  // refactor (BLOCK_PLAN fire #9 Phase 3).
-  const isFieldHidden = (id) => {
-    const f = schema.fields.find((x) => x.id === id);
-    return f?.hidden === true;
-  };
   const [screen, setScreen] = useState(initialName && initialEmail ? "front" : "welcome");
   const [mode, setMode] = useState("focus");
   const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "", phone: initialPhone || "" });
@@ -4477,6 +4588,11 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
   // sessions.medical_conditions text[] on submit. Empty array means
   // client checked nothing, null is reserved for "checklist was hidden".
   const [selectedConditions, setSelectedConditions] = useState([]);
+  // Custom field answers (jsonb keyed by field id). Populated when a
+  // therapist adds custom-kind fields via the IntakeEditor and the
+  // client fills them out. Lands in sessions.custom_intake_answers
+  // (jsonb), surfaced in the therapist dashboard for the same session.
+  const [customAnswers, setCustomAnswers] = useState({});
 
   useEffect(() => {
     const l = document.createElement("link");
@@ -4614,10 +4730,11 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
         // if checklist was hidden by therapist (preserves the
         // distinction between "didn't ask" and "asked but no").
         medicalConditions: showMedicalChecklist ? selectedConditions : null,
-        // Custom intake field answers (jsonb keyed by field id). Empty
-        // object today since custom-added fields are not yet rendered;
-        // populated in the full schema-driven render pass.
-        customAnswers: {},
+        // Custom intake field answers (jsonb keyed by field id).
+        // Populated when therapist adds custom fields via the editor
+        // and the client fills them out. Empty object means no
+        // customs were filled in (or none exist on this schema).
+        customAnswers: customAnswers || {},
       });
     } else {
       // Default behavior - show summary screen

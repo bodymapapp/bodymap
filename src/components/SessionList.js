@@ -247,15 +247,17 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     finally { setLoading(false); }
   }
 
-  // Delete an incomplete session row. Used to clean up test intakes
-  // (e.g., a friend filled the form to test the booking flow). Only
-  // available for sessions where completed=false; completed sessions
-  // are real history and should not be deleted from this UI.
-  // Confirmation is a single window.confirm to keep this fast for the
-  // common case of "I see a phantom test session, get rid of it".
-  async function handleDeleteSession(sessionId) {
+  // Delete a session row. Available for both incomplete and completed
+  // sessions. Confirmation copy adapts: incomplete (intake-only) entries
+  // are common test artifacts and the wording is gentler; completed
+  // sessions are real history and the warning is sharper. Therapists
+  // sometimes need to remove a completed session too (test booking,
+  // duplicate, accidental marking).
+  async function handleDeleteSession(sessionId, isCompleted) {
     const ok = window.confirm(
-      'Delete this incomplete intake?\n\nThis cannot be undone. Use this to clean up test intakes (e.g., a friend filled the form to test your booking flow). Real intakes from clients should usually be kept.'
+      isCompleted
+        ? 'Delete this completed session?\n\nThis is real client history. Deleting it is permanent and removes the body map, preferences, and all notes attached to this session. Use only for true mistakes (test entries, duplicates, accidental completions).'
+        : 'Delete this incomplete intake?\n\nThis cannot be undone. Use this to clean up test intakes (e.g., a friend filled the form to test your booking flow). Real intakes from clients should usually be kept.'
     );
     if (!ok) return;
     const { error } = await supabase.from('sessions').delete().eq('id', sessionId);
@@ -573,7 +575,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
               key={session.id}
               session={session}
               onSelect={onSelectSession}
-              onDelete={!session.completed ? () => handleDeleteSession(session.id) : null}
+              onDelete={() => handleDeleteSession(session.id, !!session.completed)}
             />
           ))}
         </div>
@@ -618,13 +620,14 @@ function SessionRow({ session, onSelect, onDelete }) {
       }}>
         {session.completed ? "✅ Complete" : "🧭 Intake Done"}
       </span>
-      {/* Delete button. Only available for incomplete sessions
-          (intake-only entries that may be tests). Visible on row hover.
-          Stops propagation so the click does not also open the session. */}
+      {/* Delete button. Available for any session, completed or not.
+          Visible on row hover. Stops propagation so the click does not
+          also open the session. The handler decides which confirm copy
+          to show based on completed flag. */}
       {onDelete && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          title="Delete this incomplete intake (use for test entries)"
+          title={session.completed ? "Delete this completed session" : "Delete this incomplete intake"}
           style={{
             background: hovered ? "#FEF2F2" : "transparent",
             border: hovered ? "1px solid #FECACA" : "1px solid transparent",

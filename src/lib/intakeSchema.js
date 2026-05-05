@@ -57,7 +57,7 @@ export const DEFAULT_SCHEMA = {
     {
       id: 'pressure',
       type: 'chips',
-      label: 'Pressure preference',
+      label: 'Pressure',
       help: 'How firm do you like the pressure?',
       kind: 'default', hidden: false, required: false,
       options: [
@@ -70,21 +70,21 @@ export const DEFAULT_SCHEMA = {
     {
       id: 'goal',
       type: 'chips',
-      label: 'Session goal',
+      label: 'Session Goal',
       help: 'What are you hoping for today?',
       kind: 'default', hidden: false, required: false,
       options: [
         { v: 'relax',    label: 'Relax' },
         { v: 'pain',     label: 'Pain Relief' },
-        { v: 'athletic', label: 'Athletic Recovery' },
-        { v: 'stress',   label: 'Stress Relief' },
-        { v: 'rehab',    label: 'Injury Rehab' },
+        { v: 'athletic', label: 'Athletic' },
+        { v: 'stress',   label: 'Stress' },
+        { v: 'injury',   label: 'Rehab' },
       ],
     },
     {
       id: 'table_temp',
       type: 'chips',
-      label: 'Table temperature',
+      label: 'Table Temperature',
       help: 'How warm would you like the table?',
       kind: 'default', hidden: false, required: false,
       options: [
@@ -97,13 +97,13 @@ export const DEFAULT_SCHEMA = {
     {
       id: 'room_temp',
       type: 'chips',
-      label: 'Room temperature',
+      label: 'Room Temperature',
       help: 'How would you like the room?',
       kind: 'default', hidden: false, required: false,
       options: [
-        { v: 'cool',    label: 'Cool' },
-        { v: 'neutral', label: 'Neutral' },
-        { v: 'warm',    label: 'Warm' },
+        { v: 'cool',         label: 'Cool' },
+        { v: 'comfortable',  label: 'Comfortable' },
+        { v: 'warm',         label: 'Warm' },
       ],
     },
     {
@@ -113,8 +113,8 @@ export const DEFAULT_SCHEMA = {
       kind: 'default', hidden: false, required: false,
       options: [
         { v: 'silence', label: 'Silence' },
-        { v: 'soft',    label: 'Soft Music' },
-        { v: 'nature',  label: 'Nature Sounds' },
+        { v: 'soft',    label: 'Soft' },
+        { v: 'nature',  label: 'Nature' },
         { v: 'upbeat',  label: 'Upbeat' },
       ],
     },
@@ -132,12 +132,12 @@ export const DEFAULT_SCHEMA = {
     {
       id: 'conversation',
       type: 'chips',
-      label: 'Level of conversation',
+      label: 'Conversation',
       help: 'Quiet table or happy to chat?',
       kind: 'default', hidden: false, required: false,
       options: [
-        { v: 'quiet', label: 'Quiet Please' },
-        { v: 'open',  label: 'Happy to Chat' },
+        { v: 'quiet', label: 'Quiet please' },
+        { v: 'open',  label: 'Happy to chat' },
       ],
     },
     {
@@ -153,18 +153,18 @@ export const DEFAULT_SCHEMA = {
     {
       id: 'oils',
       type: 'chips',
-      label: 'Oils & fragrance',
+      label: 'Oil & Fragrance',
       kind: 'default', hidden: false, required: false,
       options: [
         { v: 'none',    label: 'No Issues' },
-        { v: 'noscent', label: 'Fragrance-Free' },
-        { v: 'allergy', label: 'Has Allergy' },
+        { v: 'noscent', label: 'Fragrance-free' },
+        { v: 'allergy', label: 'Allergies' },
       ],
     },
     {
       id: 'medical_notes',
       type: 'textarea',
-      label: 'Medical notes or injury history',
+      label: 'Medical or Injury Notes',
       help: 'Anything we should know about?',
       placeholder: 'Recent injuries, conditions, medications...',
       kind: 'default', hidden: false, required: false,
