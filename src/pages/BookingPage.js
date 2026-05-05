@@ -276,6 +276,18 @@ export default function BookingPage() {
   // Each entry in availableAddons is a row from service_addons.
   const [availableAddons,setAvailableAddons]=useState([]);
   const [selectedAddonIds,setSelectedAddonIds]=useState([]);
+  // Packages and memberships that the therapist has defined and made
+  // active. These show up as a horizontal "Offers" section above the
+  // service list. Clicking one opens an offer purchase modal where the
+  // client enters name + email + (optional) phone, then is sent to
+  // hosted Stripe Checkout or Square Payment Link.
+  const [packagesList,setPackagesList]=useState([]);
+  const [membershipsList,setMembershipsList]=useState([]);
+  const [offerModal,setOfferModal]=useState(null); // { type: 'package'|'membership', item }
+  const [offerForm,setOfferForm]=useState({ name: '', email: '', phone: '' });
+  const [offerLoading,setOfferLoading]=useState(false);
+  const [offerError,setOfferError]=useState(null);
+  const [purchaseSuccess,setPurchaseSuccess]=useState(null); // { kind: 'package'|'membership', item_name }
   const [availability,setAvailability]=useState([]);
   const [loading,setLoading]=useState(true);
   const [notFound,setNotFound]=useState(false);
@@ -343,13 +355,29 @@ export default function BookingPage() {
 
   useEffect(()=>{load();},[slug]);
 
-  // Square deposit redirect handler. When the client returns from the
-  // hosted Square checkout, the URL has ?deposit_complete=1&booking_id=...
-  // We mark the booking deposit_paid=true and confirmed status, fire
-  // confirmation emails (the DB trigger handles that automatically when
-  // status flips to confirmed), and show the success screen.
+  // Redirect handlers for payment flows. Three distinct return paths:
+  //
+  //   1) Square deposit: ?deposit_complete=1&booking_id=...
+  //      Marks booking confirmed + deposit_paid. DB trigger fires the
+  //      confirmation email automatically when status flips.
+  //
+  //   2) Package purchase: ?purchase_complete=1&processor=stripe|square
+  //      &session_id=... (stripe) OR &package_id=...&order_id=... (square,
+  //      we receive the order id back via Square's redirect).
+  //      Calls confirm-package-purchase to verify with the processor and
+  //      create the package_purchases row.
+  //
+  //   3) Membership purchase: ?membership_complete=1&processor=stripe
+  //      &session_id=...
+  //      Calls confirm-membership-purchase to verify and create the
+  //      member_subscriptions row + grant first month's credits.
+  //
+  // Each branch cleans the URL via replaceState so a refresh does not
+  // re-run the verification.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // ----- Branch 1: Square deposit return -----
     if (params.get('deposit_complete') === '1') {
       const bid = params.get('booking_id');
       if (bid) {
@@ -361,10 +389,74 @@ export default function BookingPage() {
           }).eq('id', bid);
           setConfirmed(true);
           setBookingId(bid);
-          // Clean up URL so a refresh does not re-run this branch.
           window.history.replaceState({}, '', window.location.pathname);
         })();
       }
+      return;
+    }
+
+    // ----- Branch 2: Package purchase return -----
+    if (params.get('purchase_complete') === '1') {
+      const processor = params.get('processor');
+      const sessionId = params.get('session_id');
+      // Square's redirect carries package_id but no order_id by default,
+      // so for Square we look it up from the most recent payment_link
+      // for this client. Cleaner alternative would be a webhook (TODO).
+      // For now, the order_id round-trips via the redirect_url string.
+      const orderId = params.get('order_id') || params.get('reference_id');
+      const pkgId = params.get('package_id');
+      (async () => {
+        const res = await fetch(
+          `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/confirm-package-purchase`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              processor,
+              session_id: sessionId,
+              order_id: orderId,
+              package_id: pkgId,
+              therapist_id: null, // resolved below from the slug
+            }),
+          }
+        );
+        const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+        if (data.ok) {
+          setPurchaseSuccess({ kind: 'package' });
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      })();
+      return;
+    }
+
+    // ----- Branch 3: Membership purchase return -----
+    if (params.get('membership_complete') === '1') {
+      const sessionId = params.get('session_id');
+      (async () => {
+        const res = await fetch(
+          `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/confirm-membership-purchase`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              session_id: sessionId,
+              membership_id: params.get('membership_id'),
+              therapist_id: null,
+            }),
+          }
+        );
+        const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+        if (data.ok) {
+          setPurchaseSuccess({ kind: 'membership' });
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      })();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // Compute effective service duration including any selected add-ons.
@@ -379,7 +471,7 @@ export default function BookingPage() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
     if(!t){setNotFound(true);setLoading(false);return;}
     setTherapist(t);
-    const [{data:s},{data:a},{data:bd},{data:addons}]=await Promise.all([
+    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       supabase.from('blocked_days').select('date').eq('therapist_id',t.id),
@@ -387,11 +479,21 @@ export default function BookingPage() {
       // has not been applied yet — that is intentional, the booking flow
       // continues to work without add-ons.
       supabase.from('service_addons').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
+      // Packages and memberships. Same fault-tolerance: empty array if
+      // tables not yet present, public-readable per RLS policy on
+      // active=true rows.
+      supabase.from('packages').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
+      supabase.from('memberships').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
     setBlockedDates(new Set((bd||[]).map(b=>b.date)));
     setAvailableAddons(addons||[]);
+    setPackagesList(pkgRes?.data || []);
+    // Memberships are Stripe-only for v1 — hide from non-Stripe therapists
+    // so clients do not click and get an error mid-flow. Square-only
+    // therapists can still sell packages above.
+    setMembershipsList(t.stripe_account_id ? (memRes?.data || []) : []);
     setLoading(false);
   }
 
@@ -504,6 +606,69 @@ export default function BookingPage() {
         card_saved_at: new Date().toISOString(),
       }).eq('id', cardSavedClientId).then(() => {});
     }
+  }
+
+  // Open the offer purchase modal. Pre-fills the form with whatever
+  // we already know about the client (from URL params or prior step
+  // data) so they do not have to retype.
+  function openOffer(type, item) {
+    setOfferModal({ type, item });
+    setOfferForm({
+      name: form.name || '',
+      email: form.email || '',
+      phone: form.phone || '',
+    });
+    setOfferError(null);
+  }
+
+  // Send the client to Stripe Checkout / Square Payment Link for the
+  // selected package or membership. The redirect URL comes back to
+  // this same page with ?purchase_complete=1 (or membership_complete=1)
+  // and the redirect handler verifies + grants credits.
+  async function buyOffer() {
+    if (!offerModal) return;
+    if (!offerForm.name.trim() || !offerForm.email.trim()) {
+      setOfferError('Please enter your name and email.');
+      return;
+    }
+    setOfferLoading(true);
+    setOfferError(null);
+
+    const isPackage = offerModal.type === 'package';
+    const fnName = isPackage ? 'purchase-package' : 'purchase-membership';
+    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}`;
+    const idKey = isPackage ? 'package_id' : 'membership_id';
+    const redirectUrl = `${redirectBase}&${idKey}=${offerModal.item.id}`;
+
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/${fnName}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            [idKey]: offerModal.item.id,
+            client_name: offerForm.name.trim(),
+            client_email: offerForm.email.trim().toLowerCase(),
+            client_phone: offerForm.phone.trim() || null,
+            redirect_url: redirectUrl,
+          }),
+        }
+      );
+      const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setOfferError(data.error || `Could not open checkout (HTTP ${res.status}).`);
+    } catch (e) {
+      setOfferError(String(e));
+    }
+    setOfferLoading(false);
   }
 
   async function submit() {
@@ -866,6 +1031,114 @@ export default function BookingPage() {
           <div>
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
             <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like, no account needed.</p>
+
+            {/* OFFERS: packages + memberships. Shows only if therapist
+                has at least one active package or membership. Each
+                card opens a small modal where the client enters name
+                + email + phone, then is sent to hosted checkout. */}
+            {(packagesList.length > 0 || membershipsList.length > 0) && (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 18 }}>🎁</span>
+                  <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 17, fontWeight: 700, color: C.dark, margin: 0 }}>Save with a package or membership</h3>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {packagesList.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => openOffer('package', p)}
+                      style={{
+                        background: '#FAF5EE',
+                        border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        width: '100%',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.beige || '#E8DCC4'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                            📦 {p.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+                            {p.session_count} sessions
+                            {p.expires_in_days ? ` · expires ${p.expires_in_days} days from purchase` : ''}
+                          </div>
+                          {p.description && (
+                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
+                              {p.description}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(p.price).toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: C.gray }}>upfront</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {membershipsList.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => openOffer('membership', m)}
+                      style={{
+                        background: '#F0F9F4',
+                        border: '1.5px solid #B5D4BE',
+                        borderRadius: 14,
+                        padding: '14px 16px',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        width: '100%',
+                        transition: 'all 0.15s',
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#B5D4BE'; e.currentTarget.style.transform = 'none'; }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                            💚 {m.name}
+                          </div>
+                          <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+                            {m.monthly_session_credits} session{m.monthly_session_credits !== 1 ? 's' : ''} per month
+                            {m.addon_discount_percent > 0 ? ` · ${m.addon_discount_percent}% off add-ons` : ''}
+                          </div>
+                          {m.description && (
+                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
+                              {m.description}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                          <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(m.monthly_price).toFixed(0)}</div>
+                          <div style={{ fontSize: 10, color: C.gray }}>per month</div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <p style={{ fontSize: 11, color: C.gray, margin: '10px 0 0', textAlign: 'center' }}>
+                  Or skip this and book a single session below.
+                </p>
+              </div>
+            )}
+
+            {(packagesList.length > 0 || membershipsList.length > 0) && (
+              <div style={{
+                fontSize: 13, fontWeight: 700, color: C.dark, textTransform: 'uppercase', letterSpacing: '0.5px',
+                margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ flex: 1, height: 1, background: C.light }} />
+                <span style={{ color: C.gray, fontWeight: 600, letterSpacing: '0.08em' }}>Single sessions</span>
+                <span style={{ flex: 1, height: 1, background: C.light }} />
+              </div>
+            )}
+
             {services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -1539,6 +1812,125 @@ export default function BookingPage() {
         )}
 
       </div>
+
+      {/* OFFER PURCHASE MODAL.
+          Opens when client taps a package or membership card. Collects
+          name + email + phone, then sends them to hosted Stripe Checkout
+          or Square Payment Link. Memberships are Stripe-only (membership
+          cards only render for Stripe-connected therapists). */}
+      {offerModal && (
+        <div
+          onClick={() => !offerLoading && setOfferModal(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, zIndex: 9999,
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 18,
+              maxWidth: 440, width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+            }}>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                {offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
+              </div>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                {offerModal.item.name}
+              </div>
+              <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
+                {offerModal.type === 'package'
+                  ? <>${Number(offerModal.item.price).toFixed(0)} for {offerModal.item.session_count} sessions{offerModal.item.expires_in_days ? ` (use within ${offerModal.item.expires_in_days} days)` : ''}</>
+                  : <>${Number(offerModal.item.monthly_price).toFixed(0)} per month, {offerModal.item.monthly_session_credits} session{offerModal.item.monthly_session_credits !== 1 ? 's' : ''} included</>
+                }
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+              <input
+                placeholder="Your name"
+                value={offerForm.name}
+                onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+              <input
+                placeholder="Email"
+                type="email"
+                value={offerForm.email}
+                onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+              <input
+                placeholder="Phone (optional)"
+                value={offerForm.phone}
+                onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+            </div>
+
+            {offerError && (
+              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 14, lineHeight: 1.5 }}>
+                ⚠️ {offerError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setOfferModal(null)}
+                disabled={offerLoading}
+                style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: offerLoading ? 'default' : 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={buyOffer}
+                disabled={offerLoading}
+                style={{ flex: 2, background: offerLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: offerLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
+                {offerLoading ? 'Opening checkout…' : 'Continue to payment'}
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
+              You'll be sent to a secure {therapist?.stripe_account_id && offerModal.type === 'membership' ? 'Stripe' : (therapist?.stripe_account_id ? 'Stripe' : 'Square')} checkout to enter your card and complete the purchase.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* PURCHASE SUCCESS BANNER.
+          Shown briefly after the redirect handler creates the
+          package_purchases or member_subscriptions row. Floats at the
+          top of the page, auto-clears on next interaction. */}
+      {purchaseSuccess && (
+        <div
+          onClick={() => setPurchaseSuccess(null)}
+          style={{
+            position: 'fixed', top: 16, left: 16, right: 16,
+            background: '#F0FDF4', border: '1.5px solid #86EFAC',
+            borderRadius: 14, padding: '14px 18px',
+            fontSize: 14, color: '#14532D', lineHeight: 1.5,
+            boxShadow: '0 8px 28px rgba(20,83,45,0.2)',
+            zIndex: 9998, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 10,
+            maxWidth: 560, margin: '0 auto',
+          }}>
+          <span style={{ fontSize: 20 }}>🎉</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontWeight: 700 }}>
+              {purchaseSuccess.kind === 'package' ? 'Package activated' : 'Membership active'}
+            </div>
+            <div style={{ fontSize: 12, marginTop: 2 }}>
+              {purchaseSuccess.kind === 'package'
+                ? 'Your sessions are ready to book. Pick a service below.'
+                : 'Your monthly credits are loaded. Pick a service below.'}
+            </div>
+          </div>
+          <span style={{ fontSize: 18, color: '#14532D' }}>×</span>
+        </div>
+      )}
+
     </div>
   );
 }
