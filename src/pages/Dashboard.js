@@ -1610,32 +1610,62 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </p>
         {/* Entry button to the WYSIWYG intake editor. Lives at the top
             of the Intake & QR section so therapists looking to customize
-            their intake see it before they get into the link/QR widgets. */}
+            their intake see it before they get into the link/QR widgets.
+
+            HIGHLIGHTED with the dusty-rose "JUST SHIPPED" treatment we
+            use elsewhere for new features. The previous cream-on-cream
+            gradient blended into the surrounding panel and was easy to
+            miss. Border is 2px dusty rose, soft rose box-shadow gives
+            elevation, and a NEW pill on the right pulls the eye. Slightly
+            larger padding (14px 16px) so it reads as a primary action,
+            not just another row. */}
         <button
           onClick={() => navigate('/dashboard/intake/edit')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%',
-            background: 'linear-gradient(135deg, #FAF6EE 0%, #F5EFE0 100%)',
-            border: `1.5px solid ${C2.lightGray}`,
-            borderRadius: 10,
-            padding: '12px 14px',
+            background: 'linear-gradient(135deg, #FCF8EE 0%, #FCE8E0 50%, #FAF6EE 100%)',
+            border: '2px solid #E8C5B5',
+            borderRadius: 12,
+            padding: '14px 16px',
             cursor: 'pointer',
             marginBottom: 16,
-            transition: 'all 0.15s',
+            transition: 'all 0.18s',
+            boxShadow: '0 4px 16px rgba(168, 116, 104, 0.12)',
+            textAlign: 'left',
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.borderColor = C2.forest; }}
-          onMouseLeave={(e) => { e.currentTarget.style.borderColor = C2.lightGray; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#A87468';
+            e.currentTarget.style.boxShadow = '0 6px 20px rgba(168, 116, 104, 0.20)';
+            e.currentTarget.style.transform = 'translateY(-1px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#E8C5B5';
+            e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 116, 104, 0.12)';
+            e.currentTarget.style.transform = 'translateY(0)';
+          }}
         >
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: C2.darkGray, marginBottom: 2 }}>
+          <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#5C2E27', marginBottom: 3 }}>
               ✏️ Customize what clients see
             </div>
-            <div style={{ fontSize: 11, color: C2.gray }}>
+            <div style={{ fontSize: 11, color: '#7A5C53', lineHeight: 1.45 }}>
               Hide questions, edit options, add your own. Plus medical checklist + HIPAA mode.
             </div>
           </div>
-          <span style={{ color: C2.forest, fontSize: 14, fontWeight: 700, flexShrink: 0, marginLeft: 12 }}>→</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
+            <span style={{
+              background: '#A87468',
+              color: '#fff',
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: 1,
+              padding: '3px 7px',
+              borderRadius: 99,
+              textTransform: 'uppercase',
+            }}>New</span>
+            <span style={{ color: '#A87468', fontSize: 16, fontWeight: 700 }}>→</span>
+          </div>
         </button>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
           <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
