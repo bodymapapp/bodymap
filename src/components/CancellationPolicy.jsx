@@ -63,9 +63,19 @@ function Toggle({ on, onChange, ariaLabel }) {
 }
 
 // Small percent input. Range 0-100, no decimals. Tab/click to edit.
+// Sized so the box + "%" suffix never gets clipped against a parent
+// container's right edge, including on narrow phones.
 function PercentInput({ value, onChange, ariaLabel }) {
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 3,
+      flexShrink: 0,
+      // marginRight: small breathing room from the rule-row container's
+      // right edge so the input never visually touches the card border
+      marginRight: 2,
+    }}>
       <input
         type="number"
         min="0"
@@ -77,7 +87,7 @@ function PercentInput({ value, onChange, ariaLabel }) {
         }}
         aria-label={ariaLabel}
         style={{
-          width: 48,
+          width: 44,
           padding: '4px 6px',
           border: `1.5px solid ${C.light}`,
           borderRadius: 6,
@@ -86,14 +96,23 @@ function PercentInput({ value, onChange, ariaLabel }) {
           textAlign: 'right',
           color: C.forest,
           fontFamily: 'inherit',
+          // Defensive: hide native number arrows so the box reads as
+          // a clean number, not a spinner. The arrows would clip the
+          // visible value on iOS Safari at narrow widths.
+          MozAppearance: 'textfield',
+          appearance: 'textfield',
+          boxSizing: 'border-box',
         }}
       />
-      <span style={{ fontSize: 13, fontWeight: 700, color: C.forest }}>%</span>
+      <span style={{ fontSize: 13, fontWeight: 700, color: C.forest, flexShrink: 0 }}>%</span>
     </span>
   );
 }
 
 // One "if/then" rule row. Plain English on the left, percent on the right.
+// On narrow phones (< ~ 360px usable width inside the card) the rule
+// row wraps with the percent input dropping to a new line. flexWrap:
+// 'wrap' handles this automatically.
 function RuleRow({ ifText, value, onChange, ariaLabel }) {
   return (
     <div style={{
@@ -104,7 +123,7 @@ function RuleRow({ ifText, value, onChange, ariaLabel }) {
       borderBottom: `1px dashed ${C.light}`,
       flexWrap: 'wrap',
     }}>
-      <div style={{ flex: 1, minWidth: 220, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+      <div style={{ flex: 1, minWidth: 180, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
         {ifText}
       </div>
       <div style={{ flexShrink: 0 }}>
@@ -159,6 +178,22 @@ export default function CancellationPolicy({ therapist }) {
 
   return (
     <div style={{ padding: '4px 4px' }}>
+      {/* Hide native webkit number-input spinner arrows. On iOS Safari
+          and some mobile browsers those arrows take ~16px on the right
+          inside the input box, which clips the visible value when the
+          input is only ~44px wide. textfield appearance + this CSS
+          flatten the input back to a clean text-style box. */}
+      <style>{`
+        .bm-cancel-policy input[type="number"]::-webkit-inner-spin-button,
+        .bm-cancel-policy input[type="number"]::-webkit-outer-spin-button {
+          -webkit-appearance: none;
+          margin: 0;
+        }
+        .bm-cancel-policy input[type="number"] {
+          -moz-appearance: textfield;
+        }
+      `}</style>
+      <div className="bm-cancel-policy">
 
       {/* SOP / "why this exists" explainer at the top. The 70-year-old
           grandma LMT persona deserves a plain explanation before she
@@ -368,6 +403,7 @@ export default function CancellationPolicy({ therapist }) {
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

@@ -125,18 +125,23 @@ export default function MembershipsCard({ therapist }) {
                     <div style={{ flex:1, minWidth:0 }}>
                       {/* Editable membership name. Same Ashley Scalzulli
                           ask as PackagesCard: title was display-only,
-                          had to recreate to rename. Now inline-editable. */}
-                      <InlineEditField
-                        value={m.name}
-                        type="text"
-                        width={260}
-                        align="left"
-                        fontSize={14}
-                        fontWeight={600}
-                        color={C.forest}
-                        ariaLabel={`Edit membership name`}
-                        onSave={(v) => updateMembership(m.id, { name: String(v).trim() })}
-                      />
+                          had to recreate to rename. Now inline-editable.
+                          Wrapped in a block-level div so the title sits
+                          on its own line and the meta-row pills drop
+                          below cleanly. */}
+                      <div style={{ display: 'block', marginBottom: 4 }}>
+                        <InlineEditField
+                          value={m.name}
+                          type="text"
+                          width="100%"
+                          align="left"
+                          fontSize={14}
+                          fontWeight={600}
+                          color={C.forest}
+                          ariaLabel={`Edit membership name`}
+                          onSave={(v) => updateMembership(m.id, { name: String(v).trim() })}
+                        />
+                      </div>
                       <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                         <InlineEditField
                           value={Number(m.monthly_price)}

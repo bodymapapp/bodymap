@@ -129,19 +129,24 @@ export default function PackagesCard({ therapist }) {
                       {/* Editable package name. Was display-only before;
                           Ashley Scalzulli emailed asking to edit the
                           title without recreating the whole package.
-                          Uses InlineEditField in text mode at the same
-                          font weight/size/color the static div used. */}
-                      <InlineEditField
-                        value={p.name}
-                        type="text"
-                        width={260}
-                        align="left"
-                        fontSize={14}
-                        fontWeight={600}
-                        color={C.forest}
-                        ariaLabel={`Edit package name`}
-                        onSave={(v) => updatePackage(p.id, { name: String(v).trim() })}
-                      />
+                          Wrapped in a block-level div so the title sits
+                          on its own line — InlineEditField renders as
+                          an inline-flex span, which without this wrapper
+                          flowed onto the same line as the meta row pills
+                          below. */}
+                      <div style={{ display: 'block', marginBottom: 4 }}>
+                        <InlineEditField
+                          value={p.name}
+                          type="text"
+                          width="100%"
+                          align="left"
+                          fontSize={14}
+                          fontWeight={600}
+                          color={C.forest}
+                          ariaLabel={`Edit package name`}
+                          onSave={(v) => updatePackage(p.id, { name: String(v).trim() })}
+                        />
+                      </div>
                       <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                         <InlineEditField
                           value={Number(p.session_count)}
