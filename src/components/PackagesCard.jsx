@@ -11,6 +11,7 @@ import React from "react";
 import { supabase } from "../lib/supabase";
 import SeedDefaults from "./SeedDefaults";
 import InlineEditField from "./InlineEditField";
+import InlineEditDescription from "./InlineEditDescription";
 
 const C = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
 
@@ -125,7 +126,22 @@ export default function PackagesCard({ therapist }) {
                 <div key={p.id} style={{ padding:'12px 14px', background:p.active ? '#FAFAF6' : '#F3F4F6', border:`1px solid ${C.lightGray}`, borderRadius:10, marginBottom:6, opacity:p.active?1:0.55 }}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
                     <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ fontWeight:600, fontSize:14, color:C.forest }}>{p.name}</div>
+                      {/* Editable package name. Was display-only before;
+                          Ashley Scalzulli emailed asking to edit the
+                          title without recreating the whole package.
+                          Uses InlineEditField in text mode at the same
+                          font weight/size/color the static div used. */}
+                      <InlineEditField
+                        value={p.name}
+                        type="text"
+                        width={260}
+                        align="left"
+                        fontSize={14}
+                        fontWeight={600}
+                        color={C.forest}
+                        ariaLabel={`Edit package name`}
+                        onSave={(v) => updatePackage(p.id, { name: String(v).trim() })}
+                      />
                       <div style={{ fontSize:12, color:C.gray, marginTop:2, display:'inline-flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
                         <InlineEditField
                           value={Number(p.session_count)}
@@ -177,7 +193,19 @@ export default function PackagesCard({ therapist }) {
                           </>
                         )}
                       </div>
-                      {p.description && <div style={{ fontSize:12, color:C.gray, marginTop:2, fontStyle:'italic' }}>{p.description}</div>}
+                      {/* Editable description. Was display-only and only
+                          showed when non-empty. Now always renders the
+                          InlineEditDescription so therapists can ADD a
+                          description to existing packages, not just edit
+                          ones that already had one. */}
+                      <div style={{ marginTop:4 }}>
+                        <InlineEditDescription
+                          value={p.description || ''}
+                          placeholder="Add a description (optional)"
+                          ariaLabel={`Edit description for ${p.name}`}
+                          onSave={(v) => updatePackage(p.id, { description: String(v).trim() || null })}
+                        />
+                      </div>
                     </div>
                     <button onClick={() => togglePackage(p)} style={{ background:p.active?'#fff':C.sage, color:p.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {p.active ? 'Hide' : 'Show'}
