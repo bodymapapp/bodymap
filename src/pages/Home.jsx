@@ -84,10 +84,10 @@ const RIBBONS = [
     layout: "demo-left",
     subFeatures: [
       "Visual body map intake (front and back)",
-      "Focus zones, avoid areas, pressure preferences",
+      "Customize your intake: hide, edit, or add any question",
       "Level of conversation (quiet vs happy to chat)",
       "Music, lighting, draping, oils & scent preferences",
-      "Medical flags, allergies, signed waivers (ESIGN)",
+      "Medical conditions checklist + optional HIPAA mode",
       "Pre-fills automatically on return",
     ],
     cta: "Know Your Client features",

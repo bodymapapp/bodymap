@@ -17,6 +17,7 @@ import Terms from './pages/Terms';
 import Signup from './pages/Signup';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import IntakeEditor from './pages/IntakeEditor';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
 import ScheduleDashboard from './components/ScheduleDashboard';
@@ -68,6 +69,7 @@ function App() {
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard view="clients" /></ProtectedRoute>} />
           <Route path="/admin/funnel" element={<ProtectedRoute><AdminFunnel /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />
+          <Route path="/dashboard/intake/edit" element={<ProtectedRoute><IntakeEditor /></ProtectedRoute>} />
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
           <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />

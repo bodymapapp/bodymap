@@ -1060,6 +1060,7 @@ function ReferralCard({ therapist, C2 }) {
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const { updateProfile } = useAuth();
+  const navigate = useNavigate();
   const location = useLocation();
 
   // Which row in Settings is currently expanded. null = all collapsed.
@@ -1606,6 +1607,35 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <p style={{ fontSize: 13, color: C2.gray, margin: '0 0 12px 0', lineHeight: 1.5 }}>
           Share your intake link with clients, or print a QR code for your room or front desk.
         </p>
+        {/* Entry button to the WYSIWYG intake editor. Lives at the top
+            of the Intake & QR section so therapists looking to customize
+            their intake see it before they get into the link/QR widgets. */}
+        <button
+          onClick={() => navigate('/dashboard/intake/edit')}
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            width: '100%',
+            background: 'linear-gradient(135deg, #FAF6EE 0%, #F5EFE0 100%)',
+            border: `1.5px solid ${C2.lightGray}`,
+            borderRadius: 10,
+            padding: '12px 14px',
+            cursor: 'pointer',
+            marginBottom: 16,
+            transition: 'all 0.15s',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = C2.forest; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = C2.lightGray; }}
+        >
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: C2.darkGray, marginBottom: 2 }}>
+              ✏️ Customize what clients see
+            </div>
+            <div style={{ fontSize: 11, color: C2.gray }}>
+              Hide questions, edit options, add your own. Plus medical checklist + HIPAA mode.
+            </div>
+          </div>
+          <span style={{ color: C2.forest, fontSize: 14, fontWeight: 700, flexShrink: 0, marginLeft: 12 }}>→</span>
+        </button>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
           <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {intakeUrl}

@@ -115,6 +115,18 @@ export const RIBBONS = [
       },
       {
         id: "2.2",
+        name: "Customize your intake",
+        // Image: placeholder for now — using feature-1-7.jpg as
+        // stand-in. Tracked in BLOCK_PLAN active fire #8 image batch.
+        image: "/images/feature-1-7.jpg",
+        body: [
+          "Every practice is different. Hide questions you cannot answer (no cooling table? hide the cool option). Edit any label in your own words. Add brand-new questions specific to your practice.",
+          "Plus a structured medical conditions checklist with 12 common contraindications built-in (high blood pressure, blood clots, recent surgery, pregnancy, and more) and an optional HIPAA mode that adds stronger consent and a view audit log.",
+        ],
+        meta: "WYSIWYG editor · Add unlimited questions · Hide what you do not need",
+      },
+      {
+        id: "2.3",
         name: "Session preferences",
         body: [
           "Music, lighting, scent, table warmth, conversation level. Captured once, remembered every visit. The little things that make the session feel like it was made for them.",
@@ -123,7 +135,7 @@ export const RIBBONS = [
         meta: "Auto-saved · Editable anytime",
       },
       {
-        id: "2.3",
+        id: "2.4",
         name: "Signed waiver, bundled in",
         body: [
           "Your liability waiver, your intake form, your medical questionnaire all in one signed flow. Legally binding e-signature with timestamp and IP audit trail.",
@@ -132,7 +144,7 @@ export const RIBBONS = [
         meta: "ESIGN Act compliant · Stored 7 years",
       },
       {
-        id: "2.4",
+        id: "2.5",
         name: "Smart pre-fill on return",
         automated: true,
         body: [
@@ -142,7 +154,7 @@ export const RIBBONS = [
         meta: "Encrypted at rest · Client controls what changes",
       },
       {
-        id: "2.5",
+        id: "2.6",
         name: "Client notes & medical flags",
         body: [
           'Private notes only you see. "Sensitive lower back, no deep pressure." "Pregnant, second trimester." "Always falls asleep, leave time at the end."',

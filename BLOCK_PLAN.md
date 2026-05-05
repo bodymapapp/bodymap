@@ -28,12 +28,18 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
    **PLACEHOLDERS using duplicated existing images (need real assets):**
    - **Gift cards Features page hero** — uses placeholder div with stylized mock card in dusty rose gradient (`src/pages/Features.jsx`, GIFT CARDS section). Need a product photograph: printed gift card on wood/linen/hand. Replace placeholder div with `<img>`.
    - **Campaigns Features page hero** — uses embedded animated demo. Could use a calmer companion hero photo. Style: practitioner looking at her phone, warm ambient light, not generic stock.
-   - **Cycle-aligned scheduling Features hero (1.2)** — currently using `feature-1-7.jpg` as a stand-in (originally meant for "Website embed"). Need its own thematic image: moon/cyclic motion, woman with eyes closed, calm botanical. Feminine + professional. (Wired in `src/pages/Features.jsx` GIFT CARDS section is unrelated; cycle uses its own section id="cycle".)
-   - **Cycle-aligned scheduling Home demo placeholder** — already covered by the animated SVG (`CycleScheduleDemo.jsx`), no photo needed unless we add a quote card.
+   - **Cycle-aligned scheduling Features hero (1.2)** — currently using `feature-1-7.jpg` as a stand-in (originally meant for "Website embed"). Need its own thematic image: moon/cyclic motion, woman with eyes closed, calm botanical. Feminine + professional.
+   - **Customize your intake Features hero (2.2)** — also using `feature-1-7.jpg` placeholder. Need a thematic image: hands editing a form on a tablet, or a paper checklist with custom marks. Practitioner-led, not generic.
 
-   **WHEN HK READY:** generate the above 3 images (4-5 if HK wants extras), name them `feature-1-2.jpg`, `feature-cycle.jpg`, etc., drop into `public/images/`, replace the placeholder references. Image specs: 543×464 JPEG (matches existing assets), warm cream/sage palette, no text overlay, no obvious AI artifacts.
+   **WHEN HK READY:** generate the above 4 images, name them `feature-cycle.jpg`, `feature-intake-edit.jpg`, etc., drop into `public/images/`, replace the placeholder references. Image specs: 543×464 JPEG (matches existing assets), warm cream/sage palette, no text overlay, no obvious AI artifacts.
 
    **PROCESS RULE:** going forward, whenever I duplicate an existing image as a placeholder, log it here so the batch grows in one place. Don't make HK chase image asks one at a time.
+
+9. **Production intake wire-up for custom schemas (Phase 2 of intake editor)** — the IntakeEditor at `/dashboard/intake/edit` ships and saves to `therapists.intake_schema`, but the live client intake (`Demo.jsx` rendered via `ClientIntake.js`) still uses the hardcoded fields. Therapists can save customizations but clients haven't seen them yet.
+   - Honest yellow banner inside the editor tells therapists "live in next deploy"
+   - Phase 2 work: read `effectiveSchema(therapist)` in Demo.jsx, render dynamic fields based on schema instead of the hardcoded prefs section. Risk: Demo.jsx is 4649 lines, includes BodyMapApp + TherapistView + many sub-components; need careful surgical changes to only the preference rendering loop, not break body map / waiver / submission logic.
+   - Estimated time: 3-4 hours of careful work, testing across multiple existing therapists.
+   - When done: remove the yellow banner, send "Intake editor is live" email to anyone who used the editor.
 
 ## TIER S — DISTRIBUTION (do this week, not products)
 
