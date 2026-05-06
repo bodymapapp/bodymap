@@ -23,6 +23,7 @@ import {
   PaymentProvider, ProviderName, Operation, Therapist,
   CheckoutLinkArgs, CheckoutLinkResult,
   VerifyResult, VerifiedLineItem,
+  SetupIntentArgs, SetupIntentResult,
   SaveCardArgs, SaveCardResult,
   ChargeArgs, ChargeResult,
   RefundArgs, RefundResult,
@@ -218,6 +219,13 @@ export class SquareProvider implements PaymentProvider {
 
   // ─── saveCardOnFile ──────────────────────────────────────────────
   // Not implemented. Stripe is the online engine for card-on-file.
+  async createSetupIntent(_args: SetupIntentArgs): Promise<SetupIntentResult> {
+    throw new ProviderError(
+      'square_setup_intent_unsupported',
+      'Card-on-file capture is handled by Stripe in this integration. Square is for in-person work.'
+    );
+  }
+
   async saveCardOnFile(_args: SaveCardArgs): Promise<SaveCardResult> {
     throw new ProviderError(
       'square_save_card_unsupported',

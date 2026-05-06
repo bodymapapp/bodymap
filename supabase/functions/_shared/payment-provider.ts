@@ -204,6 +204,23 @@ export type RefundResult = {
   amountCents: number;
 };
 
+export type SetupIntentArgs = {
+  therapist: Therapist;
+  customer: CustomerInfo;
+};
+
+export type SetupIntentResult = {
+  // Stripe SetupIntent client_secret. Frontend calls
+  // stripe.confirmCardSetup(client_secret, ...). After success,
+  // the frontend has a payment_method id ready to persist.
+  clientSecret: string;
+  // The provider's customer id (Stripe Customer id). Persist this
+  // on the clients row so future charges can attach to it.
+  providerCustomerId: string;
+  // Mostly for diagnostic/UI. Stripe connected account id.
+  accountId: string;
+};
+
 // Operations every provider claims to support or not. The interface
 // declares every operation; this map says which ones actually work
 // today. Edge functions check supportsOperation() before calling so
@@ -212,6 +229,7 @@ export type RefundResult = {
 export type Operation =
   | 'createCheckoutLink'        // both
   | 'createSubscriptionLink'    // stripe only
+  | 'createSetupIntent'         // stripe only
   | 'verifyCheckout'            // both
   | 'saveCardOnFile'            // stripe only (by strategic choice)
   | 'chargeSavedCard'           // stripe only
@@ -234,6 +252,10 @@ export interface PaymentProvider {
     therapist: Therapist;
     paymentRefId: string;
   }): Promise<VerifyResult>;
+
+  // Create a SetupIntent (Stripe) for capturing a card off-session
+  // for future charges. Square does not support this in our roadmap.
+  createSetupIntent(args: SetupIntentArgs): Promise<SetupIntentResult>;
 
   saveCardOnFile(args: SaveCardArgs): Promise<SaveCardResult>;
 

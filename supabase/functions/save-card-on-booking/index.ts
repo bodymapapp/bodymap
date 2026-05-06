@@ -1,197 +1,145 @@
 // supabase/functions/save-card-on-booking/index.ts
 //
-// Card-on-file capture during booking flow. Distinct from save-card
-// (which assumes an existing client_id from the therapist's dashboard).
+// Card-on-file capture during the booking flow. Refactored May 2026
+// to use PaymentProvider for the Stripe-specific bits (Customer +
+// SetupIntent creation), keeping the business logic in this file.
 //
-// This function:
-//   1. Upserts the client record by therapist_id + (email or phone match)
-//   2. Creates a Stripe Customer on the therapist's connected account if
-//      one does not yet exist
-//   3. Creates a SetupIntent with off_session usage so the card can be
-//      charged later for cancellation fees without the client present
-//   4. Records the mandate text + agreed-at timestamp + hashed IP for
-//      audit (state law compliance: CA, NY, MA, FL want disclosure proof)
+// Flow:
+//   1. Upsert the client record by therapist_id + (email or phone)
+//   2. Hand off to provider.createSetupIntent() for Customer + SetupIntent
+//   3. Persist customer_id on clients row
+//   4. Record mandate text + agreed-at + hashed IP for audit
+//   5. Return client_secret to the frontend, which calls
+//      stripe.confirmCardSetup(client_secret, ...) to actually capture
+//      the card
 //
-// Returns: client_secret, customer_id, client_id, account_id
-// The frontend then calls stripe.confirmCardSetup(client_secret, ...)
-// to actually save the card. After that succeeds, frontend stores the
-// resulting payment_method_id on the client record.
+// Card-on-file requires Stripe by strategic design (Square does not
+// have an embedded equivalent of Stripe Elements + SetupIntent in our
+// roadmap). This function uses 'stripe-required' policy.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const cors = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import {
+  corsHeaders, respond, getSupabaseClient, loadTherapist,
+  getProvider, ProviderError,
+} from '../_shared/payment-provider.ts';
 
 async function hashIp(ip: string): Promise<string> {
   const data = new TextEncoder().encode(ip);
   const hash = await crypto.subtle.digest('SHA-256', data);
   return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('')
-    .slice(0, 32);
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
-
-  const respond = (data: any, status = 200) => new Response(JSON.stringify(data), {
-    status, headers: { ...cors, 'Content-Type': 'application/json' },
-  });
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
     const {
       therapist_id,
-      stripe_account_id,
-      client_name,
-      client_email,
-      client_phone,
+      booking_id,
+      client_name, client_email, client_phone,
       mandate_text,
     } = await req.json();
 
-    console.log('[save-card-on-booking] start', { therapist_id, has_email: !!client_email, has_phone: !!client_phone });
+    console.log('[save-card-on-booking] start', { therapist_id, booking_id, client_email });
 
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
-    if (!stripe_account_id) return respond({ error: 'No Stripe account connected on this therapist profile' }, 400);
-    if (!client_email && !client_phone) return respond({ error: 'Email or phone required to identify client' }, 400);
+    if (!client_email && !client_phone) {
+      return respond({ error: 'client_email or client_phone required' }, 400);
+    }
 
-    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    if (!STRIPE_SECRET) return respond({ error: 'STRIPE_SECRET_KEY not set' }, 500);
-    if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return respond({ error: 'Supabase env not set' }, 500);
+    const supabase = getSupabaseClient();
+    const therapist = await loadTherapist(supabase, therapist_id);
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+    // Card-on-file is Stripe-only by strategic design.
+    const provider = await getProvider(therapist, 'stripe-required');
 
-    // ----- Step 1: find or create client -----
-    let client: any = null;
-    const cleanEmail = client_email ? String(client_email).toLowerCase().trim() : null;
-    const cleanPhone = client_phone ? String(client_phone).trim() : null;
+    // ─── Step 1: upsert client by email (preferred) or phone ────────
+    const normalizedEmail = (client_email || '').trim().toLowerCase();
+    const normalizedPhone = (client_phone || '').replace(/\D/g, '').slice(-10);
 
-    if (cleanEmail) {
-      const { data } = await supabase
-        .from('clients')
-        .select('*')
+    let clientId: string | null = null;
+    if (normalizedEmail) {
+      const { data: c } = await supabase
+        .from('clients').select('id, stripe_customer_id')
         .eq('therapist_id', therapist_id)
-        .eq('email', cleanEmail)
+        .eq('email', normalizedEmail)
         .maybeSingle();
-      if (data) client = data;
+      if (c) clientId = c.id;
     }
-    if (!client && cleanPhone) {
-      const phoneNorm = cleanPhone.replace(/\D/g, '').slice(-10);
-      if (phoneNorm.length >= 7) {
-        const { data: byPhone } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('therapist_id', therapist_id)
-          .not('phone', 'is', null);
-        client = (byPhone || []).find((c: any) =>
-          String(c.phone || '').replace(/\D/g, '').slice(-10) === phoneNorm
-        ) || null;
-      }
+    if (!clientId && normalizedPhone) {
+      const { data: c } = await supabase
+        .from('clients').select('id, stripe_customer_id')
+        .eq('therapist_id', therapist_id)
+        .ilike('phone', `%${normalizedPhone}%`)
+        .maybeSingle();
+      if (c) clientId = c.id;
     }
 
-    if (!client) {
-      const { data: created, error: insErr } = await supabase
+    // Create the client row if it doesn't exist
+    if (!clientId) {
+      const { data: created, error: cErr } = await supabase
         .from('clients')
         .insert({
           therapist_id,
-          name: client_name || 'Client',
-          email: cleanEmail,
-          phone: cleanPhone,
+          name: client_name || null,
+          email: normalizedEmail || null,
+          phone: normalizedPhone || null,
         })
-        .select()
+        .select('id')
         .single();
-      if (insErr) {
-        console.error('[save-card-on-booking] client create failed', insErr);
-        return respond({ error: 'client_create_failed: ' + insErr.message }, 500);
+      if (cErr || !created) {
+        return respond({ error: 'client_create_failed: ' + cErr?.message }, 500);
       }
-      client = created;
-      console.log('[save-card-on-booking] created new client', client.id);
-    } else {
-      console.log('[save-card-on-booking] matched existing client', client.id);
+      clientId = created.id;
     }
 
-    // ----- Step 2: Stripe Customer on connected account -----
-    let customerId = client.stripe_customer_id;
-    if (!customerId) {
-      const params: Record<string, string> = {
-        'metadata[client_id]': String(client.id),
-        'metadata[therapist_id]': String(therapist_id),
-      };
-      if (cleanEmail) params.email = cleanEmail;
-      if (client_name) params.name = String(client_name);
-      if (cleanPhone) params.phone = cleanPhone;
-
-      const custRes = await fetch('https://api.stripe.com/v1/customers', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${STRIPE_SECRET}`,
-          'Stripe-Account': stripe_account_id,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams(params),
-      });
-      const cust = await custRes.json();
-      if (!custRes.ok) {
-        console.error('[save-card-on-booking] customer create failed', cust);
-        return respond({ error: cust.error?.message || 'stripe_customer_failed' }, 400);
-      }
-      customerId = cust.id;
-      await supabase.from('clients')
-        .update({ stripe_customer_id: customerId })
-        .eq('id', client.id);
-      console.log('[save-card-on-booking] created stripe customer', customerId);
-    }
-
-    // ----- Step 3: SetupIntent for off_session future charges -----
-    const siRes = await fetch('https://api.stripe.com/v1/setup_intents', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${STRIPE_SECRET}`,
-        'Stripe-Account': stripe_account_id,
-        'Content-Type': 'application/x-www-form-urlencoded',
+    // ─── Step 2: provider creates Customer + SetupIntent ────────────
+    const setupIntent = await provider.createSetupIntent({
+      therapist,
+      customer: {
+        name: client_name || null,
+        email: normalizedEmail || `noemail-${clientId}@nophone.local`,
+        phone: normalizedPhone || null,
       },
-      body: new URLSearchParams({
-        customer: customerId,
-        'payment_method_types[]': 'card',
-        usage: 'off_session',
-        'metadata[therapist_id]': String(therapist_id),
-        'metadata[client_id]': String(client.id),
-        'metadata[purpose]': 'cancellation_policy_card_on_file',
-      }),
     });
-    const si = await siRes.json();
-    if (!siRes.ok) {
-      console.error('[save-card-on-booking] setup intent failed', si);
-      return respond({ error: si.error?.message || 'setup_intent_failed' }, 400);
-    }
 
-    // ----- Step 4: record mandate audit trail -----
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
-      || req.headers.get('x-real-ip')
-      || '';
+    // ─── Step 3: persist Stripe customer_id + mandate audit ─────────
+    const ipHeader = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || '';
+    const ip = (ipHeader.split(',')[0] || '').trim();
     const ipHash = ip ? await hashIp(ip) : null;
 
     await supabase.from('clients').update({
+      stripe_customer_id: setupIntent.providerCustomerId,
       card_mandate_text: mandate_text || null,
-      card_mandate_agreed_at: new Date().toISOString(),
+      card_mandate_agreed_at: mandate_text ? new Date().toISOString() : null,
       card_mandate_ip_hash: ipHash,
-    }).eq('id', client.id);
+    }).eq('id', clientId);
 
-    console.log('[save-card-on-booking] success', { client_id: client.id, customer_id: customerId });
+    // Stamp the customer onto the booking too, so cancellation
+    // charging can find it via booking_id alone.
+    if (booking_id) {
+      await supabase.from('bookings').update({
+        card_on_file_customer_id: setupIntent.providerCustomerId,
+      }).eq('id', booking_id);
+    }
+
+    console.log('[save-card-on-booking] success', { client_id: clientId, customer_id: setupIntent.providerCustomerId });
 
     return respond({
-      client_secret: si.client_secret,
-      customer_id: customerId,
-      client_id: client.id,
-      account_id: stripe_account_id,
+      client_secret: setupIntent.clientSecret,
+      customer_id: setupIntent.providerCustomerId,
+      client_id: clientId,
+      account_id: setupIntent.accountId,
     });
 
   } catch (e) {
-    console.error('[save-card-on-booking] uncaught error', e);
+    if (e instanceof ProviderError) {
+      console.error('[save-card-on-booking] provider error', e.code, e.message);
+      return respond({ error: e.message, code: e.code }, 400);
+    }
+    console.error('[save-card-on-booking] uncaught', e);
     return respond({ error: String(e) }, 500);
   }
 });

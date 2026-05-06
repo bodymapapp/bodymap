@@ -20,6 +20,7 @@ import {
   PaymentProvider, ProviderName, Operation, Therapist,
   CheckoutLinkArgs, CheckoutLinkResult,
   VerifyResult, VerifiedLineItem,
+  SetupIntentArgs, SetupIntentResult,
   SaveCardArgs, SaveCardResult,
   ChargeArgs, ChargeResult,
   RefundArgs, RefundResult,
@@ -98,6 +99,7 @@ export class StripeProvider implements PaymentProvider {
     return [
       'createCheckoutLink',
       'createSubscriptionLink',
+      'createSetupIntent',
       'verifyCheckout',
       'saveCardOnFile',
       'chargeSavedCard',
@@ -272,28 +274,54 @@ export class StripeProvider implements PaymentProvider {
     return result;
   }
 
+  // ─── createSetupIntent ───────────────────────────────────────────
+  // Creates a Stripe Customer if one doesn't exist for this email,
+  // then issues a SetupIntent with off_session usage so the card
+  // can be charged later (cancellation fees, etc.) without the
+  // client present. Returns the client_secret for the frontend to
+  // confirm via Stripe Elements.
+  async createSetupIntent(args: SetupIntentArgs): Promise<SetupIntentResult> {
+    const customerId = await this.findOrCreateCustomer(args.therapist, args.customer);
+    const setupIntent = await stripeFetch('/setup_intents', {
+      method: 'POST',
+      therapist: args.therapist,
+      body: {
+        customer: customerId,
+        payment_method_types: ['card'],
+        usage: 'off_session',
+      },
+    });
+    return {
+      clientSecret: setupIntent.client_secret,
+      providerCustomerId: customerId,
+      accountId: args.therapist.stripe_account_id!,
+    };
+  }
+
+  // Helper: find by email or create. Used by both createSetupIntent
+  // and saveCardOnFile.
+  private async findOrCreateCustomer(therapist: Therapist, customer: { email: string; name?: string | null; phone?: string | null }): Promise<string> {
+    const existing = await this.findCustomerByEmail(therapist, customer.email);
+    if (existing) return existing;
+    const created = await stripeFetch('/customers', {
+      method: 'POST',
+      therapist,
+      body: {
+        email: customer.email,
+        name: customer.name || undefined,
+        phone: customer.phone || undefined,
+      },
+    });
+    return created.id;
+  }
+
   // ─── saveCardOnFile ──────────────────────────────────────────────
   // Two-step: create or retrieve the customer, then attach the
   // payment method (or confirm a SetupIntent that already created
   // it).
   async saveCardOnFile(args: SaveCardArgs): Promise<SaveCardResult> {
     // Step 1: create or retrieve the customer.
-    let customerId: string;
-    const existing = await this.findCustomerByEmail(args.therapist, args.customer.email);
-    if (existing) {
-      customerId = existing;
-    } else {
-      const customer = await stripeFetch('/customers', {
-        method: 'POST',
-        therapist: args.therapist,
-        body: {
-          email: args.customer.email,
-          name: args.customer.name || undefined,
-          phone: args.customer.phone || undefined,
-        },
-      });
-      customerId = customer.id;
-    }
+    const customerId = await this.findOrCreateCustomer(args.therapist, args.customer);
 
     // Step 2: attach the payment method to the customer.
     // SetupIntent flow: the frontend has already confirmed the SetupIntent,
