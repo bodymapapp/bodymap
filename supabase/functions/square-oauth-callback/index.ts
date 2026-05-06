@@ -30,8 +30,13 @@ serve(async (req) => {
   const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const REDIRECT_URI      = 'https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth-callback';
 
+  // Auto-detect sandbox vs production from app id prefix.
+  const apiHost = (SQUARE_APP_ID || '').startsWith('sandbox-')
+    ? 'https://connect.squareupsandbox.com'
+    : 'https://connect.squareup.com';
+
   // Exchange code for access token
-  const tokenRes = await fetch('https://connect.squareup.com/oauth2/token', {
+  const tokenRes = await fetch(`${apiHost}/oauth2/token`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Square-Version': '2024-01-18' },
     body: JSON.stringify({
@@ -52,7 +57,7 @@ serve(async (req) => {
   }
 
   // Get merchant location ID
-  const locRes = await fetch('https://connect.squareup.com/v2/locations', {
+  const locRes = await fetch(`${apiHost}/v2/locations`, {
     headers: { 'Authorization': `Bearer ${tokenData.access_token}`, 'Square-Version': '2024-01-18' }
   });
   const locData = await locRes.json();

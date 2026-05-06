@@ -45,7 +45,15 @@ serve(async (req) => {
     'SUBSCRIPTIONS_READ',
   ].join('+');
 
-  const url = `https://connect.squareup.com/oauth2/authorize?client_id=${SQUARE_APP_ID}&scope=${scopes}&session=false&state=${therapist_id}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+  // Auto-detect sandbox vs production from the application id prefix.
+  // Sandbox apps start with 'sandbox-sq0idb-'; production apps start
+  // with 'sq0idp-'. Flipping the SQUARE_APP_ID env var flips the
+  // entire stack (OAuth host + API host).
+  const oauthHost = (SQUARE_APP_ID || '').startsWith('sandbox-')
+    ? 'https://connect.squareupsandbox.com'
+    : 'https://connect.squareup.com';
+
+  const url = `${oauthHost}/oauth2/authorize?client_id=${SQUARE_APP_ID}&scope=${scopes}&session=false&state=${therapist_id}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
 
   return new Response(JSON.stringify({ url }), {
     headers: { ...cors, 'Content-Type': 'application/json' }

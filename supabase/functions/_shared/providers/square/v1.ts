@@ -41,7 +41,21 @@ import type {
 import { ProviderError, getSupabaseClient } from '../../payment-provider.ts';
 import type { SquareStrategy } from './strategy.ts';
 
-const SQUARE_API = 'https://connect.squareup.com';
+// Square API base URL. Auto-detects sandbox vs production from the
+// SQUARE_APP_ID prefix:
+//   sandbox-sq0idb-...  -> sandbox API
+//   sq0idp-...          -> production API
+// The Web Payments SDK on the frontend follows the same pattern via
+// the application id we send back. Changing the env var to a sandbox
+// id flips the entire stack to sandbox; flipping back is one secret
+// update. No code changes needed for the swap.
+function squareApiBase(): string {
+  const appId = Deno.env.get('SQUARE_APP_ID') || '';
+  return appId.startsWith('sandbox-')
+    ? 'https://connect.squareupsandbox.com'
+    : 'https://connect.squareup.com';
+}
+const SQUARE_API = squareApiBase();
 const SQUARE_VERSION = '2024-01-18';
 
 // Internal: standard authenticated fetch with consistent error mapping.

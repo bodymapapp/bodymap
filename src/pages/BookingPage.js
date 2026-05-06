@@ -305,10 +305,19 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
 
     const init = async () => {
       // Load Square Web Payments SDK if not already loaded.
+      // Sandbox uses sandbox.web.squarecdn.com; production uses
+      // web.squarecdn.com. We auto-detect from the application id
+      // prefix, which the backend already auto-detected from the
+      // SQUARE_APP_ID env var. This lets a single env var flip the
+      // entire stack between sandbox and production.
       if (!window.Square) {
+        const isSandbox = (parsed.applicationId || '').startsWith('sandbox-');
+        const sdkUrl = isSandbox
+          ? 'https://sandbox.web.squarecdn.com/v1/square.js'
+          : 'https://web.squarecdn.com/v1/square.js';
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
-          s.src = 'https://web.squarecdn.com/v1/square.js';
+          s.src = sdkUrl;
           s.onload = resolve;
           s.onerror = () => reject(new Error('Failed to load Square SDK'));
           document.head.appendChild(s);
