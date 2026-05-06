@@ -315,10 +315,10 @@ export default function CancellationPolicy({ therapist }) {
             borderRadius: 10, padding: '14px', marginBottom: 12,
           }}>
             <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: 1.5, marginBottom: 8 }}>
-              CARD ON FILE AT BOOKING · STRIPE
+              CARD ON FILE AT BOOKING
             </div>
             <div style={{ fontSize: 11, color: C.gray, marginBottom: 10, lineHeight: 1.5 }}>
-              Require clients to save a card so the policy above can charge if needed. Cards are stored securely with Stripe and only charged if the policy triggers. Stripe is the online engine for MyBodyMap; Square handles your in-person work.
+              Require clients to save a card so the policy above can charge if needed. Cards are stored securely with your connected processor (Stripe or Square). They are only charged if the policy triggers.
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               <Toggle
@@ -337,12 +337,12 @@ export default function CancellationPolicy({ therapist }) {
               <span style={{ fontSize: 12, color: C.ink }}>Require card from returning clients</span>
             </div>
 
-            {/* SQUARE-ONLY notice (in the new framing).
-                Card-on-file capture is part of the online engine that
-                Stripe powers. Therapists who only have Square see a
-                gentle nudge to add Stripe rather than an alarming
-                amber warning. The framing matches the Payments panel
-                so the message is consistent across surfaces. */}
+            {/* Square-only notice. Card-on-file now WORKS on Square
+                (via Web Payments SDK), but with documented limitations
+                from the capability matrix: narrower browser support,
+                no Radar-equivalent fraud protection. We surface that
+                inline so therapists know what they're signing up for.
+                Not alarming — informational. */}
             {(policy.card_required_first_timers || policy.card_required_regulars) &&
              !therapist?.stripe_account_id && therapist?.square_access_token && (
               <div style={{
@@ -355,7 +355,7 @@ export default function CancellationPolicy({ therapist }) {
                 color: '#1F3A2C',
                 lineHeight: 1.5,
               }}>
-                <strong style={{ color: '#2A5741' }}>Add Stripe to enable this.</strong> Card-on-file at booking is part of the online engine. Stripe powers it, Square stays for your in-person work. Connect Stripe in Settings → Payments and these toggles will start capturing cards from your clients automatically.
+                <strong style={{ color: '#2A5741' }}>Using Square for card-on-file.</strong> Works for most clients. A few notes: older Safari and some embedded browser environments may not load the card form. If a client cannot save their card, ask them to switch browsers, or consider connecting Stripe alongside Square for the broadest compatibility.
               </div>
             )}
 
@@ -372,7 +372,7 @@ export default function CancellationPolicy({ therapist }) {
                 color: '#7F1D1D',
                 lineHeight: 1.5,
               }}>
-                <strong style={{ color: '#991B1B' }}>Action needed:</strong> connect Stripe in Settings → Payments. Card-on-file needs Stripe to capture and charge cards. Right now the booking page will skip the card step.
+                <strong style={{ color: '#991B1B' }}>Action needed:</strong> connect Stripe or Square in Settings → Payments. Card-on-file needs at least one connected processor to capture and charge cards. Right now the booking page will skip the card step.
               </div>
             )}
           </div>

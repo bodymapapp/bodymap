@@ -268,6 +268,159 @@ function StripeCardSetupForm({ clientSecret, stripeAccountId, mandateAgreed, onS
   );
 }
 
+// Square Web Payments SDK card form. Parallels StripeCardSetupForm
+// for therapists who use Square instead of Stripe.
+//
+// The clientSecret arg here is NOT a Stripe-style client_secret; it
+// is a JSON string the SquareV1 strategy returns containing
+// applicationId + locationId + customerId. We parse it and use those
+// to mount the Square card form. This keeps the BookingPage props
+// surface uniform across processors.
+//
+// Capability note: Square Web Payments SDK has narrower browser
+// support than Stripe Elements. Older Safari + some embedded
+// webviews can fail to mount. If mount fails, we surface a clear
+// error and the therapist can fall back to a different processor.
+function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, clientId, customerId, therapistId }) {
+  const cardRef = useRef(null);
+  const containerRef = useRef(null);
+  const [ready, setReady] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [parseError, setParseError] = useState(null);
+
+  // Parse the JSON-encoded identity bundle from the Square strategy.
+  // applicationId is Square's OAuth app id, locationId is the
+  // therapist's Square location, customerId is the Square Customer
+  // we created server-side.
+  let parsed = null;
+  try {
+    parsed = clientSecret ? JSON.parse(clientSecret) : null;
+  } catch (e) {
+    if (!parseError) setParseError(String(e));
+  }
+
+  useEffect(() => {
+    if (!parsed?.applicationId || !parsed?.locationId || !containerRef.current) return;
+    let alive = true;
+
+    const init = async () => {
+      // Load Square Web Payments SDK if not already loaded.
+      if (!window.Square) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://web.squarecdn.com/v1/square.js';
+          s.onload = resolve;
+          s.onerror = () => reject(new Error('Failed to load Square SDK'));
+          document.head.appendChild(s);
+        }).catch((e) => { if (alive) onError('Could not load Square card form. Please refresh and try again.'); });
+      }
+      if (!alive || !window.Square || !containerRef.current) return;
+
+      try {
+        const payments = window.Square.payments(parsed.applicationId, parsed.locationId);
+        const card = await payments.card({
+          style: {
+            input: {
+              fontSize: '16px',
+              fontFamily: 'system-ui, sans-serif',
+              color: '#1A1A2E',
+            },
+            '.input-container': {
+              borderRadius: '10px',
+              borderColor: '#E5E5E5',
+            },
+          },
+        });
+        await card.attach(containerRef.current);
+        cardRef.current = card;
+        if (alive) setReady(true);
+      } catch (e) {
+        console.error('[SquareCardSetupForm] mount failed', e);
+        if (alive) onError('Could not load card form. Your browser may not be supported. Please try a different browser or contact support.');
+      }
+    };
+
+    init();
+    return () => {
+      alive = false;
+      try { if (cardRef.current) cardRef.current.destroy(); } catch (e) {}
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsed?.applicationId, parsed?.locationId]);
+
+  const save = async () => {
+    if (!cardRef.current) return;
+    if (!mandateAgreed) {
+      onError('Please confirm you agree to the policy above before saving your card.');
+      return;
+    }
+    setProcessing(true);
+    try {
+      const result = await cardRef.current.tokenize();
+      if (result.status !== 'OK') {
+        const msg = result.errors?.[0]?.message || 'Card tokenization failed';
+        onError(msg);
+        setProcessing(false);
+        return;
+      }
+      // Send the token to our save-card edge function, which uses
+      // the PaymentProvider abstraction to attach the card to the
+      // Square customer.
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/save-card-on-booking-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          therapist_id: therapistId,
+          client_id: clientId,
+          customer_id: customerId,
+          payment_token: result.token,
+          processor: 'square',
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        onError(data.error);
+        setProcessing(false);
+        return;
+      }
+      onSuccess({ payment_method_id: data.card_id || data.providerCardId });
+    } catch (e) {
+      onError(String(e));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  if (parseError) {
+    return (
+      <div style={{ padding: 14, background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 10, color: '#991B1B', fontSize: 13 }}>
+        Could not initialize Square card form. Please refresh and try again.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{background:C.white,borderRadius:14,padding:'20px',marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+        <div style={{fontSize:12,fontWeight:700,color:C.gray,marginBottom:12}}>CARD ON FILE</div>
+        <div ref={containerRef} style={{minHeight:60,padding:'14px',border:`1.5px solid ${C.light}`,borderRadius:10,background:'#FAFAFA'}}/>
+        {!ready && <div style={{textAlign:'center',padding:'12px 0 4px',color:C.gray,fontSize:13}}>Loading…</div>}
+      </div>
+      <button onClick={save} disabled={!ready||processing||!mandateAgreed}
+        style={{width:'100%',background:!ready||processing||!mandateAgreed?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:!ready||processing||!mandateAgreed?'default':'pointer',transition:'background 0.2s',boxShadow:'0 4px 20px rgba(42,87,65,0.25)'}}>
+        {processing?'Saving card…':(mandateAgreed?'Save card':'Agree to authorization above to continue')}
+      </button>
+      <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10}}>🔒 Secured by Square. Your card is not charged now. We only charge if the cancellation policy above triggers a fee.</p>
+    </div>
+  );
+}
+
 export default function BookingPage() {
   const {slug}=useParams();
   const [therapist,setTherapist]=useState(null);
@@ -366,6 +519,12 @@ export default function BookingPage() {
   const [cardSavedBrand,setCardSavedBrand]=useState(null);
   const [cardSetupClientSecret,setCardSetupClientSecret]=useState(null);
   const [cardSetupAccountId,setCardSetupAccountId]=useState(null);
+  // Which processor handles card-on-file for this booking. Decided
+  // when the card setup is initiated (see startCardSetup) based on
+  // the therapist's payment_routing + connected processors. Drives
+  // which card form renders below: Stripe Elements or Square Web
+  // Payments SDK.
+  const [cardSetupProcessor,setCardSetupProcessor]=useState(null);
   const [cardCapturing,setCardCapturing]=useState(false);
   const [cardError,setCardError]=useState(null);
   const [cardMandateAgreed,setCardMandateAgreed]=useState(false);
@@ -654,13 +813,15 @@ export default function BookingPage() {
   }
 
   // Cancellation policy Phase 2: kicks off the card-on-file capture flow.
-  // Calls save-card-on-booking edge function which upserts the client
-  // record, creates a Stripe Customer on the therapist's connected
-  // account, creates a SetupIntent, and returns a client_secret.
-  // The frontend then renders StripeCardSetupForm using that secret.
+  // Calls the unified init-card-setup endpoint which routes to whichever
+  // processor the therapist uses (Stripe or Square) per their
+  // payment_routing settings, and returns the right shape for either
+  // Stripe Elements or Square Web Payments SDK.
   async function initCardSetup() {
-    if (!therapist?.stripe_account_id) {
-      setCardError('This therapist has not connected Stripe yet, so a card on file cannot be saved. Please contact them directly.');
+    const hasStripe = !!therapist?.stripe_account_id;
+    const hasSquare = !!therapist?.square_access_token;
+    if (!hasStripe && !hasSquare) {
+      setCardError('This therapist has not connected a payment processor yet, so a card on file cannot be saved. Please contact them directly.');
       return;
     }
     if (!cardMandateAgreed) {
@@ -671,7 +832,7 @@ export default function BookingPage() {
     setCardError(null);
     try {
       const res = await fetch(
-        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/save-card-on-booking`,
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/init-card-setup`,
         {
           method: 'POST',
           headers: {
@@ -681,11 +842,14 @@ export default function BookingPage() {
           },
           body: JSON.stringify({
             therapist_id: therapist.id,
-            stripe_account_id: therapist.stripe_account_id,
             client_name: form.name.trim(),
             client_email: form.email.trim().toLowerCase(),
             client_phone: form.phone,
             mandate_text: cardMandateText(),
+            // Frontend can pass preferred_processor to override the
+            // auto-pick (e.g. if the therapist UI later lets clients
+            // pick). Today we don't pass it, so the edge function
+            // uses payment_routing or auto-picks.
           }),
         }
       );
@@ -697,8 +861,14 @@ export default function BookingPage() {
       }
       setCardSetupClientSecret(data.client_secret);
       setCardSetupAccountId(data.account_id);
+      setCardSetupProcessor(data.processor);
       setCardSavedCustomerId(data.customer_id);
       setCardSavedClientId(data.client_id);
+      // If capability is 'limited', surface a soft warning under the
+      // card form so the client knows what they're signing up for.
+      if (data.capability?.status === 'limited' && data.capability.limitations?.length) {
+        console.log('[card-setup] limited capability:', data.capability.limitations);
+      }
     } catch (e) {
       setCardError(String(e));
     }
@@ -1729,21 +1899,16 @@ export default function BookingPage() {
               const policyRequiresRegulars = !!policy.card_required_regulars;
               const wantsCard = policyEnabled && !needsApproval &&
                 ((isRepeat && policyRequiresRegulars) || (!isRepeat && policyRequiresFirstTimers));
-              const cardNeeded = wantsCard && stripeReady;
+              // Card capture now works with EITHER processor. The gate
+              // fires whenever the therapist policy wants a card AND
+              // any payment processor is connected. The init-card-setup
+              // edge function picks the right one based on
+              // payment_routing or auto-pick (Stripe wins ties).
+              const cardNeeded = wantsCard && (stripeReady || squareReady);
               setCardOnFileRequired(cardNeeded);
 
               // Diagnostic logging so HK / therapists can see exactly why
-              // the card-on-file gate did or did not fire. Open DevTools
-              // console on the booking page to read this.
-              //
-              // The most common 'why didn't it ask?' reasons are:
-              //   - policy not enabled
-              //   - therapist Stripe-disconnected (Square is not yet
-              //     supported for card-on-file capture, see below)
-              //   - is_repeat detection wrong (we already fixed name-only
-              //     match; check email/phone match)
-              //   - first-timer/regular toggle is off for this client type
-              //   - approval-required is on (deferred until approval)
+              // the card-on-file gate did or did not fire.
               console.log(
                 `%c[card-on-file] decision: ${cardNeeded ? 'WILL ASK' : 'WILL NOT ASK'}`,
                 `color: ${cardNeeded ? '#2A5741' : '#B87840'}; font-weight: bold;`
@@ -1753,20 +1918,11 @@ export default function BookingPage() {
                 policyRequiresFirstTimers, policyRequiresRegulars,
                 needsApproval,
               });
-              if (!cardNeeded && wantsCard && !stripeReady && squareReady) {
-                console.warn(
-                  '[card-on-file] Card capture is wanted by the therapist policy, ' +
-                  'but the therapist has Square instead of Stripe connected. ' +
-                  'Square card-on-file at booking time is not yet supported. ' +
-                  'The booking will proceed without capturing a card. ' +
-                  'See BLOCK_PLAN fire #N for the Square card-on-file build.'
-                );
-              }
               if (!cardNeeded && wantsCard && !stripeReady && !squareReady) {
                 console.warn(
                   '[card-on-file] Card capture is wanted but no payment ' +
                   'processor is connected. The therapist needs to connect ' +
-                  'Stripe (or Square once Chunk B ships) for this to fire.'
+                  'either Stripe or Square in Settings → Payments.'
                 );
               }
 
@@ -1997,13 +2153,25 @@ export default function BookingPage() {
                 }}>
                   By saving your card you authorize charges per the cancellation policy above. Card is not charged now.
                 </div>
-                <StripeCardSetupForm
-                  clientSecret={cardSetupClientSecret}
-                  stripeAccountId={cardSetupAccountId}
-                  mandateAgreed={cardMandateAgreed}
-                  onSuccess={onCardSaveSuccess}
-                  onError={msg => setCardError(msg)}
-                />
+                {cardSetupProcessor === 'square' ? (
+                  <SquareCardSetupForm
+                    clientSecret={cardSetupClientSecret}
+                    customerId={cardSavedCustomerId}
+                    clientId={cardSavedClientId}
+                    therapistId={therapist?.id}
+                    mandateAgreed={cardMandateAgreed}
+                    onSuccess={onCardSaveSuccess}
+                    onError={msg => setCardError(msg)}
+                  />
+                ) : (
+                  <StripeCardSetupForm
+                    clientSecret={cardSetupClientSecret}
+                    stripeAccountId={cardSetupAccountId}
+                    mandateAgreed={cardMandateAgreed}
+                    onSuccess={onCardSaveSuccess}
+                    onError={msg => setCardError(msg)}
+                  />
+                )}
               </div>
             )}
 

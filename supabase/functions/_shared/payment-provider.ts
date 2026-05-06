@@ -222,18 +222,45 @@ export type SetupIntentResult = {
 };
 
 // Operations every provider claims to support or not. The interface
-// declares every operation; this map says which ones actually work
-// today. Edge functions check supportsOperation() before calling so
-// they can fail with a clear error rather than getting a runtime
-// throw deep in the SDK.
+// declares every operation; getCapability() says how well each one
+// works on a given provider today.
 export type Operation =
   | 'createCheckoutLink'        // both
-  | 'createSubscriptionLink'    // stripe only
-  | 'createSetupIntent'         // stripe only
+  | 'createSubscriptionLink'    // both (after chunk δ); stripe today
+  | 'createSetupIntent'         // both (after chunk α); stripe today
   | 'verifyCheckout'            // both
-  | 'saveCardOnFile'            // stripe only (by strategic choice)
-  | 'chargeSavedCard'           // stripe only
-  | 'refund';                   // both (eventually); stripe today
+  | 'saveCardOnFile'            // both (after chunk α); stripe today
+  | 'chargeSavedCard'           // both (after chunk β); stripe today
+  | 'refund';                   // both
+
+// Capability describes how well a provider supports an operation.
+// Replaces the old binary supportsOperation() so we can express
+// "supported but with these limitations" or "deprecated, migrating
+// to V2" — necessary for the agile, modernizable architecture HK
+// asked for.
+export type CapabilityStatus =
+  | 'supported'      // first-class, no caveats
+  | 'limited'        // works, with documented limitations the UI
+                     // should surface to the therapist
+  | 'deprecated'     // works today but being sunset; new code should
+                     // route to recommendedAlternative when present
+  | 'unsupported';   // throws ProviderError if called
+
+export type Capability = {
+  status: CapabilityStatus;
+  // Human-readable limitations the UI can surface verbatim. Empty
+  // for 'supported'; required for 'limited'.
+  limitations?: string[];
+  // 'use Stripe instead' style guidance for therapists when they
+  // try to opt into a 'limited' or 'deprecated' path.
+  recommendedAlternative?: ProviderName;
+  // Implementation version this capability landed in. Bumped when a
+  // provider's strategy module changes (e.g. SquareProviderV2).
+  since?: string;
+  // When status='deprecated', the version it was deprecated in. UI
+  // can show this so the therapist knows it's a sunset path.
+  deprecatedSince?: string;
+};
 
 // ─────────────────────────────────────────────────────────────────
 // Interface
@@ -241,10 +268,18 @@ export type Operation =
 
 export interface PaymentProvider {
   readonly name: ProviderName;
+  // Strategy version. Bumped when we ship a new internal
+  // implementation (e.g. SquareProviderV2). Surfaced for
+  // diagnostics and for the capability matrix's `since`/
+  // `deprecatedSince` fields.
+  readonly version: string;
 
-  // Truth-tells which operations this provider implements today.
-  // Honest about gaps. Caller checks before invoking.
-  supportsOperation(op: Operation): boolean;
+  // Capability matrix lookup. Returns how this provider supports
+  // the given operation, with limitations + recommended alternatives.
+  // Replaces the older boolean supportsOperation(). UI uses this to
+  // show honest tradeoffs; routing logic uses .status to decide
+  // whether to call vs redirect to a recommendedAlternative.
+  getCapability(op: Operation): Capability;
 
   createCheckoutLink(args: CheckoutLinkArgs): Promise<CheckoutLinkResult>;
 
@@ -309,7 +344,7 @@ export async function getProvider(
   }
   if (squareConnected) {
     const { SquareProvider } = await import('./providers/square.ts');
-    return new SquareProvider();
+    return new SquareProvider(therapist);
   }
 
   throw new ProviderError(

@@ -1,0 +1,533 @@
+// supabase/functions/_shared/providers/square/v1.ts
+//
+// SquareV1Strategy — first full implementation of Square parity.
+// Uses:
+//   - Square Online Checkout API for one-time hosted payments
+//     (deposits, package purchases, cart)
+//   - Square Cards API for card-on-file (saveCardOnFile via
+//     Web Payments SDK token + chargeSavedCard via Payments API)
+//   - Square Subscriptions API for memberships (limited compared
+//     to Stripe — no proration, manual dunning, monthly only)
+//   - Square Refunds API
+//   - Square Locations API for self-healing missing location_id
+//
+// Capability declarations (see getCapability):
+//   - createCheckoutLink: supported
+//   - verifyCheckout: supported
+//   - saveCardOnFile: limited (browser support narrower than Stripe
+//     Elements; needs Square Web Payments SDK on the frontend)
+//   - chargeSavedCard: supported (off-session via stored card_id)
+//   - createSubscriptionLink: limited (no proration, weaker dunning,
+//     monthly cadence only)
+//   - createSetupIntent: supported (returns Web Payments SDK
+//     application id rather than a Stripe-style client_secret;
+//     the frontend mounts Square's card form against it)
+//   - refund: supported
+//
+// Future SquareV2Strategy will likely replace some of these when
+// Square ships a unified payment primitive. The strategy interface
+// stays stable; therapists migrate via feature flag.
+
+import type {
+  Therapist,
+  CheckoutLinkArgs, CheckoutLinkResult,
+  VerifyResult, VerifiedLineItem,
+  SetupIntentArgs, SetupIntentResult,
+  SaveCardArgs, SaveCardResult,
+  ChargeArgs, ChargeResult,
+  RefundArgs, RefundResult,
+  Capability, Operation,
+} from '../../payment-provider.ts';
+import { ProviderError, getSupabaseClient } from '../../payment-provider.ts';
+import type { SquareStrategy } from './strategy.ts';
+
+const SQUARE_API = 'https://connect.squareup.com';
+const SQUARE_VERSION = '2024-01-18';
+
+// Internal: standard authenticated fetch with consistent error mapping.
+async function squareFetch(
+  path: string,
+  args: { method?: 'GET' | 'POST'; therapist: Therapist; body?: unknown },
+): Promise<any> {
+  if (!args.therapist.square_access_token) {
+    throw new ProviderError('square_not_connected', 'Therapist has no square_access_token');
+  }
+  const headers: Record<string, string> = {
+    'Authorization': `Bearer ${args.therapist.square_access_token}`,
+    'Square-Version': SQUARE_VERSION,
+  };
+  if (args.body) headers['Content-Type'] = 'application/json';
+  const res = await fetch(`${SQUARE_API}${path}`, {
+    method: args.method || 'GET',
+    headers,
+    body: args.body ? JSON.stringify(args.body) : undefined,
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const code = data?.errors?.[0]?.code || `http_${res.status}`;
+    const detail = data?.errors?.[0]?.detail || `Square ${path} failed`;
+    throw new ProviderError(code, detail);
+  }
+  return data;
+}
+
+// Self-heal: ensure therapist has square_location_id, fetching it
+// if missing. Persists to the therapists row + mutates the local
+// object so subsequent uses in this request don't refetch.
+async function loadLocation(therapist: Therapist): Promise<string> {
+  if (therapist.square_location_id) return therapist.square_location_id;
+  console.log('[square-v1] location_id missing, healing via /v2/locations');
+  const data = await squareFetch('/v2/locations', { therapist });
+  const locs = data.locations || [];
+  const active = locs.find((l: any) => l.status === 'ACTIVE') || locs[0];
+  if (!active?.id) throw new ProviderError('no_locations', 'Square account has no locations');
+  const supabase = getSupabaseClient();
+  await supabase.from('therapists').update({ square_location_id: active.id }).eq('id', therapist.id);
+  (therapist as any).square_location_id = active.id;
+  return active.id;
+}
+
+// Internal: find or create a Square Customer for an email. Returns
+// the customer id. Used by saveCardOnFile + chargeSavedCard.
+async function findOrCreateCustomer(
+  therapist: Therapist,
+  customer: { email: string; name?: string | null; phone?: string | null },
+): Promise<string> {
+  // Search first
+  const search = await squareFetch('/v2/customers/search', {
+    method: 'POST',
+    therapist,
+    body: {
+      query: { filter: { email_address: { exact: customer.email } } },
+      limit: 1,
+    },
+  });
+  const existing = search.customers?.[0];
+  if (existing?.id) return existing.id;
+
+  // Create
+  const created = await squareFetch('/v2/customers', {
+    method: 'POST',
+    therapist,
+    body: {
+      email_address: customer.email,
+      given_name: customer.name?.split(' ')[0] || undefined,
+      family_name: customer.name?.split(' ').slice(1).join(' ') || undefined,
+      phone_number: customer.phone || undefined,
+    },
+  });
+  return created.customer.id;
+}
+
+// Internal: ensure a Square Catalog Object (Subscription Plan + Plan
+// Variation) exists for the given membership. Square subscriptions
+// require a Catalog reference; Stripe creates Products+Prices on the
+// fly but Square wants them upserted via the Catalog API. We hide
+// this from the therapist by creating-on-demand the first time a
+// client signs up for a given membership.
+async function ensureCatalogPlan(
+  therapist: Therapist,
+  plan: { name: string; monthlyPriceCents: number; existingPlanVariationId?: string | null },
+): Promise<{ planVariationId: string; created: boolean }> {
+  if (plan.existingPlanVariationId) {
+    return { planVariationId: plan.existingPlanVariationId, created: false };
+  }
+
+  // Upsert a new plan + variation in a single batch request.
+  // Square's idempotency key prevents duplicate plans on retries.
+  const idempotencyKey = `plan-${therapist.id}-${plan.name}-${plan.monthlyPriceCents}`;
+  const body = {
+    idempotency_key: idempotencyKey,
+    batches: [{
+      objects: [
+        {
+          type: 'SUBSCRIPTION_PLAN',
+          id: '#plan',
+          subscription_plan_data: {
+            name: plan.name,
+            phases: [{
+              cadence: 'MONTHLY',
+              periods: 0, // 0 = no end, recurring forever
+              recurring_price_money: { amount: plan.monthlyPriceCents, currency: 'USD' },
+            }],
+          },
+        },
+        {
+          type: 'SUBSCRIPTION_PLAN_VARIATION',
+          id: '#variation',
+          subscription_plan_variation_data: {
+            name: plan.name,
+            phases: [{
+              cadence: 'MONTHLY',
+              periods: 0,
+              pricing: {
+                type: 'STATIC',
+                price_money: { amount: plan.monthlyPriceCents, currency: 'USD' },
+              },
+            }],
+            subscription_plan_id: '#plan',
+          },
+        },
+      ],
+    }],
+  };
+
+  const result = await squareFetch('/v2/catalog/batch-upsert', {
+    method: 'POST',
+    therapist,
+    body,
+  });
+
+  // Find the variation in the id_mappings (Square assigns real ids).
+  const mappings = result.id_mappings || [];
+  const variationMapping = mappings.find((m: any) => m.client_object_id === '#variation');
+  if (!variationMapping?.object_id) {
+    throw new ProviderError('catalog_creation_failed', 'Square did not return a plan variation id');
+  }
+  return { planVariationId: variationMapping.object_id, created: true };
+}
+
+export class SquareV1Strategy implements SquareStrategy {
+  readonly version = 'square-v1-2026-05';
+
+  getCapability(op: Operation): Capability {
+    const cap: Record<Operation, Capability> = {
+      createCheckoutLink: { status: 'supported', since: this.version },
+      verifyCheckout: { status: 'supported', since: this.version },
+      refund: { status: 'supported', since: this.version },
+      chargeSavedCard: { status: 'supported', since: this.version },
+
+      // Card-on-file capture is 'limited' rather than 'supported'
+      // because Square Web Payments SDK has narrower browser support
+      // than Stripe Elements. Older Safari and some embedded webviews
+      // can fail to mount the card form. UI surfaces this so therapists
+      // know what they're signing up for.
+      saveCardOnFile: {
+        status: 'limited',
+        since: this.version,
+        limitations: [
+          'Square Web Payments SDK requires modern browsers; older Safari and some webview environments may not mount the card form.',
+          'No fingerprinting-based fraud protection at parity with Stripe Radar.',
+        ],
+        recommendedAlternative: 'stripe',
+      },
+      createSetupIntent: {
+        status: 'limited',
+        since: this.version,
+        limitations: [
+          'Returns a Square application id and location id (not a Stripe-style client_secret).',
+          'Frontend must use Square Web Payments SDK to mount the card form.',
+        ],
+        recommendedAlternative: 'stripe',
+      },
+
+      // Subscriptions are 'limited' because Square's primitive is
+      // genuinely weaker than Stripe's: no proration on plan changes,
+      // weaker built-in dunning (failed payment retry), monthly only
+      // in our integration. UI shows these limitations inline when a
+      // therapist picks Square subscriptions.
+      createSubscriptionLink: {
+        status: 'limited',
+        since: this.version,
+        limitations: [
+          'Monthly billing cadence only (Stripe supports weekly, quarterly, yearly).',
+          'No automatic proration when a member changes plans.',
+          'Failed payment retries are simpler than Stripe Smart Retries; failed renewals require manual follow-up.',
+          'No customer-facing self-service portal for members to update card or cancel — therapist handles via dashboard.',
+        ],
+        recommendedAlternative: 'stripe',
+      },
+    };
+    return cap[op] || { status: 'unsupported' };
+  }
+
+  // ─── createCheckoutLink ──────────────────────────────────────────
+  async createCheckoutLink(args: CheckoutLinkArgs): Promise<CheckoutLinkResult> {
+    if (args.mode === 'subscription') {
+      return this.createSubscriptionLink(args);
+    }
+
+    const locationId = await loadLocation(args.therapist);
+    const totalCents = args.items.reduce((s, it) => s + it.amountCents * (it.quantity || 1), 0);
+
+    const isSingleLine = args.items.length === 1 && (args.items[0].quantity || 1) === 1;
+    let body: Record<string, unknown>;
+
+    if (isSingleLine) {
+      const it = args.items[0];
+      body = {
+        idempotency_key: `chk-${args.therapist.id}-${args.customer.email}-${Date.now()}`,
+        quick_pay: {
+          name: it.name,
+          price_money: { amount: it.amountCents, currency: 'USD' },
+          location_id: locationId,
+        },
+        checkout_options: {
+          ask_for_shipping_address: false,
+          redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square`,
+        },
+        pre_populated_data: { buyer_email: args.customer.email },
+        description: it.description || undefined,
+      };
+    } else {
+      body = {
+        idempotency_key: `chk-${args.therapist.id}-${args.customer.email}-${Date.now()}`,
+        order: {
+          location_id: locationId,
+          line_items: args.items.map((it) => ({
+            name: it.name,
+            quantity: String(it.quantity || 1),
+            base_price_money: { amount: it.amountCents, currency: 'USD' },
+            note: it.description || undefined,
+            metadata: { ...(it.metadata || {}), item_id: it.itemId },
+          })),
+        },
+        checkout_options: {
+          ask_for_shipping_address: false,
+          redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square`,
+        },
+        pre_populated_data: { buyer_email: args.customer.email },
+      };
+    }
+
+    const data = await squareFetch('/v2/online-checkout/payment-links', {
+      method: 'POST', therapist: args.therapist, body,
+    });
+
+    const link = data.payment_link;
+    if (!link?.url) throw new ProviderError('no_url_returned', 'Square returned no checkout URL');
+
+    return {
+      url: link.url,
+      providerSessionId: link.id,
+      paymentRefId: link.order_id,
+      totalCents,
+    };
+  }
+
+  // ─── createSubscriptionLink ──────────────────────────────────────
+  // Square subscriptions need a Catalog Object (plan variation) to
+  // exist before /v2/subscriptions can reference it. We create it on
+  // demand and persist the planVariationId on the membership row so
+  // future signups reuse it.
+  async createSubscriptionLink(args: CheckoutLinkArgs): Promise<CheckoutLinkResult> {
+    if (!args.subscriptionPlan) {
+      throw new ProviderError('missing_subscription_plan', 'mode=subscription requires subscriptionPlan');
+    }
+    const plan = args.subscriptionPlan;
+    const locationId = await loadLocation(args.therapist);
+
+    // Step 1: ensure the plan + variation exist in Square Catalog.
+    // Note: existingPriceId on the args is reused for Square as the
+    // plan variation id (same conceptual slot — caller persists it
+    // on memberships.square_plan_variation_id).
+    const { planVariationId, created } = await ensureCatalogPlan(args.therapist, {
+      name: plan.name,
+      monthlyPriceCents: plan.monthlyPriceCents,
+      existingPlanVariationId: plan.existingPriceId, // reused field
+    });
+
+    // Step 2: ensure customer exists.
+    const customerId = await findOrCreateCustomer(args.therapist, {
+      email: args.customer.email,
+      name: args.customer.name,
+      phone: args.customer.phone,
+    });
+
+    // Step 3: create the subscription. Square does NOT have a hosted
+    // checkout for subscriptions, so we generate a hosted checkout
+    // for the FIRST month + use the saved card to enroll the customer
+    // in the subscription post-payment.
+    //
+    // Strategy: use a Payment Link with a Save-Card option to capture
+    // the card, then set up the subscription with that card. Square's
+    // `subscription_plan_id` requires the variation id. The actual
+    // subscription is created in confirm-membership-purchase, after
+    // the first payment succeeds.
+    //
+    // For the redirect URL, we include enough context that the
+    // confirm step can pull customer_id + card_id and set up the
+    // subscription server-side.
+    const startDate = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // We return a Payment Link for the FIRST payment + indicate
+    // subscription mode. The confirm step will create the
+    // subscription post-payment.
+    const idempotencyKey = `sub-init-${args.therapist.id}-${args.customer.email}-${Date.now()}`;
+    const data = await squareFetch('/v2/online-checkout/payment-links', {
+      method: 'POST',
+      therapist: args.therapist,
+      body: {
+        idempotency_key: idempotencyKey,
+        quick_pay: {
+          name: `${plan.name} (first month)`,
+          price_money: { amount: plan.monthlyPriceCents, currency: 'USD' },
+          location_id: locationId,
+        },
+        checkout_options: {
+          ask_for_shipping_address: false,
+          redirect_url: `${args.redirectUrl}&checkout_complete=1&processor=square&mode=subscription&plan_variation_id=${planVariationId}&customer_id=${customerId}&start_date=${startDate}`,
+        },
+        pre_populated_data: { buyer_email: args.customer.email },
+      },
+    });
+
+    const link = data.payment_link;
+    if (!link?.url) throw new ProviderError('no_url_returned', 'Square returned no checkout URL');
+
+    return {
+      url: link.url,
+      providerSessionId: link.id,
+      paymentRefId: link.order_id,
+      totalCents: plan.monthlyPriceCents,
+      // Smuggle the plan variation id back so the caller can persist
+      // it on the membership row for reuse. Lives on the optional
+      // newPriceId field (same semantic slot as Stripe's price id).
+      ...(created ? { newPriceId: planVariationId } : {}),
+    } as CheckoutLinkResult;
+  }
+
+  // ─── verifyCheckout ──────────────────────────────────────────────
+  async verifyCheckout(args: { therapist: Therapist; paymentRefId: string }): Promise<VerifyResult> {
+    const orderId = args.paymentRefId;
+    const data = await squareFetch(`/v2/orders/${orderId}`, { therapist: args.therapist });
+    const order = data.order;
+    if (!order) throw new ProviderError('order_not_found', `Square order ${orderId} not found`);
+
+    const paid = order.state === 'COMPLETED';
+    const totalCents = order.total_money?.amount || 0;
+    const lineItems: VerifiedLineItem[] = (order.line_items || []).map((line: any) => ({
+      itemId: line.metadata?.item_id || line.metadata?.package_id || '',
+      amountCents: line.total_money?.amount || 0,
+      metadata: line.metadata || {},
+    })).filter((li: VerifiedLineItem) => li.itemId);
+
+    return {
+      paid, status: order.state, totalCents,
+      lineItems, paymentRefId: orderId,
+    };
+  }
+
+  // ─── createSetupIntent ───────────────────────────────────────────
+  // Square doesn't have a SetupIntent primitive. Closest equivalent:
+  // the frontend uses Web Payments SDK to tokenize a card with the
+  // application id + location id, then calls saveCardOnFile with
+  // the resulting nonce. So this method returns the application id
+  // + location id rather than a client_secret. Frontend code
+  // handles the difference.
+  async createSetupIntent(args: SetupIntentArgs): Promise<SetupIntentResult> {
+    const locationId = await loadLocation(args.therapist);
+    const customerId = await findOrCreateCustomer(args.therapist, {
+      email: args.customer.email,
+      name: args.customer.name,
+      phone: args.customer.phone,
+    });
+    // Square Web Payments SDK needs the application id (the OAuth
+    // app's id, not the merchant id) on the frontend. We expose it
+    // via env so multiple deploys share one value.
+    const applicationId = Deno.env.get('SQUARE_APPLICATION_ID') || '';
+    if (!applicationId) {
+      throw new ProviderError('square_app_id_missing', 'SQUARE_APPLICATION_ID env var not set');
+    }
+    return {
+      // We pack Square's two-piece identity into the clientSecret
+      // field as a JSON string. The frontend parses it back. Using
+      // the existing field (rather than adding a new one) keeps the
+      // PaymentProvider interface stable across providers — both
+      // return a single string the frontend uses to mount its SDK.
+      clientSecret: JSON.stringify({
+        applicationId,
+        locationId,
+        customerId,
+      }),
+      providerCustomerId: customerId,
+      accountId: args.therapist.square_merchant_id || '',
+    };
+  }
+
+  // ─── saveCardOnFile ──────────────────────────────────────────────
+  // The frontend has tokenized a card via Web Payments SDK. The token
+  // (Square calls it a 'source_id' or 'nonce') is passed in as
+  // paymentToken. We attach it to the customer via /v2/cards.
+  async saveCardOnFile(args: SaveCardArgs): Promise<SaveCardResult> {
+    const customerId = await findOrCreateCustomer(args.therapist, args.customer);
+    const cardData = await squareFetch('/v2/cards', {
+      method: 'POST',
+      therapist: args.therapist,
+      body: {
+        idempotency_key: `card-${customerId}-${Date.now()}`,
+        source_id: args.paymentToken,
+        card: { customer_id: customerId },
+      },
+    });
+    const card = cardData.card;
+    if (!card?.id) throw new ProviderError('card_save_failed', 'Square did not return a card');
+
+    return {
+      providerCustomerId: customerId,
+      providerCardId: card.id,
+      last4: card.last_4 || '????',
+      brand: (card.card_brand || 'card').toLowerCase(),
+    };
+  }
+
+  // ─── chargeSavedCard ─────────────────────────────────────────────
+  async chargeSavedCard(args: ChargeArgs): Promise<ChargeResult> {
+    const locationId = await loadLocation(args.therapist);
+    const data = await squareFetch('/v2/payments', {
+      method: 'POST',
+      therapist: args.therapist,
+      body: {
+        idempotency_key: args.idempotencyKey,
+        source_id: args.providerCardId,
+        customer_id: args.providerCustomerId,
+        amount_money: { amount: args.amountCents, currency: 'USD' },
+        location_id: locationId,
+        note: args.description || undefined,
+        ...(args.receiptEmail ? { buyer_email_address: args.receiptEmail } : {}),
+      },
+    });
+    const payment = data.payment;
+    return {
+      paid: payment?.status === 'COMPLETED' || payment?.status === 'APPROVED',
+      paymentRefId: payment?.id || '',
+      amountCents: payment?.amount_money?.amount || args.amountCents,
+    };
+  }
+
+  // ─── refund ──────────────────────────────────────────────────────
+  async refund(args: RefundArgs): Promise<RefundResult> {
+    // Find the payment id from the order. Square refunds operate on
+    // payments, not orders.
+    let paymentId: string | undefined;
+    const orderData = await squareFetch(`/v2/orders/${args.paymentRefId}`, { therapist: args.therapist });
+    paymentId = orderData.order?.tenders?.[0]?.payment_id;
+
+    // Fallback: if paymentRefId looks like a payment id directly
+    // (chargeSavedCard returns one of these), use it.
+    if (!paymentId && args.paymentRefId.length > 10) {
+      paymentId = args.paymentRefId;
+    }
+    if (!paymentId) throw new ProviderError('no_payment_for_order', 'Square order has no associated payment');
+
+    const refundBody: Record<string, unknown> = {
+      idempotency_key: args.idempotencyKey,
+      payment_id: paymentId,
+      reason: args.reason || undefined,
+    };
+    if (args.amountCents !== undefined) {
+      refundBody.amount_money = { amount: args.amountCents, currency: 'USD' };
+    } else {
+      refundBody.amount_money = orderData.order?.total_money || { amount: 0, currency: 'USD' };
+    }
+    const refundData = await squareFetch('/v2/refunds', {
+      method: 'POST', therapist: args.therapist, body: refundBody,
+    });
+    const refund = refundData.refund;
+    return {
+      refunded: refund?.status === 'COMPLETED' || refund?.status === 'PENDING',
+      refundId: refund?.id || '',
+      amountCents: refund?.amount_money?.amount || 0,
+    };
+  }
+}

@@ -93,10 +93,12 @@ async function stripeFetch(
 
 export class StripeProvider implements PaymentProvider {
   readonly name: ProviderName = 'stripe';
+  readonly version: string = 'stripe-v1-2026-05';
 
-  supportsOperation(op: Operation): boolean {
-    // Stripe supports everything in our surface area.
-    return [
+  getCapability(op: Operation): Capability {
+    // Stripe is the reference implementation. Everything is
+    // first-class supported.
+    const supported: Operation[] = [
       'createCheckoutLink',
       'createSubscriptionLink',
       'createSetupIntent',
@@ -104,7 +106,11 @@ export class StripeProvider implements PaymentProvider {
       'saveCardOnFile',
       'chargeSavedCard',
       'refund',
-    ].includes(op);
+    ];
+    if (supported.includes(op)) {
+      return { status: 'supported', since: this.version };
+    }
+    return { status: 'unsupported' };
   }
 
   // ─── createCheckoutLink ──────────────────────────────────────────
