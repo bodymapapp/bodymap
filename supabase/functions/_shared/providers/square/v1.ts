@@ -423,11 +423,11 @@ export class SquareV1Strategy implements SquareStrategy {
       phone: args.customer.phone,
     });
     // Square Web Payments SDK needs the application id (the OAuth
-    // app's id, not the merchant id) on the frontend. We expose it
-    // via env so multiple deploys share one value.
-    const applicationId = Deno.env.get('SQUARE_APPLICATION_ID') || '';
+    // app's id, not the merchant id) on the frontend. Same env var
+    // used by square-oauth and square-oauth-callback for consistency.
+    const applicationId = Deno.env.get('SQUARE_APP_ID') || '';
     if (!applicationId) {
-      throw new ProviderError('square_app_id_missing', 'SQUARE_APPLICATION_ID env var not set');
+      throw new ProviderError('square_app_id_missing', 'SQUARE_APP_ID env var not set');
     }
     return {
       // We pack Square's two-piece identity into the clientSecret
