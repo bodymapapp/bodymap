@@ -97,8 +97,10 @@ function StatusPill({ status }) {
 
 // Renders one purchase row, expandable for detail. Used for both
 // packages (sessions) and memberships (subscriptions).
-function PurchaseRow({ row, kind }) {
+function PurchaseRow({ row, kind, therapistId, onRefunded }) {
   const [expanded, setExpanded] = useState(false);
+  const [refunding, setRefunding] = useState(false);
+  const [refundError, setRefundError] = useState(null);
 
   // Common: who bought, when
   const who = row.client_name || row.client_email || 'Unknown';
@@ -119,6 +121,10 @@ function PurchaseRow({ row, kind }) {
       ['Expires', row.expires_at ? formatDate(row.expires_at) : 'Never'],
       ['Payment id', row.stripe_payment_id || '—'],
     ];
+    if (row.refund_id) {
+      detailRows.push(['Refund id', row.refund_id]);
+      detailRows.push(['Refunded on', row.refunded_at ? formatDate(row.refunded_at) : '—']);
+    }
   } else {
     title = row.membership_name || 'Membership';
     subtitle = `${row.current_credits ?? '?'} credits this month · ${formatPrice(row.monthly_price)}/mo`;
@@ -130,6 +136,61 @@ function PurchaseRow({ row, kind }) {
       ['Subscription id', row.stripe_subscription_id || '—'],
     ];
   }
+
+  // Refund button conditions:
+  //   - Only for packages (memberships need separate cancel-subscription flow)
+  //   - Only if there's a payment ref to refund against
+  //   - Only if not already refunded
+  //   - Only if status is 'active' (don't refund expired/cancelled —
+  //     those are already terminal states)
+  const canRefund =
+    kind === 'package' &&
+    row.status === 'active' &&
+    row.stripe_payment_id &&
+    !row.refund_id;
+
+  const handleRefund = async (e) => {
+    e.stopPropagation();
+    const priceText = formatPrice(row.price_paid);
+    const confirmText =
+      `Refund ${priceText} to ${who}?\n\n` +
+      `This will refund the original payment and zero out the remaining sessions on this package. ` +
+      `It cannot be undone.`;
+    if (!window.confirm(confirmText)) return;
+
+    setRefunding(true);
+    setRefundError(null);
+
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await fetch(`${supabaseUrl}/functions/v1/refund-purchase`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          purchase_id: row.id,
+          therapist_id: therapistId,
+          refunded_by: user?.id || null,
+        }),
+      });
+      const data = await res.json();
+      setRefunding(false);
+      if (data.error) {
+        setRefundError(data.error);
+        return;
+      }
+      // Refresh the parent list so the row updates to 'Refunded' state.
+      if (onRefunded) onRefunded();
+    } catch (err) {
+      setRefunding(false);
+      setRefundError(String(err));
+    }
+  };
 
   return (
     <div
@@ -164,20 +225,63 @@ function PurchaseRow({ row, kind }) {
         <div style={{
           marginTop: 10, paddingTop: 10,
           borderTop: `1px dashed ${C.light}`,
-          display: 'grid', gridTemplateColumns: 'auto 1fr',
-          gap: '4px 12px', fontSize: 11,
         }}>
-          {detailRows.map(([k, v]) => (
-            <React.Fragment key={k}>
-              <div style={{ color: C.muted }}>{k}</div>
-              <div style={{ color: C.text, wordBreak: 'break-all' }}>{v ?? '—'}</div>
-            </React.Fragment>
-          ))}
-          {row.client_email && (
-            <>
-              <div style={{ color: C.muted }}>Email</div>
-              <div style={{ color: C.text }}>{row.client_email}</div>
-            </>
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'auto 1fr',
+            gap: '4px 12px', fontSize: 11,
+          }}>
+            {detailRows.map(([k, v]) => (
+              <React.Fragment key={k}>
+                <div style={{ color: C.muted }}>{k}</div>
+                <div style={{ color: C.text, wordBreak: 'break-all' }}>{v ?? '—'}</div>
+              </React.Fragment>
+            ))}
+            {row.client_email && (
+              <>
+                <div style={{ color: C.muted }}>Email</div>
+                <div style={{ color: C.text }}>{row.client_email}</div>
+              </>
+            )}
+          </div>
+
+          {/* Refund button — packages only, active only, not yet refunded */}
+          {canRefund && (
+            <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+              <button
+                onClick={handleRefund}
+                disabled={refunding}
+                style={{
+                  background: refunding ? '#FCA5A5' : '#fff',
+                  color: '#991B1B',
+                  border: '1.5px solid #FCA5A5',
+                  borderRadius: 8,
+                  padding: '6px 14px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: refunding ? 'wait' : 'pointer',
+                  letterSpacing: 0.3,
+                }}
+              >
+                {refunding ? 'Refunding...' : `Refund ${formatPrice(row.price_paid)}`}
+              </button>
+              <div style={{ fontSize: 10, color: C.muted, lineHeight: 1.4 }}>
+                Refunds the original payment and zeros out remaining sessions.
+              </div>
+            </div>
+          )}
+
+          {refundError && (
+            <div style={{
+              marginTop: 8,
+              fontSize: 11,
+              color: '#991B1B',
+              background: '#FEE2E2',
+              border: '1px solid #FCA5A5',
+              borderRadius: 6,
+              padding: '6px 10px',
+            }}>
+              Refund failed: {refundError}
+            </div>
           )}
         </div>
       )}
@@ -189,6 +293,8 @@ export default function PurchasesPanel({ therapistId }) {
   const [packages, setPackages] = useState([]);
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Bump this counter to trigger a refetch (after a refund, etc.)
+  const [refetchKey, setRefetchKey] = useState(0);
 
   useEffect(() => {
     if (!therapistId) return;
@@ -231,7 +337,9 @@ export default function PurchasesPanel({ therapistId }) {
     })();
 
     return () => { cancelled = true; };
-  }, [therapistId]);
+  }, [therapistId, refetchKey]);
+
+  const handleRefunded = () => setRefetchKey((k) => k + 1);
 
   // Sort: active first, then anything else, by date desc within each group.
   const sortedPackages = useMemo(() => {
@@ -304,7 +412,7 @@ export default function PurchasesPanel({ therapistId }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {sortedPackages.map((p) => (
-              <PurchaseRow key={p.id} row={p} kind="package" />
+              <PurchaseRow key={p.id} row={p} kind="package" therapistId={therapistId} onRefunded={handleRefunded} />
             ))}
           </div>
         </div>
@@ -320,7 +428,7 @@ export default function PurchasesPanel({ therapistId }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {sortedSubs.map((s) => (
-              <PurchaseRow key={s.id} row={s} kind="membership" />
+              <PurchaseRow key={s.id} row={s} kind="membership" therapistId={therapistId} onRefunded={handleRefunded} />
             ))}
           </div>
         </div>
