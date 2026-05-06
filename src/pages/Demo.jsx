@@ -1079,28 +1079,26 @@ const PS = ({ icon, title }) => (
 );
 const Slider = ({ value, onChange }) => (
   <div>
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        marginBottom: 6,
-      }}
-    >
-      <span style={{ fontFamily: F.body, fontSize: 11, color: C.textLight }}>
-        🪶 Feather
-      </span>
+    {/* Current selection shown centered above the bar. Endpoint
+        hint labels (Feather / Deep) sit below the dots in smaller
+        type so they do not visually collide with the centered
+        current-value pill at the extremes. The previous layout
+        sandwiched the current value between the two endpoint
+        labels which caused 'Deep ... Deep' overlap when the slider
+        was at 5. */}
+    <div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}>
       <span
         style={{
           fontFamily: F.body,
-          fontSize: 13,
+          fontSize: 14,
           fontWeight: 800,
           color: C.green,
+          background: "#F0F9F4",
+          padding: "4px 12px",
+          borderRadius: 999,
         }}
       >
         {PLICONS[value]} {PLABELS[value]}
-      </span>
-      <span style={{ fontFamily: F.body, fontSize: 11, color: C.textLight }}>
-        ⚡ Deep
       </span>
     </div>
     <input
@@ -1126,6 +1124,19 @@ const Slider = ({ value, onChange }) => (
           }}
         />
       ))}
+    </div>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        marginTop: 4,
+        fontFamily: F.body,
+        fontSize: 10,
+        color: C.textLight,
+      }}
+    >
+      <span>🪶 Feather</span>
+      <span>⚡ Deep</span>
     </div>
   </div>
 );
@@ -4319,15 +4330,57 @@ function SchemaField({ field, prefs, upd, customAnswers, setCustomAnswers }) {
     }
   };
 
-  // ----- SPECIAL: pressure stays as a 1-5 slider for granularity -----
-  // Schema may say chips, but the slider has been the established
-  // pressure UX since launch. We honor the label from schema (so
-  // therapists can rename it) but keep the slider widget.
+  // ----- SPECIAL: pressure -----
+  // Default schema gets the established 1-5 slider. If the therapist
+  // has edited the options (added, removed, or renamed), the field
+  // renders as chips like any other. This means a 70-year-old LMT
+  // who is happy with the default keeps the familiar slider, but a
+  // therapist who customized to "Very soft / Light / Medium / Firm /
+  // Deep / Very firm" gets chips that match what she defined.
   if (field.id === 'pressure') {
+    // Detect whether the therapist customized this field. The default
+    // option set is exactly 4 entries with these v keys, in order.
+    // Any deviation means custom — render chips.
+    const defaultOptionVs = ['light', 'medium', 'firm', 'deep'];
+    const optionVs = (field.options || []).map((o) => o.v);
+    const isDefault = optionVs.length === defaultOptionVs.length &&
+      defaultOptionVs.every((v, i) => optionVs[i] === v);
+
+    if (isDefault) {
+      return (
+        <Card>
+          <PS icon={icon} title={field.label} />
+          <Slider value={prefs.pressure} onChange={(v) => upd('pressure', v)} />
+        </Card>
+      );
+    }
+
+    // Customized: render as chips. The selected value lives in
+    // prefs.pressure (a string at this point — schema-aware therapists
+    // get a string, the slider therapists get a 1-5 number). The
+    // sessions table column is integer for the slider variant; for
+    // the chips variant we map the chosen v key to a 1-5 integer at
+    // submit time so backend code that expects 1-5 still works. See
+    // mapping in the submit handler.
     return (
       <Card>
         <PS icon={icon} title={field.label} />
-        <Slider value={prefs.pressure} onChange={(v) => upd('pressure', v)} />
+        {field.help && (
+          <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, margin: '0 0 10px', lineHeight: 1.5 }}>
+            {field.help}
+          </p>
+        )}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {(field.options || []).map((opt) => (
+            <PT
+              key={opt.v}
+              icon="•"
+              label={opt.label}
+              selected={prefs.pressure === opt.v}
+              onClick={() => upd('pressure', opt.v)}
+            />
+          ))}
+        </div>
       </Card>
     );
   }
@@ -4715,6 +4768,31 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
       
       // contact holds email when pre-filled from booking, phone when entered in welcome screen
       const contactIsEmail = clientInfo.contact.includes('@');
+      // Normalize pressure to a 1-5 integer for the sessions table.
+      // Two paths feed this field:
+      //   - default schema: prefs.pressure is already a number 1-5
+      //     from the slider widget
+      //   - custom schema (chips): prefs.pressure is the v key the
+      //     client tapped, like 'medium' or 'very_firm'. Map known
+      //     keys back to a 1-5 number; unknown custom keys default
+      //     to 3 (medium) so downstream code does not crash. The
+      //     original v key is also stored in custom_intake_answers
+      //     so a therapist can see exactly what the client picked.
+      const pressureKeyToInt = {
+        very_soft: 1, light: 2, medium: 3, firm: 4, deep: 5, very_firm: 5,
+        verysoft: 1, veryfirm: 5, // tolerate slugs without underscore
+      };
+      let pressureInt = prefs.pressure;
+      let pressureCustomKey = null;
+      if (typeof prefs.pressure === 'string') {
+        pressureCustomKey = prefs.pressure;
+        const slug = String(prefs.pressure).toLowerCase().replace(/[^a-z0-9]/g, '_');
+        pressureInt = pressureKeyToInt[slug] ?? pressureKeyToInt[slug.replace(/_/g, '')] ?? 3;
+      }
+      const customAnswersOut = pressureCustomKey
+        ? { ...customAnswers, _pressure_label: pressureCustomKey }
+        : (customAnswers || {});
+
       onSubmit({
         clientName: clientInfo.name,
         clientPhone: contactIsEmail ? (clientInfo.phone || '') : clientInfo.contact,
@@ -4723,7 +4801,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
         frontAvoid,
         backFocus,
         backAvoid,
-        pressure: prefs.pressure,
+        pressure: pressureInt,
         goal: prefs.goal,
         tableTemp: prefs.tableTemp,
         roomTemp: prefs.roomTemp,
@@ -4745,7 +4823,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
         // Populated when therapist adds custom fields via the editor
         // and the client fills them out. Empty object means no
         // customs were filled in (or none exist on this schema).
-        customAnswers: customAnswers || {},
+        customAnswers: customAnswersOut,
       });
     } else {
       // Default behavior - show summary screen
