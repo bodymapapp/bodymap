@@ -147,8 +147,22 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
               style={{ width: 160, height: 160, borderRadius: 8 }}
             />
           </div>
-          <div style={{ fontSize: 10, color: C2.gray, textAlign: 'center', wordBreak: 'break-all', padding: '0 4px 10px' }}>
-            {url}
+          <div style={{ fontSize: 10, textAlign: 'center', wordBreak: 'break-all', padding: '0 4px 10px' }}>
+            {/* URL is now a tappable link instead of plain text. Opens in
+                a new tab on tap so the therapist can verify the QR
+                target in one tap rather than copy/paste. */}
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: '#2A5741',
+                textDecoration: 'underline',
+                textDecorationColor: '#86A395',
+                textUnderlineOffset: 2,
+              }}>
+              {url}
+            </a>
           </div>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             <button onClick={download} disabled={downloading} style={{

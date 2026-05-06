@@ -1,6 +1,6 @@
 // BodyMap service worker
 // IMPORTANT: bumping CACHE_NAME forces all clients to rebuild cache on next visit.
-const CACHE_NAME = 'bodymap-v3';
+const CACHE_NAME = 'bodymap-v4';
 
 // Install — no precache. CRA hashes filenames (main.abc123.js), so we can't
 // precache by known path. We cache opportunistically in the fetch handler.
@@ -25,6 +25,14 @@ self.addEventListener('activate', event => {
 // throws "Failed to convert value to 'Response'" and breaks navigation on
 // modern Chrome. Previous bug: .catch(() => caches.match(req)) returned
 // undefined on a cache miss. Never again.
+//
+// V4 CHANGE: stop caching HTML / navigation requests. Why: the booking
+// page is the same URL (/{custom_url}) regardless of which bundle is
+// referenced inside it. If we cached the HTML, a phone that fell back to
+// cache once would keep loading the OLD index.html which referenced the
+// OLD main.HASH.js bundle, and never see new deploys. Symptom: therapist
+// edits intake schema, deploys are green, phone never updates. Fixing
+// here by passing all navigation/HTML requests straight to the network.
 self.addEventListener('fetch', event => {
   const req = event.request;
 
@@ -36,6 +44,27 @@ self.addEventListener('fetch', event => {
   if (url.origin !== self.location.origin) return;
   if (!url.protocol.startsWith('http')) return;
   if (url.pathname.startsWith('/api/')) return;
+
+  // V4: navigation requests (HTML page loads) go straight to network.
+  // We do NOT serve HTML from cache, ever. If network fails for an
+  // HTML request the browser shows its standard offline page.
+  // mode === 'navigate' covers both initial navigations and SPA
+  // reload paths. Accept header check is a fallback for older
+  // browsers that do not set request.mode reliably.
+  const isNavigation = req.mode === 'navigate' ||
+    (req.headers.get('accept') || '').includes('text/html');
+  if (isNavigation) {
+    event.respondWith(
+      fetch(req).catch(() => new Response(
+        '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
+        '<body style="font-family:system-ui;padding:40px;color:#1F2937">' +
+        '<h2>You appear to be offline.</h2>' +
+        '<p>Please reconnect and reload this page.</p></body>',
+        { status: 503, headers: { 'Content-Type': 'text/html' } }
+      ))
+    );
+    return;
+  }
 
   event.respondWith(
     fetch(req)

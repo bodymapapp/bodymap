@@ -1868,10 +1868,15 @@ export default function BookingPage() {
           Opens when client taps a package or membership card. Collects
           name + email + phone, then sends them to hosted Stripe Checkout
           or Square Payment Link. Memberships are Stripe-only (membership
-          cards only render for Stripe-connected therapists). */}
+          cards only render for Stripe-connected therapists).
+
+          DESIGN NOTE: backdrop tap does NOT close the modal. Once the
+          client has started typing, an accidental tap outside should
+          not lose their work. Only the explicit × button or Cancel
+          button dismisses. This rule applies to all input-bearing
+          modals on the booking page. */}
       {offerModal && (
         <div
-          onClick={() => !offerLoading && setOfferModal(null)}
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.5)',
@@ -1879,14 +1884,40 @@ export default function BookingPage() {
             padding: 20, zIndex: 9999,
           }}>
           <div
-            onClick={(e) => e.stopPropagation()}
             style={{
               background: '#fff', borderRadius: 18,
               maxWidth: 440, width: '100%',
               padding: 24,
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+              position: 'relative',
             }}>
-            <div style={{ marginBottom: 16 }}>
+            {/* Explicit close button. Sits in the top-right corner.
+                Disabled while the request is in flight to prevent
+                race conditions. */}
+            <button
+              onClick={() => !offerLoading && setOfferModal(null)}
+              disabled={offerLoading}
+              aria-label="Close"
+              style={{
+                position: 'absolute',
+                top: 14,
+                right: 14,
+                background: '#F3F4F6',
+                border: 'none',
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                fontSize: 18,
+                fontWeight: 700,
+                color: C.gray,
+                cursor: offerLoading ? 'default' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                lineHeight: 1,
+              }}>×</button>
+
+            <div style={{ marginBottom: 16, paddingRight: 36 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                 {offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
               </div>

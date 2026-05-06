@@ -1380,19 +1380,33 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
       {/* Settings search. Top of page so it's the first place a therapist
           looks if they remember a feature name but not its group. Matches
-          on label + summary across all rows. */}
+          on label + summary across all rows. Highlighted style (forest
+          border, bigger padding, label above) so 70-year-old users can
+          find it without hunting. */}
+      <div style={{
+        marginBottom: 8,
+        fontSize: 11,
+        fontWeight: 700,
+        color: '#2A5741',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+      }}>
+        🔎 Search any setting
+      </div>
       <div style={{
         position: 'relative',
-        marginBottom: 12,
+        marginBottom: 16,
         background: '#fff',
-        border: '1px solid rgba(31,58,44,0.08)',
+        border: `2px solid ${isSearching ? '#2A5741' : '#86A395'}`,
         borderRadius: 12,
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         padding: '0 14px',
+        boxShadow: '0 2px 8px rgba(42,87,65,0.10)',
+        transition: 'border-color 0.15s, box-shadow 0.15s',
       }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2A5741" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
           <circle cx="11" cy="11" r="7"/><path d="M21 21l-5-5"/>
         </svg>
         <input
@@ -1404,8 +1418,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             flex: 1,
             border: 'none',
             outline: 'none',
-            padding: '12px 0',
-            fontSize: 14,
+            padding: '14px 0',
+            fontSize: 15,
             background: 'transparent',
             color: '#1F3A2C',
             minWidth: 0,
