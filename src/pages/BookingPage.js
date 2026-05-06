@@ -1634,17 +1634,31 @@ export default function BookingPage() {
               }              // Check repeat client by email OR phone OR name, any match = returning client
               const email = form.email.trim().toLowerCase();
               const phone = form.phone.replace(/\D/g,'').slice(-10);
-              const name = form.name.trim().toLowerCase();
 
               let isRepeat = false;
 
-              // 1. Email match
-              const {data:byEmail} = await supabase.from('bookings')
-                .select('id').eq('therapist_id',therapist.id)
-                .eq('client_email',email).neq('status','cancelled').limit(1);
-              if (byEmail?.length) isRepeat = true;
+              // Returning-customer detection. We check email and phone,
+              // both of which are reasonable identity signals. We do NOT
+              // check name alone — common names create constant false
+              // positives. If you booked with this email or this phone
+              // before, you are a returning client. Otherwise you are
+              // new, regardless of what name you typed. (Bug history:
+              // a previous name-match check via ilike() was treating
+              // every test client named 'Test' or 'Joy' as a returning
+              // client, even with fresh email and phone. Removed
+              // 2026-05-05 after HK reported the false-positive.)
 
-              // 2. Phone match (if email didn't match)
+              // 1. Email match (exact, case-insensitive — both sides lowercased)
+              if (email) {
+                const {data:byEmail} = await supabase.from('bookings')
+                  .select('id').eq('therapist_id',therapist.id)
+                  .eq('client_email',email).neq('status','cancelled').limit(1);
+                if (byEmail?.length) isRepeat = true;
+              }
+
+              // 2. Phone match — last 10 digits, ignoring formatting.
+              // A phone number reuse across bookings is very rarely
+              // a coincidence (unlike names).
               if (!isRepeat && phone.length >= 7) {
                 const {data:allPhones} = await supabase.from('bookings')
                   .select('client_phone').eq('therapist_id',therapist.id)
@@ -1653,14 +1667,12 @@ export default function BookingPage() {
                   isRepeat = true;
               }
 
-              // 3. Name match (if neither email nor phone matched)
-              if (!isRepeat) {
-                const {data:byName} = await supabase.from('bookings')
-                  .select('id').eq('therapist_id',therapist.id)
-                  .ilike('client_name',name).neq('status','cancelled').limit(1);
-                if (byName?.length) isRepeat = true;
-              }
               setIsRepeatClient(isRepeat);
+              console.log(
+                `%c[Booking] returning-customer check: ${isRepeat ? 'RETURNING' : 'NEW'}`,
+                `color: ${isRepeat ? '#B87840' : '#2A5741'}; font-weight: bold;`
+              );
+              console.log(`[Booking]   email=${email}, phone=${phone}`);
 
               // Intake-before-booking gate. If the therapist has this on AND
               // approval is OFF AND the client is new AND they have not just
