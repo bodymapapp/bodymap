@@ -1724,11 +1724,51 @@ export default function BookingPage() {
               const policy = therapist.cancellation_policy || {};
               const policyEnabled = !!therapist.cancellation_policy_enabled;
               const stripeReady = !!therapist.stripe_account_id;
+              const squareReady = !!therapist.square_access_token;
               const policyRequiresFirstTimers = !!policy.card_required_first_timers;
               const policyRequiresRegulars = !!policy.card_required_regulars;
-              const cardNeeded = policyEnabled && stripeReady && !needsApproval &&
+              const wantsCard = policyEnabled && !needsApproval &&
                 ((isRepeat && policyRequiresRegulars) || (!isRepeat && policyRequiresFirstTimers));
+              const cardNeeded = wantsCard && stripeReady;
               setCardOnFileRequired(cardNeeded);
+
+              // Diagnostic logging so HK / therapists can see exactly why
+              // the card-on-file gate did or did not fire. Open DevTools
+              // console on the booking page to read this.
+              //
+              // The most common 'why didn't it ask?' reasons are:
+              //   - policy not enabled
+              //   - therapist Stripe-disconnected (Square is not yet
+              //     supported for card-on-file capture, see below)
+              //   - is_repeat detection wrong (we already fixed name-only
+              //     match; check email/phone match)
+              //   - first-timer/regular toggle is off for this client type
+              //   - approval-required is on (deferred until approval)
+              console.log(
+                `%c[card-on-file] decision: ${cardNeeded ? 'WILL ASK' : 'WILL NOT ASK'}`,
+                `color: ${cardNeeded ? '#2A5741' : '#B87840'}; font-weight: bold;`
+              );
+              console.log('[card-on-file]   inputs:', {
+                policyEnabled, stripeReady, squareReady, isRepeat,
+                policyRequiresFirstTimers, policyRequiresRegulars,
+                needsApproval,
+              });
+              if (!cardNeeded && wantsCard && !stripeReady && squareReady) {
+                console.warn(
+                  '[card-on-file] Card capture is wanted by the therapist policy, ' +
+                  'but the therapist has Square instead of Stripe connected. ' +
+                  'Square card-on-file at booking time is not yet supported. ' +
+                  'The booking will proceed without capturing a card. ' +
+                  'See BLOCK_PLAN fire #N for the Square card-on-file build.'
+                );
+              }
+              if (!cardNeeded && wantsCard && !stripeReady && !squareReady) {
+                console.warn(
+                  '[card-on-file] Card capture is wanted but no payment ' +
+                  'processor is connected. The therapist needs to connect ' +
+                  'Stripe (or Square once Chunk B ships) for this to fire.'
+                );
+              }
 
               setStep(4);
             }} style={{width:'100%',background:C.forest,color:C.white,border:'none',borderRadius:14,padding:'15px',fontSize:15,fontWeight:700,cursor:'pointer',marginTop:14}}>

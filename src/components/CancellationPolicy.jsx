@@ -336,6 +336,51 @@ export default function CancellationPolicy({ therapist }) {
               />
               <span style={{ fontSize: 12, color: C.ink }}>Require card from returning clients</span>
             </div>
+
+            {/* SQUARE-ONLY WARNING.
+                Card-on-file capture currently uses Stripe Elements only.
+                A therapist on Square (without Stripe) who turns these
+                toggles on will see them appear ON in settings, but the
+                client booking page will silently skip the card capture
+                step. Without this warning, that mismatch is invisible
+                until a no-show that you cannot charge for.
+
+                Will go away once Chunk B ships Square Web Payments SDK
+                support. Until then, surface the limitation directly. */}
+            {(policy.card_required_first_timers || policy.card_required_regulars) &&
+             !therapist?.stripe_account_id && therapist?.square_access_token && (
+              <div style={{
+                background: '#FFFBEB',
+                border: '1.5px solid #F59E0B',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginTop: 10,
+                fontSize: 11,
+                color: '#78350F',
+                lineHeight: 1.5,
+              }}>
+                <strong style={{ color: '#92400E' }}>Heads up:</strong> card-on-file capture currently works with Stripe only. Your account is connected via Square, so the toggles above will not actually capture a card from your clients at booking. Connect Stripe to use this feature, or watch for the upcoming Square card-on-file support (in development).
+              </div>
+            )}
+
+            {/* NO-PROCESSOR WARNING.
+                Therapist enabled card-on-file but has neither Stripe nor
+                Square. Toggles will not do anything. */}
+            {(policy.card_required_first_timers || policy.card_required_regulars) &&
+             !therapist?.stripe_account_id && !therapist?.square_access_token && (
+              <div style={{
+                background: '#FEF2F2',
+                border: '1.5px solid #FCA5A5',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginTop: 10,
+                fontSize: 11,
+                color: '#7F1D1D',
+                lineHeight: 1.5,
+              }}>
+                <strong style={{ color: '#991B1B' }}>Action needed:</strong> connect Stripe in Settings → Payments before these toggles can capture cards from your clients. Right now the booking page will skip the card step.
+              </div>
+            )}
           </div>
 
           {/* Preview — what client will see at booking */}
