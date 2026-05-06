@@ -2121,27 +2121,74 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           taxonomy="4.2"
           timeBadge="~5m"
           label="Payments"
-          summary={therapist?.stripe_account_connected ? "Stripe connected · cards on file" : "Connect Stripe or Square"}
+          summary={
+            therapist?.stripe_account_connected && therapist?.square_connected
+              ? "Stripe (online) + Square (in-person) connected"
+              : therapist?.stripe_account_connected
+              ? "Stripe connected · online ready"
+              : therapist?.square_connected
+              ? "Square only · connect Stripe for online features"
+              : "Connect Stripe to take online payments"
+          }
           status={therapist?.stripe_account_connected ? "done" : "attn"}
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
           isOpen={openRow === 'payments'}
           onToggle={toggleRow}
         ><div style={{ padding: '4px 4px' }}>
-          <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Connect Stripe or Square to save cards on file and charge clients directly from the Clients tab.</p>
 
-          {/* Stripe */}
+          {/* Strategic reframe (May 2026): Stripe is the online engine,
+              Square is the in-person companion. The two processors no
+              longer overlap conceptually — therapists understand what
+              each is for. This guides them toward Stripe for the
+              MyBodyMap online surface (deposits, packages, memberships,
+              card-on-file) while preserving Square for in-person and
+              for therapists who already process there.
+
+              Background: maintaining full feature parity across two
+              processors was doubling engineering cost on every payment
+              feature and confusing therapists about which toggles
+              actually worked. This framing tells the truth: Stripe is
+              the merchant of record for online MyBodyMap activity. */}
+          <div style={{
+            background: '#F8FAF7',
+            border: '1px solid #D1E5D9',
+            borderRadius: 10,
+            padding: '10px 14px',
+            marginBottom: 14,
+            fontSize: 11,
+            lineHeight: 1.6,
+            color: '#1F3A2C',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
+              <span style={{ fontSize: 14, lineHeight: 1 }}>💳</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ color: '#2A5741' }}>Stripe</strong> powers your <strong>online</strong> work · deposits at booking, packages, memberships, cards on file, refunds.
+              </div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ fontSize: 14, lineHeight: 1 }}>⬛</span>
+              <div style={{ flex: 1 }}>
+                <strong style={{ color: '#2A5741' }}>Square</strong> stays for <strong>in-person</strong> · what you already use at the table or in your studio.
+              </div>
+            </div>
+            <div style={{ marginTop: 8, color: '#6B7280' }}>
+              Most therapists connect both. You can connect either one alone, or skip and accept payment outside MyBodyMap.
+            </div>
+          </div>
+
+          {/* Stripe panel — primary CTA */}
           {therapist?.stripe_account_connected ? (
             <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span>✅</span>
                   <div>
-                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Stripe Connected</div>
-                    <div style={{ fontSize:'11px', color:'#6B7280' }}>Real revenue tracked in Billing</div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Stripe · Online engine</div>
+                    <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, memberships, cards on file all enabled</div>
                   </div>
                 </div>
                 <button onClick={async () => {
-                  if (!window.confirm('Disconnect Stripe? Deposit collection will stop until you reconnect.')) return;
+                  if (!window.confirm('Disconnect Stripe? Online deposits, card-on-file, and package purchases will stop until you reconnect.')) return;
                   await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
                 }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
                   Disconnect
@@ -2149,22 +2196,27 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               </div>
             </div>
           ) : (
-            <button onClick={async () => {
-              const { data: { session } } = await supabase.auth.getSession();
-              const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
-                method:'POST',
-                headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
-                body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
-              });
-              const data = await res.json();
-              if (data.url) window.open(data.url, '_blank');
-              else alert('Error: ' + JSON.stringify(data));
-            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%', marginBottom:10 }}>
-              💳 Connect Stripe
-            </button>
+            <div style={{ marginBottom: 10 }}>
+              <button onClick={async () => {
+                const { data: { session } } = await supabase.auth.getSession();
+                const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
+                  method:'POST',
+                  headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
+                  body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
+                });
+                const data = await res.json();
+                if (data.url) window.open(data.url, '_blank');
+                else alert('Error: ' + JSON.stringify(data));
+              }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'14px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow: '0 2px 8px rgba(99, 91, 255, 0.25)' }}>
+                💳 Connect Stripe · Recommended
+              </button>
+              <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
+                Stripe is what unlocks online deposits, card-on-file, packages, and memberships. Two-minute connection.
+              </p>
+            </div>
           )}
 
-          {/* Square */}
+          {/* Square — reframed as in-person companion */}
           {therapist?.square_connected ? (
             <div>
               <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
@@ -2172,8 +2224,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span>✅</span>
                     <div>
-                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square Connected</div>
-                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Card on file ready for your clients</div>
+                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · In-person companion</div>
+                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Online deposits and packages also work via Square</div>
                     </div>
                   </div>
                   <button onClick={async () => {
@@ -2231,7 +2283,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 </div>
               )}
             </div>
-          ) : (
+          ) : (<>
             <button onClick={async () => {
               const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
               const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth', {
@@ -2251,10 +2303,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   }
                 }, { once: true });
               } else alert('Error: ' + JSON.stringify(data));
-            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#000', color:'#fff', border:'none', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
-              ⬛ Connect Square
+            }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#fff', color:'#000', border:'1.5px solid #000', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
+              ⬛ Connect Square · For in-person
             </button>
-          )}
+            <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
+              Optional. Add Square only if you take payments at the table or in your studio outside MyBodyMap.
+            </p>
+          </>)}
         </div></CollapsibleSection>
       </>)}
       {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.3') && (<>
