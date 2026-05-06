@@ -294,7 +294,17 @@ export default function BookingPage() {
   const [offerForm,setOfferForm]=useState({ name: '', email: '', phone: '' });
   const [offerLoading,setOfferLoading]=useState(false);
   const [offerError,setOfferError]=useState(null);
-  const [purchaseSuccess,setPurchaseSuccess]=useState(null); // { kind: 'package'|'membership', item_name }
+  const [purchaseSuccess,setPurchaseSuccess]=useState(null); // { kind: 'package'|'membership'|'cart', count? }
+  // Cart for packages. Memberships are NOT cart-eligible because Stripe
+  // Checkout does not allow mixing subscription and one-time line items
+  // in one session. Cart stores full package row objects (not just ids)
+  // so the cart drawer can render names and prices without re-querying.
+  const [cart,setCart]=useState([]);
+  const [cartOpen,setCartOpen]=useState(false);
+  const [cartCheckoutModal,setCartCheckoutModal]=useState(false);
+  const [cartCheckoutLoading,setCartCheckoutLoading]=useState(false);
+  const [cartCheckoutError,setCartCheckoutError]=useState(null);
+  const [cartFlash,setCartFlash]=useState(null); // brief 'Added to cart' confirmation
   const [availability,setAvailability]=useState([]);
   const [loading,setLoading]=useState(true);
   const [notFound,setNotFound]=useState(false);
@@ -461,6 +471,51 @@ export default function BookingPage() {
         const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
         if (data.ok) {
           setPurchaseSuccess({ kind: 'membership' });
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      })();
+      return;
+    }
+
+    // ----- Branch 4: Cart (multi-package) purchase return -----
+    // Comes back from Stripe Checkout (mode=payment, multi-line) or
+    // Square Order checkout link. confirm-cart-purchase verifies the
+    // payment, then creates one package_purchases row per line item
+    // and returns the count.
+    if (params.get('cart_complete') === '1') {
+      const processor = params.get('processor');
+      const sessionId = params.get('session_id');
+      const orderId = params.get('order_id') || params.get('reference_id');
+      (async () => {
+        // We need therapist_id for the confirm function. The slug
+        // determines therapist client-side, so we resolve it via the
+        // load() call that runs in parallel. If load() has not finished
+        // yet (race), we read therapist directly here.
+        let tid = null;
+        try {
+          const { data: t } = await supabase.from('therapists').select('id').eq('custom_url', slug).single();
+          tid = t?.id || null;
+        } catch (e) {}
+        const res = await fetch(
+          `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/confirm-cart-purchase`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              processor,
+              session_id: sessionId,
+              order_id: orderId,
+              therapist_id: tid,
+            }),
+          }
+        );
+        const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+        if (data.ok) {
+          setPurchaseSuccess({ kind: 'cart', count: data.purchases?.length || 0 });
+          setCart([]); // clear cart after successful checkout
         }
         window.history.replaceState({}, '', window.location.pathname);
       })();
@@ -676,6 +731,87 @@ export default function BookingPage() {
       setOfferError(String(e));
     }
     setOfferLoading(false);
+  }
+
+  // ─────────────────────────────────────────────────────────────────
+  // Cart for packages
+  // ─────────────────────────────────────────────────────────────────
+  // Memberships are NOT cart-eligible: Stripe Checkout cannot mix
+  // subscription and one-time line items. Memberships keep their
+  // direct-subscribe modal flow via openOffer('membership', m).
+  function addToCart(pkg) {
+    setCart((prev) => [...prev, pkg]);
+    setCartFlash(`Added "${pkg.name}" to cart`);
+    // Auto-clear the flash after 2.5s. Cart drawer auto-opens for the
+    // first item to make the cart discoverable; subsequent adds do not
+    // open it again so the client can keep browsing.
+    setTimeout(() => setCartFlash(null), 2500);
+  }
+
+  function removeFromCart(idx) {
+    setCart((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function cartCount() { return cart.length; }
+  function cartTotalCents() {
+    return cart.reduce((s, p) => s + Math.round(Number(p.price) * 100), 0);
+  }
+
+  // Open the checkout modal where the client enters name/email/phone
+  // ONCE for the whole cart instead of per-item. Pre-fills from the
+  // booking form if they already filled it earlier.
+  function openCartCheckout() {
+    setOfferForm({
+      name: form.name || '',
+      email: form.email || '',
+      phone: form.phone || '',
+    });
+    setCartCheckoutError(null);
+    setCartCheckoutModal(true);
+  }
+
+  async function checkoutCart() {
+    if (!offerForm.name.trim() || !offerForm.email.trim()) {
+      setCartCheckoutError('Please enter your name and email.');
+      return;
+    }
+    if (cart.length === 0) {
+      setCartCheckoutError('Cart is empty.');
+      return;
+    }
+    setCartCheckoutLoading(true);
+    setCartCheckoutError(null);
+
+    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}`;
+    try {
+      const res = await fetch(
+        `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/purchase-cart`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            therapist_id: therapist.id,
+            cart_items: cart.map((p) => ({ package_id: p.id })),
+            client_name: offerForm.name.trim(),
+            client_email: offerForm.email.trim().toLowerCase(),
+            client_phone: offerForm.phone.trim() || null,
+            redirect_url: redirectBase,
+          }),
+        }
+      );
+      const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setCartCheckoutError(data.error || `Could not open checkout (HTTP ${res.status}).`);
+    } catch (e) {
+      setCartCheckoutError(String(e));
+    }
+    setCartCheckoutLoading(false);
   }
 
   async function submit() {
@@ -1093,45 +1229,60 @@ export default function BookingPage() {
 
                 {offersExpanded && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
-                    {packagesList.map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => openOffer('package', p)}
-                        style={{
-                          background: '#FAF5EE',
-                          border: `1.5px solid ${C.beige || '#E8DCC4'}`,
-                          borderRadius: 14,
-                          padding: '14px 16px',
-                          textAlign: 'left',
-                          cursor: 'pointer',
-                          width: '100%',
-                          transition: 'all 0.15s',
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.beige || '#E8DCC4'; e.currentTarget.style.transform = 'none'; }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                              📦 {p.name}
-                            </div>
-                            <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
-                              {p.session_count} sessions
-                              {p.expires_in_days ? ` · expires ${p.expires_in_days} days from purchase` : ''}
-                            </div>
-                            {p.description && (
-                              <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
-                                {p.description}
+                    {packagesList.map((p) => {
+                      // How many of this package are already in the cart?
+                      // Reflected on the button so the client can see they
+                      // queued one before adding another.
+                      const inCart = cart.filter((c) => c.id === p.id).length;
+                      return (
+                        <div
+                          key={p.id}
+                          style={{
+                            background: '#FAF5EE',
+                            border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                            borderRadius: 14,
+                            padding: '14px 16px',
+                            transition: 'all 0.15s',
+                          }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 14, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                                📦 {p.name}
                               </div>
-                            )}
+                              <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+                                {p.session_count} sessions
+                                {p.expires_in_days ? ` · expires ${p.expires_in_days} days from purchase` : ''}
+                              </div>
+                              {p.description && (
+                                <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5, marginTop: 4 }}>
+                                  {p.description}
+                                </div>
+                              )}
+                            </div>
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(p.price).toFixed(0)}</div>
+                              <div style={{ fontSize: 10, color: C.gray }}>upfront</div>
+                            </div>
                           </div>
-                          <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(p.price).toFixed(0)}</div>
-                            <div style={{ fontSize: 10, color: C.gray }}>upfront</div>
-                          </div>
+                          <button
+                            onClick={() => addToCart(p)}
+                            style={{
+                              width: '100%',
+                              background: inCart > 0 ? '#fff' : C.forest,
+                              color: inCart > 0 ? C.forest : '#fff',
+                              border: `1.5px solid ${C.forest}`,
+                              borderRadius: 10,
+                              padding: '9px 14px',
+                              fontSize: 13,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                            }}>
+                            {inCart > 0 ? `✓ In cart (${inCart}) · add another` : '+ Add to cart'}
+                          </button>
                         </div>
-                      </button>
-                    ))}
+                      );
+                    })}
                     {membershipsList.map((m) => (
                       <button
                         key={m.id}
@@ -1163,6 +1314,9 @@ export default function BookingPage() {
                                 {m.description}
                               </div>
                             )}
+                            <div style={{ fontSize: 10, color: C.gray, fontStyle: 'italic', marginTop: 6 }}>
+                              Memberships subscribe directly · not cart-eligible
+                            </div>
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
                             <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(m.monthly_price).toFixed(0)}</div>
@@ -1978,6 +2132,280 @@ export default function BookingPage() {
               You'll be sent to a secure {therapist?.stripe_account_id && offerModal.type === 'membership' ? 'Stripe' : (therapist?.stripe_account_id ? 'Stripe' : 'Square')} checkout to enter your card and complete the purchase.
             </p>
           </div>
+        </div>
+      )}
+
+      {/* CART FLOATING BUTTON.
+          Bottom-right of viewport. Visible whenever cart has items.
+          Tap → opens cart drawer. Acts as a persistent reminder so
+          clients who add a package and keep browsing know what's
+          waiting in their cart. */}
+      {cart.length > 0 && !cartCheckoutModal && (
+        <button
+          onClick={() => setCartOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            right: 20,
+            background: C.forest,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 999,
+            padding: '14px 20px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            boxShadow: '0 8px 24px rgba(42,87,65,0.35)',
+            zIndex: 9990,
+          }}>
+          <span style={{ fontSize: 18 }}>🛒</span>
+          <span>{cart.length} item{cart.length !== 1 ? 's' : ''}</span>
+          <span style={{ opacity: 0.85 }}>·</span>
+          <span>${(cartTotalCents() / 100).toFixed(0)}</span>
+        </button>
+      )}
+
+      {/* CART DRAWER (modal-style).
+          Opens when cart button is tapped. Lists each cart item with
+          a remove button, shows the running total, and offers
+          'Continue to checkout'. Backdrop tap is ALLOWED to close
+          (no input fields here, no work to lose). */}
+      {cartOpen && (
+        <div
+          onClick={() => setCartOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, zIndex: 9995,
+          }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: '#fff', borderRadius: 18,
+              maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto',
+              padding: 24,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+              position: 'relative',
+            }}>
+            <button
+              onClick={() => setCartOpen(false)}
+              aria-label="Close cart"
+              style={{
+                position: 'absolute', top: 14, right: 14,
+                background: '#F3F4F6', border: 'none',
+                width: 32, height: 32, borderRadius: '50%',
+                fontSize: 18, fontWeight: 700, color: C.gray, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              }}>×</button>
+
+            <div style={{ marginBottom: 16, paddingRight: 36 }}>
+              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: '0 0 4px' }}>
+                🛒 Your cart
+              </h3>
+              <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
+                {cart.length} package{cart.length !== 1 ? 's' : ''} ready to check out.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {cart.map((p, idx) => (
+                <div key={`${p.id}-${idx}`} style={{
+                  background: '#FAF5EE',
+                  border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                  borderRadius: 12,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: C.dark }}>📦 {p.name}</div>
+                    <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                      {p.session_count} sessions · ${Number(p.price).toFixed(0)}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => removeFromCart(idx)}
+                    aria-label="Remove from cart"
+                    style={{
+                      background: 'transparent', border: 'none',
+                      color: '#DC2626', fontSize: 18, fontWeight: 700,
+                      cursor: 'pointer', padding: '4px 8px',
+                    }}>×</button>
+                </div>
+              ))}
+            </div>
+
+            <div style={{
+              borderTop: `1.5px solid ${C.light}`,
+              paddingTop: 14,
+              marginBottom: 16,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+            }}>
+              <span style={{ fontSize: 14, color: C.gray }}>Total</span>
+              <span style={{ fontSize: 22, fontWeight: 700, color: C.forest }}>
+                ${(cartTotalCents() / 100).toFixed(0)}
+              </span>
+            </div>
+
+            <button
+              onClick={() => {
+                setCartOpen(false);
+                openCartCheckout();
+              }}
+              style={{
+                width: '100%',
+                background: C.forest,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 12,
+                padding: '14px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(42,87,65,0.25)',
+                marginBottom: 8,
+              }}>
+              Continue to checkout →
+            </button>
+            <button
+              onClick={() => setCartOpen(false)}
+              style={{
+                width: '100%',
+                background: '#fff',
+                color: C.gray,
+                border: `1.5px solid ${C.light}`,
+                borderRadius: 12,
+                padding: '12px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+              Keep browsing
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* CART CHECKOUT MODAL.
+          Opens after the client taps Continue to checkout. Collects
+          name, email, phone ONCE for the whole cart (not per item).
+          Tap-outside does NOT dismiss because the client may have
+          typed; explicit × is the only close affordance. */}
+      {cartCheckoutModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 20, zIndex: 9999,
+          }}>
+          <div
+            style={{
+              background: '#fff', borderRadius: 18,
+              maxWidth: 440, width: '100%',
+              padding: 24,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+              position: 'relative',
+            }}>
+            <button
+              onClick={() => !cartCheckoutLoading && setCartCheckoutModal(false)}
+              disabled={cartCheckoutLoading}
+              aria-label="Close"
+              style={{
+                position: 'absolute', top: 14, right: 14,
+                background: '#F3F4F6', border: 'none',
+                width: 32, height: 32, borderRadius: '50%',
+                fontSize: 18, fontWeight: 700, color: C.gray,
+                cursor: cartCheckoutLoading ? 'default' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+              }}>×</button>
+            <div style={{ marginBottom: 16, paddingRight: 36 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                Checkout
+              </div>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                {cart.length} package{cart.length !== 1 ? 's' : ''} · ${(cartTotalCents() / 100).toFixed(0)}
+              </div>
+              <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
+                Tell us who you are, then we'll send you to checkout.
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+              <input
+                placeholder="Your name"
+                value={offerForm.name}
+                onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+              <input
+                placeholder="Email"
+                type="email"
+                value={offerForm.email}
+                onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+              <input
+                placeholder="Phone (optional)"
+                value={offerForm.phone}
+                onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
+                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
+              />
+            </div>
+            {cartCheckoutError && (
+              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 14, lineHeight: 1.5 }}>
+                ⚠️ {cartCheckoutError}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => setCartCheckoutModal(false)}
+                disabled={cartCheckoutLoading}
+                style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: cartCheckoutLoading ? 'default' : 'pointer' }}>
+                Cancel
+              </button>
+              <button
+                onClick={checkoutCart}
+                disabled={cartCheckoutLoading}
+                style={{ flex: 2, background: cartCheckoutLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: cartCheckoutLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
+                {cartCheckoutLoading ? 'Opening checkout…' : `Pay $${(cartTotalCents() / 100).toFixed(0)}`}
+              </button>
+            </div>
+            <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
+              You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* CART FLASH.
+          Brief 'Added to cart' confirmation that auto-fades after
+          2.5 seconds. Top-center floating, doesn't block any UI. */}
+      {cartFlash && (
+        <div style={{
+          position: 'fixed', top: 70, left: '50%',
+          transform: 'translateX(-50%)',
+          background: '#1F3A2C',
+          color: '#fff',
+          padding: '10px 18px',
+          borderRadius: 999,
+          fontSize: 13,
+          fontWeight: 600,
+          boxShadow: '0 8px 24px rgba(31,58,44,0.35)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          animation: 'cartFlashFade 2.5s ease forwards',
+        }}>
+          <span>✓</span>
+          <span>{cartFlash}</span>
         </div>
       )}
 
