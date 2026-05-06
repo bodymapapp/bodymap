@@ -35,6 +35,30 @@ export default function ClientIntake() {
       const data = await db.getTherapistByUrl(customUrl);
       setTherapist(data);
       setError(null);
+
+      // Schema diagnostic logging so HK and any therapist can verify
+      // their custom intake reaches the page. Same format as
+      // BookingPage's logging, so the two pages report identically.
+      try {
+        const schema = data?.intake_schema;
+        const summary = !schema ? 'NULL (no custom edits saved)' :
+          `fields=${(schema.fields || []).length}, ` +
+          `medical_checklist=${schema.medical_checklist_enabled !== false}, ` +
+          `hipaa=${!!schema.hipaa_mode}, ` +
+          `version=${schema.version || 'unset'}`;
+        console.log(
+          `%c[MyBodyMap] Loaded therapist ${data?.custom_url} (${data?.business_name || data?.full_name})`,
+          'color: #2A5741; font-weight: bold;'
+        );
+        console.log(`[MyBodyMap]   intake_schema: ${summary}`);
+        if (schema?.fields) {
+          console.log('[MyBodyMap]   field labels:', schema.fields.map((f) => `${f.id}=${JSON.stringify(f.label)}${f.hidden ? ' [HIDDEN]' : ''}`).join(', '));
+          const pressure = schema.fields.find((f) => f.id === 'pressure');
+          if (pressure?.options) {
+            console.log('[MyBodyMap]   pressure options:', pressure.options.map((o) => o.v).join(', '));
+          }
+        }
+      } catch (e) { console.warn('[MyBodyMap] schema log failed', e); }
     } catch (err) {
       console.error('Error loading therapist:', err);
       setError('Therapist not found. Please check the URL.');

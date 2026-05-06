@@ -8,9 +8,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export const db = {
   async getTherapistByUrl(customUrl) {
+    // CRITICAL: this select MUST include intake_schema so therapist
+    // customizations (renamed labels, hidden fields, custom questions,
+    // medical conditions) actually flow through to the client intake.
+    // Bug history: prior to May 2026, this query selected only 5
+    // basic columns and intake_schema was undefined when passed to
+    // Demo, so effectiveSchema() always fell back to DEFAULT_SCHEMA
+    // and therapist edits never reached clients. Symptom was 'I edit
+    // intake, deploy, my changes don't show'. Fix is to select * so
+    // every column reaches Demo and effectiveSchema can read it.
+    //
+    // We use select('*') instead of an explicit column list because
+    // Demo also reads waiver settings, business identity, and any
+    // future flags. Hardcoding columns has bitten us before.
     const { data, error } = await supabase
       .from('therapists')
-      .select('id, business_name, full_name, waiver_enabled, waiver_text')
+      .select('*')
       .eq('custom_url', customUrl)
       .single();
     if (error) throw error;
