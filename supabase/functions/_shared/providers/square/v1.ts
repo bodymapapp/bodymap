@@ -66,6 +66,21 @@ async function squareFetch(
   if (!res.ok) {
     const code = data?.errors?.[0]?.code || `http_${res.status}`;
     const detail = data?.errors?.[0]?.detail || `Square ${path} failed`;
+
+    // Specific mapping for INSUFFICIENT_SCOPES — surfaces a friendly
+    // 'reconnect Square' message instead of Square's verbatim error.
+    // This happens when a therapist connected Square BEFORE we added
+    // a new scope to the OAuth list. Since Square does not auto-
+    // upgrade saved tokens, the therapist has to disconnect +
+    // reconnect to grant the new permissions. The frontend can read
+    // code='insufficient_scopes' to show a 'Reconnect Square' button.
+    if (code === 'INSUFFICIENT_SCOPES' || /sufficient permissions/i.test(detail)) {
+      throw new ProviderError(
+        'insufficient_scopes',
+        'Square needs additional permissions for this. Please disconnect Square in Settings → Payments and reconnect (takes 30 seconds). The new connection will have everything we need.'
+      );
+    }
+
     throw new ProviderError(code, detail);
   }
   return data;
