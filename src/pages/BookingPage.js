@@ -370,6 +370,32 @@ export default function BookingPage() {
   const [cardError,setCardError]=useState(null);
   const [cardMandateAgreed,setCardMandateAgreed]=useState(false);
 
+  // Allow forcing a hard service-worker reset via ?fresh=1 in the URL.
+  // For therapists who installed the PWA at v3 and are stuck seeing
+  // stale content even after deploys: visit /yourSlug?fresh=1 once and
+  // the page unregisters the existing SW, clears caches, and reloads.
+  // After one round-trip the new v4 SW takes over.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('fresh') === '1' && 'serviceWorker' in navigator) {
+      (async () => {
+        console.log('[MyBodyMap] ?fresh=1 detected - resetting service worker + caches');
+        try {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          for (const reg of regs) await reg.unregister();
+          if ('caches' in window) {
+            const keys = await caches.keys();
+            for (const k of keys) await caches.delete(k);
+          }
+        } catch (e) { console.warn('[MyBodyMap] sw reset failed', e); }
+        // Strip fresh param and hard-reload
+        const url = new URL(window.location.href);
+        url.searchParams.delete('fresh');
+        window.location.replace(url.toString());
+      })();
+    }
+  }, []);
+
   useEffect(()=>{load();},[slug]);
 
   // Redirect handlers for payment flows. Three distinct return paths:
@@ -533,6 +559,48 @@ export default function BookingPage() {
     const {data:t}=await supabase.from('therapists').select('*,deposit_enabled,deposit_percent').eq('custom_url',slug).single();
     if(!t){setNotFound(true);setLoading(false);return;}
     setTherapist(t);
+
+    // ─── INTAKE SCHEMA DIAGNOSTIC LOGGING ───
+    // Surfaces exactly what was loaded for this therapist's intake_schema.
+    // Lets HK (or any therapist) open DevTools console on phone or web,
+    // reload the booking page, and see whether the schema being applied
+    // matches their editor edits. Eliminates the guessing game when a
+    // therapist reports 'my edits aren't showing'.
+    //
+    // What to look for:
+    //   - 'intake_schema is NULL' → editor never wrote anything, save path
+    //     broken on the editor side (or therapist edited a different
+    //     account than the one whose URL this is)
+    //   - 'fields: [...]' with custom labels matching what you set → schema
+    //     IS reaching the booking page; if it still doesn't render, the
+    //     issue is the SchemaField render or service worker cache
+    //   - schema present but with default labels → the schema you saved
+    //     was the default, not what you intended to save
+    try {
+      const schema = t.intake_schema;
+      const summary = !schema ? 'NULL (no custom edits saved)' :
+        `fields=${(schema.fields || []).length}, ` +
+        `medical_checklist=${schema.medical_checklist_enabled !== false}, ` +
+        `hipaa=${!!schema.hipaa_mode}, ` +
+        `version=${schema.version || 'unset'}`;
+      console.log(
+        `%c[MyBodyMap] Loaded therapist ${t.custom_url} (${t.business_name || t.full_name})`,
+        'color: #2A5741; font-weight: bold;'
+      );
+      console.log(`[MyBodyMap]   intake_schema: ${summary}`);
+      if (schema && schema.fields) {
+        console.log('[MyBodyMap]   field labels:', schema.fields.map((f) => `${f.id}=${JSON.stringify(f.label)}${f.hidden ? ' [HIDDEN]' : ''}`).join(', '));
+        // If pressure has been customized, log the option set so we can
+        // confirm whether chips or slider should render.
+        const pressure = schema.fields.find((f) => f.id === 'pressure');
+        if (pressure?.options) {
+          console.log('[MyBodyMap]   pressure options:', pressure.options.map((o) => o.v).join(', '));
+        }
+      }
+    } catch (e) {
+      console.warn('[MyBodyMap] schema log failed', e);
+    }
+
     const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),

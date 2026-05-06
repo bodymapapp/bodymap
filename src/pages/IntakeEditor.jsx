@@ -615,12 +615,20 @@ export default function IntakeEditor() {
     setSaving(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
+      // Diagnostic logging so therapists (and HK) can confirm what was
+      // actually written. Open DevTools console while editing — every
+      // save attempt logs the field count and the result.
+      console.log(
+        `%c[IntakeEditor] saving schema: ${(next.fields || []).length} fields`,
+        'color: #2A5741; font-weight: bold;'
+      );
       const result = await updateProfile({ intake_schema: next });
       setSaving(false);
       if (result?.error) {
-        console.error('IntakeEditor save failed:', result.error);
+        console.error('[IntakeEditor] SAVE FAILED:', result.error);
         return;
       }
+      console.log('[IntakeEditor]   ✓ saved');
       setSavedAt(Date.now());
     }, 600);
   }, [updateProfile]);
