@@ -30,6 +30,7 @@ import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import PurchasesPanel from '../components/PurchasesPanel';
+import PaymentRouting from '../components/PaymentRouting';
 import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
@@ -2312,6 +2313,25 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </p>
           </>)}
         </div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Payment routing', 'Choose which processor handles deposits, card-on-file, packages, memberships', '4.2.1') && (<>
+      <CollapsibleSection
+        id="payment-routing"
+        taxonomy="4.2.1"
+        timeBadge="~2m"
+        label="Payment routing"
+        summary={
+          (therapist?.stripe_account_id && therapist?.square_access_token)
+            ? "Choose which processor handles each feature"
+            : "Available when both Stripe and Square are connected"
+        }
+        status={(therapist?.stripe_account_id && therapist?.square_access_token) ? "todo" : "off"}
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M3 12h6m6 0h6M9 6l-6 6 6 6m6-12l6 6-6 6"/></svg>}
+        isOpen={openRow === 'payment-routing'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <PaymentRouting therapist={therapist} onSaved={() => updateProfile({ ...therapist })} />
+      </div></CollapsibleSection>
       </>)}
       {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.3') && (<>
       <CollapsibleSection
