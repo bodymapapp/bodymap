@@ -38,9 +38,39 @@ serve(async (req) => {
       .single();
     if (!m) return respond({ error: 'membership_not_found' }, 404);
 
-    // Memberships require Stripe — fail loud if not connected.
-    const provider = await getProvider(therapist, 'stripe-required');
+    // Memberships work with both Stripe and Square per the parity
+    // rollout. Routing decision:
+    //   1. therapist.payment_routing.memberships if explicitly set
+    //   2. Stripe by default (capability matrix declares it the
+    //      first-class option for subscriptions)
+    //   3. Square as fallback when only Square is connected
+    const routing = (therapist as any).payment_routing || {};
+    const explicit = routing.memberships;
+    let provider;
+    if (explicit === 'stripe') {
+      provider = await getProvider(therapist, 'stripe-required');
+    } else if (explicit === 'square') {
+      const { SquareProvider } = await import('../_shared/providers/square.ts');
+      provider = new SquareProvider(therapist);
+    } else {
+      // 'auto' or unset: prefer Stripe, fall back to Square
+      if (therapist.stripe_account_id) {
+        provider = await getProvider(therapist, 'stripe-required');
+      } else if (therapist.square_access_token) {
+        const { SquareProvider } = await import('../_shared/providers/square.ts');
+        provider = new SquareProvider(therapist);
+      } else {
+        return respond({ error: 'no_processor_connected' }, 400);
+      }
+    }
     console.log('[purchase-membership] provider:', provider.name);
+
+    // Capability check + surface limitations to the response so the
+    // frontend can show a 'good to know' notice if Square subs.
+    const cap = provider.getCapability('createSubscriptionLink');
+    if (cap.status === 'unsupported') {
+      return respond({ error: 'subscription_not_supported_on_provider', code: 'capability_unsupported' }, 400);
+    }
 
     const result = await provider.createCheckoutLink({
       therapist,
@@ -59,22 +89,35 @@ serve(async (req) => {
       subscriptionPlan: {
         name: m.name,
         monthlyPriceCents: Math.round(Number(m.monthly_price) * 100),
-        existingPriceId: m.stripe_price_id || null,
+        // existingPriceId carries either Stripe price id OR Square
+        // plan variation id depending on which provider we're using.
+        // Each provider knows what to do with it.
+        existingPriceId: provider.name === 'stripe'
+          ? (m.stripe_price_id || null)
+          : (m.square_plan_variation_id || null),
       },
     });
 
-    // If a new Price was created during checkout, persist it on the
-    // membership row for reuse on subsequent purchases.
+    // If a new price/plan was created during checkout, persist on
+    // the membership row for reuse. Column depends on provider.
     const newPriceId = (result as any).newPriceId;
-    if (newPriceId && !m.stripe_price_id) {
-      await supabase.from('memberships')
-        .update({ stripe_price_id: newPriceId })
-        .eq('id', membership_id);
+    if (newPriceId) {
+      const updateCol = provider.name === 'stripe'
+        ? { stripe_price_id: newPriceId }
+        : { square_plan_variation_id: newPriceId };
+      const existingValue = provider.name === 'stripe'
+        ? m.stripe_price_id
+        : m.square_plan_variation_id;
+      if (!existingValue) {
+        await supabase.from('memberships').update(updateCol).eq('id', membership_id);
+      }
     }
 
     return respond({
       url: result.url,
       session_id: result.providerSessionId,
+      processor: provider.name,
+      capability_warnings: cap.status === 'limited' ? cap.limitations : undefined,
     });
 
   } catch (e) {
