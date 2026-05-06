@@ -29,6 +29,7 @@ import BMLogo from '../components/BMLogo';
 import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
+import PurchasesPanel from '../components/PurchasesPanel';
 import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
@@ -2706,6 +2707,7 @@ export default function Dashboard({ view }) {
                 clients={stats?.lapsedClients || []}
                 onNavigate={(v) => navigate(`/dashboard/${v}`)}
               />
+              <PurchasesPanel therapistId={therapist?.id} />
               <BookingLinkNudge
                 therapist={therapist}
                 bookings={stats?.sessions || 0}
