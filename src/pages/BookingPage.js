@@ -300,33 +300,63 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
   }
 
   useEffect(() => {
-    if (!parsed?.applicationId || !parsed?.locationId || !containerRef.current) return;
+    if (!parsed?.applicationId || !parsed?.locationId || !containerRef.current) {
+      console.log('[SquareCardSetupForm] init skipped:', {
+        hasAppId: !!parsed?.applicationId,
+        hasLocationId: !!parsed?.locationId,
+        hasContainer: !!containerRef.current,
+        parsed,
+      });
+      return;
+    }
     let alive = true;
 
     const init = async () => {
+      console.log('[SquareCardSetupForm] init starting', {
+        applicationId: parsed.applicationId,
+        locationId: parsed.locationId,
+        customerId: parsed.customerId,
+      });
       // Load Square Web Payments SDK if not already loaded.
       // Sandbox uses sandbox.web.squarecdn.com; production uses
-      // web.squarecdn.com. We auto-detect from the application id
-      // prefix, which the backend already auto-detected from the
-      // SQUARE_APP_ID env var. This lets a single env var flip the
-      // entire stack between sandbox and production.
+      // web.squarecdn.com. Auto-detect from the application id prefix.
       if (!window.Square) {
         const isSandbox = (parsed.applicationId || '').startsWith('sandbox-');
         const sdkUrl = isSandbox
           ? 'https://sandbox.web.squarecdn.com/v1/square.js'
           : 'https://web.squarecdn.com/v1/square.js';
-        await new Promise((resolve, reject) => {
-          const s = document.createElement('script');
-          s.src = sdkUrl;
-          s.onload = resolve;
-          s.onerror = () => reject(new Error('Failed to load Square SDK'));
-          document.head.appendChild(s);
-        }).catch((e) => { if (alive) onError('Could not load Square card form. Please refresh and try again.'); });
+        console.log('[SquareCardSetupForm] loading SDK from', sdkUrl);
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = sdkUrl;
+            s.onload = () => { console.log('[SquareCardSetupForm] SDK script loaded'); resolve(); };
+            s.onerror = (err) => { console.error('[SquareCardSetupForm] SDK script load error', err); reject(new Error('Failed to load Square SDK from ' + sdkUrl)); };
+            document.head.appendChild(s);
+          });
+        } catch (e) {
+          console.error('[SquareCardSetupForm] SDK load promise rejected', e);
+          if (alive) onError(`Could not load Square card form. ${e.message}`);
+          return;
+        }
+      } else {
+        console.log('[SquareCardSetupForm] window.Square already loaded, reusing');
       }
-      if (!alive || !window.Square || !containerRef.current) return;
+      if (!alive) return;
+      if (!window.Square) {
+        console.error('[SquareCardSetupForm] window.Square is still missing after load');
+        onError('Square SDK loaded but window.Square is undefined.');
+        return;
+      }
+      if (!containerRef.current) {
+        console.error('[SquareCardSetupForm] container ref is missing after async load');
+        return;
+      }
 
       try {
+        console.log('[SquareCardSetupForm] calling Square.payments(applicationId, locationId)');
         const payments = window.Square.payments(parsed.applicationId, parsed.locationId);
+        console.log('[SquareCardSetupForm] payments instance created, calling .card()');
         const card = await payments.card({
           style: {
             input: {
@@ -340,12 +370,17 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
             },
           },
         });
+        console.log('[SquareCardSetupForm] card created, attaching to container');
         await card.attach(containerRef.current);
+        console.log('[SquareCardSetupForm] card attached successfully');
         cardRef.current = card;
         if (alive) setReady(true);
       } catch (e) {
         console.error('[SquareCardSetupForm] mount failed', e);
-        if (alive) onError('Could not load card form. Your browser may not be supported. Please try a different browser or contact support.');
+        // Surface the actual underlying error message instead of a
+        // generic 'browser may not be supported' so we can debug.
+        const detail = e?.message || e?.toString() || 'unknown error';
+        if (alive) onError(`Could not load card form: ${detail}`);
       }
     };
 
