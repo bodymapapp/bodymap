@@ -1,0 +1,228 @@
+// supabase/functions/charge-cancellation-fee/index.ts
+//
+// Charges a cancellation fee against a client's card-on-file when
+// the therapist cancels (or the client no-shows) within the policy's
+// fee window.
+//
+// Routes through PaymentProvider, so works with both Stripe and
+// Square card-on-file equally. The card was saved at booking time
+// via init-card-setup; we look up which processor saved it and
+// route to that one's chargeSavedCard().
+//
+// Idempotency: stable key 'cancel-{booking_id}' so a network retry
+// won't double-charge. Both Stripe and Square honor the key on
+// their respective endpoints.
+//
+// Audit: writes a row to cancellation_charges before AND after the
+// provider call. The 'pending' row before is created so a crash
+// mid-charge leaves an audit trail; the row gets updated to
+// 'succeeded' or 'failed' after the provider returns.
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import {
+  corsHeaders, respond, getSupabaseClient, loadTherapist,
+  ProviderError,
+} from '../_shared/payment-provider.ts';
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+
+  try {
+    const {
+      booking_id,
+      therapist_id,
+      // The fee amount in cents the therapist already calculated +
+      // confirmed in the UI. We accept it as input rather than
+      // recomputing here so the therapist sees exactly what they're
+      // agreeing to charge.
+      fee_amount_cents,
+      // 'late_cancel' | 'reschedule' | 'no_show' — written to audit row
+      reason,
+      // Snapshot of the policy at cancellation time, for audit
+      policy_snapshot,
+    } = await req.json();
+
+    if (!booking_id) return respond({ error: 'booking_id required' }, 400);
+    if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
+    if (!fee_amount_cents || fee_amount_cents <= 0) {
+      return respond({ error: 'fee_amount_cents must be positive' }, 400);
+    }
+
+    const supabase = getSupabaseClient();
+    const therapist = await loadTherapist(supabase, therapist_id);
+
+    // Load the booking + client to find the card-on-file.
+    const { data: booking } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', booking_id)
+      .eq('therapist_id', therapist_id)
+      .single();
+    if (!booking) return respond({ error: 'booking_not_found' }, 404);
+
+    const { data: client } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', booking.client_id)
+      .single();
+    if (!client) return respond({ error: 'client_not_found_on_booking' }, 404);
+
+    // Idempotency: if a successful charge for this booking already
+    // exists, return it instead of charging again. Defense against
+    // double-clicks.
+    const { data: existing } = await supabase
+      .from('cancellation_charges')
+      .select('*')
+      .eq('booking_id', booking_id)
+      .eq('status', 'succeeded')
+      .maybeSingle();
+    if (existing) {
+      return respond({
+        ok: true, idempotent: true,
+        charge_id: existing.id,
+        payment_ref_id: existing.payment_intent_id,
+        amount_cents: existing.amount_cents,
+      });
+    }
+
+    // Determine which processor saved the card. Prefer Stripe if both
+    // exist (matches the auto-policy elsewhere). The clients row
+    // populates one of these pairs at save-card time:
+    //   stripe_customer_id + stripe_payment_method_id
+    //   square_customer_id + square_card_id
+    let processor: 'stripe' | 'square';
+    let providerCustomerId: string | null;
+    let providerCardId: string | null;
+    if (client.stripe_customer_id && client.stripe_payment_method_id) {
+      processor = 'stripe';
+      providerCustomerId = client.stripe_customer_id;
+      providerCardId = client.stripe_payment_method_id;
+    } else if (client.square_customer_id && client.square_card_id) {
+      processor = 'square';
+      providerCustomerId = client.square_customer_id;
+      providerCardId = client.square_card_id;
+    } else {
+      return respond({
+        error: 'no_card_on_file',
+        detail: 'Client does not have a card on file with either Stripe or Square. The cancellation policy fee cannot be charged automatically.',
+      }, 400);
+    }
+
+    // Build the right provider directly (not via getProvider auto)
+    // since we know which one saved this specific card.
+    let provider;
+    if (processor === 'stripe') {
+      const { StripeProvider } = await import('../_shared/providers/stripe.ts');
+      provider = new StripeProvider();
+    } else {
+      const { SquareProvider } = await import('../_shared/providers/square.ts');
+      provider = new SquareProvider(therapist);
+    }
+
+    // Capability check
+    const cap = provider.getCapability('chargeSavedCard');
+    if (cap.status === 'unsupported') {
+      return respond({
+        error: `${processor} does not support charging saved cards in this version`,
+        code: 'capability_unsupported',
+      }, 400);
+    }
+
+    // Write a 'pending' audit row BEFORE charging. If the function
+    // crashes mid-call, this row remains as evidence the charge was
+    // attempted and we can reconcile later.
+    const idempotencyKey = `cancel-${booking_id}`;
+    const { data: pendingRow } = await supabase
+      .from('cancellation_charges')
+      .insert({
+        therapist_id,
+        booking_id,
+        client_id: client.id,
+        amount_cents: fee_amount_cents,
+        trigger_event: reason || 'cancel',
+        status: 'pending',
+        processor,
+        idempotency_key: idempotencyKey,
+        policy_snapshot: policy_snapshot || null,
+      })
+      .select('id')
+      .single();
+
+    // Charge through the abstraction
+    let chargeResult;
+    try {
+      chargeResult = await provider.chargeSavedCard({
+        therapist,
+        providerCustomerId,
+        providerCardId,
+        amountCents: fee_amount_cents,
+        idempotencyKey,
+        description: `${reason === 'no_show' ? 'No-show fee' : 'Late cancellation fee'} per policy`,
+        receiptEmail: client.email || undefined,
+      });
+    } catch (chargeErr) {
+      // Update the pending row to 'failed' for audit
+      const errMsg = chargeErr instanceof Error ? chargeErr.message : String(chargeErr);
+      await supabase
+        .from('cancellation_charges')
+        .update({
+          status: 'failed',
+          failed_at: new Date().toISOString(),
+          error_message: errMsg.slice(0, 500),
+        })
+        .eq('id', pendingRow?.id);
+
+      if (chargeErr instanceof ProviderError) {
+        return respond({ error: chargeErr.message, code: chargeErr.code, charge_id: pendingRow?.id }, 400);
+      }
+      throw chargeErr;
+    }
+
+    if (!chargeResult.paid) {
+      await supabase
+        .from('cancellation_charges')
+        .update({
+          status: 'failed',
+          failed_at: new Date().toISOString(),
+          error_message: 'provider returned not paid',
+        })
+        .eq('id', pendingRow?.id);
+      return respond({ error: 'charge_not_completed', charge_id: pendingRow?.id }, 502);
+    }
+
+    // Mark succeeded. payment_intent_id was Stripe-only originally;
+    // we now store ANY provider's payment ref id in this column
+    // (Stripe payment_intent id, Square payment id). The column name
+    // stays for backward compat with existing rows.
+    await supabase
+      .from('cancellation_charges')
+      .update({
+        status: 'succeeded',
+        succeeded_at: new Date().toISOString(),
+        payment_intent_id: chargeResult.paymentRefId,
+      })
+      .eq('id', pendingRow?.id);
+
+    console.log('[charge-cancellation-fee] success', {
+      booking_id, processor, payment_ref_id: chargeResult.paymentRefId,
+      amount_cents: chargeResult.amountCents,
+    });
+
+    return respond({
+      ok: true,
+      processor,
+      charge_id: pendingRow?.id,
+      payment_ref_id: chargeResult.paymentRefId,
+      amount_cents: chargeResult.amountCents,
+      capability_warnings: cap.status === 'limited' ? cap.limitations : undefined,
+    });
+
+  } catch (e) {
+    if (e instanceof ProviderError) {
+      console.error('[charge-cancellation-fee] provider error', e.code, e.message);
+      return respond({ error: e.message, code: e.code }, 400);
+    }
+    console.error('[charge-cancellation-fee] uncaught', e);
+    return respond({ error: String(e) }, 500);
+  }
+});

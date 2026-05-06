@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingModal from './BookingModal';
+import CancellationChargeModal from './CancellationChargeModal';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -62,6 +63,37 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     setCancelling(false);
     onCancelled?.();
     onClose();
+  }
+
+  // Policy-aware cancel: opens the CancellationChargeModal which
+  // computes the fee from the therapist's policy + how much time is
+  // left before the appointment, and gives the therapist three
+  // options: charge fee + cancel, skip fee + cancel, or don't
+  // cancel. Loads the booking's full client row + booking row so
+  // the modal can inspect card-on-file across both processors.
+  const [showChargeModal, setShowChargeModal] = useState(false);
+  const [chargeContext, setChargeContext] = useState(null);
+
+  async function openCancelFlow() {
+    // Load full booking + client to know about card-on-file
+    const { data: bookingRow } = await supabase
+      .from('bookings').select('*').eq('id', appt.id).single();
+    if (!bookingRow) {
+      // Fallback to legacy inline confirm if we can't load the row
+      setConfirmCancel(true);
+      return;
+    }
+    let clientRow = null;
+    if (bookingRow.client_id) {
+      const { data } = await supabase
+        .from('clients').select('*').eq('id', bookingRow.client_id).maybeSingle();
+      clientRow = data;
+    }
+    // Compute session price from the appointment data we have, or
+    // fall back to therapist's default service price.
+    const sessionPriceCents = Math.round((appt.priceUsd || appt.price || 0) * 100);
+    setChargeContext({ booking: bookingRow, client: clientRow, sessionPriceCents });
+    setShowChargeModal(true);
   }
   return (
     <>
@@ -193,7 +225,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </button>
             )}
             {!appt.preview && !confirmCancel && (
-              <button onClick={() => setConfirmCancel(true)}
+              <button onClick={openCancelFlow}
                 style={{background:'transparent',color:'#DC2626',border:'1.5px solid #FECACA',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
                 🗑 Cancel Appointment
               </button>
@@ -220,6 +252,22 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           {appt.preview && <div style={{background:'#FEF3C7',borderRadius:10,padding:'10px 14px',fontSize:12,color:'#92400E',textAlign:'center'}}>Preview card, real clients appear here after booking.</div>}
         </div>
       </div>
+
+      {showChargeModal && chargeContext && (
+        <CancellationChargeModal
+          booking={chargeContext.booking}
+          client={chargeContext.client}
+          therapist={therapist}
+          sessionPriceCents={chargeContext.sessionPriceCents}
+          isNoShow={false}
+          onClose={() => setShowChargeModal(false)}
+          onCancelled={() => {
+            setShowChargeModal(false);
+            onCancelled?.();
+            onClose();
+          }}
+        />
+      )}
     </>
   );
 }
