@@ -147,7 +147,28 @@ serve(async (req) => {
     }
 
     // ----- SQUARE PATH -----
-    if (therapist.square_access_token && therapist.square_location_id) {
+    // Self-heal location_id if missing (see square-create-deposit for
+    // rationale). Allows therapists who connected Square pre-location
+    // -persistence to still use cart checkout.
+    if (therapist.square_access_token) {
+      let locationId = therapist.square_location_id;
+      if (!locationId) {
+        try {
+          const locRes = await fetch('https://connect.squareup.com/v2/locations', {
+            headers: { 'Authorization': `Bearer ${therapist.square_access_token}`, 'Square-Version': '2024-01-18' },
+          });
+          const locData = await locRes.json();
+          if (locRes.ok) {
+            const active = (locData.locations || []).find((l: any) => l.status === 'ACTIVE') || (locData.locations || [])[0];
+            if (active?.id) {
+              locationId = active.id;
+              await supabase.from('therapists').update({ square_location_id: locationId }).eq('id', therapist_id);
+            }
+          }
+        } catch (e) { /* fall through */ }
+      }
+      if (!locationId) return respond({ error: 'Square location not configured. Please reconnect Square in Settings.' }, 400);
+
       console.log('[purchase-cart] using square, lines=', lineItems.length);
       const idempotencyKey = `cart-${client_email}-${Date.now()}`;
       const linkRes = await fetch('https://connect.squareup.com/v2/online-checkout/payment-links', {
@@ -162,7 +183,7 @@ serve(async (req) => {
           // Use 'order' shape to support multiple line items.
           // (quick_pay only supports a single item.)
           order: {
-            location_id: therapist.square_location_id,
+            location_id: locationId,
             line_items: lineItems.map((p: any) => ({
               name: `${p.name} · ${p.session_count} sessions`,
               quantity: '1',

@@ -137,7 +137,26 @@ serve(async (req) => {
     }
 
     // ----- SQUARE PATH -----
-    if (therapist.square_access_token && therapist.square_location_id) {
+    // Self-heal location_id (see square-create-deposit for rationale).
+    if (therapist.square_access_token) {
+      let locationId = therapist.square_location_id;
+      if (!locationId) {
+        try {
+          const locRes = await fetch('https://connect.squareup.com/v2/locations', {
+            headers: { 'Authorization': `Bearer ${therapist.square_access_token}`, 'Square-Version': '2024-01-18' },
+          });
+          const locData = await locRes.json();
+          if (locRes.ok) {
+            const active = (locData.locations || []).find((l: any) => l.status === 'ACTIVE') || (locData.locations || [])[0];
+            if (active?.id) {
+              locationId = active.id;
+              await supabase.from('therapists').update({ square_location_id: locationId }).eq('id', therapist_id);
+            }
+          }
+        } catch (e) { /* fall through */ }
+      }
+      if (!locationId) return respond({ error: 'Square location not configured. Please reconnect Square in Settings.' }, 400);
+
       console.log('[purchase-package] using square');
       const idempotencyKey = `pkg-${package_id}-${client_email}-${Date.now()}`;
       const linkRes = await fetch('https://connect.squareup.com/v2/online-checkout/payment-links', {
@@ -152,7 +171,7 @@ serve(async (req) => {
           quick_pay: {
             name: itemName,
             price_money: { amount: amountCents, currency: 'USD' },
-            location_id: therapist.square_location_id,
+            location_id: locationId,
           },
           checkout_options: {
             ask_for_shipping_address: false,

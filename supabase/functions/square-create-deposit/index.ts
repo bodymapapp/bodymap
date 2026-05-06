@@ -69,7 +69,40 @@ serve(async (req) => {
       return respond({ error: 'therapist_not_found' }, 404);
     }
     if (!therapist.square_access_token) return respond({ error: 'Square is not connected on this therapist profile' }, 400);
-    if (!therapist.square_location_id) return respond({ error: 'Square location not configured' }, 400);
+
+    // SELF-HEALING: if square_location_id is missing, fetch it now and
+    // persist before continuing. Some therapists connected Square before
+    // the OAuth callback was setting this column, so they have a token
+    // but no location stored. Rather than failing with 'location not
+    // configured' and forcing them to re-OAuth, we look it up via the
+    // Square Locations API and write it back. Idempotent and silent.
+    let locationId = therapist.square_location_id;
+    if (!locationId) {
+      console.log('[square-create-deposit] location_id missing, self-healing via /v2/locations');
+      try {
+        const locRes = await fetch('https://connect.squareup.com/v2/locations', {
+          headers: {
+            'Authorization': `Bearer ${therapist.square_access_token}`,
+            'Square-Version': '2024-01-18',
+          },
+        });
+        const locData = await locRes.json();
+        if (locRes.ok) {
+          const locs = locData.locations || [];
+          const active = locs.find((l: any) => l.status === 'ACTIVE') || locs[0];
+          if (active?.id) {
+            locationId = active.id;
+            await supabase.from('therapists').update({ square_location_id: locationId }).eq('id', therapist_id);
+            console.log('[square-create-deposit] healed location_id:', locationId);
+          }
+        } else {
+          console.error('[square-create-deposit] locations API failed', locData);
+        }
+      } catch (e) {
+        console.error('[square-create-deposit] location heal threw', e);
+      }
+    }
+    if (!locationId) return respond({ error: 'Square location not configured. Please disconnect and reconnect Square in Settings.' }, 400);
 
     // ----- Square Payment Link API -----
     // POST /v2/online-checkout/payment-links
@@ -88,7 +121,7 @@ serve(async (req) => {
         quick_pay: {
           name: `Deposit · ${service_name || 'Massage session'}`,
           price_money: { amount: amount_cents, currency: 'USD' },
-          location_id: therapist.square_location_id,
+          location_id: locationId,
         },
         checkout_options: {
           ask_for_shipping_address: false,

@@ -25,6 +25,26 @@ serve(async (req) => {
 
     if (!therapist?.square_access_token) return respond({ error: 'Square not connected' }, 400);
 
+    // SELF-HEALING location_id: see square-create-deposit for the
+    // rationale. Look up via Square API and persist if missing.
+    let locationId = therapist.square_location_id;
+    if (!locationId) {
+      try {
+        const locRes = await fetch('https://connect.squareup.com/v2/locations', {
+          headers: { 'Authorization': `Bearer ${therapist.square_access_token}`, 'Square-Version': '2024-01-18' },
+        });
+        const locData = await locRes.json();
+        if (locRes.ok) {
+          const active = (locData.locations || []).find((l: any) => l.status === 'ACTIVE') || (locData.locations || [])[0];
+          if (active?.id) {
+            locationId = active.id;
+            await supabase.from('therapists').update({ square_location_id: locationId }).eq('id', therapist_id);
+          }
+        }
+      } catch (e) { /* fall through */ }
+    }
+    if (!locationId) return respond({ error: 'Square location not configured. Please reconnect Square in Settings.' }, 400);
+
     const total = amount_cents + (tip_cents || 0);
     const token = therapist.square_access_token;
 
@@ -37,7 +57,7 @@ serve(async (req) => {
         customer_id: square_customer_id,
         amount_money: { amount: total, currency: 'USD' },
         tip_money: tip_cents ? { amount: tip_cents, currency: 'USD' } : undefined,
-        location_id: therapist.square_location_id,
+        location_id: locationId,
         note: description || 'Massage session',
         ...(send_receipt && client_email ? { buyer_email_address: client_email } : {}),
       }),

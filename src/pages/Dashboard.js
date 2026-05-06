@@ -2166,22 +2166,70 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
 
           {/* Square */}
           {therapist?.square_connected ? (
-            <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                  <span>✅</span>
-                  <div>
-                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square Connected</div>
-                    <div style={{ fontSize:'11px', color:'#6B7280' }}>Card on file ready for your clients</div>
+            <div>
+              <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px' }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span>✅</span>
+                    <div>
+                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square Connected</div>
+                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Card on file ready for your clients</div>
+                    </div>
+                  </div>
+                  <button onClick={async () => {
+                    if (!window.confirm('Disconnect Square?')) return;
+                    await updateProfile({ square_access_token: null, square_merchant_id: null, square_location_id: null, square_connected: false });
+                  }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+
+              {/* Health indicator: warns if Square is connected but the
+                  location_id is missing. This can happen for therapists
+                  who connected before May 2026 when the OAuth callback
+                  started persisting the location. The 'Repair' button
+                  calls the square-repair-location edge function which
+                  fetches the location from Square and writes it back.
+                  After this commit, every Square-using edge function
+                  also self-heals on first call, so this is a backup
+                  affordance for therapists who want to verify the
+                  connection is healthy without having to test a
+                  payment to find out. */}
+              {!therapist?.square_location_id && (
+                <div style={{ background:'#FFFBEB', border:'1.5px solid #F59E0B', borderRadius:10, padding:'12px 14px', marginTop:8 }}>
+                  <div style={{ display:'flex', alignItems:'flex-start', gap:10 }}>
+                    <span style={{ fontSize:16 }}>⚠️</span>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#92400E' }}>Square location missing</div>
+                      <div style={{ fontSize:'11px', color:'#78350F', marginTop:2, lineHeight:1.5 }}>
+                        Your Square account is connected but the location ID is not stored. Deposits and package purchases will fail. Tap Repair to fetch it from Square.
+                      </div>
+                      <button onClick={async () => {
+                        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+                        const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-repair-location', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+                          body: JSON.stringify({ therapist_id: therapist.id }),
+                        });
+                        const data = await res.json();
+                        if (data?.ok) {
+                          alert(`Square location set: ${data.location_name || data.location_id}`);
+                          window.location.reload();
+                        } else {
+                          alert('Repair failed: ' + (data?.error || JSON.stringify(data)));
+                        }
+                      }} style={{
+                        marginTop: 8,
+                        background: '#F59E0B', color: '#fff',
+                        border: 'none', borderRadius: 8,
+                        padding: '6px 14px', fontSize: 12, fontWeight: 700,
+                        cursor: 'pointer',
+                      }}>Repair connection</button>
+                    </div>
                   </div>
                 </div>
-                <button onClick={async () => {
-                  if (!window.confirm('Disconnect Square?')) return;
-                  await updateProfile({ square_access_token: null, square_merchant_id: null, square_location_id: null, square_connected: false });
-                }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
-                  Disconnect
-                </button>
-              </div>
+              )}
             </div>
           ) : (
             <button onClick={async () => {
