@@ -53,6 +53,57 @@ const DEFAULT_PREFS = {
   medFlag: "none",
 };
 
+// Compute a smart initial prefs object that pre-selects defaults
+// matching the therapist's actual schema. The static DEFAULT_PREFS
+// above carries the v keys used by the unmodified schema; once a
+// therapist customizes a field's options (renames them, removes the
+// default one, etc.), those v keys may not exist anymore and the
+// chip widget renders nothing pre-selected. This walks each chip
+// field and substitutes a valid v key.
+//
+// Special case for pressure: when the therapist customized pressure
+// to a non-default option set, the static default is the integer 3
+// (slider value) which never matches a chip v key. We pick 'medium'
+// if it survived, else the option at the middle index. For all
+// other chip fields, fallback is the first option in the schema.
+//
+// Result: clients see sensible pre-selections on every chip field
+// even when the therapist has customized options. Reduces clicks
+// dramatically — most clients only change 1-2 things.
+function smartInitialPrefs(schema) {
+  const base = { ...DEFAULT_PREFS };
+  if (!schema?.fields) return base;
+
+  const fix = (fieldId, prefKey, isPressure) => {
+    const field = schema.fields.find((f) => f.id === fieldId);
+    if (!field?.options) return;
+    const validVs = field.options.map((o) => o.v);
+    if (validVs.length === 0) return;
+    const current = base[prefKey];
+    if (validVs.includes(current)) return;
+    // Current default is invalid for this customized field. Pick a
+    // sensible fallback.
+    if (isPressure) {
+      base[prefKey] = validVs.find((v) => v === 'medium') ||
+        validVs[Math.floor(validVs.length / 2)];
+    } else {
+      base[prefKey] = validVs[0];
+    }
+  };
+
+  fix('pressure', 'pressure', true);
+  fix('goal', 'goal', false);
+  fix('table_temp', 'tableTemp', false);
+  fix('room_temp', 'roomTemp', false);
+  fix('music', 'music', false);
+  fix('lighting', 'lighting', false);
+  fix('conversation', 'conversation', false);
+  fix('draping', 'draping', false);
+  fix('oils', 'oilPref', false);
+
+  return base;
+}
+
 // ---------------------------------------------------------------
 // Schema-driven render maps
 // ---------------------------------------------------------------
@@ -2608,6 +2659,11 @@ const PrefScreen = ({
         minHeight: "100vh",
       }}
     >
+      {/* Inner content wrapper: caps width on desktop so the form
+          does not stretch awkwardly across a wide screen. On mobile
+          (under 940px wide), this is a no-op since the viewport is
+          always smaller than the cap. Centered with margin auto. */}
+      <div style={{ maxWidth: 940, margin: '0 auto' }}>
       <Step step={3} />
       <h2
         style={{
@@ -2630,7 +2686,7 @@ const PrefScreen = ({
           marginBottom: 18,
         }}
       >
-        Help your therapist create the perfect session
+        Help your therapist create the perfect session · most are pre-filled, change only what you want
       </p>
       {/* Schema-driven render. Each visible field in the therapist's
           intake_schema becomes a Card via the SchemaField component
@@ -2638,19 +2694,33 @@ const PrefScreen = ({
           their special compound widgets; everything else renders by
           field.type. Custom-added fields land here too with their
           values stored in customAnswers (jsonb). Hidden fields are
-          filtered out before render so they never appear. */}
-      {schema.fields
-        .filter((f) => !f.hidden)
-        .map((field) => (
-          <SchemaField
-            key={field.id}
-            field={field}
-            prefs={prefs}
-            upd={upd}
-            customAnswers={customAnswers}
-            setCustomAnswers={setCustomAnswers}
-          />
-        ))}
+          filtered out before render so they never appear.
+
+          LAYOUT: responsive auto-fit grid. Each card needs at least
+          300px of width; the browser fits as many columns as it can.
+          On a phone (~360px viewport ≈ 320px after padding), only 1
+          column fits. On tablet (~720px container) 2 columns. On
+          desktop (~940px container, our max) 2-3 columns. The cards
+          have their own marginBottom of 12px which combined with
+          the grid gap looks fine. */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gap: 12,
+      }}>
+        {schema.fields
+          .filter((f) => !f.hidden)
+          .map((field) => (
+            <SchemaField
+              key={field.id}
+              field={field}
+              prefs={prefs}
+              upd={upd}
+              customAnswers={customAnswers}
+              setCustomAnswers={setCustomAnswers}
+            />
+          ))}
+      </div>
       {/* Medical conditions checklist. Renders after the schema
           loop, in its own Card. Lives outside schema.fields because
           its data shape is a fixed list of conditions that the
@@ -2808,6 +2878,7 @@ const PrefScreen = ({
       <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, textAlign: "center", lineHeight: 1.5, margin: "8px 0 0 0" }}>
         By continuing, you agree to MyBodyMap&apos;s <a href="/terms" style={{ color: C.green }}>Terms</a> and <a href="/privacy" style={{ color: C.green }}>Privacy Policy</a>. We never sell your data.
       </p>
+      </div>{/* /maxWidth wrapper */}
     </div>
   );
 };
@@ -4641,7 +4712,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
   const [mode, setMode] = useState("focus");
   const [clientInfo, setCI] = useState({ name: initialName || "", contact: initialEmail || "", phone: initialPhone || "" });
   const [bodyMap, setBM] = useState({});
-  const [prefs, setPrefs] = useState({ ...DEFAULT_PREFS });
+  const [prefs, setPrefs] = useState(() => smartInitialPrefs(schema));
   const [notes, setNotes] = useState("");
   const [consent, setConsent] = useState(false);
   const [smsOptIn, setSmsOptIn] = useState(false);
@@ -4697,7 +4768,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
 
   const handlePreFill = (last) => {
     setBM({ ...last.bodyMap });
-    setPrefs({ ...DEFAULT_PREFS, ...last.prefs });
+    setPrefs({ ...smartInitialPrefs(schema), ...last.prefs });
     if (last.clientInfo) setCI({ ...last.clientInfo });
     setScreen("front");
   };
@@ -4835,7 +4906,7 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
     setBM({});
     setNotes("");
     setConsent(false);
-    setPrefs({ ...DEFAULT_PREFS });
+    setPrefs(smartInitialPrefs(schema));
     setScreen("welcome");
   };
 
