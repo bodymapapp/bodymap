@@ -642,13 +642,12 @@ export default function BookingPage() {
     }
 
     // ----- Branch 2: Package purchase return -----
+    // Frontend now embeds purchase_complete=1 directly in redirect_url
+    // so both Stripe and Square round-trip it cleanly. session_id
+    // (Stripe) or order_id (Square) arrives alongside.
     if (params.get('purchase_complete') === '1') {
       const processor = params.get('processor');
       const sessionId = params.get('session_id');
-      // Square's redirect carries package_id but no order_id by default,
-      // so for Square we look it up from the most recent payment_link
-      // for this client. Cleaner alternative would be a webhook (TODO).
-      // For now, the order_id round-trips via the redirect_url string.
       const orderId = params.get('order_id') || params.get('reference_id');
       const pkgId = params.get('package_id');
       (async () => {
@@ -665,7 +664,7 @@ export default function BookingPage() {
               session_id: sessionId,
               order_id: orderId,
               package_id: pkgId,
-              therapist_id: null, // resolved below from the slug
+              therapist_id: null,
             }),
           }
         );
@@ -679,8 +678,18 @@ export default function BookingPage() {
     }
 
     // ----- Branch 3: Membership purchase return -----
+    // Frontend embeds membership_complete=1 directly in redirect_url so
+    // both Stripe and Square round-trip it. Square's createSubscription
+    // also appends mode=subscription + plan_variation_id + customer_id
+    // + start_date which the confirm endpoint uses to set up the
+    // subscription server-side.
     if (params.get('membership_complete') === '1') {
+      const processor = params.get('processor') || 'stripe';
       const sessionId = params.get('session_id');
+      const orderId = params.get('order_id') || params.get('reference_id');
+      const planVariationId = params.get('plan_variation_id');
+      const customerId = params.get('customer_id');
+      const startDate = params.get('start_date');
       (async () => {
         const res = await fetch(
           `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/confirm-membership-purchase`,
@@ -691,7 +700,12 @@ export default function BookingPage() {
               'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
             },
             body: JSON.stringify({
+              processor,
               session_id: sessionId,
+              order_id: orderId,
+              plan_variation_id: planVariationId,
+              customer_id: customerId,
+              start_date: startDate,
               membership_id: params.get('membership_id'),
               therapist_id: null,
             }),
@@ -699,7 +713,7 @@ export default function BookingPage() {
         );
         const data = res.ok ? await res.json() : await res.json().catch(() => ({}));
         if (data.ok) {
-          setPurchaseSuccess({ kind: 'membership' });
+          setPurchaseSuccess({ kind: 'membership', processor: data.processor });
         }
         window.history.replaceState({}, '', window.location.pathname);
       })();
@@ -823,10 +837,15 @@ export default function BookingPage() {
     setBlockedDates(new Set((bd||[]).map(b=>b.date)));
     setAvailableAddons(addons||[]);
     setPackagesList(pkgRes?.data || []);
-    // Memberships are Stripe-only for v1 — hide from non-Stripe therapists
-    // so clients do not click and get an error mid-flow. Square-only
-    // therapists can still sell packages above.
-    setMembershipsList(t.stripe_account_id ? (memRes?.data || []) : []);
+    // Memberships render for therapists with EITHER processor connected.
+    // Stripe is fully supported. Square is supported for the first month
+    // checkout flow with a documented limitation: recurring monthly
+    // renewal requires manual follow-up by the therapist (see capability
+    // matrix and billing strategy doc). The hide-when-no-processor rule
+    // remains so clients do not click into a broken state when the
+    // therapist has no processor at all.
+    const therapistHasAnyProcessor = !!(t.stripe_account_id || t.square_access_token);
+    setMembershipsList(therapistHasAnyProcessor ? (memRes?.data || []) : []);
     setLoading(false);
   }
 
@@ -982,7 +1001,14 @@ export default function BookingPage() {
     const fnName = isPackage ? 'purchase-package' : 'purchase-membership';
     const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}`;
     const idKey = isPackage ? 'package_id' : 'membership_id';
-    const redirectUrl = `${redirectBase}&${idKey}=${offerModal.item.id}`;
+    // Embed the purchase-kind trigger in the redirect_url so both
+    // Stripe and Square preserve it through their respective checkout
+    // appends. Stripe appends ?session_id=...; Square appends
+    // &checkout_complete=1&processor=square. Either way, the trigger
+    // we control (purchase_complete or membership_complete) survives
+    // the round-trip.
+    const triggerParam = isPackage ? 'purchase_complete=1' : 'membership_complete=1';
+    const redirectUrl = `${redirectBase}&${triggerParam}&${idKey}=${offerModal.item.id}`;
 
     try {
       const res = await fetch(
@@ -1064,7 +1090,11 @@ export default function BookingPage() {
     setCartCheckoutLoading(true);
     setCartCheckoutError(null);
 
-    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}`;
+    // Embed cart_complete=1 in redirect URL so it survives the round-
+    // trip through either Stripe or Square checkout (each processor
+    // appends their own checkout_complete or session_id; our trigger
+    // is preserved either way).
+    const redirectBase = `${window.location.origin}/${therapist.custom_url}?_=${Date.now()}&cart_complete=1`;
     try {
       const res = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/purchase-cart`,
