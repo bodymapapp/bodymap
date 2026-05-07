@@ -21,6 +21,7 @@ import IntakeEditor from './pages/IntakeEditor';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
 import PaymentMethodComparisonMockup from './components/mockups/PaymentMethodComparisonMockup';
+import PaymentEvolutionMockup from './components/mockups/PaymentEvolutionMockup';
 import ScheduleDashboard from './components/ScheduleDashboard';
 import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
@@ -62,6 +63,7 @@ function App() {
               before deciding to build any of them. Show to therapists
               asking 'can I use my bank instead' for a real visual answer. */}
           <Route path="/mockups/payment-methods" element={<PaymentMethodComparisonMockup />} />
+          <Route path="/mockups/payment-evolution" element={<PaymentEvolutionMockup />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />
