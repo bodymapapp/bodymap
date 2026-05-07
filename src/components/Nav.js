@@ -46,7 +46,22 @@ export default function Nav() {
   }
 
   return (
-    <nav style={{ background: C.white, borderBottom: "1px solid #e5e7eb", padding: "16px 0", position: "fixed", top: 0, left: 0, right: 0, zIndex: 1000 }}>
+    <nav style={{
+      background: C.white,
+      borderBottom: "1px solid #e5e7eb",
+      // Respect iOS safe-area-inset-top so the nav content (logo +
+      // hamburger) does not slide behind the system status bar
+      // (LTE indicator, battery, time). iPhone X+ has a non-trivial
+      // notch / Dynamic Island that can be 30-50px tall in Safari.
+      // The fallback is the previous 16px so non-notched browsers
+      // are unchanged.
+      padding: "max(16px, env(safe-area-inset-top, 16px)) 0 16px 0",
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+    }}>
       <style>{`
         @media (max-width: 768px) {
           .bm-desktop-nav { display: none !important; }
@@ -59,7 +74,16 @@ export default function Nav() {
         }
       `}</style>
 
-      <div style={{ maxWidth: "1200px", margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{
+        maxWidth: "1200px",
+        margin: "0 auto",
+        // Side padding also respects safe area for landscape orientation
+        // where the notch sits on the left side.
+        padding: "0 max(24px, env(safe-area-inset-left, 24px)) 0 max(24px, env(safe-area-inset-right, 24px))",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+      }}>
         {/* Logo - always goes to top of home */}
         <a href="/" onClick={goHome} style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
           <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />
