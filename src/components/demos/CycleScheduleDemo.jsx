@@ -303,21 +303,30 @@ export default function CycleScheduleDemo() {
         </div>
       </div>
 
-      {/* Phase pills along the bottom — clickable for manual phase preview */}
-      <div style={{ display: "flex", gap: 6, marginTop: 14, justifyContent: "center", flexWrap: "wrap" }}>
+      {/* Phase pills along the bottom — clickable for manual phase preview.
+          Equal-width pills (flex:1) so the row is visually balanced
+          regardless of label length. Single line, no wrap, since the
+          four labels are short. Consistent border weight + soft inactive
+          color keeps the gaps reading uniformly between adjacent pills. */}
+      <div style={{ display: "flex", gap: 8, marginTop: 14, justifyContent: "stretch", alignItems: "stretch" }}>
         {PHASES.map((ph, i) => {
           const active = i === phaseIndex;
           return (
             <button key={ph.key}
               onClick={() => setPhaseIndex(i)}
               style={{
+                flex: 1,
+                minWidth: 0,
                 background: active ? ph.color : "#F9F7F2",
                 color: active ? "#fff" : C.gray,
-                border: `1.5px solid ${active ? ph.color : C.border}`,
+                border: `1.5px solid ${active ? ph.color : "#E8E0D2"}`,
                 borderRadius: 99,
-                padding: "5px 12px",
-                fontSize: 11, fontWeight: 600, cursor: "pointer",
+                padding: "6px 10px",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
                 opacity: visible ? 1 : 0,
+                textAlign: "center",
                 transition: `opacity 0.4s ease ${0.4 + i * 0.08}s, background 0.2s, color 0.2s, border 0.2s`,
               }}>
               {ph.label}
