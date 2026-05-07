@@ -32,6 +32,10 @@ import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
 import PreferencesDemo from "../components/demos/PreferencesDemo";
 import IntakeEditorDemo from "../components/demos/IntakeEditorDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
+import CancellationPolicyDemo from "../components/demos/CancellationPolicyDemo";
+import ProcessorParityDemo from "../components/demos/ProcessorParityDemo";
+import CardOnFileDemo from "../components/demos/CardOnFileDemo";
+import RefundDemo from "../components/demos/RefundDemo";
 
 // ───────────────────────────────────────────────────────────────────────
 // Ribbon configuration. Mirrors the 7 ribbons on /features but adapted
@@ -155,13 +159,29 @@ const RIBBONS = [
     id: "6",
     name: "Money & Protection",
     tagline: "Get paid. Stay protected. Run a real business.",
-    demos: [{ kind: "component", component: BillingDemo, label: "Billing dashboard" }],
+    // FIVE demos in carousel for ribbon 6 — billing dashboard first
+    // (familiar overview), then the four new feature demos that
+    // visualize the differentiating money features:
+    //   - Cancellation policy with countdown clock + tier rows
+    //   - Stripe + Square parity with feature checkmarks
+    //   - Card-on-file capture flow
+    //   - One-tap refund flow
+    // Each gets its own pill so curious visitors can tap directly
+    // to the feature that interests them.
+    demos: [
+      { kind: "component", component: BillingDemo, label: "Billing dashboard" },
+      { kind: "component", component: CancellationPolicyDemo, label: "Cancellation policy" },
+      { kind: "component", component: ProcessorParityDemo, label: "Stripe + Square" },
+      { kind: "component", component: CardOnFileDemo, label: "Card on file" },
+      { kind: "component", component: RefundDemo, label: "One-tap refunds" },
+    ],
     layout: "demo-left",
     subFeatures: [
       "Revenue dashboard, real-time",
-      "Top 10 clients by lifetime spend",
-      "Gift cards directly from your booking page",
       "Cancellation policy: charge for late cancels, reschedules, no-shows",
+      "Stripe + Square, both fully · use whichever you already use",
+      "Card on file at booking, charged only if policy triggers",
+      "One-tap refunds from your dashboard, no Stripe/Square login",
       "ESIGN-compliant signed waivers, 7-year retention",
       "HIPAA-encrypted, same standards as MassageBook and Vagaro",
     ],
