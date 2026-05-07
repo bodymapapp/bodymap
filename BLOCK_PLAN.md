@@ -638,6 +638,15 @@ How HK and Claude work together every session. Survives compaction.
 
    No new features. Just making existing flows feel right on a 375px-wide iPhone for the 70-yo persona.
 
+   **STATUS UPDATE May 7 (commit fc1b2a00):** Billing dashboard mobile polish shipped. StatCard mobile-aware (padding, font sizes, line heights). New StatRow helper produces 2x2 grid on mobile, flex row on desktop, replaces 5 inline stat row containers. Build clean.
+
+   **Remaining for next session:**
+   - SessionDetail.js (644 lines, zero mobile awareness): SOAP textarea sizing, AI draft button placement, intake history layout
+   - Outreach.js: token row + template selector cramped on mobile
+   - Settings: individual sections (custom URL editor, intake editor entry, cycle scheduling toggle) have inline desktop-tuned styles
+   - Calendar: date picker readability on small screens
+   - Client list: search bar sticky, virtual scroll for long lists
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
