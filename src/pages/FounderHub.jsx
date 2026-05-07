@@ -5,26 +5,28 @@
 // can access.
 //
 // Ten sections per HK direction (May 7, 2026):
-//   1. Marketing doc, for therapists  (LIVE, fetched from repo)
-//   2. Marketing doc, internal  (LIVE, fetched from repo)
-//   3. Billing strategy + competitive/market analysis  (LIVE, fetched from repo)
-//   4. Block plan  (LIVE, fetched from repo)
-//   5. Taxonomy summary + detail  (LIVE, fetched from repo)
-//   6. Client dashboard  (LIVE, link to /dashboard)
-//   7. Email + SMS edits  (LIVE, link to Dashboard editor)
-//   8. Catch-all placeholder  (LIVE, repo doc index)
-//   9. Founder Runbook  (LIVE, fetched from repo)
-//  10. Ask Anything chat  (LIVE, calls founder-chat edge function)
+//   1. Marketing for therapists (live, docs/MARKETING_THERAPISTS.md)
+//   2. Marketing internal (live, docs/MARKETING_INTERNAL.md)
+//   3. Billing strategy (live, docs/BILLING_STRATEGY.md)
+//   4. Block plan (live, BLOCK_PLAN.md)
+//   5. Taxonomy (live, CONTRIBUTING.md)
+//   6. Client dashboard (live, link out to /dashboard)
+//   7. Email + SMS editor (live, link out to dashboard editor)
+//   8. Other documentation (live, docs/OTHER_NOTES.md)
+//   9. Founder Runbook (live, docs/FOUNDER_RUNBOOK.md)
+//  10. Ask Anything chat (future, Session 3)
 //
-// LIVE-DOCUMENT MODEL: documents are fetched fresh from GitHub raw
-// on every section open. HK updates docs at end of each session;
-// next page load picks up the latest state. No nightly automation.
+// LIVE-DOCUMENT MODEL:
+//   At end of each working session, Claude updates relevant
+//   markdown documents in /docs reflecting that day's decisions.
+//   Founder Hub fetches them from GitHub raw on each page load.
+//   No build redeploy needed for content updates.
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";
-import { supabase } from "../lib/supabase";
 import Nav from "../components/Nav";
+import MarkdownView from "../components/founder/MarkdownView";
+import useGithubMarkdown from "../components/founder/useGithubMarkdown";
 
 const C = {
   forest: "#2A5741",
@@ -40,33 +42,25 @@ const C = {
   paper:  "#FBFAF6",
 };
 
+// Section definitions in HK's original 1-10 numbering.
 const SECTIONS = [
   {
-    id: "runbook",
-    number: 9,
-    title: "Founder Runbook",
-    subtitle: "If Claude is unavailable tomorrow, this is the handoff document for a human team.",
+    id: "marketing-therapists",
+    number: 1,
+    title: "Marketing for Therapists",
+    subtitle: "Voice, positioning, and the case for switching. What therapists hear from us.",
     status: "live",
-    githubPath: "docs/FOUNDER_RUNBOOK.md",
-    priority: "critical",
+    type: "markdown",
+    path: "docs/MARKETING_THERAPISTS.md",
   },
   {
-    id: "block-plan",
-    number: 4,
-    title: "Block Plan",
-    subtitle: "Active fires, deferred work, ideas not yet shipped.",
+    id: "marketing-internal",
+    number: 2,
+    title: "Marketing Internal",
+    subtitle: "How we think about market segments, channels, and growth metrics.",
     status: "live",
-    githubPath: "BLOCK_PLAN.md",
-    priority: "high",
-  },
-  {
-    id: "taxonomy",
-    number: 5,
-    title: "Taxonomy",
-    subtitle: "The seven categories, rules for adding, design principles.",
-    status: "live",
-    githubPath: "CONTRIBUTING.md",
-    priority: "high",
+    type: "markdown",
+    path: "docs/MARKETING_INTERNAL.md",
   },
   {
     id: "billing-strategy",
@@ -74,35 +68,26 @@ const SECTIONS = [
     title: "Billing Strategy",
     subtitle: "Payment processors, capability matrix, competitive analysis, liability.",
     status: "live",
-    githubPath: "docs/BILLING_STRATEGY.md",
-    priority: "high",
+    type: "markdown",
+    path: "docs/BILLING_STRATEGY.md",
   },
   {
-    id: "marketing-therapists",
-    number: 1,
-    title: "Marketing for Therapists",
-    subtitle: "Voice, positioning, messaging, value props the therapists hear.",
+    id: "block-plan",
+    number: 4,
+    title: "Block Plan",
+    subtitle: "Active fires, deferred work, ideas not yet shipped.",
     status: "live",
-    githubPath: "docs/MARKETING_THERAPISTS.md",
-    priority: "medium",
+    type: "markdown",
+    path: "BLOCK_PLAN.md",
   },
   {
-    id: "marketing-internal",
-    number: 2,
-    title: "Marketing Internal",
-    subtitle: "How we (MyBodyMap team) think about market segments, channels, growth.",
+    id: "taxonomy",
+    number: 5,
+    title: "Taxonomy",
+    subtitle: "The seven product categories and the rules for adding to them.",
     status: "live",
-    githubPath: "docs/MARKETING_INTERNAL.md",
-    priority: "medium",
-  },
-  {
-    id: "email-sms",
-    number: 7,
-    title: "Email + SMS Editor",
-    subtitle: "Broadcast templates, founder messages, automated communication.",
-    status: "live",
-    renderType: "email-sms-link",
-    priority: "medium",
+    type: "markdown",
+    path: "CONTRIBUTING.md",
   },
   {
     id: "client-dashboard",
@@ -110,54 +95,52 @@ const SECTIONS = [
     title: "Client Dashboard",
     subtitle: "The therapist dashboard you already use. Link below.",
     status: "live",
-    externalLink: "/dashboard",
-    priority: "low",
+    type: "external",
+    link: "/dashboard",
+    linkLabel: "Open dashboard",
+    body: "The therapist dashboard. Where you spend most of your time when actively using MyBodyMap. Lives at /dashboard, opens in this tab.",
   },
   {
-    id: "placeholder",
+    id: "email-sms",
+    number: 7,
+    title: "Email and SMS Editor",
+    subtitle: "Broadcast templates, founder messages, automated communication.",
+    status: "live",
+    type: "external",
+    link: "/dashboard?section=communication",
+    linkLabel: "Open editor in dashboard",
+    body: "Broadcast templates and the automated message editor live inside the main therapist dashboard. The editor is coupled to therapist state (which client list to send to, which automation to attach a template to) so we link out rather than embed. Voice rules and template patterns are documented in Marketing for Therapists (section 1) and the email-voice-guide.md file in repo.",
+  },
+  {
+    id: "other-docs",
     number: 8,
     title: "Other Documentation",
-    subtitle: "Index of all documentation in the repository.",
+    subtitle: "Catch-all for anything that does not fit the other nine sections.",
     status: "live",
-    renderType: "doc-index",
-    priority: "low",
+    type: "markdown",
+    path: "docs/OTHER_NOTES.md",
+  },
+  {
+    id: "runbook",
+    number: 9,
+    title: "Founder Runbook",
+    subtitle: "If Claude is unavailable tomorrow, this is the handoff for a human team.",
+    status: "live",
+    type: "markdown",
+    path: "docs/FOUNDER_RUNBOOK.md",
   },
   {
     id: "chat",
     number: 10,
     title: "Ask Anything",
-    subtitle: "Chat with all founder documents as the knowledge base.",
-    status: "live",
-    renderType: "chat",
-    priority: "high",
+    subtitle: "Future: chat interface that uses all the documents above as the corpus.",
+    status: "future",
+    type: "future",
   },
 ];
 
-const GITHUB_RAW = "https://raw.githubusercontent.com/bodymapapp/bodymap/main";
-
 export default function FounderHub() {
   const [activeSection, setActiveSection] = useState("runbook");
-  const [docCache, setDocCache] = useState({});
-
-  useEffect(() => {
-    const section = SECTIONS.find((s) => s.id === activeSection);
-    if (!section?.githubPath) return;
-    if (docCache[activeSection]) return;
-
-    setDocCache((prev) => ({ ...prev, [activeSection]: { loading: true } }));
-    fetch(`${GITHUB_RAW}/${section.githubPath}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then((content) => {
-        setDocCache((prev) => ({ ...prev, [activeSection]: { content, loading: false } }));
-      })
-      .catch((err) => {
-        setDocCache((prev) => ({ ...prev, [activeSection]: { error: err.message, loading: false } }));
-      });
-  }, [activeSection, docCache]);
-
   const currentSection = SECTIONS.find((s) => s.id === activeSection);
 
   return (
@@ -185,10 +168,7 @@ export default function FounderHub() {
               activeSection={activeSection}
               onSelect={setActiveSection}
             />
-            <SectionContent
-              section={currentSection}
-              docCacheEntry={docCache[activeSection]}
-            />
+            <SectionContent section={currentSection} />
           </div>
         </div>
       </div>
@@ -207,7 +187,7 @@ function Header() {
         textTransform: "uppercase",
         marginBottom: 6,
       }}>
-        Founder Hub, Internal
+        Founder Hub · Internal
       </div>
       <h1 style={{
         fontFamily: "Georgia, serif",
@@ -226,22 +206,14 @@ function Header() {
         maxWidth: 720,
         lineHeight: 1.6,
       }}>
-        The founder operating system. Strategy, runbook, taxonomy, marketing, billing, and a chat interface
-        that answers questions using all of it as the knowledge corpus. Documents are updated at the end of
-        each working session.
+        The founder operating system. Strategy, runbook, taxonomy, marketing, billing, and the dashboard
+        all live here. Documents update at the end of each working session and refresh on next page load.
       </p>
     </div>
   );
 }
 
 function SectionList({ sections, activeSection, onSelect }) {
-  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
-  const sorted = [...sections].sort((a, b) => {
-    const p = priorityOrder[a.priority] - priorityOrder[b.priority];
-    if (p !== 0) return p;
-    return a.number - b.number;
-  });
-
   return (
     <div style={{
       background: "#fff",
@@ -251,8 +223,6 @@ function SectionList({ sections, activeSection, onSelect }) {
       position: "sticky",
       top: 96,
       boxShadow: "0 4px 16px rgba(28, 43, 34, 0.05)",
-      maxHeight: "calc(100vh - 120px)",
-      overflowY: "auto",
     }}>
       <div style={{
         fontSize: 10,
@@ -264,7 +234,7 @@ function SectionList({ sections, activeSection, onSelect }) {
       }}>
         Sections
       </div>
-      {sorted.map((s) => (
+      {sections.map((s) => (
         <SectionListItem
           key={s.id}
           section={s}
@@ -279,7 +249,6 @@ function SectionList({ sections, activeSection, onSelect }) {
 function SectionListItem({ section, active, onClick }) {
   const statusBadge = {
     live: { label: "LIVE", color: C.green, bg: C.greenBg },
-    "next-session": { label: "SOON", color: C.amber, bg: C.amberBg },
     future: { label: "FUTURE", color: C.gray, bg: "#F3F4F6" },
   }[section.status];
 
@@ -326,7 +295,13 @@ function SectionListItem({ section, active, onClick }) {
           marginBottom: 2,
           flexWrap: "wrap",
         }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{section.title}</span>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 700,
+            color: C.ink,
+          }}>
+            {section.title}
+          </span>
           <span style={{
             fontSize: 8,
             fontWeight: 800,
@@ -339,7 +314,11 @@ function SectionListItem({ section, active, onClick }) {
             {statusBadge.label}
           </span>
         </div>
-        <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.4 }}>
+        <div style={{
+          fontSize: 11,
+          color: C.gray,
+          lineHeight: 1.4,
+        }}>
           {section.subtitle}
         </div>
       </div>
@@ -347,7 +326,7 @@ function SectionListItem({ section, active, onClick }) {
   );
 }
 
-function SectionContent({ section, docCacheEntry }) {
+function SectionContent({ section }) {
   if (!section) return null;
 
   return (
@@ -368,30 +347,51 @@ function SectionContent({ section, docCacheEntry }) {
       }}>
         {section.title}
       </div>
-      <div style={{ fontSize: 13, color: C.gray, marginBottom: 24, lineHeight: 1.5 }}>
+      <div style={{
+        fontSize: 13,
+        color: C.gray,
+        marginBottom: 24,
+        lineHeight: 1.5,
+      }}>
         {section.subtitle}
       </div>
 
-      {section.githubPath && (
-        <MarkdownDocViewer githubPath={section.githubPath} cacheEntry={docCacheEntry} />
+      {section.type === "markdown" && (
+        <MarkdownContent path={section.path} />
       )}
-      {section.renderType === "email-sms-link" && <EmailSmsLink />}
-      {section.renderType === "doc-index" && <DocIndex />}
-      {section.renderType === "chat" && <ChatInterface />}
-      {section.externalLink && <ExternalLinkContent link={section.externalLink} />}
+
+      {section.type === "external" && (
+        <ExternalContent
+          link={section.link}
+          linkLabel={section.linkLabel}
+          body={section.body}
+        />
+      )}
+
+      {section.type === "future" && (
+        <FutureChatContent />
+      )}
     </div>
   );
 }
 
-function MarkdownDocViewer({ githubPath, cacheEntry }) {
-  if (!cacheEntry || cacheEntry.loading) {
+function MarkdownContent({ path }) {
+  const { content, loading, error } = useGithubMarkdown(path);
+
+  if (loading) {
     return (
-      <div style={{ padding: 40, textAlign: "center", color: C.gray, fontSize: 13 }}>
+      <div style={{
+        padding: 40,
+        textAlign: "center",
+        color: C.gray,
+        fontSize: 13,
+      }}>
         Loading from GitHub...
       </div>
     );
   }
-  if (cacheEntry.error) {
+
+  if (error) {
     return (
       <div style={{
         background: C.amberBg,
@@ -400,12 +400,17 @@ function MarkdownDocViewer({ githubPath, cacheEntry }) {
         padding: 16,
         fontSize: 12,
         color: "#78350F",
+        lineHeight: 1.6,
       }}>
-        Could not load: {cacheEntry.error}. View directly on{" "}
-        <a href={`https://github.com/bodymapapp/bodymap/blob/main/${githubPath}`}
-           target="_blank" rel="noopener noreferrer"
-           style={{ color: C.forest, fontWeight: 600 }}>
-          GitHub
+        Could not load document: {error}.
+        {" "}
+        <a
+          href={`https://github.com/bodymapapp/bodymap/blob/main/${path}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: C.forest, fontWeight: 600 }}
+        >
+          View on GitHub
         </a>.
       </div>
     );
@@ -413,45 +418,57 @@ function MarkdownDocViewer({ githubPath, cacheEntry }) {
 
   return (
     <div>
-      <div style={{
-        background: C.greenBg,
-        border: "1px solid #86EFAC",
-        borderRadius: 10,
-        padding: "10px 14px",
-        fontSize: 12,
-        color: "#14532D",
-        marginBottom: 18,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: 8,
-      }}>
-        <span>Live document. Last fetched from GitHub on page load.</span>
-        <a
-          href={`https://github.com/bodymapapp/bodymap/blob/main/${githubPath}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: C.forest, fontWeight: 600, textDecoration: "underline" }}
-        >
-          Edit on GitHub →
-        </a>
-      </div>
-      <pre style={{
-        whiteSpace: "pre-wrap",
-        fontFamily: "ui-sans-serif, system-ui, sans-serif",
-        fontSize: 13,
-        lineHeight: 1.7,
-        color: C.ink,
-        margin: 0,
-      }}>
-        {cacheEntry.content}
-      </pre>
+      <SourceHeader path={path} />
+      <MarkdownView source={content} />
     </div>
   );
 }
 
-function EmailSmsLink() {
+function SourceHeader({ path }) {
+  return (
+    <div style={{
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      gap: 12,
+      background: C.greenBg,
+      border: "1px solid #86EFAC",
+      borderRadius: 10,
+      padding: "10px 14px",
+      fontSize: 12,
+      color: "#14532D",
+      marginBottom: 22,
+      flexWrap: "wrap",
+    }}>
+      <div>
+        Live document. Fetched from <code style={{
+          background: "#fff",
+          padding: "1px 6px",
+          borderRadius: 4,
+          fontSize: 11,
+          fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+        }}>{path}</code> on page load.
+      </div>
+      <a
+        href={`https://github.com/bodymapapp/bodymap/blob/main/${path}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          color: C.forest,
+          fontWeight: 600,
+          textDecoration: "underline",
+          textUnderlineOffset: 2,
+          fontSize: 12,
+          flexShrink: 0,
+        }}
+      >
+        Edit on GitHub
+      </a>
+    </div>
+  );
+}
+
+function ExternalContent({ link, linkLabel, body }) {
   return (
     <div style={{
       background: C.cream,
@@ -459,353 +476,63 @@ function EmailSmsLink() {
       borderRadius: 10,
       padding: 22,
     }}>
-      <div style={{ fontSize: 14, color: C.ink, marginBottom: 12, lineHeight: 1.6 }}>
-        The Email and SMS broadcast editor lives inside the main therapist Dashboard. You can
-        compose Joy-voice broadcasts, schedule sends, view drafts, and edit templates there.
-      </div>
-      <div style={{ fontSize: 12, color: C.gray, marginBottom: 16, lineHeight: 1.6 }}>
-        The voice guide for what tone and structure to use is in <code style={inlineCodeStyle}>docs/email-voice-guide.md</code>.
-      </div>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        <Link to="/dashboard" style={primaryLinkStyle}>Open Dashboard →</Link>
-        <a
-          href="https://github.com/bodymapapp/bodymap/blob/main/docs/email-voice-guide.md"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={secondaryLinkStyle}
-        >
-          View voice guide
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function DocIndex() {
-  const docs = [
-    { path: "docs/FOUNDER_RUNBOOK.md", title: "Founder Runbook", description: "Comprehensive operational handoff document." },
-    { path: "BLOCK_PLAN.md", title: "Block Plan", description: "Active fires, deferred work, future ideas." },
-    { path: "CONTRIBUTING.md", title: "Taxonomy + Design Principles", description: "Seven-category taxonomy rules and the five design principles." },
-    { path: "ENVIRONMENT.md", title: "Environment Variables", description: "Canonical secrets list." },
-    { path: "docs/BILLING_STRATEGY.md", title: "Billing Strategy", description: "Payment processors, capability matrix, competitive analysis, liability." },
-    { path: "docs/MARKETING_THERAPISTS.md", title: "Marketing for Therapists", description: "Voice, positioning, messaging therapists hear." },
-    { path: "docs/MARKETING_INTERNAL.md", title: "Marketing Internal", description: "How we think about market segments, channels, growth." },
-    { path: "docs/email-voice-guide.md", title: "Email Voice Guide", description: "Joy persona email broadcast structure and rules." },
-    { path: "research/competitive-analysis-2026-04.md", title: "Competitive Analysis (Apr 2026)", description: "Full deep dive on direct competitors." },
-    { path: "research/noterro-competitive-analysis-2026-04.md", title: "Noterro Deep Dive (Apr 2026)", description: "Specific competitive analysis on Noterro." },
-  ];
-
-  return (
-    <div>
       <div style={{
-        fontSize: 12,
-        color: C.gray,
+        fontSize: 14,
+        color: C.ink,
         marginBottom: 16,
-        lineHeight: 1.6,
-        fontStyle: "italic",
+        lineHeight: 1.7,
       }}>
-        Every documentation file in the repository. Click to view on GitHub. Add new docs here
-        as we ship them.
+        {body}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {docs.map((d) => (
-          <a
-            key={d.path}
-            href={`https://github.com/bodymapapp/bodymap/blob/main/${d.path}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              display: "block",
-              padding: "12px 16px",
-              background: C.cream,
-              border: `1px solid ${C.border}`,
-              borderRadius: 10,
-              textDecoration: "none",
-              transition: "background 0.15s",
-            }}
-          >
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 2 }}>
-              {d.title}
-            </div>
-            <div style={{ fontSize: 12, color: C.gray, marginBottom: 4, lineHeight: 1.5 }}>
-              {d.description}
-            </div>
-            <div style={{ fontSize: 11, color: C.sage, fontFamily: "monospace" }}>
-              {d.path}
-            </div>
-          </a>
-        ))}
-      </div>
+      <Link
+        to={link}
+        style={{
+          display: "inline-block",
+          background: C.forest,
+          color: "#fff",
+          padding: "10px 20px",
+          borderRadius: 10,
+          fontSize: 13,
+          fontWeight: 600,
+          textDecoration: "none",
+        }}
+      >
+        {linkLabel} →
+      </Link>
     </div>
   );
 }
 
-function ChatInterface() {
-  const { user } = useAuth();
-  const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const messagesEndRef = useRef(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  async function send() {
-    const trimmed = input.trim();
-    if (!trimmed || loading) return;
-
-    const newMessages = [...messages, { role: "user", content: trimmed }];
-    setMessages(newMessages);
-    setInput("");
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      if (!token) {
-        setError("Not authenticated. Please log in again.");
-        setLoading(false);
-        return;
-      }
-
-      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || "";
-      const res = await fetch(`${supabaseUrl}/functions/v1/founder-chat`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ messages: newMessages }),
-      });
-
-      if (!res.ok) {
-        const errBody = await res.text();
-        throw new Error(`HTTP ${res.status}: ${errBody}`);
-      }
-
-      const data = await res.json();
-      setMessages([...newMessages, { role: "assistant", content: data.message }]);
-    } catch (err) {
-      setError(err.message || "Something went wrong");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function handleKeyDown(e) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      send();
-    }
-  }
-
-  const SUGGESTED = [
-    "What is our current marketing voice in one sentence?",
-    "What are the open risks I should know about?",
-    "Why did we decide to skip ACH?",
-    "Summarize the seven taxonomy categories.",
-  ];
-
-  return (
-    <div>
-      <div style={{
-        background: C.cream,
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        padding: 18,
-        marginBottom: 16,
-        fontSize: 12,
-        color: C.gray,
-        lineHeight: 1.6,
-      }}>
-        Asks Claude using the runbook, block plan, taxonomy, billing strategy, and both marketing
-        documents as the knowledge corpus. Responses cite which document they draw from when
-        relevant. Documents are loaded fresh from GitHub on every question.
-      </div>
-
-      <div style={{
-        background: "#fff",
-        border: `1px solid ${C.border}`,
-        borderRadius: 12,
-        minHeight: 320,
-        maxHeight: 520,
-        overflowY: "auto",
-        padding: messages.length === 0 ? 24 : 16,
-        marginBottom: 12,
-      }}>
-        {messages.length === 0 ? (
-          <div>
-            <div style={{
-              fontSize: 13,
-              color: C.gray,
-              marginBottom: 16,
-              lineHeight: 1.6,
-            }}>
-              Start a conversation. Try one of these:
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {SUGGESTED.map((q) => (
-                <button
-                  key={q}
-                  onClick={() => setInput(q)}
-                  style={{
-                    background: C.cream,
-                    border: `1px solid ${C.border}`,
-                    borderRadius: 8,
-                    padding: "10px 14px",
-                    fontSize: 12,
-                    color: C.ink,
-                    textAlign: "left",
-                    cursor: "pointer",
-                  }}
-                >
-                  {q}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : (
-          messages.map((m, i) => (
-            <ChatMessage key={i} role={m.role} content={m.content} />
-          ))
-        )}
-        {loading && (
-          <div style={{ padding: 12, color: C.gray, fontSize: 12, fontStyle: "italic" }}>
-            Thinking...
-          </div>
-        )}
-        {error && (
-          <div style={{
-            background: "#FEE2E2",
-            border: "1px solid #FCA5A5",
-            borderRadius: 8,
-            padding: 10,
-            fontSize: 12,
-            color: "#991B1B",
-            margin: "8px 0",
-          }}>
-            Error: {error}
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-
-      <div style={{ display: "flex", gap: 8 }}>
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask anything about the founder docs..."
-          rows={2}
-          style={{
-            flex: 1,
-            border: `1.5px solid ${C.border}`,
-            borderRadius: 10,
-            padding: "10px 14px",
-            fontSize: 13,
-            fontFamily: "inherit",
-            resize: "vertical",
-            minHeight: 48,
-            outline: "none",
-            color: C.ink,
-          }}
-        />
-        <button
-          onClick={send}
-          disabled={!input.trim() || loading}
-          style={{
-            background: input.trim() && !loading ? C.forest : "#D1D5DB",
-            color: "#fff",
-            border: "none",
-            borderRadius: 10,
-            padding: "0 22px",
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: input.trim() && !loading ? "pointer" : "default",
-            transition: "background 0.15s",
-            alignSelf: "stretch",
-          }}
-        >
-          Send
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ChatMessage({ role, content }) {
-  const isUser = role === "user";
+function FutureChatContent() {
   return (
     <div style={{
-      display: "flex",
-      justifyContent: isUser ? "flex-end" : "flex-start",
-      marginBottom: 12,
-    }}>
-      <div style={{
-        maxWidth: "85%",
-        background: isUser ? C.forest : C.cream,
-        color: isUser ? "#fff" : C.ink,
-        border: isUser ? "none" : `1px solid ${C.border}`,
-        borderRadius: 14,
-        padding: "10px 14px",
-        fontSize: 13,
-        lineHeight: 1.6,
-        whiteSpace: "pre-wrap",
-      }}>
-        {content}
-      </div>
-    </div>
-  );
-}
-
-function ExternalLinkContent({ link }) {
-  return (
-    <div style={{
-      background: C.cream,
-      border: `1px dashed ${C.border}`,
+      background: "#F3F4F6",
+      border: "1px dashed #D1D5DB",
       borderRadius: 10,
       padding: 22,
       textAlign: "center",
     }}>
-      <div style={{ fontSize: 14, color: C.ink, marginBottom: 14, lineHeight: 1.6 }}>
-        The therapist dashboard. Where you spend most of your time when actively using MyBodyMap.
+      <div style={{ fontSize: 32, marginBottom: 8 }}>💬</div>
+      <div style={{
+        fontSize: 14,
+        color: C.ink,
+        marginBottom: 6,
+        fontWeight: 600,
+      }}>
+        Ask Anything · Future feature
       </div>
-      <Link to={link} style={primaryLinkStyle}>Open Dashboard →</Link>
+      <div style={{
+        fontSize: 12,
+        color: C.gray,
+        lineHeight: 1.7,
+        maxWidth: 480,
+        margin: "0 auto",
+      }}>
+        A chat interface that uses all the documents in this Founder Hub as its corpus
+        of knowledge. Ask about strategy, billing, taxonomy, anything documented, and get
+        an answer grounded in the actual source documents. Scoped as Session 3 of the
+        Founder Hub build.
+      </div>
     </div>
   );
 }
-
-const primaryLinkStyle = {
-  display: "inline-block",
-  background: "#2A5741",
-  color: "#fff",
-  padding: "10px 20px",
-  borderRadius: 10,
-  fontSize: 13,
-  fontWeight: 600,
-  textDecoration: "none",
-};
-
-const secondaryLinkStyle = {
-  display: "inline-block",
-  background: "#fff",
-  color: "#2A5741",
-  border: "1.5px solid #2A5741",
-  padding: "10px 20px",
-  borderRadius: 10,
-  fontSize: 13,
-  fontWeight: 600,
-  textDecoration: "none",
-};
-
-const inlineCodeStyle = {
-  background: "#fff",
-  border: "1px solid #E5D5C8",
-  padding: "2px 6px",
-  borderRadius: 4,
-  fontSize: 11,
-  fontFamily: "monospace",
-};
