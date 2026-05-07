@@ -43,6 +43,7 @@ const TEMPLATES = [
   { id:'opening',  label:'You have an opening', text:'Hi {name}, I have an opening this week and thought of you. Would love to see you, grab a spot here: {link}' },
   { id:'checkin',  label:'Gentle check-in',     text:'Hi {name}, just checking in! It\'s been a while since your last visit. How are you feeling? I\'d love to help: {link}' },
   { id:'selfcare', label:'Self-care reminder',  text:'Hi {name}, a gentle reminder that taking care of yourself matters. I have some availability if you\'d like to book: {link}' },
+  { id:'wemoved',  label:'We moved (new system)', text:'Hi {name}, quick note. I have moved my booking and intake to a calmer setup that works better for both of us. Same me, same studio, just an easier way to book and stay in touch. Your previous bookings and history are with me, nothing is lost. The new link is below. If anything feels off or you have questions, reply to this email and I will help you through it. With care, {therapist}.\n\n{link}' },
   { id:'custom',   label:'Write my own',        text:'' },
 ];
 
@@ -58,12 +59,24 @@ const OPERATORS = [
 ];
 
 export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) {
+  // Read URL query params for deep-link defaults (e.g. /dashboard/outreach?template=wemoved&segment=all)
+  const initialQuery = (() => {
+    if (typeof window === 'undefined') return {};
+    const params = new URLSearchParams(window.location.search);
+    return {
+      template: params.get('template'),
+      segment: params.get('segment'),
+    };
+  })();
+
+  const initialTemplate = TEMPLATES.find(t => t.id === initialQuery.template) || TEMPLATES[0];
+
   const [therapist, setTherapist] = useState(therapistProp);
   const [clients, setClients]     = useState([]);
   const [loading, setLoading]     = useState(true);
-  const [segment, setSegment]     = useState('lapsed');
-  const [template, setTemplate]   = useState('opening');
-  const [message, setMessage]     = useState(TEMPLATES[0].text);
+  const [segment, setSegment]     = useState(initialQuery.segment || 'lapsed');
+  const [template, setTemplate]   = useState(initialTemplate.id);
+  const [message, setMessage]     = useState(initialTemplate.text);
   const [channel, setChannel]     = useState('email');
   const [testMode, setTestMode]   = useState(false);
   const [testEmail, setTestEmail] = useState('');

@@ -567,6 +567,77 @@ How HK and Claude work together every session. Survives compaction.
 
 14. **Customer service chat (NEW, scoped May 7, 2026).** Distinct from the Practice Assistant. Lives bottom-right of every public marketing page AND inside the dashboard for support questions. Anyone (signed in or not) can ask questions about MyBodyMap (how do I use cancellation policy, how do I connect Stripe, what does Silver tier include). Answers grounded in the founder corpus. Strategy detailed below in this BLOCK_PLAN entry. Build target: next session.
 
+   **STATUS UPDATE May 7:** Customer service chat shipped as Stage 1 (email-first plus help center, zero cost). Help widget mounted on Home, FeaturesV2, Pricing. Help center at /help with 19 articles indexed via FlexSearch. AI escalation deferred to Stage 2 per CUSTOMER_CHAT_RESEARCH.md trigger conditions (over 30 emails/week, 500+ therapists, founding therapist explicit request, profitable, OR avg response time exceeds 24h).
+
+15. **Anthropic API account verification (HK action item).** HK to log into console.anthropic.com (separate from claude.ai subscription) and confirm:
+   - API account exists and is active
+   - Payment method on file (credit card)
+   - Current month-to-date spend (likely small but worth knowing)
+   - The ANTHROPIC_API_KEY currently in Supabase edge function secrets matches an account HK actually owns
+
+   This matters because every Practice Assistant call, every public-mode demo chat, and any future customer-service AI chat hits this account. Without confirmation, we are flying blind on spend.
+
+16. **Founder-chat edge function: decision deferred (May 7, 2026).** There is an orphan supabase/functions/founder-chat/index.ts in repo from an earlier session. Uses Opus instead of Haiku, references stale doc paths (MARKETING_INTERNAL.md and MARKETING_THERAPISTS.md, both deleted in the marketing-merge commit). HK directive May 7: leave it for now, decide later. Two paths when revisited:
+
+   **Path A (delete it):** the email-first plus help-center pattern replaces the use case for HK. Founder Hub already lets HK navigate the docs directly; an LLM chat layer over them is nice-to-have, not essential. Cost to operate would be ~$2-5/mo on Haiku.
+
+   **Path B (fix and ship for HK personal use):** Update the function to use Haiku, fix doc paths to match the new MARKETING_MYBODYMAP.md and MARKETING_THERAPIST_PLAYBOOK.md, gate to FOUNDER_EMAILS allowlist, build a chat UI in Founder Hub Section 10. Cost ~$2-5/mo. Useful for "remind me what we decided about X" queries without scrolling through long docs.
+
+   **Trigger to revisit:** when HK finds himself rereading the same Founder Hub docs more than three times per week, OR when the corpus exceeds 100K tokens and full-context fetch becomes impractical.
+
+17. **Help articles maintenance discipline (NEW, May 7, 2026).** Help center has 19 articles mapped to feature-card taxonomy. When a feature changes, the article(s) tagged with that taxonomy must be reviewed. See docs/HELP_ARTICLES_GUIDE.md for the process.
+
+   **Operational rule:** every commit that meaningfully changes a feature listed in CONTRIBUTING.md should be paired with (or immediately followed by) a commit updating any help articles tagged with that feature's taxonomy. If the developer is not sure which articles need updating, check the mapping table in HELP_ARTICLES_GUIDE.md.
+
+   **Quality bar to add a new article:** the question genuinely comes up, the existing articles do not answer it, and the answer is not already in the marketing pages. Quality of the corpus matters more than quantity. 19 great articles beat 50 mediocre ones.
+
+18. **"We Moved" email template (NEW, May 7, 2026).** Therapists migrating from Vagaro / MassageBook need to send their existing clients a "we are now using a different system" email. Currently they have to write this from scratch. Build:
+   - A template in Settings (where they configure the booking page)
+   - Empathetic to both the therapist (this is a vulnerable moment) and the previous platform (no trash-talking competitors)
+   - Customizable: the therapist can edit before sending
+   - One-tap send to all imported clients (with confirmation step)
+
+   Empathetic framing example: "Hi, [client first name]. Quick note that I have moved my booking and intake to MyBodyMap. Same me, same studio, just a calmer way to book. Your previous bookings and history are with me. Here is the new link: [URL]. If you have any trouble, reply to this email and I will help."
+
+   Also add a 30-second nudge in Settings 1.2 (services area) the first time a therapist completes import-clients flow: "You just imported [N] clients. Tap here to send them a friendly note that you have moved." Optional, dismissable. Builds the migration completion habit.
+
+19. **Onboarding checklist polish (NEW, May 7, 2026).** Trial-to-Active conversion is the biggest funnel leak per MARKETING_MYBODYMAP.md. Square activation is the main blocker. The OnboardingChecklist component exists; needs a polish pass that adds:
+   - Clearer, numbered Square activation steps with screenshots if possible
+   - A 'Skip Square for now, use Stripe only' pathway so therapists are not blocked by activation friction
+   - Better progress indicators (visual, not just checkbox)
+   - Plain-English copy on every step (no jargon)
+   - A 'I will do this later' state for steps that can wait
+
+   **Design constraint per HK:** do not make it look busy. The checklist already crowds the dashboard for a new therapist. Keep it visually quiet, expandable rather than always-expanded, with one current focused step shown big and the others tucked away.
+
+   **Approach to keep it simple:** show ONE current step at a time, large and friendly. The rest collapse into a small progress bar. Therapist taps the bar to expand the full list when they want to see what is ahead. Default state is focused on the current step.
+
+20. **Booking page polish (NEW, May 7, 2026).** First impression for clients of any therapist. Worth a focused pass:
+   - Hero section with clearer therapist branding (photo, business name, specialty)
+   - Services display with better hierarchy (most common service prominent)
+   - Intake preview so clients know what is coming before they book
+   - Cancellation policy displayed cleanly, not buried
+   - Mobile-first refinements (most clients book on their phone)
+
+   Therapists share this URL with everyone they meet. Polishing it polishes their professional brand.
+
+21. **Stripe Connect onboarding return state (NEW, May 7, 2026).** When a therapist completes Stripe Connect, they return to MyBodyMap. The current return state is bare. Polish:
+   - Clear success state: "You are connected. Here is what is now on."
+   - List of features that just unlocked (deposits, card on file, refunds, etc.)
+   - One-tap to go to the next checklist step
+   - If something is missing (incomplete Stripe profile, pending verification), show that clearly with the specific next action
+
+   Reduces dropout at this step.
+
+22. **Mobile dashboard polish (NEW, May 7, 2026).** Dashboard.js is 2956 lines. Some sections work great on mobile, others (Settings panels, Billing dashboard) are cramped. Targeted pass on the 5-6 most-used mobile flows:
+   - Settings panels: stacking, label sizing, tap targets
+   - Billing dashboard: revenue chart sizing, transaction list density
+   - Client list: search bar always visible, virtual scroll if list is long
+   - Session detail: SOAP notes textarea sizing, AI draft button placement
+   - Calendar: date picker readability on small screens
+
+   No new features. Just making existing flows feel right on a 375px-wide iPhone for the 70-yo persona.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.

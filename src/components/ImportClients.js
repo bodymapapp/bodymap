@@ -394,6 +394,40 @@ export default function ImportClients({ therapist, onComplete }) {
             <p style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>
               Visit history has been preserved where available, lapsed detection and pattern intelligence will work immediately for imported clients.
             </p>
+
+            {results.created > 0 && (
+              <div style={{
+                background: '#F0FDF4',
+                border: '1.5px solid #86EFAC',
+                borderRadius: 12,
+                padding: '14px 18px',
+                marginBottom: 20,
+                textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#15803D', marginBottom: 6 }}>
+                  ✉ 30-second next step
+                </div>
+                <div style={{ fontSize: 13, color: '#1F2937', lineHeight: 1.6, marginBottom: 12 }}>
+                  Let your {results.created} {results.created === 1 ? 'client' : 'clients'} know you have moved to a new booking system. We have a warm, ready-to-send template, you just edit your name and tap send.
+                </div>
+                <button
+                  onClick={() => { window.location.href = '/dashboard/outreach?template=wemoved&segment=all'; }}
+                  style={{
+                    background: '#15803D',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 10,
+                    padding: '9px 18px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Send the "we moved" email →
+                </button>
+              </div>
+            )}
+
             <button onClick={() => { setStep(1); setPlatform(null); setHeaders([]); setRows([]); setResults(null); }}
               style={{ background:C.beige, color:C.forest, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'10px 20px', fontSize:13, fontWeight:700, cursor:'pointer' }}>
               Import another file
