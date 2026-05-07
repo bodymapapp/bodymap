@@ -122,11 +122,16 @@ export default function CancellationPolicyDemo() {
   return (
     <div
       ref={ref}
+      className="bm-payment-demo-card"
       style={{
         background: "#fff",
         borderRadius: 20,
         padding: 22,
         boxShadow: "0 12px 48px rgba(42, 87, 65, 0.14)",
+        // Default 460px (mobile sizing). Desktop bumps to 560 via
+        // the .bm-payment-demo-card class media query in index.css.
+        // We keep mobile pristine and only widen on viewports where
+        // the cream frame has room to spare.
         maxWidth: 460,
         width: "100%",
         boxSizing: "border-box",

@@ -94,6 +94,7 @@ export default function CardOnFileDemo() {
   return (
     <div
       ref={ref}
+      className="bm-payment-demo-card"
       style={{
         background: "#fff",
         borderRadius: 20,

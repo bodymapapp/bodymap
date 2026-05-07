@@ -2670,6 +2670,21 @@ section[id] {
   .bm-home-ribbon__demo-frame { padding: 20px; border-radius: 22px; min-height: 520px; }
 }
 
+/* Payment demos (ribbon 6: cancellation policy, stripe+square, card
+   on file, refund) widen on desktop so they fill more of the cream
+   frame instead of looking adrift in the wider grid column. Mobile
+   stays at the inline 460px default — same as every other demo —
+   so the mobile experience is untouched. Class is scoped to ONLY
+   the four new payment demos via the .bm-payment-demo-card class
+   on each component's root, so we don't accidentally widen
+   CycleScheduleDemo, BillingDemo, etc. (which were intentionally
+   sized at 440-520 each). */
+@media (min-width: 1024px) {
+  .bm-payment-demo-card {
+    max-width: 580px !important;
+  }
+}
+
 /* Demo tabs (carousel for ribbon 3 with 2 demos) */
 .bm-home-ribbon__demo-tabs {
   display: flex;
