@@ -523,6 +523,25 @@ How HK and Claude work together every session. Survives compaction.
 
 9. **Never use `git add -A` or `git add .`. Always stage explicit file paths.** Container starts fresh each session, `npm install` modifies `node_modules`, and a wildcard add will pull thousands of dependency files into the repo. Stage every change by its full path: `git add src/pages/Dashboard.js src/components/StatsStrip.js`. The `.gitignore` already excludes `node_modules/` as a backstop, but the explicit-paths rule is the primary defense.
 
+10. **Payment reconciliation feature (DESIGN, not yet scoped).** Therapists need an honest answer to "did I actually get paid for the work I did this month?" It is a real anxiety from the FB community threads — money disappearing into Stripe/Square dashboards therapists do not check. The platform sits in a unique position: we know every session that happened (from bookings table), every payment that should have happened (from cancellation policy + service prices + memberships + packages), and every payment that did happen (from Stripe and Square verification). Comparison gives the therapist a reconciled view they cannot get from either processor alone.
+
+   **Proposed shape (rough):**
+   - New tab in Billing dashboard: "Money this month" with three columns: Sessions Done · Should Have Earned · Actually Received
+   - Per-session row showing: client name, date, expected amount, actual received, status (paid / pending / waived / refunded / disputed)
+   - Discrepancy alerts when expected ≠ actual: client paid less than session price, deposit not collected, recurring membership payment failed silently, refund exceeded original
+   - Monthly summary: total expected, total received, gap, plus drilldown
+   - Export to CSV for accountants
+
+   **Belongs in:** ribbon 6 (Money & Protection) as 6.1.x or as a major card. Probably 6.1 itself gets expanded since "Billing dashboard" already lives there but currently only shows what came in, not what should have come in.
+
+   **Build cost:** ~3-5 days. Major piece is the reconciliation logic — joining bookings + memberships + packages + cancellation_charges + payment verification across both processors. Schema additions probably trivial since most data exists.
+
+   **Demand signal:** raised by HK from Katelynn DM thread about bank-direct payments (May 7, 2026). Add to demand log when other therapists ask similar "where did my money go" questions.
+
+   **Trigger to scope properly:** Q3 2026, after at least 30 days of production data on Stripe + Square parity. Need real session volume to make reconciliation meaningful and to find edge cases (partial payments, retroactive refunds, gift cards used as session credit, etc.).
+
+11. **Alternative payment methods mockup at `/mockups/payment-methods`** — internal design artifact. Three side-by-side mockups (ACH via Plaid Link, Zelle/FedNow push, Apple Pay/Google Pay) with stage tabs for walking through each flow. Built so HK can show therapists asking "can I use my bank instead" a real visual instead of just words. Not linked from public nav. Not yet built into product. Deferred to Q3 build alongside payment reconciliation work above.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.

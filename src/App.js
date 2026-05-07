@@ -20,6 +20,7 @@ import Dashboard from './pages/Dashboard';
 import IntakeEditor from './pages/IntakeEditor';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
+import PaymentMethodComparisonMockup from './components/mockups/PaymentMethodComparisonMockup';
 import ScheduleDashboard from './components/ScheduleDashboard';
 import BillingDashboard from './components/BillingDashboard';
 import AIDashboard from './components/AIDashboard';
@@ -55,6 +56,12 @@ function App() {
           <Route path="/features" element={<FeaturesV2 />} />
           <Route path="/features-v2" element={<FeaturesV2 />} />
           <Route path="/features-old" element={<Features />} />
+          {/* Internal design mockup, not linked from public nav. Lives at
+              /mockups/payment-methods so HK can preview the three
+              alternative payment-method UIs (ACH, Zelle/FedNow, Apple Pay)
+              before deciding to build any of them. Show to therapists
+              asking 'can I use my bank instead' for a real visual answer. */}
+          <Route path="/mockups/payment-methods" element={<PaymentMethodComparisonMockup />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />
