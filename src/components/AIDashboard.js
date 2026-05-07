@@ -104,7 +104,41 @@ export default function AIDashboard({ therapist }) {
   // Load practice data on mount
   useEffect(() => {
     buildContext();
+    loadUsage();
   }, []);
+
+  // Load current month's usage count directly from Supabase. Shows the
+  // counter immediately when the chat opens, before the first question.
+  const loadUsage = async () => {
+    if (!therapist?.id) return;
+    try {
+      const now = new Date();
+      const yearMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const { data, error } = await supabase
+        .from('ai_usage_monthly')
+        .select('question_count')
+        .eq('therapist_id', therapist.id)
+        .eq('year_month', yearMonth)
+        .maybeSingle();
+      if (error) {
+        // Table may not exist yet (migration not run) or RLS issue.
+        // Fail silently; counter just won't show until first question.
+        return;
+      }
+      const used = data?.question_count ?? 0;
+      const limit = 10;
+      setUsage({
+        used,
+        limit,
+        remaining: Math.max(0, limit - used),
+      });
+      if (used >= limit) {
+        setLimitReached(true);
+      }
+    } catch (err) {
+      // Ignore, fall through to default behavior
+    }
+  };
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -188,9 +222,11 @@ ${clientSummaries.join('\n')}
       setPracticeContext(context);
 
       // Welcome message
+      const businessName = therapist.business_name?.trim();
+      const assistantName = businessName ? `${businessName} Assistant` : 'My Practice Assistant';
       setMessages([{
         role: 'assistant',
-        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm your Practice Assistant. I have access to your full practice data, ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends. You have 10 questions per month while we are in beta.`,
+        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm your ${assistantName}. I have access to your full practice data, ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends. You have 10 questions per month while we are in beta.`,
         timestamp: Date.now()
       }]);
     } catch (err) {
@@ -310,13 +346,18 @@ ${clientSummaries.join('\n')}
     ? (keyboardOpen ? `${viewportHeight - 90}px` : 'calc(100svh - 180px)')
     : '70vh';
 
+  // Branded assistant name. Falls back to "My Practice Assistant"
+  // when therapist has not set a business name.
+  const businessName = therapist?.business_name?.trim();
+  const assistantName = businessName ? `${businessName} Assistant` : 'My Practice Assistant';
+
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: containerHeight, minHeight: isMobile ? 0 : 500, transition: 'height 0.2s ease' }}>
       {/* Header, collapsed when keyboard open to give chat space */}
       {!keyboardOpen && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>Practice Assistant</h2>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>{assistantName}</h2>
             <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence, powered by your real client data</p>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -346,7 +387,7 @@ ${clientSummaries.join('\n')}
         <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '4px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#2A5741', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🌿</div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>Practice Assistant</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>{assistantName}</span>
           </div>
           <button onClick={() => inputRef.current?.blur()} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
             Done
@@ -395,7 +436,7 @@ ${clientSummaries.join('\n')}
             lineHeight: 1.5,
             textAlign: 'center',
           }}>
-            <strong>Monthly limit reached.</strong> You have used all {usage?.limit ?? 10} Practice Assistant questions this month. Resets on the 1st.
+            <strong>Monthly limit reached.</strong> You have used all {usage?.limit ?? 10} questions this month for your {assistantName}. Resets on the 1st.
           </div>
         ) : (
           <div style={{ display: 'flex', gap: 8, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
@@ -417,7 +458,7 @@ ${clientSummaries.join('\n')}
           </div>
         )}
         {!isMobile && <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 6 }}>
-          Press Enter to send · Shift+Enter for new line · Practice Assistant by MyBodyMap
+          Press Enter to send · Shift+Enter for new line · {assistantName} by MyBodyMap
         </div>}
       </div>
     </div>
