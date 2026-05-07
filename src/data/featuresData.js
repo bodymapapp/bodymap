@@ -384,7 +384,7 @@ export const RIBBONS = [
           "Set what happens when a client cancels, reschedules, or no-shows. Like hotels and airlines do. Plain English rules: <em>more than 24 hours before, no charge. Within 24 hours, 50%. Within 2 hours, 100%. No-show, 100%.</em> Sensible defaults are pre-filled, change any percent in one tap.",
           "Clients see your policy at booking, in plain English, before they confirm. Optionally require new clients (or returning clients) to put a card on file so the policy can charge automatically if it triggers. Your time is as valuable as a hotel room.",
         ],
-        meta: "Plain-English rules · Card on file optional · Auto-charge in next deploy",
+        meta: "Plain-English rules · Card on file optional · Auto-charge live",
       },
       {
         id: "6.3",
@@ -403,6 +403,34 @@ export const RIBBONS = [
           "<em>A note on HIPAA the law:</em> it generally applies to therapists who bill insurance electronically. Most solo cash-pay therapists are not legally covered, but we treat your data with that level of care anyway.",
         ],
         meta: "HIPAA encryption · SOC 2 Type II host",
+      },
+      {
+        id: "6.5",
+        name: "Stripe + Square, both fully",
+        body: [
+          "Connect whichever payment processor you already use, or both. Same online features either way: deposits at booking, package and gift certificate purchases, monthly memberships, card-on-file, automatic cancellation charging, and one-tap refunds.",
+          "If you connect both, MyBodyMap routes each feature to whichever processor handles it best. You can override per-feature in Settings if you want Stripe for memberships and Square for everything else, or any other combination. We do not lock you in either direction.",
+        ],
+        meta: "Bring your own payments · Stripe and Square equal · Per-feature routing",
+      },
+      {
+        id: "6.6",
+        name: "Card on file at booking",
+        body: [
+          "When a client books, you can require them to save a card. We store it securely with your processor (never on our servers). The card sits there, untouched, until your cancellation policy says to charge it.",
+          "Set per-rule: require for first-timers only, returning clients only, or everyone. The client sees a clear authorization on the booking page and explicitly agrees before saving. Their card is theirs to update at any time.",
+        ],
+        meta: "Optional per booking · Stripe and Square · Mandate audit trail",
+      },
+      {
+        id: "6.7",
+        name: "One-tap refunds",
+        automated: true,
+        body: [
+          "When a client needs their money back, you do not log into Stripe or Square. You open your dashboard, find the purchase, tap Refund, and confirm the amount. The refund hits the client's card automatically and stays visible in your purchases panel marked Refunded for your records.",
+          "Works for full or partial amounts. Works for packages and one-time deposits. Memberships use a separate cancel-and-prorate flow.",
+        ],
+        meta: "Stripe and Square · Audit trail · Partial refunds supported",
       },
     ],
   },

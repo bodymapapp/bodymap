@@ -17,7 +17,6 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
-import PaymentParityCard from "../components/PaymentParityCard";
 
 // Interactive product demos (extracted from legacy Features.jsx)
 import BookingDemo from "../components/demos/BookingDemo";
@@ -371,14 +370,6 @@ export default function Home() {
           opening my laptop."
         </p>
         <p className="bm-home-band__attr">A founding therapist, 7 years in practice</p>
-      </section>
-
-      {/* ── PAYMENT PARITY ───────────────────────────────────────────── */}
-      {/* Quiet, factual section. Not promoted on banner or hero — exists
-          so anyone who asks "wait, can I use Square?" can be pointed
-          here. Animated checkmarks add subtle life without being noisy. */}
-      <section style={{ padding: '80px 0', background: '#FBFBF8' }}>
-        <PaymentParityCard animated={true} />
       </section>
 
       {/* ── CLOSING CTA ──────────────────────────────────────────────── */}
