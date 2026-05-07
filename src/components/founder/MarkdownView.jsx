@@ -31,17 +31,22 @@ const C = {
   amber:  "#D97706",
 };
 
-export default function MarkdownView({ source }) {
+export default function MarkdownView({ source, size = "compact" }) {
   if (!source) return null;
   const blocks = parseBlocks(source);
+  // Comfortable size used on the public Help center where readability
+  // matters more than density. Compact remains default for Founder Hub
+  // where density helps HK scan long internal docs.
+  const baseFontSize = size === "comfortable" ? 16 : 14;
+  const baseLineHeight = size === "comfortable" ? 1.75 : 1.7;
   return (
     <div style={{
       fontFamily: "ui-sans-serif, system-ui, -apple-system, sans-serif",
-      fontSize: 14,
-      lineHeight: 1.7,
+      fontSize: baseFontSize,
+      lineHeight: baseLineHeight,
       color: C.ink,
     }}>
-      {blocks.map((block, i) => renderBlock(block, i))}
+      {blocks.map((block, i) => renderBlock(block, i, size))}
     </div>
   );
 }
@@ -167,10 +172,10 @@ function parseBlocks(source) {
   return blocks;
 }
 
-function renderBlock(block, key) {
+function renderBlock(block, key, size = "compact") {
   switch (block.type) {
     case "heading":
-      return renderHeading(block, key);
+      return renderHeading(block, key, size);
     case "paragraph":
       return (
         <p key={key} style={{ margin: "0 0 14px 0" }}>
@@ -200,7 +205,7 @@ function renderBlock(block, key) {
           color: "#E5E5E5",
           padding: "14px 16px",
           borderRadius: 8,
-          fontSize: 12,
+          fontSize: size === "comfortable" ? 13 : 12,
           lineHeight: 1.55,
           overflow: "auto",
           margin: "0 0 16px 0",
@@ -236,7 +241,8 @@ function renderBlock(block, key) {
   }
 }
 
-function renderHeading(block, key) {
+function renderHeading(block, key, size = "compact") {
+  const isComfortable = size === "comfortable";
   const baseStyle = {
     fontFamily: "Georgia, serif",
     color: C.forest,
@@ -249,7 +255,7 @@ function renderHeading(block, key) {
       return (
         <h1 key={key} style={{
           ...baseStyle,
-          fontSize: 26,
+          fontSize: isComfortable ? 30 : 26,
           marginTop: 4,
           paddingBottom: 10,
           borderBottom: `2px solid ${C.border}`,
@@ -261,7 +267,7 @@ function renderHeading(block, key) {
       return (
         <h2 key={key} style={{
           ...baseStyle,
-          fontSize: 20,
+          fontSize: isComfortable ? 23 : 20,
           marginTop: 28,
         }}>
           {renderInline(block.content)}
@@ -271,7 +277,7 @@ function renderHeading(block, key) {
       return (
         <h3 key={key} style={{
           ...baseStyle,
-          fontSize: 16,
+          fontSize: isComfortable ? 18 : 16,
           marginTop: 20,
           color: C.ink,
         }}>
@@ -282,7 +288,7 @@ function renderHeading(block, key) {
       return (
         <h4 key={key} style={{
           ...baseStyle,
-          fontSize: 14,
+          fontSize: isComfortable ? 15 : 14,
           marginTop: 16,
           color: C.ink,
           fontFamily: "ui-sans-serif, system-ui, sans-serif",

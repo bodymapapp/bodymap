@@ -72,52 +72,62 @@ const PEACE_BLOCKS = [
 // What only MyBodyMap does — verified differentiators
 // Each one is researched and defensible against MassageBook, Vagaro,
 // GlossGenius, Acuity, ClinicSense, Noterro, Jane (April 2026).
+// Order is intentional: most differentiating first.
 // ───────────────────────────────────────────────────────────────────────
 const ONLY_MBM = [
+  {
+    id: "cycle-scheduling",
+    title: "Cycle-aligned scheduling, the first ever",
+    body:
+      "Tag services to phases of your menstrual cycle. The booking page automatically shows clients only what fits this week. Your body, your business, both honored.",
+    proof:
+      "No competitor offers cycle-aligned scheduling. Acuity, Vagaro, MassageBook, GlossGenius, Jane App, ClinicSense, Square Appointments: all treat every week the same. We treat them differently because your body does.",
+    photoId: "1.2",
+  },
   {
     id: "body-map-intake",
     title: "Visual body map intake, on the client's phone",
     body:
-      "Your client taps where it hurts on a body diagram before walking in. You start the session already knowing where to focus.",
+      "Your client taps where it hurts on a body diagram before walking in. You start the session already knowing where to focus, and we keep the data to spot patterns over time.",
     proof:
       "MassageBook's body-chart annotation is locked behind their paid Premium SOAP plan, and it is for therapist notes after the session, not client intake. Vagaro, GlossGenius, Acuity, and ClinicSense use plain text intake forms only.",
     photoId: "2.1",
   },
   {
-    id: "ai-chat",
-    title: "Platform chat with your full client history",
+    id: "stripe-square-parity",
+    title: "Stripe AND Square, both fully supported",
     body:
-      'Ask anything. <em>"Which clients haven\'t booked in 60 days?"</em> Answers in seconds, trained only on your practice.',
+      "Connect whichever you already use. Or both. Online deposits, card on file, refunds, memberships, packages, gift cards: everything works equally well on both processors. No lock-in, no markup.",
     proof:
-      "Noterro has voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a clinical Platform chat over your full client history. SimplePractice charges $35/mo extra for Platform notes alone.",
+      "Vagaro, GlossGenius, MassageBook, and Acuity all push their own merchant relationship with proprietary fees on top. Square Appointments only works with Square. We are the only platform where you get to keep the processor relationship you already have.",
+    photoId: "6.5",
+  },
+  {
+    id: "cancellation-policy",
+    title: "Cancellation policy that actually charges",
+    body:
+      "Set the rules once, like hotels and airlines. Client cancels late or no-shows? The card on file gets charged automatically. You do nothing. The mandate they signed at booking holds up against disputes.",
+    proof:
+      "Acuity, Square Appointments, and most others let you write a cancellation policy in plain text on your booking page, but they do not actually charge. You have to chase the client manually. We charge automatically with a signed audit trail.",
+    photoId: "6.2",
+  },
+  {
+    id: "practice-assistant",
+    title: "Practice Assistant with your full client history",
+    body:
+      "Ask anything in plain English. \"Which clients haven't booked in 60 days?\" \"Draft a re-engagement message to my Tuesday morning regulars.\" Answers in seconds, trained only on your practice, never shared across therapists.",
+    proof:
+      "Noterro has voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a Platform-style chat over your full client history. SimplePractice charges $35/mo extra for AI notes alone.",
     photoId: "3.3",
   },
   {
     id: "longitudinal",
     title: "Longitudinal pattern intelligence",
     body:
-      "Every body area a client has flagged, layered into one visual. Spot the pattern in their right shoulder without scrolling through twelve notes.",
+      "Every body area a client has flagged, layered into one visual heatmap over months and years. Spot the pattern in their right shoulder without scrolling through twelve notes. Insights compound the longer you stay.",
     proof:
       "No competitor offers a longitudinal heatmap view across all sessions. SOAP notes everywhere are stored chronologically and searched one-at-a-time. Pattern recognition across visits is not in their product set as of April 2026.",
     photoId: "3.1",
-  },
-  {
-    id: "pre-session",
-    title: "pre-session brief, two minutes before they arrive",
-    body:
-      "Who's coming. Where they've been hurting. What worked last time. The brief a great manager would send, except it never forgets.",
-    proof:
-      "No mainstream massage platform automatically generates a pre-session brief. MassageBook lets you review intake forms before the session, but you have to open them yourself, and they are static text.",
-    photoId: "4.2",
-  },
-  {
-    id: "free-tier",
-    title: "All of it, free during beta",
-    body:
-      "Bronze is free. Body map, Platform chat, reminders, SOAP notes, billing, intake. Free forever for anyone who joins now.",
-    proof:
-      "Therapists currently pay $20-70/month for partial versions of these tools across MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, and Noterro. Most charge extra for SOAP, marketing, or text reminders on top of the base plan.",
-    photoId: "1.1",
   },
 ];
 

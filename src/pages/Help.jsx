@@ -314,8 +314,8 @@ function CategoryPill({ label, active, onClick }) {
         color: active ? "#fff" : C.ink,
         border: `1.5px solid ${active ? C.forest : C.border}`,
         borderRadius: 99,
-        padding: "6px 14px",
-        fontSize: 12,
+        padding: "7px 16px",
+        fontSize: 13,
         fontWeight: 600,
         cursor: "pointer",
         transition: "all 0.15s",
@@ -377,12 +377,12 @@ function ArticleList({ articlesByCategory, activeId, setActiveId, query }) {
       {Object.entries(articlesByCategory).map(([category, articles]) => (
         <div key={category} style={{ marginBottom: 12 }}>
           <div style={{
-            fontSize: 10,
+            fontSize: 11,
             fontWeight: 700,
             color: C.gray,
             letterSpacing: 1.2,
             textTransform: "uppercase",
-            padding: "10px 12px 6px",
+            padding: "12px 12px 6px",
           }}>
             {category}
           </div>
@@ -411,13 +411,13 @@ function ArticleListItem({ article, active, onClick, indexInCategory }) {
         background: active ? C.cream : "transparent",
         border: "none",
         borderRadius: 10,
-        padding: "10px 12px",
+        padding: "12px 14px",
         cursor: "pointer",
         marginBottom: 1,
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: active ? 600 : 500,
         color: active ? C.forest : C.ink,
-        lineHeight: 1.4,
+        lineHeight: 1.45,
         transition: "background 0.12s",
         display: "flex",
         alignItems: "flex-start",
@@ -427,7 +427,7 @@ function ArticleListItem({ article, active, onClick, indexInCategory }) {
       <span style={{
         flexShrink: 0,
         fontFamily: "Georgia, serif",
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: 700,
         color: active ? C.forest : C.gray,
         minWidth: 18,
@@ -484,7 +484,7 @@ function ArticleContent({ article, setActiveId }) {
       </div>
       <h2 style={{
         fontFamily: "Georgia, serif",
-        fontSize: 28,
+        fontSize: 32,
         fontWeight: 700,
         color: C.forest,
         margin: 0,
@@ -494,7 +494,7 @@ function ArticleContent({ article, setActiveId }) {
         {article.title}
       </h2>
 
-      <MarkdownView source={article.body} />
+      <MarkdownView source={article.body} size="comfortable" />
 
       <ArticleFooter setActiveId={setActiveId} />
     </div>
