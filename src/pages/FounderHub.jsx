@@ -155,10 +155,24 @@ const SECTIONS = [
   },
 ];
 
-// All paths included in the "Download all docs" backup
-const BACKUP_PATHS = SECTIONS
-  .filter((s) => s.type === "markdown")
-  .map((s) => ({ key: s.backupKey, path: s.path, title: s.title }));
+// All paths included in the "Download all docs" backup. Section paths
+// plus any additional research artifacts that live outside the 10
+// sections (e.g. CUSTOMER_CHAT_RESEARCH which lives under section 8
+// Other Documentation as a linked artifact).
+const ADDITIONAL_RESEARCH_PATHS = [
+  {
+    key: "10-customer-chat-research",
+    path: "docs/CUSTOMER_CHAT_RESEARCH.md",
+    title: "Customer Chat Research",
+  },
+];
+
+const BACKUP_PATHS = [
+  ...SECTIONS
+    .filter((s) => s.type === "markdown")
+    .map((s) => ({ key: s.backupKey, path: s.path, title: s.title })),
+  ...ADDITIONAL_RESEARCH_PATHS,
+];
 
 export default function FounderHub() {
   const [activeSection, setActiveSection] = useState("runbook");

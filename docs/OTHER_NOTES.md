@@ -7,6 +7,18 @@ When something here grows past a few paragraphs, promote it to its own document 
 
 ---
 
+## Research library
+
+Permanent research artifacts that do not need their own Founder Hub section but should be findable when relevant. View on GitHub or fetch via the Founder Hub backup download.
+
+| Document | Topic | Trigger to revisit |
+|---|---|---|
+| [docs/CUSTOMER_CHAT_RESEARCH.md](https://github.com/bodymapapp/bodymap/blob/main/docs/CUSTOMER_CHAT_RESEARCH.md) | Customer service chat options analysis. Seven options evaluated (help center, search, self-hosted LLM, hybrid, email-first, extractive RAG, third-party widgets). Stage 1 recommendation: email-first plus help center. Architecture for Stage 2 ready when triggered. | HK responds to over 30 emails/week, OR 500+ active therapists, OR a founding therapist explicitly requests chat |
+
+When new research artifacts get written (competitive deep-dives, market analyses, technical scoping docs), add a row above with the trigger condition for revisiting.
+
+---
+
 ## Active scratchpad
 
 This section is for notes during the working week. Older items get archived below or promoted to permanent docs.
