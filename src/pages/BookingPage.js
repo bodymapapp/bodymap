@@ -1484,8 +1484,99 @@ export default function BookingPage() {
         {/* STEP 1 */}
         {step===1&&(
           <div>
+            {/* WELCOME hero: surfaces therapist photo bigger and frames the
+                booking experience as personal, not transactional. Below the
+                sticky nav (which has the small avatar). This is the first
+                thing the client reads after tapping the booking link. */}
+            <div style={{
+              background: C.white,
+              border: `1px solid ${C.light}`,
+              borderRadius: 16,
+              padding: '20px 18px',
+              marginBottom: 18,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 14,
+            }}>
+              {therapist.photo_url
+                ? <img src={therapist.photo_url} alt="" style={{
+                    width: 64, height: 64, borderRadius: 16,
+                    objectFit: 'cover', flexShrink: 0,
+                  }}/>
+                : <div style={{
+                    width: 64, height: 64, borderRadius: 16,
+                    background: C.forest, color: '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 26, fontWeight: 700, flexShrink: 0,
+                    fontFamily: 'Georgia, serif',
+                  }}>{(therapist.full_name || 'T')[0]}</div>
+              }
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 11, fontWeight: 700, color: C.sage,
+                  textTransform: 'uppercase', letterSpacing: '0.08em',
+                  marginBottom: 2,
+                }}>
+                  Welcome
+                </div>
+                <h2 style={{
+                  fontFamily: 'Georgia, serif', fontSize: 19, fontWeight: 700,
+                  color: C.dark, margin: '0 0 2px', lineHeight: 1.2,
+                }}>
+                  {therapist.business_name || therapist.full_name}
+                </h2>
+                {therapist.business_name && therapist.full_name && therapist.business_name !== therapist.full_name && (
+                  <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.4 }}>
+                    with {therapist.full_name}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 20px'}}>Choose what you'd like, no account needed.</p>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 14px'}}>Choose what you'd like, no account needed.</p>
+
+            {/* WHAT TO EXPECT: collapsible preview so clients know what
+                comes after picking a service (intake form, cancellation
+                policy if set). Not pushed up front; for clients who want
+                to know what they are signing up for. */}
+            <details style={{
+              background: '#FAFAF7',
+              border: `1px solid ${C.light}`,
+              borderRadius: 12,
+              padding: '12px 16px',
+              marginBottom: 18,
+              fontSize: 13,
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                color: C.dark,
+                fontWeight: 600,
+                listStyle: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+              }}>
+                <span style={{ color: C.sage, fontSize: 14 }}>▸</span>
+                What to expect after you book
+              </summary>
+              <div style={{ paddingTop: 10, paddingLeft: 22, color: C.gray, lineHeight: 1.6 }}>
+                <div style={{ marginBottom: 6 }}>
+                  <strong style={{ color: C.dark }}>1. A confirmation</strong> arrives by email within minutes.
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <strong style={{ color: C.dark }}>2. A short intake form</strong> asks where your body needs attention. About five minutes on your phone. Returning clients only see what changed.
+                </div>
+                <div style={{ marginBottom: 6 }}>
+                  <strong style={{ color: C.dark }}>3. A reminder</strong> arrives the day before your session.
+                </div>
+                {therapist.cancellation_policy_active && (
+                  <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.light}` }}>
+                    <strong style={{ color: C.dark }}>Cancellation policy:</strong> {therapist.full_name?.split(' ')[0] || 'The therapist'} has a cancellation policy in place. You will see the exact terms before confirming your booking.
+                  </div>
+                )}
+              </div>
+            </details>
 
             {/* OFFERS: packages + memberships. Collapsed by default
                 so the booking flow stays short on mobile. The header
