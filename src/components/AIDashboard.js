@@ -94,6 +94,8 @@ export default function AIDashboard({ therapist }) {
   const [contextLoading, setContextLoading] = useState(true);
   const [practiceContext, setPracticeContext] = useState('');
   const [error, setError] = useState(null);
+  const [usage, setUsage] = useState(null); // { used, limit, remaining }
+  const [limitReached, setLimitReached] = useState(false);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [viewportHeight, setViewportHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
   const bottomRef = useRef(null);
@@ -188,7 +190,7 @@ ${clientSummaries.join('\n')}
       // Welcome message
       setMessages([{
         role: 'assistant',
-        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm MyBodyMap Platform. I have access to your full practice data - ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends.`,
+        content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm your Practice Assistant. I have access to your full practice data, ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends. You have 10 questions per month while we are in beta.`,
         timestamp: Date.now()
       }]);
     } catch (err) {
@@ -235,6 +237,36 @@ ${clientSummaries.join('\n')}
       });
 
       const data = await response.json();
+
+      // 429: monthly limit reached
+      if (response.status === 429) {
+        setLimitReached(true);
+        setUsage({
+          used: data.questions_used ?? 10,
+          limit: data.questions_limit ?? 10,
+          remaining: 0,
+        });
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.message || 'You have reached this month\'s question limit. Resets on the 1st.',
+          timestamp: Date.now()
+        }]);
+        setLoading(false);
+        return;
+      }
+
+      // Track returned usage_meta if present
+      if (data.usage_meta) {
+        setUsage({
+          used: data.usage_meta.questions_used,
+          limit: data.usage_meta.questions_limit,
+          remaining: data.usage_meta.questions_remaining,
+        });
+        if (data.usage_meta.questions_remaining <= 0) {
+          setLimitReached(true);
+        }
+      }
+
       const aiText = data.content?.[0]?.text || 'Sorry, I had trouble with that. Try again.';
 
       setMessages(prev => [...prev, {
@@ -284,12 +316,28 @@ ${clientSummaries.join('\n')}
       {!keyboardOpen && (
         <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div>
-            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>MyBodyMap Platform</h2>
-            <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence - powered by your real client data</p>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: isMobile ? 20 : 26, fontWeight: 700, color: '#1F2937', margin: '0 0 2px 0' }}>Practice Assistant</h2>
+            <p style={{ fontSize: 12, color: '#6B7280', margin: 0 }}>Your personal practice intelligence, powered by your real client data</p>
           </div>
-          <button onClick={() => { setMessages([]); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
-            🔄 New Chat
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {usage && (
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: usage.remaining <= 2 ? '#B45309' : '#6B7280',
+                background: usage.remaining <= 2 ? '#FEF3C7' : '#F3F4F6',
+                border: `1px solid ${usage.remaining <= 2 ? '#FCD34D' : '#E5E7EB'}`,
+                borderRadius: 99,
+                padding: '4px 10px',
+                whiteSpace: 'nowrap',
+              }}>
+                {usage.used} / {usage.limit} this month
+              </div>
+            )}
+            <button onClick={() => { setMessages([]); setLimitReached(false); buildContext(); }} style={{ background: 'transparent', border: '1.5px solid #E5E7EB', borderRadius: 8, padding: '7px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280', cursor: 'pointer', flexShrink: 0 }}>
+              🔄 New Chat
+            </button>
+          </div>
         </div>
       )}
 
@@ -298,7 +346,7 @@ ${clientSummaries.join('\n')}
         <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, padding: '4px 0' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#2A5741', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🌿</div>
-            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>MyBodyMap Platform</span>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>Practice Assistant</span>
           </div>
           <button onClick={() => inputRef.current?.blur()} style={{ background: 'transparent', border: 'none', color: '#6B7280', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 8px' }}>
             Done
@@ -336,25 +384,40 @@ ${clientSummaries.join('\n')}
 
       {/* Input, sticky at bottom */}
       <div style={{ flexShrink: 0 }}>
-        <div style={{ display: 'flex', gap: 8, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask anything about your practice..."
-            rows={1}
-            style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: '#1F2937', background: 'transparent', fontFamily: 'system-ui', lineHeight: 1.5 }}
-          />
-          <button
-            onClick={() => sendMessage()}
-            disabled={!input.trim() || loading}
-            style={{ background: input.trim() && !loading ? '#2A5741' : '#E5E7EB', color: input.trim() && !loading ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
-            {loading ? '...' : '↑ Send'}
-          </button>
-        </div>
+        {limitReached ? (
+          <div style={{
+            background: '#FEF3C7',
+            border: '1.5px solid #FCD34D',
+            borderRadius: 14,
+            padding: '14px 16px',
+            color: '#78350F',
+            fontSize: 13,
+            lineHeight: 1.5,
+            textAlign: 'center',
+          }}>
+            <strong>Monthly limit reached.</strong> You have used all {usage?.limit ?? 10} Practice Assistant questions this month. Resets on the 1st.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: 8, background: '#FFFFFF', border: '1.5px solid #E5E7EB', borderRadius: 14, padding: '10px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask anything about your practice..."
+              rows={1}
+              style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', fontSize: 14, color: '#1F2937', background: 'transparent', fontFamily: 'system-ui', lineHeight: 1.5 }}
+            />
+            <button
+              onClick={() => sendMessage()}
+              disabled={!input.trim() || loading}
+              style={{ background: input.trim() && !loading ? '#2A5741' : '#E5E7EB', color: input.trim() && !loading ? '#fff' : '#9CA3AF', border: 'none', borderRadius: 10, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+              {loading ? '...' : '↑ Send'}
+            </button>
+          </div>
+        )}
         {!isMobile && <div style={{ fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginTop: 6 }}>
-          Press Enter to send · Shift+Enter for new line · Powered by MyBodyMap Platform
+          Press Enter to send · Shift+Enter for new line · Practice Assistant by MyBodyMap
         </div>}
       </div>
     </div>

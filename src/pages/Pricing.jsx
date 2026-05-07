@@ -39,7 +39,7 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         "Automated email reminders · 24h notice, every client",
         "Automated pre-session brief · ready before you walk in",
         "Automated post-session brief · drafted for you after",
-        "MyBodyMap Platform · chat with your client data",
+        "Practice Assistant · chat with your client data",
         "Visual body map · front & back, focus zones, medical flags",
         "SOAP notes",
         "Schedule · today, weekly, monthly views",
@@ -74,7 +74,7 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         "Longitudinal body map overlays · tension diff across sessions",
         "Revenue gap intelligence · what empty slots cost you",
         "Business analytics · busiest days, top services, trends",
-        "MyBodyMap Platform with full history context",
+        "Practice Assistant with full history context",
         "Priority support",
       ],
       founderNote:

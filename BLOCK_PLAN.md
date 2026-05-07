@@ -550,6 +550,23 @@ How HK and Claude work together every session. Survives compaction.
 
    Live-document model (per HK direction): documents update at the end of each working session triggered by HK saying so. No nightly automation.
 
+13. **Practice Assistant rate limit (decided May 7, 2026).** The in-dashboard chat (formerly "MyBodyMap Platform," renamed to "Practice Assistant" because the whole site is the platform) is now capped at 10 questions per therapist per month. Implementation: `ai_usage_monthly` table in Supabase, edge function returns 429 when cap reached, client UI shows usage counter and disables input at limit.
+
+   **Why now:** pre-revenue beta. Therapists on free Silver could otherwise drive unbounded API cost. Each question is roughly $0.03 on Haiku 4.5; 10 questions per therapist per month = $0.30 ceiling per therapist regardless of behavior.
+
+   **Trigger to revisit:** when Silver and Gold tiers convert to paid. At that point:
+   - Silver paid ($19/mo): bump cap to 20-30 questions/month
+   - Gold paid ($49/mo): bump cap to 50-100 questions/month or unlimited
+   - Founders grandfathered at whatever cap they have when their tier converts
+
+   **Open questions for future revisit:**
+   - Should public-mode chat (marketing demo, not authenticated) be IP-rate-limited to prevent abuse?
+   - Should we add per-session rate limits in addition to monthly to prevent burst usage exhausting the cap?
+   - Should the cap reset model be calendar-month or rolling 30-day?
+   - Once usage data accumulates, recalibrate based on actual usage patterns rather than guesses.
+
+14. **Customer service chat (NEW, scoped May 7, 2026).** Distinct from the Practice Assistant. Lives bottom-right of every public marketing page AND inside the dashboard for support questions. Anyone (signed in or not) can ask questions about MyBodyMap (how do I use cancellation policy, how do I connect Stripe, what does Silver tier include). Answers grounded in the founder corpus. Strategy detailed below in this BLOCK_PLAN entry. Build target: next session.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.

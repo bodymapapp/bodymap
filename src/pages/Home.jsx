@@ -106,12 +106,12 @@ const RIBBONS = [
     // TWO demos — Pattern + AI — shown as a carousel.
     demos: [
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
-      { kind: "component", component: AIDemo, label: "MyBodyMap Platform chat" },
+      { kind: "component", component: AIDemo, label: "Practice Assistant chat" },
     ],
     layout: "demo-right",
     subFeatures: [
       "Longitudinal heatmaps across all sessions",
-      "MyBodyMap Platform: chat with your client data",
+      "Practice Assistant: chat with your client data",
       "Pattern detection on body areas trending up",
       "Practice Pulse: daily 6am morning brief",
       "Lapsed client alerts before they drift away",

@@ -40,7 +40,7 @@ const PILLARS = [
   },
   {
     title: "The platform is trained only on your practice",
-    claim: "MyBodyMap Platform never crosses practice boundaries.",
+    claim: "Practice Assistant never crosses practice boundaries.",
     body:
       "When you ask the platform a question about your client history, it sees only your data. It is not trained or fine-tuned on other therapists' clients. Your patterns, your notes, your client base stay isolated to you. The The platform gets smarter at YOUR practice without your data ever leaving it.",
   },

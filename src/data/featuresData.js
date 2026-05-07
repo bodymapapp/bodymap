@@ -199,7 +199,7 @@ export const RIBBONS = [
       },
       {
         id: "3.3",
-        name: "MyBodyMap Platform chat",
+        name: "Practice Assistant",
         body: [
           'Ask anything about a client. <em>"What body areas has Sarah been flagging the most this year?"</em> <em>"Which clients have not booked in 60+ days but used to come monthly?"</em>',
           "The platform reads every intake, session note, and booking history. Trained only on your practice. Answers in seconds, in plain English.",

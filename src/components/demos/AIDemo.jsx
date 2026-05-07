@@ -35,7 +35,7 @@ function AIDemo() {
   ];
 
   const [messages, setMessages] = useState([
-    { role:"assistant", content:"Hi! I'm MyBodyMap Platform. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
+    { role:"assistant", content:"Hi! I'm Practice Assistant. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,9 +67,9 @@ function AIDemo() {
         body:JSON.stringify({ messages:updated.map(m=>({role:m.role,content:m.content})), context:"", mode:"public" })
       });
       const data = await res.json();
-      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see MyBodyMap Platform at its best." }]);
+      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see Practice Assistant at its best." }]);
     } catch {
-      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see MyBodyMap Platform in action." }]);
+      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see Practice Assistant in action." }]);
     }
     setLoading(false);
   };
@@ -81,7 +81,7 @@ function AIDemo() {
       <div style={{ background:`linear-gradient(135deg, ${C.forest}, #1A3A28)`, padding:"14px 20px", display:"flex", alignItems:"center", gap:10 }}>
         <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🌿</div>
         <div>
-          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>MyBodyMap Platform</div>
+          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>Practice Assistant</div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)" }}>Powered by your real practice data</div>
         </div>
         <div style={{ marginLeft:"auto", background:"rgba(255,255,255,0.15)", borderRadius:20, padding:"3px 10px", fontSize:10, color:"#fff", fontWeight:700 }}>● Live Demo</div>
