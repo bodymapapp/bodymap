@@ -4,6 +4,25 @@
 
 This file is the canonical rule set for how features get added to MyBodyMap. Future Claude sessions: read this before building any new user-facing feature. HK reads this when something feels misplaced and wants to push back.
 
+## Design principles
+
+Five principles that drive every feature decision. When two of them conflict, "deeper" usually wins, but call it out and discuss before deciding.
+
+### Deeper, not wider
+A feature that solves one therapist's real problem all the way through beats a feature that solves five therapists' problems halfway. Card-on-file at booking is "deeper" because it goes from the policy in Settings, through the booking page mandate, through the cancellation modal, through the actual charge, through the audit trail. We did all five. We do not ship the policy without the charge.
+
+### Simpler than competitors are
+Vagaro takes 12 steps to set up a calendar. Acuity's pricing is a maze. ClinicSense buries SOAP notes behind a paywall. Our default is fewer steps, fewer toggles, fewer screens. When in doubt, hide the option. When the option must exist, default it sensibly so most therapists never touch it.
+
+### Automated where it should be
+Things that only happen because someone remembered to do them are bugs. Reminders, follow-ups, lapsed-client outreach, recurring memberships, cancellation charges — all should run by themselves on the right trigger. The therapist's input is required only at setup and exception handling.
+
+### Modern, with a way out
+Use the current best primitive (Stripe Connect, Square Web Payments SDK, modern React patterns) but never paint into a corner. The PaymentProvider abstraction with versioned strategies is the canonical example: today's V1 strategy can be replaced with V2 when Square ships a better recurring billing API, without rewriting any edge function. Same principle applies to all integrations: build through an abstraction layer that keeps swapping cheap.
+
+### Changeable as new tech comes out
+What we ship today is going to be partially obsolete in 18 months. ACH-by-link, FedNow real-time payments, Apple Pay later integrations, AI agent payments — these are all coming. Architecture choices that lock us out of adopting them are wrong even when they ship faster today. When considering a feature, ask: "If [thing that does not exist yet] becomes the standard in two years, how hard is it for us to adopt?" If the answer is "we rewrite half the codebase," reject the architecture and find a better one.
+
 ## The seven-category taxonomy is the source of truth
 
 Every user-facing feature lives in exactly one of these seven categories. The categories are defined in `src/data/featuresData.js` as the `RIBBONS` constant. The seven ribbons render identically on the Home page and the Features page.
