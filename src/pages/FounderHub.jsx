@@ -4,17 +4,29 @@
 // MyBodyMap. Protected by FounderRoute so only HK's account
 // can access.
 //
-// Ten sections per HK direction (May 7, 2026):
-//   1. Marketing for therapists (live, docs/MARKETING_THERAPISTS.md)
-//   2. Marketing internal (live, docs/MARKETING_INTERNAL.md)
-//   3. Billing strategy (live, docs/BILLING_STRATEGY.md)
-//   4. Block plan (live, BLOCK_PLAN.md)
+// REVISED STRUCTURE (May 7, 2026, post-feedback):
+//
+//   1. Therapist Marketing Playbook (live, MARKETING_THERAPIST_PLAYBOOK.md)
+//      Seven strategies therapists use to market themselves to their
+//      own clients. NEW. This is what we share WITH therapists.
+//
+//   2. MyBodyMap Marketing (live, MARKETING_MYBODYMAP.md)
+//      Combined doc: strategy + voice + competitive positioning.
+//      Replaces the earlier MARKETING_INTERNAL.md and
+//      MARKETING_THERAPISTS.md which have been merged.
+//
+//   3. Billing Strategy (live, BILLING_STRATEGY.md)
+//   4. Block Plan (live, BLOCK_PLAN.md)
 //   5. Taxonomy (live, CONTRIBUTING.md)
-//   6. Client dashboard (live, link out to /dashboard)
-//   7. Email + SMS editor (live, link out to dashboard editor)
-//   8. Other documentation (live, docs/OTHER_NOTES.md)
-//   9. Founder Runbook (live, docs/FOUNDER_RUNBOOK.md)
+//   6. Client Dashboard (live, embedded via iframe)
+//   7. Email and SMS Editor (live, embedded via iframe to dashboard)
+//   8. Other Documentation (live, OTHER_NOTES.md)
+//   9. Founder Runbook (live, FOUNDER_RUNBOOK.md)
 //  10. Ask Anything chat (future, Session 3)
+//
+// PLUS: a "Download all docs" button that exports the entire founder
+// corpus as a single concatenated markdown file. Backup mechanism so
+// HK can keep a copy in Google Drive, Dropbox, or anywhere offline.
 //
 // LIVE-DOCUMENT MODEL:
 //   At end of each working session, Claude updates relevant
@@ -23,7 +35,6 @@
 //   No build redeploy needed for content updates.
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
@@ -42,25 +53,29 @@ const C = {
   paper:  "#FBFAF6",
 };
 
-// Section definitions in HK's original 1-10 numbering.
+// Section definitions. Order is the revised 1-10 numbering per HK
+// feedback May 7 2026. Each section is either markdown rendered from
+// a repo path, an iframe embed, or a future placeholder.
 const SECTIONS = [
   {
-    id: "marketing-therapists",
+    id: "therapist-playbook",
     number: 1,
-    title: "Marketing for Therapists",
-    subtitle: "Voice, positioning, and the case for switching. What therapists hear from us.",
+    title: "Therapist Marketing Playbook",
+    subtitle: "Seven strategies therapists use to market themselves to their clients, plus other income sources.",
     status: "live",
     type: "markdown",
-    path: "docs/MARKETING_THERAPISTS.md",
+    path: "docs/MARKETING_THERAPIST_PLAYBOOK.md",
+    backupKey: "01-therapist-playbook",
   },
   {
-    id: "marketing-internal",
+    id: "marketing-mybodymap",
     number: 2,
-    title: "Marketing Internal",
-    subtitle: "How we think about market segments, channels, and growth metrics.",
+    title: "MyBodyMap Marketing",
+    subtitle: "How we market ourselves. Strategy, voice, competitive positioning, all in one place.",
     status: "live",
     type: "markdown",
-    path: "docs/MARKETING_INTERNAL.md",
+    path: "docs/MARKETING_MYBODYMAP.md",
+    backupKey: "02-marketing-mybodymap",
   },
   {
     id: "billing-strategy",
@@ -70,6 +85,7 @@ const SECTIONS = [
     status: "live",
     type: "markdown",
     path: "docs/BILLING_STRATEGY.md",
+    backupKey: "03-billing-strategy",
   },
   {
     id: "block-plan",
@@ -79,37 +95,35 @@ const SECTIONS = [
     status: "live",
     type: "markdown",
     path: "BLOCK_PLAN.md",
+    backupKey: "04-block-plan",
   },
   {
     id: "taxonomy",
     number: 5,
     title: "Taxonomy",
-    subtitle: "The seven product categories and the rules for adding to them.",
+    subtitle: "Seven product categories, their sub-features, and core differentiation flags.",
     status: "live",
     type: "markdown",
     path: "CONTRIBUTING.md",
+    backupKey: "05-taxonomy",
   },
   {
     id: "client-dashboard",
     number: 6,
     title: "Client Dashboard",
-    subtitle: "The therapist dashboard you already use. Link below.",
+    subtitle: "The therapist dashboard, embedded right here.",
     status: "live",
-    type: "external",
-    link: "/dashboard",
-    linkLabel: "Open dashboard",
-    body: "The therapist dashboard. Where you spend most of your time when actively using MyBodyMap. Lives at /dashboard, opens in this tab.",
+    type: "iframe",
+    iframeSrc: "/dashboard",
   },
   {
     id: "email-sms",
     number: 7,
     title: "Email and SMS Editor",
-    subtitle: "Broadcast templates, founder messages, automated communication.",
+    subtitle: "Broadcast templates and automated messages, embedded from the dashboard.",
     status: "live",
-    type: "external",
-    link: "/dashboard?section=communication",
-    linkLabel: "Open editor in dashboard",
-    body: "Broadcast templates and the automated message editor live inside the main therapist dashboard. The editor is coupled to therapist state (which client list to send to, which automation to attach a template to) so we link out rather than embed. Voice rules and template patterns are documented in Marketing for Therapists (section 1) and the email-voice-guide.md file in repo.",
+    type: "iframe",
+    iframeSrc: "/dashboard?section=communication",
   },
   {
     id: "other-docs",
@@ -119,6 +133,7 @@ const SECTIONS = [
     status: "live",
     type: "markdown",
     path: "docs/OTHER_NOTES.md",
+    backupKey: "08-other-notes",
   },
   {
     id: "runbook",
@@ -128,6 +143,7 @@ const SECTIONS = [
     status: "live",
     type: "markdown",
     path: "docs/FOUNDER_RUNBOOK.md",
+    backupKey: "09-founder-runbook",
   },
   {
     id: "chat",
@@ -138,6 +154,11 @@ const SECTIONS = [
     type: "future",
   },
 ];
+
+// All paths included in the "Download all docs" backup
+const BACKUP_PATHS = SECTIONS
+  .filter((s) => s.type === "markdown")
+  .map((s) => ({ key: s.backupKey, path: s.path, title: s.title }));
 
 export default function FounderHub() {
   const [activeSection, setActiveSection] = useState("runbook");
@@ -178,38 +199,134 @@ export default function FounderHub() {
 
 function Header() {
   return (
-    <div style={{ marginBottom: 28 }}>
-      <div style={{
-        fontSize: 11,
-        fontWeight: 700,
-        color: C.sage,
-        letterSpacing: 1.4,
-        textTransform: "uppercase",
-        marginBottom: 6,
-      }}>
-        Founder Hub · Internal
+    <div style={{
+      marginBottom: 28,
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "flex-end",
+      gap: 24,
+      flexWrap: "wrap",
+    }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: C.sage,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}>
+          Founder Hub · Internal
+        </div>
+        <h1 style={{
+          fontFamily: "Georgia, serif",
+          fontSize: 32,
+          fontWeight: 700,
+          color: C.forest,
+          margin: 0,
+          marginBottom: 8,
+        }}>
+          Everything in one place.
+        </h1>
+        <p style={{
+          fontSize: 14,
+          color: C.gray,
+          margin: 0,
+          maxWidth: 720,
+          lineHeight: 1.6,
+        }}>
+          The founder operating system. Strategy, runbook, taxonomy, marketing, billing,
+          and the dashboard all live here. Documents update at the end of each working
+          session and refresh on next page load.
+        </p>
       </div>
-      <h1 style={{
-        fontFamily: "Georgia, serif",
-        fontSize: 32,
-        fontWeight: 700,
-        color: C.forest,
-        margin: 0,
-        marginBottom: 8,
-      }}>
-        Everything in one place.
-      </h1>
-      <p style={{
-        fontSize: 14,
-        color: C.gray,
-        margin: 0,
-        maxWidth: 720,
-        lineHeight: 1.6,
-      }}>
-        The founder operating system. Strategy, runbook, taxonomy, marketing, billing, and the dashboard
-        all live here. Documents update at the end of each working session and refresh on next page load.
-      </p>
+      <BackupButton />
     </div>
+  );
+}
+
+function BackupButton() {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const downloadBackup = async () => {
+    setBusy(true);
+    setDone(false);
+    try {
+      // Fetch every markdown document fresh from GitHub
+      const fetches = await Promise.all(
+        BACKUP_PATHS.map(async (item) => {
+          const resp = await fetch(`https://raw.githubusercontent.com/bodymapapp/bodymap/main/${item.path}`);
+          if (!resp.ok) throw new Error(`Failed: ${item.path}`);
+          const text = await resp.text();
+          return { ...item, text };
+        })
+      );
+
+      // Build a single concatenated markdown file with clear separators
+      const parts = [];
+      const now = new Date().toISOString().split("T")[0];
+      parts.push(`# MyBodyMap Founder Hub Backup`);
+      parts.push("");
+      parts.push(`**Backup date:** ${now}`);
+      parts.push(`**Source:** https://mybodymap.app/founder`);
+      parts.push("");
+      parts.push("This file is a snapshot of every document in the Founder Hub at the time of download. Section breaks below indicate where each original document begins. The originals live in the bodymap GitHub repo and are the source of truth; this backup is for offline / Drive / Dropbox storage in case the website is unavailable.");
+      parts.push("");
+      parts.push("---");
+      parts.push("");
+
+      for (const item of fetches) {
+        parts.push(`<!-- BEGIN: ${item.path} -->`);
+        parts.push("");
+        parts.push(item.text);
+        parts.push("");
+        parts.push(`<!-- END: ${item.path} -->`);
+        parts.push("");
+        parts.push("---");
+        parts.push("");
+      }
+
+      const blob = new Blob([parts.join("\n")], { type: "text/markdown;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `mybodymap-founder-backup-${now}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      setDone(true);
+      setTimeout(() => setDone(false), 3000);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error("Backup failed:", err);
+      alert(`Backup failed: ${err.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={downloadBackup}
+      disabled={busy}
+      style={{
+        background: done ? C.green : (busy ? C.gray : C.forest),
+        color: "#fff",
+        border: "none",
+        borderRadius: 10,
+        padding: "10px 18px",
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: busy ? "default" : "pointer",
+        whiteSpace: "nowrap",
+        transition: "background 0.2s",
+      }}
+    >
+      {busy ? "Building..." : (done ? "Downloaded ✓" : "↓ Download all docs")}
+    </button>
   );
 }
 
@@ -334,7 +451,7 @@ function SectionContent({ section }) {
       background: "#fff",
       border: `1px solid ${C.border}`,
       borderRadius: 14,
-      padding: "24px 28px",
+      padding: section.type === "iframe" ? "16px 16px 0" : "24px 28px",
       minHeight: 600,
       boxShadow: "0 4px 16px rgba(28, 43, 34, 0.05)",
     }}>
@@ -350,7 +467,7 @@ function SectionContent({ section }) {
       <div style={{
         fontSize: 13,
         color: C.gray,
-        marginBottom: 24,
+        marginBottom: section.type === "iframe" ? 14 : 24,
         lineHeight: 1.5,
       }}>
         {section.subtitle}
@@ -360,12 +477,8 @@ function SectionContent({ section }) {
         <MarkdownContent path={section.path} />
       )}
 
-      {section.type === "external" && (
-        <ExternalContent
-          link={section.link}
-          linkLabel={section.linkLabel}
-          body={section.body}
-        />
+      {section.type === "iframe" && (
+        <IframeContent src={section.iframeSrc} />
       )}
 
       {section.type === "future" && (
@@ -468,37 +581,33 @@ function SourceHeader({ path }) {
   );
 }
 
-function ExternalContent({ link, linkLabel, body }) {
+// Iframe-embedded section. Used for the client dashboard and email/SMS
+// editor so HK stays inside the Founder Hub URL. The iframe loads the
+// real /dashboard route in isolation; auth state is shared via cookies.
+//
+// The 'allow' attribute permits clipboard + payment APIs the dashboard
+// uses (e.g. copy booking link, Stripe Connect flow). Sandbox is NOT
+// applied because the iframe is same-origin and we trust our own dashboard.
+function IframeContent({ src }) {
   return (
     <div style={{
-      background: C.cream,
-      border: `1px dashed ${C.border}`,
       borderRadius: 10,
-      padding: 22,
+      overflow: "hidden",
+      border: `1px solid ${C.border}`,
+      background: "#fff",
     }}>
-      <div style={{
-        fontSize: 14,
-        color: C.ink,
-        marginBottom: 16,
-        lineHeight: 1.7,
-      }}>
-        {body}
-      </div>
-      <Link
-        to={link}
+      <iframe
+        title="Embedded dashboard"
+        src={src}
         style={{
-          display: "inline-block",
-          background: C.forest,
-          color: "#fff",
-          padding: "10px 20px",
-          borderRadius: 10,
-          fontSize: 13,
-          fontWeight: 600,
-          textDecoration: "none",
+          width: "100%",
+          height: "calc(100vh - 240px)",
+          minHeight: 600,
+          border: "none",
+          display: "block",
         }}
-      >
-        {linkLabel} →
-      </Link>
+        allow="clipboard-read; clipboard-write; payment"
+      />
     </div>
   );
 }
