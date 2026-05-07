@@ -20,6 +20,8 @@ import Dashboard from './pages/Dashboard';
 import IntakeEditor from './pages/IntakeEditor';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
+import FounderHub from './pages/FounderHub';
+import FounderRoute from './components/FounderRoute';
 import PaymentMethodComparisonMockup from './components/mockups/PaymentMethodComparisonMockup';
 import PaymentEvolutionMockup from './components/mockups/PaymentEvolutionMockup';
 import ScheduleDashboard from './components/ScheduleDashboard';
@@ -64,6 +66,11 @@ function App() {
               asking 'can I use my bank instead' for a real visual answer. */}
           <Route path="/mockups/payment-methods" element={<PaymentMethodComparisonMockup />} />
           <Route path="/mockups/payment-evolution" element={<PaymentEvolutionMockup />} />
+          {/* Founder Hub — HK only. Single pane of glass for everything
+              MyBodyMap. FounderRoute gates the access to HK's email
+              specifically; other authenticated therapists are redirected
+              to /dashboard. */}
+          <Route path="/founder" element={<FounderRoute><FounderHub /></FounderRoute>} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />

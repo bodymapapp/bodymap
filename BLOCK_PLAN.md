@@ -540,7 +540,15 @@ How HK and Claude work together every session. Survives compaction.
 
    **Trigger to scope properly:** Q3 2026, after at least 30 days of production data on Stripe + Square parity. Need real session volume to make reconciliation meaningful and to find edge cases (partial payments, retroactive refunds, gift cards used as session credit, etc.).
 
-11. **Alternative payment methods mockup at `/mockups/payment-methods`** — internal design artifact. Three side-by-side mockups (ACH via Plaid Link, Zelle/FedNow push, Apple Pay/Google Pay) with stage tabs for walking through each flow. Built so HK can show therapists asking "can I use my bank instead" a real visual instead of just words. Not linked from public nav. Not yet built into product. Deferred to Q3 build alongside payment reconciliation work above.
+11. **Alternative payment methods mockup at `/mockups/payment-methods`** — internal design artifact. Three side-by-side mockups (ACH via Plaid Link, Zelle/FedNow push, Apple Pay/Google Pay) with stage tabs for walking through each flow. Built so HK can show therapists asking "can I use my bank instead" a real visual instead of just words. Not linked from public nav.
+
+   **DECISION (May 7, 2026):** Drop ACH entirely. Phase 1 (Apple Pay / Google Pay via Stripe Payment Element wallet methods, ~1 day) and Phase 3 (FedNow real-time push when merchant webhooks land in 2027) only. Reasoning: ACH liability is real (60-day return window, dispute exposure, NSF returns), customer benefit marginal at $100 ticket size, and Phase 1 is near-zero-liability work that handles the demographic split (younger users get wallets, older users keep cards) automatically via Stripe's per-customer surfacing logic. Phase 3 has lower liability than ACH because FedNow transfers are final on send.
+
+   Companion mockup at `/mockups/payment-evolution` shows how the same booking page UI evolves across all three phases with three different customer personas (70yo desktop, 30yo iPhone, 40yo Android). Proves the demographic split is handled correctly without making the UI more complex for the 70-year-old persona.
+
+12. **Founder Hub at `/founder`** — internal single pane of glass for HK. Ten sections: marketing for therapists, marketing internal, billing strategy, block plan, taxonomy (summary + detail), client dashboard, email/SMS edits, catch-all docs, founder runbook, future RAG chat. Gated to HK's email only via FounderRoute. **Phase 1 (May 7, 2026):** skeleton + runbook embedded live, GitHub-sourced docs (Block Plan, Taxonomy) link out, marketing/billing docs marked "next session," chat marked "future." **Phase 2 (next session):** wire BLOCK_PLAN + CONTRIBUTING markdown rendering, split marketing into therapist-facing and internal docs, embed email/SMS editor from Dashboard. **Phase 3:** RAG chat interface using all founder docs as corpus.
+
+   Live-document model (per HK direction): documents update at the end of each working session triggered by HK saying so. No nightly automation.
 
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
