@@ -2125,32 +2125,27 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           label="Payments"
           summary={
             therapist?.stripe_account_connected && therapist?.square_connected
-              ? "Stripe (online) + Square (in-person) connected"
+              ? "Stripe + Square connected · use Payment routing to assign features"
               : therapist?.stripe_account_connected
-              ? "Stripe connected · online ready"
+              ? "Stripe connected · all online features active"
               : therapist?.square_connected
-              ? "Square only · connect Stripe for online features"
-              : "Connect Stripe to take online payments"
+              ? "Square connected · all online features active"
+              : "Connect Stripe or Square to take online payments"
           }
-          status={therapist?.stripe_account_connected ? "done" : "attn"}
+          status={(therapist?.stripe_account_connected || therapist?.square_connected) ? "done" : "attn"}
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 11h18M7 15h3"/></svg>}
           isOpen={openRow === 'payments'}
           onToggle={toggleRow}
         ><div style={{ padding: '4px 4px' }}>
 
-          {/* Strategic reframe (May 2026): Stripe is the online engine,
-              Square is the in-person companion. The two processors no
-              longer overlap conceptually — therapists understand what
-              each is for. This guides them toward Stripe for the
-              MyBodyMap online surface (deposits, packages, memberships,
-              card-on-file) while preserving Square for in-person and
-              for therapists who already process there.
-
-              Background: maintaining full feature parity across two
-              processors was doubling engineering cost on every payment
-              feature and confusing therapists about which toggles
-              actually worked. This framing tells the truth: Stripe is
-              the merchant of record for online MyBodyMap activity. */}
+          {/* Both processors support the full online feature set:
+              deposits, packages, memberships, card-on-file, cancellation
+              charging, refunds. Therapists pick whichever they already
+              use, or connect both and use Payment routing (4.2.1) to
+              decide which one handles each feature. The capability
+              matrix surfaces a few honest tradeoffs (see the 'Things
+              to know about Square' ribbon at the bottom of this section)
+              without pushing therapists in either direction. */}
           <div style={{
             background: '#F8FAF7',
             border: '1px solid #D1E5D9',
@@ -2306,12 +2301,93 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 }, { once: true });
               } else alert('Error: ' + JSON.stringify(data));
             }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#fff', color:'#000', border:'1.5px solid #000', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
-              ⬛ Connect Square · For in-person
+              ⬛ Connect Square
             </button>
             <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
-              Optional. Add Square only if you take payments at the table or in your studio outside MyBodyMap.
+              Square handles all online features the same as Stripe. Pick whichever you already use, or connect both.
             </p>
           </>)}
+
+          {/* Square activation + capability ribbon. Collapsed by default
+              so the section does not feel voluminous. Only renders when
+              relevant — when a therapist is on Square (or considering it).
+              Three things from the capability matrix, presented honestly.
+              When everything is triple-checked over the next week, this
+              content can be promoted to marketing surfaces. For now it
+              lives quietly in Settings. */}
+          {(therapist?.square_connected || therapist?.stripe_account_connected) && (
+            <details style={{
+              marginTop: 16,
+              background: '#FFFBEB',
+              border: '1px solid #FCD34D',
+              borderRadius: 10,
+              padding: '12px 14px',
+            }}>
+              <summary style={{
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+                color: '#78350F',
+                letterSpacing: 0.3,
+                listStyle: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                userSelect: 'none',
+              }}>
+                <span style={{ fontSize: 14 }}>⚡</span>
+                <span>Things to know about Square</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: '#92400E', fontWeight: 600 }}>tap to expand</span>
+              </summary>
+              <div style={{
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: '1px dashed #FCD34D',
+                fontSize: 12,
+                color: '#1F2937',
+                lineHeight: 1.6,
+              }}>
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 700, color: '#78350F', marginBottom: 4 }}>
+                    1. Square requires merchant activation before real charges
+                  </div>
+                  <div>
+                    Square asks every merchant to complete{' '}
+                    <a href="https://squareup.com/activate" target="_blank" rel="noopener noreferrer"
+                       style={{ color: '#2A5741', fontWeight: 600 }}>squareup.com/activate</a>
+                    {' '}(identity + bank verification) before they will process card payments.
+                    Most therapists already did this when first setting up Square. If not, it takes
+                    about ten minutes. The booking flow on MyBodyMap will work either way; only
+                    the actual card charge is gated until activation completes.
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontWeight: 700, color: '#78350F', marginBottom: 4 }}>
+                    2. Recurring memberships need a manual nudge to renew
+                  </div>
+                  <div>
+                    First month works fully. After that, Square's recurring billing requires you to
+                    confirm each renewal manually from your dashboard (Stripe auto-renews silently).
+                    For therapists who plan to sell memberships heavily, Stripe is the smoother
+                    choice. For occasional memberships, Square is fine.
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ fontWeight: 700, color: '#78350F', marginBottom: 4 }}>
+                    3. Square's card form is slightly less browser-friendly
+                  </div>
+                  <div>
+                    About 5% of clients on older Safari or some embedded browsers may need to switch
+                    browsers to save a card on file. Stripe's card form supports a wider range. If
+                    you have clients on older devices and you take card-on-file at booking,
+                    connecting Stripe alongside Square covers both worlds.
+                  </div>
+                </div>
+              </div>
+            </details>
+          )}
         </div></CollapsibleSection>
       </>)}
       {matchesSearch('Payment routing', 'Choose which processor handles deposits, card-on-file, packages, memberships', '4.2.1') && (<>

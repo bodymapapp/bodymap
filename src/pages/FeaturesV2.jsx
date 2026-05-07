@@ -13,6 +13,7 @@ import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import FeatureRibbon from "../components/FeatureRibbon";
 import FeatureModal from "../components/FeatureModal";
+import PaymentParityCard from "../components/PaymentParityCard";
 import {
   RIBBONS,
   TOTAL_FEATURES,
@@ -97,6 +98,14 @@ export default function FeaturesV2() {
           />
         ))}
       </main>
+
+      {/* Quiet payment-parity reference. Static (no animation) on
+          Features since the page already has motion via ribbons.
+          Same layout as Home so therapists who switch between pages
+          recognize it instantly. */}
+      <section style={{ padding: '60px 0', background: '#FBFBF8' }}>
+        <PaymentParityCard animated={false} />
+      </section>
 
       <section className="bm-features-v2-closing">
         <h2>
