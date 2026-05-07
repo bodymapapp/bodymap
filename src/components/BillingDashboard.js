@@ -73,11 +73,67 @@ const STATUS_CFG = {
 };
 
 function StatCard({ label, value, sub, color, small }) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
   return (
-    <div style={{ background:'#FFFFFF', borderRadius:12, padding:'20px 24px', flex:1, minWidth:140, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
-      <div style={{ fontSize:small?22:28, fontWeight:700, color:color||'#2A5741', fontFamily:'Georgia, serif' }}>{value}</div>
-      <div style={{ fontSize:13, fontWeight:600, color:'#1F2937', marginTop:2 }}>{label}</div>
-      {sub && <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>{sub}</div>}
+    <div style={{
+      background: '#FFFFFF',
+      borderRadius: 12,
+      padding: isMobile ? '14px 14px' : '20px 24px',
+      flex: 1,
+      minWidth: isMobile ? 0 : 140,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+    }}>
+      <div style={{
+        fontSize: isMobile ? (small ? 18 : 22) : (small ? 22 : 28),
+        fontWeight: 700,
+        color: color || '#2A5741',
+        fontFamily: 'Georgia, serif',
+        lineHeight: 1.1,
+      }}>
+        {value}
+      </div>
+      <div style={{
+        fontSize: isMobile ? 11 : 13,
+        fontWeight: 600,
+        color: '#1F2937',
+        marginTop: 4,
+        lineHeight: 1.3,
+      }}>
+        {label}
+      </div>
+      {sub && (
+        <div style={{
+          fontSize: isMobile ? 10 : 12,
+          color: '#6B7280',
+          marginTop: 2,
+          lineHeight: 1.3,
+        }}>
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatRow({ children }) {
+  // Mobile: 2x2 grid (and stays 2-column for any count, scrolls if needed).
+  // Desktop: flex row, wraps if necessary.
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  if (isMobile) {
+    return (
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: 8,
+        marginBottom: 18,
+      }}>
+        {children}
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+      {children}
     </div>
   );
 }
@@ -138,12 +194,12 @@ function DailyView({ sessions }) {
   const pending = daySessions.filter(s=>s.status==='pending'||s.status==='outstanding').length;
   return (
     <div>
-      <div style={{ display:'flex', gap:12, marginBottom:24, flexWrap:'wrap' }}>
+      <StatRow>
         <StatCard label="Expected Revenue" value={currency(expected)} sub={`${daySessions.length} sessions`} color="#2A5741" />
         <StatCard label="Actual Collected" value={currency(actual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Pending" value={pending} sub="awaiting payment" color="#D97706" />
         <StatCard label="Collection Rate" value={expected>0?`${Math.round((actual/expected)*100)}%`:'-'} sub="actual vs expected" color="#6B9E80" />
-      </div>
+      </StatRow>
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {days.map((d,i) => {
           const isSel = i === dayOffset;
@@ -188,12 +244,12 @@ function WeeklyView({ sessions }) {
         </div>
         <button onClick={()=>setWeekOffset(weekOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
       </div>
-      <div style={{ display:'flex', gap:12, marginBottom:24, flexWrap:'wrap' }}>
+      <StatRow>
         <StatCard label="Expected" value={currency(expected)} sub="this week" color="#2A5741" />
         <StatCard label="Collected" value={currency(actual)} sub="confirmed" color="#16A34A" />
         <StatCard label="Sessions" value={weekSessions.length} sub="total" color="#6B9E80" />
         <StatCard label="Avg/Session" value={weekSessions.length>0?currency(actual/weekSessions.length):'-'} sub="collected" color="#C9A84C" small />
-      </div>
+      </StatRow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
         {weekDays.map((d,i) => {
           const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
@@ -246,11 +302,11 @@ function MonthlyView({ sessions }) {
         <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{fmtMonth(viewMonth)}</div>
         <button onClick={()=>setMonthOffset(monthOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
       </div>
-      <div style={{ display:'flex', gap:12, marginBottom:20, flexWrap:'wrap' }}>
+      <StatRow>
         <StatCard label="Monthly Expected" value={currency(monthExpected)} sub={`${monthSessions.length} sessions`} color="#2A5741" />
         <StatCard label="Monthly Collected" value={currency(monthActual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Collection Rate" value={monthExpected>0?`${Math.round((monthActual/monthExpected)*100)}%`:'-'} sub="actual vs expected" color="#6B9E80" />
-      </div>
+      </StatRow>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:4 }}>
         {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>(
           <div key={d} style={{ textAlign:'center', fontSize:11, fontWeight:700, color:'#9CA3AF', textTransform:'uppercase', padding:'4px 0' }}>{d}</div>
@@ -301,12 +357,12 @@ function YearlyView({ sessions }) {
         <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{year}</div>
         <button onClick={()=>setYear(year+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>{year+1} →</button>
       </div>
-      <div style={{ display:'flex', gap:12, marginBottom:24, flexWrap:'wrap' }}>
+      <StatRow>
         <StatCard label="Annual Expected" value={currency(yearExpected)} sub={`${yearSessions} sessions`} color="#2A5741" />
         <StatCard label="Annual Collected" value={currency(yearActual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Avg/Month" value={currency(yearActual/12)} sub="collected" color="#6B9E80" small />
         <StatCard label="Avg/Session" value={yearSessions>0?currency(yearActual/yearSessions):'-'} sub="collected" color="#C9A84C" small />
-      </div>
+      </StatRow>
       <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)', marginBottom:20 }}>
         <div style={{ fontSize:13, fontWeight:700, color:'#1F2937', marginBottom:20 }}>Revenue by Month</div>
         <div style={{ display:'flex', alignItems:'flex-end', gap:8, height:140 }}>
@@ -354,12 +410,12 @@ function InsightsView({ sessions }) {
   const avgSession = paidSessions.length>0 ? Math.round(paidSessions.reduce((t,x)=>t+(x.actual||0),0)/paidSessions.length) : 0;
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-      <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
+      <StatRow>
         <StatCard label="30-Day Revenue" value={currency(last30Rev)} sub={`${growth>=0?'+':''}${growth}% vs prior 30 days`} color="#2A5741" />
         <StatCard label="Collection Rate" value={`${collectionRate}%`} sub="sessions paid" color="#16A34A" />
         <StatCard label="Avg Session Value" value={currency(avgSession)} sub="collected" color="#6B9E80" small />
         <StatCard label="Outstanding" value={currency(outstandingTotal)} sub={`${outstanding.length} session${outstanding.length!==1?'s':''}`} color="#DC2626" small />
-      </div>
+      </StatRow>
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         <div style={{ background:'#FFFFFF', borderRadius:12, padding:24, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#1F2937', marginBottom:16 }}>⭐ Top Clients by Revenue</div>
