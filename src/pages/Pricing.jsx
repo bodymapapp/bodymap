@@ -9,6 +9,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import HelpWidget from "../components/HelpWidget";
 import { useAuth } from "../contexts/AuthContext";
 import { photoForId } from "../data/featuresData";
 
@@ -269,6 +270,7 @@ export default function Pricing() {
       )}
 
       <Footer />
+      <HelpWidget />
     </div>
   );
 }

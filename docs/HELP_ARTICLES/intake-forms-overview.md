@@ -4,6 +4,7 @@ title: How do intake forms work?
 category: Intake forms
 order: 1
 keywords: intake, forms, body map, questions, waiver, signature, new client
+taxonomy: 2.1
 ---
 
 Intake forms are how new clients tell you about their body, their history, and what they need. MyBodyMap intake is built specifically for massage therapy. The body map is the part competitors do not have.

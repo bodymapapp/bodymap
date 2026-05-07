@@ -4,6 +4,7 @@ title: What happens if MyBodyMap goes out of business?
 category: Practical
 order: 3
 keywords: shutdown, out of business, closing, export, data, leave, backup, fail
+taxonomy: trust
 ---
 
 A fair question. Worth answering directly.

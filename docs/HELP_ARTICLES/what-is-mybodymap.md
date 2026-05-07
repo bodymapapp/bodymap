@@ -4,6 +4,7 @@ title: What is MyBodyMap?
 category: Getting started
 order: 1
 keywords: about, intro, overview, mybodymap, what
+taxonomy: overview
 ---
 
 MyBodyMap is practice management software made for solo licensed massage therapists. We do the work that does not require your hands. Booking, intake forms, reminders, session notes, lapsed-client outreach, payments, cancellation policies. All of it runs automatically so you can spend your time on the table with your clients, not in front of a laptop.

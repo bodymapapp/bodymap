@@ -31,7 +31,7 @@ export default function Footer() {
           <div>
             <p style={{ fontWeight: "700", fontSize: "13px", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px", color: "rgba(255,255,255,0.5)" }}>Company</p>
             <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <Link to="/contact" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Contact</Link>
+              <Link to="/help" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Help</Link>
               <Link to="/security" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Security</Link>
               <Link to="/privacy" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Privacy Policy</Link>
               <Link to="/terms" style={{ color: "rgba(255,255,255,0.75)", textDecoration: "none", fontSize: "14px" }}>Terms of Service</Link>

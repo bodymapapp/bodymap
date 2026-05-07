@@ -4,6 +4,7 @@ title: How do I set my hours and block time off?
 category: Booking and scheduling
 order: 2
 keywords: calendar, hours, schedule, availability, time off, vacation, blocked, days, sync, google calendar, cal.com
+taxonomy: 1.4
 ---
 
 Your booking page only shows times you have available. Setting hours correctly is the difference between getting bookings and getting nothing.

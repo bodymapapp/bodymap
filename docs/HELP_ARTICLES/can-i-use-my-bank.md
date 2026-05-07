@@ -4,6 +4,7 @@ title: Can I use my bank to take payments instead of Stripe or Square?
 category: Payments
 order: 5
 keywords: bank, ach, direct deposit, zelle, no fees, payment processor, alternative
+taxonomy: 6.5
 ---
 
 Short answer: probably not the way you are thinking, but the explanation matters because it saves you confusion.

@@ -4,6 +4,7 @@ title: Is there a MyBodyMap mobile app?
 category: Practical
 order: 1
 keywords: mobile, app, ios, android, iphone, pwa, install, home screen
+taxonomy: 7.1
 ---
 
 MyBodyMap works as a Progressive Web App (PWA). You install it from your phone's browser to your home screen. From there it behaves like any native app: full screen, no browser bar, fast launch, push notifications.

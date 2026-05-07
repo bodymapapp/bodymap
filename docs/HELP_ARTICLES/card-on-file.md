@@ -4,6 +4,7 @@ title: How does card on file work?
 category: Payments
 order: 4
 keywords: card on file, save card, payment method, future, automatic, mandate
+taxonomy: 6.6
 ---
 
 Card on file means your clients save a credit card during booking that you can charge later if the cancellation policy fires. The client agrees to this in writing, you have an audit trail, and the charge happens automatically when needed.

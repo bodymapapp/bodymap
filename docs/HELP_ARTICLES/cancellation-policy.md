@@ -4,6 +4,7 @@ title: How does the cancellation policy work?
 category: Payments
 order: 2
 keywords: cancellation, no show, late cancel, charge, fee, policy, card on file, mandate
+taxonomy: 6.2
 ---
 
 The cancellation policy charges a fee automatically when a client cancels late or no-shows. Set the rules once. The card on file does the rest.

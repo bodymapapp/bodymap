@@ -4,6 +4,7 @@ title: How is MyBodyMap different from Vagaro or MassageBook?
 category: Practical
 order: 2
 keywords: vagaro, massagebook, switch, compare, comparison, alternative, different, jane app, acuity, glossgenius
+taxonomy: comparison
 ---
 
 Most of our therapists came from Vagaro or MassageBook. The honest comparison.

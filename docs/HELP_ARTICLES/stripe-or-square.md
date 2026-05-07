@@ -4,6 +4,7 @@ title: Stripe or Square? Which should I use?
 category: Payments
 order: 1
 keywords: stripe, square, payments, processor, connect, choose, both, parity, fees
+taxonomy: 6.5
 ---
 
 Use whichever payment processor you already use. If you do not use either yet, start with Stripe. The two are equally supported on every online feature MyBodyMap offers.

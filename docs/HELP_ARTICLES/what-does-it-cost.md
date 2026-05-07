@@ -4,6 +4,7 @@ title: What does MyBodyMap cost?
 category: Getting started
 order: 3
 keywords: pricing, cost, price, plans, bronze, silver, gold, free, subscription, fees
+taxonomy: pricing
 ---
 
 Three tiers. All honest pricing, no hidden fees.

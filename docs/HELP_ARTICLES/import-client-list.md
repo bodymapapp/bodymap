@@ -4,6 +4,7 @@ title: How do I import my existing client list?
 category: Getting started
 order: 4
 keywords: import, csv, migrate, switch, vagaro, massagebook, existing clients, transfer
+taxonomy: onboarding
 ---
 
 Your existing client list moves with you. We can import a CSV from any major platform.

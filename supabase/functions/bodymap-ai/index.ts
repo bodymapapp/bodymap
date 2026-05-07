@@ -142,11 +142,12 @@ serve(async (req) => {
       });
     }
 
-    // Resolve therapist row from auth user
+    // Resolve therapist row from auth user. The schema uses therapists.id
+    // = auth.user.id directly (no separate auth_user_id column).
     const { data: therapistRow, error: therapistErr } = await supabase
       .from("therapists")
       .select("id, email")
-      .eq("auth_user_id", user.id)
+      .eq("id", user.id)
       .maybeSingle();
 
     if (therapistErr || !therapistRow) {

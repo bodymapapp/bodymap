@@ -4,6 +4,7 @@ title: How do I sign up for MyBodyMap?
 category: Getting started
 order: 2
 keywords: signup, sign up, register, account, start, create
+taxonomy: onboarding
 ---
 
 Signing up takes about thirty seconds. Setting up your practice afterward takes about thirty minutes. No credit card required.

@@ -11,6 +11,7 @@
 import React, { useState, useCallback, useEffect } from "react";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import HelpWidget from "../components/HelpWidget";
 import FeatureRibbon from "../components/FeatureRibbon";
 import FeatureModal from "../components/FeatureModal";
 import {
@@ -112,6 +113,7 @@ export default function FeaturesV2() {
       </section>
 
       <Footer />
+      <HelpWidget />
 
       <FeatureModal
         card={activeCard}

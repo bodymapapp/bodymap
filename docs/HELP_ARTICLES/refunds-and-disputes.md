@@ -4,6 +4,7 @@ title: How do I refund a charge?
 category: Payments
 order: 3
 keywords: refund, dispute, chargeback, money back, void, return
+taxonomy: 6.7
 ---
 
 You can refund any charge from your dashboard with one tap. No need to log into Stripe or Square.

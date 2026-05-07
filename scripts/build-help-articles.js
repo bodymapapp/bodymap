@@ -80,6 +80,7 @@ function main() {
       category: frontmatter.category || 'Other',
       order: typeof frontmatter.order === 'number' ? frontmatter.order : 999,
       keywords: frontmatter.keywords || '',
+      taxonomy: frontmatter.taxonomy || '',
       body: body,
     };
   }).filter(Boolean);

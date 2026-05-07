@@ -4,6 +4,7 @@ title: How do I set up my services?
 category: Booking and scheduling
 order: 1
 keywords: services, prices, booking, deep tissue, swedish, prenatal, durations, modalities
+taxonomy: 1.3
 ---
 
 Services are the menu of work you offer. This is the first thing to set up after signup.

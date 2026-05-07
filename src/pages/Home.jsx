@@ -17,6 +17,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import HelpWidget from "../components/HelpWidget";
 
 // Interactive product demos (extracted from legacy Features.jsx)
 import BookingDemo from "../components/demos/BookingDemo";
@@ -412,12 +413,10 @@ export default function Home() {
       </section>
 
       <Footer />
+      <HelpWidget />
     </div>
   );
 }
-
-// ───────────────────────────────────────────────────────────────────────
-// HomeRibbon — one product-tour row.
 // Layouts:
 //   "demo-left"   : demo 60% left, copy 40% right (desktop) / stacked (mobile)
 //   "demo-right"  : demo 60% right, copy 40% left (desktop) / stacked (mobile)

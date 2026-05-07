@@ -4,6 +4,7 @@ title: How do I customize my intake form?
 category: Intake forms
 order: 2
 keywords: intake, customize, custom questions, edit form, modify, prenatal, sports
+taxonomy: 2.2
 ---
 
 The default intake works for most therapists. Customize it when you have a specific need that the defaults do not cover.

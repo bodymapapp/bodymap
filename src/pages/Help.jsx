@@ -386,12 +386,13 @@ function ArticleList({ articlesByCategory, activeId, setActiveId, query }) {
           }}>
             {category}
           </div>
-          {articles.map((article) => (
+          {articles.map((article, idx) => (
             <ArticleListItem
               key={article.id}
               article={article}
               active={activeId === article.id}
               onClick={() => setActiveId(article.id)}
+              indexInCategory={idx + 1}
             />
           ))}
         </div>
@@ -400,7 +401,7 @@ function ArticleList({ articlesByCategory, activeId, setActiveId, query }) {
   );
 }
 
-function ArticleListItem({ article, active, onClick }) {
+function ArticleListItem({ article, active, onClick, indexInCategory }) {
   return (
     <button
       onClick={onClick}
@@ -418,9 +419,22 @@ function ArticleListItem({ article, active, onClick }) {
         color: active ? C.forest : C.ink,
         lineHeight: 1.4,
         transition: "background 0.12s",
+        display: "flex",
+        alignItems: "flex-start",
+        gap: 8,
       }}
     >
-      {article.title}
+      <span style={{
+        flexShrink: 0,
+        fontFamily: "Georgia, serif",
+        fontSize: 12,
+        fontWeight: 700,
+        color: active ? C.forest : C.gray,
+        minWidth: 18,
+      }}>
+        {indexInCategory}.
+      </span>
+      <span>{article.title}</span>
     </button>
   );
 }
@@ -438,14 +452,35 @@ function ArticleContent({ article, setActiveId }) {
       boxShadow: "0 4px 16px rgba(28, 43, 34, 0.05)",
     }}>
       <div style={{
-        fontSize: 11,
-        fontWeight: 700,
-        color: C.sage,
-        letterSpacing: 1.4,
-        textTransform: "uppercase",
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
         marginBottom: 6,
+        flexWrap: "wrap",
       }}>
-        {article.category}
+        <span style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: C.sage,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
+        }}>
+          {article.category}
+        </span>
+        {article.taxonomy && /^\d/.test(article.taxonomy) && (
+          <span title={`Maps to feature card ${article.taxonomy}`} style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: C.forest,
+            background: C.cream,
+            border: `1px solid ${C.border}`,
+            padding: "2px 8px",
+            borderRadius: 99,
+            letterSpacing: 0.4,
+          }}>
+            Feature {article.taxonomy}
+          </span>
+        )}
       </div>
       <h2 style={{
         fontFamily: "Georgia, serif",

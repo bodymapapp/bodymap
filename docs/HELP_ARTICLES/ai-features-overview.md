@@ -4,6 +4,7 @@ title: What AI features does MyBodyMap have?
 category: Sessions and notes
 order: 2
 keywords: ai, artificial intelligence, practice assistant, claude, smart, automation
+taxonomy: 3.3
 ---
 
 MyBodyMap uses AI for specific, useful tasks. Not for buzzword reasons. Each AI feature exists because it saves you a meaningful amount of time per week.

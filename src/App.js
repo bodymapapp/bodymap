@@ -10,7 +10,8 @@ import Home from './pages/Home';
 import Features from './pages/Features';
 import FeaturesV2 from './pages/FeaturesV2';
 import Pricing from './pages/Pricing';
-import Contact from './pages/Contact';
+// Contact page replaced by /help (May 7, 2026 per HK direction).
+// Redirect handles old links and SEO.
 import Privacy from './pages/Privacy';
 import Security from './pages/Security';
 import Terms from './pages/Terms';
@@ -78,7 +79,7 @@ function App() {
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />
           <Route path="/atlas" element={<Navigate to="/" replace />} />
           <Route path="/pricing" element={<Pricing />} />
-          <Route path="/contact" element={<Contact />} />
+          <Route path="/contact" element={<Navigate to="/help#contact-and-enterprise" replace />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/security" element={<Security />} />
           <Route path="/terms" element={<Terms />} />

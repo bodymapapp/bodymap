@@ -4,6 +4,7 @@ title: How do session notes and SOAP work?
 category: Sessions and notes
 order: 1
 keywords: session notes, soap, soap notes, documentation, history, post session
+taxonomy: 4.3
 ---
 
 Session notes are how you record what happened during a session. MyBodyMap supports both quick notes and full SOAP-format documentation, on every plan including Bronze.
