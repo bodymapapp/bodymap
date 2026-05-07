@@ -5,6 +5,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
     "@vercel/analytics": "^1.6.1",
+    "flexsearch": "^0.8.212",
     "posthog-js": "^1.359.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -14,7 +15,7 @@
   "scripts": {
     "start": "react-scripts start",
     "audit:intake": "node scripts/audit-intake-schema-render.js",
-    "prebuild": "node scripts/audit-intake-schema-render.js",
+    "prebuild": "node scripts/audit-intake-schema-render.js && node scripts/build-help-articles.js",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"

@@ -21,6 +21,7 @@ import IntakeEditor from './pages/IntakeEditor';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
 import FounderHub from './pages/FounderHub';
+import Help from './pages/Help';
 import FounderRoute from './components/FounderRoute';
 import PaymentMethodComparisonMockup from './components/mockups/PaymentMethodComparisonMockup';
 import PaymentEvolutionMockup from './components/mockups/PaymentEvolutionMockup';
@@ -71,6 +72,7 @@ function App() {
               specifically; other authenticated therapists are redirected
               to /dashboard. */}
           <Route path="/founder" element={<FounderRoute><FounderHub /></FounderRoute>} />
+          <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />
