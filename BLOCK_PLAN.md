@@ -647,6 +647,153 @@ How HK and Claude work together every session. Survives compaction.
    - Calendar: date picker readability on small screens
    - Client list: search bar sticky, virtual scroll for long lists
 
+23. **Personalized therapist greeting in dashboard + PWA (NEW, May 8, 2026 from QA).** HK direction: "In the PWA and therapist dashboard, their name should be on top saying 'Hi Sarah' as an example."
+
+   Dashboard top bar currently shows the navigation only. Add a friendly first-name greeting that updates by time of day ("Good morning, Sarah" / "Good afternoon, Sarah" / "Good evening, Sarah"). PWA More tab also gets the same treatment, with full name AND business name visible (HK direction item 4: "it should say therapist name and business name on top of the app when I click on more on the bottom right of app").
+
+   Implementation: pull from therapist.full_name (first name only via split) and therapist.business_name. Time-of-day logic with 5am-12pm = morning, 12pm-5pm = afternoon, 5pm-5am = evening. Same component reused on Dashboard top + PWA More tab.
+
+   Estimated effort: 1-2 hour pass, low risk.
+
+24. **"Save Card" client card flow simplification (NEW, May 8, 2026 from QA).** HK direction: "On Save Card option in clients, it says connect Stripe? Lets keep it simple. Just save the card."
+
+   Current flow: when therapist taps "Save Card" on a client card without Stripe connected, an alert says "Connect Stripe in Settings first." This is correct behavior but UX-hostile. Better: if no Stripe AND no Square, route to Settings#payments with a helpful banner. If Stripe OR Square is connected, just open the save flow without the gate.
+
+   File: src/components/SessionList.js line 34. Replace the alert with a navigate to settings if neither connected, otherwise proceed with the save flow.
+
+   Estimated effort: 30-45 min.
+
+25. **Returning-customer intake recognition for body map (NEW, May 8, 2026 from QA).** HK direction: "Even after saving my card, it is not showing card saved, for body map it is not showing all the sessions that I booked under the name of Body Map with incomplete intake."
+
+   When a client books with the same email/phone/name as previous sessions, the body map (intake history view in dashboard) should show ALL their past sessions and intake submissions, including ones that did not complete the full intake flow. Currently the matching logic is too strict and partial-intake sessions disappear from the timeline.
+
+   This is partly Chunk 2's territory (returning customer recognition) but specific to the body-map intake history view, which is its own component. Investigation needed first to confirm exact symptom; could be a JOIN issue, a status filter, or a client-id-mismatch.
+
+   Estimated effort: 1-2 hour investigation + fix.
+
+26. **Cart persistence across booking flow steps (NEW, May 8, 2026 from QA).** HK direction: "When I added a package to cart and then proceeded to add a service, at confirmation, the cart disappeared."
+
+   The cart state in BookingPage.js is currently component-local. When the user navigates between booking steps (services, slots, services-again, etc), the cart can lose state. Needs persistence either in URL query string (preferred for deep-linkability) or sessionStorage (simpler implementation).
+
+   Investigation: which state variable holds the cart, what step transitions clear it, and is this a hooks dependency bug or an architectural issue.
+
+   Estimated effort: 2-3 hour investigation + fix.
+
+27. **Client card visual indicators (NEW, May 8, 2026 from QA).** HK direction: "In the Clients card, once the deposit is received, the client card does not say anything on Deposit received... There should be a clear indicator on the card. there should be also a clear indicator on the card that their card is on the file. there could be other indicators that they have membership or packages or not on the card itself. and it should be easy to read and tell with both index and text when i hover my mouse over the card."
+
+   Add 4 visual indicators on each client card:
+   - 💳 Card on file (green when present)
+   - 💰 Deposit paid (per upcoming session, green when paid)
+   - 🌿 Active membership (green when active)
+   - 📦 Active package (green when sessions remaining)
+
+   Each indicator: small icon + tooltip on hover with detail. Layout: horizontal row beneath client name and tier. Mobile-aware (smaller icons, stacked or wrapping).
+
+   Substantial UX work. Touches the client card component, possibly client list view, definitely needs query expansion to populate the new fields.
+
+   Estimated effort: 4-6 hours focused.
+
+28. **Cancellation/reschedule client-facing flow (NEW, May 8, 2026 from QA).** HK direction: "The workflow for reschedule or cancel is not clear from client side on how they would do it or how that will be done on therapist side. There should be an online mechanism for both client to do it on a link or something. And for therapist to do it if the client calls or texts and cancels or reschedules. there is no cancellation or reschedule link in the email that client receives. This is a big miss on your part."
+
+   Major UX gap. Build:
+   1. Cancellation/reschedule link in confirmation email (signed token, 24h expiry)
+   2. Public-facing cancel page: shows session details, asks for cancellation reason (optional), confirms policy implications (will I be charged?), processes if appropriate
+   3. Public-facing reschedule page: shows session details, picks new slot from same therapist's availability, swaps the booking
+   4. Therapist-side cancel/reschedule flow: from session detail in dashboard, tap "Cancel for client" or "Reschedule for client", same modal handles both. Sends client an email confirming what happened.
+
+   This is a real project. Worth a dedicated session, maybe 1.5-2 days. High user-value impact.
+
+   Estimated effort: 1.5-2 days focused.
+
+29. **'Add another' button in packages too small (NEW, May 8, 2026 from QA).** HK direction: "In packages, 'add another' is too small and can get missed."
+
+   Quick fix. The "+ Add to cart" / "✓ In cart (N) · add another" button on package cards in the booking page is small. Bump font size, padding, and possibly use a more visible color when in cart (subtle visual change to suggest "tap me again to add another").
+
+   File: src/pages/BookingPage.js around line 1873. About 10 lines of style changes.
+
+   Estimated effort: 15-20 min.
+
+30. **Demo account needs more clients/appointments (NEW, May 8, 2026 from QA).** HK direction: "In my bodymapdemo login, I need more appointments and clients added as CSV so that I can show proper demos."
+
+   Data-only fix. Generate a realistic dataset for the demo therapist account:
+   - 30-40 fake clients with varied first/last names, emails, phones (from a US name generator)
+   - Spread of session counts: some 1-time, some 5-10 visits, some 20+ visits with rich pattern data
+   - 60-90 days of past bookings with realistic Tuesday/Thursday/Saturday distribution
+   - 10-15 future bookings (next 30 days) with mix of confirmed/pending-deposit/pending-approval
+   - Some intake forms completed with body-map data (use existing fixture if possible)
+   - 2-3 active memberships with renewal dates
+   - 4-5 active packages with sessions remaining
+
+   Generate as CSV files, run through the existing import flow, verify the dashboard demo looks rich without obvious patterns of fakeness.
+
+   Estimated effort: 2-3 hours (mostly data generation; import is well-tested).
+
+31. **Memberships/packages section titles in collapsible (NEW, May 8, 2026 from QA).** HK direction: "In the memberships and packages collapsible, we need to have a title for memberships and a title for packages so that our persona does not get confused on what is what. any other ways of adding clarity will be great."
+
+   Add small "PACKAGES" and "MEMBERSHIPS" subheadings in the offers collapsible section on the booking page. Subtle uppercase eyebrow text, sage color, before each group's cards. Helps the older-LMT persona distinguish at a glance.
+
+   File: src/pages/BookingPage.js, the offers expanded view around lines 1830-1920.
+
+   Estimated effort: 30 min.
+
+32. **Memberships should be cart-eligible architecture rework (NEW, May 8, 2026 from QA).** HK direction: "I CONFIRM THAT I AM ABLE TO BUY A MEMBERSHIP PACKAGE USING SQUARE. BUT IT DOES NOT LOOK LIKE AN AMAZON CART EXPERIENCE. IT LOOKS VERY BASIC AND PRIMITIVE IN TERMS OF DESIGN... Why are membership are not cart eligible?"
+
+   Currently memberships bypass the cart and route directly to Stripe Checkout / Square Subscription. This means:
+   - Cannot bundle "membership + 2 packages of essential oils + first session deposit" in one transaction
+   - First-time experience does not feel like the rest of the cart-based flow
+   - Therapist cannot offer membership + add-on bundles
+
+   Architectural decision: make memberships first-class cart items. Implications:
+   - PaymentProvider's createCheckoutLink must support mixed cart (one-time charges + a recurring subscription)
+   - Stripe supports this via Checkout Session in 'subscription' mode with line_items containing both subscription Price and one-time Prices
+   - Square would need a parallel: charge the package one-time + create the subscription separately, both confirmed in same flow. Or defer this and keep memberships Stripe-only inside cart, error out on Square cart with membership.
+
+   This is real architectural work. Plan a dedicated session of 1-2 days. Coordinate with item 32-bonus: cart UI redesign to feel more like a real e-commerce cart (running total, line items with qty steppers, remove-from-cart, view-cart icon in header).
+
+   Estimated effort: 1-2 days focused work.
+
+33. **Square memberships UX - explicit "use Stripe" message (NEW, May 8, 2026 from QA).** Already partially fixed in Chunk 1 (memberships hidden when only Square connected). Better UX would be: instead of just hiding, show a small inline note: "Memberships available with Stripe. Connect Stripe in Settings to enable." This educates the therapist on the limitation without being silent about why memberships are missing.
+
+   File: src/pages/BookingPage.js offers section, when hasStripeForMembership is false but memberships exist.
+
+   Estimated effort: 30 min.
+
+34. **10-second rebooking, the major differentiator (NEW, May 8, 2026 from QA).** HK direction: "Add to the block plan, to provide a check box here and at several other strategic places to provide the client to say would you like to book recurring massages on a weekly, biweekly or monthly basis. And give them a less than 10 second way to book again (assume same settings and intake as past) and just book a recurring time and date. key is less than 10 seconds. both during the beginning of the workflow when they are booking for their first massage as well as end of the workflow. There should be a clear way of them providing feedback to therapist. Any emails they get there should be a link to that 10 second rebooking workflow. Add this to home, features and differentiation on why mybodymap as 10 second rebooking."
+
+   This is THE big project. It is a true product differentiator and deserves its own roadmap track. Components:
+
+   **Component A: Recurring booking checkbox at first booking.**
+     "Book this same time every week / every other week / every 4 weeks?" checkbox at the booking confirmation step. Creates N future bookings same therapist, same service, same time, deposit auto-paid from card on file, intake auto-confirmed unless body changes.
+
+   **Component B: One-tap rebook from confirmation email.**
+     Every confirmation, reminder, and post-session email contains a "Book again" button with a signed token URL. Lands on a special booking page that shows "Same as last time? Wednesday 2pm, 60-min Deep Tissue with Sarah, $90." One tap = booked. Card on file auto-charged for deposit.
+
+   **Component C: Post-session feedback prompt with rebooking nudge.**
+     12-24h after session ends, automated email: "How was your session with Sarah? [👍 / 🤔 / 👎] Want to rebook? [Yes, same time next week] [Yes, in 2 weeks] [Yes, in a month] [Not yet]"
+
+   **Component D: Therapist dashboard view of recurring clients.**
+     "Active recurring" tab on Clients page. Shows clients on weekly/biweekly/monthly cadence. Therapist can pause, modify, or stop with one tap.
+
+   **Component E: Marketing positioning.**
+     - Add "10-second rebooking" as differentiator on Home page
+     - Add to FeaturesV2 page
+     - Add to WhyBodyMap page (item 1, lead)
+     - Add to MARKETING_MYBODYMAP.md
+
+   **Component F: Settings toggle for therapist.**
+     Per-service "Eligible for recurring booking" checkbox so therapist can opt out for services that should not auto-rebook (couples, events, intro sessions).
+
+   Estimated effort: 4-6 days of focused work across all components, possibly split across two sprints. Highest-impact item on the roadmap.
+
+35. **Stripe package "Unknown parameters" bug, verify Chunk 1 fix worked (NEW, May 8, 2026).** Chunk 1 fixed the form() helper in supabase/functions/_shared/providers/stripe.ts. After Vercel + Supabase Edge Functions auto-deploy, HK should retest:
+   1. Connect Stripe to test therapist
+   2. Add a package to therapist's catalog
+   3. As client, navigate to booking page, add package to cart, proceed to checkout
+   4. Confirm Stripe Checkout opens cleanly without "Unknown parameters" error
+   5. Complete a test purchase
+
+   If still failing, paste the new error message verbatim and we debug from there. The fix has been pushed in commit a401664a; all that remains is real-world verification.
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
