@@ -105,6 +105,27 @@ export default function MembershipsCard({ therapist }) {
       <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>Memberships</p>
       <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Recurring monthly plans. Members get included sessions and optional discounts. Define tiers here; sign clients up from their profile.</p>
 
+      {/* Memberships need a Stripe connection. Square does not support
+          our subscription flow reliably (per BILLING_STRATEGY.md). If
+          the therapist only has Square, surface a clear inline banner
+          rather than letting them define memberships that no client
+          can actually buy. */}
+      {!therapist?.stripe_account_id && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1.5px solid #FCD34D',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginBottom: 14,
+          fontSize: 12,
+          color: '#78350F',
+          lineHeight: 1.55,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Connect Stripe to sell memberships</div>
+          Memberships require Stripe (recurring monthly billing, auto-renewal, dunning). You can still define tiers below for planning, but clients will not see them on your booking page until Stripe is connected. Connect Stripe in Settings · Payments.
+        </div>
+      )}
+
       {loading ? <p style={{ fontSize:13, color:C.gray }}>Loading…</p> : (
         <>
           {memberships.length === 0 && (

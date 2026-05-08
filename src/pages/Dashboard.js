@@ -2165,7 +2165,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 14, lineHeight: 1 }}>⬛</span>
               <div style={{ flex: 1 }}>
-                <strong style={{ color: '#2A5741' }}>Square</strong> · same online features as Stripe (memberships limited). Fees: 2.9% + 30¢ for online, 2.6% + 10¢ for in-person Square Reader (paid to Square directly).
+                <strong style={{ color: '#2A5741' }}>Square</strong> · deposits, packages, cards on file. Fees: 2.9% + 30¢ for online, 2.6% + 10¢ for in-person Square Reader (paid to Square directly). For memberships, connect Stripe.
               </div>
             </div>
             <div style={{ marginTop: 8, color: '#6B7280', borderTop: '1px solid #D1E5D9', paddingTop: 8, fontSize: 10, lineHeight: 1.55 }}>
@@ -2792,6 +2792,43 @@ export default function Dashboard({ view }) {
         }}>
           {view === 'clients' && (
             <>
+              {(() => {
+                // Friendly greeting at the top of the main dashboard
+                // view. First name + time-of-day. Falls back to
+                // 'Hi there' if therapist name is missing for any
+                // reason. Per HK direction May 8, 2026.
+                const firstName = (therapist?.full_name || '').trim().split(/\s+/)[0] || '';
+                const hour = new Date().getHours();
+                const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+                return (
+                  <div style={{
+                    marginBottom: isMobile ? 14 : 18,
+                    paddingBottom: isMobile ? 12 : 14,
+                    borderBottom: `1px solid ${C.lightGray}`,
+                  }}>
+                    <h2 style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: isMobile ? 22 : 26,
+                      fontWeight: 700,
+                      color: C.dark,
+                      margin: '0 0 3px 0',
+                      lineHeight: 1.2,
+                    }}>
+                      {greeting}{firstName ? `, ${firstName}` : ''}.
+                    </h2>
+                    {therapist?.business_name && (
+                      <p style={{
+                        fontSize: 12,
+                        color: C.gray,
+                        margin: 0,
+                        lineHeight: 1.4,
+                      }}>
+                        {therapist.business_name}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
               <StatsStrip rolling={stats?.rolling} />
               <OnboardingChecklist
                 therapist={therapist}

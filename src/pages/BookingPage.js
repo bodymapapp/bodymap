@@ -1887,6 +1887,19 @@ export default function BookingPage() {
 
                 {offersExpanded && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    {packagesList.length > 0 && (
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        color: C.forest,
+                        textTransform: 'uppercase',
+                        marginTop: 2,
+                        marginBottom: 2,
+                      }}>
+                        Packages · pay once, use over time
+                      </div>
+                    )}
                     {packagesList.map((p) => {
                       // How many of this package are already in the cart?
                       // Reflected on the button so the client can see they
@@ -1928,19 +1941,33 @@ export default function BookingPage() {
                               width: '100%',
                               background: inCart > 0 ? '#fff' : C.forest,
                               color: inCart > 0 ? C.forest : '#fff',
-                              border: `1.5px solid ${C.forest}`,
-                              borderRadius: 10,
-                              padding: '9px 14px',
-                              fontSize: 13,
+                              border: `2px solid ${C.forest}`,
+                              borderRadius: 12,
+                              padding: '13px 16px',
+                              fontSize: 15,
                               fontWeight: 700,
                               cursor: 'pointer',
                               transition: 'all 0.15s',
+                              boxShadow: inCart > 0 ? '0 1px 3px rgba(42,87,65,0.12)' : '0 2px 6px rgba(42,87,65,0.18)',
                             }}>
-                            {inCart > 0 ? `✓ In cart (${inCart}) · add another` : '+ Add to cart'}
+                            {inCart > 0 ? `✓ In cart (${inCart}) · Add another` : '+ Add to cart'}
                           </button>
                         </div>
                       );
                     })}
+                    {visibleMemberships.length > 0 && (
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        color: C.forest,
+                        textTransform: 'uppercase',
+                        marginTop: packagesList.length > 0 ? 12 : 2,
+                        marginBottom: 2,
+                      }}>
+                        Memberships · monthly recurring
+                      </div>
+                    )}
                     {visibleMemberships.map((m) => (
                       <button
                         key={m.id}

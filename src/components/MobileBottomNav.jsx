@@ -72,7 +72,32 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
           {/* Handle bar */}
           <div style={{ width: 44, height: 5, background: '#E5E1D8', borderRadius: 3, margin: '0 auto 18px' }} />
 
-          {/* Therapist header card */}
+          {/* Time-of-day greeting. First name only for warmth.
+              Falls back gracefully if name is missing. Per HK
+              direction May 8, 2026: 'their name should be on top
+              saying Hi Sarah as an example'. */}
+          {(() => {
+            const firstName = (therapist?.full_name || '').trim().split(/\s+/)[0] || '';
+            const hour = new Date().getHours();
+            const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+            return (
+              <div style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 22,
+                fontWeight: 700,
+                color: '#1F2937',
+                margin: '0 0 14px 0',
+                lineHeight: 1.2,
+              }}>
+                {greeting}{firstName ? `, ${firstName}` : ''}.
+              </div>
+            );
+          })()}
+
+          {/* Therapist header card. Shows business name and full
+              name on separate lines so the older-LMT persona can
+              clearly see both their practice identity and their
+              own name. */}
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
             padding: '12px 14px', marginBottom: 16,
@@ -91,9 +116,16 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
               {(therapist?.full_name || 'B')[0]?.toUpperCase()}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {therapist?.business_name || therapist?.full_name || 'Your Practice'}
-              </div>
+              {therapist?.business_name && (
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', marginBottom: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {therapist.business_name}
+                </div>
+              )}
+              {therapist?.full_name && therapist.full_name !== therapist?.business_name && (
+                <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {therapist.full_name}
+                </div>
+              )}
               <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                 <span>🌿</span> Silver
               </div>
