@@ -96,27 +96,46 @@ function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=
   );
 }
 
-// Stripe Card Element, uses connected account to match payment intent.
-// Also mounts a Payment Request Button (Apple Pay / Google Pay / Link)
-// above the card field when the visitor's device supports it. Wallets
-// were enabled at the Stripe platform level May 7, 2026 (HK confirmed
-// in dashboard screenshot). This component opportunistically surfaces
-// them to clients who can use them; everyone else sees the existing
-// card-form flow unchanged.
-function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, therapistName, onSuccess, onError }) {
-  const divRef = useRef(null);
-  const walletButtonRef = useRef(null);
+// Stripe Payment Element on the connected account. Modern unified element
+// that handles cards plus every payment method enabled at the platform
+// level: Apple Pay, Google Pay, Cash App Pay, Link, Amazon Pay, Klarna,
+// Pix, and so on. The element auto-surfaces methods that work for the
+// visitor's device and region; methods not available silently disappear.
+//
+// Migration history:
+//   v1 (April 2026): legacy Card Element only (cards only)
+//   v2 (May 7 2026 evening): Card Element with Payment Request Button
+//                            bolted on top for wallets. SHORTCUT, removed.
+//   v3 (May 7 2026 night, this version): unified Payment Element. The
+//      right way. Single mounted element, single confirmPayment call,
+//      automatic support for any new method Stripe enables at the
+//      platform level without any code change here.
+//
+// Implementation notes:
+//   - elements() is initialized with clientSecret so the Payment Element
+//     can fetch the intent's enabled methods and configure itself.
+//   - confirmPayment (NOT confirmCardPayment) is the modern API. It
+//     handles the entire submission flow including 3DS and redirect-
+//     based methods.
+//   - return_url is required for redirect methods (Klarna, BLIK, some
+//     bank methods). We point it back at the booking page with a query
+//     flag so the page knows to re-check the booking status on return.
+//   - The element handles its own loading and ready states. Our outer
+//     UI just shows a spinner until the elements report ready.
+function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, therapistName, bookingId, onSuccess, onError }) {
+  const containerRef = useRef(null);
   const stripeRef = useRef(null);
-  const cardRef = useRef(null);
+  const elementsRef = useRef(null);
+  const paymentElementRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [walletAvailable, setWalletAvailable] = useState(false);
 
   useEffect(() => {
-    if (!clientSecret || !divRef.current) return;
+    if (!clientSecret || !containerRef.current) return;
     let alive = true;
 
     const init = async () => {
+      // Load Stripe.js v3 if not already loaded
       if (!window.Stripe) {
         await new Promise(resolve => {
           const s = document.createElement('script');
@@ -125,142 +144,170 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, thera
           document.head.appendChild(s);
         });
       }
-      if (!alive || !divRef.current) return;
+      if (!alive || !containerRef.current) return;
 
-      // Match the connected account the payment intent was created on
+      // Initialize Stripe with the connected account so the Payment
+      // Element fetches the intent (created on the connected account)
+      // correctly and any wallet payments confirm against the right
+      // merchant identity.
       stripeRef.current = window.Stripe(
         process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
         stripeAccountId ? { stripeAccount: stripeAccountId } : {}
       );
-      const elements = stripeRef.current.elements();
 
-      // Card Element (existing behavior)
-      cardRef.current = elements.create('card', {
-        style: {
-          base: {
-            fontSize: '16px',
+      // The Elements instance MUST be created with clientSecret for
+      // the Payment Element to know which intent it is collecting for.
+      // appearance applies to all sub-elements consistently.
+      elementsRef.current = stripeRef.current.elements({
+        clientSecret,
+        appearance: {
+          theme: 'stripe',
+          variables: {
+            colorPrimary: '#2A5741',
+            colorBackground: '#FAFAFA',
+            colorText: '#1A1A2E',
+            colorDanger: '#EF4444',
             fontFamily: 'system-ui, sans-serif',
-            color: '#1A1A2E',
-            '::placeholder': { color: '#9CA3AF' },
-          },
-          invalid: { color: '#EF4444' },
-        },
-      });
-      cardRef.current.on('ready', () => { if (alive) setReady(true); });
-      cardRef.current.mount(divRef.current);
-
-      // Payment Request Button: shows Apple Pay on iOS Safari with a card
-      // configured, Google Pay on Chrome with a card configured. Hides
-      // itself completely when the device cannot fulfill a wallet
-      // payment, so this is purely additive for compatible clients.
-      const paymentRequest = stripeRef.current.paymentRequest({
-        country: 'US',
-        currency: 'usd',
-        total: {
-          label: therapistName ? `${therapistName} deposit` : 'Booking deposit',
-          amount: depositAmount,
-        },
-        requestPayerName: true,
-        requestPayerEmail: true,
-      });
-
-      const prButton = elements.create('paymentRequestButton', {
-        paymentRequest,
-        style: {
-          paymentRequestButton: {
-            type: 'default',
-            theme: 'dark',
-            height: '48px',
+            fontSizeBase: '16px',
+            borderRadius: '10px',
           },
         },
       });
 
-      // canMakePayment returns null when no wallet is available, an
-      // object describing supported methods otherwise. We only mount
-      // the button when something is available.
-      const result = await paymentRequest.canMakePayment();
-      if (alive && result && walletButtonRef.current) {
-        prButton.mount(walletButtonRef.current);
-        setWalletAvailable(true);
-      }
-
-      // When client confirms the wallet sheet, confirm the payment
-      // intent with the wallet's payment_method.
-      paymentRequest.on('paymentmethod', async (ev) => {
-        if (!stripeRef.current) return;
-        const { error: confirmError, paymentIntent } = await stripeRef.current.confirmCardPayment(
-          clientSecret,
-          { payment_method: ev.paymentMethod.id },
-          { handleActions: false }
-        );
-        if (confirmError) {
-          ev.complete('fail');
-          onError(confirmError.message);
-          return;
-        }
-        ev.complete('success');
-        // Some flows (3DS) require a second confirmCardPayment call.
-        if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_source_action') {
-          const { error } = await stripeRef.current.confirmCardPayment(clientSecret);
-          if (error) { onError(error.message); return; }
-        }
-        onSuccess();
+      // The Payment Element is the unified card + wallet + alternative
+      // method UI. layout: 'tabs' shows methods as tabs at the top with
+      // wallets prominent. layout: 'accordion' is more compact. We use
+      // 'tabs' on this booking page because the wallet-prominent layout
+      // matches the payment-evolution mockup direction.
+      paymentElementRef.current = elementsRef.current.create('payment', {
+        layout: { type: 'tabs', defaultCollapsed: false },
+        wallets: {
+          applePay: 'auto',
+          googlePay: 'auto',
+        },
+        // Reduce defaultValues friction; the booking page already
+        // collected name, email, phone in step 1.
+        defaultValues: {
+          billingDetails: {
+            // Leave empty; Stripe will collect what it needs per method.
+          },
+        },
       });
+
+      paymentElementRef.current.on('ready', () => {
+        if (alive) setReady(true);
+      });
+      paymentElementRef.current.mount(containerRef.current);
     };
 
     init();
     return () => {
       alive = false;
-      try { if (cardRef.current) cardRef.current.destroy(); } catch(e) {}
+      try { if (paymentElementRef.current) paymentElementRef.current.destroy(); } catch(e) {}
     };
   }, []);
 
   const pay = async () => {
-    if (!stripeRef.current || !cardRef.current) return;
+    if (!stripeRef.current || !elementsRef.current) return;
     setProcessing(true);
-    const { error, paymentIntent } = await stripeRef.current.confirmCardPayment(clientSecret, {
-      payment_method: { card: cardRef.current },
+
+    // confirmPayment is the modern unified submit for Payment Element.
+    // For redirect-based methods (Klarna, etc) Stripe will redirect the
+    // browser to the bank/method; for card and wallet methods that do
+    // not redirect, control returns here with paymentIntent in result.
+    // return_url is required even for non-redirect methods because
+    // Stripe defaults to redirect mode unless we set redirect: 'if_required'.
+    // return_url is required for redirect methods. We embed the
+    // booking_id so the booking page can resume confirmation after
+    // a redirect-based method (Klarna, etc) sends the visitor back.
+    // For non-redirect methods (cards, Apple Pay, Google Pay, Link),
+    // redirect: 'if_required' means we never actually navigate.
+    const returnUrl = `${window.location.origin}${window.location.pathname}?deposit_return=1${bookingId ? `&booking_id=${bookingId}` : ''}`;
+
+    const { error, paymentIntent } = await stripeRef.current.confirmPayment({
+      elements: elementsRef.current,
+      confirmParams: { return_url: returnUrl },
+      redirect: 'if_required',
     });
-    if (error) { onError(error.message); setProcessing(false); return; }
-    if (paymentIntent?.status === 'succeeded') onSuccess();
+
+    if (error) {
+      // error.type is 'card_error' or 'validation_error' for showable
+      // problems. Other errors (network, unexpected) we surface as-is.
+      onError(error.message || 'Payment failed. Please try again.');
+      setProcessing(false);
+      return;
+    }
+
+    if (paymentIntent?.status === 'succeeded') {
+      onSuccess();
+    } else if (paymentIntent?.status === 'processing') {
+      // Some methods (Cash App Pay, certain bank flows) report processing
+      // and confirm asynchronously via webhook. Treat as success for the
+      // booking flow; the webhook will mark the deposit paid.
+      onSuccess();
+    } else {
+      onError(`Unexpected payment status: ${paymentIntent?.status || 'unknown'}`);
+    }
     setProcessing(false);
   };
 
   return (
     <div>
-      {/* Wallet button: shows above the card form ONLY when the device
-          has Apple Pay or Google Pay available. Hidden otherwise. */}
       <div style={{
-        marginBottom: walletAvailable ? 14 : 0,
-        display: walletAvailable ? 'block' : 'none',
+        background: C.white,
+        borderRadius: 14,
+        padding: '20px',
+        marginBottom: 14,
+        boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
       }}>
-        <div ref={walletButtonRef} />
-        {walletAvailable && (
+        <div style={{
+          fontSize: 12,
+          fontWeight: 700,
+          color: C.gray,
+          marginBottom: 12,
+        }}>
+          PAYMENT
+        </div>
+        <div ref={containerRef} style={{ minHeight: 80 }} />
+        {!ready && (
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            margin: '14px 0',
+            textAlign: 'center',
+            padding: '20px 0 4px',
             color: C.gray,
-            fontSize: 12,
+            fontSize: 13,
           }}>
-            <div style={{ flex: 1, height: 1, background: C.light }} />
-            <span>or pay with card</span>
-            <div style={{ flex: 1, height: 1, background: C.light }} />
+            Loading payment options…
           </div>
         )}
       </div>
-
-      <div style={{background:C.white,borderRadius:14,padding:'20px',marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-        <div style={{fontSize:12,fontWeight:700,color:C.gray,marginBottom:12}}>CARD DETAILS</div>
-        <div ref={divRef} style={{padding:'14px',border:`1.5px solid ${C.light}`,borderRadius:10,background:'#FAFAFA'}}/>
-        {!ready && <div style={{textAlign:'center',padding:'12px 0 4px',color:C.gray,fontSize:13}}>Loading…</div>}
-      </div>
-      <button onClick={pay} disabled={!ready||processing}
-        style={{width:'100%',background:!ready||processing?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:!ready||processing?'default':'pointer',transition:'background 0.2s',boxShadow:'0 4px 20px rgba(42,87,65,0.25)'}}>
-        {processing?'Processing…':ready?`Pay $${(depositAmount/100).toFixed(0)} Deposit`:'Loading…'}
+      <button
+        onClick={pay}
+        disabled={!ready || processing}
+        style={{
+          width: '100%',
+          background: !ready || processing ? C.sage : C.forest,
+          color: C.white,
+          border: 'none',
+          borderRadius: 14,
+          padding: '17px',
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: !ready || processing ? 'default' : 'pointer',
+          transition: 'background 0.2s',
+          boxShadow: '0 4px 20px rgba(42,87,65,0.25)',
+        }}
+      >
+        {processing ? 'Processing…' : ready ? `Pay $${(depositAmount/100).toFixed(0)} Deposit` : 'Loading…'}
       </button>
-      <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10}}>🔒 Secured by Stripe. Your card details are never stored by us.</p>
+      <p style={{
+        fontSize: 11,
+        color: C.gray,
+        textAlign: 'center',
+        marginTop: 10,
+      }}>
+        🔒 Secured by Stripe. Card details never stored by us.
+        {therapistName ? ` Paying ${therapistName}.` : ''}
+      </p>
     </div>
   );
 }
@@ -713,6 +760,38 @@ export default function BookingPage() {
   // re-run the verification.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
+    // ----- Branch 0: Stripe Payment Element redirect return -----
+    // Triggered when a redirect-based method (Klarna, certain bank
+    // methods) sends the visitor back. URL contains:
+    //   ?deposit_return=1&booking_id=<id>&payment_intent=pi_xxx
+    //   &payment_intent_client_secret=...&redirect_status=succeeded
+    // We trust redirect_status from Stripe and confirm the booking on
+    // success. For non-redirect methods (cards, wallets, Link), this
+    // branch never fires because confirmPayment returns inline.
+    if (params.get('deposit_return') === '1') {
+      const bid = params.get('booking_id');
+      const status = params.get('redirect_status');
+      if (bid && status === 'succeeded') {
+        (async () => {
+          await supabase.from('bookings').update({
+            status: 'confirmed',
+            deposit_paid: true,
+          }).eq('id', bid);
+          fireBookingConfirmation(bid);
+          setConfirmed(true);
+          setBookingId(bid);
+          window.history.replaceState({}, '', window.location.pathname);
+        })();
+      } else if (bid && status === 'failed') {
+        // Redirect method failed (Klarna declined, bank flow cancelled).
+        // Surface a friendly error rather than confirming the booking.
+        // The therapist sees the booking still in pending_deposit state.
+        setPaymentError && setPaymentError('Payment was not completed. You can try a different method below.');
+        window.history.replaceState({}, '', window.location.pathname + window.location.search.replace(/[?&]deposit_return=[^&]*/, '').replace(/[?&]redirect_status=[^&]*/, '').replace(/[?&]payment_intent[^=]*=[^&]*/g, ''));
+      }
+      return;
+    }
 
     // ----- Branch 1: Square deposit return -----
     if (params.get('deposit_complete') === '1') {
@@ -2601,6 +2680,7 @@ export default function BookingPage() {
               depositAmount={depositAmount}
               stripeAccountId={depositAccountId}
               therapistName={therapist?.business_name || therapist?.full_name}
+              bookingId={bookingId}
               onSuccess={onDepositSuccess}
               onError={msg=>setPaymentError(msg)}
             />

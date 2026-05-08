@@ -38,7 +38,18 @@ serve(async (req) => {
       body: new URLSearchParams({
         amount: String(amount_cents),
         currency: 'usd',
-        'payment_method_types[]': 'card',
+        // automatic_payment_methods replaces the legacy payment_method_types
+        // list. With this enabled, the PaymentIntent will accept any payment
+        // method enabled at the platform level (cards, Apple Pay, Google Pay,
+        // Cash App Pay, Link, Amazon Pay, Klarna, Pix, etc) without us
+        // having to maintain a list. The Payment Element on the booking
+        // page will surface only the methods that work for the visitor's
+        // device and region.
+        'automatic_payment_methods[enabled]': 'true',
+        // allow_redirects: 'never' would force same-page methods only.
+        // We allow redirects for Klarna and similar, but the booking page
+        // sets a return_url so users come back to the right place.
+        'automatic_payment_methods[allow_redirects]': 'always',
         description: `Deposit - ${service_name} with ${therapist_name}`,
         receipt_email: client_email,
         'metadata[booking_id]': booking_id || '',

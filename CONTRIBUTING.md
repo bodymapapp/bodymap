@@ -8,7 +8,7 @@ This file is the canonical rule set for how features get added to MyBodyMap. Fut
 
 ## Design principles
 
-Five principles that drive every feature decision. When two of them conflict, "deeper" usually wins, but call it out and discuss before deciding.
+Six principles that drive every feature decision. When two of them conflict, "deeper" usually wins, but call it out and discuss before deciding.
 
 ### Deeper, not wider
 A feature that solves one therapist's real problem all the way through beats a feature that solves five therapists' problems halfway. Card-on-file at booking is "deeper" because it goes from the policy in Settings, through the booking page mandate, through the cancellation modal, through the actual charge, through the audit trail. We did all five. We do not ship the policy without the charge.
@@ -24,6 +24,11 @@ Use the current best primitive (Stripe Connect, Square Web Payments SDK, modern 
 
 ### Changeable as new tech comes out
 What we ship today is going to be partially obsolete in 18 months. ACH-by-link, FedNow real-time payments, Apple Pay later integrations, AI agent payments are all coming. Architecture choices that lock us out of adopting them are wrong even when they ship faster today. When considering a feature, ask: "If [thing that does not exist yet] becomes the standard in two years, how hard is it for us to adopt?" If the answer is "we rewrite half the codebase," reject the architecture and find a better one.
+
+### No shortcuts
+We do the right thing the right way the first time. When two implementation paths exist, the "smaller diff but lower quality" path is almost never correct, no matter how late it is. Shortcuts compound: a Card Element with a Payment Request Button bolted on top costs less today than the unified Payment Element migration, but every future feature touching payment input pays the tax of having two mounted elements with separate event flows. Ship the harder, better version. If the harder version cannot fit in the time available, defer the entire work rather than ship the shortcut.
+
+This principle is the explicit override for the rest. If "deeper, not wider" suggests a small surface and "no shortcuts" suggests a larger but proper implementation, "no shortcuts" wins. Quality compounds; technical debt also compounds, but in the wrong direction.
 
 ---
 
