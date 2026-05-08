@@ -691,6 +691,15 @@ export default function BookingPage() {
   const [giftChecking,setGiftChecking]=useState(false);
   const [depositClientSecret,setDepositClientSecret]=useState(null);
   const [depositAccountId,setDepositAccountId]=useState(null);
+  // PaymentIntent id and resolved client id captured from the
+  // create-deposit edge function response. Used by onDepositSuccess
+  // to call capture-saved-card after Stripe confirms the charge so
+  // the auto-saved card_on_file_id and stripe_customer_id are
+  // persisted to the clients row. Without this, returning clients
+  // would not see "Welcome back" and therapists would not see card
+  // on file indicators.
+  const [depositPaymentIntentId,setDepositPaymentIntentId]=useState(null);
+  const [depositResolvedClientId,setDepositResolvedClientId]=useState(null);
   const [depositLoading,setDepositLoading]=useState(false);
   const [paymentError,setPaymentError]=useState(null);
   const [isRepeatClient,setIsRepeatClient]=useState(false);
@@ -1418,7 +1427,16 @@ export default function BookingPage() {
             therapist_id: therapist.id,
             booking_id: bid,
             amount_cents: depositAmount,
+            // Client identity sent so create-deposit can find-or-create
+            // the Stripe Customer and link the PaymentIntent for
+            // automatic card-on-file save (setup_future_usage). HK
+            // QA May 8 confirmed cards were not saving without this.
+            // For new clients, client_id is null and the edge function
+            // looks up the row by email + therapist_id.
+            client_id: cardSavedClientId || null,
             client_email: form.email.trim().toLowerCase(),
+            client_name: form.name?.trim() || null,
+            client_phone: form.phone?.trim() || null,
             service_name: svc.name,
             therapist_name: therapist.business_name || therapist.full_name,
           }),
@@ -1433,6 +1451,11 @@ export default function BookingPage() {
       if(res.data?.client_secret){
         setDepositClientSecret(res.data.client_secret);
         setDepositAccountId(res.data.account_id || null);
+        // Capture the PaymentIntent id and resolved client id so
+        // onDepositSuccess can call capture-saved-card with them
+        // after the charge confirms.
+        setDepositPaymentIntentId(res.data.payment_intent_id || null);
+        setDepositResolvedClientId(res.data.client_id || null);
         return;
       }
       // Edge function failed, show the error, DO NOT confirm
@@ -1571,6 +1594,39 @@ export default function BookingPage() {
 
   async function onDepositSuccess() {
     await supabase.from('bookings').update({deposit_paid:true,status:'confirmed'}).eq('id',bookingId);
+
+    // Capture the auto-saved card from the PaymentIntent so the
+    // client gets card-on-file going forward. Best-effort: a failure
+    // here does not block booking confirmation, but it does mean the
+    // returning-customer flow on the next booking would not recognize
+    // them. We log the failure for observability.
+    if (depositPaymentIntentId && depositAccountId && depositResolvedClientId) {
+      try {
+        const captureRes = await fetch(
+          `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/capture-saved-card`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.REACT_APP_SUPABASE_ANON_KEY}`,
+            },
+            body: JSON.stringify({
+              payment_intent_id: depositPaymentIntentId,
+              stripe_account_id: depositAccountId,
+              client_id: depositResolvedClientId,
+              therapist_id: therapist.id,
+            }),
+          }
+        );
+        if (!captureRes.ok) {
+          const err = await captureRes.json().catch(() => ({}));
+          console.warn('[onDepositSuccess] capture-saved-card failed:', err);
+        }
+      } catch (e) {
+        console.warn('[onDepositSuccess] capture-saved-card threw:', e);
+      }
+    }
+
     // Now that deposit is paid and status flipped to confirmed, fire
     // the confirmation emails. This is the deposit-required path.
     fireBookingConfirmation(bookingId);
@@ -2116,7 +2172,21 @@ export default function BookingPage() {
                     onChange={e=>{
                       let val=e.target.value;
                       if(k==='phone'){
-                        const d=val.replace(/\D/g,'').slice(0,10);
+                        // Strip non-digits, then handle the case where
+                        // the user (or autofill, or an iPhone Contacts
+                        // suggestion) includes a leading '1' country
+                        // code. We treat 11 digits starting with 1 as
+                        // a US number with the country code, and use
+                        // the trailing 10 digits. This fixes a bug
+                        // where the formatter sliced the first 10
+                        // digits and treated the country code as the
+                        // first digit of the area code (HK QA May 8).
+                        let d=val.replace(/\D/g,'');
+                        if (d.length === 11 && d.startsWith('1')) {
+                          d = d.slice(1);
+                        } else {
+                          d = d.slice(0, 10);
+                        }
                         val=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
                       }
                       setForm(f=>({...f,[k]:val}));setErrors(er=>({...er,[k]:''}));
@@ -2209,6 +2279,37 @@ export default function BookingPage() {
                 `color: ${isRepeat ? '#B87840' : '#2A5741'}; font-weight: bold;`
               );
               console.log(`[Booking]   email=${email}, phone=${phone}`);
+
+              // For returning customers, look up the saved card on the
+              // clients row so the payment step can skip the card form
+              // and use the existing card_on_file. HK reported May 8
+              // QA: 'If the card was already there from previously, it
+              // is still asking for a card.' Root cause was that the
+              // returning-customer recognition step did not also load
+              // the saved card; this branch fixes it.
+              if (isRepeat && email) {
+                const { data: clientRow } = await supabase
+                  .from('clients')
+                  .select('id, payment_method_id, card_on_file_id, stripe_customer_id')
+                  .eq('therapist_id', therapist.id)
+                  .ilike('email', email)
+                  .maybeSingle();
+                if (clientRow?.id) {
+                  setCardSavedClientId(clientRow.id);
+                  // payment_method_id is the legacy save-card path field;
+                  // card_on_file_id is the new auto-save-from-deposit
+                  // field. Either is valid as a saved card identifier
+                  // for charging later. Prefer payment_method_id if
+                  // both exist (newer mandates).
+                  const savedPm = clientRow.payment_method_id || clientRow.card_on_file_id;
+                  if (savedPm) {
+                    setCardSavedPaymentMethodId(savedPm);
+                  }
+                  if (clientRow.stripe_customer_id) {
+                    setCardSavedCustomerId(clientRow.stripe_customer_id);
+                  }
+                }
+              }
 
               // Intake-before-booking gate. If the therapist has this on AND
               // approval is OFF AND the client is new AND they have not just
