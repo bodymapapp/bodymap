@@ -260,17 +260,24 @@ export class SquareV1Strategy implements SquareStrategy {
       // Subscriptions are 'limited' because Square's primitive is
       // genuinely weaker than Stripe's: no proration on plan changes,
       // weaker built-in dunning (failed payment retry), monthly only
-      // in our integration. UI shows these limitations inline when a
-      // therapist picks Square subscriptions.
+      // Square subscriptions are technically possible via the
+      // Subscriptions API, but our current SquareV1 implementation
+      // produces malformed requests (subscription_periods=0,
+      // idempotency-key conflicts) when the membership flow is
+      // exercised end-to-end (HK confirmed in production testing
+      // May 8, 2026).
+      //
+      // Until SquareV2 properly implements subscriptions, mark this
+      // as 'unsupported' so the booking page hides the path and the
+      // purchase-membership edge function returns a clear
+      // 'subscription_not_supported_on_provider' error rather than
+      // letting a bad request reach Square's API.
+      //
+      // Memberships ride on Stripe exclusively per the capability
+      // matrix in docs/BILLING_STRATEGY.md.
       createSubscriptionLink: {
-        status: 'limited',
+        status: 'unsupported',
         since: this.version,
-        limitations: [
-          'Monthly billing cadence only (Stripe supports weekly, quarterly, yearly).',
-          'No automatic proration when a member changes plans.',
-          'Failed payment retries are simpler than Stripe Smart Retries; failed renewals require manual follow-up.',
-          'No customer-facing self-service portal for members to update card or cancel — therapist handles via dashboard.',
-        ],
         recommendedAlternative: 'stripe',
       },
     };

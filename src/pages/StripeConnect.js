@@ -47,6 +47,8 @@ export default function StripeConnect() {
   const { therapist } = useAuth();
   const navigate = useNavigate();
 
+  const [statusReason, setStatusReason] = useState(null);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const success = params.get('success');
@@ -73,10 +75,20 @@ export default function StripeConnect() {
       const data = await res.json();
       if (data.success) {
         setStatus('success');
-      } else {
-        setStatus('error');
+        return;
       }
-    } catch {
+      // The edge function now returns a precise status code so we
+      // can show the right state. 'onboarding_incomplete' is the
+      // common one: account exists but Stripe needs more info.
+      if (data.status === 'onboarding_incomplete') {
+        setStatusReason(data.error || 'Stripe needs more information.');
+        setStatus('refresh');
+        return;
+      }
+      setStatusReason(data.error || 'Could not verify Stripe connection.');
+      setStatus('error');
+    } catch (e) {
+      setStatusReason(String(e?.message || e));
       setStatus('error');
     }
   };
@@ -101,8 +113,8 @@ export default function StripeConnect() {
       }}>
         {status === 'connecting' && <ConnectingState />}
         {status === 'success' && <SuccessState navigate={navigate} />}
-        {status === 'refresh' && <RefreshState navigate={navigate} />}
-        {status === 'error' && <ErrorState navigate={navigate} />}
+        {status === 'refresh' && <RefreshState navigate={navigate} reason={statusReason} />}
+        {status === 'error' && <ErrorState navigate={navigate} reason={statusReason} />}
       </div>
     </div>
   );
@@ -238,7 +250,7 @@ function SuccessState({ navigate }) {
   );
 }
 
-function RefreshState({ navigate }) {
+function RefreshState({ navigate, reason }) {
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
@@ -255,7 +267,7 @@ function RefreshState({ navigate }) {
           Setup not finished
         </h1>
         <p style={{ fontSize: 14, color: C.gray, margin: 0, lineHeight: 1.6 }}>
-          Stripe needs a few more steps. Common reasons: identity verification incomplete, or bank account not linked yet.
+          {reason || 'Stripe needs a few more steps. Common reasons: identity verification incomplete, or bank account not linked yet.'}
         </p>
       </div>
 
@@ -269,7 +281,7 @@ function RefreshState({ navigate }) {
         color: '#78350F',
         lineHeight: 1.6,
       }}>
-        <strong>What to do next:</strong> Try connecting again. Stripe will pick up where you left off. You should not have to redo anything you already completed.
+        <strong>What to do next:</strong> Click below to finish setup. Stripe will pick up where you left off. You should not have to redo anything you already completed.
       </div>
 
       <button onClick={() => navigate('/dashboard/settings#payments')} style={{
@@ -283,13 +295,13 @@ function RefreshState({ navigate }) {
         cursor: 'pointer',
         width: '100%',
       }}>
-        Try connecting again →
+        Finish Stripe setup →
       </button>
     </div>
   );
 }
 
-function ErrorState({ navigate }) {
+function ErrorState({ navigate, reason }) {
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
@@ -306,7 +318,7 @@ function ErrorState({ navigate }) {
           Something went wrong
         </h1>
         <p style={{ fontSize: 14, color: C.gray, margin: 0, lineHeight: 1.6 }}>
-          We could not confirm the Stripe connection. Your account is safe; nothing has been charged.
+          {reason || 'We could not confirm the Stripe connection. Your account is safe; nothing has been charged.'}
         </p>
       </div>
 

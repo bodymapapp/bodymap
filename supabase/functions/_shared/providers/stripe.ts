@@ -33,23 +33,35 @@ const STRIPE_API = 'https://api.stripe.com/v1';
 // Internal: build the form-encoded body that Stripe REST endpoints
 // expect. Handles arrays via [n] indexing and nested objects via
 // [key] notation.
+//
+// CRITICAL: when recursing into nested objects/arrays, the parent
+// prefix must be preserved and combined with the child key. Earlier
+// version of this helper passed only the current key as the new
+// prefix, dropping the parent context. That produced keys like
+// '0[price_data][unit_amount]' instead of
+// 'line_items[0][price_data][unit_amount]', which Stripe rejected
+// with 'Received unknown parameters: price_data, 0, product_data'.
+// Fixed May 8, 2026.
 function form(params: Record<string, unknown>, prefix = ''): URLSearchParams {
   const out = new URLSearchParams();
+  const buildKey = (key: string) => prefix ? `${prefix}[${key}]` : key;
   const append = (key: string, value: unknown) => {
     if (value === undefined || value === null) return;
+    const fullKey = buildKey(key);
     if (typeof value === 'object' && !Array.isArray(value)) {
+      // Recurse with the full path as the new prefix so child keys
+      // build on top of the parent rather than overwriting it.
       for (const [k, v] of Object.entries(value)) {
-        const sub = form({ [k]: v }, key);
+        const sub = form({ [k]: v }, fullKey);
         for (const [sk, sv] of sub.entries()) out.append(sk, sv);
       }
     } else if (Array.isArray(value)) {
       value.forEach((v, i) => {
-        const sub = form({ [String(i)]: v }, key);
+        const sub = form({ [String(i)]: v }, fullKey);
         for (const [sk, sv] of sub.entries()) out.append(sk, sv);
       });
     } else {
-      const k = prefix ? `${prefix}[${key}]` : key;
-      out.append(k, String(value));
+      out.append(fullKey, String(value));
     }
   };
   for (const [k, v] of Object.entries(params)) append(k, v);

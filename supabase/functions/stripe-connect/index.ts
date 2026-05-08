@@ -86,10 +86,111 @@ serve(async (req) => {
     }
 
     // Action: confirm_connected
+    //
+    // Called from StripeConnect.js after Stripe's hosted onboarding
+    // redirects back. The success=true query param means Stripe
+    // *thinks* the user finished, but Stripe's flow lets users close
+    // the tab partway through, so we cannot trust the redirect alone.
+    //
+    // We verify the account state directly with Stripe:
+    //   - charges_enabled: account can accept payments
+    //   - payouts_enabled: account can transfer to bank
+    //   - details_submitted: business details and identity verified
+    //
+    // Only when all three are true do we flip stripe_account_connected
+    // to true. Otherwise return a precise status so the UI can show
+    // the right next step (typically: 'finish onboarding in Stripe').
+    //
+    // Race condition this fixes: HK reported May 8 2026 that Stripe
+    // 'felt connected but wasn't'. The boolean was set but real
+    // charges failed because the underlying account was not finished.
     if (action === 'confirm_connected' && therapist_id) {
       const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
-      await supabase.from('therapists').update({ stripe_account_connected: true }).eq('id', therapist_id);
-      return new Response(JSON.stringify({ success: true }), {
+
+      // Look up the account_id we stored during get_oauth_url
+      const { data: therapistRow, error: tErr } = await supabase
+        .from('therapists')
+        .select('stripe_account_id')
+        .eq('id', therapist_id)
+        .maybeSingle();
+
+      if (tErr) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'db_error',
+          error: 'Could not look up therapist record',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      if (!therapistRow?.stripe_account_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'no_account_id',
+          error: 'No Stripe account associated with this therapist. Restart the connection flow.',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Verify with Stripe that the account is actually ready
+      const acctRes = await fetch(`https://api.stripe.com/v1/accounts/${therapistRow.stripe_account_id}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      const acct = await acctRes.json();
+
+      if (!acctRes.ok || !acct.id) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'stripe_lookup_failed',
+          error: acct.error?.message || 'Could not verify Stripe account state',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const ready = !!(acct.charges_enabled && acct.payouts_enabled && acct.details_submitted);
+
+      if (!ready) {
+        // Account exists but onboarding is incomplete. Do NOT set
+        // the connected flag. Return a precise status the UI can
+        // map to a 'finish onboarding' state.
+        const missing: string[] = [];
+        if (!acct.charges_enabled) missing.push('charges');
+        if (!acct.payouts_enabled) missing.push('payouts');
+        if (!acct.details_submitted) missing.push('business details');
+
+        // Make sure the boolean reflects reality. If a previous run
+        // erroneously set it to true, undo that now.
+        await supabase.from('therapists')
+          .update({ stripe_account_connected: false })
+          .eq('id', therapist_id);
+
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'onboarding_incomplete',
+          error: `Stripe still needs: ${missing.join(', ')}.`,
+          missing,
+          requirements_currently_due: acct.requirements?.currently_due || [],
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      // Account is fully ready. Flip the flag and verify the write.
+      const { error: updErr } = await supabase
+        .from('therapists')
+        .update({
+          stripe_account_connected: true,
+          stripe_account_ready_at: new Date().toISOString(),
+        })
+        .eq('id', therapist_id);
+
+      if (updErr) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'db_update_failed',
+          error: 'Could not save connection state. Please try again.',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: 'connected',
+      }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

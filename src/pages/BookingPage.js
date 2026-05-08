@@ -1772,13 +1772,23 @@ export default function BookingPage() {
                 row is tappable; tapping toggles offersExpanded. The
                 count and lowest-price hint give clients a reason to
                 tap without forcing them to scroll a long list. */}
-            {(packagesList.length > 0 || membershipsList.length > 0) && (
+            {(() => {
+              // Memberships are Stripe-only by capability. Square cannot
+              // do auto-renewing subscriptions reliably (per
+              // BILLING_STRATEGY.md capability matrix). Hide memberships
+              // from the booking page if therapist has no Stripe so
+              // clients never hit a Square membership error path.
+              const hasStripeForMembership = !!therapist?.stripe_account_id;
+              const visibleMemberships = hasStripeForMembership ? membershipsList : [];
+              const showOffers = packagesList.length > 0 || visibleMemberships.length > 0;
+              if (!showOffers) return null;
+              return (
               <div style={{ marginBottom: 24 }}>
                 {(() => {
-                  const totalCount = packagesList.length + membershipsList.length;
+                  const totalCount = packagesList.length + visibleMemberships.length;
                   const allPrices = [
                     ...packagesList.map(p => Number(p.price)),
-                    ...membershipsList.map(m => Number(m.monthly_price)),
+                    ...visibleMemberships.map(m => Number(m.monthly_price)),
                   ].filter(p => !isNaN(p) && p > 0);
                   const lowestPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
                   return (
@@ -1875,7 +1885,7 @@ export default function BookingPage() {
                         </div>
                       );
                     })}
-                    {membershipsList.map((m) => (
+                    {visibleMemberships.map((m) => (
                       <button
                         key={m.id}
                         onClick={() => openOffer('membership', m)}
@@ -1920,12 +1930,14 @@ export default function BookingPage() {
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {/* "Single sessions" divider only renders when offers are
-                expanded — collapsed view does not need a divider since
-                the offers card itself acts as a section header. */}
-            {(packagesList.length > 0 || membershipsList.length > 0) && offersExpanded && (
+                expanded. Uses the same hasStripeForMembership logic so
+                the divider does not appear when there is nothing to
+                divide. */}
+            {(packagesList.length > 0 || (!!therapist?.stripe_account_id && membershipsList.length > 0)) && offersExpanded && (
               <div style={{
                 fontSize: 13, fontWeight: 700, color: C.dark, textTransform: 'uppercase', letterSpacing: '0.5px',
                 margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8,
