@@ -499,7 +499,14 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
           style: {
             input: {
               fontSize: '16px',
-              fontFamily: 'system-ui, sans-serif',
+              // Square Web Payments SDK rejects generic CSS keywords like
+              // 'system-ui' and 'sans-serif'. It requires quoted real font
+              // names. We pick a list that approximates system-ui across
+              // platforms: Apple's San Francisco (-apple-system / BlinkMacSystemFont),
+              // Segoe UI on Windows, Roboto on Android, fallback to Helvetica
+              // Neue and Helvetica. The page's surrounding text uses system-ui
+              // via base CSS, this list visually matches.
+              fontFamily: '"-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Helvetica", "Arial"',
               color: '#1A1A2E',
             },
             '.input-container': {
