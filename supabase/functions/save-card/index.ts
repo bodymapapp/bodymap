@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getStripeSecret } from "../_shared/paymentMode.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -16,11 +17,15 @@ serve(async (req) => {
   try {
     const { stripe_account_id, client_id, client_email, client_name, therapist_id } = await req.json();
 
-    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
+    let STRIPE_SECRET: string;
+    try {
+      STRIPE_SECRET = getStripeSecret();
+    } catch (e) {
+      return respond({ error: e.message }, 500);
+    }
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
-    if (!STRIPE_SECRET) return respond({ error: 'STRIPE_SECRET_KEY not set' }, 500);
     if (!stripe_account_id) return respond({ error: 'No Stripe account connected' }, 400);
 
     const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);

@@ -149,6 +149,68 @@ The matrix is the honesty layer. We surface gaps to therapists so they make info
 
 ---
 
+## Test mode (Stripe test + Square sandbox)
+
+Path A as scoped May 8, 2026 morning. Lets HK and any future engineer walk every payment flow against test/sandbox keys without paying processing fees.
+
+### Architecture
+
+A single environment variable controls which set of keys the application uses:
+
+- `REACT_APP_PAYMENT_MODE` (frontend, set in Vercel env vars)
+- `PAYMENT_MODE` (edge functions, set in Supabase secrets)
+
+Values: `live` (default if unset) or `test`.
+
+Two parallel sets of keys:
+
+| Live env var | Test env var | What it is |
+|---|---|---|
+| `REACT_APP_STRIPE_PUBLISHABLE_KEY` | `REACT_APP_STRIPE_TEST_PUBLISHABLE_KEY` | Frontend Stripe.js init |
+| `STRIPE_SECRET_KEY` | `STRIPE_TEST_SECRET_KEY` | Edge function Stripe API auth |
+| `STRIPE_CLIENT_ID` | `STRIPE_TEST_CLIENT_ID` | Stripe Connect OAuth |
+| `SQUARE_APP_ID` | `SQUARE_TEST_APP_ID` | Square OAuth app id |
+| `SQUARE_APP_SECRET` | `SQUARE_TEST_APP_SECRET` | Square OAuth secret |
+| `SQUARE_ACCESS_TOKEN` | `SQUARE_TEST_ACCESS_TOKEN` | Square direct API auth |
+| `SQUARE_DEFAULT_LOCATION_ID` | `SQUARE_TEST_LOCATION_ID` | Square sandbox default location |
+
+### Key resolution (single source of truth)
+
+Two helper modules centralize the key swap. No file outside these helpers reads payment keys directly from env.
+
+- `src/lib/paymentMode.js` (frontend)
+- `supabase/functions/_shared/paymentMode.ts` (edge functions)
+
+Each helper exports an `isTestMode()` function and getters like `getStripePublishableKey()`, `getStripeSecret()`, `getSquareAppId()`, `getSquareAccessToken()`. The getters throw if the appropriate key is missing rather than silently falling back, so misconfigurations surface immediately.
+
+### Safety design
+
+1. **Default is always live.** If the env var is missing, the helper returns the live key. A forgotten env var never silently puts production into test mode.
+2. **Test keys live in different env vars.** Live code paths never reference `_TEST` env vars and vice versa. There is no way for a single typo to cross-contaminate.
+3. **Throws on missing.** If `PAYMENT_MODE=test` but `STRIPE_TEST_SECRET_KEY` is unset, the edge function throws `'PAYMENT_MODE=test but STRIPE_TEST_SECRET_KEY is not set'` rather than silently falling back to live or hitting Stripe with an empty Authorization header.
+4. **Visible UI banner.** When test mode is active on the frontend, a yellow `TEST MODE ACTIVE` banner appears at the top of every page. Hard to miss. Therapists never see this on production because production never has the env var set.
+5. **Square auto-detects sandbox vs production.** Sandbox app IDs start with `sandbox-`; the API base URL is derived from the app ID prefix. Setting `SQUARE_TEST_APP_ID` (which starts with `sandbox-`) automatically routes API calls to `connect.squareupsandbox.com`.
+
+### Vercel + Supabase scoping
+
+- **Vercel:** test keys are scoped to **Preview environment only**. Production environment has only live keys. This means production deploys can never accidentally pick up test keys regardless of branch.
+- **Supabase:** since the project has only one Edge Function environment, the `PAYMENT_MODE` secret is set ONLY when QA testing. After QA, unset it (or set to `live`). Long-term proper answer is a separate Supabase staging project; deferred until traffic warrants the cost.
+
+### When to use test mode
+
+- Walking the QA checklist (`docs/PAYMENT_QA_CHECKLIST.md`)
+- Verifying a new payment feature before live ship
+- Onboarding a new engineer who needs to see the flows
+- Demoing the booking flow to a potential investor or partner without involving real money
+
+### When NOT to use test mode
+
+- Production traffic. Live therapists charging live clients always uses `PAYMENT_MODE=live` (or unset).
+- Never set `PAYMENT_MODE=test` on the production Vercel environment.
+- After QA, either unset or set back to `live` on Supabase.
+
+---
+
 ## Decision log (billing-specific)
 
 ### April 2026

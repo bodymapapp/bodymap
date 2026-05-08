@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getStripeSecret, isTestMode } from "../_shared/paymentMode.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,9 +12,22 @@ serve(async (req) => {
     return new Response('ok', { headers: corsHeaders });
   }
 
-  const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
+  let STRIPE_SECRET: string;
+  try {
+    STRIPE_SECRET = getStripeSecret();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
   const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+  // Stripe Connect OAuth uses a different identifier than the API
+  // secret. Live and test environments have separate Connect client
+  // ids registered with Stripe (ca_xxx for live, ca_xxx for test).
+  const STRIPE_CLIENT_ID = isTestMode()
+    ? (Deno.env.get('STRIPE_TEST_CLIENT_ID') || 'ca_test')
+    : (Deno.env.get('STRIPE_CLIENT_ID') || 'ca_test');
 
   try {
     const { action, code, therapist_id } = await req.json();
@@ -22,7 +36,7 @@ serve(async (req) => {
     if (action === 'get_oauth_url') {
       const redirectUri = 'https://www.mybodymap.app/dashboard/stripe-connect';
       const state = therapist_id;
-      const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${Deno.env.get('STRIPE_CLIENT_ID') || 'ca_test'}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+      const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
       
       // Alternative: use Account Links for hosted onboarding (simpler)
       const accountRes = await fetch('https://api.stripe.com/v1/accounts', {

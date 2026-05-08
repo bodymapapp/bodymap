@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { db, supabase } from "../lib/supabase";
 import BookingModal from "./BookingModal";
+import { getStripePublishableKey } from "../lib/paymentMode";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -57,7 +58,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
         document.head.appendChild(s);
       });
     }
-    const stripe = window.Stripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY, { stripeAccount: therapist.stripe_account_id });
+    const stripe = window.Stripe(getStripePublishableKey(), { stripeAccount: therapist.stripe_account_id });
     const elements = stripe.elements({ clientSecret: data.client_secret });
     const cardEl = elements.create('card', { style: { base: { fontSize: '16px', color: '#1A3A28' } } });
     const mountDiv = document.getElementById('bm-card-mount');
@@ -78,7 +79,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     // Save card details to client record
     const pmId = setupIntent.payment_method;
     const pmRes = await fetch(`https://api.stripe.com/v1/payment_methods/${pmId}`, {
-      headers: { 'Authorization': `Bearer ${process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY}`, 'Stripe-Account': therapist.stripe_account_id }
+      headers: { 'Authorization': `Bearer ${getStripePublishableKey()}`, 'Stripe-Account': therapist.stripe_account_id }
     });
     // Store payment_method_id + last4 + brand on client
     await supabase.from('clients').update({

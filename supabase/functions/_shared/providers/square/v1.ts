@@ -40,17 +40,24 @@ import type {
 } from '../../payment-provider.ts';
 import { ProviderError, getSupabaseClient } from '../../payment-provider.ts';
 import type { SquareStrategy } from './strategy.ts';
+import { getSquareAppId } from '../../paymentMode.ts';
 
 // Square API base URL. Auto-detects sandbox vs production from the
 // SQUARE_APP_ID prefix:
 //   sandbox-sq0idb-...  -> sandbox API
 //   sq0idp-...          -> production API
-// The Web Payments SDK on the frontend follows the same pattern via
-// the application id we send back. Changing the env var to a sandbox
-// id flips the entire stack to sandbox; flipping back is one secret
-// update. No code changes needed for the swap.
+// With test mode active, getSquareAppId() returns the sandbox app id
+// which starts with 'sandbox-', so this auto-routes correctly.
+// Production stays on the live SQUARE_APP_ID env var unchanged.
 function squareApiBase(): string {
-  const appId = Deno.env.get('SQUARE_APP_ID') || '';
+  let appId = '';
+  try {
+    appId = getSquareAppId();
+  } catch {
+    // Fall back to direct env read if helper throws (env vars not set).
+    // The actual API call will fail with a clearer message later.
+    appId = Deno.env.get('SQUARE_APP_ID') || '';
+  }
   return appId.startsWith('sandbox-')
     ? 'https://connect.squareupsandbox.com'
     : 'https://connect.squareup.com';
@@ -452,9 +459,15 @@ export class SquareV1Strategy implements SquareStrategy {
       phone: args.customer.phone,
     });
     // Square Web Payments SDK needs the application id (the OAuth
-    // app's id, not the merchant id) on the frontend. Same env var
-    // used by square-oauth and square-oauth-callback for consistency.
-    const applicationId = Deno.env.get('SQUARE_APP_ID') || '';
+    // app's id, not the merchant id) on the frontend. With test mode
+    // active, this returns the sandbox app id; production returns the
+    // live one. Same env vars used by square-oauth flows.
+    let applicationId = '';
+    try {
+      applicationId = getSquareAppId();
+    } catch (e) {
+      throw new ProviderError('square_app_id_missing', e.message);
+    }
     if (!applicationId) {
       throw new ProviderError('square_app_id_missing', 'SQUARE_APP_ID env var not set');
     }

@@ -1,19 +1,84 @@
 # Payment Flow QA Checklist
 
 **Date created:** May 7, 2026 (night)
+**Updated:** May 8, 2026 (morning, added Path A test mode setup)
 **Owner:** HK
 **Goal:** Verify every payment flow works correctly across all four processor configurations before declaring Square + Stripe parity battle-tested in production.
 
-## How to use this document
+## STEP 0: Set up test mode environment (do this FIRST, ~10 minutes)
+
+Before walking any of the configs below, set up the test mode environment so you do not pay 3% in fees on every test transaction.
+
+### Vercel preview environment variables
+
+Go to Vercel dashboard → bodymap project → Settings → Environment Variables. Add the following with **scope set to Preview only** (NOT Production, NOT Development):
+
+| Variable name | Value | Scope |
+|---|---|---|
+| `REACT_APP_PAYMENT_MODE` | `test` | Preview |
+| `REACT_APP_STRIPE_TEST_PUBLISHABLE_KEY` | (from Stripe Dashboard → toggle Test mode → Developers → API keys → Publishable key) | Preview |
+
+### Supabase edge function secrets (test environment)
+
+The edge functions read keys from Supabase secrets. For test mode you have two options:
+
+**Option A (simplest, recommended for now):** add the test secrets to your existing Supabase project alongside the live ones. The edge functions will pick the right one based on `PAYMENT_MODE`. Risk: if you accidentally set `PAYMENT_MODE=test` on a production-facing edge function call, it would use test keys for production traffic, which fails harmlessly but is messy.
+
+**Option B (proper, do later):** create a separate Supabase project for staging. Mature long-term, but a 1-2 hour setup. Defer until traffic warrants the separation.
+
+For Option A, go to Supabase dashboard → bodymap project → Settings → Edge Functions → Secrets. Add:
+
+| Secret name | Value |
+|---|---|
+| `PAYMENT_MODE` | `test` (set ONLY when testing; UNSET for normal production operation) |
+| `STRIPE_TEST_SECRET_KEY` | (from Stripe Dashboard → Test mode → Developers → API keys → Secret key) |
+| `STRIPE_TEST_CLIENT_ID` | (from Stripe Dashboard → Test mode → Connect → Settings → Client ID; only needed if testing Stripe Connect OAuth) |
+| `SQUARE_TEST_APP_ID` | (from developer.squareup.com → your sandbox app → Credentials) |
+| `SQUARE_TEST_APP_SECRET` | (same place; the OAuth secret) |
+| `SQUARE_TEST_ACCESS_TOKEN` | (same place; the access token for direct API calls) |
+| `SQUARE_TEST_LOCATION_ID` | (from developer.squareup.com → your sandbox app → Locations) |
+
+**Critical:** when you finish testing, either UNSET `PAYMENT_MODE` or set it back to `live`. If you leave `PAYMENT_MODE=test` set on the production Supabase project, every production edge function call will fail because it will look for test keys that production therapists do not have configured.
+
+A safer long-term setup is Option B (separate Supabase project for staging). For today's QA work, Option A with discipline is fine.
+
+### Verify the setup
+
+Once env vars are added in both places:
+
+- [ ] Trigger a Vercel preview deployment (push to a non-main branch, or use Vercel's "Redeploy" → check "Use existing Build Cache: No")
+- [ ] Open the preview URL (something like `bodymap-git-test-xyz.vercel.app`)
+- [ ] **Yellow "TEST MODE ACTIVE" banner appears at the top of the page** ⭐ this confirms test mode is wired correctly
+- [ ] Visit `/dashboard` and log in (same therapist account, different keys)
+- [ ] Yellow banner persists across navigation
+
+If the banner does not appear, `REACT_APP_PAYMENT_MODE=test` is not set correctly on the Preview environment. Fix before continuing.
+
+### Test cards to use during QA
+
+| Processor | Card number | Expiry | CVC | ZIP |
+|---|---|---|---|---|
+| Stripe success | `4242 4242 4242 4242` | any future | any 3 digits | any 5 digits |
+| Stripe decline | `4000 0000 0000 0002` | any future | any 3 digits | any 5 digits |
+| Stripe 3DS required | `4000 0027 6000 3184` | any future | any 3 digits | any 5 digits |
+| Square sandbox success | `4111 1111 1111 1111` | any future | `111` | `94103` |
+| Square sandbox decline | `4000 0000 0000 0002` | any future | `111` | `94103` |
+
+For wallet testing (Apple Pay, Google Pay), Stripe test mode shows the buttons even with sandbox cards configured in your wallet. For end-to-end production wallet verification, you still need real wallet methods on real keys (covered in Step N below).
+
+---
+
+## How to use the rest of this document
 
 Each section below is a processor configuration. Within each section is a list of flows to verify. Check the box once verified. If a flow fails, add a note about what failed and we will fix before moving on.
 
 You will need:
 
-1. **One test therapist account** for each configuration. Easiest: use the existing `healinghands` account and toggle Stripe / Square on and off via Settings.
+1. **One test therapist account** for each configuration. Easiest: use the existing `healinghands` account and toggle Stripe / Square on and off via Settings on the preview URL (test environment, not production).
 2. **A test client identity** with email you can check (gmail, throwaway, etc).
-3. **A real card** for live payment testing. Stripe and Square both refund test charges within 5-10 business days, so cost is just temporary.
+3. **Test cards** from the table above (no real money exposure).
 4. **One iPhone and one laptop** to test across devices and wallet methods.
+5. **One $1 service** in your therapist dashboard for the production smoke test step at the end (after all four configs verified in test mode).
 
 If a flow works, check the box. If it fails, do not check, paste me the error verbatim, and we fix before proceeding.
 
@@ -21,7 +86,7 @@ If a flow works, check the box. If it fails, do not check, paste me the error ve
 
 ## Config 1: Square ON, Stripe OFF
 
-This is the configuration HK already verified one flow on tonight (returning-customer card-save worked end-to-end).
+This is the configuration HK already verified one flow on May 7 night (returning-customer card-save worked end-to-end against production Square).
 
 ### Therapist setup (Settings)
 

@@ -26,6 +26,7 @@ import {
   RefundArgs, RefundResult,
   ProviderError, getSupabaseClient,
 } from '../payment-provider.ts';
+import { getStripeSecret } from '../paymentMode.ts';
 
 const STRIPE_API = 'https://api.stripe.com/v1';
 
@@ -61,9 +62,11 @@ async function stripeFetch(
   path: string,
   args: { method?: 'GET' | 'POST'; therapist: Therapist; body?: Record<string, unknown> },
 ): Promise<any> {
-  const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
-  if (!STRIPE_SECRET) {
-    throw new ProviderError('env_not_set', 'STRIPE_SECRET_KEY env var not set');
+  let STRIPE_SECRET: string;
+  try {
+    STRIPE_SECRET = getStripeSecret();
+  } catch (e) {
+    throw new ProviderError('env_not_set', e.message);
   }
   if (!args.therapist.stripe_account_id) {
     throw new ProviderError('stripe_not_connected', 'Therapist has no stripe_account_id');

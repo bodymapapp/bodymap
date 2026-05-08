@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getStripeSecret } from "../_shared/paymentMode.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -24,8 +25,12 @@ serve(async (req) => {
       therapist_id,
     } = await req.json();
 
-    const STRIPE_SECRET = Deno.env.get('STRIPE_SECRET_KEY');
-    if (!STRIPE_SECRET) return respond({ error: 'STRIPE_SECRET_KEY not set' });
+    let STRIPE_SECRET;
+    try {
+      STRIPE_SECRET = getStripeSecret();
+    } catch (e) {
+      return respond({ error: e.message });
+    }
     if (!stripe_account_id) return respond({ error: 'No Stripe account connected' });
 
     const res = await fetch('https://api.stripe.com/v1/payment_intents', {

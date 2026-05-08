@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
+import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444', amber:'#F59E0B' };
 
@@ -151,7 +152,7 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, thera
       // correctly and any wallet payments confirm against the right
       // merchant identity.
       stripeRef.current = window.Stripe(
-        process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+        getStripePublishableKey(),
         stripeAccountId ? { stripeAccount: stripeAccountId } : {}
       );
 
@@ -340,7 +341,7 @@ function StripeCardSetupForm({ clientSecret, stripeAccountId, mandateAgreed, onS
       if (!alive || !divRef.current) return;
 
       stripeRef.current = window.Stripe(
-        process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY,
+        getStripePublishableKey(),
         stripeAccountId ? { stripeAccount: stripeAccountId } : {}
       );
       const elements = stripeRef.current.elements();

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { getSquareAppId } from "../_shared/paymentMode.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -10,7 +11,15 @@ serve(async (req) => {
 
   const { therapist_id } = await req.json();
 
-  const SQUARE_APP_ID = Deno.env.get('SQUARE_APP_ID');
+  let SQUARE_APP_ID: string;
+  try {
+    SQUARE_APP_ID = getSquareAppId();
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500,
+      headers: { ...cors, 'Content-Type': 'application/json' },
+    });
+  }
   const REDIRECT_URI  = 'https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth-callback';
 
   // Full scope list for Square parity. Every scope here maps to a

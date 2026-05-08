@@ -34,6 +34,21 @@ For the Square activation appointment with mom.
 - Be in front of laptop with squareup.com/activate already open
 - Have HK driver's license ready as backup
 
+**Status May 8 morning:** Square activation completed May 7 evening (a day early). First production payment received. BodyMap LLC merchant identity verified.
+
+### May 8 morning QA setup
+
+Working through the payment QA checklist (`docs/PAYMENT_QA_CHECKLIST.md`). Test mode (Path A) shipped to avoid 3% on every test transaction. Vercel preview environment uses `REACT_APP_PAYMENT_MODE=test` plus parallel `_TEST` env vars.
+
+Test cards reference (no real money exposure when used on the preview URL):
+- Stripe success: `4242 4242 4242 4242`, any future expiry, any CVC, any ZIP
+- Stripe decline: `4000 0000 0000 0002`
+- Stripe 3DS required: `4000 0027 6000 3184`
+- Square sandbox success: `4111 1111 1111 1111`, any future expiry, CVC `111`, ZIP `94103`
+- Square sandbox decline: `4000 0000 0000 0002`
+
+Test/sandbox keys live in Vercel and Supabase env vars. Never paste keys in chat or commit them to the repo. Architecture detailed in `docs/BILLING_STRATEGY.md` "Test mode" section.
+
 ### Notes from recent founding therapist conversations
 
 Capture themes here as they come in. When a theme repeats three times, promote it to a real document.

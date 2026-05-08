@@ -11,6 +11,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { isTestMode } from "../_shared/paymentMode.ts";
 
 serve(async (req) => {
   const url = new URL(req.url);
@@ -24,13 +25,19 @@ serve(async (req) => {
     });
   }
 
-  const SQUARE_APP_ID     = Deno.env.get('SQUARE_APP_ID');
-  const SQUARE_APP_SECRET = Deno.env.get('SQUARE_APP_SECRET');
+  const SQUARE_APP_ID     = isTestMode()
+    ? Deno.env.get('SQUARE_TEST_APP_ID')
+    : Deno.env.get('SQUARE_APP_ID');
+  const SQUARE_APP_SECRET = isTestMode()
+    ? Deno.env.get('SQUARE_TEST_APP_SECRET')
+    : Deno.env.get('SQUARE_APP_SECRET');
   const SUPABASE_URL      = Deno.env.get('SUPABASE_URL');
   const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   const REDIRECT_URI      = 'https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/square-oauth-callback';
 
-  // Auto-detect sandbox vs production from app id prefix.
+  // Auto-detect sandbox vs production from app id prefix. With test
+  // mode active, SQUARE_APP_ID resolves to the sandbox app id which
+  // starts with 'sandbox-', so the apiHost auto-routes to sandbox.
   const apiHost = (SQUARE_APP_ID || '').startsWith('sandbox-')
     ? 'https://connect.squareupsandbox.com'
     : 'https://connect.squareup.com';

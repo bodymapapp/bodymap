@@ -24,6 +24,7 @@ import StripeConnect from './pages/StripeConnect';
 import FounderHub from './pages/FounderHub';
 import Help from './pages/Help';
 import FounderRoute from './components/FounderRoute';
+import TestModeBanner from './components/TestModeBanner';
 import PaymentMethodComparisonMockup from './components/mockups/PaymentMethodComparisonMockup';
 import PaymentEvolutionMockup from './components/mockups/PaymentEvolutionMockup';
 import ScheduleDashboard from './components/ScheduleDashboard';
@@ -56,6 +57,7 @@ function App() {
     <AuthProvider>
       <Router>
       <ScrollToTop />
+      <TestModeBanner />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/features" element={<FeaturesV2 />} />
