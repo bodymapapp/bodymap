@@ -96,13 +96,21 @@ function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=
   );
 }
 
-// Stripe Card Element, uses connected account to match payment intent
-function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuccess, onError }) {
+// Stripe Card Element, uses connected account to match payment intent.
+// Also mounts a Payment Request Button (Apple Pay / Google Pay / Link)
+// above the card field when the visitor's device supports it. Wallets
+// were enabled at the Stripe platform level May 7, 2026 (HK confirmed
+// in dashboard screenshot). This component opportunistically surfaces
+// them to clients who can use them; everyone else sees the existing
+// card-form flow unchanged.
+function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, therapistName, onSuccess, onError }) {
   const divRef = useRef(null);
+  const walletButtonRef = useRef(null);
   const stripeRef = useRef(null);
   const cardRef = useRef(null);
   const [ready, setReady] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [walletAvailable, setWalletAvailable] = useState(false);
 
   useEffect(() => {
     if (!clientSecret || !divRef.current) return;
@@ -125,6 +133,8 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuc
         stripeAccountId ? { stripeAccount: stripeAccountId } : {}
       );
       const elements = stripeRef.current.elements();
+
+      // Card Element (existing behavior)
       cardRef.current = elements.create('card', {
         style: {
           base: {
@@ -138,6 +148,64 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuc
       });
       cardRef.current.on('ready', () => { if (alive) setReady(true); });
       cardRef.current.mount(divRef.current);
+
+      // Payment Request Button: shows Apple Pay on iOS Safari with a card
+      // configured, Google Pay on Chrome with a card configured. Hides
+      // itself completely when the device cannot fulfill a wallet
+      // payment, so this is purely additive for compatible clients.
+      const paymentRequest = stripeRef.current.paymentRequest({
+        country: 'US',
+        currency: 'usd',
+        total: {
+          label: therapistName ? `${therapistName} deposit` : 'Booking deposit',
+          amount: depositAmount,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
+
+      const prButton = elements.create('paymentRequestButton', {
+        paymentRequest,
+        style: {
+          paymentRequestButton: {
+            type: 'default',
+            theme: 'dark',
+            height: '48px',
+          },
+        },
+      });
+
+      // canMakePayment returns null when no wallet is available, an
+      // object describing supported methods otherwise. We only mount
+      // the button when something is available.
+      const result = await paymentRequest.canMakePayment();
+      if (alive && result && walletButtonRef.current) {
+        prButton.mount(walletButtonRef.current);
+        setWalletAvailable(true);
+      }
+
+      // When client confirms the wallet sheet, confirm the payment
+      // intent with the wallet's payment_method.
+      paymentRequest.on('paymentmethod', async (ev) => {
+        if (!stripeRef.current) return;
+        const { error: confirmError, paymentIntent } = await stripeRef.current.confirmCardPayment(
+          clientSecret,
+          { payment_method: ev.paymentMethod.id },
+          { handleActions: false }
+        );
+        if (confirmError) {
+          ev.complete('fail');
+          onError(confirmError.message);
+          return;
+        }
+        ev.complete('success');
+        // Some flows (3DS) require a second confirmCardPayment call.
+        if (paymentIntent.status === 'requires_action' || paymentIntent.status === 'requires_source_action') {
+          const { error } = await stripeRef.current.confirmCardPayment(clientSecret);
+          if (error) { onError(error.message); return; }
+        }
+        onSuccess();
+      });
     };
 
     init();
@@ -160,6 +228,29 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, onSuc
 
   return (
     <div>
+      {/* Wallet button: shows above the card form ONLY when the device
+          has Apple Pay or Google Pay available. Hidden otherwise. */}
+      <div style={{
+        marginBottom: walletAvailable ? 14 : 0,
+        display: walletAvailable ? 'block' : 'none',
+      }}>
+        <div ref={walletButtonRef} />
+        {walletAvailable && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            margin: '14px 0',
+            color: C.gray,
+            fontSize: 12,
+          }}>
+            <div style={{ flex: 1, height: 1, background: C.light }} />
+            <span>or pay with card</span>
+            <div style={{ flex: 1, height: 1, background: C.light }} />
+          </div>
+        )}
+      </div>
+
       <div style={{background:C.white,borderRadius:14,padding:'20px',marginBottom:14,boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
         <div style={{fontSize:12,fontWeight:700,color:C.gray,marginBottom:12}}>CARD DETAILS</div>
         <div ref={divRef} style={{padding:'14px',border:`1.5px solid ${C.light}`,borderRadius:10,background:'#FAFAFA'}}/>
@@ -2509,6 +2600,7 @@ export default function BookingPage() {
               clientSecret={depositClientSecret}
               depositAmount={depositAmount}
               stripeAccountId={depositAccountId}
+              therapistName={therapist?.business_name || therapist?.full_name}
               onSuccess={onDepositSuccess}
               onError={msg=>setPaymentError(msg)}
             />

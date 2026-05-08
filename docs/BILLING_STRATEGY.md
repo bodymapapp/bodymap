@@ -2,7 +2,7 @@
 
 **Last updated:** May 7, 2026
 **Audience:** HK and any future engineer who works on the payment system. Read before touching `_shared/payment-provider.ts` or any payment-touching edge function.
-**Status:** Stripe + Square parity shipped May 6-7, 2026. Phase 1 (wallet methods) and Phase 3 (FedNow when ready) approved. ACH dropped per HK decision May 7.
+**Status:** Stripe + Square parity shipped May 6-7, 2026. Square activation completed May 7 evening (HK confirmed first payment received in production). Stripe wallet methods (Apple Pay, Google Pay, Cash App Pay, Link, Amazon Pay, Klarna) enabled at platform level and Phase 1 wallet button shipped on booking page deposit flow May 7 night. Phase 3 (FedNow when ready) still future. ACH dropped per HK decision May 7.
 
 ---
 
@@ -142,7 +142,7 @@ We surface this clearly in the Settings → Payments section with a "Things to k
 | One-tap refunds | full | full | Both via refund API |
 | Partial refunds | full | full | Both supported |
 | Webhook reliability | full | full | Both production-grade |
-| Apple Pay / Google Pay | full (via Payment Element) | limited (via Web Payments SDK) | Stripe surfaces wallets dynamically by device. Square requires explicit enabling. |
+| Apple Pay / Google Pay | shipped May 7 (deposit flow) | not yet | Stripe wallets enabled at platform level, Payment Request Button mounted on booking page deposit. Square wallets deferred to next session (Web Payments SDK applePay/googlePay APIs, separate effort). |
 | Browser compatibility for card form | excellent | good | Stripe Elements supports more browsers including older Safari versions. |
 
 The matrix is the honesty layer. We surface gaps to therapists so they make informed choices, rather than discovering limitations after the fact.
@@ -164,6 +164,9 @@ The matrix is the honesty layer. We surface gaps to therapists so they make info
   - **Reasoning:** ACH liability is real (60-day return window, dispute exposure, NSF returns), customer benefit marginal at $100 ticket size, build cost 3-5 days, and skipping focuses scarce engineering on Phase 1 (near-zero liability).
   - **Trade-off:** We will not be the first in our space to offer bank-direct payments. We accept this. Other rails (FedNow) will be better when ready.
 - **Drop Zelle/FedNow Phase 2 framing in favor of single Phase 3.** Zelle has a dealbreaker (no merchant attribution webhooks). FedNow Phase 2 will fix this in 2026-2027.
+- **Square activation completed (evening).** First production payment received. BodyMap LLC merchant identity verified by Square. Square card flow now confirmed end-to-end on booking page.
+- **Stripe wallets shipped Phase 1.** Stripe dashboard confirmed Apple Pay, Google Pay, Cash App Pay, Link, Amazon Pay, Klarna, and Pix all enabled at the platform connected-account level. Implementation: Payment Request Button mounted above the Card Element in StripePaymentForm component. Auto-detects device wallet support, hides itself on incompatible devices. Tests pass on iOS Safari (Apple Pay) and Chrome Android (Google Pay) when wallets configured. Mounted only on deposit flow for now; card-on-file save flow and offer-purchase flows can adopt the same pattern in a follow-up commit if data shows clients want it.
+- **Square wallets deferred to next session.** Square Web Payments SDK exposes `payments.applePay()` and `payments.googlePay()` separately and requires building a `paymentRequest` object first. Different code path from Stripe. Will be tackled as a focused follow-up rather than rushed alongside the Square activation that just shipped.
 
 ---
 
