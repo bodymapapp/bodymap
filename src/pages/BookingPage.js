@@ -499,14 +499,25 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
           style: {
             input: {
               fontSize: '16px',
-              // Square Web Payments SDK rejects generic CSS keywords like
-              // 'system-ui' and 'sans-serif'. It requires quoted real font
-              // names. We pick a list that approximates system-ui across
-              // platforms: Apple's San Francisco (-apple-system / BlinkMacSystemFont),
-              // Segoe UI on Windows, Roboto on Android, fallback to Helvetica
-              // Neue and Helvetica. The page's surrounding text uses system-ui
-              // via base CSS, this list visually matches.
-              fontFamily: '"-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica Neue", "Helvetica", "Arial"',
+              // Note: fontFamily intentionally NOT set on the Square card
+              // form. Square Web Payments SDK rejects generic CSS keywords
+              // ('system-ui', 'sans-serif') AND quoted real-font lists with
+              // an 'Invalid style value for property fontFamily' error.
+              // Tested both patterns against production Square SDK,
+              // May 7-8 2026.
+              //
+              // Square's documented style API has a narrow validation that
+              // does not accept arbitrary CSS-style font-family strings.
+              // Rather than continue guessing at the accepted format,
+              // we let Square use its own default font for the card input.
+              // The card form is a small embedded iframe, so the slight
+              // typography mismatch with the rest of the page is acceptable
+              // and barely noticeable to clients.
+              //
+              // If we ever want to match the page typography precisely,
+              // the right approach is to use Square's customFontUrl support
+              // to load a specific webfont and reference it by exact name,
+              // rather than a fallback list.
               color: '#1A1A2E',
             },
             '.input-container': {
