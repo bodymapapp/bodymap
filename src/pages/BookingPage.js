@@ -1778,8 +1778,8 @@ export default function BookingPage() {
               </div>
             </div>
 
-            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a session</h2>
-            <p style={{fontSize:13,color:C.gray,margin:'0 0 14px'}}>Choose what you'd like, no account needed.</p>
+            <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:C.dark,margin:'0 0 4px'}}>Book a service</h2>
+            <p style={{fontSize:13,color:C.gray,margin:'0 0 14px'}}>Pick what you'd like. Single sessions, packages, or memberships.</p>
 
             {/* WHAT TO EXPECT: collapsible preview so clients know what
                 comes after picking a service (intake form, cancellation

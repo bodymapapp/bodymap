@@ -331,7 +331,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   </div>
   <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 2px 12px rgba(0,0,0,0.07);">
     <div style="font-size:16px;color:#1A1A2E;line-height:1.7;margin:0 0 20px;">${messageHtml}</div>
-    <a href="${bookingLink}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:13px 20px;text-align:center;font-size:15px;font-weight:700;">Book a Session →</a>
+    <a href="${bookingLink}" style="display:block;background:#2A5741;color:#fff;text-decoration:none;border-radius:10px;padding:13px 20px;text-align:center;font-size:15px;font-weight:700;">Book a Service →</a>
   </div>
   <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:20px 0 6px;">Sent by ${escapeHtml(therapistName)} via MyBodyMap</p>
   <p style="font-size:11px;color:#9CA3AF;text-align:center;margin:0;">Don't want these? <a href="{unsubscribe_url}" style="color:#9CA3AF;text-decoration:underline;">Unsubscribe</a></p>

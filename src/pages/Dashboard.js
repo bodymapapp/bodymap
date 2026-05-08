@@ -2150,25 +2150,28 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             background: '#F8FAF7',
             border: '1px solid #D1E5D9',
             borderRadius: 10,
-            padding: '10px 14px',
+            padding: '12px 14px',
             marginBottom: 14,
             fontSize: 11,
             lineHeight: 1.6,
             color: '#1F3A2C',
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 14, lineHeight: 1 }}>💳</span>
               <div style={{ flex: 1 }}>
-                <strong style={{ color: '#2A5741' }}>Stripe</strong> powers your <strong>online</strong> work · deposits at booking, packages, memberships, cards on file, refunds.
+                <strong style={{ color: '#2A5741' }}>Stripe</strong> · deposits at booking, cards on file, packages, memberships, one-tap refunds. Fees: 2.9% + 30¢ per online card transaction (paid to Stripe directly).
               </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 14, lineHeight: 1 }}>⬛</span>
               <div style={{ flex: 1 }}>
-                <strong style={{ color: '#2A5741' }}>Square</strong> stays for <strong>in-person</strong> · what you already use at the table or in your studio.
+                <strong style={{ color: '#2A5741' }}>Square</strong> · same online features as Stripe (memberships limited). Fees: 2.9% + 30¢ for online, 2.6% + 10¢ for in-person Square Reader (paid to Square directly).
               </div>
             </div>
-            <div style={{ marginTop: 8, color: '#6B7280' }}>
+            <div style={{ marginTop: 8, color: '#6B7280', borderTop: '1px solid #D1E5D9', paddingTop: 8, fontSize: 10, lineHeight: 1.55 }}>
+              MyBodyMap is the connection layer. Your money settles directly between your client and your Stripe or Square account. We never hold funds, set rates, or change processor terms. Disputes, chargebacks, and tax reporting are between you and the processor you connect.
+            </div>
+            <div style={{ marginTop: 6, color: '#6B7280', fontSize: 10, lineHeight: 1.55 }}>
               Most therapists connect both. You can connect either one alone, or skip and accept payment outside MyBodyMap.
             </div>
           </div>
@@ -2221,8 +2224,8 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span>✅</span>
                     <div>
-                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · In-person companion</div>
-                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Online deposits and packages also work via Square</div>
+                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · Online engine</div>
+                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, cards on file all enabled. Memberships use Stripe.</div>
                     </div>
                   </div>
                   <button onClick={async () => {

@@ -95,7 +95,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
                 {therapist?.business_name || therapist?.full_name || 'Your Practice'}
               </div>
               <div style={{ fontSize: 11, color: '#16A34A', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>🌿</span> Silver · Founding Therapist
+                <span>🌿</span> Silver
               </div>
             </div>
           </div>
