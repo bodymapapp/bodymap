@@ -63,6 +63,14 @@ function ServicesAndAvailability({ therapist }) {
   const [depositPercent, setDepositPercent] = React.useState(therapist?.deposit_percent || 20);
   const [bufferEnabled, setBufferEnabled] = React.useState(therapist?.buffer_enabled || false);
   const [bufferMinutes, setBufferMinutes] = React.useState(therapist?.buffer_minutes || 15);
+  // Booking lead-time minimum (Lindsey #5, May 9 2026): how far ahead
+  // the client must book. 0 = no restriction (client can book the
+  // next slot, even 30 minutes from now). Common values: 4 hours,
+  // 24 hours, 48 hours.
+  const [minLeadHours, setMinLeadHours] = React.useState(therapist?.minimum_advance_hours ?? 0);
+  // Maximum advance window: how far in the future the client can
+  // book. 0 = unlimited. Common values: 30, 60, 90 days.
+  const [maxAdvanceDays, setMaxAdvanceDays] = React.useState(therapist?.maximum_advance_days ?? 0);
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -74,7 +82,9 @@ function ServicesAndAvailability({ therapist }) {
   React.useEffect(() => {
     setDepositEnabled(therapist?.deposit_enabled || false);
     setDepositPercent(therapist?.deposit_percent || 20);
-  }, [therapist?.deposit_enabled, therapist?.deposit_percent]);
+    setMinLeadHours(therapist?.minimum_advance_hours ?? 0);
+    setMaxAdvanceDays(therapist?.maximum_advance_days ?? 0);
+  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days]);
 
   const PRESETS = [
     { name:'Swedish Massage', duration:60, price:85 },
@@ -439,6 +449,98 @@ function ServicesAndAvailability({ therapist }) {
             <span style={{ fontSize:13, color:C2.gray }}>after each session</span>
           </div>
         )}
+      </div>
+
+      {/* Booking window: lead time + max advance.
+          Lindsey #5 (May 9 2026): therapists need to control how
+          close to "now" a client can book and how far ahead. Without
+          these controls, clients can book 5 minutes from now (no
+          prep time) or a year ahead (calendar clutter). */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>📆 Booking Window</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>
+          Control how soon and how far ahead clients can book. Helps protect prep time and keep the calendar tidy.
+        </p>
+
+        {/* Minimum advance notice */}
+        <div style={{ marginBottom:14 }}>
+          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
+            Minimum advance notice
+          </label>
+          <select
+            value={minLeadHours}
+            onChange={async e => {
+              const v = parseInt(e.target.value) || 0;
+              setMinLeadHours(v);
+              await supabase.from('therapists').update({ minimum_advance_hours: v }).eq('id', therapist.id);
+            }}
+            style={{
+              width:'100%',
+              padding:'10px 12px',
+              border:`1.5px solid ${C2.lightGray}`,
+              borderRadius:10,
+              fontSize:14,
+              fontWeight:500,
+              color:C2.darkGray,
+              background:'#fff',
+              outline:'none',
+              cursor:'pointer',
+              fontFamily:'system-ui',
+            }}
+          >
+            <option value={0}>No minimum (clients can book the next slot)</option>
+            <option value={2}>2 hours</option>
+            <option value={4}>4 hours</option>
+            <option value={8}>8 hours</option>
+            <option value={12}>12 hours</option>
+            <option value={24}>24 hours (1 day)</option>
+            <option value={48}>48 hours (2 days)</option>
+            <option value={72}>3 days</option>
+            <option value={168}>1 week</option>
+          </select>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
+            How close to "now" can a client book. Common: 24 hours so you have prep time and they cannot drop in last-minute.
+          </div>
+        </div>
+
+        {/* Maximum advance window */}
+        <div>
+          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
+            Maximum advance window
+          </label>
+          <select
+            value={maxAdvanceDays}
+            onChange={async e => {
+              const v = parseInt(e.target.value) || 0;
+              setMaxAdvanceDays(v);
+              await supabase.from('therapists').update({ maximum_advance_days: v }).eq('id', therapist.id);
+            }}
+            style={{
+              width:'100%',
+              padding:'10px 12px',
+              border:`1.5px solid ${C2.lightGray}`,
+              borderRadius:10,
+              fontSize:14,
+              fontWeight:500,
+              color:C2.darkGray,
+              background:'#fff',
+              outline:'none',
+              cursor:'pointer',
+              fontFamily:'system-ui',
+            }}
+          >
+            <option value={0}>No limit (clients can book any future date)</option>
+            <option value={14}>2 weeks</option>
+            <option value={30}>30 days (1 month)</option>
+            <option value={60}>60 days (2 months)</option>
+            <option value={90}>90 days (3 months)</option>
+            <option value={180}>180 days (6 months)</option>
+            <option value={365}>1 year</option>
+          </select>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
+            How far in advance can a client book. Common: 60-90 days so the calendar stays manageable but regulars can plan ahead.
+          </div>
+        </div>
       </div>
 
       {/* Working Hours - Time Blocks

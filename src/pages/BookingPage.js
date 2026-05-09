@@ -50,7 +50,7 @@ function scoreSlots(slots, existingBooked, dur) {
   }).sort((a,b) => b.score - a.score);
 }
 
-function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=null}) {
+function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=null, minDate=null}) {
   const today=new Date(); today.setHours(0,0,0,0);
   const [yr,setYr]=useState(today.getFullYear());
   const [mo,setMo]=useState(today.getMonth());
@@ -81,7 +81,12 @@ function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=
           // beyond that are disabled. Used by cycle-aligned therapists to
           // bound how far ahead bookings can drift from her current phase.
           const beyondHorizon = maxDate && dt > maxDate;
-          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds)||beyondHorizon;
+          // Lead-time minimum (Lindsey #5): if therapist set a minimum
+          // booking advance window, dates entirely before the earliest
+          // bookable instant are disabled. The intra-day filter still
+          // runs in the slot generator.
+          const beforeMinimum = minDate && dt < minDate;
+          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds)||beyondHorizon||beforeMinimum;
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
             style={{padding:'9px 2px',borderRadius:8,border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
@@ -1055,8 +1060,6 @@ export default function BookingPage() {
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
     const booked=existing||[];
     setExistingBooked(booked);
-    const isToday=date===new Date().toISOString().split('T')[0];
-    const nowMin=isToday?new Date().getHours()*60+new Date().getMinutes():0;
 
     // Use time_blocks if available, else fall back to start/end
     const blocks = (av.time_blocks && av.time_blocks.length > 0)
@@ -1068,7 +1071,34 @@ export default function BookingPage() {
       const blockSlots = generateSlots(block.start, block.end, effectiveDuration, booked, therapist.buffer_enabled ? (therapist.buffer_minutes || 15) : 0);
       raw = [...raw, ...blockSlots];
     }
-    if (isToday) raw = raw.filter(s => s.minutes > nowMin + 30);
+
+    // Apply booking lead-time minimum (Lindsey #5, May 9, 2026).
+    // Therapist sets minimum_advance_hours in Settings; clients
+    // cannot book slots closer than that to "now". Default 0 = no
+    // restriction, behaves like the old 30-min today-only filter.
+    //
+    // Inclusive at the boundary: if minimum is 24h and now is 9 AM,
+    // tomorrow's 9 AM slot is bookable but tomorrow's 8:59 AM is not.
+    const minLeadHours = Number(therapist.minimum_advance_hours) || 0;
+    const maxLeadDays = Number(therapist.maximum_advance_days) || 0; // 0 = no max
+    const now = new Date();
+    const earliestAllowed = new Date(now.getTime() + minLeadHours * 60 * 60 * 1000);
+    const latestAllowed = maxLeadDays > 0
+      ? new Date(now.getTime() + maxLeadDays * 24 * 60 * 60 * 1000)
+      : null;
+
+    raw = raw.filter(s => {
+      // Compose the slot's actual datetime by combining the date being
+      // viewed (`date` is YYYY-MM-DD string) with slot's HH:MM start.
+      const [yy, mm, dd] = date.split('-').map(Number);
+      const slotDateTime = new Date(yy, mm - 1, dd,
+        Math.floor(s.minutes / 60),
+        s.minutes % 60);
+      if (slotDateTime < earliestAllowed) return false;
+      if (latestAllowed && slotDateTime > latestAllowed) return false;
+      return true;
+    });
+
     setSlots(scoreSlots(raw,booked,effectiveDuration));
     setLoadingSlots(false);
   }
@@ -2127,11 +2157,31 @@ export default function BookingPage() {
                   // cycle-aligned scheduling), compute the cutoff date here.
                   // Returns a Date, or null for unlimited.
                   const days = therapist?.booking_horizon_days;
-                  if (!days || days < 1) return null;
+                  // Maximum advance booking window (Lindsey-adjacent
+                  // feature, May 9 2026): therapist can cap how far
+                  // ahead bookings go via maximum_advance_days.
+                  // Use whichever is more restrictive.
+                  const maxAdvance = therapist?.maximum_advance_days;
+                  const effective = (days && days > 0) ? days : maxAdvance;
+                  if (!effective || effective < 1) return null;
                   const max = new Date();
                   max.setHours(0, 0, 0, 0);
-                  max.setDate(max.getDate() + days);
+                  max.setDate(max.getDate() + effective);
                   return max;
+                })()}
+                minDate={(() => {
+                  // Booking lead-time minimum (Lindsey #5, May 9, 2026):
+                  // disable date cells entirely before earliest bookable
+                  // day. Slot generator does the intra-day filter.
+                  const hours = Number(therapist?.minimum_advance_hours) || 0;
+                  if (hours <= 0) return null;
+                  const earliestInstant = new Date(Date.now() + hours * 60 * 60 * 1000);
+                  // Round DOWN to start of the day so the day itself is
+                  // navigable; the slot generator will hide too-soon
+                  // slots within that day.
+                  const earliestDay = new Date(earliestInstant);
+                  earliestDay.setHours(0, 0, 0, 0);
+                  return earliestDay;
                 })()}
               />
             </div>
