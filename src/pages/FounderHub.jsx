@@ -17,7 +17,7 @@
 //
 //   3. Billing Strategy (live, BILLING_STRATEGY.md)
 //   4. Block Plan (live, BLOCK_PLAN.md)
-//   5. Taxonomy (live, CONTRIBUTING.md)
+//   5. Taxonomy (live, FEATURES_TAXONOMY.md)
 //   6. Client Dashboard (live, embedded via iframe)
 //   7. Email and SMS Editor (live, embedded via iframe to dashboard)
 //   8. Other Documentation (live, OTHER_NOTES.md)
@@ -104,7 +104,7 @@ const SECTIONS = [
     subtitle: "Seven product categories, their sub-features, and core differentiation flags.",
     status: "live",
     type: "markdown",
-    path: "CONTRIBUTING.md",
+    path: "FEATURES_TAXONOMY.md",
     backupKey: "05-taxonomy",
   },
   {

@@ -76,7 +76,7 @@ The `taxonomy` field is the bridge between the help content and the product feat
 
 ## Taxonomy mapping
 
-The product features taxonomy is documented in `CONTRIBUTING.md` (seven ribbons, 41 cards). Each help article either maps to a specific feature card (e.g., 6.2 for cancellation policy) or to a cross-cutting category (overview, onboarding, pricing, comparison, trust).
+The product features taxonomy is documented in `FEATURES_TAXONOMY.md` (seven ribbons, 41 cards). Each help article either maps to a specific feature card (e.g., 6.2 for cancellation policy) or to a cross-cutting category (overview, onboarding, pricing, comparison, trust).
 
 ### Current article mapping
 

@@ -1,8 +1,8 @@
-# Adding new features to MyBodyMap
+# Features Taxonomy
 
-**Last updated:** May 7, 2026
+**Last updated:** May 9, 2026 (renamed from CONTRIBUTING.md)
 
-This file is the canonical rule set for how features get added to MyBodyMap. Future Claude sessions: read this before building any new user-facing feature. HK reads this when something feels misplaced and wants to push back.
+This file is the canonical rule set for how features get added to MyBodyMap. It defines the seven external-marketing ribbons, the design principles, and the rules for placing new feature cards. Future Claude sessions: read this before building any new user-facing feature. HK reads this when something feels misplaced and wants to push back.
 
 ---
 

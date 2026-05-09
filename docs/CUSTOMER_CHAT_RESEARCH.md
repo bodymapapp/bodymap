@@ -187,7 +187,7 @@ The customer service chat must NOT have access to internal documents. Specifical
 - `docs/MARKETING_MYBODYMAP.md` (internal market analysis, persona thinking, pricing logic, raise/no-raise reasoning)
 - `BLOCK_PLAN.md` (roadmap, deferred work, demand signals)
 - `OTHER_NOTES.md` (founder scratchpad)
-- `CONTRIBUTING.md` (taxonomy, design principles, differentiation flags · competitive intelligence)
+- `FEATURES_TAXONOMY.md` (taxonomy, design principles, differentiation flags · competitive intelligence)
 
 ### Rate limiting design
 

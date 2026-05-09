@@ -15,6 +15,7 @@ import MembershipsCard from '../components/MembershipsCard';
 import EventsCard from '../components/EventsCard';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
+import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
 import CollapsibleSection from '../components/CollapsibleSection';
 import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
@@ -455,90 +456,70 @@ function ServicesAndAvailability({ therapist }) {
           Lindsey #5 (May 9 2026): therapists need to control how
           close to "now" a client can book and how far ahead. Without
           these controls, clients can book 5 minutes from now (no
-          prep time) or a year ahead (calendar clutter). */}
+          prep time) or a year ahead (calendar clutter).
+          Inputs use the InlineSaveNumberInput pattern: type freely,
+          auto-save on blur, brief checkmark badge confirms. */}
       <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
         <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>📆 Booking Window</p>
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>
           Control how soon and how far ahead clients can book. Helps protect prep time and keep the calendar tidy.
         </p>
 
-        {/* Minimum advance notice */}
+        {/* Minimum advance notice
+            Default placeholder 24 (industry-standard for spa/massage,
+            matches Acuity and Vagaro defaults). 0 means "no minimum,
+            client can book the next slot." Range 0 to 8760 (1 year). */}
         <div style={{ marginBottom:14 }}>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
             Minimum advance notice
           </label>
-          <select
-            value={minLeadHours}
-            onChange={async e => {
-              const v = parseInt(e.target.value) || 0;
-              setMinLeadHours(v);
-              await supabase.from('therapists').update({ minimum_advance_hours: v }).eq('id', therapist.id);
-            }}
-            style={{
-              width:'100%',
-              padding:'10px 12px',
-              border:`1.5px solid ${C2.lightGray}`,
-              borderRadius:10,
-              fontSize:14,
-              fontWeight:500,
-              color:C2.darkGray,
-              background:'#fff',
-              outline:'none',
-              cursor:'pointer',
-              fontFamily:'system-ui',
-            }}
-          >
-            <option value={0}>No minimum (clients can book the next slot)</option>
-            <option value={2}>2 hours</option>
-            <option value={4}>4 hours</option>
-            <option value={8}>8 hours</option>
-            <option value={12}>12 hours</option>
-            <option value={24}>24 hours (1 day)</option>
-            <option value={48}>48 hours (2 days)</option>
-            <option value={72}>3 days</option>
-            <option value={168}>1 week</option>
-          </select>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <InlineSaveNumberInput
+              value={minLeadHours}
+              defaultValue={24}
+              placeholder="24"
+              onChange={setMinLeadHours}
+              onSave={async (v) => {
+                await supabase.from('therapists').update({ minimum_advance_hours: v }).eq('id', therapist.id);
+              }}
+              suffix="hours"
+              min={0}
+              max={8760}
+              width={70}
+            />
+            <span style={{ fontSize:12, color:C2.gray }}>before a client can book</span>
+          </div>
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            How close to "now" can a client book. Common: 24 hours so you have prep time and they cannot drop in last-minute.
+            Common: 24 hours so you have prep time. Set 0 for no minimum (clients can book the next available slot).
           </div>
         </div>
 
-        {/* Maximum advance window */}
+        {/* Maximum advance window
+            Default placeholder 90 (matches Acuity default; 60-90 days
+            is the spa industry norm). 0 means "no maximum, clients
+            can book any future date." Range 0 to 730 (2 years). */}
         <div>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
             Maximum advance window
           </label>
-          <select
-            value={maxAdvanceDays}
-            onChange={async e => {
-              const v = parseInt(e.target.value) || 0;
-              setMaxAdvanceDays(v);
-              await supabase.from('therapists').update({ maximum_advance_days: v }).eq('id', therapist.id);
-            }}
-            style={{
-              width:'100%',
-              padding:'10px 12px',
-              border:`1.5px solid ${C2.lightGray}`,
-              borderRadius:10,
-              fontSize:14,
-              fontWeight:500,
-              color:C2.darkGray,
-              background:'#fff',
-              outline:'none',
-              cursor:'pointer',
-              fontFamily:'system-ui',
-            }}
-          >
-            <option value={0}>No limit (clients can book any future date)</option>
-            <option value={14}>2 weeks</option>
-            <option value={30}>30 days (1 month)</option>
-            <option value={60}>60 days (2 months)</option>
-            <option value={90}>90 days (3 months)</option>
-            <option value={180}>180 days (6 months)</option>
-            <option value={365}>1 year</option>
-          </select>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <InlineSaveNumberInput
+              value={maxAdvanceDays}
+              defaultValue={90}
+              placeholder="90"
+              onChange={setMaxAdvanceDays}
+              onSave={async (v) => {
+                await supabase.from('therapists').update({ maximum_advance_days: v }).eq('id', therapist.id);
+              }}
+              suffix="days"
+              min={0}
+              max={730}
+              width={70}
+            />
+            <span style={{ fontSize:12, color:C2.gray }}>ahead a client can book</span>
+          </div>
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            How far in advance can a client book. Common: 60-90 days so the calendar stays manageable but regulars can plan ahead.
+            Common: 60-90 days. Set 0 for no limit.
           </div>
         </div>
       </div>

@@ -106,7 +106,7 @@ The seven-category taxonomy is the source of truth for everything MyBodyMap ship
 5. No standalone marketing surfaces outside the ribbons
 6. The seven categories themselves do not change without HK explicit approval
 
-Full rules: `CONTRIBUTING.md` in repo root.
+Full rules: `FEATURES_TAXONOMY.md` in repo root.
 
 ---
 
@@ -394,7 +394,7 @@ Major decisions made and the reasoning behind them. Append to this rather than o
 ### May 6, 2026
 - **Stripe + Square parity shipped.** Both processors fully functional. Per-feature routing setting added.
 - **PaymentMethodComparisonMockup at `/mockups/payment-methods` built** (three side-by-side ACH/Zelle/Apple Pay mockups) for therapist conversations.
-- **CONTRIBUTING.md committed.** Six taxonomy rules, five design principles.
+- **FEATURES_TAXONOMY.md committed.** Six taxonomy rules, five design principles.
 
 ### May 5, 2026
 - **Decided NOT to publish coupon code BETAONE on public site.** Therapists must DM Instagram/Facebook to receive it. Reasoning: qualifies leads, builds relationship, grows social following, keeps "founder" framing exclusive.
@@ -472,7 +472,7 @@ This is the worst-case scenario this document is written for. See the next secti
 If HK needs to fully offload work, here is how to do it.
 
 ### Roles needed (in priority order)
-1. **Senior fullstack engineer** (1.0 FTE). React/TypeScript on the frontend, Deno + Supabase Edge Functions on the backend, comfortable with Stripe and Square. ~$140-180k or $80-120/hr contract. Read this runbook + the codebase + CONTRIBUTING.md to ramp in 1-2 weeks.
+1. **Senior fullstack engineer** (1.0 FTE). React/TypeScript on the frontend, Deno + Supabase Edge Functions on the backend, comfortable with Stripe and Square. ~$140-180k or $80-120/hr contract. Read this runbook + the codebase + FEATURES_TAXONOMY.md to ramp in 1-2 weeks.
 2. **Product manager / designer hybrid** (0.5 FTE). Owns the marketing surface, voice, customer success. ~$100-140k or $60-90/hr. Read this runbook + the marketing docs + speaks with HK weekly to absorb the persona.
 3. **Customer success / community manager** (0.25 FTE to start, 1.0 if scaling). Responds to therapist DMs and emails. Speaks in Joy persona, never breaks character. ~$50-70k or $30-50/hr.
 
@@ -522,9 +522,9 @@ If HK needs to fully offload work, here is how to do it.
 
 ### What to expect in the first 30 days
 - The new hire will want to redesign things. Resist this. The existing design is intentional and tested.
-- The new hire will want to add features. Resist this. The taxonomy is locked and CONTRIBUTING.md exists for a reason.
+- The new hire will want to add features. Resist this. The taxonomy is locked and FEATURES_TAXONOMY.md exists for a reason.
 - The new hire will want to migrate the stack (CRA → Next.js, inline styles → Tailwind, etc.). Resist this. The stack works. Migration is engineering work that doesn't ship customer value.
-- Things the new hire SHOULD do in the first 30 days: read this runbook front to back, read CONTRIBUTING.md, read the BLOCK_PLAN, read the email voice guide, and ship one bug fix to demonstrate they can deploy without breaking anything.
+- Things the new hire SHOULD do in the first 30 days: read this runbook front to back, read FEATURES_TAXONOMY.md, read the BLOCK_PLAN, read the email voice guide, and ship one bug fix to demonstrate they can deploy without breaking anything.
 
 ---
 
@@ -535,7 +535,7 @@ The most important files to know:
 | Path | What it is |
 |------|------------|
 | `BLOCK_PLAN.md` | Active fires, deferred work, ideas. Updated frequently. |
-| `CONTRIBUTING.md` | Taxonomy rules + design principles. Read before any feature add. |
+| `FEATURES_TAXONOMY.md` | Taxonomy rules + design principles. Read before any feature add. |
 | `ENVIRONMENT.md` | Canonical secrets list. Read before asking HK for any credential. |
 | `docs/FOUNDER_RUNBOOK.md` | This document. Operational insurance. |
 | `docs/email-voice-guide.md` | Joy persona + email broadcast rules. |

@@ -546,7 +546,7 @@ How HK and Claude work together every session. Survives compaction.
 
    Companion mockup at `/mockups/payment-evolution` shows how the same booking page UI evolves across all three phases with three different customer personas (70yo desktop, 30yo iPhone, 40yo Android). Proves the demographic split is handled correctly without making the UI more complex for the 70-year-old persona.
 
-12. **Founder Hub at `/founder`** — internal single pane of glass for HK. Ten sections: marketing for therapists, marketing internal, billing strategy, block plan, taxonomy (summary + detail), client dashboard, email/SMS edits, catch-all docs, founder runbook, future RAG chat. Gated to HK's email only via FounderRoute. **Phase 1 (May 7, 2026):** skeleton + runbook embedded live, GitHub-sourced docs (Block Plan, Taxonomy) link out, marketing/billing docs marked "next session," chat marked "future." **Phase 2 (next session):** wire BLOCK_PLAN + CONTRIBUTING markdown rendering, split marketing into therapist-facing and internal docs, embed email/SMS editor from Dashboard. **Phase 3:** RAG chat interface using all founder docs as corpus.
+12. **Founder Hub at `/founder`** — internal single pane of glass for HK. Ten sections: marketing for therapists, marketing internal, billing strategy, block plan, taxonomy (summary + detail), client dashboard, email/SMS edits, catch-all docs, founder runbook, future RAG chat. Gated to HK's email only via FounderRoute. **Phase 1 (May 7, 2026):** skeleton + runbook embedded live, GitHub-sourced docs (Block Plan, Taxonomy) link out, marketing/billing docs marked "next session," chat marked "future." **Phase 2 (next session):** wire BLOCK_PLAN + FEATURES_TAXONOMY.md markdown rendering, split marketing into therapist-facing and internal docs, embed email/SMS editor from Dashboard. **Phase 3:** RAG chat interface using all founder docs as corpus.
 
    Live-document model (per HK direction): documents update at the end of each working session triggered by HK saying so. No nightly automation.
 
@@ -587,7 +587,7 @@ How HK and Claude work together every session. Survives compaction.
 
 17. **Help articles maintenance discipline (NEW, May 7, 2026).** Help center has 19 articles mapped to feature-card taxonomy. When a feature changes, the article(s) tagged with that taxonomy must be reviewed. See docs/HELP_ARTICLES_GUIDE.md for the process.
 
-   **Operational rule:** every commit that meaningfully changes a feature listed in CONTRIBUTING.md should be paired with (or immediately followed by) a commit updating any help articles tagged with that feature's taxonomy. If the developer is not sure which articles need updating, check the mapping table in HELP_ARTICLES_GUIDE.md.
+   **Operational rule:** every commit that meaningfully changes a feature listed in FEATURES_TAXONOMY.md should be paired with (or immediately followed by) a commit updating any help articles tagged with that feature's taxonomy. If the developer is not sure which articles need updating, check the mapping table in HELP_ARTICLES_GUIDE.md.
 
    **Quality bar to add a new article:** the question genuinely comes up, the existing articles do not answer it, and the answer is not already in the marketing pages. Quality of the corpus matters more than quantity. 19 great articles beat 50 mediocre ones.
 
