@@ -399,8 +399,8 @@ export default function Home() {
           Free during beta. <em>Forever, if you join now.</em>
         </h2>
         <p>
-          The first 100 founding therapists keep Bronze free, forever.
-          Silver tier free for 12 months with a founder code.
+          The first 100 founding therapists keep Silver tier free for life.
+          Message us on Instagram or Facebook for the founder code.
         </p>
         <div className="bm-home-closing__ctas">
           <Link to="/signup" className="bm-home-closing__cta-primary">

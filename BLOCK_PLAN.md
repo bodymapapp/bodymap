@@ -1004,11 +1004,12 @@ Items 36-50 below are the new intake. Sprint sequencing follows at item 51.
 
 54. **Three reported bugs from Jiny + Lindsey, May 8, 2026 (URGENT, do this week).**
 
-   - **Lindsey: "Plan says it's Gold for the $49/mo, but I would only need Silver since I'm solo."** Investigate. Likely Stripe webhook misclassified her tier or our display logic is wrong. Check her therapist row, fix display.
-   - **Jiny: "Saw on your first email at the bottom that says 'Silver tier Free for Life' and on the website it was free for a year."** Copy mismatch. Audit all marketing/onboarding copy and unify the messaging. Decide once: is Silver free for founding therapists (first 100, lifetime) or free for first year? Whatever HK decides, make every surface match.
-   - **Jiny: "I got all of the clients imported (YAY) and then tried importing my appointments... it said it was successful, but I don't see any of them... but there were like 1600-ish of them."** Investigate. Possibly: import worked but date filter on dashboard hides historical bookings. Possibly: silent error on rows that exceed a column length. Possibly: 1600 was too many for one batch. Need to look at her data and the import logs.
+   - **Lindsey: "Plan says it's Gold for the $49/mo, but I would only need Silver since I'm solo."** Investigate. Likely Stripe webhook misclassified her tier or our display logic is wrong. Check her therapist row, fix display. (Status May 9: SQL query written for HK to run; awaiting result.)
+   - **Jiny: "Saw on your first email at the bottom that says 'Silver tier Free for Life' and on the website it was free for a year."** FIXED May 9, 2026. Root cause: Home.jsx CTA was the only place saying "12 months" while everything else (welcome email, help articles, marketing pages, founder runbook) said "free for life". Updated Home.jsx to "free for life" so all surfaces match.
+   - **Jiny: "I got all of the clients imported (YAY) and then tried importing my appointments... it said it was successful, but I don't see any of them... but there were like 1600-ish of them."** Investigation in progress May 9. Reproducing with a synthetic 1600-row CSV rather than touching Jiny's real data.
+   - **NEW 54d (discovered May 9 while fixing 54b): Stripe coupon BETAONE configured as "100% off for 12 months" but our marketing says "free for life".** At month 13, Stripe will try to charge founding therapists $19/mo unless we extend or replace the coupon. Action: either extend BETAONE to never-expiring 100% off (Stripe supports this via "duration: forever"), or auto-apply a follow-up coupon at month 12, or tag founding therapists in a separate Stripe price_id with $0/mo. Cleanest: Stripe coupon with duration=forever. Need HK to make this change in Stripe Dashboard.
 
-   Estimated effort: 4-6 hours total to investigate and fix all three.
+   Estimated effort: 4-6 hours total to investigate and fix all three (now four).
 
 55. **Discord / community / sounding board for power users (NEW, May 8, 2026; from Jiny). DEFERRED.**
 

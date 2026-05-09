@@ -489,64 +489,181 @@ export function ImportBookings({ therapist, onComplete }) {
 
   async function runImport() {
     setImporting(true);
+    setError('');
     let created = 0, skipped = 0, failed = 0;
+    const failureSamples = []; // First 5 failure reasons for the user
     const get = (row, idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
-    for (const row of rows) {
-      const clientName  = get(row, mapping.clientName);
-      const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
-      const clientPhone = get(row, mapping.clientPhone) || null;
-      const service     = get(row, mapping.service) || 'Session';
-      const dateStr     = get(row, mapping.date);
-      const timeStr     = get(row, mapping.startTime) || '09:00';
-      const duration    = parseInt(get(row, mapping.duration)) || 60;
-      const price       = parseFloat(get(row, mapping.price)) || 0;
-      const notes       = get(row, mapping.notes) || '';
-
-      if (!clientName || !dateStr) { skipped++; continue; }
-
-      try {
-        // Parse date
-        const d = new Date(dateStr);
-        if (isNaN(d)) { skipped++; continue; }
-        const bookingDate = d.toISOString().split('T')[0];
-
-        // Parse start time
-        const timeParsed = timeStr.match(/(\d+):(\d+)/);
-        const startTime = timeParsed ? `${String(parseInt(timeParsed[1])).padStart(2,'0')}:${timeParsed[2]}` : '09:00';
-        const [sh, sm] = startTime.split(':').map(Number);
-        const endMin = sh * 60 + sm + duration;
-        const endTime = `${String(Math.floor(endMin/60)).padStart(2,'0')}:${String(endMin%60).padStart(2,'0')}`;
-
-        // Upsert client first
-        const { data: client } = await supabase.from('clients')
-          .upsert({ therapist_id: therapist.id, name: clientName, email: clientEmail, phone: clientPhone, imported_from: 'Appointment Import' },
-            { onConflict: 'therapist_id,email', ignoreDuplicates: false })
-          .select().single();
-
-        // Create booking
-        await supabase.from('bookings').insert({
-          therapist_id:  therapist.id,
-          client_name:   clientName,
-          client_email:  clientEmail,
-          client_phone:  clientPhone,
-          client_id:     client?.id || null,
-          booking_date:  bookingDate,
-          start_time:    startTime,
-          end_time:      endTime,
-          duration,
-          price,
-          service_name:  service,
-          status:        'confirmed',
-          notes,
-          imported:      true,
-        });
-
-        created++;
-      } catch(e) { failed++; }
+    // Robust date parser. Handles common formats from various spa
+    // platforms: ISO (2026-05-09), US slash (5/9/2026), US dash
+    // (5-9-2026), 2-digit year (5/9/26), and the dotted European
+    // form (9.5.2026 / 09.05.26). Returns YYYY-MM-DD or null.
+    function parseDate(s) {
+      if (!s) return null;
+      const trimmed = s.trim();
+      // ISO already
+      if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
+      // Slash or dash separated
+      const m = trimmed.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+      if (m) {
+        let [, a, b, y] = m;
+        // Heuristic: if first group > 12, treat as DD/MM/YYYY,
+        // otherwise default to MM/DD/YYYY (US convention).
+        let mm, dd;
+        if (parseInt(a) > 12) { dd = a; mm = b; }
+        else { mm = a; dd = b; }
+        if (y.length === 2) y = (parseInt(y) >= 50 ? '19' : '20') + y;
+        return `${y}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
+      }
+      // Fallback to native Date parser as last resort
+      const d = new Date(trimmed);
+      if (!isNaN(d)) return d.toISOString().split('T')[0];
+      return null;
     }
 
-    setResults({ created, skipped, failed });
+    // Process in batches of 50 to avoid hammering Supabase, exceeding
+    // request timeouts on long imports, or losing the auth session
+    // mid-flow. Sequential within a batch is fine; the batch boundary
+    // gives us a natural progress checkpoint.
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+      const batch = rows.slice(i, i + BATCH_SIZE);
+
+      for (const row of batch) {
+        const clientName  = get(row, mapping.clientName);
+        const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
+        const clientPhone = get(row, mapping.clientPhone) || null;
+        const service     = get(row, mapping.service) || 'Session';
+        const dateStr     = get(row, mapping.date);
+        const timeStr     = get(row, mapping.startTime) || '09:00';
+        const duration    = parseInt(get(row, mapping.duration)) || 60;
+        const price       = parseFloat(get(row, mapping.price)) || 0;
+        const notes       = get(row, mapping.notes) || '';
+
+        if (!clientName || !dateStr) {
+          skipped++;
+          continue;
+        }
+
+        try {
+          const bookingDate = parseDate(dateStr);
+          if (!bookingDate) {
+            failed++;
+            if (failureSamples.length < 5) {
+              failureSamples.push(`Could not parse date "${dateStr}" for ${clientName}`);
+            }
+            continue;
+          }
+
+          // Parse start time (HH:MM or H:MM, with optional am/pm)
+          let timeMatch = timeStr.match(/(\d+):(\d+)\s*(am|pm|AM|PM)?/);
+          let sh = 9, sm = 0;
+          if (timeMatch) {
+            sh = parseInt(timeMatch[1]);
+            sm = parseInt(timeMatch[2]);
+            const ampm = (timeMatch[3] || '').toLowerCase();
+            if (ampm === 'pm' && sh < 12) sh += 12;
+            if (ampm === 'am' && sh === 12) sh = 0;
+          }
+          const startTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+          const endMin = sh * 60 + sm + duration;
+          const endTime = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+
+          // Upsert client.
+          //
+          // Critical: the previous version used onConflict on
+          // 'therapist_id,email', but many imported rows have a
+          // null email (phone-only clients common in older spa
+          // data). Postgres treats NULLs as distinct under unique
+          // constraints, which means upsert on null email throws.
+          //
+          // New strategy: try email-keyed upsert first if email is
+          // present. If no email, do a phone-keyed lookup, fall
+          // back to name-keyed lookup, then insert if no match.
+          // Always returns a client_id so the booking can link.
+          let clientId = null;
+
+          if (clientEmail) {
+            const { data: c1 } = await supabase.from('clients')
+              .upsert(
+                { therapist_id: therapist.id, name: clientName, email: clientEmail, phone: clientPhone, imported_from: 'Appointment Import' },
+                { onConflict: 'therapist_id,email', ignoreDuplicates: false }
+              )
+              .select('id').single();
+            clientId = c1?.id || null;
+          } else if (clientPhone) {
+            const { data: existing } = await supabase.from('clients')
+              .select('id')
+              .eq('therapist_id', therapist.id)
+              .eq('phone', clientPhone)
+              .maybeSingle();
+            if (existing?.id) {
+              clientId = existing.id;
+            } else {
+              const { data: c2 } = await supabase.from('clients')
+                .insert({ therapist_id: therapist.id, name: clientName, phone: clientPhone, imported_from: 'Appointment Import' })
+                .select('id').single();
+              clientId = c2?.id || null;
+            }
+          } else {
+            // No email, no phone. Match on (therapist_id, name) and
+            // create if missing. Best-effort; same name = same client.
+            const { data: existing } = await supabase.from('clients')
+              .select('id')
+              .eq('therapist_id', therapist.id)
+              .eq('name', clientName)
+              .maybeSingle();
+            if (existing?.id) {
+              clientId = existing.id;
+            } else {
+              const { data: c3 } = await supabase.from('clients')
+                .insert({ therapist_id: therapist.id, name: clientName, imported_from: 'Appointment Import' })
+                .select('id').single();
+              clientId = c3?.id || null;
+            }
+          }
+
+          // Create booking
+          const { error: bookingErr } = await supabase.from('bookings').insert({
+            therapist_id: therapist.id,
+            client_name:  clientName,
+            client_email: clientEmail,
+            client_phone: clientPhone,
+            client_id:    clientId,
+            booking_date: bookingDate,
+            start_time:   startTime,
+            end_time:     endTime,
+            duration,
+            price,
+            service_name: service,
+            status:       'confirmed',
+            notes,
+            imported:     true,
+          });
+
+          if (bookingErr) {
+            failed++;
+            if (failureSamples.length < 5) {
+              failureSamples.push(`${clientName} ${bookingDate}: ${bookingErr.message}`);
+            }
+          } else {
+            created++;
+          }
+        } catch (e) {
+          failed++;
+          if (failureSamples.length < 5) {
+            failureSamples.push(`${clientName || 'unknown'}: ${e?.message || String(e)}`);
+          }
+        }
+      }
+
+      // Yield control every batch so React can update the UI and
+      // any other queued work (auth refresh, websocket pings) can
+      // run between bursts.
+      await new Promise(r => setTimeout(r, 50));
+    }
+
+    setResults({ created, skipped, failed, failureSamples });
     setImporting(false);
     if (onComplete) onComplete();
   }
@@ -571,11 +688,64 @@ export function ImportBookings({ therapist, onComplete }) {
           {error && <div style={{ color:'#EF4444', fontSize:13, marginTop:8 }}>{error}</div>}
         </div>
       ) : results ? (
-        <div style={{ textAlign:'center', padding:'16px 0' }}>
-          <div style={{ fontSize:36, marginBottom:10 }}>📅</div>
-          <div style={{ fontSize:16, fontWeight:700, color:C.dark, marginBottom:4 }}>Appointments imported!</div>
-          <div style={{ fontSize:13, color:C.gray }}>{results.created} added · {results.skipped} skipped · {results.failed} failed</div>
-          <p style={{ fontSize:12, color:C.gray, marginTop:10 }}>Check your Schedule tab to see them.</p>
+        <div style={{ padding: '8px 0' }}>
+          {/* Honest results UI. The previous version always said
+              "Appointments imported!" even when created=0. Jiny
+              reported May 8 that 1600 appointments showed "success"
+              but none appeared in Schedule. Now the header reflects
+              actual outcome: green check only if at least one was
+              created, yellow caution if all failed, red error if
+              import threw. Failure samples shown so therapist can
+              fix the CSV and retry. */}
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 36, marginBottom: 10 }}>
+              {results.created === 0 && results.failed > 0 ? '⚠️' : results.created > 0 ? '✅' : '📅'}
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+              {results.created === 0 && results.failed > 0
+                ? `No appointments were imported`
+                : results.created > 0 && results.failed === 0
+                  ? `${results.created} appointment${results.created === 1 ? '' : 's'} imported`
+                  : `${results.created} of ${results.created + results.failed + results.skipped} imported`}
+            </div>
+            <div style={{ fontSize: 13, color: C.gray }}>
+              {results.created} added · {results.skipped} skipped · {results.failed} failed
+            </div>
+          </div>
+
+          {results.failed > 0 && results.failureSamples?.length > 0 && (
+            <div style={{
+              background: '#FEF3C7',
+              border: '1.5px solid #FCD34D',
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 12,
+              fontSize: 12,
+              color: '#78350F',
+              lineHeight: 1.55,
+            }}>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>What went wrong (first {Math.min(5, results.failureSamples.length)}):</div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {results.failureSamples.map((m, idx) => (
+                  <li key={idx} style={{ marginBottom: 3 }}>{m}</li>
+                ))}
+              </ul>
+              {results.failed > 5 && (
+                <div style={{ marginTop: 6, fontStyle: 'italic' }}>
+                  ... and {results.failed - 5} more rows with similar issues.
+                </div>
+              )}
+              <div style={{ marginTop: 8 }}>
+                Common fixes: make sure every row has a Client Name and Date column. Date can be 5/9/2026, 2026-05-09, or 9.5.2026 format. Time can be 14:30 or 2:30 PM.
+              </div>
+            </div>
+          )}
+
+          {results.created > 0 && (
+            <p style={{ fontSize: 12, color: C.gray, textAlign: 'center', margin: 0 }}>
+              Check your Schedule tab to see them.
+            </p>
+          )}
         </div>
       ) : (
         <div>
