@@ -241,6 +241,34 @@ function shapeRecipients(rows) {
     }));
 }
 
+// Helper: lowercase + dedupe a list of email strings (some may be
+// null or differently-cased between bookings and clients tables).
+function normalizeEmails(rows, key = 'client_email') {
+  const set = new Set();
+  for (const r of (rows || [])) {
+    const e = r[key];
+    if (e && typeof e === 'string') set.add(e.toLowerCase().trim());
+  }
+  return [...set];
+}
+
+// Helper: given a list of normalized emails, return matching client
+// rows for the therapist. Single source of truth for the email->client
+// lookup.
+async function clientsByEmails(therapistId, emails) {
+  if (!emails || emails.length === 0) return [];
+  const { data, error } = await supabase
+    .from('clients')
+    .select('id, name, email')
+    .eq('therapist_id', therapistId)
+    .in('email', emails);
+  if (error) {
+    console.error('[clientsByEmails]', error);
+    return [];
+  }
+  return data || [];
+}
+
 async function audienceNewClients(therapistId) {
   // Clients whose first booking was within the last 30 days.
   // Uses created_at on clients table as the "first booking" proxy
@@ -264,14 +292,15 @@ async function audienceNewClients(therapistId) {
 
 async function audienceReturningRecent(therapistId) {
   // Clients with 2+ sessions, most recent within 60 days.
-  // Two-step: count sessions per client, then filter.
+  // Bookings link to clients by client_email (NOT client_id). The
+  // bookings table does not have a client_id column.
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 60);
 
-  // Get all bookings in the last 60 days, grouped client_id -> max(date)
+  // Step 1: emails of clients who booked in the last 60 days
   const { data: recentBookings, error: bookErr } = await supabase
     .from('bookings')
-    .select('client_id, booking_date')
+    .select('client_email, booking_date')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
     .gte('booking_date', cutoff.toISOString().split('T')[0]);
@@ -281,82 +310,81 @@ async function audienceReturningRecent(therapistId) {
     return [];
   }
 
-  const recentClientIds = [...new Set((recentBookings || []).map(b => b.client_id).filter(Boolean))];
-  if (recentClientIds.length === 0) return [];
+  const recentEmails = normalizeEmails(recentBookings);
+  if (recentEmails.length === 0) return [];
 
-  // For each, count total sessions ever. Two queries are simpler
-  // than a JOIN here given the size constraints (typical therapist
-  // has < 1000 clients).
+  // Step 2: count total sessions for each of those emails
   const { data: allBookings, error: allErr } = await supabase
     .from('bookings')
-    .select('client_id')
+    .select('client_email')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
-    .in('client_id', recentClientIds);
+    .in('client_email', recentEmails);
 
   if (allErr) {
     console.error('[audience returning_recent] all:', allErr);
     return [];
   }
 
-  // Count per client
+  // Count per email
   const counts = {};
   for (const b of (allBookings || [])) {
-    counts[b.client_id] = (counts[b.client_id] || 0) + 1;
+    if (!b.client_email) continue;
+    const e = b.client_email.toLowerCase().trim();
+    counts[e] = (counts[e] || 0) + 1;
   }
-  const qualifyingIds = Object.entries(counts)
+  const qualifyingEmails = Object.entries(counts)
     .filter(([, c]) => c >= 2)
-    .map(([id]) => id);
+    .map(([e]) => e);
 
-  if (qualifyingIds.length === 0) return [];
+  if (qualifyingEmails.length === 0) return [];
 
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, name, email')
-    .eq('therapist_id', therapistId)
-    .in('id', qualifyingIds);
-
+  const clients = await clientsByEmails(therapistId, qualifyingEmails);
   return shapeRecipients(clients);
 }
 
 async function audienceLapsed(therapistId) {
-  // Clients with at least one past session, but no session in
-  // the last 60 days. The 90-day upper bound was in my original
-  // proposal but cutting it: a client lapsed > 90 days might still
-  // come back, do not exclude them.
+  // Clients with at least one past booking, but no booking in
+  // the last 60 days. Joined by client_email since bookings
+  // does not have client_id.
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 60);
 
-  // Step 1: all clients who have ever booked with this therapist
-  const { data: everBooked } = await supabase
+  // Step 1: all distinct emails that have ever booked with this therapist
+  const { data: everBooked, error: everErr } = await supabase
     .from('bookings')
-    .select('client_id')
+    .select('client_email')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled');
 
-  const everIds = [...new Set((everBooked || []).map(b => b.client_id).filter(Boolean))];
-  if (everIds.length === 0) return [];
+  if (everErr) {
+    console.error('[audience lapsed] ever:', everErr);
+    return [];
+  }
 
-  // Step 2: clients who booked in the last 60 days
-  const { data: recent } = await supabase
+  const everEmails = normalizeEmails(everBooked);
+  if (everEmails.length === 0) return [];
+
+  // Step 2: emails that booked in the last 60 days
+  const { data: recent, error: recentErr } = await supabase
     .from('bookings')
-    .select('client_id')
+    .select('client_email')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
     .gte('booking_date', cutoff.toISOString().split('T')[0]);
 
-  const recentIds = new Set((recent || []).map(b => b.client_id).filter(Boolean));
+  if (recentErr) {
+    console.error('[audience lapsed] recent:', recentErr);
+    return [];
+  }
+
+  const recentEmails = new Set(normalizeEmails(recent));
 
   // Step 3: lapsed = ever - recent
-  const lapsedIds = everIds.filter(id => !recentIds.has(id));
-  if (lapsedIds.length === 0) return [];
+  const lapsedEmails = everEmails.filter(e => !recentEmails.has(e));
+  if (lapsedEmails.length === 0) return [];
 
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, name, email')
-    .eq('therapist_id', therapistId)
-    .in('id', lapsedIds);
-
+  const clients = await clientsByEmails(therapistId, lapsedEmails);
   return shapeRecipients(clients);
 }
 
@@ -364,25 +392,26 @@ async function audienceAllActive(therapistId) {
   // Any client with a booking (any status except cancelled) in
   // the last 12 months. This is the broadest audience and is meant
   // for monthly newsletter-style campaigns.
+  // Joined by client_email (bookings has no client_id column).
   const cutoff = new Date();
   cutoff.setFullYear(cutoff.getFullYear() - 1);
 
-  const { data: recentBookings } = await supabase
+  const { data: recentBookings, error } = await supabase
     .from('bookings')
-    .select('client_id')
+    .select('client_email')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
     .gte('booking_date', cutoff.toISOString().split('T')[0]);
 
-  const ids = [...new Set((recentBookings || []).map(b => b.client_id).filter(Boolean))];
-  if (ids.length === 0) return [];
+  if (error) {
+    console.error('[audience all_active]', error);
+    return [];
+  }
 
-  const { data: clients } = await supabase
-    .from('clients')
-    .select('id, name, email')
-    .eq('therapist_id', therapistId)
-    .in('id', ids);
+  const emails = normalizeEmails(recentBookings);
+  if (emails.length === 0) return [];
 
+  const clients = await clientsByEmails(therapistId, emails);
   return shapeRecipients(clients);
 }
 
@@ -391,9 +420,9 @@ async function audiencePackageHoldersIdle(therapistId) {
   // in the last 14 days. Real revenue retention angle: get them
   // to use what they paid for before they forget about it.
 
-  // Step 1: client_id list with package balance > 0.
-  // Reads from package_purchases table per existing convention used
-  // by PurchasesPanel.jsx (sessions_remaining, sessions_purchased).
+  // Step 1: client_id list with package balance > 0. The
+  // package_purchases table DOES have client_id since it is the
+  // forward-mapped purchases (per PurchasesPanel.jsx convention).
   const { data: packageRows, error: pkgErr } = await supabase
     .from('package_purchases')
     .select('client_id, sessions_remaining')
@@ -408,20 +437,42 @@ async function audiencePackageHoldersIdle(therapistId) {
   const packageClientIds = [...new Set((packageRows || []).map(p => p.client_id).filter(Boolean))];
   if (packageClientIds.length === 0) return [];
 
-  // Step 2: filter out anyone who booked in the last 14 days
+  // Step 2: get the emails of those clients (to bridge to bookings)
+  const { data: pkgClients } = await supabase
+    .from('clients')
+    .select('id, email')
+    .eq('therapist_id', therapistId)
+    .in('id', packageClientIds);
+
+  const idToEmail = new Map();
+  const pkgEmails = [];
+  for (const c of (pkgClients || [])) {
+    if (c.email) {
+      const e = c.email.toLowerCase().trim();
+      idToEmail.set(c.id, e);
+      pkgEmails.push(e);
+    }
+  }
+  if (pkgEmails.length === 0) return [];
+
+  // Step 3: filter out anyone who booked in the last 14 days
+  // (joined by client_email since bookings has no client_id)
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 14);
 
   const { data: recentBookings } = await supabase
     .from('bookings')
-    .select('client_id')
+    .select('client_email')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
-    .in('client_id', packageClientIds)
+    .in('client_email', pkgEmails)
     .gte('booking_date', cutoff.toISOString().split('T')[0]);
 
-  const recentIds = new Set((recentBookings || []).map(b => b.client_id).filter(Boolean));
-  const idleIds = packageClientIds.filter(id => !recentIds.has(id));
+  const recentEmails = new Set(normalizeEmails(recentBookings));
+  const idleIds = packageClientIds.filter(id => {
+    const email = idToEmail.get(id);
+    return email && !recentEmails.has(email);
+  });
   if (idleIds.length === 0) return [];
 
   const { data: clients } = await supabase

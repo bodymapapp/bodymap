@@ -89,6 +89,27 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
       first_name: deriveFirstName(r.name),
     }));
 
+  // Bookings link to clients by client_email (NOT client_id; that
+  // column does not exist on the bookings table). Helper to get
+  // distinct lowercased emails from a list of booking rows.
+  const normalizeEmails = (rows: any[], key = 'client_email') => {
+    const set = new Set<string>();
+    for (const r of (rows || [])) {
+      const e = r[key];
+      if (e && typeof e === 'string') set.add(e.toLowerCase().trim());
+    }
+    return [...set];
+  };
+
+  const clientsByEmails = async (emails: string[]) => {
+    if (emails.length === 0) return [];
+    const { data } = await supabase.from('clients')
+      .select('id, name, email')
+      .eq('therapist_id', therapistId)
+      .in('email', emails);
+    return data || [];
+  };
+
   if (preset === 'new_clients') {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
     const { data } = await supabase.from('clients')
@@ -101,64 +122,59 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
   if (preset === 'returning_recent') {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
     const { data: recent } = await supabase.from('bookings')
-      .select('client_id, booking_date')
+      .select('client_email, booking_date')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled')
       .gte('booking_date', cutoff.toISOString().split('T')[0]);
-    const recentIds = [...new Set((recent || []).map((b: any) => b.client_id).filter(Boolean))];
-    if (recentIds.length === 0) return [];
+    const recentEmails = normalizeEmails(recent);
+    if (recentEmails.length === 0) return [];
     const { data: all } = await supabase.from('bookings')
-      .select('client_id')
+      .select('client_email')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled')
-      .in('client_id', recentIds);
+      .in('client_email', recentEmails);
     const counts: Record<string, number> = {};
-    for (const b of (all || [])) counts[b.client_id] = (counts[b.client_id] || 0) + 1;
-    const qualifyingIds = Object.entries(counts).filter(([, c]) => (c as number) >= 2).map(([id]) => id);
-    if (qualifyingIds.length === 0) return [];
-    const { data: clients } = await supabase.from('clients')
-      .select('id, name, email')
-      .eq('therapist_id', therapistId)
-      .in('id', qualifyingIds);
+    for (const b of (all || [])) {
+      if (!b.client_email) continue;
+      const e = b.client_email.toLowerCase().trim();
+      counts[e] = (counts[e] || 0) + 1;
+    }
+    const qualifyingEmails = Object.entries(counts).filter(([, c]) => (c as number) >= 2).map(([e]) => e);
+    if (qualifyingEmails.length === 0) return [];
+    const clients = await clientsByEmails(qualifyingEmails);
     return shape(clients);
   }
 
   if (preset === 'lapsed') {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 60);
     const { data: ever } = await supabase.from('bookings')
-      .select('client_id')
+      .select('client_email')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled');
-    const everIds = [...new Set((ever || []).map((b: any) => b.client_id).filter(Boolean))];
-    if (everIds.length === 0) return [];
+    const everEmails = normalizeEmails(ever);
+    if (everEmails.length === 0) return [];
     const { data: recent } = await supabase.from('bookings')
-      .select('client_id')
+      .select('client_email')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled')
       .gte('booking_date', cutoff.toISOString().split('T')[0]);
-    const recentIds = new Set((recent || []).map((b: any) => b.client_id).filter(Boolean));
-    const lapsedIds = everIds.filter(id => !recentIds.has(id));
-    if (lapsedIds.length === 0) return [];
-    const { data: clients } = await supabase.from('clients')
-      .select('id, name, email')
-      .eq('therapist_id', therapistId)
-      .in('id', lapsedIds);
+    const recentEmails = new Set(normalizeEmails(recent));
+    const lapsedEmails = everEmails.filter(e => !recentEmails.has(e));
+    if (lapsedEmails.length === 0) return [];
+    const clients = await clientsByEmails(lapsedEmails);
     return shape(clients);
   }
 
   if (preset === 'all_active') {
     const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
     const { data: recent } = await supabase.from('bookings')
-      .select('client_id')
+      .select('client_email')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled')
       .gte('booking_date', cutoff.toISOString().split('T')[0]);
-    const ids = [...new Set((recent || []).map((b: any) => b.client_id).filter(Boolean))];
-    if (ids.length === 0) return [];
-    const { data: clients } = await supabase.from('clients')
-      .select('id, name, email')
-      .eq('therapist_id', therapistId)
-      .in('id', ids);
+    const emails = normalizeEmails(recent);
+    if (emails.length === 0) return [];
+    const clients = await clientsByEmails(emails);
     return shape(clients);
   }
 
@@ -169,15 +185,35 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
       .gt('sessions_remaining', 0);
     const pkgIds = [...new Set((pkgs || []).map((p: any) => p.client_id).filter(Boolean))];
     if (pkgIds.length === 0) return [];
+    // Get those clients' emails
+    const { data: pkgClients } = await supabase.from('clients')
+      .select('id, email')
+      .eq('therapist_id', therapistId)
+      .in('id', pkgIds);
+    const idToEmail = new Map<string, string>();
+    const pkgEmails: string[] = [];
+    for (const c of (pkgClients || [])) {
+      if (c.email) {
+        const e = c.email.toLowerCase().trim();
+        idToEmail.set(c.id, e);
+        pkgEmails.push(e);
+      }
+    }
+    if (pkgEmails.length === 0) return [];
+    // Filter out anyone who booked in the last 14 days
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
     const { data: recent } = await supabase.from('bookings')
-      .select('client_id')
+      .select('client_email')
       .eq('therapist_id', therapistId)
       .neq('status', 'cancelled')
-      .in('client_id', pkgIds)
+      .in('client_email', pkgEmails)
       .gte('booking_date', cutoff.toISOString().split('T')[0]);
-    const recentIds = new Set((recent || []).map((b: any) => b.client_id).filter(Boolean));
-    const idleIds = pkgIds.filter(id => !recentIds.has(id));
+    const recentEmails = new Set(normalizeEmails(recent));
+    const idleIds = pkgIds.filter(id => {
+      const email = idToEmail.get(id);
+      return email && !recentEmails.has(email);
+    });
+    if (idleIds.length === 0) return [];
     if (idleIds.length === 0) return [];
     const { data: clients } = await supabase.from('clients')
       .select('id, name, email')
