@@ -1,48 +1,53 @@
 -- ─────────────────────────────────────────────────────────────────
 -- Outreach quick-send: templates + send tracking
--- May 9, 2026 (revised May 9 evening for safe re-run)
+-- May 9, 2026 (revised again to avoid collision with existing
+-- outreach_sends table)
 -- HK direction: top of Outreach page gets preconfigured "blocks"
 -- (5 of them), 2-click flow (tap block, modal opens with prefilled
 -- email, edit-and-send). Therapist can edit, reset, or delete
 -- starter templates and create custom ones.
 -- ─────────────────────────────────────────────────────────────────
 --
--- SAFE FROM ANY STARTING STATE
+-- IMPORTANT: COLLISION AVOIDED
 --
--- This migration drops both tables first if they exist, then
--- recreates them clean. Safe because:
---   - The feature has never been live in production
---   - No therapist has ever written to either table
---   - No emails have ever been sent through this path
+-- An existing outreach_sends table is already in production, used
+-- by src/components/Outreach.js to log every campaign send via the
+-- existing advanced campaign builder. That table has a different
+-- schema (channel, segment, recipient_count, success_count, etc).
+-- The original v1 of this migration used the same name and would
+-- have DROPPED the existing table, erasing real campaign history.
 --
--- Once the feature is live with real data, future schema changes
--- will use ALTER TABLE migrations instead of DROP-and-recreate.
--- This file is the one-time clean-slate setup.
+-- Diagnostic May 9 evening (HK pasted information_schema query
+-- result) caught this near-miss. Fix: this migration now creates
+-- a distinct outreach_quicksend_sends table. Existing outreach_sends
+-- table is left completely untouched.
 --
--- TWO TABLES
+-- TWO TABLES CREATED HERE
 --
 -- outreach_templates
---   Per-therapist editable templates. 5 starter templates are seeded
---   on first load (idempotent via is_starter + starter_key check
---   in the frontend ensureStartersSeeded function, not here).
+--   Per-therapist editable templates. 5 starter templates are
+--   seeded on first load by the frontend (idempotent via
+--   ensureStartersSeeded function).
 --
--- outreach_sends
---   One row per (template, client) send event. Used for re-send
---   protection (skip if same template went to same client within
---   14 days), reporting, and audit.
+-- outreach_quicksend_sends
+--   One row per (template, client) send event from the quick-send
+--   flow. Used for re-send protection (skip if same template went
+--   to same client within 14 days), reporting, and audit. Distinct
+--   from outreach_sends which tracks campaign-level batches from
+--   the advanced builder.
 --
 -- Both tables RLS-protected: therapist sees only their own rows.
 
-DROP TABLE IF EXISTS outreach_sends CASCADE;
+DROP TABLE IF EXISTS outreach_quicksend_sends CASCADE;
 DROP TABLE IF EXISTS outreach_templates CASCADE;
 
 CREATE TABLE outreach_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   therapist_id UUID NOT NULL REFERENCES therapists(id) ON DELETE CASCADE,
-  label TEXT NOT NULL,                     -- "Welcome new clients"
-  subject TEXT NOT NULL,                   -- "Quick check-in from {{therapist_name}}"
-  body TEXT NOT NULL,                      -- Email body with smart tokens
-  audience_preset TEXT NOT NULL,           -- 'new_clients' | 'returning_recent' | 'lapsed' | 'all_active' | 'package_holders_idle'
+  label TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  body TEXT NOT NULL,
+  audience_preset TEXT NOT NULL,
   is_starter BOOLEAN NOT NULL DEFAULT FALSE,
   starter_key TEXT,
   display_order INTEGER NOT NULL DEFAULT 0,
@@ -72,7 +77,7 @@ CREATE POLICY outreach_templates_delete ON outreach_templates
   FOR DELETE USING (therapist_id = auth.uid());
 
 
-CREATE TABLE outreach_sends (
+CREATE TABLE outreach_quicksend_sends (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID NOT NULL REFERENCES outreach_templates(id) ON DELETE CASCADE,
   therapist_id UUID NOT NULL REFERENCES therapists(id) ON DELETE CASCADE,
@@ -84,22 +89,19 @@ CREATE TABLE outreach_sends (
   bounced BOOLEAN
 );
 
-CREATE INDEX idx_outreach_sends_dedupe
-  ON outreach_sends(template_id, client_id, sent_at DESC);
-CREATE INDEX idx_outreach_sends_therapist
-  ON outreach_sends(therapist_id, sent_at DESC);
+CREATE INDEX idx_outreach_quicksend_sends_dedupe
+  ON outreach_quicksend_sends(template_id, client_id, sent_at DESC);
+CREATE INDEX idx_outreach_quicksend_sends_therapist
+  ON outreach_quicksend_sends(therapist_id, sent_at DESC);
 
-ALTER TABLE outreach_sends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE outreach_quicksend_sends ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY outreach_sends_select ON outreach_sends
+CREATE POLICY outreach_quicksend_sends_select ON outreach_quicksend_sends
   FOR SELECT USING (therapist_id = auth.uid());
 
--- Sanity check: confirm both tables exist with their columns
-SELECT 'outreach_templates' AS table_name, column_name, data_type
+-- Sanity check: confirm both new tables exist and the existing
+-- outreach_sends still has its original schema
+SELECT table_name, column_name, data_type
 FROM information_schema.columns
-WHERE table_name = 'outreach_templates'
-UNION ALL
-SELECT 'outreach_sends', column_name, data_type
-FROM information_schema.columns
-WHERE table_name = 'outreach_sends'
-ORDER BY table_name, column_name;
+WHERE table_name IN ('outreach_templates', 'outreach_quicksend_sends', 'outreach_sends')
+ORDER BY table_name, ordinal_position;

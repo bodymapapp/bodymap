@@ -10,7 +10,7 @@
 //     {{therapist_name}}, {{rebook_link}})
 //   - One Resend API call per recipient (sequential with small
 //     delay to stay under Resend rate limits)
-//   - One outreach_sends row per successful send for future
+//   - One outreach_quicksend_sends row per successful send for future
 //     re-send protection and reporting
 //
 // Returns: { sent, skipped_recent, skipped_unsubscribed, failed }
@@ -236,7 +236,7 @@ serve(async (req) => {
     const protectionCutoff = new Date();
     protectionCutoff.setDate(protectionCutoff.getDate() - RESEND_PROTECTION_DAYS);
     const { data: recentSends } = await supabase
-      .from('outreach_sends')
+      .from('outreach_quicksend_sends')
       .select('client_id')
       .eq('template_id', template_id)
       .gte('sent_at', protectionCutoff.toISOString());
@@ -283,7 +283,7 @@ serve(async (req) => {
         const data = await res.json();
 
         // Log the send
-        await supabase.from('outreach_sends').insert({
+        await supabase.from('outreach_quicksend_sends').insert({
           template_id,
           therapist_id,
           client_id: recipient.client_id,

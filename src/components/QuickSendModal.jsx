@@ -17,7 +17,7 @@
 //   1. Persist edits to outreach_templates row
 //   2. POST to send-outreach-batch edge function with template_id
 //   3. Edge function does re-send protection, calls Resend per
-//      recipient, writes outreach_sends rows, returns summary
+//      recipient, writes outreach_quicksend_sends rows, returns summary
 //   4. Show toast: "Sent N. Skipped M (already received recently)."
 
 import React, { useState } from 'react';
