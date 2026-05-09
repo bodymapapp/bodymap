@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, supabase } from '../lib/supabase';
+import QuickSendBlocks from './QuickSendBlocks';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -420,6 +421,24 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       <div style={{ marginBottom:24 }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>Smart Outreach</h2>
         <p style={{ fontSize:13, color:C.gray, margin:0 }}>Send a personal message to a group of clients in one shot. Each one is addressed by name.</p>
+      </div>
+
+      {/* Quick-send blocks at the top.
+          HK direction May 9 2026: 5 preconfigured blocks for the
+          most common outreach moments (welcome new clients, miss
+          you, ready when you are, package balance, special this
+          month). 2-click flow: tap block, modal opens, send.
+          Below this, the existing 'advanced' segment + filter +
+          template builder remains for therapists who need it. */}
+      <QuickSendBlocks therapist={therapist} />
+
+      {/* Divider between quick-send and advanced */}
+      <div style={{ display:'flex', alignItems:'center', gap:12, margin:'8px 0 18px' }}>
+        <div style={{ flex:1, height:1, background:C.light }} />
+        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>
+          Or build a custom campaign
+        </div>
+        <div style={{ flex:1, height:1, background:C.light }} />
       </div>
 
       {/* Channel toggle */}
