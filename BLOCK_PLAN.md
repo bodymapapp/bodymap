@@ -794,6 +794,316 @@ How HK and Claude work together every session. Survives compaction.
 
    If still failing, paste the new error message verbatim and we debug from there. The fix has been pushed in commit a401664a; all that remains is real-world verification.
 
+---
+
+## NEW SECTION: Customer feedback intake May 8, 2026
+
+Two founding therapists sent detailed feedback emails May 7-8: **Jiny Green** (warm-personal, ADHD-rant style, deep product instincts, offered to be sounding board, Discord-curious) and **Lindsey** (transactional-warm, Acuity refugee with 10 years of pattern matching on what scheduling software needs to do). HK responded with personalized thank-yous and they liked it. These items are the structured capture of what was raised.
+
+Items 36-50 below are the new intake. Sprint sequencing follows at item 51.
+
+---
+
+36. **Client detail page redesign (NEW, May 8, 2026; supersedes scoped Item 27).** HK direction: "client cards need more richness. May be when we click them, we should see if a card is saved, if deposit has been given that should be called out very clearly, any other best practices on what should be available and saved for each client so that it is useful for both client and therapist."
+
+   Item 27 originally scoped 4 indicators (deposit / card on file / membership / package) on the list-view card. That is still useful but undersized. The real product surface is a redesigned client detail page that pulls together everything therapists need at-a-glance for triage, retention decisions, and day-of-session prep, plus everything clients need when viewing their own profile.
+
+   **Therapist sees on click:**
+   - Last visit date + days since
+   - Total sessions, lifetime revenue
+   - Card on file status (yes/no, last 4 digits, processor)
+   - Active deposit (paid for upcoming session, amount, refundable date)
+   - Active membership (tier, sessions remaining this month, renewal date)
+   - Active package (sessions remaining, expiration)
+   - Outstanding balance (cancellation policy charges, no-show fees)
+   - Body areas of concern (top 3 from intake/SOAP history)
+   - Pregnancy / health flags
+   - Sensitivities, contraindications, dislikes
+   - Cycle phase (if cycle scheduling enabled)
+   - Communication preferences (text vs email, opt-out)
+   - Recurring booking pattern if any
+   - Booking source (referral, organic, repeat from email)
+   - Therapist-only notes ("loves chamomile tea before sessions")
+   - Refund/dispute history
+
+   **Client sees on their own profile:**
+   - Their session history with self-reported feedback
+   - Card on file (with update option)
+   - Active membership / package balance
+   - Upcoming bookings
+   - Past intakes (with edit option per Lindsey #11)
+   - Cycle/cadence preferences
+
+   **The visual centerpiece should be the body map history with tension pattern visualization.** This is our actual moat. Other software has client profiles; nobody has the longitudinal body map.
+
+   Implementation: client detail page becomes its own route `/dashboard/clients/:id`, renders rich layout with all of the above. Item 27 (4 list-view indicators) shrinks to a small tease that hints at richness, with the click navigating to detail page.
+
+   Estimated effort: 3-4 days focused work. This is product UX, not a quick fix.
+
+37. **Cancel / reschedule / refund flows (NEW, May 8, 2026; expanded scope of Item 28).**
+
+   Item 28 originally scoped cancel + reschedule. Refunds are the missing third pillar. The full surface:
+   - **Cancellation (in policy window):** client cancels with enough notice → no charge, deposit refunded automatically.
+   - **Cancellation (out of policy):** client cancels too late → deposit forfeited or partial refund per therapist's policy.
+   - **Reschedule (in policy window):** change time, no money movement.
+   - **Reschedule (out of policy):** apply policy charge then move appointment.
+   - **No-show:** therapist marks no-show → policy charge from card on file. (Closes Lindsey #1.)
+   - **Therapist-initiated cancel:** full refund regardless of timing.
+   - **Manual refund:** therapist refunds a session that already happened (good will, dispute).
+
+   All flow through Stripe / Square refund APIs and the per-service cancellation policy. Components needed:
+   1. Cancellation/reschedule link in confirmation email (signed token, 24h to 7d expiry).
+   2. Public-facing cancel page: shows session details, asks for reason (optional), explains policy charge if applicable, processes if appropriate.
+   3. Public-facing reschedule page: shows session details, picks new slot from same therapist's availability, swaps booking.
+   4. Therapist-side cancel/reschedule from session detail in dashboard. "Cancel for client" or "Reschedule for client" with same modal.
+   5. Therapist-side refund flow: any past session, "Issue refund" button, full or partial, reason note.
+   6. Cancellation policy enforcement: cron job at policy cutoff time auto-marks deposits non-refundable, surfaces in reporting.
+
+   **Database additions needed:** booking.cancellation_token (UUID), booking.cancellation_reason, booking.refunded_amount_cents, booking.refunded_at, booking.refund_method.
+
+   Estimated effort: 5-7 days dedicated sprint. Highest user-facing gap right now.
+
+38. **Per-service availability windows (NEW, May 8, 2026; from Lindsey #4).** "Different calendar/availability for different services."
+
+   Currently therapist sets one global availability window. Lindsey wants per-service: "60-minute deep tissue available Mon/Wed/Fri only; 90-minute hot stone Tuesday afternoons only."
+
+   Implementation: extend services table with optional availability_overrides JSON column. UI in service editor lets therapist toggle "Custom availability for this service" with day-of-week + time-of-day grid. Booking page slot generation respects per-service overrides when set, falls back to global when not.
+
+   Estimated effort: 1-2 days.
+
+39. **Booking lead-time minimum (NEW, May 8, 2026; from Lindsey #5).** "Limits on booking (how many hours ahead someone can book)."
+
+   Add therapist setting "Minimum booking notice" with options: same day, 4 hours, 8 hours, 24 hours, 48 hours, 1 week. Booking page slot filter excludes any slot too close to now per this rule.
+
+   Estimated effort: 2-3 hours. Quick win.
+
+40. **Service-duration-aware slot offering (NEW, May 8, 2026; from Lindsey #9).** "Booking according to service duration (offering next available time)."
+
+   Investigate whether current slot generation already does this. If a 90-min service is selected, slots should only show start times where 90 contiguous minutes are available (not just any 30-min gap). My understanding is this is partly already implemented; need to verify and close any gaps.
+
+   Estimated effort: 2-4 hour investigation + fix.
+
+41. **Disallow gaps in day (NEW, May 8, 2026; from Lindsey #7).** "Allowing/Disallowing gaps in day."
+
+   Therapist setting: "Pack appointments back-to-back" toggle. When ON, booking page only offers slots immediately after an existing booking or at start of availability window, no isolated mid-day slots. Helps therapists who want full days or empty days, not partial days.
+
+   Estimated effort: 4-6 hours. Logic in slot generator.
+
+42. **Manual available-time slots (NEW, May 8, 2026; from Lindsey #8).** "Manually writing in available times for appts rather than all day listing."
+
+   Today availability is "I'm available 9am-5pm Mon-Fri" and the system generates 30-min slots within. Lindsey wants the OPPOSITE: she manually adds "I have a slot at 10:30am Tuesday and 2pm Wednesday" and only those show. This is the override-driven model many seasoned LMTs use because their day looks irregular.
+
+   Implementation: new availability mode toggle "Window-based (auto-fill slots)" vs "Slot-based (I add specific slots)". UI for slot-based has a calendar grid where therapist taps to add/remove individual time slots.
+
+   Estimated effort: 3-4 days. Affects the calendar fundamentally; needs careful design.
+
+43. **Calendar sync to iCal/Google (NEW, May 8, 2026; from Lindsey #10).** "Calendar sync to iCal/google cal etc."
+
+   Two directions:
+   - **Read-only export (one-way):** every therapist gets a `.ics` URL they can subscribe to from Google Calendar / iCal / Outlook. Simple. Bookings appear in personal calendar.
+   - **Bidirectional sync:** therapist's personal Google Calendar busy times block MyBodyMap availability. Much harder; requires OAuth, calendar permissions, two-way conflict resolution.
+
+   Recommendation: ship one-way first (1-2 days), defer bidirectional unless Lindsey or others specifically push.
+
+   Estimated effort: 1-2 days for one-way; 1-2 weeks for bidirectional.
+
+44. **Bidirectional intake editing (NEW, May 8, 2026; from Lindsey #11).** "Can both I and the client edit their intake form after filling it out?"
+
+   Currently clients fill once; only therapist can edit after. Lindsey wants client to edit too (chronic conditions update over time, address changes, etc).
+
+   Implementation: client portal at `/portal/:therapist-slug` (signed token from email) where client can view and edit their own intake. Therapist sees a "client edited their intake on [date]" indicator in the dashboard and can review.
+
+   Estimated effort: 2-3 days.
+
+45. **Waitlist (NEW, May 8, 2026; from Lindsey followup).** "A waitlist option!! No, Acuity actually doesn't have."
+
+   When a service is fully booked or no slots match the client's preferred time window, offer them a waitlist signup. If a slot opens (cancellation, reschedule), waitlist clients in order get an automated email: "A slot opened up for your preferred service. Click here to book it. Expires in 4 hours." First click books.
+
+   Real differentiator. Acuity doesn't have this. Most spa software doesn't.
+
+   Implementation: waitlist table (client_id, therapist_id, service_id, preferred_window, created_at, status). Cron checks for newly-open slots that match waiting clients. Sends signed-token email; first click claims the slot.
+
+   Estimated effort: 3-4 days. Genuine product expansion.
+
+46. **Tips on pay-in-full and deposits (NEW, May 8, 2026; from Lindsey #2).** "Tips for pay in full & deposits."
+
+   Currently no way for client to add a tip during the booking flow. Most spas don't pre-tip but some clients want to. Add optional tip line item at the deposit / pay-in-full step. Stripe and Square both support adding to PaymentIntent / Order amount with separate accounting.
+
+   Implementation: tip input at payment step (preset 15/18/20/25/custom). Server side: included in PaymentIntent total but tagged in metadata as tip_cents so reporting separates earnings from tips.
+
+   Estimated effort: 1 day.
+
+47. **Follow-up email for new clients only (NEW, May 8, 2026; from Lindsey #3).** "Follow up email, only for new clients and not returning."
+
+   Currently post-session follow-up email sends to everyone. Lindsey wants the welcome-and-follow-up version only for first-time clients; returning clients get a shorter rebook-focused email or none.
+
+   Implementation: in the post-session email logic, check if client has prior completed sessions. Branch template accordingly. The "first session was great, here's what to expect next time" version vs "ready to schedule again?" version.
+
+   Estimated effort: 4-6 hours.
+
+48. **Manual payment recording (cash, Venmo, Zelle, check) (NEW, May 8, 2026; from Jiny).** "Are you going to allow other payment types (for tracking) like Cash, or Venmo, etc."
+
+   Therapist marks a session as paid outside the platform. No money moves through MyBodyMap; record-keeping only. Important for older LMTs who still take a lot of cash and don't want to lose those sessions in their reporting.
+
+   Implementation: on session detail, "Mark as paid" → modal with method dropdown (Cash, Venmo, Zelle, Check, Other) + amount + optional note. Records in payments table with method='manual' and provider=null. Reporting separates manual vs processed.
+
+   Estimated effort: 1 day.
+
+49. **Manual client credits (NEW, May 8, 2026; from Jiny).** "Ways of being able to give certain clients credits they may already have."
+
+   Therapist gives client a $30 credit (good will, refund-as-credit, gift). Tracks in client record. Auto-applied at next checkout.
+
+   Implementation: client_credits table (client_id, therapist_id, amount_cents, reason, created_at, applied_at). Therapist UI to add credit. Booking checkout shows available credit, applies up to total.
+
+   Estimated effort: 1-2 days.
+
+50. **Gift card GAAP accounting research and decision (NEW, May 8, 2026; from Jiny).** Jiny raised this as a potential differentiator: per GAAP, gift card sales are deferred revenue (a liability) until redeemed, not income up front. Most spa booking platforms count sales as income immediately. Square allegedly handles correctly.
+
+   Honest assessment: Stripe and Square are payment processors, not accounting systems. They report transactions; the merchant's books are the merchant's responsibility. So Jiny's assumption "you're using Stripe so it's handled" is technically incorrect.
+
+   Decision needed:
+   - **Option A: Build GAAP-correct deferred revenue tracking** in MyBodyMap reporting. Real differentiator for spa-industry buyers. Probably 1-2 weeks.
+   - **Option B: Be honest we don't do this.** Recommend QuickBooks integration. Cheap.
+   - **Option C: Defer.** Revisit when more therapists ask.
+
+   No coding until HK decides. Logged for explicit choice.
+
+   Estimated effort: 0 (research/decision item).
+
+51. **Branded gift cards (NEW, May 8, 2026; from Jiny).** "Can we tailor our gift cards with our brand colors eventually? Or upload our own images/etc?"
+
+   Therapist uploads logo + selects accent color → gift card design generates with their branding. Email and PDF versions both branded.
+
+   Implementation: therapist branding settings (already partly exists in Settings). Gift card generator pulls from those settings. Use a library like html-to-image or server-side puppeteer for PDF generation.
+
+   Estimated effort: 2-3 days.
+
+52. **Simple vs Advanced mode toggle (NEW, May 8, 2026; from Jiny). REAL DIFFERENTIATOR. Strategic decision needed.**
+
+   Jiny's instinct: "Have a setting that you can toggle for simple or advanced users. Advanced toggle can hardcore customize everything. Simple can be what you've got going on right now." Pre-filled defaults already exist for older LMTs; this would formalize a "Simple mode" that hides advanced settings entirely.
+
+   This is a real differentiator. Most software is one-size-fits-all overwhelm for the older-LMT persona. A clean Simple/Advanced split would directly address the persona.
+
+   **However: this is an architectural decision.** If yes, every future feature work has to consider "does this go in Simple, Advanced, or both?" It changes how Settings is built going forward.
+
+   Recommend: HK decides yes/no/defer. If yes, design doc first defining what goes in Simple vs Advanced, THEN implement.
+
+   Estimated effort: 1 week if yes (refactoring Settings into mode-aware sections); 0 if no.
+
+53. **Specialty-tailored intake (NEW, May 8, 2026; from Jiny). REAL DIFFERENTIATOR.**
+
+   Jiny's idea: therapist picks their modalities (hot stone, deep tissue, lymphatic, prenatal, etc) at onboarding. Intake form auto-includes contraindications and questions specific to those modalities. Hot stone therapist's intake auto-asks about varicose veins and cardiovascular disease; prenatal's asks about trimester and OB clearance.
+
+   Genuinely novel. No competitor does this.
+
+   Implementation: therapist onboarding adds a "What do you specialize in?" step. Modalities list with checkboxes. Intake template engine adds appropriate questions and contraindications when therapist publishes.
+
+   Need a curated database of modality → contraindication mappings. ABMP's pathology resources are a starting point; would want a real LMT educator's review before shipping.
+
+   Estimated effort: 1-2 weeks (database curation is the long pole).
+
+54. **Three reported bugs from Jiny + Lindsey, May 8, 2026 (URGENT, do this week).**
+
+   - **Lindsey: "Plan says it's Gold for the $49/mo, but I would only need Silver since I'm solo."** Investigate. Likely Stripe webhook misclassified her tier or our display logic is wrong. Check her therapist row, fix display.
+   - **Jiny: "Saw on your first email at the bottom that says 'Silver tier Free for Life' and on the website it was free for a year."** Copy mismatch. Audit all marketing/onboarding copy and unify the messaging. Decide once: is Silver free for founding therapists (first 100, lifetime) or free for first year? Whatever HK decides, make every surface match.
+   - **Jiny: "I got all of the clients imported (YAY) and then tried importing my appointments... it said it was successful, but I don't see any of them... but there were like 1600-ish of them."** Investigate. Possibly: import worked but date filter on dashboard hides historical bookings. Possibly: silent error on rows that exceed a column length. Possibly: 1600 was too many for one batch. Need to look at her data and the import logs.
+
+   Estimated effort: 4-6 hours total to investigate and fix all three.
+
+55. **Discord / community / sounding board for power users (NEW, May 8, 2026; from Jiny). DEFERRED.**
+
+   Jiny offered: "Do you have a Discord server or something similar? Some kind of group for those of us who can make suggestions or ideas for your app?"
+
+   Real time commitment. Standing one up and not showing up signals abandonment, which is worse than not having one. HK decision deferred. Suggested response (already sent in email): "Soon, but I want to do it right. For now please keep emailing me directly."
+
+   Revisit in 60-90 days when therapist count justifies dedicated community time.
+
+   Estimated effort: 0 currently. ~1-2 weeks of attention if/when launched.
+
+56. **3D-printed QR/NFC stand for tip jar (NEW, May 8, 2026; from Jiny). FAR FUTURE.**
+
+   Jiny's whimsical idea: branded 3D-printed stand with QR code (linking to tip page) and optional NFC tag (plays a sound when tapped). "Toss a coin to your spa fairy" with the Witcher melody.
+
+   Fun. Not a product priority. Potential side-revenue if therapists want to buy them. File and forget for now.
+
+   Estimated effort: 0 currently. Side project for someone, someday.
+
+---
+
+## SPRINT SEQUENCING (proposed May 8, 2026)
+
+Six sprints over the next 6-8 weeks. Each sprint is a theme, not a fixed feature list, so we can flex what fits within the window.
+
+### Sprint 0 (THIS WEEK, partly already done): Bugs + closure of in-flight QA fixes
+- Items 23, 29, 31, 33 (already shipped in Chunk 5)
+- Item 35 verification (Stripe package fix retest)
+- Item 54 (the three Jiny + Lindsey reported bugs)
+- Anything else that surfaces from continued QA
+
+Estimated: 1-2 days remaining.
+
+### Sprint 1 (next week): Cancel / reschedule / refund + no-show charging
+- Item 37 (cancel/reschedule/refund full surface)
+- Lindsey #1 closes naturally (no-show charge from card on file)
+- Lindsey #6 closes naturally (client self-cancel/reschedule with policy)
+
+Estimated: 5-7 days. Closes Lindsey's biggest concern. Also addresses what HK called "the biggest UX gap."
+
+### Sprint 2: Per-service scheduling primitives
+- Item 38 (per-service availability)
+- Item 39 (booking lead-time)
+- Item 40 (service-duration-aware slots, verify + fix)
+- Item 47 (follow-up email new clients only)
+- Item 41 (disallow gaps in day)
+
+Estimated: 4-5 days. Closes most of Lindsey's Acuity-feature-list.
+
+### Sprint 3: 10-second rebooking (Item 34)
+The marquee differentiator. Six components from Item 34 elaboration above (recurring checkbox, one-tap rebook from email, post-session feedback prompt, therapist recurring view, marketing positioning, per-service eligible-for-recurring).
+
+Estimated: 1 week dedicated.
+
+### Sprint 4: Scheduling primitives batch 2
+- Item 42 (manual slot windows, the seasoned-LMT model)
+- Item 43 (calendar sync, one-way to start)
+- Item 44 (bidirectional intake editing)
+- Item 45 (waitlist, the real Acuity-killer differentiator)
+
+Estimated: 5-7 days. Sprint 4 completes the Acuity-parity story and adds the waitlist as a competitive moat.
+
+### Sprint 5: Payment tracking + tips
+- Item 46 (tips on deposits/pay-in-full)
+- Item 48 (manual payment recording: cash/Venmo/check)
+- Item 49 (manual client credits)
+- Item 36 (client detail page redesign): may slot here or in Sprint 6
+
+Estimated: 4-5 days.
+
+### Sprint 6: Differentiators
+- Item 52 (Simple vs Advanced toggle) IF HK approves the strategic direction
+- Item 53 (specialty-tailored intake)
+- Item 51 (branded gift cards)
+- Item 50 (gift card GAAP, IF HK chose option A)
+- Item 36 (client detail page) if not done in Sprint 5
+
+Estimated: 1-2 weeks. Differentiator-focused. Saves these for after parity is closed so we are competing on what others do not have.
+
+### Beyond Sprint 6
+- Bidirectional calendar sync (deeper version of item 43)
+- Discord/community (item 55)
+- 3D-printed stands (item 56)
+- Anything new that surfaces from continued customer feedback
+
+### Decisions still pending HK input
+- **Item 50:** Build GAAP gift card accounting (option A), be honest we do not (option B), or defer (option C)?
+- **Item 52:** Simple/Advanced toggle yes / no / defer? Architectural decision; affects every future feature.
+- **Item 55:** Discord community now / later / not the right move?
+- **Sprint sequencing:** Does putting cancel/reschedule before 10-second rebooking match HK's intuition? Lindsey's churn risk says yes; Jiny's enthusiasm for differentiators might argue the other way.
+
+These are flagged here so a future session does not lose them.
+
+---
+
 ## REFERENCE FILES IN REPO
 - `BLOCK_PLAN.md` — this file. Always update when shipping or adding ideas.
 - `docs/email-voice-guide.md` — canonical email broadcast voice guide. Joy persona, structure, hard rules. Reference this BEFORE drafting any broadcast template.
