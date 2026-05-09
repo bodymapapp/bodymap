@@ -24,8 +24,7 @@
 // 5. package_holders_idle clients with package balance > 0,
 //                         no booking in last 14 days
 //
-// All queries respect email_unsubscribed and exclude clients
-// without an email address (the unit of outreach is email).
+// All queries exclude clients without an email address.
 
 import { supabase } from './supabase';
 
@@ -233,7 +232,7 @@ function deriveFirstName(fullName) {
 
 function shapeRecipients(rows) {
   return (rows || [])
-    .filter(r => r.email && !r.email_unsubscribed)
+    .filter(r => r.email)
     .map(r => ({
       client_id: r.id,
       name: r.name,
@@ -252,7 +251,7 @@ async function audienceNewClients(therapistId) {
 
   const { data, error } = await supabase
     .from('clients')
-    .select('id, name, email, email_unsubscribed')
+    .select('id, name, email')
     .eq('therapist_id', therapistId)
     .gte('created_at', cutoff.toISOString());
 
@@ -313,7 +312,7 @@ async function audienceReturningRecent(therapistId) {
 
   const { data: clients } = await supabase
     .from('clients')
-    .select('id, name, email, email_unsubscribed')
+    .select('id, name, email')
     .eq('therapist_id', therapistId)
     .in('id', qualifyingIds);
 
@@ -354,7 +353,7 @@ async function audienceLapsed(therapistId) {
 
   const { data: clients } = await supabase
     .from('clients')
-    .select('id, name, email, email_unsubscribed')
+    .select('id, name, email')
     .eq('therapist_id', therapistId)
     .in('id', lapsedIds);
 
@@ -380,7 +379,7 @@ async function audienceAllActive(therapistId) {
 
   const { data: clients } = await supabase
     .from('clients')
-    .select('id, name, email, email_unsubscribed')
+    .select('id, name, email')
     .eq('therapist_id', therapistId)
     .in('id', ids);
 
@@ -427,7 +426,7 @@ async function audiencePackageHoldersIdle(therapistId) {
 
   const { data: clients } = await supabase
     .from('clients')
-    .select('id, name, email, email_unsubscribed')
+    .select('id, name, email')
     .eq('therapist_id', therapistId)
     .in('id', idleIds);
 

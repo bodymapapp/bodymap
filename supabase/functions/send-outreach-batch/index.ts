@@ -81,7 +81,7 @@ function plainTextToHtml(text: string): string {
 // can never be tampered with by a malicious client.
 async function getRecipients(supabase: any, therapistId: string, preset: string) {
   const shape = (rows: any[]) => (rows || [])
-    .filter(r => r.email && !r.email_unsubscribed)
+    .filter(r => r.email)
     .map(r => ({
       client_id: r.id,
       name: r.name,
@@ -92,7 +92,7 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
   if (preset === 'new_clients') {
     const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 30);
     const { data } = await supabase.from('clients')
-      .select('id, name, email, email_unsubscribed')
+      .select('id, name, email')
       .eq('therapist_id', therapistId)
       .gte('created_at', cutoff.toISOString());
     return shape(data);
@@ -117,7 +117,7 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
     const qualifyingIds = Object.entries(counts).filter(([, c]) => (c as number) >= 2).map(([id]) => id);
     if (qualifyingIds.length === 0) return [];
     const { data: clients } = await supabase.from('clients')
-      .select('id, name, email, email_unsubscribed')
+      .select('id, name, email')
       .eq('therapist_id', therapistId)
       .in('id', qualifyingIds);
     return shape(clients);
@@ -140,7 +140,7 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
     const lapsedIds = everIds.filter(id => !recentIds.has(id));
     if (lapsedIds.length === 0) return [];
     const { data: clients } = await supabase.from('clients')
-      .select('id, name, email, email_unsubscribed')
+      .select('id, name, email')
       .eq('therapist_id', therapistId)
       .in('id', lapsedIds);
     return shape(clients);
@@ -156,7 +156,7 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
     const ids = [...new Set((recent || []).map((b: any) => b.client_id).filter(Boolean))];
     if (ids.length === 0) return [];
     const { data: clients } = await supabase.from('clients')
-      .select('id, name, email, email_unsubscribed')
+      .select('id, name, email')
       .eq('therapist_id', therapistId)
       .in('id', ids);
     return shape(clients);
@@ -180,7 +180,7 @@ async function getRecipients(supabase: any, therapistId: string, preset: string)
     const idleIds = pkgIds.filter(id => !recentIds.has(id));
     if (idleIds.length === 0) return [];
     const { data: clients } = await supabase.from('clients')
-      .select('id, name, email, email_unsubscribed')
+      .select('id, name, email')
       .eq('therapist_id', therapistId)
       .in('id', idleIds);
     return shape(clients);

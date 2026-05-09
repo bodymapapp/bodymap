@@ -142,89 +142,154 @@ export default function QuickSendBlocks({ therapist }) {
     );
   }
 
+  // Map each starter_key (or audience_preset for custom) to a soft
+  // emoji icon and accent color so blocks visually differentiate.
+  const ACCENTS = {
+    welcome_new:        { emoji: '🌱', tint: '#F0F8F2' },
+    miss_you:           { emoji: '💌', tint: '#FBF4ED' },
+    ready_when_you_are: { emoji: '🍃', tint: '#F0F6F0' },
+    package_balance:    { emoji: '🎁', tint: '#FAF3EE' },
+    special_this_month: { emoji: '✨', tint: '#F7F3EB' },
+  };
+
   return (
-    <div style={{ marginBottom: 24 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 12 }}>
+    <div style={{ marginBottom: 28 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em', marginBottom: 2 }}>Quick send</div>
-          <div style={{ fontSize:12, color:C.gray }}>Tap a block to open, edit, and send. Two clicks.</div>
+          <div style={{
+            fontFamily:'Georgia, serif',
+            fontSize: 17, fontWeight: 700, color: C.dark,
+            marginBottom: 3, letterSpacing: '0.01em',
+          }}>
+            Quick send
+          </div>
+          <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
+            Two taps to a thoughtful note. Pick a moment, edit if you like, send.
+          </div>
         </div>
         {hasDeletedStarters && (
           <button onClick={handleRestoreStarters} style={{
-            background:'transparent', border:`1px solid ${C.light}`, borderRadius:8,
-            padding:'6px 10px', fontSize:11, fontWeight:600, color:C.gray, cursor:'pointer',
+            background:'transparent', border:`1px solid ${C.light}`, borderRadius: 999,
+            padding:'7px 14px', fontSize: 11, fontWeight: 600, color: C.gray, cursor:'pointer',
           }}>
             Restore starters
           </button>
         )}
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+      {/* Vertical stack on mobile; two columns on wider screens.
+          Wide cards breathe; the three-element row inside (icon,
+          name+audience, count pill) is comfortable to scan. */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+        gap: 12,
+      }}>
         {templates.map(t => {
           const count = counts[t.id];
           const isLoadingCount = count === undefined;
           const isEmpty = count === 0;
+          const accent = ACCENTS[t.starter_key] || { emoji: '✉️', tint: '#F5F0E8' };
           return (
             <div key={t.id} style={{
               position:'relative',
-              background: isEmpty ? '#F9FAFB' : C.white,
-              border: `1.5px solid ${isEmpty ? C.light : C.light}`,
-              borderRadius: 12,
-              padding: '14px 14px 12px',
-              opacity: isEmpty ? 0.55 : 1,
+              background: isEmpty ? '#FAFAF6' : '#FFFFFF',
+              border: `1.5px solid ${isEmpty ? '#EAE5DA' : '#DDD4C2'}`,
+              borderRadius: 16,
+              padding: '18px 18px 16px',
+              opacity: isEmpty ? 0.7 : 1,
               cursor: isEmpty ? 'default' : 'pointer',
-              transition: 'all 0.15s',
+              transition: 'all 0.18s ease',
+              boxShadow: isEmpty ? 'none' : '0 1px 2px rgba(70, 90, 65, 0.04)',
             }}
             onClick={() => { if (!isEmpty && !isLoadingCount) setModalTemplate(t); }}
-            onMouseEnter={(e) => { if (!isEmpty) { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; } }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.light; e.currentTarget.style.transform = 'none'; }}
+            onMouseEnter={(e) => { if (!isEmpty) { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.boxShadow = '0 6px 18px rgba(42,87,65,0.10)'; e.currentTarget.style.transform = 'translateY(-2px)'; } }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = isEmpty ? '#EAE5DA' : '#DDD4C2'; e.currentTarget.style.boxShadow = isEmpty ? 'none' : '0 1px 2px rgba(70, 90, 65, 0.04)'; e.currentTarget.style.transform = 'none'; }}
             >
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:8 }}>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ fontSize:13, fontWeight:700, color:C.dark, marginBottom:3, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+              <div style={{ display:'flex', alignItems:'flex-start', gap: 14 }}>
+                {/* Soft circular accent with emoji */}
+                <div style={{
+                  flexShrink: 0,
+                  width: 44, height: 44, borderRadius: '50%',
+                  background: accent.tint,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 20,
+                }}>
+                  {accent.emoji}
+                </div>
+
+                {/* Title + audience */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontFamily:'Georgia, serif',
+                    fontSize: 16, fontWeight: 700,
+                    color: isEmpty ? '#7A7468' : '#3D4A42',
+                    marginBottom: 4, lineHeight: 1.25,
+                  }}>
                     {t.label}
                   </div>
-                  <div style={{ fontSize:11, color:C.gray, lineHeight:1.4 }}>
+                  <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.5 }}>
                     {AUDIENCE_LABELS[t.audience_preset] || t.audience_preset}
                   </div>
+                  <div style={{
+                    marginTop: 10,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '4px 11px', borderRadius: 999,
+                    background: isEmpty ? '#F0EDE6' : '#EDF4EC',
+                    border: `1px solid ${isEmpty ? '#E0DBCD' : '#C9DCC2'}`,
+                    fontSize: 11, fontWeight: 600,
+                    color: isEmpty ? '#8C8676' : C.forest,
+                    fontStyle: isEmpty ? 'italic' : 'normal',
+                  }}>
+                    {isLoadingCount
+                      ? 'counting...'
+                      : isEmpty
+                        ? 'no one fits right now'
+                        : `${count} ready`}
+                  </div>
                 </div>
+
+                {/* "..." menu button */}
                 <button onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === t.id ? null : t.id); }}
-                  style={{ background:'transparent', border:'none', color:C.gray, fontSize:18, cursor:'pointer', padding:'0 4px', lineHeight:1, flexShrink:0 }}
+                  style={{
+                    background:'transparent', border:'none',
+                    color: '#9A9486', fontSize: 18, cursor:'pointer',
+                    padding: '4px 6px', lineHeight: 1, flexShrink: 0,
+                    borderRadius: 6,
+                  }}
+                  onMouseEnter={e => { e.stopPropagation(); e.currentTarget.style.background = '#F5F0E8'; }}
+                  onMouseLeave={e => { e.stopPropagation(); e.currentTarget.style.background = 'transparent'; }}
                   aria-label="Template options">
                   ⋯
                 </button>
               </div>
 
-              <div style={{ marginTop: 10, fontSize: 12, fontWeight: 600, color: isEmpty ? C.gray : C.forest }}>
-                {isLoadingCount ? '...' : isEmpty ? '0 matching clients' : `${count} matching client${count === 1 ? '' : 's'}`}
-              </div>
-
               {openMenuId === t.id && (
                 <div onClick={e => e.stopPropagation()} style={{
-                  position:'absolute', top:36, right:8, zIndex:10,
-                  background:C.white, border:`1px solid ${C.light}`, borderRadius:10,
-                  boxShadow:'0 4px 16px rgba(0,0,0,0.12)', padding:'6px',
-                  minWidth: 140,
+                  position:'absolute', top: 44, right: 12, zIndex: 10,
+                  background:'#FFFFFF', border:'1px solid #E0DBCD', borderRadius: 12,
+                  boxShadow:'0 8px 28px rgba(70,90,65,0.15)', padding: 6,
+                  minWidth: 160,
                 }}>
                   <button onClick={() => { setModalTemplate(t); setOpenMenuId(null); }}
-                    style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'8px 10px', fontSize:13, color:C.dark, cursor:'pointer', borderRadius:6 }}
-                    onMouseEnter={e => e.currentTarget.style.background = C.beige}
+                    style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'9px 12px', fontSize:13, color:'#3D4A42', cursor:'pointer', borderRadius: 8, fontFamily:'system-ui' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F5F0E8'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    Edit
+                    ✏️ &nbsp; Edit
                   </button>
                   {t.is_starter && (
                     <button onClick={() => handleResetStarter(t)}
-                      style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'8px 10px', fontSize:13, color:C.dark, cursor:'pointer', borderRadius:6 }}
-                      onMouseEnter={e => e.currentTarget.style.background = C.beige}
+                      style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'9px 12px', fontSize:13, color:'#3D4A42', cursor:'pointer', borderRadius: 8, fontFamily:'system-ui' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#F5F0E8'}
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                      Reset to default
+                      🔄 &nbsp; Reset to default
                     </button>
                   )}
                   <button onClick={() => handleDelete(t)}
-                    style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'8px 10px', fontSize:13, color:'#B91C1C', cursor:'pointer', borderRadius:6 }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'}
+                    style={{ display:'block', width:'100%', textAlign:'left', background:'transparent', border:'none', padding:'9px 12px', fontSize:13, color:'#A04040', cursor:'pointer', borderRadius: 8, fontFamily:'system-ui' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F8ECEC'}
                     onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    {t.is_starter ? 'Hide' : 'Delete'}
+                    {t.is_starter ? '🙈 \u00a0 Hide' : '🗑️ \u00a0 Delete'}
                   </button>
                 </div>
               )}
