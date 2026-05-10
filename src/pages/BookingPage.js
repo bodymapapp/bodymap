@@ -1153,7 +1153,34 @@ export default function BookingPage() {
     }
     if(!av){setLoadingSlots(false);return;}
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
-    const booked=existing||[];
+
+    // Reverse-sync block (Lindsey #10): also pull confirmed external
+    // calendar events (Google personal events: lunch, dentist, etc)
+    // so they block booking slots. Anonymous clients call the
+    // get_blocked_ranges RPC which returns ONLY start/end times,
+    // never event titles. The therapist sees titles on her own
+    // dashboard via direct table read with RLS.
+    const dateStart = new Date(`${date}T00:00:00`);
+    const dateEnd = new Date(`${date}T23:59:59`);
+    const { data: externalRanges } = await supabase.rpc('get_blocked_ranges', {
+      p_therapist_id: therapist.id,
+      p_from: dateStart.toISOString(),
+      p_to: dateEnd.toISOString(),
+    });
+    // Convert each range to {start_time: 'HH:MM', end_time: 'HH:MM'}
+    // local-time strings to match the booking shape generateSlots expects.
+    const externalBlocked = (externalRanges || []).map(r => {
+      const s = new Date(r.start_at);
+      const e = new Date(r.end_at);
+      const fmt = (d) => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+      // Clamp to the date in question so all-day events become 00:00-23:59 etc.
+      const sameDay = (a, b) => a.toDateString() === b.toDateString();
+      const dt = new Date(`${date}T12:00:00`);
+      const startStr = sameDay(s, dt) ? fmt(s) : '00:00';
+      const endStr = sameDay(e, dt) ? fmt(e) : '23:59';
+      return { start_time: startStr, end_time: endStr };
+    });
+    const booked=[...(existing||[]), ...externalBlocked];
     setExistingBooked(booked);
 
     // Use time_blocks if available, else fall back to start/end
@@ -1551,6 +1578,27 @@ export default function BookingPage() {
     if(error){alert('Something went wrong. Please try again.');return;}
     const bid=newBooking?.id||null;
     setBookingId(bid);
+
+    // Forward sync to Google Calendar (Lindsey #10). Fire and forget.
+    // Only confirmed bookings sync immediately. Pending-approval and
+    // pending-deposit bookings sync after they become confirmed via
+    // the appropriate flow (approval, deposit capture).
+    if (bid && newBooking?.status === 'confirmed' && therapist?.google_calendar_connected) {
+      try {
+        const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
+        const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${SUPABASE_URL}/functions/v1/google-calendar-push`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ booking_id: bid, action: 'create' }),
+        }).catch(() => {}); // fire and forget
+      } catch (_e) {
+        // do not block booking on sync failure
+      }
+    }
 
     // Apply gift certificate if present
     if (giftCert) {

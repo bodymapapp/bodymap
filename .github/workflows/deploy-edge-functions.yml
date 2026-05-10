@@ -25,7 +25,7 @@ jobs:
           # square-oauth-callback: Square redirects here after OAuth consent.
           #   The redirect carries no auth header. The function authenticates
           #   the request via the OAuth code + state (state = therapist_id).
-          NO_JWT_FUNCTIONS="send-push signup-guard founder-outreach unsubscribe resend-backfill preview-emails run-migration square-oauth-callback"
+          NO_JWT_FUNCTIONS="send-push signup-guard founder-outreach unsubscribe resend-backfill preview-emails run-migration square-oauth-callback google-calendar-callback"
           FAILED_FUNCTIONS=""
           for dir in supabase/functions/*/; do
             fn=$(basename "$dir")
