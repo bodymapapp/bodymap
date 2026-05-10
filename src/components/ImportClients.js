@@ -674,26 +674,99 @@ export function ImportBookings({ therapist, onComplete }) {
       }
     }
 
+    // ─── Phase 4.5: Resolve service_id for each prepared row ──
+    //
+    // The bookings table has BOTH service_id (FK to services) and
+    // service_name (text denorm). Public booking flow uses
+    // service_id; CSV imports historically only had a service name
+    // string. We do the work to resolve names to IDs so imported
+    // bookings link properly to the therapist's services list.
+    //
+    // Strategy:
+    //   1. Pre-fetch this therapist's existing services by name
+    //   2. For service names in the CSV with no match, bulk-create
+    //      using duration/price from the first row that mentions it
+    //   3. Map each prepared row to its service_id
+    //
+    // service_id is nullable on bookings, so if creation fails the
+    // booking still goes through with service_name (text) only.
+    setProgress({ phase: 'matching-services', current: 0, total: prepared.length });
+    const { data: existingServices } = await supabase
+      .from('services')
+      .select('id, name, duration, price')
+      .eq('therapist_id', therapist.id);
+
+    const svcNameToId = new Map();
+    for (const s of (existingServices || [])) {
+      if (s.name) svcNameToId.set(s.name.toLowerCase().trim(), s.id);
+    }
+
+    // Identify unique service names from CSV that need creation
+    const newServicesByName = new Map(); // name (raw) -> { name, duration, price }
+    for (const p of prepared) {
+      const key = (p.service || '').toLowerCase().trim();
+      if (!key) continue;
+      if (svcNameToId.has(key)) continue;
+      if (!newServicesByName.has(key)) {
+        newServicesByName.set(key, {
+          therapist_id: therapist.id,
+          name: p.service,
+          duration: p.duration || 60,
+          price: p.price || 0,
+          active: true,
+        });
+      }
+    }
+
+    // Bulk-create new services in chunks of 100
+    if (newServicesByName.size > 0) {
+      const newSvcRows = [...newServicesByName.values()];
+      const newSvcKeys = [...newServicesByName.keys()];
+      for (let i = 0; i < newSvcRows.length; i += 100) {
+        const chunk = newSvcRows.slice(i, i + 100);
+        const keyChunk = newSvcKeys.slice(i, i + 100);
+        const { data: insSvcs, error: svcErr } = await supabase
+          .from('services')
+          .insert(chunk)
+          .select('id');
+        if (svcErr) {
+          // Non-fatal: fall through and let bookings get null service_id
+          console.warn('[import] service insert error:', svcErr);
+          break;
+        }
+        for (let j = 0; j < (insSvcs || []).length; j++) {
+          svcNameToId.set(keyChunk[j], insSvcs[j].id);
+        }
+      }
+    }
+
     // ─── Phase 5: Bulk insert bookings ─────────────────────────
-    // Build all booking rows, then insert in chunks of 100.
+    //
+    // Production bookings schema does NOT have duration or price
+    // columns. Both are derived from the joined service. We pass
+    // service_name (denorm text) and service_id (FK), nothing else.
+    // Confirmed via information_schema diagnostic (May 9 2026).
     const bookingRows = prepared
       .filter(p => p._clientId)
-      .map(p => ({
-        therapist_id: therapist.id,
-        client_name:  p.clientName,
-        client_email: p.clientEmail,
-        client_phone: p.clientPhone,
-        client_id:    p._clientId,
-        booking_date: p.bookingDate,
-        start_time:   p.startTime,
-        end_time:     p.endTime,
-        duration:     p.duration,
-        price:        p.price,
-        service_name: p.service,
-        status:       'confirmed',
-        notes:        p.notes,
-        imported:     true,
-      }));
+      .map(p => {
+        const svcKey = (p.service || '').toLowerCase().trim();
+        const serviceId = svcKey ? (svcNameToId.get(svcKey) || null) : null;
+        return {
+          therapist_id: therapist.id,
+          client_name:  p.clientName,
+          client_email: p.clientEmail,
+          client_phone: p.clientPhone,
+          client_id:    p._clientId,
+          service_id:   serviceId,
+          service_name: p.service,
+          booking_date: p.bookingDate,
+          start_time:   p.startTime,
+          end_time:     p.endTime,
+          status:       'confirmed',
+          notes:        p.notes,
+          imported:     true,
+        };
+      });
 
     setProgress({ phase: 'creating-bookings', current: 0, total: bookingRows.length });
     for (let i = 0; i < bookingRows.length; i += 100) {
@@ -860,6 +933,7 @@ export function ImportBookings({ therapist, onComplete }) {
                   {progress.phase === 'preparing'             && 'Preparing rows'}
                   {progress.phase === 'looking-up-clients'    && 'Matching to existing clients'}
                   {progress.phase === 'creating-new-clients'  && 'Creating new clients'}
+                  {progress.phase === 'matching-services'     && 'Matching services'}
                   {progress.phase === 'creating-bookings'     && 'Saving appointments'}
                 </span>
                 <span style={{ color: '#6B7280' }}>
