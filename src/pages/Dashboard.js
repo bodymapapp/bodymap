@@ -16,6 +16,7 @@ import EventsCard from '../components/EventsCard';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
+import DisclosureRow from '../components/DisclosureRow';
 import CollapsibleSection from '../components/CollapsibleSection';
 import SettingsGroup from '../components/SettingsGroup';
 import StatsStrip from '../components/StatsStrip';
@@ -57,159 +58,6 @@ const C = {
 };
 
 
-// Per-service custom hours editor (Lindsey #4, May 10 2026).
-// Renders inline below a service row when therapist clicks
-// 'Custom hours'. 7-day mini-grid with on/off + start/end times.
-// Saving writes availability rows with service_id set on this
-// service. Clearing all rows reverts the service to the master
-// schedule (boolean derived from row count).
-function ServiceHoursEditor({ service, therapist, onClose }) {
-  const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
-  const DAYS = [
-    { dow: 1, label: 'Mon' },
-    { dow: 2, label: 'Tue' },
-    { dow: 3, label: 'Wed' },
-    { dow: 4, label: 'Thu' },
-    { dow: 5, label: 'Fri' },
-    { dow: 6, label: 'Sat' },
-    { dow: 0, label: 'Sun' },
-  ];
-  const [rows, setRows] = React.useState([]); // existing service-specific rows
-  const [loading, setLoading] = React.useState(true);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('availability')
-        .select('*')
-        .eq('therapist_id', therapist.id)
-        .eq('service_id', service.id);
-      if (cancelled) return;
-      setRows(data || []);
-      setLoading(false);
-    })();
-    return () => { cancelled = true; };
-  }, [service.id, therapist.id]);
-
-  const rowFor = (dow) => rows.find(r => r.day_of_week === dow);
-
-  async function toggleDay(dow) {
-    const existing = rowFor(dow);
-    if (existing) {
-      // Toggle active flag, OR if already inactive, remove the row
-      // entirely (clearing all rows reverts to master schedule).
-      await supabase.from('availability').delete().eq('id', existing.id);
-      setRows(arr => arr.filter(r => r.id !== existing.id));
-    } else {
-      const { data } = await supabase.from('availability').insert({
-        therapist_id: therapist.id,
-        service_id: service.id,
-        day_of_week: dow,
-        start_time: '09:00',
-        end_time: '17:00',
-        active: true,
-      }).select().single();
-      if (data) setRows(arr => [...arr, data]);
-    }
-  }
-
-  async function updateTime(dow, field, val) {
-    const existing = rowFor(dow);
-    if (!existing) return;
-    await supabase.from('availability').update({ [field]: val }).eq('id', existing.id);
-    setRows(arr => arr.map(r => r.id === existing.id ? { ...r, [field]: val } : r));
-  }
-
-  async function clearAll() {
-    if (!window.confirm(`Clear custom hours for "${service.name}"? It will fall back to your master schedule.`)) return;
-    await supabase.from('availability').delete().eq('therapist_id', therapist.id).eq('service_id', service.id);
-    setRows([]);
-  }
-
-  if (loading) {
-    return (
-      <div style={{ padding:'10px 12px', fontSize:12, color:C2.gray }}>Loading custom hours...</div>
-    );
-  }
-
-  return (
-    <div style={{ marginTop:10, padding:'12px 14px', background:'#FAF7F1', border:`1px solid ${C2.lightGray}`, borderRadius:10 }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:10 }}>
-        <div>
-          <div style={{ fontSize:12, fontWeight:700, color:C2.darkGray }}>Custom hours for {service.name}</div>
-          <div style={{ fontSize:11, color:C2.gray, marginTop:2, lineHeight:1.5 }}>
-            {rows.length === 0
-              ? 'Currently using your master schedule. Tap a day to add custom hours just for this service.'
-              : `${rows.length} day${rows.length === 1 ? '' : 's'} customized. Other days follow this service\u2019s own schedule (so blank days = closed for this service).`}
-          </div>
-        </div>
-        {rows.length > 0 && (
-          <button onClick={clearAll} style={{
-            background:'transparent', border:`1px solid ${C2.lightGray}`, borderRadius:8,
-            padding:'5px 9px', fontSize:11, fontWeight:600, color:C2.gray, cursor:'pointer', flexShrink:0,
-          }}>
-            Reset to master
-          </button>
-        )}
-      </div>
-
-      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-        {DAYS.map(d => {
-          const r = rowFor(d.dow);
-          const isOn = !!r;
-          return (
-            <div key={d.dow} style={{
-              display:'flex', alignItems:'center', gap:10,
-              padding:'7px 10px',
-              background: isOn ? '#fff' : 'transparent',
-              border: `1px solid ${isOn ? C2.lightGray : 'transparent'}`,
-              borderRadius:8,
-            }}>
-              <button onClick={() => toggleDay(d.dow)} style={{
-                width:60, padding:'5px 8px', borderRadius:6, fontSize:11, fontWeight:700,
-                background: isOn ? C2.forest : '#F0EDE6',
-                color: isOn ? '#fff' : C2.gray,
-                border: 'none', cursor:'pointer', flexShrink:0, fontFamily:'system-ui',
-              }}>
-                {d.label}
-              </button>
-              {isOn ? (
-                <div style={{ display:'flex', alignItems:'center', gap:6, flex:1 }}>
-                  <input
-                    type="time"
-                    value={(r.start_time || '09:00').slice(0, 5)}
-                    onChange={e => updateTime(d.dow, 'start_time', e.target.value)}
-                    style={{ padding:'5px 8px', border:`1px solid ${C2.lightGray}`, borderRadius:6, fontSize:12, fontFamily:'system-ui' }}
-                  />
-                  <span style={{ fontSize:12, color:C2.gray }}>to</span>
-                  <input
-                    type="time"
-                    value={(r.end_time || '17:00').slice(0, 5)}
-                    onChange={e => updateTime(d.dow, 'end_time', e.target.value)}
-                    style={{ padding:'5px 8px', border:`1px solid ${C2.lightGray}`, borderRadius:6, fontSize:12, fontFamily:'system-ui' }}
-                  />
-                </div>
-              ) : (
-                <span style={{ fontSize:11, color:C2.gray, fontStyle:'italic' }}>
-                  {rows.length === 0 ? 'follows master' : 'closed'}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <button onClick={onClose} style={{
-        marginTop:10, background:'transparent', border:'none',
-        fontSize:11, color:C2.gray, cursor:'pointer', padding:0,
-      }}>
-        Close editor
-      </button>
-    </div>
-  );
-}
-
 
 function ServicesAndAvailability({ therapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
@@ -240,9 +88,11 @@ function ServicesAndAvailability({ therapist }) {
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
-  // Per-service hours editor (Lindsey #4): which service's custom-hours
-  // mini-grid is currently expanded. Null when collapsed.
-  const [hoursEditorServiceId, setHoursEditorServiceId] = React.useState(null);
+  // Disclosure-row pattern for the "What I offer -> Services & hours"
+  // panel (HK May 10 2026). Only one sub-row open at a time keeps the
+  // Settings page short. Default 'services' since that's the daily-edit
+  // setting; null collapses everything.
+  const [openSubRow, setOpenSubRow] = React.useState('services');
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(null);
@@ -405,10 +255,16 @@ function ServicesAndAvailability({ therapist }) {
 
   return (
     <div style={{ marginBottom:20 }}>
-      {/* Services */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>Services</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px' }}>Clients choose from these when booking online.</p>
+      {/* Services. Disclosure row pattern (HK May 10 2026).
+          Opens by default since this is the daily-edit setting. */}
+      <DisclosureRow
+        icon="🧾"
+        title="Services"
+        summary={`${services.filter(s => s.active).length} active${services.length > services.filter(s => s.active).length ? `, ${services.length - services.filter(s => s.active).length} off` : ''}`}
+        open={openSubRow === 'services'}
+        onToggle={() => setOpenSubRow(openSubRow === 'services' ? null : 'services')}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Clients choose from these when booking online.</p>
 
         {/* Existing services */}
         {services.length > 0 && (
@@ -508,36 +364,107 @@ function ServicesAndAvailability({ therapist }) {
                   </div>
                 )}
 
-                {/* Custom hours toggle (Lindsey #4). Compact link
-                    + editor mini-grid that expands inline. When the
-                    editor is closed, a small line shows whether
-                    this service has any per-service availability
-                    rows yet ('Master schedule' or 'Custom hours
-                    set'). */}
-                <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}` }}>
-                  {hoursEditorServiceId === svc.id ? (
-                    <ServiceHoursEditor
-                      service={svc}
-                      therapist={therapist}
-                      onClose={() => setHoursEditorServiceId(null)}
-                    />
-                  ) : (
-                    <button
-                      onClick={() => setHoursEditorServiceId(svc.id)}
-                      style={{
-                        background:'transparent', border:'none',
-                        padding:0, fontSize:11, color:C2.forest,
-                        fontWeight:600, cursor:'pointer',
-                        display:'inline-flex', alignItems:'center', gap:6,
-                      }}>
-                      <span>📅</span>
-                      <span>
-                        {(availability || []).some(a => a.service_id === svc.id)
-                          ? 'Edit custom hours'
-                          : 'Set custom hours for this service'}
+                {/* Per-service availability, days only (HK May 10 2026
+                    redesign). Inline 7-day pills on each service row.
+                    Tap a pill to exclude that day for this service.
+                    Hours always inherit from master schedule.
+                    Helper text auto-derives:
+                      - "all master days" when no per-service rows exist
+                      - "Tue and Thu only" when only those 2 are enabled
+                    Replaces the previous ServiceHoursEditor expansion
+                    that was endless-clicks. */}
+                <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}`, display:'flex', flexWrap:'wrap', alignItems:'center', gap:6 }}>
+                  <span style={{ fontSize:11, color:C2.gray, fontWeight:600, marginRight:4 }}>Days:</span>
+                  {[
+                    { dow:1, label:'M' }, { dow:2, label:'T' }, { dow:3, label:'W' },
+                    { dow:4, label:'T' }, { dow:5, label:'F' }, { dow:6, label:'S' }, { dow:0, label:'S' },
+                  ].map(({ dow, label }) => {
+                    const svcRows = (availability || []).filter(a => a.service_id === svc.id);
+                    const hasOverride = svcRows.length > 0;
+                    // If service has no overrides, ALL days are inherited from master => all "on"
+                    // If service has overrides, only the dows present are "on"
+                    const isOn = !hasOverride || svcRows.some(r => r.day_of_week === dow);
+                    const togglePill = async () => {
+                      if (!hasOverride) {
+                        // First click on a pill to exclude a day: copy all master days (active rows where service_id IS NULL)
+                        // EXCEPT the one the therapist just clicked.
+                        const masterRows = (availability || []).filter(a => !a.service_id && a.active);
+                        const toCopy = masterRows.filter(r => r.day_of_week !== dow);
+                        if (toCopy.length === 0) return; // no master schedule yet
+                        const inserts = toCopy.map(r => ({
+                          therapist_id: therapist.id,
+                          service_id: svc.id,
+                          day_of_week: r.day_of_week,
+                          start_time: r.start_time,
+                          end_time: r.end_time,
+                          time_blocks: r.time_blocks,
+                          active: true,
+                        }));
+                        const { data } = await supabase.from('availability').insert(inserts).select();
+                        if (data) setAvailability(a => [...a, ...data]);
+                      } else if (isOn) {
+                        // Currently on, exclude it: delete the row for this service+dow
+                        const row = svcRows.find(r => r.day_of_week === dow);
+                        if (row) {
+                          await supabase.from('availability').delete().eq('id', row.id);
+                          setAvailability(a => a.filter(x => x.id !== row.id));
+                          // If after delete, no service rows remain, the service falls back to master.
+                          // If after delete, all 7 days are excluded except 0, that is fine, fallback handled by booking page.
+                        }
+                      } else {
+                        // Currently off, include it: insert a new row inheriting master times for this dow
+                        const masterRow = (availability || []).find(a => !a.service_id && a.active && a.day_of_week === dow);
+                        const insertRow = {
+                          therapist_id: therapist.id,
+                          service_id: svc.id,
+                          day_of_week: dow,
+                          start_time: masterRow?.start_time || '09:00',
+                          end_time: masterRow?.end_time || '17:00',
+                          time_blocks: masterRow?.time_blocks || null,
+                          active: true,
+                        };
+                        const { data } = await supabase.from('availability').insert(insertRow).select().single();
+                        if (data) setAvailability(a => [...a, data]);
+                      }
+                    };
+                    return (
+                      <button key={dow} onClick={togglePill} type="button"
+                        style={{
+                          fontSize:10, padding:'3px 8px', borderRadius:999,
+                          background: isOn ? C2.forest : '#F0EDE6',
+                          color: isOn ? '#fff' : '#9A9486',
+                          border:'none', cursor:'pointer', fontFamily:'system-ui',
+                          fontWeight: isOn ? 700 : 500,
+                        }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                  {(() => {
+                    const svcRows = (availability || []).filter(a => a.service_id === svc.id);
+                    if (svcRows.length === 0) return (
+                      <span style={{ fontSize:10, color:'#9A9486', fontStyle:'italic', marginLeft:4 }}>
+                        all master days
                       </span>
-                    </button>
-                  )}
+                    );
+                    const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                    const sorted = [...svcRows].sort((a, b) => a.day_of_week - b.day_of_week);
+                    if (sorted.length === 1) return (
+                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
+                        {dayLabels[sorted[0].day_of_week]} only
+                      </span>
+                    );
+                    if (sorted.length === 2) return (
+                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
+                        {dayLabels[sorted[0].day_of_week]} and {dayLabels[sorted[1].day_of_week]} only
+                      </span>
+                    );
+                    return (
+                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
+                        {sorted.length} days
+                      </span>
+                    );
+                  })()}
                 </div>
               </div>
             ))}
@@ -575,14 +502,19 @@ function ServicesAndAvailability({ therapist }) {
             </button>
           )}
         </div>
-      </div>
+      </DisclosureRow>
 
 
-      {/* Deposit Settings */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20, marginBottom:16 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💳 New Client Deposit</p>
+      {/* Deposit Settings. Disclosure row pattern. */}
+      <DisclosureRow
+        icon="💳"
+        title="New client deposit"
+        summary={depositEnabled ? `On · ${depositPercent}% required from new clients` : 'Off · clients pay at session'}
+        open={openSubRow === 'deposit'}
+        onToggle={() => setOpenSubRow(openSubRow === 'deposit' ? null : 'deposit')}
+      >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
-        <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 16px', lineHeight:1.5 }}>
+        <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 14px', lineHeight:1.5 }}>
           💡 Prefer Square or cash? Keep deposits off, clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
         </p>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
@@ -620,15 +552,20 @@ function ServicesAndAvailability({ therapist }) {
             </div>
           </div>
         )}
-      </div>
+      </DisclosureRow>
 
-      {/* Buffer Time Between Sessions */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>⏱️ Buffer Time</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
+      {/* Buffer Time Between Sessions. Disclosure row pattern. */}
+      <DisclosureRow
+        icon="⏱️"
+        title="Buffer between sessions"
+        summary={bufferEnabled ? `${bufferMinutes} min after each session` : 'Off'}
+        open={openSubRow === 'buffer'}
+        onToggle={() => setOpenSubRow(openSubRow === 'buffer' ? null : 'buffer')}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>
           Add time after each session for room turnover, notes, or a break. Clients won't see available slots during this window.
         </p>
-        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:14 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom: bufferEnabled ? 12 : 0 }}>
           <button onClick={async () => {
             const newVal = !bufferEnabled;
             setBufferEnabled(newVal);
@@ -657,18 +594,22 @@ function ServicesAndAvailability({ therapist }) {
             <span style={{ fontSize:13, color:C2.gray }}>after each session</span>
           </div>
         )}
-      </div>
+      </DisclosureRow>
 
       {/* Booking window: lead time + max advance.
-          Lindsey #5 (May 9 2026): therapists need to control how
-          close to "now" a client can book and how far ahead. Without
-          these controls, clients can book 5 minutes from now (no
-          prep time) or a year ahead (calendar clutter).
-          Inputs use the InlineSaveNumberInput pattern: type freely,
-          auto-save on blur, brief checkmark badge confirms. */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>📆 Booking Window</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>
+          Disclosure row pattern (HK May 10 2026). */}
+      <DisclosureRow
+        icon="📆"
+        title="Booking window"
+        summary={
+          (minLeadHours > 0 || maxAdvanceDays > 0)
+            ? `${minLeadHours > 0 ? `${minLeadHours}h ahead` : 'No minimum'}${maxAdvanceDays > 0 ? `, up to ${maxAdvanceDays} days out` : ''}`
+            : 'Anytime, no limits'
+        }
+        open={openSubRow === 'booking-window'}
+        onToggle={() => setOpenSubRow(openSubRow === 'booking-window' ? null : 'booking-window')}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
           Control how soon and how far ahead clients can book. Helps protect prep time and keep the calendar tidy.
         </p>
 
@@ -729,129 +670,82 @@ function ServicesAndAvailability({ therapist }) {
             Common: 60-90 days. Set 0 for no limit.
           </div>
         </div>
-      </div>
+      </DisclosureRow>
 
       {/* Efficient Scheduling (Lindsey #7, May 10 2026).
-          Two-level toggle:
-            Level 1: Normal vs Efficient
-            Level 2 (only visible if Efficient): Hard vs Soft
-          Therapist can preview the public booking page to see
-          how it changes what clients are offered. */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>📐 Efficient scheduling</p>
+          Three-way segmented control: Off / Soft / Hard.
+          Disclosure row pattern (HK May 10 2026). */}
+      <DisclosureRow
+        icon="📐"
+        title="Smart scheduling"
+        summary={
+          schedulingMode === 'normal'
+            ? 'Off · all slots offered'
+            : efficientStrictness === 'soft'
+              ? 'Soft · adjacent slots highlighted'
+              : 'Hard · only adjacent slots offered'
+        }
+        open={openSubRow === 'smart-scheduling'}
+        onToggle={() => setOpenSubRow(openSubRow === 'smart-scheduling' ? null : 'smart-scheduling')}
+      >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
           When you have appointments on a day, this clusters new bookings around them. Less starting and stopping. Longer breaks instead of awkward gaps.
         </p>
 
-        {/* Level 1: Normal vs Efficient as a segmented control */}
-        <div style={{ marginBottom: schedulingMode === 'efficient' ? 16 : 0 }}>
-          <div style={{ display:'flex', gap:0, background:'#F7F3EB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:3 }}>
-            <button
-              onClick={async () => {
-                setSchedulingMode('normal');
-                await supabase.from('therapists').update({ scheduling_mode: 'normal' }).eq('id', therapist.id);
-              }}
-              style={{
-                flex:1, padding:'9px 14px', border:'none', borderRadius:8,
-                background: schedulingMode === 'normal' ? C2.white : 'transparent',
-                color: schedulingMode === 'normal' ? C2.forest : C2.gray,
-                fontSize:13, fontWeight: schedulingMode === 'normal' ? 700 : 500,
-                cursor:'pointer', fontFamily:'system-ui',
-                boxShadow: schedulingMode === 'normal' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-              }}>
-              Normal
-            </button>
-            <button
-              onClick={async () => {
-                setSchedulingMode('efficient');
-                await supabase.from('therapists').update({ scheduling_mode: 'efficient' }).eq('id', therapist.id);
-              }}
-              style={{
-                flex:1, padding:'9px 14px', border:'none', borderRadius:8,
-                background: schedulingMode === 'efficient' ? C2.white : 'transparent',
-                color: schedulingMode === 'efficient' ? C2.forest : C2.gray,
-                fontSize:13, fontWeight: schedulingMode === 'efficient' ? 700 : 500,
-                cursor:'pointer', fontFamily:'system-ui',
-                boxShadow: schedulingMode === 'efficient' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-              }}>
-              Efficient
-            </button>
-          </div>
-          <div style={{ fontSize:11, color:C2.gray, marginTop:8, lineHeight:1.6 }}>
-            {schedulingMode === 'normal'
-              ? 'Clients see every available slot in your working hours. Full flexibility, gaps possible.'
-              : 'Clients see slots that pack neatly against existing appointments. Choose strictness below.'}
-          </div>
-        </div>
+        {/* 3-way segmented control: Off / Soft / Hard.
+            Off = scheduling_mode 'normal'.
+            Soft = scheduling_mode 'efficient' + efficient_strictness 'soft'.
+            Hard = scheduling_mode 'efficient' + efficient_strictness 'hard'.
+            DB columns unchanged; UI just collapses the two into one
+            three-way control per HK design direction May 10 2026. */}
+        {(() => {
+          const current = schedulingMode === 'normal' ? 'off'
+            : efficientStrictness === 'hard' ? 'hard' : 'soft';
+          const setMode = async (mode) => {
+            if (mode === 'off') {
+              setSchedulingMode('normal');
+              await supabase.from('therapists').update({ scheduling_mode: 'normal' }).eq('id', therapist.id);
+            } else {
+              setSchedulingMode('efficient');
+              setEfficientStrictness(mode);
+              await supabase.from('therapists').update({ scheduling_mode: 'efficient', efficient_strictness: mode }).eq('id', therapist.id);
+            }
+          };
+          const buttonStyle = (active) => ({
+            flex: 1,
+            padding: '8px 12px',
+            border: 'none',
+            borderRadius: 6,
+            background: active ? C2.white : 'transparent',
+            color: active ? C2.forest : C2.gray,
+            fontSize: 13,
+            fontWeight: active ? 700 : 500,
+            cursor: 'pointer',
+            fontFamily: 'system-ui',
+            boxShadow: active ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+            transition: 'all 0.15s',
+          });
+          return (
+            <>
+              <div style={{ display:'flex', gap:0, background:'#F7F3EB', border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:3, marginBottom:10 }}>
+                <button onClick={() => setMode('off')}  style={buttonStyle(current === 'off')}>Off</button>
+                <button onClick={() => setMode('soft')} style={buttonStyle(current === 'soft')}>Soft</button>
+                <button onClick={() => setMode('hard')} style={buttonStyle(current === 'hard')}>Hard</button>
+              </div>
+              <div style={{ fontSize:11, color:C2.gray, lineHeight:1.6 }}>
+                {current === 'off'
+                  ? 'Clients see every available slot in your working hours. Full flexibility, gaps possible.'
+                  : current === 'soft'
+                    ? 'All slots stay visible. Adjacent ones rank higher so clients gravitate to them. Friendly for clients with limited flexibility.'
+                    : 'Only slots that touch an existing appointment edge are offered. Strongest packing. Some clients may not find a time on busy days.'}
+              </div>
+            </>
+          );
+        })()}
+      </DisclosureRow>
 
-        {/* Level 2: Hard vs Soft (only visible when Efficient is on) */}
-        {schedulingMode === 'efficient' && (
-          <div style={{ borderTop:`1px dashed ${C2.lightGray}`, paddingTop:14 }}>
-            <div style={{ fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:8 }}>
-              How strict?
-            </div>
-            <div style={{ display:'flex', gap:0, background:'#F7F3EB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:3, marginBottom:10 }}>
-              <button
-                onClick={async () => {
-                  setEfficientStrictness('soft');
-                  await supabase.from('therapists').update({ efficient_strictness: 'soft' }).eq('id', therapist.id);
-                }}
-                style={{
-                  flex:1, padding:'9px 14px', border:'none', borderRadius:8,
-                  background: efficientStrictness === 'soft' ? C2.white : 'transparent',
-                  color: efficientStrictness === 'soft' ? C2.forest : C2.gray,
-                  fontSize:13, fontWeight: efficientStrictness === 'soft' ? 700 : 500,
-                  cursor:'pointer', fontFamily:'system-ui',
-                  boxShadow: efficientStrictness === 'soft' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                }}>
-                Soft
-              </button>
-              <button
-                onClick={async () => {
-                  setEfficientStrictness('hard');
-                  await supabase.from('therapists').update({ efficient_strictness: 'hard' }).eq('id', therapist.id);
-                }}
-                style={{
-                  flex:1, padding:'9px 14px', border:'none', borderRadius:8,
-                  background: efficientStrictness === 'hard' ? C2.white : 'transparent',
-                  color: efficientStrictness === 'hard' ? C2.forest : C2.gray,
-                  fontSize:13, fontWeight: efficientStrictness === 'hard' ? 700 : 500,
-                  cursor:'pointer', fontFamily:'system-ui',
-                  boxShadow: efficientStrictness === 'hard' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                }}>
-                Hard
-              </button>
-            </div>
-            <div style={{ fontSize:11, color:C2.gray, lineHeight:1.6 }}>
-              {efficientStrictness === 'soft'
-                ? 'All slots stay available. The platform highlights the ones that pack tightly against your existing appointments so clients gravitate to them. Friendlier for clients with limited flexibility.'
-                : 'Only slots that touch an existing appointment edge are offered. Strongest packing. Some clients may not find a time that works for them on busy days.'}
-            </div>
-          </div>
-        )}
-
-        {/* Preview link: opens public booking page in a new tab so
-            therapist can see exactly what clients see with current
-            settings. Only useful for testing the toggle effect. */}
-        {therapist?.custom_url && (
-          <div style={{ marginTop:14, paddingTop:12, borderTop:`1px dashed ${C2.lightGray}` }}>
-            <a
-              href={`/${therapist.custom_url}?preview=1`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontSize:12, color:C2.forest, fontWeight:600,
-                textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6,
-              }}>
-              👀 Preview as a client
-            </a>
-            <span style={{ fontSize:11, color:C2.gray, marginLeft:6 }}>
-              opens your booking page in a new tab
-            </span>
-          </div>
-        )}
-      </div>
-
+      {/* Tips + pay-in-full at booking (Lindsey #2, May 10 2026).
+          Disclosure row pattern (HK May 10 2026). */}
       {/* Tips + pay-in-full at booking (Lindsey #2, May 10 2026).
           Two related controls in one card:
             1. Accept tips (default on). Disabling hides tip
@@ -864,9 +758,14 @@ function ServicesAndAvailability({ therapist }) {
             3. Three percentage presets shown as chips on the
                booking page tip selector. Therapist can edit
                each independently. */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💝 Tips and pay-in-full</p>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>
+      <DisclosureRow
+        icon="💝"
+        title="Tips and pay-in-full"
+        summary={`Tips ${acceptTips ? 'on' : 'off'}${acceptTips ? ` · ${tipPreset1}/${tipPreset2}/${tipPreset3}%` : ''} · Full payment ${payInFullEnabled ? 'on' : 'off'}`}
+        open={openSubRow === 'tips'}
+        onToggle={() => setOpenSubRow(openSubRow === 'tips' ? null : 'tips')}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
           Choose whether clients can leave tips and pay the full session amount upfront.
         </p>
 
@@ -990,18 +889,29 @@ function ServicesAndAvailability({ therapist }) {
             }} />
           </button>
         </div>
-      </div>
+      </DisclosureRow>
 
-      {/* Working Hours - Time Blocks
-          Compressed layout: one tight row per day so all 7 days fit in
-          a single screen on most phones. Day label + toggle live on the
-          left, time inputs on the right. Multi-block days wrap onto a
-          second line. Off days collapse to a single 32px row instead
-          of the full padded card from the previous design. */}
-      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:'14px 16px' }}>
+      {/* Working Hours - Time Blocks. Disclosure row pattern. */}
+      <DisclosureRow
+        icon="🕐"
+        title="Working hours"
+        summary={(() => {
+          const activeDays = (availability || []).filter(a => !a.service_id && a.active);
+          if (activeDays.length === 0) return 'No days set';
+          const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+          const sorted = [...activeDays].sort((a, b) => a.day_of_week - b.day_of_week);
+          const days = sorted.map(a => dayLabels[a.day_of_week]).join(', ');
+          const first = sorted[0];
+          if (!first?.start_time) return days;
+          const start = first.start_time.slice(0, 5);
+          const end = first.end_time?.slice(0, 5) || '';
+          return `${days} · ${start} to ${end}`;
+        })()}
+        open={openSubRow === 'working-hours'}
+        onToggle={() => setOpenSubRow(openSubRow === 'working-hours' ? null : 'working-hours')}
+      >
         <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', marginBottom:8 }}>
-          <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:0 }}>🕐 Working Hours</p>
-          <p style={{ fontSize:'11px', color:C2.gray, margin:0 }}>Tap a day to enable. + adds a break.</p>
+          <span style={{ fontSize:'11px', color:C2.gray }}>Tap a day to enable. + adds a break.</span>
         </div>
         <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
           {DAYS.map(({ id: dow, label }) => {
@@ -1102,25 +1012,45 @@ function ServicesAndAvailability({ therapist }) {
             );
           })}
         </div>
-      </div>
+      </DisclosureRow>
 
-      {/* Cycle-aligned scheduling — lives inside Services & hours rather
-          than as a separate Settings section. This keeps related "what
-          you offer + when" controls together: services menu, working
-          hours, cycle filter. The CycleScheduling component handles its
-          own collapse via the master toggle, so off-state takes very
-          little space. Per-phase chips on each service render up above
-          in the services rows when the toggle is ON. */}
-      <div style={{
-        background: C2.white,
-        border: `1.5px solid ${C2.lightGray}`,
-        borderRadius: 14,
-        padding: '14px 16px',
-        marginTop: 14,
-      }}>
-        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 10px' }}>🌙 Cycle-aligned scheduling (optional)</p>
+      {/* Cycle-aligned scheduling. Disclosure row pattern. */}
+      <DisclosureRow
+        icon="🌙"
+        title="Cycle-aligned scheduling"
+        summary={therapist?.cycle_scheduling_enabled ? 'On · per-phase service filtering' : 'Off · all services any phase'}
+        open={openSubRow === 'cycle'}
+        onToggle={() => setOpenSubRow(openSubRow === 'cycle' ? null : 'cycle')}
+      >
         <CycleScheduling therapist={therapist} />
-      </div>
+      </DisclosureRow>
+
+      {/* Preview booking page footer (HK May 10 2026 design direction).
+          Single dedicated link at the bottom of the panel that opens
+          the public booking page in a new tab, jumping straight to
+          the slot picker for the first active service. Replaces the
+          per-card preview link that confusingly opened intake when
+          a stale query string was present on the therapist account. */}
+      {therapist?.custom_url && (
+        <div style={{ marginTop:12 }}>
+          <a
+            href={`/${therapist.custom_url}?preview=1${services?.[0]?.id ? `&service=${services[0].id}` : ''}#slots`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display:'flex', alignItems:'center', gap:8,
+              padding:'10px 14px',
+              background:'#F0FDF4', border:'1px solid #C9DCC2', borderRadius:10,
+              fontSize:12, color:C2.forest, fontWeight:600,
+              textDecoration:'none',
+            }}>
+            👀 Preview booking page
+            <span style={{ marginLeft:'auto', fontSize:11, color:C2.gray, fontWeight:500 }}>
+              opens slot picker in a new tab
+            </span>
+          </a>
+        </div>
+      )}
     </div>
   );
 }
