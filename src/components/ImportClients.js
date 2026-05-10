@@ -597,6 +597,75 @@ export function ImportBookings({ therapist, onComplete }) {
       if (c.name)  nameToId.set(c.name.trim().toLowerCase(), c.id);
     }
 
+    // ─── Phase 2.5: Pre-fetch existing bookings for duplicate detection ──
+    //
+    // Re-running an import should not double-create bookings. Build
+    // a Set of stable identity keys for already-existing bookings:
+    //   "<email_or_phone_or_name>|<date>|<start>"
+    // Then filter prepared rows that already match before we insert.
+    //
+    // Identity precedence: email > phone > name. Whatever the row
+    // has, that is the key. Same precedence we use for client
+    // matching, so a row that previously imported with a phone-only
+    // signature will dedupe correctly even if a later row imports
+    // with the same name.
+    const { data: existingBookings, error: bkFetchErr } = await supabase
+      .from('bookings')
+      .select('client_email, client_phone, client_name, booking_date, start_time')
+      .eq('therapist_id', therapist.id);
+
+    if (bkFetchErr) {
+      console.warn('[import] could not load existing bookings; skipping dedupe', bkFetchErr);
+    }
+
+    const existingBookingKeys = new Set();
+    function bookingKey(emailLower, phone, nameLower, date, start) {
+      const id = emailLower || phone || nameLower || 'unknown';
+      // start time may come back as 'HH:MM' or 'HH:MM:SS'; normalize
+      const startNorm = (start || '').slice(0, 5);
+      return `${id}|${date}|${startNorm}`;
+    }
+    for (const b of (existingBookings || [])) {
+      const emailLower = b.client_email ? b.client_email.toLowerCase().trim() : null;
+      const phone = b.client_phone ? b.client_phone.trim() : null;
+      const nameLower = b.client_name ? b.client_name.toLowerCase().trim() : null;
+      existingBookingKeys.add(bookingKey(emailLower, phone, nameLower, b.booking_date, b.start_time));
+    }
+
+    // Filter prepared rows to drop duplicates of existing bookings.
+    // Track skipped count so the user sees what happened.
+    const dedupedPrepared = [];
+    let dupSkipped = 0;
+    const seenInThisRun = new Set();
+    for (const p of prepared) {
+      const emailLower = p.clientEmail ? p.clientEmail.toLowerCase().trim() : null;
+      const phone = p.clientPhone ? p.clientPhone.trim() : null;
+      const nameLower = p.clientName ? p.clientName.toLowerCase().trim() : null;
+      const key = bookingKey(emailLower, phone, nameLower, p.bookingDate, p.startTime);
+      if (existingBookingKeys.has(key) || seenInThisRun.has(key)) {
+        dupSkipped++;
+        continue;
+      }
+      seenInThisRun.add(key);
+      dedupedPrepared.push(p);
+    }
+    skipped += dupSkipped;
+    if (dupSkipped > 0 && failureSamples.length < 5) {
+      failureSamples.push(`Skipped ${dupSkipped} appointment${dupSkipped === 1 ? '' : 's'} that already existed.`);
+    }
+    // Replace the prepared variable for downstream phases. Use let
+    // semantics by reassigning the array reference via splice.
+    prepared.length = 0;
+    for (const p of dedupedPrepared) prepared.push(p);
+
+    if (prepared.length === 0) {
+      setResults({ created, skipped, failed, failureSamples });
+      setImporting(false);
+      setProgress(null);
+      if (onComplete) onComplete();
+      return;
+    }
+
     // ─── Phase 3: Identify new clients to create ──────────────
     // For each prepared row, find or queue a client. If queued
     // (new), we will bulk-insert all queued clients in one shot.
