@@ -448,6 +448,10 @@ export function ImportBookings({ therapist, onComplete }) {
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
+  // Progress state during long imports. { phase, current, total }
+  // where phase is 'preparing', 'looking-up-clients',
+  // 'creating-new-clients', or 'creating-bookings'.
+  const [progress, setProgress] = useState(null);
   const fileRef = useRef();
 
   function detectBookingMapping(headers) {
@@ -490,8 +494,9 @@ export function ImportBookings({ therapist, onComplete }) {
   async function runImport() {
     setImporting(true);
     setError('');
+    setProgress({ phase: 'preparing', current: 0, total: rows.length });
     let created = 0, skipped = 0, failed = 0;
-    const failureSamples = []; // First 5 failure reasons for the user
+    const failureSamples = [];
     const get = (row, idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
     // Robust date parser. Handles common formats from various spa
@@ -501,170 +506,226 @@ export function ImportBookings({ therapist, onComplete }) {
     function parseDate(s) {
       if (!s) return null;
       const trimmed = s.trim();
-      // ISO already
       if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) return trimmed.slice(0, 10);
-      // Slash or dash separated
       const m = trimmed.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
       if (m) {
         let [, a, b, y] = m;
-        // Heuristic: if first group > 12, treat as DD/MM/YYYY,
-        // otherwise default to MM/DD/YYYY (US convention).
         let mm, dd;
         if (parseInt(a) > 12) { dd = a; mm = b; }
         else { mm = a; dd = b; }
         if (y.length === 2) y = (parseInt(y) >= 50 ? '19' : '20') + y;
         return `${y}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
       }
-      // Fallback to native Date parser as last resort
       const d = new Date(trimmed);
       if (!isNaN(d)) return d.toISOString().split('T')[0];
       return null;
     }
 
-    // Process in batches of 50 to avoid hammering Supabase, exceeding
-    // request timeouts on long imports, or losing the auth session
-    // mid-flow. Sequential within a batch is fine; the batch boundary
-    // gives us a natural progress checkpoint.
-    const BATCH_SIZE = 50;
-    for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-      const batch = rows.slice(i, i + BATCH_SIZE);
+    // ─── Phase 1: Pre-process rows (no DB calls) ───────────────
+    // Validate, parse dates/times, build canonical booking objects.
+    // Anything that cannot parse goes straight to skipped/failed.
+    const prepared = []; // { row data including bookingDate, startTime, endTime, ... }
+    for (const row of rows) {
+      const clientName  = get(row, mapping.clientName);
+      const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
+      const clientPhone = get(row, mapping.clientPhone) || null;
+      const service     = get(row, mapping.service) || 'Session';
+      const dateStr     = get(row, mapping.date);
+      const timeStr     = get(row, mapping.startTime) || '09:00';
+      const duration    = parseInt(get(row, mapping.duration)) || 60;
+      const price       = parseFloat(get(row, mapping.price)) || 0;
+      const notes       = get(row, mapping.notes) || '';
 
-      for (const row of batch) {
-        const clientName  = get(row, mapping.clientName);
-        const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
-        const clientPhone = get(row, mapping.clientPhone) || null;
-        const service     = get(row, mapping.service) || 'Session';
-        const dateStr     = get(row, mapping.date);
-        const timeStr     = get(row, mapping.startTime) || '09:00';
-        const duration    = parseInt(get(row, mapping.duration)) || 60;
-        const price       = parseFloat(get(row, mapping.price)) || 0;
-        const notes       = get(row, mapping.notes) || '';
+      if (!clientName || !dateStr) { skipped++; continue; }
 
-        if (!clientName || !dateStr) {
-          skipped++;
-          continue;
-        }
+      const bookingDate = parseDate(dateStr);
+      if (!bookingDate) {
+        failed++;
+        if (failureSamples.length < 5) failureSamples.push(`Could not parse date "${dateStr}" for ${clientName}`);
+        continue;
+      }
 
-        try {
-          const bookingDate = parseDate(dateStr);
-          if (!bookingDate) {
-            failed++;
-            if (failureSamples.length < 5) {
-              failureSamples.push(`Could not parse date "${dateStr}" for ${clientName}`);
-            }
-            continue;
-          }
+      let timeMatch = timeStr.match(/(\d+):(\d+)\s*(am|pm|AM|PM)?/);
+      let sh = 9, sm = 0;
+      if (timeMatch) {
+        sh = parseInt(timeMatch[1]);
+        sm = parseInt(timeMatch[2]);
+        const ampm = (timeMatch[3] || '').toLowerCase();
+        if (ampm === 'pm' && sh < 12) sh += 12;
+        if (ampm === 'am' && sh === 12) sh = 0;
+      }
+      const startTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
+      const endMin = sh * 60 + sm + duration;
+      const endTime = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
 
-          // Parse start time (HH:MM or H:MM, with optional am/pm)
-          let timeMatch = timeStr.match(/(\d+):(\d+)\s*(am|pm|AM|PM)?/);
-          let sh = 9, sm = 0;
-          if (timeMatch) {
-            sh = parseInt(timeMatch[1]);
-            sm = parseInt(timeMatch[2]);
-            const ampm = (timeMatch[3] || '').toLowerCase();
-            if (ampm === 'pm' && sh < 12) sh += 12;
-            if (ampm === 'am' && sh === 12) sh = 0;
-          }
-          const startTime = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`;
-          const endMin = sh * 60 + sm + duration;
-          const endTime = `${String(Math.floor(endMin / 60) % 24).padStart(2, '0')}:${String(endMin % 60).padStart(2, '0')}`;
+      prepared.push({
+        clientName, clientEmail, clientPhone, service, bookingDate,
+        startTime, endTime, duration, price, notes,
+      });
+    }
 
-          // Upsert client.
-          //
-          // Critical: the previous version used onConflict on
-          // 'therapist_id,email', but many imported rows have a
-          // null email (phone-only clients common in older spa
-          // data). Postgres treats NULLs as distinct under unique
-          // constraints, which means upsert on null email throws.
-          //
-          // New strategy: try email-keyed upsert first if email is
-          // present. If no email, do a phone-keyed lookup, fall
-          // back to name-keyed lookup, then insert if no match.
-          // Always returns a client_id so the booking can link.
-          let clientId = null;
+    if (prepared.length === 0) {
+      setResults({ created, skipped, failed, failureSamples });
+      setImporting(false);
+      setProgress(null);
+      return;
+    }
 
-          if (clientEmail) {
-            const { data: c1 } = await supabase.from('clients')
-              .upsert(
-                { therapist_id: therapist.id, name: clientName, email: clientEmail, phone: clientPhone, imported_from: 'Appointment Import' },
-                { onConflict: 'therapist_id,email', ignoreDuplicates: false }
-              )
-              .select('id').single();
-            clientId = c1?.id || null;
-          } else if (clientPhone) {
-            const { data: existing } = await supabase.from('clients')
-              .select('id')
-              .eq('therapist_id', therapist.id)
-              .eq('phone', clientPhone)
-              .maybeSingle();
-            if (existing?.id) {
-              clientId = existing.id;
-            } else {
-              const { data: c2 } = await supabase.from('clients')
-                .insert({ therapist_id: therapist.id, name: clientName, phone: clientPhone, imported_from: 'Appointment Import' })
-                .select('id').single();
-              clientId = c2?.id || null;
-            }
-          } else {
-            // No email, no phone. Match on (therapist_id, name) and
-            // create if missing. Best-effort; same name = same client.
-            const { data: existing } = await supabase.from('clients')
-              .select('id')
-              .eq('therapist_id', therapist.id)
-              .eq('name', clientName)
-              .maybeSingle();
-            if (existing?.id) {
-              clientId = existing.id;
-            } else {
-              const { data: c3 } = await supabase.from('clients')
-                .insert({ therapist_id: therapist.id, name: clientName, imported_from: 'Appointment Import' })
-                .select('id').single();
-              clientId = c3?.id || null;
-            }
-          }
+    // ─── Phase 2: Pre-fetch all existing clients for this therapist ──
+    // Build lookup maps so we can match each booking row to a
+    // client_id without hitting the DB per row. Single query
+    // replaces ~1600 individual lookups.
+    setProgress({ phase: 'looking-up-clients', current: 0, total: prepared.length });
+    const { data: existingClients, error: fetchErr } = await supabase
+      .from('clients')
+      .select('id, name, email, phone')
+      .eq('therapist_id', therapist.id);
 
-          // Create booking
-          const { error: bookingErr } = await supabase.from('bookings').insert({
+    if (fetchErr) {
+      setError(`Could not load existing clients: ${fetchErr.message}`);
+      setImporting(false);
+      setProgress(null);
+      return;
+    }
+
+    const emailToId = new Map();
+    const phoneToId = new Map();
+    const nameToId = new Map();
+    for (const c of (existingClients || [])) {
+      if (c.email) emailToId.set(c.email.toLowerCase().trim(), c.id);
+      if (c.phone) phoneToId.set(c.phone.trim(), c.id);
+      if (c.name)  nameToId.set(c.name.trim().toLowerCase(), c.id);
+    }
+
+    // ─── Phase 3: Identify new clients to create ──────────────
+    // For each prepared row, find or queue a client. If queued
+    // (new), we will bulk-insert all queued clients in one shot.
+    const newClientsToCreate = []; // { signature, name, email, phone }
+    const signatureToQueued = new Map(); // dedupe within same import
+
+    function clientSignature(name, email, phone) {
+      // Stable identifier for grouping rows that refer to the same
+      // person. Email > phone > lowercase-name precedence.
+      if (email) return `e:${email}`;
+      if (phone) return `p:${phone}`;
+      return `n:${name.toLowerCase().trim()}`;
+    }
+
+    for (const p of prepared) {
+      const sig = clientSignature(p.clientName, p.clientEmail, p.clientPhone);
+      let id = null;
+      if (p.clientEmail) id = emailToId.get(p.clientEmail.toLowerCase().trim());
+      if (!id && p.clientPhone) id = phoneToId.get(p.clientPhone.trim());
+      if (!id && !p.clientEmail && !p.clientPhone) {
+        // Name-only match (legacy spa data without contact info)
+        id = nameToId.get(p.clientName.trim().toLowerCase());
+      }
+      if (id) {
+        p._clientId = id;
+      } else {
+        if (!signatureToQueued.has(sig)) {
+          signatureToQueued.set(sig, {
             therapist_id: therapist.id,
-            client_name:  clientName,
-            client_email: clientEmail,
-            client_phone: clientPhone,
-            client_id:    clientId,
-            booking_date: bookingDate,
-            start_time:   startTime,
-            end_time:     endTime,
-            duration,
-            price,
-            service_name: service,
-            status:       'confirmed',
-            notes,
-            imported:     true,
+            name: p.clientName,
+            email: p.clientEmail,
+            phone: p.clientPhone,
+            imported_from: 'Appointment Import',
+            _signature: sig,
           });
+        }
+      }
+    }
 
-          if (bookingErr) {
+    // ─── Phase 4: Bulk insert new clients ─────────────────────
+    if (signatureToQueued.size > 0) {
+      setProgress({ phase: 'creating-new-clients', current: 0, total: signatureToQueued.size });
+      const newClientRows = [...signatureToQueued.values()].map(c => {
+        const { _signature, ...rest } = c;
+        return rest;
+      });
+      // Insert in chunks of 100 to be safe with payload size
+      const sigOrder = [...signatureToQueued.keys()];
+      const insertedSigs = []; // signatures in order with their new IDs
+      for (let i = 0; i < newClientRows.length; i += 100) {
+        const chunk = newClientRows.slice(i, i + 100);
+        const sigChunk = sigOrder.slice(i, i + 100);
+        const { data: insertedRows, error: insErr } = await supabase
+          .from('clients')
+          .insert(chunk)
+          .select('id');
+        if (insErr) {
+          setError(`Could not create clients: ${insErr.message}`);
+          setImporting(false);
+          setProgress(null);
+          return;
+        }
+        for (let j = 0; j < (insertedRows || []).length; j++) {
+          insertedSigs.push([sigChunk[j], insertedRows[j].id]);
+        }
+        setProgress({ phase: 'creating-new-clients', current: Math.min(i + 100, newClientRows.length), total: newClientRows.length });
+      }
+      const sigToNewId = new Map(insertedSigs);
+      // Now back-fill _clientId on prepared rows that were queued
+      for (const p of prepared) {
+        if (p._clientId) continue;
+        const sig = clientSignature(p.clientName, p.clientEmail, p.clientPhone);
+        const newId = sigToNewId.get(sig);
+        if (newId) p._clientId = newId;
+      }
+    }
+
+    // ─── Phase 5: Bulk insert bookings ─────────────────────────
+    // Build all booking rows, then insert in chunks of 100.
+    const bookingRows = prepared
+      .filter(p => p._clientId)
+      .map(p => ({
+        therapist_id: therapist.id,
+        client_name:  p.clientName,
+        client_email: p.clientEmail,
+        client_phone: p.clientPhone,
+        client_id:    p._clientId,
+        booking_date: p.bookingDate,
+        start_time:   p.startTime,
+        end_time:     p.endTime,
+        duration:     p.duration,
+        price:        p.price,
+        service_name: p.service,
+        status:       'confirmed',
+        notes:        p.notes,
+        imported:     true,
+      }));
+
+    setProgress({ phase: 'creating-bookings', current: 0, total: bookingRows.length });
+    for (let i = 0; i < bookingRows.length; i += 100) {
+      const chunk = bookingRows.slice(i, i + 100);
+      const { error: bkErr } = await supabase.from('bookings').insert(chunk);
+      if (bkErr) {
+        // Chunk failed wholesale. Fall back to per-row to capture
+        // which specific row(s) caused it, so we can report. This
+        // is rare; bulk should usually succeed once schema is right.
+        for (const r of chunk) {
+          const { error: rowErr } = await supabase.from('bookings').insert(r);
+          if (rowErr) {
             failed++;
             if (failureSamples.length < 5) {
-              failureSamples.push(`${clientName} ${bookingDate}: ${bookingErr.message}`);
+              failureSamples.push(`${r.client_name} ${r.booking_date}: ${rowErr.message}`);
             }
           } else {
             created++;
           }
-        } catch (e) {
-          failed++;
-          if (failureSamples.length < 5) {
-            failureSamples.push(`${clientName || 'unknown'}: ${e?.message || String(e)}`);
-          }
         }
+      } else {
+        created += chunk.length;
       }
-
-      // Yield control every batch so React can update the UI and
-      // any other queued work (auth refresh, websocket pings) can
-      // run between bursts.
-      await new Promise(r => setTimeout(r, 50));
+      setProgress({ phase: 'creating-bookings', current: Math.min(i + 100, bookingRows.length), total: bookingRows.length });
     }
+
+    // Rows that did not get a client_id are counted as failed
+    failed += prepared.filter(p => !p._clientId).length;
 
     setResults({ created, skipped, failed, failureSamples });
     setImporting(false);
+    setProgress(null);
     if (onComplete) onComplete();
   }
 
@@ -780,6 +841,43 @@ export function ImportBookings({ therapist, onComplete }) {
             style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'12px', fontSize:14, fontWeight:700, cursor:importing?'wait':'pointer' }}>
             {importing ? `Importing ${rows.length} appointments…` : `Import ${rows.length} Appointments →`}
           </button>
+
+          {/* Progress display during long imports. Without this,
+              1600+ rows can feel hung. Phase + count + percentage
+              tell the therapist work is happening. */}
+          {importing && progress && (
+            <div style={{
+              marginTop: 14,
+              padding: '12px 14px',
+              background: '#F5F0E8',
+              border: '1px solid #DDD4C2',
+              borderRadius: 10,
+              fontSize: 12,
+              color: '#3D4A42',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {progress.phase === 'preparing'             && 'Preparing rows'}
+                  {progress.phase === 'looking-up-clients'    && 'Matching to existing clients'}
+                  {progress.phase === 'creating-new-clients'  && 'Creating new clients'}
+                  {progress.phase === 'creating-bookings'     && 'Saving appointments'}
+                </span>
+                <span style={{ color: '#6B7280' }}>
+                  {progress.current.toLocaleString()} of {progress.total.toLocaleString()}
+                </span>
+              </div>
+              <div style={{
+                height: 6, background: '#E8E4DC', borderRadius: 999, overflow: 'hidden',
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.min(100, Math.round((progress.current / Math.max(1, progress.total)) * 100))}%`,
+                  background: C.forest,
+                  transition: 'width 0.3s ease',
+                }} />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
