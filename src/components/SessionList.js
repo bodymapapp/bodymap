@@ -503,18 +503,66 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           {/* Charge panel */}
           {showCharge && cardOnFile && (
             <div style={{ background: '#F0FDF4', border: '1.5px solid #86EFAC', borderRadius: 10, padding: 16, marginTop: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount ($)</label>
-                  <input type="number" min="0" step="0.01" value={chargeAmount} onChange={e => setChargeAmount(e.target.value)}
-                    placeholder="0.00" style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tip ($)</label>
-                  <input type="number" min="0" step="0.01" value={tipAmount} onChange={e => setTipAmount(e.target.value)}
-                    placeholder="0.00" style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
-                </div>
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Amount ($)</label>
+                <input type="number" min="0" step="0.01" value={chargeAmount} onChange={e => setChargeAmount(e.target.value)}
+                  placeholder="0.00" style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 15, outline: 'none', boxSizing: 'border-box' }} />
               </div>
+
+              {/* Tip selector - percentage chips + custom + skip.
+                  Uses therapist's configured presets (default 15/18/20).
+                  Hidden entirely if therapist has accept_tips = false.
+                  Lindsey #2 (May 10 2026): no dropdowns. */}
+              {therapist?.accept_tips !== false && (
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Tip</label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {[
+                      { label: 'Skip', kind: 'skip', value: 0 },
+                      { label: `${therapist?.tip_preset_1 ?? 15}%`, kind: 'percent', value: therapist?.tip_preset_1 ?? 15 },
+                      { label: `${therapist?.tip_preset_2 ?? 18}%`, kind: 'percent', value: therapist?.tip_preset_2 ?? 18 },
+                      { label: `${therapist?.tip_preset_3 ?? 20}%`, kind: 'percent', value: therapist?.tip_preset_3 ?? 20 },
+                      { label: 'Custom', kind: 'custom', value: null },
+                    ].map((chip, idx) => {
+                      const charge = parseFloat(chargeAmount) || 0;
+                      const computed = chip.kind === 'percent' ? (charge * chip.value / 100) : null;
+                      const currentTip = parseFloat(tipAmount) || 0;
+                      let isActive = false;
+                      if (chip.kind === 'skip') isActive = !tipAmount || currentTip === 0;
+                      else if (chip.kind === 'percent' && computed !== null) {
+                        isActive = Math.abs(currentTip - computed) < 0.01 && currentTip > 0;
+                      }
+                      // Custom never auto-active; user must type
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            if (chip.kind === 'skip') setTipAmount('');
+                            else if (chip.kind === 'percent') setTipAmount(computed.toFixed(2));
+                            else { /* custom: focus the field, leave value */ }
+                          }}
+                          style={{
+                            padding: '7px 14px', borderRadius: 999,
+                            border: `1.5px solid ${isActive ? '#2A5741' : C.lightGray}`,
+                            background: isActive ? '#2A5741' : '#fff',
+                            color: isActive ? '#fff' : C.dark,
+                            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'system-ui',
+                          }}>
+                          {chip.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {/* Custom amount field shown always but greyed out when a chip is active */}
+                  <div style={{ marginTop: 8 }}>
+                    <input type="number" min="0" step="0.01" value={tipAmount}
+                      onChange={e => setTipAmount(e.target.value)}
+                      placeholder="0.00"
+                      style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.lightGray}`, borderRadius: 8, fontSize: 14, outline: 'none', boxSizing: 'border-box' }} />
+                  </div>
+                </div>
+              )}
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <input type="checkbox" id="send-receipt" checked={sendReceipt} onChange={e => setSendReceipt(e.target.checked)} />
                 <label htmlFor="send-receipt" style={{ fontSize: 13, color: C.gray, cursor: 'pointer' }}>Email receipt to {client.email || 'client'}</label>
