@@ -19,6 +19,7 @@ const STATUS = {
   'intake-done':    {label:'Brief Ready', bg:'#DCFCE7', color:'#16A34A', dot:'#16A34A', icon:'🧭'},
   'pending-intake': {label:'No Intake',   bg:'#FEF3C7', color:'#D97706', dot:'#F59E0B', icon:'📋'},
   'complete':       {label:'Complete',    bg:'#F3F4F6', color:'#6B7280', dot:'#9CA3AF', icon:'✓'},
+  'external':       {label:'From Google', bg:'#EFEAFD', color:'#5B4DC8', dot:'#7F77DD', icon:'📅'},
 };
 
 const makeSample = (today) => [
@@ -95,6 +96,65 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     setChargeContext({ booking: bookingRow, client: clientRow, sessionPriceCents });
     setShowChargeModal(true);
   }
+
+  // External Google Calendar events render a much simpler read-only
+  // panel. No reschedule, no cancel, no intake link, no client info.
+  // The therapist sees the event title (which she put there in
+  // Google) and can hit Close. The slot is automatically blocked
+  // for clients on the booking page. This branch sits AFTER all
+  // hook calls so it doesn't violate rules-of-hooks.
+  if (appt?.external) {
+    return (
+      <>
+        <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
+        <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'100vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column',padding:'24px',paddingTop:'calc(env(safe-area-inset-top, 0px) + 24px)'}}>
+          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:18 }}>
+            <div style={{ fontSize:26, marginTop:2 }}>📅</div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#7F77DD', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                From your Google Calendar
+              </div>
+              <div style={{
+                fontSize:19, fontWeight:700, color:'#1F2937',
+                fontFamily:'Georgia, serif',
+                wordBreak:'break-word', lineHeight:1.3,
+              }}>
+                {appt.client || 'Calendar event'}
+              </div>
+            </div>
+            <button onClick={onClose} style={{ background:'transparent', border:'none', fontSize:22, cursor:'pointer', color:'#9CA3AF', padding:0, lineHeight:1 }}>×</button>
+          </div>
+          <div style={{
+            background:'#F8F7FB', border:'1px solid #E1DEEF', borderRadius:10,
+            padding:'14px 16px', marginBottom:16,
+            fontSize:13, color:'#3D4A42', lineHeight:1.6,
+          }}>
+            <div style={{ fontSize:15, fontWeight:700, color:'#1F2937' }}>
+              {appt.isAllDay ? 'All day' : appt.time}{appt.duration && !appt.isAllDay ? ` · ${appt.duration} min` : ''}
+            </div>
+            <div style={{ fontSize:12, color:'#6B7280', marginTop:6 }}>
+              {appt.date}
+            </div>
+          </div>
+          <div style={{
+            background:'#FFF7ED', border:'1px solid #FED7AA', borderRadius:10,
+            padding:'12px 14px', marginBottom:16,
+            fontSize:12, color:'#9A3412', lineHeight:1.55,
+          }}>
+            This time is blocked for clients on your booking page. To move or remove it, edit in Google Calendar. Changes show up here within 15 minutes.
+          </div>
+          <button onClick={onClose} style={{
+            width:'100%', padding:'12px',
+            background:'#F3F4F6', border:'none', borderRadius:10,
+            fontSize:14, fontWeight:600, color:'#374151', cursor:'pointer',
+          }}>
+            Close
+          </button>
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
@@ -362,7 +422,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
 
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
         <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'}].map(({color,bg,label})=>(
+        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
           <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
             <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -482,7 +542,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
       {/* Legend */}
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
         <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'}].map(({color,bg,label})=>(
+        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
           <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
             <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -626,7 +686,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
       {/* Legend */}
       <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
         <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'}].map(({color,bg,label})=>(
+        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
           <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
             <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
             <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
@@ -903,7 +963,72 @@ export default function ScheduleDashboard({ therapist }) {
         };
       });
 
-      setRealBookings(mapped);
+      // External Google Calendar events (Lindsey #10, May 10 2026).
+      // Fetch the therapist's own external_calendar_events and merge
+      // them into the same schedule list. Therapist sees the event
+      // titles ('dentist', 'lunch') so she knows what is blocking her
+      // time. Clients on the booking page never see these titles, only
+      // a generic 'unavailable' state via the slot generator.
+      //
+      // Mapped shape mirrors a real booking but with external=true so
+      // the render path can switch to a quieter card style. Avatar,
+      // service, status icons all suppressed.
+      let extEvents = [];
+      try {
+        const extFrom = new Date(today); extFrom.setDate(today.getDate() - 90);
+        const extTo = new Date(today); extTo.setDate(today.getDate() + 60);
+        const { data: extRows } = await supabase
+          .from('external_calendar_events')
+          .select('id, summary, start_at, end_at, is_all_day, source')
+          .eq('therapist_id', therapist.id)
+          .eq('status', 'confirmed')
+          .gte('start_at', extFrom.toISOString())
+          .lte('end_at', extTo.toISOString())
+          .order('start_at');
+        extEvents = (extRows || []).map(e => {
+          const startD = new Date(e.start_at);
+          const endD = new Date(e.end_at);
+          const dateStr = `${startD.getFullYear()}-${String(startD.getMonth()+1).padStart(2,'0')}-${String(startD.getDate()).padStart(2,'0')}`;
+          const startMins = startD.getHours() * 60 + startD.getMinutes();
+          const durationMins = Math.round((endD - startD) / 60000);
+          const startStr = `${String(startD.getHours()).padStart(2,'0')}:${String(startD.getMinutes()).padStart(2,'0')}`;
+          const endStr = `${String(endD.getHours()).padStart(2,'0')}:${String(endD.getMinutes()).padStart(2,'0')}`;
+          return {
+            id: `ext_${e.id}`,
+            external: true,
+            externalSource: e.source || 'google',
+            client: e.summary || 'Calendar event',
+            email: '',
+            time: e.is_all_day ? 'All day' : fmt12(startStr),
+            duration: durationMins,
+            date: dateStr,
+            status: 'external',
+            sessionId: null,
+            clientId: null,
+            sessions: 0,
+            service: e.summary || 'Calendar event',
+            notes: '',
+            price: 0,
+            focus: [],
+            preview: false,
+            reminder_sent: false,
+            deposit_required: false,
+            deposit_paid: false,
+            deposit_amount: 0,
+            is_couples: false,
+            partner_name: null,
+            partner_email: null,
+            startTime: startStr,
+            endTime: endStr,
+            startMins,
+            isAllDay: !!e.is_all_day,
+          };
+        });
+      } catch (extErr) {
+        console.warn('External events fetch failed (non-fatal):', extErr);
+      }
+
+      setRealBookings([...mapped, ...extEvents]);
     } catch(err) {
       console.error('fetchBookings error:', err);
       setRealBookings([]);
