@@ -1831,27 +1831,29 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   async function connectGoogleCalendar() {
     setGoogleConnecting(true);
     try {
+      // Ask the edge function to build the OAuth URL for us. The
+      // edge function reads GOOGLE_CLIENT_ID from Supabase secrets,
+      // so we never need a frontend env var for it. May 10 2026:
+      // moved server-side after the REACT_APP_GOOGLE_CLIENT_ID
+      // approach kept failing in Vercel.
       const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
-      const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-      if (!GOOGLE_CLIENT_ID) {
-        setGoogleBanner({ kind: 'error', text: 'Google Client ID not configured. Contact support.' });
+      const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/google-calendar-connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({ therapist_id: therapist.id }),
+      });
+      const data = await resp.json();
+      if (!resp.ok || !data?.url) {
+        setGoogleBanner({ kind: 'error', text: data?.error || 'Could not start Google connect. Try again or contact support.' });
         setGoogleConnecting(false);
         return;
       }
-      const redirectUri = `${SUPABASE_URL}/functions/v1/google-calendar-callback`;
-      // We pass therapist.id as state so the callback knows which row
-      // to update. Authentication is enforced by the fact that this
-      // button is only visible on the logged-in dashboard.
-      const params = new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
-        redirect_uri: redirectUri,
-        response_type: 'code',
-        scope: 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email',
-        access_type: 'offline',
-        prompt: 'consent',
-        state: therapist.id,
-      });
-      window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      // Send the browser to Google's consent screen.
+      window.location.href = data.url;
     } catch (e) {
       setGoogleBanner({ kind: 'error', text: e.message || 'Connect failed' });
       setGoogleConnecting(false);
