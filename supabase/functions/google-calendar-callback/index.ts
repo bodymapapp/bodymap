@@ -1,6 +1,10 @@
 // supabase/functions/google-calendar-callback/index.ts
 //
 // OAuth callback for Google Calendar sync (Lindsey #10).
+// Touched May 10 2026 to trigger a redeploy after secrets were
+// added in Supabase. Edge functions read env vars at deploy time,
+// not at runtime, so adding a secret without redeploying means
+// the running function still does not see it.
 //
 // Flow:
 //   1. Therapist clicks 'Connect Google Calendar' on dashboard.
