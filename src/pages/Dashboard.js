@@ -77,6 +77,12 @@ function ServicesAndAvailability({ therapist }) {
   //   efficientStrictness: 'soft' | 'hard' (only used when efficient)
   const [schedulingMode, setSchedulingMode] = React.useState(therapist?.scheduling_mode || 'normal');
   const [efficientStrictness, setEfficientStrictness] = React.useState(therapist?.efficient_strictness || 'soft');
+  // Tips + pay-in-full (Lindsey #2, May 10 2026).
+  const [acceptTips, setAcceptTips] = React.useState(therapist?.accept_tips ?? true);
+  const [payInFullEnabled, setPayInFullEnabled] = React.useState(therapist?.pay_in_full_enabled || false);
+  const [tipPreset1, setTipPreset1] = React.useState(therapist?.tip_preset_1 ?? 15);
+  const [tipPreset2, setTipPreset2] = React.useState(therapist?.tip_preset_2 ?? 18);
+  const [tipPreset3, setTipPreset3] = React.useState(therapist?.tip_preset_3 ?? 20);
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -92,7 +98,12 @@ function ServicesAndAvailability({ therapist }) {
     setMaxAdvanceDays(therapist?.maximum_advance_days ?? 0);
     setSchedulingMode(therapist?.scheduling_mode || 'normal');
     setEfficientStrictness(therapist?.efficient_strictness || 'soft');
-  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days, therapist?.scheduling_mode, therapist?.efficient_strictness]);
+    setAcceptTips(therapist?.accept_tips ?? true);
+    setPayInFullEnabled(therapist?.pay_in_full_enabled || false);
+    setTipPreset1(therapist?.tip_preset_1 ?? 15);
+    setTipPreset2(therapist?.tip_preset_2 ?? 18);
+    setTipPreset3(therapist?.tip_preset_3 ?? 20);
+  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days, therapist?.scheduling_mode, therapist?.efficient_strictness, therapist?.accept_tips, therapist?.pay_in_full_enabled, therapist?.tip_preset_1, therapist?.tip_preset_2, therapist?.tip_preset_3]);
 
   const PRESETS = [
     { name:'Swedish Massage', duration:60, price:85 },
@@ -650,6 +661,146 @@ function ServicesAndAvailability({ therapist }) {
             </span>
           </div>
         )}
+      </div>
+
+      {/* Tips + pay-in-full at booking (Lindsey #2, May 10 2026).
+          Two related controls in one card:
+            1. Accept tips (default on). Disabling hides tip
+               selectors entirely from booking and post-session
+               charge flows.
+            2. Allow pay-in-full at booking (default off). When
+               on, clients see a "Pay full now" option alongside
+               deposit-only and pay-later. Useful for therapists
+               who prefer prepayment to deposits.
+            3. Three percentage presets shown as chips on the
+               booking page tip selector. Therapist can edit
+               each independently. */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>💝 Tips and pay-in-full</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 16px', lineHeight:1.5 }}>
+          Choose whether clients can leave tips and pay the full session amount upfront.
+        </p>
+
+        {/* Toggle: Accept tips */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'10px 0', marginBottom: acceptTips ? 4 : 12,
+        }}>
+          <div style={{ flex:1, paddingRight:12 }}>
+            <div style={{ fontSize:14, fontWeight:600, color:C2.darkGray, marginBottom:2 }}>
+              Accept tips
+            </div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5 }}>
+              Show tip options at booking and after sessions. Turn off if you prefer not to invite tips.
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const next = !acceptTips;
+              setAcceptTips(next);
+              await supabase.from('therapists').update({ accept_tips: next }).eq('id', therapist.id);
+            }}
+            style={{
+              width:46, height:26, borderRadius:13, border:'none',
+              background: acceptTips ? C2.forest : '#D1CFC7',
+              position:'relative', cursor:'pointer', flexShrink:0,
+              transition:'background 0.2s',
+            }}
+            aria-label={acceptTips ? 'Disable tips' : 'Enable tips'}>
+            <div style={{
+              position:'absolute', top:3, left: acceptTips ? 23 : 3,
+              width:20, height:20, borderRadius:'50%', background:'#fff',
+              transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </button>
+        </div>
+
+        {/* Tip preset percentages (only when accepting tips).
+            Three inline number inputs using InlineSaveNumberInput,
+            no dropdowns per HK design principle. */}
+        {acceptTips && (
+          <div style={{ paddingBottom:12, marginBottom:12, borderBottom:`1px dashed ${C2.lightGray}` }}>
+            <div style={{ fontSize:12, color:C2.gray, marginBottom:8, lineHeight:1.5 }}>
+              Three percentage chips clients can tap. They can also enter a custom amount or skip.
+            </div>
+            <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+              <InlineSaveNumberInput
+                value={tipPreset1}
+                defaultValue={15}
+                placeholder="15"
+                onChange={setTipPreset1}
+                onSave={async (v) => {
+                  await supabase.from('therapists').update({ tip_preset_1: v }).eq('id', therapist.id);
+                }}
+                suffix="%"
+                min={0}
+                max={100}
+                width={50}
+              />
+              <InlineSaveNumberInput
+                value={tipPreset2}
+                defaultValue={18}
+                placeholder="18"
+                onChange={setTipPreset2}
+                onSave={async (v) => {
+                  await supabase.from('therapists').update({ tip_preset_2: v }).eq('id', therapist.id);
+                }}
+                suffix="%"
+                min={0}
+                max={100}
+                width={50}
+              />
+              <InlineSaveNumberInput
+                value={tipPreset3}
+                defaultValue={20}
+                placeholder="20"
+                onChange={setTipPreset3}
+                onSave={async (v) => {
+                  await supabase.from('therapists').update({ tip_preset_3: v }).eq('id', therapist.id);
+                }}
+                suffix="%"
+                min={0}
+                max={100}
+                width={50}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Toggle: Allow pay-in-full */}
+        <div style={{
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          padding:'10px 0',
+        }}>
+          <div style={{ flex:1, paddingRight:12 }}>
+            <div style={{ fontSize:14, fontWeight:600, color:C2.darkGray, marginBottom:2 }}>
+              Allow pay-in-full at booking
+            </div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5 }}>
+              Clients can choose to pay the full session price upfront instead of just a deposit.
+              {acceptTips && ' Tip selector appears with this option.'}
+            </div>
+          </div>
+          <button
+            onClick={async () => {
+              const next = !payInFullEnabled;
+              setPayInFullEnabled(next);
+              await supabase.from('therapists').update({ pay_in_full_enabled: next }).eq('id', therapist.id);
+            }}
+            style={{
+              width:46, height:26, borderRadius:13, border:'none',
+              background: payInFullEnabled ? C2.forest : '#D1CFC7',
+              position:'relative', cursor:'pointer', flexShrink:0,
+              transition:'background 0.2s',
+            }}
+            aria-label={payInFullEnabled ? 'Disable pay-in-full' : 'Enable pay-in-full'}>
+            <div style={{
+              position:'absolute', top:3, left: payInFullEnabled ? 23 : 3,
+              width:20, height:20, borderRadius:'50%', background:'#fff',
+              transition:'left 0.2s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)',
+            }} />
+          </button>
+        </div>
       </div>
 
       {/* Working Hours - Time Blocks
