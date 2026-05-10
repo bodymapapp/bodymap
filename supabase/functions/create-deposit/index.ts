@@ -65,6 +65,12 @@ serve(async (req) => {
       therapist_name,
       booking_id,
       therapist_id,
+      // Pay-in-full + tip metadata (Lindsey #2). When payment_mode
+      // is 'full', amount_cents already includes the full service
+      // price plus tip; we just stash both numbers in PaymentIntent
+      // metadata for downstream accounting.
+      payment_mode,
+      tip_cents,
     } = await req.json();
 
     let STRIPE_SECRET: string;
@@ -151,16 +157,21 @@ serve(async (req) => {
 
     // ─── Step 2: create the PaymentIntent ────────────────────────
 
+    const isFullPayment = payment_mode === 'full';
     const piParams: Record<string, string> = {
       amount: String(amount_cents),
       currency: 'usd',
       'automatic_payment_methods[enabled]': 'true',
       'automatic_payment_methods[allow_redirects]': 'always',
-      description: `Deposit - ${service_name} with ${therapist_name}`,
+      description: isFullPayment
+        ? `Full payment - ${service_name} with ${therapist_name}`
+        : `Deposit - ${service_name} with ${therapist_name}`,
       receipt_email: client_email,
       'metadata[booking_id]': booking_id || '',
       'metadata[therapist_id]': therapist_id || '',
       'metadata[client_id]': resolvedClientId || '',
+      'metadata[payment_mode]': payment_mode || 'deposit',
+      'metadata[tip_cents]': String(tip_cents || 0),
     };
 
     // If we have a Stripe Customer, attach it AND ask Stripe to save

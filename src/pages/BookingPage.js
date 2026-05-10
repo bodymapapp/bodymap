@@ -307,7 +307,7 @@ function StripePaymentForm({ clientSecret, depositAmount, stripeAccountId, thera
           boxShadow: '0 4px 20px rgba(42,87,65,0.25)',
         }}
       >
-        {processing ? 'Processing…' : ready ? `Pay $${(depositAmount/100).toFixed(0)} Deposit` : 'Loading…'}
+        {processing ? 'Processing…' : ready ? `Pay $${(depositAmount/100).toFixed(2)}` : 'Loading…'}
       </button>
       <p style={{
         fontSize: 11,
@@ -694,6 +694,11 @@ export default function BookingPage() {
   const [submitting,setSubmitting]=useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
+  // Pay-in-full + tips at booking (Lindsey #2, May 10 2026).
+  // paymentMode: 'deposit' | 'full'  (only 'full' available if therapist has pay_in_full_enabled)
+  // tipCents: tip amount in cents to add to the charge if paying full
+  const [paymentMode, setPaymentMode] = useState('deposit');
+  const [tipCents, setTipCents] = useState(0);
   const [giftCode,setGiftCode]=useState('');
   const [giftCert,setGiftCert]=useState(null);
   const [giftError,setGiftError]=useState('');
@@ -747,6 +752,26 @@ export default function BookingPage() {
   const [cardCapturing,setCardCapturing]=useState(false);
   const [cardError,setCardError]=useState(null);
   const [cardMandateAgreed,setCardMandateAgreed]=useState(false);
+
+  // Pay-in-full recompute (Lindsey #2). When client switches to
+  // 'pay full' or adjusts tip, the actual charge amount changes.
+  // depositAmount is the variable we pass to create-deposit /
+  // square-create-deposit, so we recompute it here whenever any
+  // input changes. When mode is 'deposit' this is the deposit
+  // percent of service price; when 'full' this is full price + tip.
+  useEffect(() => {
+    if (!svc || !therapist) return;
+    if (requiresApproval) return; // Approval flow has no charge at booking
+    if (paymentMode === 'full') {
+      const fullCents = Math.round(svc.price * 100);
+      setDepositAmount(fullCents + (tipCents || 0));
+    } else if (depositRequired) {
+      // Deposit-only: percent of base service price (existing logic)
+      const depositCents = Math.round((svc.price * (therapist.deposit_percent || 20) / 100) * 100);
+      setDepositAmount(depositCents);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentMode, tipCents, svc?.price, therapist?.deposit_percent, depositRequired, requiresApproval]);
 
   // Allow forcing a hard service-worker reset via ?fresh=1 in the URL.
   // For therapists who installed the PWA at v3 and are stuck seeing
@@ -1439,10 +1464,17 @@ export default function BookingPage() {
       addon_total_price: addonTotalPrice,
       addon_extra_minutes: addonExtraMinutes,
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
-      status: requiresApproval ? 'pending-approval' : (depositRequired ? 'pending-deposit' : 'confirmed'),
+      status: requiresApproval ? 'pending-approval' : ((depositRequired || paymentMode === 'full') ? 'pending-deposit' : 'confirmed'),
       deposit_required: requiresApproval ? false : depositRequired,
-      deposit_amount: requiresApproval ? 0 : (depositRequired ? depositAmount : 0),
+      deposit_amount: requiresApproval ? 0 : ((depositRequired || paymentMode === 'full') ? depositAmount : 0),
       deposit_paid: false,
+      // Pay-in-full + tip persistence (Lindsey #2). pay_in_full is
+      // true when client chose to pay the full session price upfront
+      // instead of deposit-only. tip_cents is the tip amount that
+      // will be charged together with the full payment. Both default
+      // to 0/false when client picks the standard deposit flow.
+      pay_in_full: paymentMode === 'full',
+      tip_cents: paymentMode === 'full' ? tipCents : 0,
       // Cancellation policy Phase 2: snapshot the card on file at booking
       // time. Even if the client later changes their card, we charge what
       // they agreed to at this booking.
@@ -1503,8 +1535,17 @@ export default function BookingPage() {
       return;
     }
 
-    if(depositRequired && therapist.stripe_account_id) {
-      console.log('PAYMENT DEBUG: invoking create-deposit', {depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
+    // Trigger the at-booking payment flow when EITHER:
+    //   - therapist requires a deposit (existing flow), OR
+    //   - client chose pay-in-full (Lindsey #2)
+    // Both paths route through the same create-deposit /
+    // square-create-deposit edge functions; depositAmount has
+    // already been recomputed by the useEffect to reflect the
+    // chosen mode (deposit cents OR full+tip cents).
+    const needsCharge = depositRequired || paymentMode === 'full';
+
+    if(needsCharge && therapist.stripe_account_id) {
+      console.log('PAYMENT DEBUG: invoking create-deposit', {paymentMode, tipCents, depositRequired, stripe_account_id: therapist.stripe_account_id, depositAmount});
       setDepositLoading(true);
       // Call edge function directly via fetch, supabase.functions.invoke()
       // was failing at the gateway level before the function ran (no invocation logs)
@@ -1533,6 +1574,12 @@ export default function BookingPage() {
             client_phone: form.phone?.trim() || null,
             service_name: svc.name,
             therapist_name: therapist.business_name || therapist.full_name,
+            // Pay-in-full + tip metadata (Lindsey #2). amount_cents
+            // already reflects the full price + tip when paymentMode
+            // is 'full'; these fields exist so the edge function can
+            // attach them to PaymentIntent metadata for accounting.
+            payment_mode: paymentMode,
+            tip_cents: paymentMode === 'full' ? tipCents : 0,
           }),
         }
       );
@@ -1566,8 +1613,8 @@ export default function BookingPage() {
     // and Square redirects them back to a thank-you URL after pay.
     // Trade-off: client briefly leaves our domain. For deposits, the
     // simpler hosted flow is the right call for the persona.
-    if (depositRequired && !therapist.stripe_account_id && therapist.square_access_token) {
-      console.log('PAYMENT DEBUG: invoking square-create-deposit', { booking_id: bid, amount_cents: depositAmount });
+    if (needsCharge && !therapist.stripe_account_id && therapist.square_access_token) {
+      console.log('PAYMENT DEBUG: invoking square-create-deposit', { paymentMode, booking_id: bid, amount_cents: depositAmount });
       setDepositLoading(true);
       // After Square redirects back, this URL re-opens the booking
       // page in confirmed state. The booking row already exists with
@@ -1592,6 +1639,9 @@ export default function BookingPage() {
             therapist_name: therapist.business_name || therapist.full_name,
             client_email: form.email.trim().toLowerCase(),
             redirect_url: redirectUrl,
+            // Pay-in-full + tip metadata (Lindsey #2)
+            payment_mode: paymentMode,
+            tip_cents: paymentMode === 'full' ? tipCents : 0,
           }),
         }
       );
@@ -1614,8 +1664,8 @@ export default function BookingPage() {
     // Settings but has no payment processor connected, OR the
     // processor disconnected. Fail visibly rather than silently
     // confirming a booking that should have collected money.
-    if (depositRequired && !therapist.stripe_account_id && !therapist.square_access_token) {
-      setPaymentError('This therapist has deposits turned on but has not connected a payment processor. Please contact them directly to book.');
+    if (needsCharge && !therapist.stripe_account_id && !therapist.square_access_token) {
+      setPaymentError('This therapist has not connected a payment processor. Please contact them directly to book.');
       return;
     }
     // No deposit required, confirm directly
@@ -2485,6 +2535,11 @@ export default function BookingPage() {
 
               const needsDeposit = !needsApproval && therapist.deposit_enabled && !isRepeat && !giftCert;
               setDepositRequired(needsDeposit);
+              // Reset payment mode to 'deposit' default whenever the
+              // booking context changes. The pay-in-full chooser will
+              // re-show if therapist has it enabled.
+              setPaymentMode('deposit');
+              setTipCents(0);
               if(needsDeposit){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
@@ -2608,6 +2663,137 @@ export default function BookingPage() {
                     As a new client, {therapist.deposit_percent||20}% of the ${svc.price} session fee is collected now to reserve your appointment. The remaining ${svc.price - Math.round(svc.price*(therapist.deposit_percent||20)/100)} is paid directly to your therapist at the session.
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Pay-in-full chooser + tip selector (Lindsey #2, May 10 2026).
+                Shown when:
+                  - therapist has pay_in_full_enabled
+                  - not in approval mode
+                  - no gift cert (it covers the full price already)
+                  - has a connected payment processor
+                Default selection is 'deposit' (or no charge if deposit
+                also disabled). Selecting 'full' reveals tip chips. */}
+            {!requiresApproval && !giftCert && therapist.pay_in_full_enabled &&
+             (therapist.stripe_account_id || therapist.square_access_token) && (
+              <div style={{
+                marginBottom: 14, background: '#FFFFFF', border: '1.5px solid #DDD4C2',
+                borderRadius: 14, padding: '16px',
+              }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                  Payment
+                </div>
+
+                {/* Option chips: deposit/no-charge vs pay-in-full */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: paymentMode === 'full' ? 14 : 0 }}>
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px',
+                    border: `1.5px solid ${paymentMode === 'deposit' ? C.forest : '#E8E4DC'}`,
+                    background: paymentMode === 'deposit' ? '#F0FDF4' : '#FAFAF6',
+                    borderRadius: 10, cursor: 'pointer',
+                  }}>
+                    <input
+                      type="radio"
+                      name="paymentMode"
+                      value="deposit"
+                      checked={paymentMode === 'deposit'}
+                      onChange={() => setPaymentMode('deposit')}
+                      style={{ accentColor: C.forest }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>
+                        {depositRequired ? `Pay deposit ($${(Math.round((svc.price * (therapist.deposit_percent || 20) / 100) * 100) / 100).toFixed(0)})` : 'Pay at session'}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+                        {depositRequired
+                          ? `Remainder paid in person on ${fmtDate(date)}`
+                          : 'Bring cash, card, or Venmo to the session'}
+                      </div>
+                    </div>
+                  </label>
+
+                  <label style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    padding: '12px 14px',
+                    border: `1.5px solid ${paymentMode === 'full' ? C.forest : '#E8E4DC'}`,
+                    background: paymentMode === 'full' ? '#F0FDF4' : '#FAFAF6',
+                    borderRadius: 10, cursor: 'pointer',
+                  }}>
+                    <input
+                      type="radio"
+                      name="paymentMode"
+                      value="full"
+                      checked={paymentMode === 'full'}
+                      onChange={() => setPaymentMode('full')}
+                      style={{ accentColor: C.forest }}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.dark }}>
+                        Pay in full now (${svc.price})
+                      </div>
+                      <div style={{ fontSize: 12, color: C.gray, marginTop: 2 }}>
+                        Skip the at-session payment.{therapist.accept_tips !== false ? ' Add a tip if you like.' : ''}
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Tip chips, only when paying in full + therapist accepts tips */}
+                {paymentMode === 'full' && therapist.accept_tips !== false && (
+                  <div style={{
+                    paddingTop: 14, borderTop: `1px dashed ${C.light}`,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                      Add a tip
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {[
+                        { label: 'Skip', value: 0, kind: 'fixed' },
+                        { label: `${therapist.tip_preset_1 ?? 15}%`, value: therapist.tip_preset_1 ?? 15, kind: 'percent' },
+                        { label: `${therapist.tip_preset_2 ?? 18}%`, value: therapist.tip_preset_2 ?? 18, kind: 'percent' },
+                        { label: `${therapist.tip_preset_3 ?? 20}%`, value: therapist.tip_preset_3 ?? 20, kind: 'percent' },
+                      ].map((chip, idx) => {
+                        const computedCents = chip.kind === 'percent'
+                          ? Math.round(svc.price * 100 * chip.value / 100)
+                          : 0;
+                        const isActive = tipCents === computedCents;
+                        return (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setTipCents(computedCents)}
+                            style={{
+                              padding: '8px 16px', borderRadius: 999,
+                              border: `1.5px solid ${isActive ? C.forest : '#DDD4C2'}`,
+                              background: isActive ? C.forest : '#fff',
+                              color: isActive ? '#fff' : C.dark,
+                              fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                              fontFamily: 'system-ui',
+                            }}>
+                            {chip.label}
+                            {chip.kind === 'percent' && (
+                              <span style={{ marginLeft: 6, opacity: 0.75, fontSize: 12 }}>
+                                ${(computedCents / 100).toFixed(0)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Total preview */}
+                    <div style={{
+                      marginTop: 14, padding: '10px 12px',
+                      background: '#F0FDF4', border: '1px solid #86EFAC', borderRadius: 8,
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    }}>
+                      <span style={{ fontSize: 12, color: '#166534', fontWeight: 600 }}>You'll be charged today</span>
+                      <span style={{ fontSize: 16, color: '#166534', fontWeight: 700 }}>
+                        ${((svc.price * 100 + tipCents) / 100).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {giftCert&&(
@@ -2897,9 +3083,11 @@ export default function BookingPage() {
                     ? (requiresApproval?'Sending…':'Confirming…')
                     : (requiresApproval
                         ? 'Send Request'
-                        : (depositRequired
-                            ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
-                            : '✓ Confirm Booking'))}
+                        : (paymentMode === 'full'
+                            ? `✓ Confirm & Pay $${((svc.price*100 + tipCents)/100).toFixed(0)}`
+                            : (depositRequired
+                                ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
+                                : '✓ Confirm Booking')))}
                 </button>
                 {!requiresApproval&&!depositRequired&&!isRepeatClient&&!cardOnFileRequired&&(
                   <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>

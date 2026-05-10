@@ -28,6 +28,8 @@ serve(async (req) => {
     const {
       therapist_id, booking_id, amount_cents,
       service_name, therapist_name, client_email, redirect_url,
+      // Pay-in-full + tip metadata (Lindsey #2)
+      payment_mode, tip_cents,
     } = await req.json();
 
     console.log('[square-create-deposit] start', { therapist_id, booking_id, amount_cents });
@@ -48,18 +50,17 @@ serve(async (req) => {
 
     const provider = await getProvider(therapist, 'auto');
     if (provider.name !== 'square') {
-      // This means therapist has Stripe connected and provider auto-
-      // selected Stripe, but the caller specifically wanted Square.
-      // Force Square by manual instantiation.
       const { SquareProvider } = await import('../_shared/providers/square.ts');
       const squareProvider = new SquareProvider();
       return await runSquareDeposit(squareProvider, therapist, {
         booking_id, amount_cents, service_name, therapist_name, client_email, redirect_url,
+        payment_mode, tip_cents,
       }, supabase);
     }
 
     return await runSquareDeposit(provider, therapist, {
       booking_id, amount_cents, service_name, therapist_name, client_email, redirect_url,
+      payment_mode, tip_cents,
     }, supabase);
 
   } catch (e) {
@@ -74,20 +75,37 @@ serve(async (req) => {
 
 async function runSquareDeposit(provider: any, therapist: any, args: any, supabase: any) {
   const therapistName = args.therapist_name || therapist.business_name || therapist.full_name || 'Therapist';
+  const isFullPayment = args.payment_mode === 'full';
+  const itemName = isFullPayment
+    ? `Full payment · ${args.service_name || 'Massage session'}`
+    : `Deposit · ${args.service_name || 'Massage session'}`;
+  const itemDescription = isFullPayment
+    ? `Full payment for ${args.service_name || 'session'} with ${therapistName}`
+    : `Deposit for ${args.service_name || 'session'} with ${therapistName}`;
 
   const result = await provider.createCheckoutLink({
     therapist,
     items: [{
-      itemId: `deposit-${args.booking_id}`,
-      name: `Deposit · ${args.service_name || 'Massage session'}`,
-      description: `Deposit for ${args.service_name || 'session'} with ${therapistName}`,
+      itemId: `${isFullPayment ? 'full' : 'deposit'}-${args.booking_id}`,
+      name: itemName,
+      description: itemDescription,
       amountCents: args.amount_cents,
       quantity: 1,
-      metadata: { booking_id: args.booking_id, item_type: 'deposit' },
+      metadata: {
+        booking_id: args.booking_id,
+        item_type: isFullPayment ? 'full_payment' : 'deposit',
+        payment_mode: args.payment_mode || 'deposit',
+        tip_cents: String(args.tip_cents || 0),
+      },
     }],
     customer: { name: null, email: args.client_email || 'noemail@example.com', phone: null },
     redirectUrl: args.redirect_url || `https://www.mybodymap.app/${therapist.custom_url}?deposit_complete=1&booking_id=${args.booking_id}`,
-    metadata: { booking_id: args.booking_id, purpose: 'deposit' },
+    metadata: {
+      booking_id: args.booking_id,
+      purpose: isFullPayment ? 'full_payment' : 'deposit',
+      payment_mode: args.payment_mode || 'deposit',
+      tip_cents: String(args.tip_cents || 0),
+    },
     mode: 'payment',
   });
 
