@@ -30,6 +30,7 @@ import AutomationHub from "../components/demos/AutomationHub";
 import CampaignsDemo from "../components/demos/CampaignsDemo";
 import GiftCardDemo from "../components/demos/GiftCardDemo";
 import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
+import SmartScheduleDemo from "../components/demos/SmartScheduleDemo";
 import PreferencesDemo from "../components/demos/PreferencesDemo";
 import IntakeEditorDemo from "../components/demos/IntakeEditorDemo";
 import PhoneDemo from "../components/demos/PhoneDemo";
@@ -58,13 +59,14 @@ const RIBBONS = [
     demos: [
       { kind: "component", component: BookingDemo, label: "Try the booking page" },
       { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
+      { kind: "component", component: SmartScheduleDemo, label: "Smart Scheduling" },
     ],
     layout: "demo-right",
     subFeatures: [
       "Custom booking page at mybodymap.app/your-name",
       "Services catalog with durations and add-ons",
       "Cycle-aligned scheduling (only on MyBodyMap)",
-      "Efficient scheduling that packs your day tight (only on MyBodyMap)",
+      "Smart Scheduling that packs your day tight (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
       "Website embed for your existing site",
