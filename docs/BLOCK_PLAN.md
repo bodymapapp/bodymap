@@ -15,6 +15,27 @@ delete the entry from here after it ships.
 
 ## 1. Google OAuth app verification
 
+**Current status (May 10 2026 EOD).** HK started the verification
+submission in Google Cloud Console. Form is partially filled but
+not submitted. Missing pieces:
+
+- Demo video not yet recorded. Script is below, phone-friendly
+  version added. ~2.5-3 minute screen recording, voiceover
+  recommended but on-screen captions acceptable.
+- Scope justification text not yet pasted. Tightened version for
+  the form's compact box is below under 'Materials: Scope
+  justification (form version)'.
+- 'Additional info' field may or may not appear depending on
+  Google's flow. Pre-drafted text below in case it shows up.
+- Privacy policy and terms of service URLs not yet verified live
+  at https://www.mybodymap.app/privacy and /terms. Google will
+  bounce the submission within a day if these aren't reachable.
+
+**Next time on this:** open BLOCK_PLAN.md, scroll to this entry,
+copy the three text blocks below into Google's form, record the
+video using the phone script, upload to YouTube as Unlisted,
+paste the URL, click Submit. ~45 minutes total.
+
 **Why blocked.** Submitting now while still iterating on the
 OAuth flow risks needing to resubmit if anything changes. Better
 to lock the consent screen branding, prove the flow works
@@ -43,7 +64,168 @@ will not click "(unsafe)". Verification removes the warning.
 apps using sensitive scopes (calendar.events is sensitive). No
 cost. We submit once.
 
-### Materials: Justification paragraph
+### Materials: Scope justification (form version)
+
+This is the tightened version designed for Google's compact
+scope justification box. Use this instead of the long paragraph
+above when filling out the actual submission form.
+
+> MyBodyMap is a scheduling and client retention platform for solo
+> licensed massage therapists. We request the calendar.events
+> scope to provide two-way synchronization between MyBodyMap
+> bookings and the therapist's Google Calendar.
+>
+> Specifically: (1) when a client books a massage on MyBodyMap, we
+> write a corresponding event to the therapist's primary Google
+> Calendar so the therapist sees all their commitments in one
+> calendar. (2) When the therapist adds personal events to their
+> Google Calendar (lunch, dentist, family commitments), we read
+> those events and block matching time ranges on the therapist's
+> public MyBodyMap booking page so clients cannot accidentally
+> book over personal commitments.
+>
+> We read event start time, end time, and summary (title). The
+> summary is only displayed to the therapist on their own
+> dashboard so they can see what is blocking their time. Clients
+> on the public booking page never see event summaries; they see
+> those time ranges as unavailable with no detail. We write
+> events with the client's first name, service name, and duration.
+>
+> OAuth tokens are stored encrypted in our Supabase Postgres
+> database, gated by row-level security policies scoped to the
+> authenticated therapist. Event data and tokens are deleted
+> immediately when a therapist disconnects Google Calendar from
+> their MyBodyMap settings, or when they close their MyBodyMap
+> account. We do not share, sell, or use this data for advertising,
+> machine learning, or any third-party service. This scope is the
+> minimum necessary to enable two-way calendar synchronization.
+
+### Materials: Additional info field (if it appears)
+
+Google's submission form sometimes shows an 'Additional info'
+text box (1000 char limit) after the scope justification step. If
+it appears, paste this. If it doesn't appear, skip.
+
+Replace the two `[PASTE...]` placeholders before pasting.
+
+```
+MyBodyMap (mybodymap.app) is a production scheduling platform for solo licensed massage therapists.
+
+Test user credentials:
+  Email: bodymapdemo@gmail.com
+  Password: [PASTE YOUR TEST ACCOUNT PASSWORD]
+
+After login, navigate to Settings to find the Google Calendar sync section under "How I plug in." The Connect button initiates the OAuth flow shown in the demo video.
+
+This is our only OAuth-using project. The application is deployed on Vercel with backend services on Supabase. All Google Calendar API traffic flows through Supabase edge functions; the React frontend never handles tokens directly.
+
+We are currently in Testing mode and have onboarded test therapists on the whitelist. We are submitting for verification to support our broader rollout to founding therapists.
+
+Contact for verification questions: [PASTE YOUR EMAIL HERE]
+```
+
+### Materials: Phone-friendly video script
+
+Recommended approach for HK: phone screen recording, landscape
+orientation, voiceover spoken into the phone mic. 2.5-3 minute
+target. One continuous take preferred over edited cuts.
+
+Tools: iOS Screen Recording (Control Center > Record button),
+Android Screen Record, or Loom on mobile. Upload to YouTube as
+**Unlisted** (not Public, not Private).
+
+If voiceover is impractical, captions in YouTube Studio after
+upload are an acceptable substitute. Google requires either,
+not both.
+
+Before recording:
+- Enable Do Not Disturb so notifications don't pop up
+- Lock orientation to landscape
+- Close all other apps in app switcher
+- Have a test therapist account ready: bodymapdemo@gmail.com
+- Pre-create one or two test events on the test account's Google
+  Calendar (e.g. "Dentist" Tuesday 2pm, "Lunch" tomorrow noon)
+  so they're visible when the script gets to that beat
+
+**[Start screen recording. Open Safari/Chrome. Go to mybodymap.app.]**
+
+> Hi, this is a demo of MyBodyMap. We're a scheduling platform for solo massage therapists. I'm going to walk through our Google Calendar integration end to end.
+
+**[Tap Log In. Log into bodymapdemo@gmail.com.]**
+
+> I'm logging in as a test therapist.
+
+**[Land on dashboard. Tap into Settings, scroll to How I plug in.]**
+
+> In Settings, under "How I plug in," there's a section called Google Calendar sync.
+
+**[Tap the Google Calendar sync row to expand it. Pause briefly so the screen shows the description.]**
+
+> The therapist sees what the integration does. Bookings made here will appear in their Google Calendar. Personal events from Google Calendar will block client bookings on their public page. The note also explains that Google events show up in MyBodyMap within fifteen minutes.
+
+**[Tap Connect.]**
+
+> When they tap Connect, they're sent to Google's consent screen.
+
+**[Wait on the Google consent screen for 3-4 seconds so the reviewer can see the scope clearly. Don't tap anything yet.]**
+
+> We request the calendar.events scope only. This is the minimum we need to write booking events to the therapist's calendar and to read events the therapist has added so we can block those times for clients.
+
+**[Tap Allow.]**
+
+> The therapist allows access.
+
+**[Google redirects back to MyBodyMap settings. The green Connected banner appears.]**
+
+> Google redirects back, and MyBodyMap confirms the connection. The settings row now shows the connected Google account.
+
+**[Tap Sync Now.]**
+
+> I'm triggering an immediate sync. Normally this happens every fifteen minutes automatically.
+
+**[Switch apps to Google Calendar on phone. Show the existing test events.]**
+
+> Here's the same therapist's Google Calendar. There's a dentist appointment and a lunch event already on the calendar.
+
+**[Switch back to MyBodyMap. Tap into the Schedule view.]**
+
+> Back in MyBodyMap, the schedule shows those same events in lavender, labeled "From Google."
+
+**[Tap on one of the lavender entries to open the read-only detail panel.]**
+
+> Tapping one shows a read-only panel. The therapist sees the event title, "Dentist." There's no reschedule or cancel button here because edits live in Google Calendar. The panel reminds them changes take up to fifteen minutes to sync.
+
+**[Close the panel. Open a fresh incognito tab. Navigate to the public booking page.]**
+
+> Here's the public booking page a client sees. I'll try to pick the Tuesday afternoon that has the dentist appointment.
+
+**[Try to select Tuesday 2 PM. The slot should not be offered.]**
+
+> Two PM is not offered. The client never sees the word "Dentist" or any indication of why the time is unavailable. They just see that slot as unavailable.
+
+**[Pick a different open time. Complete a test booking.]**
+
+> I'm completing a test booking for a different open time.
+
+**[Confirmation appears. Switch to Google Calendar. Wait a few seconds, refresh.]**
+
+> Within a few seconds, the new booking appears in the therapist's Google Calendar. Title is the client's first name and service.
+
+**[Switch back to MyBodyMap settings. Tap Disconnect.]**
+
+> Finally, the disconnect flow. From settings, the therapist taps Disconnect.
+
+**[Confirm the disconnect.]**
+
+> Disconnecting immediately stops sync in both directions. Existing events stay where they are so nothing is lost, but no new events sync either way. We delete OAuth tokens from our database immediately. The therapist can reconnect anytime.
+
+**[Final pause on the disconnected state.]**
+
+> That's the full Google Calendar integration. Thank you.
+
+**[Stop recording. Upload to YouTube as Unlisted. Paste URL into the verification form.]**
+
+### Materials: Justification paragraph (long version, for reference)
 
 Paste this into the "Justification" field on the Google
 verification form for the `calendar.events` scope. Edit the
