@@ -1,71 +1,104 @@
 // src/components/demos/SmartScheduleDemo.jsx
 //
-// Animated SVG demo for the Find & Book ribbon on the Home page.
-// Visualizes Smart Scheduling (Lindsey #7 / Efficient Scheduling
-// internally): two side-by-side mini day-views of a therapist's
-// calendar.
+// Animated demo for the Find & Book ribbon on the Home page.
+// Visualizes Smart Scheduling for the persona: a 70-year-old female
+// LMT named Lindsey/Joy.
 //
-//   LEFT  ('Other tools'):  three booked sessions scattered with
-//                            big awkward gaps between them.
-//   RIGHT ('MyBodyMap'):    same three sessions, but the available
-//                            slots offered to new clients pack
-//                            tight against existing bookings, so
-//                            the day fills cleanly with no gaps.
+// THE STORY (must read in 5 seconds):
+//   When a NEW client tries to book Tuesday afternoon, what slots
+//   does the platform show them? The answer depends on the
+//   therapist's Smart Scheduling setting:
 //
-// Animation: a "new client booking" indicator pulses across both
-// columns on a loop. On the LEFT it lands in a random gap (creating
-// chaos). On the RIGHT it lands snugly next to an existing
-// booking. The contrast tells the story without text.
+//     OFF:  Every available slot is offered. The new booking can
+//           land anywhere, leaving big gaps mid-day.
 //
-// Design language matches the soft cream / sage / forest palette
-// used across other demos. No medical iconography, no calendar app
-// chrome — just a clean side-by-side visualization.
+//     SOFT: Every slot is still visible, but the ones adjacent to
+//           an existing booking get a sage 'Suggested' badge so
+//           the client gravitates there. Flexibility preserved,
+//           clean days encouraged.
+//
+//     HARD: Only adjacent slots are shown. Other times disappear
+//           from the picker. Strongest packing. Some clients may
+//           need to pick a different day.
+//
+// Demo: a side panel showing 'Tuesday afternoon' slot options for
+// the new client. Two existing bookings already on the day. The
+// 3-way toggle (Off/Soft/Hard) updates which slots appear and how
+// they're styled, with a clear caption explaining what's
+// happening.
+//
+// Replaces the previous off/on toggle which only showed one mode
+// of 'on' (effectively Hard) and didn't explain Soft. May 10 2026
+// HK feedback: 'For each of the toggles, what happens? It needs
+// to be very clear within five seconds to a 70-year-old.'
 
 import React, { useEffect, useRef, useState } from "react";
 
 const C = {
-  forest:    "#2A5741",
-  sage:      "#9DAA85",
-  cream:     "#FCF8EE",
-  border:    "#E5D5C8",
-  ink:       "#3D4A42",
-  gray:      "#7A8478",
-  bookedFill: "#E8DDC9",   // existing bookings: warm beige
+  forest:     "#2A5741",
+  sage:       "#9DAA85",
+  cream:      "#FCF8EE",
+  border:     "#E5D5C8",
+  ink:        "#3D4A42",
+  gray:       "#7A8478",
+  warm:       "#A87468",
+  bookedFill: "#F5E8DD",
   bookedStroke: "#C4B395",
-  newFill:   "#9DAA85",    // new booking landing: sage
-  gapStroke: "#F0DFD0",
+  suggestedBg: "#E8F3E1",
+  suggestedStroke: "#A9C99A",
+  suggestedText: "#3A5C30",
 };
 
-// Time labels for the day column. 9 AM to 6 PM, every 30 min visually
-// but we snap to slot positions.
-const HOURS = [
-  "9", "10", "11", "12", "1", "2", "3", "4", "5"
+// All available slot times for Tuesday afternoon (1 PM to 5 PM,
+// 30-min granularity). Two are already booked.
+const ALL_SLOTS = [
+  { time: "1:00 PM",  bookedClient: null },
+  { time: "1:30 PM",  bookedClient: null },
+  { time: "2:00 PM",  bookedClient: "Sarah" }, // existing booking
+  { time: "2:30 PM",  bookedClient: null },
+  { time: "3:00 PM",  bookedClient: null },
+  { time: "3:30 PM",  bookedClient: null },
+  { time: "4:00 PM",  bookedClient: "Mike" },  // existing booking
+  { time: "4:30 PM",  bookedClient: null },
 ];
 
-// Existing bookings (same on both sides). Time is in minutes from 9 AM.
-// 60-min sessions.
-const BOOKED = [
-  { startMin: 0,    duration: 60, label: "Existing" },   //  9:00-10:00
-  { startMin: 180,  duration: 60, label: "Existing" },   // 12:00-1:00
-  { startMin: 360,  duration: 60, label: "Existing" },   //  3:00-4:00
-];
+// Returns the list of slots a new client would see, given the mode.
+//   off:    all unbooked slots, no styling
+//   soft:   all unbooked slots, adjacent ones get 'suggested' flag
+//   hard:   only adjacent slots, others removed
+//
+// "Adjacent" = slot ends exactly when a booking starts, OR slot
+// starts exactly when a booking ends (with a 15-min buffer).
+function computeOfferedSlots(mode) {
+  const open = ALL_SLOTS.filter(s => !s.bookedClient);
 
-// Where the "new client booking" lands on each side, as a sequence
-// of {startMin, duration} that the animation cycles through.
-const LEFT_LANDINGS = [
-  { startMin: 75,  duration: 60 }, // 10:15 — leaves 75 min gap
-  { startMin: 255, duration: 60 }, //  1:15 — fragmenting again
-  { startMin: 435, duration: 60 }, //  4:15 — random
-];
-const RIGHT_LANDINGS = [
-  { startMin: 75,  duration: 60 },  // 10:15 — adjacent to 9-10am booking (with 15 min buffer)
-  { startMin: 255, duration: 60 },  //  1:15 — adjacent to 12-1pm booking
-  { startMin: 60,  duration: 60 },  // 10:00 — exactly back-to-back, no gap
-];
+  // Adjacency rules: a slot is adjacent if it touches an existing
+  // booking edge. Bookings are 60 minutes; adjacent means the slot
+  // start time is within 30 min of a booking start or end.
+  const adjacentTimes = new Set([
+    "1:30 PM", // ends just before Sarah at 2 PM
+    "3:00 PM", // starts just after Sarah at 3 PM (1-hour booking ending)
+    "3:30 PM", // ends just before Mike at 4 PM
+    "5:00 PM"  // starts just after Mike (5 PM is past our window so omit)
+  ]);
 
-const COL_HEIGHT = 360; // total day-column height in px
-const TOTAL_MIN = 540; // 9 AM to 6 PM = 540 min
-const PX_PER_MIN = COL_HEIGHT / TOTAL_MIN;
+  if (mode === "off") {
+    return open.map(s => ({ ...s, suggested: false, hidden: false }));
+  }
+  if (mode === "soft") {
+    return open.map(s => ({
+      ...s,
+      suggested: adjacentTimes.has(s.time),
+      hidden: false,
+    }));
+  }
+  // hard
+  return open.map(s => ({
+    ...s,
+    suggested: adjacentTimes.has(s.time),
+    hidden: !adjacentTimes.has(s.time),
+  }));
+}
 
 function useFadeIn(threshold = 0.1) {
   const ref = useRef(null);
@@ -83,147 +116,45 @@ function useFadeIn(threshold = 0.1) {
   return [ref, visible];
 }
 
-function DayColumn({ title, subtitle, landing, accent, gapsLabel }) {
-  // Where the existing bookings sit
-  return (
-    <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{ marginBottom: 10, textAlign: "center" }}>
-        <div style={{
-          fontFamily: "Georgia, serif",
-          fontSize: 14, fontWeight: 700,
-          color: accent === "warn" ? "#A87468" : C.forest,
-          marginBottom: 2,
-        }}>
-          {title}
-        </div>
-        <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.4 }}>
-          {subtitle}
-        </div>
-      </div>
-
-      <div style={{
-        position: "relative",
-        height: COL_HEIGHT,
-        background: "#fff",
-        border: `1.5px solid ${C.border}`,
-        borderRadius: 10,
-        overflow: "hidden",
-      }}>
-        {/* Hour grid lines */}
-        {HOURS.map((h, i) => {
-          const top = i * 60 * PX_PER_MIN;
-          return (
-            <div key={i} style={{
-              position: "absolute",
-              top, left: 0, right: 0,
-              height: 1,
-              background: i === 0 ? "transparent" : "#F5EFE3",
-              fontSize: 9,
-              color: C.gray,
-              paddingLeft: 5,
-              fontFamily: "system-ui",
-            }}>
-              {i > 0 && <span style={{ position: "relative", top: -5 }}>{h}</span>}
-            </div>
-          );
-        })}
-
-        {/* Existing bookings */}
-        {BOOKED.map((b, idx) => {
-          const top = b.startMin * PX_PER_MIN;
-          const height = b.duration * PX_PER_MIN;
-          return (
-            <div key={idx} style={{
-              position: "absolute",
-              top: top + 2, left: 22, right: 8,
-              height: height - 4,
-              background: C.bookedFill,
-              border: `1px solid ${C.bookedStroke}`,
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 10,
-              fontWeight: 600,
-              color: C.ink,
-              fontFamily: "system-ui",
-            }}>
-              {b.label}
-            </div>
-          );
-        })}
-
-        {/* Gap dotted lines on LEFT side - shows the awkward gaps */}
-        {accent === "warn" && (
-          <>
-            {/* Gap between booked-1 (ends at 60min) and new (starts at 75min) - small, fine */}
-            {/* Gap between new (ends at 135min) and booked-2 (starts at 180min) = 45min */}
-            <div style={{
-              position: "absolute",
-              top: 135 * PX_PER_MIN + 2, left: 22, right: 8,
-              height: 45 * PX_PER_MIN - 4,
-              border: `1.5px dashed ${C.gapStroke}`,
-              borderRadius: 6,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: 9, color: "#C49679",
-              fontStyle: "italic",
-              background: "rgba(255, 240, 220, 0.3)",
-            }}>
-              gap
-            </div>
-          </>
-        )}
-
-        {/* "New client booking" landing - the animated chip */}
-        <div style={{
-          position: "absolute",
-          top: landing.startMin * PX_PER_MIN + 2,
-          left: 22, right: 8,
-          height: landing.duration * PX_PER_MIN - 4,
-          background: C.newFill,
-          border: `1.5px solid ${C.forest}`,
-          borderRadius: 6,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 10,
-          fontWeight: 700,
-          color: "#fff",
-          fontFamily: "system-ui",
-          transition: "top 0.7s cubic-bezier(0.4, 0, 0.2, 1)",
-          boxShadow: `0 4px 12px rgba(42, 87, 65, 0.25)`,
-        }}>
-          New booking
-        </div>
-      </div>
-
-      {/* Footer caption */}
-      <div style={{
-        marginTop: 10, textAlign: "center",
-        fontSize: 11, color: accent === "warn" ? "#A87468" : C.forest,
-        fontWeight: 600,
-        minHeight: 18,
-      }}>
-        {gapsLabel}
-      </div>
-    </div>
-  );
-}
+const MODE_DESCRIPTIONS = {
+  off: {
+    headline: "Off: every slot, every time",
+    body: "Clients see all 6 open slots. Maximum flexibility for them. Awkward gaps possible for you.",
+    color: C.warm,
+    bg: "#FBF4ED",
+    border: C.bookedStroke,
+  },
+  soft: {
+    headline: "Soft: gentle nudge",
+    body: "All 6 slots stay visible. The 3 next to existing bookings get a sage 'Best fit' badge so clients gravitate there.",
+    color: C.suggestedText,
+    bg: C.suggestedBg,
+    border: C.suggestedStroke,
+  },
+  hard: {
+    headline: "Hard: tight packing only",
+    body: "Only the 3 adjacent slots are offered. The scattered times disappear. Your day stays clean.",
+    color: C.forest,
+    bg: "#E8F3E1",
+    border: C.suggestedStroke,
+  },
+};
 
 export default function SmartScheduleDemo() {
   const [ref, visible] = useFadeIn();
-  const [step, setStep] = useState(0);
+  const [mode, setMode] = useState("off");
 
-  // Cycle through the landing positions
+  // Auto-advance through the three modes once on first view to
+  // demonstrate, then hand control to the user.
   useEffect(() => {
     if (!visible) return;
-    const t = setInterval(() => {
-      setStep((s) => (s + 1) % LEFT_LANDINGS.length);
-    }, 3200);
-    return () => clearInterval(t);
+    const t1 = setTimeout(() => setMode("soft"), 1800);
+    const t2 = setTimeout(() => setMode("hard"), 3600);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [visible]);
+
+  const offered = computeOfferedSlots(mode);
+  const desc = MODE_DESCRIPTIONS[mode];
 
   return (
     <div ref={ref} style={{
@@ -235,11 +166,12 @@ export default function SmartScheduleDemo() {
       margin: "0 auto",
       border: "1.5px solid rgba(252, 232, 224, 0.6)",
     }}>
+      {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
         <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, minWidth: 0 }}>📐 Smart Scheduling</div>
         <div style={{
           background: "linear-gradient(135deg, #FBF4DC, #F5E0CC)",
-          color: "#A87468",
+          color: C.warm,
           borderRadius: 20, padding: "3px 10px",
           fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
           flexShrink: 0,
@@ -249,36 +181,156 @@ export default function SmartScheduleDemo() {
         </div>
       </div>
       <div style={{ fontSize: 12, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
-        Watch how new bookings land. Other tools scatter them across your day. We pack them tight.
+        Tuesday afternoon. Two clients already booked. What does the next new client see?
       </div>
 
-      {/* Side-by-side day columns */}
-      <div style={{ display: "flex", gap: 12 }}>
-        <DayColumn
-          title="Other tools"
-          subtitle="New booking lands wherever"
-          landing={LEFT_LANDINGS[step]}
-          accent="warn"
-          gapsLabel="Two unusable gaps in your day"
-        />
-        <DayColumn
-          title="MyBodyMap"
-          subtitle="New booking packs tight"
-          landing={RIGHT_LANDINGS[step]}
-          accent="good"
-          gapsLabel="Clean blocks, room to breathe"
-        />
-      </div>
-
-      {/* Bottom note */}
+      {/* 3-way segmented control */}
       <div style={{
-        marginTop: 16, padding: "10px 12px",
+        display: "flex", gap: 0,
         background: C.cream,
+        border: `1px solid ${C.border}`,
         borderRadius: 10,
-        fontSize: 11, color: C.gray, lineHeight: 1.5,
-        textAlign: "center",
+        padding: 3,
+        marginBottom: 16,
       }}>
-        Two strictness levels. Soft nudges, hard restricts. Your day, your call.
+        {[
+          { key: "off",  label: "Off"  },
+          { key: "soft", label: "Soft" },
+          { key: "hard", label: "Hard" },
+        ].map(b => {
+          const active = mode === b.key;
+          return (
+            <button
+              key={b.key}
+              onClick={() => setMode(b.key)}
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: 7,
+                background: active ? "#fff" : "transparent",
+                color: active ? C.forest : C.gray,
+                fontSize: 13,
+                fontWeight: active ? 700 : 500,
+                cursor: "pointer",
+                fontFamily: "system-ui",
+                boxShadow: active ? "0 1px 3px rgba(42, 87, 65, 0.15)" : "none",
+                transition: "all 0.15s",
+              }}
+            >
+              {b.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Slot picker, what the new client sees */}
+      <div style={{
+        background: "#FAFAF6",
+        border: `1px solid ${C.border}`,
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 12,
+      }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
+          New client booking · Tuesday
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(2, 1fr)",
+          gap: 6,
+        }}>
+          {ALL_SLOTS.map((s, i) => {
+            const offer = offered.find(o => o.time === s.time);
+            const isBooked = !!s.bookedClient;
+            const isHidden = mode === "hard" && offer && offer.hidden;
+            const isSuggested = offer && offer.suggested && (mode === "soft" || mode === "hard");
+
+            if (isBooked) {
+              return (
+                <div key={s.time} style={{
+                  padding: "10px 12px",
+                  background: C.bookedFill,
+                  border: `1.5px solid ${C.bookedStroke}`,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: C.warm,
+                  fontFamily: "system-ui",
+                  textAlign: "center",
+                  fontStyle: "italic",
+                  opacity: 0.9,
+                }}>
+                  <div style={{ fontWeight: 700 }}>{s.time}</div>
+                  <div style={{ fontSize: 10, marginTop: 1 }}>booked, {s.bookedClient}</div>
+                </div>
+              );
+            }
+
+            if (isHidden) {
+              return (
+                <div key={s.time} style={{
+                  padding: "10px 12px",
+                  background: "transparent",
+                  border: `1.5px dashed #DDD4C2`,
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: "#C7CACF",
+                  fontFamily: "system-ui",
+                  textAlign: "center",
+                  opacity: 0.6,
+                  textDecoration: "line-through",
+                  transition: "opacity 0.4s, color 0.4s",
+                }}>
+                  <div style={{ fontWeight: 600 }}>{s.time}</div>
+                  <div style={{ fontSize: 10, marginTop: 1, fontStyle: "italic" }}>hidden</div>
+                </div>
+              );
+            }
+
+            // Available slot. Suggested gets sage tint + Best fit badge.
+            return (
+              <div key={s.time} style={{
+                padding: "10px 12px",
+                background: isSuggested ? C.suggestedBg : "#fff",
+                border: `1.5px solid ${isSuggested ? C.suggestedStroke : "#E8E4DC"}`,
+                borderRadius: 8,
+                fontSize: 12,
+                color: isSuggested ? C.suggestedText : C.ink,
+                fontFamily: "system-ui",
+                textAlign: "center",
+                position: "relative",
+                transition: "all 0.4s",
+              }}>
+                <div style={{ fontWeight: 700 }}>{s.time}</div>
+                {isSuggested && (
+                  <div style={{
+                    fontSize: 9,
+                    marginTop: 2,
+                    fontWeight: 700,
+                    color: C.forest,
+                    letterSpacing: 0.3,
+                  }}>
+                    ★ BEST FIT
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Caption explaining the current mode */}
+      <div style={{
+        padding: "10px 12px",
+        background: desc.bg,
+        border: `1px solid ${desc.border}`,
+        borderRadius: 10,
+        fontSize: 11,
+        color: desc.color,
+        lineHeight: 1.55,
+      }}>
+        <div style={{ fontWeight: 700, marginBottom: 3 }}>{desc.headline}</div>
+        <div>{desc.body}</div>
       </div>
     </div>
   );

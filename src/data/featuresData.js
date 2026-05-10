@@ -106,6 +106,15 @@ export const RIBBONS = [
         ],
         meta: "Soft and hard modes · No competitor offers this",
       },
+      {
+        id: "1.10",
+        name: "Service days",
+        body: [
+          "Hot Stone is heavy. You only do it Tuesdays and Thursdays. Prenatal sessions are precious, you save those for Saturdays. Swedish runs every weekday. Your booking page already knows.",
+          "On each service in your settings, tap the day pills to pick which days that service is offered. Clients booking Hot Stone see only Tue and Thu open on the calendar. Other days fade out with a clear note saying when that service is available. No back and forth.",
+        ],
+        meta: "Per-service day filter · No competitor offers this",
+      },
     ],
   },
   {

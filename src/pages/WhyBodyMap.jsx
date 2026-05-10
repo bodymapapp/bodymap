@@ -94,6 +94,15 @@ const ONLY_MBM = [
     photoId: "1.9",
   },
   {
+    id: "service-days",
+    title: "Different services on different days",
+    body:
+      "Hot Stone is physical, you only do it Tuesdays and Thursdays. Prenatal sessions are precious, you save those for Saturdays. Tap the day pills on each service in your settings, and your booking page already knows. Clients booking Hot Stone see only Tue and Thu, with a clear note explaining why other days are closed for that service.",
+    proof:
+      "Acuity, Vagaro, Fresha, MassageBook, GlossGenius, Jane App: all force every service to share a single weekly schedule. We are the only platform where each service has its own day filter, no clunky workarounds, no separate calendars to manage.",
+    photoId: "1.10",
+  },
+  {
     id: "body-map-intake",
     title: "Visual body map intake, on the client's phone",
     body:
