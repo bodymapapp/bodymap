@@ -968,7 +968,7 @@ function ServicesAndAvailability({ therapist }) {
                               background: '#fff',
                               width: 96,
                             }}/>
-                          <span style={{ fontSize: 11, color: C2.gray }}>–</span>
+                          <span style={{ fontSize: 11, color: C2.gray }}>to</span>
                           <input type="time" value={block.end}
                             onChange={e => updateBlock(avail, idx, 'end', e.target.value)}
                             style={{
@@ -1027,14 +1027,14 @@ function ServicesAndAvailability({ therapist }) {
 
       {/* Preview booking page footer (HK May 10 2026 design direction).
           Single dedicated link at the bottom of the panel that opens
-          the public booking page in a new tab, jumping straight to
-          the slot picker for the first active service. Replaces the
-          per-card preview link that confusingly opened intake when
-          a stale query string was present on the therapist account. */}
+          the public booking page in a new tab. Uses the /book/<slug>
+          route which lands on BookingPage with the slot picker first.
+          The bare /<slug> route goes to ClientIntake (the intake form),
+          which is wrong for "see what clients see when they book". */}
       {therapist?.custom_url && (
         <div style={{ marginTop:12 }}>
           <a
-            href={`/${therapist.custom_url}?preview=1${services?.[0]?.id ? `&service=${services[0].id}` : ''}#slots`}
+            href={`/book/${therapist.custom_url}?preview=1${services?.[0]?.id ? `&service=${services[0].id}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             style={{
@@ -1695,7 +1695,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       return { practice: true, offer: true, restEasier: true, plugIn: true, membership: true, anyMatch: true };
     }
     const groups = {
-      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV — Vagaro, MassageBook, Square','1.2'],['Client intake & QR codes','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
+      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Client intake & QR codes','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
       offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Waiver text','','2.6']],
       restEasier:  [['Platform features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
       plugIn:      [['Cal.com sync','','4.1'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
@@ -2077,13 +2077,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         )}
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Import existing clients', 'Bring your list from CSV — Vagaro, MassageBook, Square', '1.2') && (<>
+      {matchesSearch('Import existing clients', 'Bring your list from CSV. Vagaro, MassageBook, Square', '1.2') && (<>
       <CollapsibleSection
         id="import"
         taxonomy="1.2"
         timeBadge="~2m"
         label="Import existing clients"
-        summary="Bring your list from CSV — Vagaro, MassageBook, Square"
+        summary="Bring your list from CSV. Vagaro, MassageBook, Square"
         status="todo"
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v10"/><path d="M8 8l4-4 4 4"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>}
         isOpen={openRow === 'import'}
@@ -2225,42 +2225,38 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       ><div style={{ padding:'4px 4px' }}>
         <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Two optional gates for first-time clients only. Returning clients always book straight through.</p>
 
-        {/* Approval gate */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px', marginBottom:10 }}>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
-            <button onClick={async () => {
-              const newVal = !therapist?.require_approval;
-              await supabase.from('therapists').update({ require_approval: newVal }).eq('id', therapist.id);
-              window.location.reload();
-            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_approval?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_approval?21:3, transition:'left 0.2s' }} />
-            </button>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Approve new clients before they book</div>
-              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
-            </div>
+        {/* Approval gate. Compact toggle row. */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 0', borderBottom:`1px dashed ${C2.lightGray}` }}>
+          <button onClick={async () => {
+            const newVal = !therapist?.require_approval;
+            await supabase.from('therapists').update({ require_approval: newVal }).eq('id', therapist.id);
+            window.location.reload();
+          }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_approval?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_approval?21:3, transition:'left 0.2s' }} />
+          </button>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>Approve new clients before they book</div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
           </div>
         </div>
 
-        {/* Intake-first gate */}
-        <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:12, padding:'14px 16px' }}>
-          <div style={{ display:'flex', alignItems:'flex-start', gap:12, marginBottom:6 }}>
-            <button onClick={async () => {
-              const newVal = !therapist?.require_intake_before_booking;
-              await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
-              window.location.reload();
-            }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_intake_before_booking?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
-              <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_intake_before_booking?21:3, transition:'left 0.2s' }} />
-            </button>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>Require intake form before booking</div>
-              <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
-              {therapist?.require_approval && therapist?.require_intake_before_booking && (
-                <div style={{ fontSize:11, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', marginTop:8, lineHeight:1.5 }}>
-                  Heads up: while Approve new clients is also on, intake is collected from the client after you approve their request, not before. This way the client does not fill out an intake you might decline anyway. The approval email links them straight to the form.
-                </div>
-              )}
-            </div>
+        {/* Intake-first gate. Compact toggle row. */}
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 0' }}>
+          <button onClick={async () => {
+            const newVal = !therapist?.require_intake_before_booking;
+            await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
+            window.location.reload();
+          }} style={{ width:40, height:22, borderRadius:11, background:therapist?.require_intake_before_booking?C2.forest:'#D1D5DB', border:'none', cursor:'pointer', position:'relative', flexShrink:0, marginTop:2, transition:'background 0.2s' }}>
+            <div style={{ width:16, height:16, borderRadius:'50%', background:'#fff', position:'absolute', top:3, left:therapist?.require_intake_before_booking?21:3, transition:'left 0.2s' }} />
+          </button>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>Require intake form before booking</div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients fill out the body map and waiver before they reach the calendar. Returning clients skip this. Helps you screen for medical concerns and keeps liability waivers signed up front.</div>
+            {therapist?.require_approval && therapist?.require_intake_before_booking && (
+              <div style={{ fontSize:11, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', marginTop:8, lineHeight:1.5 }}>
+                Heads up: while Approve new clients is also on, intake is collected from the client after you approve their request, not before. This way the client does not fill out an intake you might decline anyway. The approval email links them straight to the form.
+              </div>
+            )}
           </div>
         </div>
       </div></CollapsibleSection>
