@@ -97,6 +97,15 @@ export const RIBBONS = [
         ],
         meta: "iframe embed · 1-click copy",
       },
+      {
+        id: "1.9",
+        name: "Efficient scheduling",
+        body: [
+          "Tired of three clients booking 9am, 12pm, and 4pm leaving you with two unusable two-hour gaps in between? Turn on Efficient mode and the booking page packs new appointments tight against the ones you already have.",
+          "Two strictness levels. Soft means clients still see every slot but the platform highlights the ones that keep your day clean. Hard means clients only see slots that touch an existing appointment edge. Your day, your call.",
+        ],
+        meta: "Soft and hard modes · No competitor offers this",
+      },
     ],
   },
   {

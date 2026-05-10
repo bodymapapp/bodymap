@@ -85,6 +85,15 @@ const ONLY_MBM = [
     photoId: "1.2",
   },
   {
+    id: "efficient-scheduling",
+    title: "Efficient scheduling that packs your day",
+    body:
+      "Tired of three clients booking 9am, 12pm, and 4pm leaving you with two unusable two-hour gaps? Turn on Efficient mode and the booking page packs new bookings tight against the ones you already have. Two strictness levels, your call.",
+    proof:
+      "Acuity, Vagaro, Fresha, MassageBook, GlossGenius, Jane App: all give every client the full slot grid regardless of how it shreds your day. We are the only platform that lets you choose between client flexibility and your own daily rhythm.",
+    photoId: "1.9",
+  },
+  {
     id: "body-map-intake",
     title: "Visual body map intake, on the client's phone",
     body:

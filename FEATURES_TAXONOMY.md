@@ -122,6 +122,7 @@ A "core differentiation" mark means this is one of the things a sales conversati
 | 1.6 | Cal.com sync | Table stakes | Two-way sync with Cal.com (and through it, Google Calendar). Modern tools all do this. |
 | 1.7 | Blocked days | Table stakes | Mark specific days off, block recurring patterns. Every tool has this. |
 | 1.8 | Website embed | Table stakes | iFrame snippet to embed booking on your own site. Every tool has this. |
+| 1.9 | Efficient scheduling | **Core differentiation** | Two-level toggle (Normal vs Efficient, then Soft vs Hard). When on, the booking page either nudges (soft) or restricts (hard) clients toward slots that pack tightly against existing appointments, eliminating awkward gaps mid-day. No competitor offers this primitive; Acuity / Vagaro / Fresha all give all clients the full grid regardless of how it fragments the therapist's day. Added May 10 2026 per Lindsey #7. |
 
 ### Ribbon 2: Know Your Client
 

@@ -64,6 +64,7 @@ const RIBBONS = [
       "Custom booking page at mybodymap.app/your-name",
       "Services catalog with durations and add-ons",
       "Cycle-aligned scheduling (only on MyBodyMap)",
+      "Efficient scheduling that packs your day tight (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
       "Website embed for your existing site",

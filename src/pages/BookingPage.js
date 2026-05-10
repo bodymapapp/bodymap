@@ -32,7 +32,11 @@ function generateSlots(start, end, dur, booked, bufferMins = 0) {
   return slots;
 }
 
-function scoreSlots(slots, existingBooked, dur) {
+function scoreSlots(slots, existingBooked, dur, schedulingMode = 'normal', efficientStrictness = 'soft') {
+  // Adjacency to existing bookings is always a tiebreaker. In
+  // 'efficient + soft' mode the boost is much stronger so adjacent
+  // slots rise visibly to the top.
+  const adjacentBoost = (schedulingMode === 'efficient' && efficientStrictness === 'soft') ? 12 : 3;
   return slots.map(slot => {
     let score = 0;
     const slotEnd = slot.minutes + dur;
@@ -44,7 +48,7 @@ function scoreSlots(slots, existingBooked, dur) {
       const bs = b.start_time ? parseInt(b.start_time.split(':')[0])*60+parseInt(b.start_time.split(':')[1]) : 0;
       return Math.abs(bs - slotEnd) <= 30;
     });
-    if(adjacentBefore || adjacentAfter) score += 3;
+    if(adjacentBefore || adjacentAfter) score += adjacentBoost;
     if(slot.minutes < 720) score += 1;
     return {...slot, score, recommended: adjacentBefore || adjacentAfter};
   }).sort((a,b) => b.score - a.score);
@@ -1099,7 +1103,67 @@ export default function BookingPage() {
       return true;
     });
 
-    setSlots(scoreSlots(raw,booked,effectiveDuration));
+    // Efficient scheduling (Lindsey #7, May 10 2026).
+    //
+    // When a therapist enables 'efficient' mode, slots are clustered
+    // around existing bookings. Two strictness levels:
+    //
+    //   hard: only offer slots that are immediately adjacent to an
+    //         existing booking (start time = some booking's end +
+    //         buffer, OR end time = some booking's start - buffer)
+    //         OR that are at the very start/end of the working block.
+    //         Other slots are filtered out entirely.
+    //
+    //   soft: keep all slots, but the existing scoreSlots adjacency
+    //         boost is amplified so adjacent slots rank visibly higher.
+    //         Implemented inside scoreSlots; nothing to do here.
+    //
+    // Hard mode only applies if there is at least one booking on the
+    // day. An empty day has no anchor edges, so we offer all slots
+    // (otherwise the client could never book the first appointment
+    // of a day).
+    const schedulingMode = therapist.scheduling_mode || 'normal';
+    const efficientStrictness = therapist.efficient_strictness || 'soft';
+    if (schedulingMode === 'efficient' && efficientStrictness === 'hard' && booked.length > 0) {
+      const buffer = therapist.buffer_enabled ? (therapist.buffer_minutes || 15) : 0;
+      // Compute set of anchor minutes-of-day from existing bookings:
+      // each booking contributes its start (an anchor for slots ending
+      // there minus buffer) and its end (an anchor for slots starting
+      // there plus buffer).
+      const ANCHOR_TOLERANCE = 5; // accept slot starts/ends within 5 min of anchor
+      const startAnchors = []; // booking.start_time in minutes
+      const endAnchors   = []; // booking.end_time in minutes
+      for (const b of booked) {
+        if (b.start_time) {
+          const [h, m] = b.start_time.split(':').map(Number);
+          startAnchors.push(h * 60 + m);
+        }
+        if (b.end_time) {
+          const [h, m] = b.end_time.split(':').map(Number);
+          endAnchors.push(h * 60 + m);
+        }
+      }
+      // Block edges: the working day's first slot start and last slot
+      // end are also valid (so therapists can still take the first
+      // morning or last evening appointment of the day).
+      const allMinutes = raw.map(s => s.minutes).sort((a,b) => a - b);
+      const blockStart = allMinutes[0];
+      const blockEnd   = allMinutes.length > 0 ? allMinutes[allMinutes.length - 1] + effectiveDuration : null;
+
+      raw = raw.filter(s => {
+        const slotEnd = s.minutes + effectiveDuration;
+        // Adjacent to a booking's end (= slot start fits right after, including buffer)
+        const fitsAfter = endAnchors.some(e => Math.abs((e + buffer) - s.minutes) <= ANCHOR_TOLERANCE);
+        // Adjacent to a booking's start (= slot end fits right before, including buffer)
+        const fitsBefore = startAnchors.some(a => Math.abs(a - (slotEnd + buffer)) <= ANCHOR_TOLERANCE);
+        // At the working block's edges
+        const atBlockStart = s.minutes === blockStart;
+        const atBlockEnd = blockEnd !== null && slotEnd === blockEnd;
+        return fitsAfter || fitsBefore || atBlockStart || atBlockEnd;
+      });
+    }
+
+    setSlots(scoreSlots(raw, booked, effectiveDuration, schedulingMode, efficientStrictness));
     setLoadingSlots(false);
   }
 

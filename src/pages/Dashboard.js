@@ -72,6 +72,11 @@ function ServicesAndAvailability({ therapist }) {
   // Maximum advance window: how far in the future the client can
   // book. 0 = unlimited. Common values: 30, 60, 90 days.
   const [maxAdvanceDays, setMaxAdvanceDays] = React.useState(therapist?.maximum_advance_days ?? 0);
+  // Efficient scheduling (Lindsey #7, May 10 2026). Two-level toggle:
+  //   schedulingMode: 'normal' | 'efficient'
+  //   efficientStrictness: 'soft' | 'hard' (only used when efficient)
+  const [schedulingMode, setSchedulingMode] = React.useState(therapist?.scheduling_mode || 'normal');
+  const [efficientStrictness, setEfficientStrictness] = React.useState(therapist?.efficient_strictness || 'soft');
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
@@ -85,7 +90,9 @@ function ServicesAndAvailability({ therapist }) {
     setDepositPercent(therapist?.deposit_percent || 20);
     setMinLeadHours(therapist?.minimum_advance_hours ?? 0);
     setMaxAdvanceDays(therapist?.maximum_advance_days ?? 0);
-  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days]);
+    setSchedulingMode(therapist?.scheduling_mode || 'normal');
+    setEfficientStrictness(therapist?.efficient_strictness || 'soft');
+  }, [therapist?.deposit_enabled, therapist?.deposit_percent, therapist?.minimum_advance_hours, therapist?.maximum_advance_days, therapist?.scheduling_mode, therapist?.efficient_strictness]);
 
   const PRESETS = [
     { name:'Swedish Massage', duration:60, price:85 },
@@ -522,6 +529,127 @@ function ServicesAndAvailability({ therapist }) {
             Common: 60-90 days. Set 0 for no limit.
           </div>
         </div>
+      </div>
+
+      {/* Efficient Scheduling (Lindsey #7, May 10 2026).
+          Two-level toggle:
+            Level 1: Normal vs Efficient
+            Level 2 (only visible if Efficient): Hard vs Soft
+          Therapist can preview the public booking page to see
+          how it changes what clients are offered. */}
+      <div style={{ background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:14, padding:20 }}>
+        <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C2.gray, margin:'0 0 4px' }}>📐 Efficient scheduling</p>
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
+          When you have appointments on a day, this clusters new bookings around them. Less starting and stopping. Longer breaks instead of awkward gaps.
+        </p>
+
+        {/* Level 1: Normal vs Efficient as a segmented control */}
+        <div style={{ marginBottom: schedulingMode === 'efficient' ? 16 : 0 }}>
+          <div style={{ display:'flex', gap:0, background:'#F7F3EB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:3 }}>
+            <button
+              onClick={async () => {
+                setSchedulingMode('normal');
+                await supabase.from('therapists').update({ scheduling_mode: 'normal' }).eq('id', therapist.id);
+              }}
+              style={{
+                flex:1, padding:'9px 14px', border:'none', borderRadius:8,
+                background: schedulingMode === 'normal' ? C2.white : 'transparent',
+                color: schedulingMode === 'normal' ? C2.forest : C2.gray,
+                fontSize:13, fontWeight: schedulingMode === 'normal' ? 700 : 500,
+                cursor:'pointer', fontFamily:'system-ui',
+                boxShadow: schedulingMode === 'normal' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              }}>
+              Normal
+            </button>
+            <button
+              onClick={async () => {
+                setSchedulingMode('efficient');
+                await supabase.from('therapists').update({ scheduling_mode: 'efficient' }).eq('id', therapist.id);
+              }}
+              style={{
+                flex:1, padding:'9px 14px', border:'none', borderRadius:8,
+                background: schedulingMode === 'efficient' ? C2.white : 'transparent',
+                color: schedulingMode === 'efficient' ? C2.forest : C2.gray,
+                fontSize:13, fontWeight: schedulingMode === 'efficient' ? 700 : 500,
+                cursor:'pointer', fontFamily:'system-ui',
+                boxShadow: schedulingMode === 'efficient' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+              }}>
+              Efficient
+            </button>
+          </div>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:8, lineHeight:1.6 }}>
+            {schedulingMode === 'normal'
+              ? 'Clients see every available slot in your working hours. Full flexibility, gaps possible.'
+              : 'Clients see slots that pack neatly against existing appointments. Choose strictness below.'}
+          </div>
+        </div>
+
+        {/* Level 2: Hard vs Soft (only visible when Efficient is on) */}
+        {schedulingMode === 'efficient' && (
+          <div style={{ borderTop:`1px dashed ${C2.lightGray}`, paddingTop:14 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:8 }}>
+              How strict?
+            </div>
+            <div style={{ display:'flex', gap:0, background:'#F7F3EB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:3, marginBottom:10 }}>
+              <button
+                onClick={async () => {
+                  setEfficientStrictness('soft');
+                  await supabase.from('therapists').update({ efficient_strictness: 'soft' }).eq('id', therapist.id);
+                }}
+                style={{
+                  flex:1, padding:'9px 14px', border:'none', borderRadius:8,
+                  background: efficientStrictness === 'soft' ? C2.white : 'transparent',
+                  color: efficientStrictness === 'soft' ? C2.forest : C2.gray,
+                  fontSize:13, fontWeight: efficientStrictness === 'soft' ? 700 : 500,
+                  cursor:'pointer', fontFamily:'system-ui',
+                  boxShadow: efficientStrictness === 'soft' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                }}>
+                Soft
+              </button>
+              <button
+                onClick={async () => {
+                  setEfficientStrictness('hard');
+                  await supabase.from('therapists').update({ efficient_strictness: 'hard' }).eq('id', therapist.id);
+                }}
+                style={{
+                  flex:1, padding:'9px 14px', border:'none', borderRadius:8,
+                  background: efficientStrictness === 'hard' ? C2.white : 'transparent',
+                  color: efficientStrictness === 'hard' ? C2.forest : C2.gray,
+                  fontSize:13, fontWeight: efficientStrictness === 'hard' ? 700 : 500,
+                  cursor:'pointer', fontFamily:'system-ui',
+                  boxShadow: efficientStrictness === 'hard' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                }}>
+                Hard
+              </button>
+            </div>
+            <div style={{ fontSize:11, color:C2.gray, lineHeight:1.6 }}>
+              {efficientStrictness === 'soft'
+                ? 'All slots stay available. The platform highlights the ones that pack tightly against your existing appointments so clients gravitate to them. Friendlier for clients with limited flexibility.'
+                : 'Only slots that touch an existing appointment edge are offered. Strongest packing. Some clients may not find a time that works for them on busy days.'}
+            </div>
+          </div>
+        )}
+
+        {/* Preview link: opens public booking page in a new tab so
+            therapist can see exactly what clients see with current
+            settings. Only useful for testing the toggle effect. */}
+        {therapist?.custom_url && (
+          <div style={{ marginTop:14, paddingTop:12, borderTop:`1px dashed ${C2.lightGray}` }}>
+            <a
+              href={`/${therapist.custom_url}?preview=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontSize:12, color:C2.forest, fontWeight:600,
+                textDecoration:'none', display:'inline-flex', alignItems:'center', gap:6,
+              }}>
+              👀 Preview as a client
+            </a>
+            <span style={{ fontSize:11, color:C2.gray, marginLeft:6 }}>
+              opens your booking page in a new tab
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Working Hours - Time Blocks
