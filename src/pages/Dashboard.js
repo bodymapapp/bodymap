@@ -57,6 +57,160 @@ const C = {
 };
 
 
+// Per-service custom hours editor (Lindsey #4, May 10 2026).
+// Renders inline below a service row when therapist clicks
+// 'Custom hours'. 7-day mini-grid with on/off + start/end times.
+// Saving writes availability rows with service_id set on this
+// service. Clearing all rows reverts the service to the master
+// schedule (boolean derived from row count).
+function ServiceHoursEditor({ service, therapist, onClose }) {
+  const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
+  const DAYS = [
+    { dow: 1, label: 'Mon' },
+    { dow: 2, label: 'Tue' },
+    { dow: 3, label: 'Wed' },
+    { dow: 4, label: 'Thu' },
+    { dow: 5, label: 'Fri' },
+    { dow: 6, label: 'Sat' },
+    { dow: 0, label: 'Sun' },
+  ];
+  const [rows, setRows] = React.useState([]); // existing service-specific rows
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('availability')
+        .select('*')
+        .eq('therapist_id', therapist.id)
+        .eq('service_id', service.id);
+      if (cancelled) return;
+      setRows(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [service.id, therapist.id]);
+
+  const rowFor = (dow) => rows.find(r => r.day_of_week === dow);
+
+  async function toggleDay(dow) {
+    const existing = rowFor(dow);
+    if (existing) {
+      // Toggle active flag, OR if already inactive, remove the row
+      // entirely (clearing all rows reverts to master schedule).
+      await supabase.from('availability').delete().eq('id', existing.id);
+      setRows(arr => arr.filter(r => r.id !== existing.id));
+    } else {
+      const { data } = await supabase.from('availability').insert({
+        therapist_id: therapist.id,
+        service_id: service.id,
+        day_of_week: dow,
+        start_time: '09:00',
+        end_time: '17:00',
+        active: true,
+      }).select().single();
+      if (data) setRows(arr => [...arr, data]);
+    }
+  }
+
+  async function updateTime(dow, field, val) {
+    const existing = rowFor(dow);
+    if (!existing) return;
+    await supabase.from('availability').update({ [field]: val }).eq('id', existing.id);
+    setRows(arr => arr.map(r => r.id === existing.id ? { ...r, [field]: val } : r));
+  }
+
+  async function clearAll() {
+    if (!window.confirm(`Clear custom hours for "${service.name}"? It will fall back to your master schedule.`)) return;
+    await supabase.from('availability').delete().eq('therapist_id', therapist.id).eq('service_id', service.id);
+    setRows([]);
+  }
+
+  if (loading) {
+    return (
+      <div style={{ padding:'10px 12px', fontSize:12, color:C2.gray }}>Loading custom hours...</div>
+    );
+  }
+
+  return (
+    <div style={{ marginTop:10, padding:'12px 14px', background:'#FAF7F1', border:`1px solid ${C2.lightGray}`, borderRadius:10 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:10 }}>
+        <div>
+          <div style={{ fontSize:12, fontWeight:700, color:C2.darkGray }}>Custom hours for {service.name}</div>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:2, lineHeight:1.5 }}>
+            {rows.length === 0
+              ? 'Currently using your master schedule. Tap a day to add custom hours just for this service.'
+              : `${rows.length} day${rows.length === 1 ? '' : 's'} customized. Other days follow this service\u2019s own schedule (so blank days = closed for this service).`}
+          </div>
+        </div>
+        {rows.length > 0 && (
+          <button onClick={clearAll} style={{
+            background:'transparent', border:`1px solid ${C2.lightGray}`, borderRadius:8,
+            padding:'5px 9px', fontSize:11, fontWeight:600, color:C2.gray, cursor:'pointer', flexShrink:0,
+          }}>
+            Reset to master
+          </button>
+        )}
+      </div>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+        {DAYS.map(d => {
+          const r = rowFor(d.dow);
+          const isOn = !!r;
+          return (
+            <div key={d.dow} style={{
+              display:'flex', alignItems:'center', gap:10,
+              padding:'7px 10px',
+              background: isOn ? '#fff' : 'transparent',
+              border: `1px solid ${isOn ? C2.lightGray : 'transparent'}`,
+              borderRadius:8,
+            }}>
+              <button onClick={() => toggleDay(d.dow)} style={{
+                width:60, padding:'5px 8px', borderRadius:6, fontSize:11, fontWeight:700,
+                background: isOn ? C2.forest : '#F0EDE6',
+                color: isOn ? '#fff' : C2.gray,
+                border: 'none', cursor:'pointer', flexShrink:0, fontFamily:'system-ui',
+              }}>
+                {d.label}
+              </button>
+              {isOn ? (
+                <div style={{ display:'flex', alignItems:'center', gap:6, flex:1 }}>
+                  <input
+                    type="time"
+                    value={(r.start_time || '09:00').slice(0, 5)}
+                    onChange={e => updateTime(d.dow, 'start_time', e.target.value)}
+                    style={{ padding:'5px 8px', border:`1px solid ${C2.lightGray}`, borderRadius:6, fontSize:12, fontFamily:'system-ui' }}
+                  />
+                  <span style={{ fontSize:12, color:C2.gray }}>to</span>
+                  <input
+                    type="time"
+                    value={(r.end_time || '17:00').slice(0, 5)}
+                    onChange={e => updateTime(d.dow, 'end_time', e.target.value)}
+                    style={{ padding:'5px 8px', border:`1px solid ${C2.lightGray}`, borderRadius:6, fontSize:12, fontFamily:'system-ui' }}
+                  />
+                </div>
+              ) : (
+                <span style={{ fontSize:11, color:C2.gray, fontStyle:'italic' }}>
+                  {rows.length === 0 ? 'follows master' : 'closed'}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <button onClick={onClose} style={{
+        marginTop:10, background:'transparent', border:'none',
+        fontSize:11, color:C2.gray, cursor:'pointer', padding:0,
+      }}>
+        Close editor
+      </button>
+    </div>
+  );
+}
+
+
 function ServicesAndAvailability({ therapist }) {
   const C2 = { sage:'#6B9E80', forest:'#2A5741', beige:'#F0EAD9', darkGray:'#1A1A2E', gray:'#6B7280', lightGray:'#E8E4DC', white:'#FFFFFF' };
   const { updateProfile } = useAuth();
@@ -86,6 +240,9 @@ function ServicesAndAvailability({ therapist }) {
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  // Per-service hours editor (Lindsey #4): which service's custom-hours
+  // mini-grid is currently expanded. Null when collapsed.
+  const [hoursEditorServiceId, setHoursEditorServiceId] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(null);
@@ -350,6 +507,38 @@ function ServicesAndAvailability({ therapist }) {
                     })}
                   </div>
                 )}
+
+                {/* Custom hours toggle (Lindsey #4). Compact link
+                    + editor mini-grid that expands inline. When the
+                    editor is closed, a small line shows whether
+                    this service has any per-service availability
+                    rows yet ('Master schedule' or 'Custom hours
+                    set'). */}
+                <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}` }}>
+                  {hoursEditorServiceId === svc.id ? (
+                    <ServiceHoursEditor
+                      service={svc}
+                      therapist={therapist}
+                      onClose={() => setHoursEditorServiceId(null)}
+                    />
+                  ) : (
+                    <button
+                      onClick={() => setHoursEditorServiceId(svc.id)}
+                      style={{
+                        background:'transparent', border:'none',
+                        padding:0, fontSize:11, color:C2.forest,
+                        fontWeight:600, cursor:'pointer',
+                        display:'inline-flex', alignItems:'center', gap:6,
+                      }}>
+                      <span>📅</span>
+                      <span>
+                        {(availability || []).some(a => a.service_id === svc.id)
+                          ? 'Edit custom hours'
+                          : 'Set custom hours for this service'}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
