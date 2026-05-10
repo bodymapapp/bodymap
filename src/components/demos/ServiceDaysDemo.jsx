@@ -107,7 +107,7 @@ export default function ServiceDaysDemo() {
     }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6, gap: 8, flexWrap: "wrap" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, minWidth: 0 }}>📅 Service days</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, minWidth: 0 }}>📅 Custom days per service</div>
         <div style={{
           background: "linear-gradient(135deg, #FBF4DC, #F5E0CC)",
           color: C.warm,

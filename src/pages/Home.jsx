@@ -61,7 +61,7 @@ const RIBBONS = [
       { kind: "component", component: BookingDemo, label: "Try the booking page" },
       { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
       { kind: "component", component: SmartScheduleDemo, label: "Smart Scheduling" },
-      { kind: "component", component: ServiceDaysDemo, label: "Service days" },
+      { kind: "component", component: ServiceDaysDemo, label: "Custom days per service" },
     ],
     layout: "demo-right",
     subFeatures: [
@@ -69,7 +69,7 @@ const RIBBONS = [
       "Services catalog with durations and add-ons",
       "Cycle-aligned scheduling (only on MyBodyMap)",
       "Smart Scheduling that packs your day tight (only on MyBodyMap)",
-      "Service days, different services on different days (only on MyBodyMap)",
+      "Custom days per service, different services on different days (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
       "Website embed for your existing site",

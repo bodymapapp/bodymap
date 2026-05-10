@@ -1,103 +1,99 @@
 // src/components/demos/SmartScheduleDemo.jsx
 //
-// Animated demo for the Find & Book ribbon on the Home page.
-// Visualizes Smart Scheduling for the persona: a 70-year-old female
-// LMT named Lindsey/Joy.
+// Smart Scheduling demo for the Find & Book ribbon on the Home page.
+// Persona: 70-year-old female LMT named Lindsey/Joy. Must read in
+// 5 seconds.
 //
-// THE STORY (must read in 5 seconds):
-//   When a NEW client tries to book Tuesday afternoon, what slots
-//   does the platform show them? The answer depends on the
-//   therapist's Smart Scheduling setting:
+// THE STORY
+// =========
+// Tuesday afternoon. Three clients already booked: Sarah at 1 PM,
+// Mike at 3 PM, Janet at 5 PM. Six 30-min positions are open
+// somewhere on the timeline. The therapist has 3 modes for what
+// the next new client gets to see:
 //
-//     OFF:  Every available slot is offered. The new booking can
-//           land anywhere, leaving big gaps mid-day.
+//   OFF:  All 6 dots offered. Plain hollow circles. The client
+//         can pick any of them, including the lonely 12 PM slot
+//         that leaves a 1-hour gap before Sarah.
 //
-//     SOFT: Every slot is still visible, but the ones adjacent to
-//           an existing booking get a sage 'Suggested' badge so
-//           the client gravitates there. Flexibility preserved,
-//           clean days encouraged.
+//   SOFT: All 6 dots still visible. The 5 dots that touch a
+//         booking edge get a sage 'best fit' ring so the client
+//         gravitates to them. The lonely 12 PM stays plain.
 //
-//     HARD: Only adjacent slots are shown. Other times disappear
-//           from the picker. Strongest packing. Some clients may
-//           need to pick a different day.
+//   HARD: Only the 5 adjacent dots are offered. The lonely 12 PM
+//         is hidden, rendered as crossed-out italic text so the
+//         therapist can see it WAS filtered out (rather than
+//         disappearing silently).
 //
-// Demo: a side panel showing 'Tuesday afternoon' slot options for
-// the new client. Two existing bookings already on the day. The
-// 3-way toggle (Off/Soft/Hard) updates which slots appear and how
-// they're styled, with a clear caption explaining what's
-// happening.
+// VISUAL VOCABULARY (Option C, picked May 10 2026)
+// ================
+//   Bookings:   beige bars labeled with client name + 'booked'
+//   Open dots:  white circle with brown stroke, time label below
+//   Best fit:   solid sage circle with sage ring, time label below
+//   Hidden:     crossed-out italic time text, no dot
 //
-// Replaces the previous off/on toggle which only showed one mode
-// of 'on' (effectively Hard) and didn't explain Soft. May 10 2026
-// HK feedback: 'For each of the toggles, what happens? It needs
-// to be very clear within five seconds to a 70-year-old.'
+// REPLACES the previous slot-grid version and the off/on toggle
+// before that. Three iterations to get this right per HK feedback:
+// May 10 2026 'It is still a little confusing... in the examples
+// above if we add one more booked box and then show the difference
+// it may be easier to understand.'
 
 import React, { useEffect, useRef, useState } from "react";
 
 const C = {
-  forest:     "#2A5741",
-  sage:       "#9DAA85",
-  cream:      "#FCF8EE",
-  border:     "#E5D5C8",
-  ink:        "#3D4A42",
-  gray:       "#7A8478",
-  warm:       "#A87468",
-  bookedFill: "#F5E8DD",
-  bookedStroke: "#C4B395",
-  suggestedBg: "#E8F3E1",
-  suggestedStroke: "#A9C99A",
-  suggestedText: "#3A5C30",
+  forest:           "#2A5741",
+  sage:             "#9DAA85",
+  cream:            "#FCF8EE",
+  border:           "#E5D5C8",
+  ink:              "#3D4A42",
+  gray:             "#7A8478",
+  warm:             "#A87468",
+  bookedFill:       "#F5E8DD",
+  bookedStroke:     "#C4B395",
+  bookedText:       "#5C2E27",
+  openStroke:       "#B0A892",
+  bestFitFill:      "#2A5741",
+  bestFitRing:      "#A9C99A",
+  hiddenText:       "#A87468",
+  captionGoodBg:    "#E8F3E1",
+  captionGoodBorder:"#A9C99A",
+  captionGoodText:  "#3A5C30",
+  captionWarnBg:    "#FBF4ED",
+  captionWarnBorder:"#C4B395",
+  captionWarnText:  "#A87468",
 };
 
-// All available slot times for Tuesday afternoon (1 PM to 5 PM,
-// 30-min granularity). Two are already booked.
-const ALL_SLOTS = [
-  { time: "1:00 PM",  bookedClient: null },
-  { time: "1:30 PM",  bookedClient: null },
-  { time: "2:00 PM",  bookedClient: "Sarah" }, // existing booking
-  { time: "2:30 PM",  bookedClient: null },
-  { time: "3:00 PM",  bookedClient: null },
-  { time: "3:30 PM",  bookedClient: null },
-  { time: "4:00 PM",  bookedClient: "Mike" },  // existing booking
-  { time: "4:30 PM",  bookedClient: null },
+// Timeline window: 12 PM to 6 PM = 360 min.
+const WINDOW_START_HOUR = 12;
+const WINDOW_MIN = 360;
+const HOUR_MARKS = ["12 PM", "1", "2", "3", "4", "5", "6 PM"];
+
+// Three existing bookings, in minutes from window start (12 PM).
+// Each booking is 60 min. Spaced so there are real open windows
+// in between with both 'lonely' (12 PM) and 'adjacent' positions.
+const BOOKINGS = [
+  { name: "Sarah", startMin:  60, duration: 60 }, //  1:00 PM
+  { name: "Mike",  startMin: 180, duration: 60 }, //  3:00 PM
+  { name: "Janet", startMin: 300, duration: 60 }, //  5:00 PM
 ];
 
-// Returns the list of slots a new client would see, given the mode.
-//   off:    all unbooked slots, no styling
-//   soft:   all unbooked slots, adjacent ones get 'suggested' flag
-//   hard:   only adjacent slots, others removed
+// Six potential 60-min slots a new client could take. Time labels
+// are what we display beneath each dot.
 //
-// "Adjacent" = slot ends exactly when a booking starts, OR slot
-// starts exactly when a booking ends (with a 15-min buffer).
-function computeOfferedSlots(mode) {
-  const open = ALL_SLOTS.filter(s => !s.bookedClient);
+// adjacent=true means the slot is touching a booking edge, so it
+// gets a Best fit ring in Soft and stays visible in Hard. The 12 PM
+// dot is the only "lonely" slot here, it gets hidden in Hard.
+const ALL_SLOTS = [
+  { startMin:   0, label: "12 PM",  adjacent: false }, // lonely
+  { startMin:  30, label: "12:30",  adjacent: true  }, // ends 1:30, touches Sarah
+  { startMin: 120, label: "2 PM",   adjacent: true  }, // starts when Sarah ends
+  { startMin: 150, label: "2:30",   adjacent: true  }, // ends 3:30, touches Mike
+  { startMin: 240, label: "4 PM",   adjacent: true  }, // starts when Mike ends
+  { startMin: 270, label: "4:30",   adjacent: true  }, // ends 5:30, touches Janet
+];
 
-  // Adjacency rules: a slot is adjacent if it touches an existing
-  // booking edge. Bookings are 60 minutes; adjacent means the slot
-  // start time is within 30 min of a booking start or end.
-  const adjacentTimes = new Set([
-    "1:30 PM", // ends just before Sarah at 2 PM
-    "3:00 PM", // starts just after Sarah at 3 PM (1-hour booking ending)
-    "3:30 PM", // ends just before Mike at 4 PM
-    "5:00 PM"  // starts just after Mike (5 PM is past our window so omit)
-  ]);
-
-  if (mode === "off") {
-    return open.map(s => ({ ...s, suggested: false, hidden: false }));
-  }
-  if (mode === "soft") {
-    return open.map(s => ({
-      ...s,
-      suggested: adjacentTimes.has(s.time),
-      hidden: false,
-    }));
-  }
-  // hard
-  return open.map(s => ({
-    ...s,
-    suggested: adjacentTimes.has(s.time),
-    hidden: !adjacentTimes.has(s.time),
-  }));
+// Minutes-to-percent for absolute positioning on the timeline.
+function pctFor(minutes) {
+  return (minutes / WINDOW_MIN) * 100;
 }
 
 function useFadeIn(threshold = 0.1) {
@@ -116,27 +112,28 @@ function useFadeIn(threshold = 0.1) {
   return [ref, visible];
 }
 
-const MODE_DESCRIPTIONS = {
+// Mode descriptions for the caption box.
+const MODE_INFO = {
   off: {
-    headline: "Off: every slot, every time",
-    body: "Clients see all 6 open slots. Maximum flexibility for them. Awkward gaps possible for you.",
-    color: C.warm,
-    bg: "#FBF4ED",
-    border: C.bookedStroke,
+    headline: "Off: every slot, no nudge",
+    body: "Six open slots offered. The 12 PM slot leaves a full hour empty before Sarah. No guidance for the client. Maximum flexibility for them, awkward gaps possible for you.",
+    bg: C.captionWarnBg,
+    border: C.captionWarnBorder,
+    color: C.captionWarnText,
   },
   soft: {
     headline: "Soft: gentle nudge",
-    body: "All 6 slots stay visible. The 3 next to existing bookings get a sage 'Best fit' badge so clients gravitate there.",
-    color: C.suggestedText,
-    bg: C.suggestedBg,
-    border: C.suggestedStroke,
+    body: "All six slots stay visible. The five sitting next to Sarah, Mike, or Janet get a sage ring so clients gravitate to them. The lonely 12 PM stays plain.",
+    bg: C.captionGoodBg,
+    border: C.captionGoodBorder,
+    color: C.captionGoodText,
   },
   hard: {
-    headline: "Hard: tight packing only",
-    body: "Only the 3 adjacent slots are offered. The scattered times disappear. Your day stays clean.",
-    color: C.forest,
-    bg: "#E8F3E1",
-    border: C.suggestedStroke,
+    headline: "Hard: only adjacent slots",
+    body: "The lonely 12 PM slot is hidden from clients. Five slots stay offered, all hugging an existing booking. Strongest packing for clean days.",
+    bg: C.captionGoodBg,
+    border: C.captionGoodBorder,
+    color: C.captionGoodText,
   },
 };
 
@@ -144,8 +141,9 @@ export default function SmartScheduleDemo() {
   const [ref, visible] = useFadeIn();
   const [mode, setMode] = useState("off");
 
-  // Auto-advance through the three modes once on first view to
-  // demonstrate, then hand control to the user.
+  // Auto-advance Off -> Soft -> Hard once on first view to
+  // demonstrate, then hand control to the user. Each step gets
+  // about 1.8s so the transitions are absorbable for the persona.
   useEffect(() => {
     if (!visible) return;
     const t1 = setTimeout(() => setMode("soft"), 1800);
@@ -153,8 +151,7 @@ export default function SmartScheduleDemo() {
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [visible]);
 
-  const offered = computeOfferedSlots(mode);
-  const desc = MODE_DESCRIPTIONS[mode];
+  const info = MODE_INFO[mode];
 
   return (
     <div ref={ref} style={{
@@ -181,7 +178,7 @@ export default function SmartScheduleDemo() {
         </div>
       </div>
       <div style={{ fontSize: 12, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
-        Tuesday afternoon. Two clients already booked. What does the next new client see?
+        Tuesday afternoon. Three clients booked. Which times does the next client see?
       </div>
 
       {/* 3-way segmented control */}
@@ -224,113 +221,181 @@ export default function SmartScheduleDemo() {
         })}
       </div>
 
-      {/* Slot picker, what the new client sees */}
+      {/* Timeline */}
       <div style={{
         background: "#FAFAF6",
         border: `1px solid ${C.border}`,
         borderRadius: 12,
-        padding: 14,
+        padding: "16px 14px 22px",
         marginBottom: 12,
       }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 10 }}>
-          New client booking · Tuesday
-        </div>
+        {/* Hour marks */}
         <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 6,
+          display: "flex",
+          justifyContent: "space-between",
+          fontSize: 10,
+          fontWeight: 700,
+          color: C.gray,
+          marginBottom: 8,
+          padding: "0 4px",
+          fontFamily: "system-ui",
         }}>
-          {ALL_SLOTS.map((s, i) => {
-            const offer = offered.find(o => o.time === s.time);
-            const isBooked = !!s.bookedClient;
-            const isHidden = mode === "hard" && offer && offer.hidden;
-            const isSuggested = offer && offer.suggested && (mode === "soft" || mode === "hard");
+          {HOUR_MARKS.map(h => <span key={h}>{h}</span>)}
+        </div>
 
-            if (isBooked) {
-              return (
-                <div key={s.time} style={{
-                  padding: "10px 12px",
-                  background: C.bookedFill,
-                  border: `1.5px solid ${C.bookedStroke}`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: C.warm,
-                  fontFamily: "system-ui",
-                  textAlign: "center",
-                  fontStyle: "italic",
-                  opacity: 0.9,
-                }}>
-                  <div style={{ fontWeight: 700 }}>{s.time}</div>
-                  <div style={{ fontSize: 10, marginTop: 1 }}>booked, {s.bookedClient}</div>
-                </div>
-              );
-            }
+        {/* Track. Bookings sit on top, dots float in the middle,
+            time labels go below each dot. Track height accounts
+            for both the dot row and the labels. */}
+        <div style={{
+          position: "relative",
+          height: 60,
+          background: "#fff",
+          borderRadius: 8,
+          border: `1px solid #EFE9DC`,
+        }}>
+          {/* Bookings */}
+          {BOOKINGS.map(b => (
+            <div key={b.name} style={{
+              position: "absolute",
+              top: 6,
+              height: 38,
+              left: `${pctFor(b.startMin)}%`,
+              width: `${pctFor(b.duration)}%`,
+              background: C.bookedFill,
+              border: `1.5px solid ${C.bookedStroke}`,
+              borderRadius: 6,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              boxSizing: "border-box",
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.bookedText }}>{b.name}</div>
+              <div style={{ fontSize: 9, color: C.gray, fontStyle: "italic", marginTop: 1 }}>booked</div>
+            </div>
+          ))}
+
+          {/* Slots. Each ALL_SLOTS entry renders one of three states:
+              - hidden in Hard (only when slot is non-adjacent):
+                  crossed-out italic time text, no dot
+              - best fit (Soft/Hard, adjacent slots):
+                  solid sage dot with ring, time label
+              - plain offered (Off, or Soft/non-adjacent):
+                  hollow dot with brown stroke, time label */}
+          {ALL_SLOTS.map(s => {
+            const left = pctFor(s.startMin);
+            const isHidden = mode === "hard" && !s.adjacent;
+            const isBestFit = (mode === "soft" || mode === "hard") && s.adjacent;
 
             if (isHidden) {
               return (
-                <div key={s.time} style={{
-                  padding: "10px 12px",
-                  background: "transparent",
-                  border: `1.5px dashed #DDD4C2`,
-                  borderRadius: 8,
-                  fontSize: 12,
-                  color: "#C7CACF",
-                  fontFamily: "system-ui",
-                  textAlign: "center",
-                  opacity: 0.6,
+                <div key={s.label} style={{
+                  position: "absolute",
+                  top: 22,
+                  left: `${left}%`,
+                  transform: "translate(-50%, -50%)",
+                  fontSize: 9,
+                  fontWeight: 500,
+                  color: C.hiddenText,
                   textDecoration: "line-through",
-                  transition: "opacity 0.4s, color 0.4s",
+                  fontStyle: "italic",
+                  whiteSpace: "nowrap",
+                  fontFamily: "system-ui",
+                  transition: "opacity 0.4s",
                 }}>
-                  <div style={{ fontWeight: 600 }}>{s.time}</div>
-                  <div style={{ fontSize: 10, marginTop: 1, fontStyle: "italic" }}>hidden</div>
+                  {s.label}
                 </div>
               );
             }
 
-            // Available slot. Suggested gets sage tint + Best fit badge.
             return (
-              <div key={s.time} style={{
-                padding: "10px 12px",
-                background: isSuggested ? C.suggestedBg : "#fff",
-                border: `1.5px solid ${isSuggested ? C.suggestedStroke : "#E8E4DC"}`,
-                borderRadius: 8,
-                fontSize: 12,
-                color: isSuggested ? C.suggestedText : C.ink,
-                fontFamily: "system-ui",
-                textAlign: "center",
-                position: "relative",
-                transition: "all 0.4s",
-              }}>
-                <div style={{ fontWeight: 700 }}>{s.time}</div>
-                {isSuggested && (
-                  <div style={{
-                    fontSize: 9,
-                    marginTop: 2,
-                    fontWeight: 700,
-                    color: C.forest,
-                    letterSpacing: 0.3,
-                  }}>
-                    ★ BEST FIT
-                  </div>
-                )}
-              </div>
+              <React.Fragment key={s.label}>
+                <div style={{
+                  position: "absolute",
+                  top: 22,
+                  left: `${left}%`,
+                  width: isBestFit ? 14 : 12,
+                  height: isBestFit ? 14 : 12,
+                  transform: "translate(-50%, -50%)",
+                  borderRadius: "50%",
+                  background: isBestFit ? C.bestFitFill : "#fff",
+                  border: isBestFit ? "2px solid #fff" : `1.5px solid ${C.openStroke}`,
+                  boxShadow: isBestFit ? `0 0 0 2px ${C.bestFitRing}` : "none",
+                  transition: "all 0.4s",
+                }} />
+                <div style={{
+                  position: "absolute",
+                  top: 47,
+                  left: `${left}%`,
+                  transform: "translateX(-50%)",
+                  fontSize: 8,
+                  fontWeight: 700,
+                  color: isBestFit ? C.forest : C.gray,
+                  whiteSpace: "nowrap",
+                  fontFamily: "system-ui",
+                  transition: "color 0.4s",
+                }}>
+                  {s.label}
+                </div>
+              </React.Fragment>
             );
           })}
         </div>
+
+        {/* Legend */}
+        <div style={{
+          marginTop: 12,
+          display: "flex",
+          gap: 14,
+          fontSize: 10,
+          color: "#5F5E5A",
+          flexWrap: "wrap",
+          justifyContent: "center",
+          fontFamily: "system-ui",
+        }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{
+              display: "inline-block", width: 12, height: 12,
+              borderRadius: 2, background: C.bookedFill, border: `1.5px solid ${C.bookedStroke}`,
+            }} />
+            Already booked
+          </span>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+            <span style={{
+              display: "inline-block", width: 11, height: 11,
+              borderRadius: "50%",
+              background: mode === "off" ? "#fff" : C.bestFitFill,
+              border: mode === "off" ? `1.5px solid ${C.openStroke}` : "1.5px solid #fff",
+              boxShadow: mode === "off" ? "none" : `0 0 0 1.5px ${C.bestFitRing}`,
+            }} />
+            {mode === "off" ? "Offered slot" : "Best fit"}
+          </span>
+          {mode === "hard" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <span style={{
+                fontSize: 9, color: C.hiddenText,
+                textDecoration: "line-through", fontStyle: "italic",
+              }}>
+                time
+              </span>
+              Not offered
+            </span>
+          )}
+        </div>
       </div>
 
-      {/* Caption explaining the current mode */}
+      {/* Caption */}
       <div style={{
         padding: "10px 12px",
-        background: desc.bg,
-        border: `1px solid ${desc.border}`,
+        background: info.bg,
+        border: `1px solid ${info.border}`,
         borderRadius: 10,
         fontSize: 11,
-        color: desc.color,
+        color: info.color,
         lineHeight: 1.55,
       }}>
-        <div style={{ fontWeight: 700, marginBottom: 3 }}>{desc.headline}</div>
-        <div>{desc.body}</div>
+        <div style={{ fontWeight: 700, marginBottom: 3 }}>{info.headline}</div>
+        <div>{info.body}</div>
       </div>
     </div>
   );
