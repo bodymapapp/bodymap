@@ -29,7 +29,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const APP_HOST = "https://www.mybodymap.app";
 const SETTINGS_BASE = `${APP_HOST}/dashboard/settings`;
-const SETTINGS_HASH = "#integrations";
+const SETTINGS_HASH = "#google-calendar";
 
 // Build a redirect URL in the correct shape: query string FIRST,
 // then the hash fragment. The frontend reads google_connected /
