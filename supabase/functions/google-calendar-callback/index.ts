@@ -28,7 +28,18 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const APP_HOST = "https://www.mybodymap.app";
-const SETTINGS_RETURN = `${APP_HOST}/dashboard/settings#integrations`;
+const SETTINGS_BASE = `${APP_HOST}/dashboard/settings`;
+const SETTINGS_HASH = "#integrations";
+
+// Build a redirect URL in the correct shape: query string FIRST,
+// then the hash fragment. The frontend reads google_connected /
+// google_error from window.location.search, so the params must be
+// in the query string, not after the hash. Earlier code put them
+// inside the hash and the frontend never saw them.
+function settingsRedirect(params: Record<string, string>): string {
+  const sp = new URLSearchParams(params);
+  return `${SETTINGS_BASE}?${sp.toString()}${SETTINGS_HASH}`;
+}
 
 serve(async (req) => {
   const url = new URL(req.url);
@@ -38,13 +49,13 @@ serve(async (req) => {
 
   if (errorParam) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=${encodeURIComponent(errorParam)}`,
+      settingsRedirect({ google_error: errorParam }),
       302
     );
   }
   if (!code || !state) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=missing_code_or_state`,
+      settingsRedirect({ google_error: "missing_code_or_state" }),
       302
     );
   }
@@ -56,7 +67,7 @@ serve(async (req) => {
 
   if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=server_not_configured`,
+      settingsRedirect({ google_error: "server_not_configured" }),
       302
     );
   }
@@ -72,7 +83,7 @@ serve(async (req) => {
   const therapist_id = state;
   if (!/^[0-9a-f-]{36}$/i.test(therapist_id)) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=bad_state`,
+      settingsRedirect({ google_error: "bad_state" }),
       302
     );
   }
@@ -94,9 +105,7 @@ serve(async (req) => {
   const tokenJson = await tokenRes.json();
   if (!tokenJson.access_token) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=${encodeURIComponent(
-        tokenJson.error || "token_exchange_failed"
-      )}`,
+      settingsRedirect({ google_error: tokenJson.error || "token_exchange_failed" }),
       302
     );
   }
@@ -144,7 +153,7 @@ serve(async (req) => {
 
   if (updErr) {
     return Response.redirect(
-      `${SETTINGS_RETURN}?google_error=${encodeURIComponent(updErr.message)}`,
+      settingsRedirect({ google_error: updErr.message }),
       302
     );
   }
@@ -165,5 +174,5 @@ serve(async (req) => {
     // ignore
   }
 
-  return Response.redirect(`${SETTINGS_RETURN}?google_connected=1`, 302);
+  return Response.redirect(settingsRedirect({ google_connected: "1" }), 302);
 });
