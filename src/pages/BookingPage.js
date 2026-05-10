@@ -54,7 +54,7 @@ function scoreSlots(slots, existingBooked, dur, schedulingMode = 'normal', effic
   }).sort((a,b) => b.score - a.score);
 }
 
-function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=null, minDate=null}) {
+function Cal({availability, service, selected, onSelect, blockedDates=new Set(), maxDate=null, minDate=null}) {
   const today=new Date(); today.setHours(0,0,0,0);
   const [yr,setYr]=useState(today.getFullYear());
   const [mo,setMo]=useState(today.getMonth());
@@ -63,6 +63,20 @@ function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=
   const offset=(()=>{const d=new Date(yr,mo,1).getDay();return d===0?6:d-1;})();
   const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
   const cells=[...Array(offset).fill(null),...Array.from({length:days},(_,i)=>i+1)];
+  // Service availability helper note (Lindsey #4 follow-up).
+  // When this service has a custom day filter (only some days), tell
+  // the client which days that service is offered so they understand
+  // why other days are greyed out. Triggers ONLY when avDows is a
+  // strict subset of [0..6] AND has fewer than 7 days.
+  const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const dayLabelsLong = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const offeredDows = [...new Set(avDows)].sort((a,b) => a - b);
+  const isPartialSchedule = offeredDows.length > 0 && offeredDows.length < 7;
+  const offeredLabel = (() => {
+    if (offeredDows.length === 1) return dayLabelsLong[offeredDows[0]];
+    if (offeredDows.length === 2) return `${dayLabelsLong[offeredDows[0]]} and ${dayLabelsLong[offeredDows[1]]}`;
+    return offeredDows.map(d => dayLabels[d]).join(', ');
+  })();
   return (
     <div>
       <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:16}}>
@@ -90,18 +104,52 @@ function Cal({availability, selected, onSelect, blockedDates=new Set(), maxDate=
           // bookable instant are disabled. The intra-day filter still
           // runs in the slot generator.
           const beforeMinimum = minDate && dt < minDate;
-          const disabled=!avDows.includes(dt.getDay())||dt<today||pastLastSlot||blockedDates.has(ds)||beyondHorizon||beforeMinimum;
+          const dowExcluded = !avDows.includes(dt.getDay());
+          const disabled=dowExcluded||dt<today||pastLastSlot||blockedDates.has(ds)||beyondHorizon||beforeMinimum;
           const isSel=selected===ds, isToday=dt.toDateString()===today.toDateString();
+          // Visual: disabled days fade significantly so the available
+          // days clearly stand out. Excluded days (service not offered
+          // that day-of-week) get extra subtle treatment with a strike-
+          // through line so the reason is obvious.
           return <button key={i} disabled={disabled} onClick={()=>onSelect(ds)}
-            style={{padding:'9px 2px',borderRadius:8,border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
+            style={{
+              padding:'9px 2px',
+              borderRadius:8,
+              border:`1.5px solid ${isSel?C.forest:isToday?C.sage:'transparent'}`,
               background:isSel?C.forest:'transparent',
-              color:isSel?C.white:disabled?'#D1D5DB':isToday?C.forest:C.dark,
-              fontSize:13,fontWeight:isSel||isToday?700:400,cursor:disabled?'default':'pointer',
-              transition:'all 0.1s'}}>
+              color: isSel ? C.white
+                : disabled ? '#C7CACF'
+                : isToday ? C.forest
+                : C.dark,
+              opacity: disabled ? 0.55 : 1,
+              fontSize:13,
+              fontWeight:isSel||isToday?700:400,
+              cursor:disabled?'not-allowed':'pointer',
+              textDecoration: dowExcluded ? 'line-through' : 'none',
+              transition:'all 0.1s',
+            }}>
             {d}
           </button>;
         })}
       </div>
+      {/* Service-day helper note (only when the service has a partial
+          schedule, e.g. Hot Stone Tue/Thu only). Tells the client which
+          days the selected service is offered, so greyed-out days on
+          the calendar make sense. */}
+      {isPartialSchedule && service && (
+        <div style={{
+          marginTop: 12,
+          padding: '8px 12px',
+          background: '#F0FDF4',
+          border: '1px solid #C9DCC2',
+          borderRadius: 8,
+          fontSize: 11,
+          color: '#2A5741',
+          lineHeight: 1.5,
+        }}>
+          <strong>{service.name}</strong> is offered on {offeredLabel} only.
+        </div>
+      )}
     </div>
   );
 }
@@ -2280,7 +2328,20 @@ export default function BookingPage() {
 
             <div style={{background:C.white,borderRadius:16,padding:20,marginBottom:14}}>
               <Cal
-                availability={availability}
+                availability={(() => {
+                  // Per-service availability filter (Lindsey #4):
+                  //   - If selected service has its own per-service rows,
+                  //     pass only those rows (so calendar greys out days
+                  //     the service is not offered).
+                  //   - Otherwise pass master rows (service_id IS NULL),
+                  //     which is the normal case for services that
+                  //     inherit the master schedule.
+                  if (!svc || !availability) return availability || [];
+                  const svcRows = availability.filter(a => a.service_id === svc.id);
+                  if (svcRows.length > 0) return svcRows;
+                  return availability.filter(a => !a.service_id);
+                })()}
+                service={svc}
                 selected={date}
                 onSelect={setDate}
                 blockedDates={blockedDates}
@@ -2533,7 +2594,13 @@ export default function BookingPage() {
               // approval via the confirmation email. This keeps a single
               // submit step in the most-common combined-toggle case.
               const urlIntakeDone = new URLSearchParams(window.location.search).get('intake_completed') === '1';
-              if (therapist.require_intake_before_booking && !therapist.require_approval && !isRepeat && !urlIntakeDone) {
+              // Preview mode bypass (HK May 10 2026): when therapist
+              // clicks 'Preview booking page' from Settings, the URL
+              // includes ?preview=1. Skip the intake-first redirect
+              // so the therapist can walk the full booking flow
+              // without being yanked into the intake form.
+              const isPreview = new URLSearchParams(window.location.search).get('preview') === '1';
+              if (therapist.require_intake_before_booking && !therapist.require_approval && !isRepeat && !urlIntakeDone && !isPreview) {
                 const params = new URLSearchParams({
                   return_to_book: slug,
                   name: form.name,
