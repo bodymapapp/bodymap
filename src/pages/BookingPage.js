@@ -1084,7 +1084,25 @@ export default function BookingPage() {
   async function loadSlots() {
     setLoadingSlots(true); setSlots([]); setSlot(null);
     const dow=new Date(date+'T12:00:00').getDay();
-    const av=availability.find(a=>a.day_of_week===dow);
+    // Per-service availability (Lindsey #4, May 10 2026).
+    // Three-step lookup:
+    //   1. If this service has ANY service-specific availability rows
+    //      (any day with service_id == svc.id), that means the service
+    //      has its own schedule. Use the row matching this day if any;
+    //      if none exists for this day, the service is closed today.
+    //   2. Otherwise (no service-specific rows at all), fall back to
+    //      the master schedule (service_id IS NULL).
+    // Existing therapists are unaffected: all their existing rows have
+    // service_id NULL and behave as the master schedule for every
+    // service.
+    const serviceSpecificRows = availability.filter(a => a.service_id === svc.id);
+    const hasServiceSchedule = serviceSpecificRows.length > 0;
+    let av;
+    if (hasServiceSchedule) {
+      av = serviceSpecificRows.find(a => a.day_of_week === dow);
+    } else {
+      av = availability.find(a => a.day_of_week === dow && !a.service_id);
+    }
     if(!av){setLoadingSlots(false);return;}
     const {data:existing}=await supabase.from('bookings').select('start_time,end_time').eq('therapist_id',therapist.id).eq('booking_date',date).neq('status','cancelled');
     const booked=existing||[];
