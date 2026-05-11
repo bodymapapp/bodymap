@@ -449,4 +449,117 @@ displayed, and how disconnect works.
 
 ---
 
-## 2. (placeholder for future blocked items)
+## 2. Lindsey #11 + Focus Distribution (commit 1 of 2 shipped May 10 2026)
+
+**Why partially blocked.** Build for #11 (therapist editing client
+intake) was bundled with focus distribution sliders per HK
+direction. Commit 1 ships the foundation (migration, helper lib,
+FocusDistribution component, waiver consent line). Commit 2 ships
+the actual UI wiring (Demo.jsx body screens, ClientIntake payload,
+SessionDetail edit mode, BodySVG C/T badges, audit log writes,
+terms/inline consent text).
+
+The split is intentional: commit 1 is safe and additive, can ship
+to production without risk. Commit 2 is the heavier UI work that
+needs careful testing on Demo.jsx (5069 lines) and SessionDetail.
+
+**When to revisit.** Next focused session. ~5-7 hours of work
+needed to finish commit 2.
+
+### What shipped in commit 1
+
+- Migration `docs/migrations/2026-05-10-editable-intake.sql`
+  adding to sessions: front_focus_therapist, back_focus_therapist,
+  front_avoid_therapist, back_avoid_therapist, front_pct, top_pct,
+  middle_pct, bottom_pct. New table intake_edits for audit trail
+  with RLS policies. Must be applied manually in Supabase SQL
+  editor before commit 2 ships any UI that uses these columns.
+
+- `src/lib/focusDistribution.js` with bandFor(), isFront(),
+  computeDistributionFromZones() and rebalanceTriple() helpers.
+
+- `src/components/FocusDistribution.jsx` compact sliders+display
+  component, designed to sit alongside or below a body SVG at
+  about 20% of view height. Renders three band sliders (Top,
+  Middle, Bottom) plus a front/back single-slider. Auto-derives
+  from zone selections via the autoDeriveFrom prop until the user
+  manually drags any slider.
+
+- One line added to default waiver text authorizing therapist to
+  update intake records for accuracy.
+
+### What is left for commit 2
+
+1. **Run the migration in Supabase.** Open SQL editor, paste
+   contents of `docs/migrations/2026-05-10-editable-intake.sql`,
+   click Run. Verify no errors.
+
+2. **Wire FocusDistribution into Demo.jsx body screens.** Edit
+   BMScreen at line 4025 to accept a distribution+setDistribution
+   prop, render the FocusDistribution component below the BMSVG
+   (compact mode, 20% of view max). Pass autoDeriveFrom = the
+   focus zone keys from bodyMap. State for distribution lives in
+   BodyMapApp (around line 4714 next to bodyMap).
+
+3. **Add distribution to onSubmit payload.** Around line 4867,
+   add `front_pct`, `top_pct`, `middle_pct`, `bottom_pct` to the
+   object passed to onSubmit.
+
+4. **Plumb through ClientIntake.handleSubmit.** Pass the four pct
+   fields to db.createSession around line 112.
+
+5. **Therapist intake editor on SessionDetail.** Add an "Edit
+   intake" button next to the "How they want it" section. On
+   click, switch the existing read-only fields into editable
+   inputs (pressure slider, table_temp select, etc.). Save button
+   commits to sessions table AND writes one intake_edits row per
+   changed field (use before/after values).
+
+6. **Body SVG C/T badge rendering.** Update BodySVG in
+   src/components/SessionDetail.js to accept BOTH
+   `focusAreas` (client) AND `focusAreasTherapist` (therapist).
+   Render each zone with a small overlay letter (C or T) inside
+   the marker dot.
+
+7. **Body SVG interactivity in edit mode.** When SessionDetail is
+   in edit mode, tapping a body zone should toggle it on the
+   therapist array (not the client array). Saving writes the new
+   therapist array AND an intake_edits row.
+
+8. **Consent text in two more places.**
+   - Inline on intake form: above the body-map step or right
+     before submit, add a small note like "By submitting, you
+     authorize your therapist to update this intake for accuracy."
+   - In terms of service (when /terms page exists): add a clause
+     about therapist-side intake correction.
+
+9. **Front/back split needs revisit.** The current FocusDistribution
+   shows front and back as one slider. On Demo.jsx the front and
+   back are TWO separate screens. Either:
+   (a) show distribution only on the second (back) screen so the
+       full picture is visible
+   (b) show on both screens but only the relevant half
+   (c) show after both screens on a separate summary view
+   Pick before commit 2 starts.
+
+10. **Test on real intake flow end-to-end.** New client books,
+    fills intake, hits Submit. Therapist opens session detail,
+    edits a field. Audit log shows edit. Client reloads their
+    own intake view, sees the corrected field.
+
+### Risk notes for commit 2
+
+- Demo.jsx is 5069 lines. Any wiring change risks unintended
+  effects on the existing intake flow. Build verify after EVERY
+  change to that file.
+- C/T badges on body map need to read well at small sizes. May
+  need a fallback to color-only differentiation (lighter sage
+  for client, darker forest for therapist) if letters do not
+  render legibly.
+- The intake_edits audit log assumes therapist_id = auth.uid().
+  Verify RLS policies allow the insert from the therapist's
+  authenticated session.
+
+---
+
+## 3. (placeholder for future blocked items)

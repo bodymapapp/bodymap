@@ -4,7 +4,7 @@
 
 export const DEFAULT_WAIVER_TEXT = `I understand that massage therapy is provided for stress reduction, relaxation, relief from muscular tension, and improvement of circulation and energy flow. Massage therapy is not a substitute for medical care or diagnosis. If I have any medical conditions, I will inform my therapist before the session begins.
 
-I have completed the intake to the best of my knowledge. I will inform my therapist of any changes to my health, medications, or pregnancy status before future sessions.
+I have completed the intake to the best of my knowledge. I will inform my therapist of any changes to my health, medications, or pregnancy status before future sessions. I authorize my therapist to update this intake record for accuracy when new information comes up during a session (for example, a new medication I mention, a correction to a typo, or a clarification of a pressure preference). My therapist will not change the substance of my consent or my medical history without my agreement.
 
 I understand I can request changes to pressure, technique, or positioning at any time during my session. I can end the session at any point for any reason.
 
