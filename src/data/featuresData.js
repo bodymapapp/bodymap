@@ -211,10 +211,11 @@ export const RIBBONS = [
         name: "The three-dot document system",
         automated: true,
         body: [
-          "Three documents around every session. Today's Intake captures what the client filled in. The Pre-Session Brief, ready five minutes before the door opens, synthesizes their request with everything we have learned about them. The Post-Session record holds your SOAP plus the warm summary sent to the client, with aftercare and a rebooking link.",
+          "Three documents around every session, generated as you work. The Intake captures what your client filled in: body map, eight preferences, conditions, every custom answer. The Pre-Session Brief, ready five minutes before the door opens, synthesizes today's request with what changed since last visit, the plan you wrote down, and the patterns across every prior visit (right shoulder requested 5 of 5 times, pressure climbing 2 to 4 over 10 weeks).",
+          "After the session, the system splits into two outputs from one set of notes. You get an archival record with SOAP, aftercare, and pattern updates. Your client gets a warm summary in their language: your note to them in italics, the zones you worked, the aftercare they should follow, and a one-tap rebooking link.",
           "Minimal time from you. Maximum insight per visit. The whole client journey, surfaced.",
         ],
-        meta: "Auto-generated · One page each · Print or share as PDF",
+        meta: "Auto-generated · One page each · Print, PDF, or share by link",
       },
       {
         id: "3.3",
