@@ -208,6 +208,16 @@ export const RIBBONS = [
       },
       {
         id: "3.2",
+        name: "The three-dot document system",
+        automated: true,
+        body: [
+          "Three documents around every session. Today's Intake captures what the client filled in. The Pre-Session Brief, ready five minutes before the door opens, synthesizes their request with everything we have learned about them. The Post-Session record holds your SOAP plus the warm summary sent to the client, with aftercare and a rebooking link.",
+          "Minimal time from you. Maximum insight per visit. The whole client journey, surfaced.",
+        ],
+        meta: "Auto-generated · One page each · Print or share as PDF",
+      },
+      {
+        id: "3.3",
         name: "Full session history",
         body: [
           "Every intake, every note, every body map, every recommendation, in chronological order, instantly searchable.",
@@ -216,7 +226,7 @@ export const RIBBONS = [
         meta: "Searchable · Exportable · Yours forever",
       },
       {
-        id: "3.3",
+        id: "3.4",
         name: "Practice Assistant",
         body: [
           'Ask anything about a client. <em>"What body areas has Sarah been flagging the most this year?"</em> <em>"Which clients have not booked in 60+ days but used to come monthly?"</em>',
@@ -225,7 +235,7 @@ export const RIBBONS = [
         meta: "Private to your practice · Never trained on others",
       },
       {
-        id: "3.4",
+        id: "3.5",
         name: "Pattern detection",
         automated: true,
         body: [
@@ -235,7 +245,7 @@ export const RIBBONS = [
         meta: "Weekly digest · Configurable thresholds",
       },
       {
-        id: "3.5",
+        id: "3.6",
         name: "Practice Pulse",
         automated: true,
         body: [

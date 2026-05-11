@@ -55,7 +55,7 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
       id: "silver",
       name: "Silver",
       highlight: true,
-      photo: photoForId("3.3"),
+      photo: photoForId("3.4"),
       badge: "Most popular",
       tagline: "Unlimited history. Full pattern intelligence. The full moat.",
       price: annualMode

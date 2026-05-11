@@ -23,6 +23,7 @@ import HelpWidget from "../components/HelpWidget";
 import BookingDemo from "../components/demos/BookingDemo";
 import BodyMapDemo from "../components/demos/BodyMapDemo";
 import PatternDemo from "../components/demos/PatternDemo";
+import ThreeDotDocumentDemo from "../components/demos/ThreeDotDocumentDemo";
 import ScheduleDemo from "../components/demos/ScheduleDemo";
 import BillingDemo from "../components/demos/BillingDemo";
 import AIDemo from "../components/demos/AIDemo";
@@ -110,18 +111,21 @@ const RIBBONS = [
     name: "Client Intelligence",
     tagline:
       "Pattern recognition across visits and Platform chat with your full client history. The core moat.",
-    // TWO demos — Pattern + AI — shown as a carousel.
+    // Three demos for ribbon 3. Three-dot document system first since
+    // it is the new flagship and the visual anchor. Pattern + AI follow.
     demos: [
+      { kind: "component", component: ThreeDotDocumentDemo, label: "Three-dot document system" },
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
       { kind: "component", component: AIDemo, label: "Practice Assistant chat" },
     ],
     layout: "demo-right",
     subFeatures: [
+      "Three-dot document system: Intake, Pre-Session, Post-Session",
       "Longitudinal heatmaps across all sessions",
+      "Full session history, instantly searchable",
       "Practice Assistant: chat with your client data",
       "Pattern detection on body areas trending up",
       "Practice Pulse: daily 6am morning brief",
-      "Lapsed client alerts before they drift away",
     ],
     cta: "Client Intelligence features",
   },

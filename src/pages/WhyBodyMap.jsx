@@ -49,7 +49,7 @@ const PEACE_BLOCKS = [
     worry: "What did we work on last time?",
     answer:
       "Her body map opens with last session's tension areas already mapped. The session before that is one tap away.",
-    photoId: "3.2",
+    photoId: "3.3",
     automated: true,
   },
   {
