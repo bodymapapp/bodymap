@@ -53,31 +53,33 @@ export default function BodyDiagram({
       <path d="M60 162 Q56 195 54 232 Q52 260 56 278 Q62 284 70 282 Q76 278 76 260 L78 162 Z" fill={f} stroke={s} strokeWidth="1.5" />
       <path d="M110 162 Q114 195 116 232 Q118 260 114 278 Q108 284 100 282 Q94 278 94 260 L92 162 Z" fill={f} stroke={s} strokeWidth="1.5" />
 
-      {/* Heatmap mode */}
+      {/* Heatmap mode: zone IS the number circle, bigger and bolder */}
       {mode === 'heatmap' && Object.entries(heatmapFocus).map(([area, { opacity, count }]) => {
         const c = ZONE_COORDS[area]; if (!c) return null;
-        const r = 8 + opacity * 10;
+        // Zone size scales with count. Min radius 11, max 20.
+        const r = 11 + opacity * 9;
+        const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
         return (
           <g key={'hf-' + area}>
-            <circle cx={c[0]} cy={c[1]} r={r + 8} fill={`rgba(74,107,84,${(opacity * 0.18).toFixed(2)})`} />
-            <circle cx={c[0]} cy={c[1]} r={r} fill={`rgba(74,107,84,${(opacity * 0.5).toFixed(2)})`} stroke={COLORS.sage} strokeWidth={opacity > 0.6 ? '2.5' : '1.5'} />
-            <circle cx={c[0]} cy={c[1]} r="5" fill={COLORS.sageDeep} />
-            <circle cx={c[0] + r - 1} cy={c[1] - r + 1} r="8" fill={COLORS.sageDeep} stroke="white" strokeWidth="1.5" />
-            <text x={c[0] + r - 1} y={c[1] - r + 5} textAnchor="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="Inter, sans-serif">{count}</text>
+            {/* Outer halo for emphasis on high-count zones */}
+            <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(74,107,84,${(opacity * 0.15).toFixed(2)})`} />
+            {/* Main zone circle, color saturation scales with count */}
+            <circle cx={c[0]} cy={c[1]} r={r} fill={COLORS.sage} stroke={COLORS.sageDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
+            {/* Number IN the circle */}
+            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill="white" fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
           </g>
         );
       })}
       {mode === 'heatmap' && Object.entries(heatmapAvoid).map(([area, { opacity, count }]) => {
         if (heatmapFocus[area]) return null;
         const c = ZONE_COORDS[area]; if (!c) return null;
-        const r = 8 + opacity * 10;
+        const r = 11 + opacity * 9;
+        const fontSize = r >= 17 ? 14 : r >= 14 ? 12 : 11;
         return (
           <g key={'ha-' + area}>
-            <circle cx={c[0]} cy={c[1]} r={r + 8} fill={`rgba(185,28,28,${(opacity * 0.14).toFixed(2)})`} />
-            <circle cx={c[0]} cy={c[1]} r={r} fill={`rgba(185,28,28,${(opacity * 0.36).toFixed(2)})`} stroke={COLORS.red} strokeWidth={opacity > 0.6 ? '2.5' : '1.5'} />
-            <circle cx={c[0]} cy={c[1]} r="5" fill={COLORS.redDeep} />
-            <circle cx={c[0] + r - 1} cy={c[1] - r + 1} r="8" fill={COLORS.redDeep} stroke="white" strokeWidth="1.5" />
-            <text x={c[0] + r - 1} y={c[1] - r + 5} textAnchor="middle" fill="white" fontSize="9" fontWeight="700" fontFamily="Inter, sans-serif">{count}</text>
+            <circle cx={c[0]} cy={c[1]} r={r + 5} fill={`rgba(185,28,28,${(opacity * 0.12).toFixed(2)})`} />
+            <circle cx={c[0]} cy={c[1]} r={r} fill={COLORS.red} stroke={COLORS.redDeep} strokeWidth={opacity > 0.7 ? '2.5' : '1.5'} />
+            <text x={c[0]} y={c[1] + fontSize / 3} textAnchor="middle" fill="white" fontSize={fontSize} fontWeight="800" fontFamily="Inter, sans-serif">{count}</text>
           </g>
         );
       })}

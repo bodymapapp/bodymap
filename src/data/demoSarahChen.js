@@ -93,9 +93,9 @@ export const DEMO_SESSIONS = [
     completed_at: dateBack(56),
 
     // Today's request, body map
-    front_focus: ['f-r-shldr'],
+    front_focus: ['f-r-shldr', 'f-r-chest'],
     front_avoid: [],
-    back_focus: ['b-r-shldr', 'b-lower-bk'],
+    back_focus: ['b-r-shldr', 'b-upper-bk', 'b-mid-bk', 'b-lower-bk'],
     back_avoid: [],
 
     // Preferences (cautious first visit)
@@ -147,9 +147,9 @@ export const DEMO_SESSIONS = [
     completed: true,
     completed_at: dateBack(42),
 
-    front_focus: ['f-r-shldr'],
+    front_focus: ['f-r-shldr', 'f-r-chest'],
     front_avoid: [],
-    back_focus: ['b-r-shldr', 'b-lower-bk'],
+    back_focus: ['b-r-shldr', 'b-upper-bk', 'b-mid-bk', 'b-lower-bk', 'b-r-glute'],
     back_avoid: [],
 
     pressure: 3,
@@ -195,9 +195,9 @@ export const DEMO_SESSIONS = [
     completed: true,
     completed_at: dateBack(28),
 
-    front_focus: ['f-neck', 'f-r-shldr'],
+    front_focus: ['f-head', 'f-neck', 'f-r-shldr'],
     front_avoid: [],
-    back_focus: ['b-neck', 'b-r-shldr', 'b-upper-bk'],
+    back_focus: ['b-head', 'b-neck', 'b-r-shldr', 'b-upper-bk'],
     back_avoid: [],
 
     pressure: 3,
@@ -243,9 +243,9 @@ export const DEMO_SESSIONS = [
     completed: true,
     completed_at: dateBack(14),
 
-    front_focus: ['f-neck', 'f-r-shldr'],
+    front_focus: ['f-head', 'f-neck', 'f-r-shldr'],
     front_avoid: [],
-    back_focus: ['b-neck', 'b-r-shldr', 'b-upper-bk'],
+    back_focus: ['b-neck', 'b-r-shldr', 'b-upper-bk', 'b-mid-bk'],
     back_avoid: [],
 
     pressure: 4,
@@ -291,9 +291,9 @@ export const DEMO_SESSIONS = [
     completed: true,
     completed_at: dateBack(0),
 
-    front_focus: ['f-r-shldr'],
+    front_focus: ['f-r-shldr', 'f-r-hip', 'f-l-hip'],
     front_avoid: ['f-neck'],  // Neck feels good now, asks to avoid
-    back_focus: ['b-r-shldr', 'b-lower-bk'],
+    back_focus: ['b-r-shldr', 'b-mid-bk', 'b-lower-bk', 'b-l-glute', 'b-r-glute'],
     back_avoid: ['b-neck'],
 
     pressure: 4,

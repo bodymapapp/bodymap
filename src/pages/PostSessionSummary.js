@@ -1,42 +1,20 @@
 // src/pages/PostSessionSummary.js
 //
-// Client-facing recap, dot 3b of 3, one page.
+// Dot 3 of 3 (client recap). Same 4-section structure as the other
+// documents so the system feels consistent, but content is
+// client-friendly: warmer tone, no clinical jargon.
 //
-// The warm public summary sent to the client. Held until the
-// therapist marks the session complete, then becomes the document
-// the client opens from their email or QR code.
-//
-// Layout:
-//   1. Warm header: "Hi [first name]." with date
-//   2. Note from therapist (the 5th SOAP field) as the headline quote
-//   3. What we worked on, with body diagram showing worked zones
-//   4. Aftercare checklist
-//   5. Rebooking CTA card (dark forest, gold button)
-//
-// One page, friendly tone, minimal clinical language.
+// Section 01: What we worked on (body diagrams, "worked" mode)
+// Section 02: How you came in (today's request, soft framing)
+// Section 03: A note from your therapist (italic headline quote)
+// Section 04: How to take care of yourself + book next visit
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import BodyDiagram from '../components/BodyDiagram';
+import { T, Pill, SectionMarker, Card } from '../components/DocumentLayout';
 import { parseSoap, getAftercareItems, zoneLabel } from '../lib/sessionIntelligence';
-
-const T = {
-  cream: '#F9F5EE',
-  creamAlt: '#F3EEE2',
-  forest: '#1C2B22',
-  sage: '#4A6B54',
-  sageBg: '#EEF3EE',
-  gold: '#C9A84C',
-  goldBg: '#FAF3DC',
-  rose: '#E8C5B5',
-  ink: '#3D4F43',
-  inkSoft: '#6B7F72',
-  lineFaint: '#E8E0D0',
-  white: '#FFFFFF',
-  serif: "'Fraunces', Georgia, serif",
-  sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-};
 
 export default function PostSessionSummary() {
   const { sessionId } = useParams();
@@ -99,180 +77,166 @@ export default function PostSessionSummary() {
   return (
     <div style={{ background: T.cream, minHeight: '100vh', color: T.ink, fontFamily: T.sans }}>
       <style>{`
-        * { box-sizing: border-box; }
         @media print {
           body { margin: 0; background: white; }
           @page { size: A4; margin: 12mm; }
           .no-print { display: none !important; }
-          .bm-sum-card { box-shadow: none !important; }
+          .bm-doc-card { box-shadow: none !important; }
         }
-        .bm-sum-worked-grid { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: start; }
-        @media (max-width: 560px) {
-          .bm-sum-worked-grid { grid-template-columns: 1fr; }
+        * { box-sizing: border-box; }
+        .bm-recap-top { display: grid; grid-template-columns: 320px 1fr; gap: 14px; }
+        @media (max-width: 760px) {
+          .bm-recap-top { grid-template-columns: 1fr; }
         }
       `}</style>
 
-      <div style={{ maxWidth: 620, margin: '0 auto', padding: '36px 20px 48px' }}>
+      <div style={{ maxWidth: 880, margin: '0 auto', padding: '24px 18px 30px' }}>
 
-        {/* Warm header */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '1.6px', marginBottom: 10 }}>
-            Your session summary
+        {/* Identity band */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 5 }}>
+            Document 3 of 3 · Your Recap
           </div>
           <h1 style={{
-            fontFamily: T.serif, fontSize: 'clamp(36px, 7vw, 48px)',
+            fontFamily: T.serif, fontSize: 'clamp(28px, 3.8vw, 38px)',
             fontWeight: 500, color: T.forest, margin: 0,
-            letterSpacing: '-0.7px', lineHeight: 1.05,
+            letterSpacing: '-0.6px', lineHeight: 1.05,
           }}>
             Hi {firstName}.
           </h1>
-          <div style={{ fontSize: 13, color: T.inkSoft, marginTop: 8 }}>{sessionDate} with {therapistFullName || therapistName}</div>
+          <div style={{ fontSize: 12.5, color: T.inkSoft, marginTop: 6 }}>
+            {sessionDate} with {therapistFullName || therapistName}
+          </div>
         </div>
 
-        {/* Therapist note (headline quote) */}
-        {noteToClient && (
-          <div className="bm-sum-card" style={{
-            background: T.white, borderRadius: 16, padding: '26px 26px 22px',
-            border: `1px solid ${T.lineFaint}`,
-            boxShadow: '0 2px 8px rgba(28,43,34,0.05)',
-            borderLeft: `4px solid ${T.gold}`,
-            marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 12 }}>
-              A note from your therapist
-            </div>
-            <div style={{
-              fontSize: 17, color: T.ink, lineHeight: 1.65,
-              fontFamily: T.serif, fontStyle: 'italic',
-              letterSpacing: '-0.1px',
-            }}>
-              "{noteToClient}"
-            </div>
-            <div style={{ fontSize: 12, color: T.inkSoft, marginTop: 14, textAlign: 'right' }}>
-              {therapistFullName || therapistName}
-            </div>
-          </div>
-        )}
+        {/* Section 01 + 02 top row */}
+        <div className="bm-recap-top" style={{ marginBottom: 12 }}>
 
-        {/* What we worked on */}
-        {allFocus.length > 0 && (
-          <div className="bm-sum-card" style={{
-            background: T.white, borderRadius: 16, padding: '22px 24px',
-            border: `1px solid ${T.lineFaint}`,
-            boxShadow: '0 2px 8px rgba(28,43,34,0.05)',
-            marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 16 }}>
-              What we worked on
-            </div>
-            <div className="bm-sum-worked-grid">
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Front</div>
-                  <BodyDiagram focusAreas={focusAreasFront} mode="worked" size="md" />
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 10, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Back</div>
-                  <BodyDiagram focusAreas={focusAreasBack} mode="worked" size="md" />
-                </div>
+          {/* Section 01: What we worked on */}
+          <Card accent={T.sage} className="bm-doc-card">
+            <SectionMarker n="01" title="What we worked on" sub="Today" accent={T.gold} />
+            <div style={{ display: 'flex', justifyContent: 'space-around', gap: 4 }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>Front</div>
+                <BodyDiagram focusAreas={focusAreasFront} mode="worked" size="md" />
               </div>
-              <div>
-                <div style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.6, marginBottom: 14 }}>
-                  Together we focused on:
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>Back</div>
+                <BodyDiagram focusAreas={focusAreasBack} mode="worked" size="md" />
+              </div>
+            </div>
+            {allFocus.length > 0 && (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.lineFaint}` }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>
+                  Areas worked
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {allFocus.map((a, i) => (
-                    <span key={i} style={{
-                      background: T.sageBg, color: T.forest,
-                      padding: '6px 13px', borderRadius: 20,
-                      fontSize: 13, fontWeight: 600,
-                    }}>{zoneLabel(a)}</span>
+                    <Pill key={i} color={T.forest} bg={T.sageBg}>{zoneLabel(a)}</Pill>
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        )}
+            )}
+          </Card>
 
-        {/* Aftercare */}
+          {/* Section 02: A note from your therapist */}
+          <Card accent={T.gold} className="bm-doc-card">
+            <SectionMarker n="02" title="A note from your therapist" sub={therapistFullName || therapistName} accent={T.gold} />
+            {noteToClient ? (
+              <div style={{
+                fontSize: 15, color: T.ink, lineHeight: 1.65,
+                fontFamily: T.serif, fontStyle: 'italic',
+              }}>
+                "{noteToClient}"
+              </div>
+            ) : (
+              <div style={{ fontSize: 12.5, color: T.inkSoft, fontStyle: 'italic' }}>
+                {therapistFullName || therapistName} did not leave a note this time.
+              </div>
+            )}
+          </Card>
+        </div>
+
+        {/* Section 03: How to take care of yourself */}
         {(aftercareItems.length > 0 || aftercareCustom) && (
-          <div className="bm-sum-card" style={{
-            background: T.white, borderRadius: 16, padding: '22px 24px',
-            border: `1px solid ${T.lineFaint}`,
-            boxShadow: '0 2px 8px rgba(28,43,34,0.05)',
-            borderLeft: `4px solid ${T.sage}`,
-            marginBottom: 16,
-          }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: 16 }}>
-              How to take care of yourself today
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Card accent={T.sage} className="bm-doc-card" style={{ marginBottom: 12, padding: '14px 18px' }}>
+            <SectionMarker n="03" title="How to take care of yourself today" sub={`${aftercareItems.length}${aftercareCustom ? ' + 1 custom' : ''} items`} accent={T.gold} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {aftercareItems.map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                   <span style={{
-                    flexShrink: 0, width: 26, height: 26, borderRadius: 13,
+                    flexShrink: 0, width: 22, height: 22, borderRadius: 11,
                     background: T.sageBg, color: T.sage,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 14, fontWeight: 800,
+                    fontSize: 13, fontWeight: 800,
                   }}>✓</span>
-                  <span style={{ fontSize: 15, color: T.ink, lineHeight: 1.5, paddingTop: 2 }}>{item.label}</span>
+                  <span style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.5, paddingTop: 1 }}>{item.label}</span>
                 </div>
               ))}
               {aftercareCustom && (
                 <div style={{
-                  display: 'flex', gap: 14, alignItems: 'flex-start',
-                  marginTop: aftercareItems.length > 0 ? 4 : 0,
-                  paddingTop: aftercareItems.length > 0 ? 12 : 0,
+                  display: 'flex', gap: 12, alignItems: 'flex-start',
+                  marginTop: aftercareItems.length > 0 ? 2 : 0,
+                  paddingTop: aftercareItems.length > 0 ? 8 : 0,
                   borderTop: aftercareItems.length > 0 ? `1px solid ${T.lineFaint}` : 'none',
                 }}>
                   <span style={{
-                    flexShrink: 0, width: 26, height: 26, borderRadius: 13,
+                    flexShrink: 0, width: 22, height: 22, borderRadius: 11,
                     background: T.goldBg, color: T.gold,
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 15, fontWeight: 800,
+                    fontSize: 14, fontWeight: 800,
                   }}>★</span>
-                  <span style={{ fontSize: 15, color: T.ink, lineHeight: 1.55, fontStyle: 'italic', paddingTop: 2 }}>
+                  <span style={{ fontSize: 13.5, color: T.ink, lineHeight: 1.55, fontStyle: 'italic', paddingTop: 1 }}>
                     {aftercareCustom}
                   </span>
                 </div>
               )}
             </div>
-          </div>
+          </Card>
         )}
 
-        {/* Rebooking CTA */}
-        <div className="bm-sum-card" style={{
-          background: T.forest, color: 'white',
-          borderRadius: 16, padding: '28px 24px',
-          marginBottom: 16,
-          textAlign: 'center',
-          boxShadow: '0 4px 14px rgba(28,43,34,0.18)',
+        {/* Section 04: See you next time */}
+        <Card accent={T.forest} className="bm-doc-card" style={{
+          marginBottom: 12,
+          padding: '16px 22px',
+          background: T.forest,
+          color: 'white',
+          borderColor: T.forest,
         }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '1.4px', marginBottom: 12 }}>
-            See you next time?
-          </div>
-          <div style={{ fontFamily: T.serif, fontSize: 22, fontWeight: 500, lineHeight: 1.35, marginBottom: 18, letterSpacing: '-0.2px' }}>
-            The best results come from consistency.
-          </div>
-          {bookingUrl ? (
-            <a href={bookingUrl} className="no-print" style={{
-              display: 'inline-block',
-              background: T.gold, color: T.forest,
-              padding: '14px 32px', borderRadius: 10,
-              fontSize: 14.5, fontWeight: 700,
-              textDecoration: 'none',
-              letterSpacing: '0.3px',
-            }}>Book your next session →</a>
-          ) : (
-            <div style={{ fontSize: 13, opacity: 0.9 }}>
-              Reach out to {therapistName}{therapistPhone ? ` at ${therapistPhone}` : ''} to book.
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 10 }}>
+            <span style={{
+              fontFamily: T.serif, fontSize: 22, fontWeight: 600,
+              color: T.gold, lineHeight: 1, letterSpacing: '-0.5px',
+            }}>04</span>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '1px', lineHeight: 1.1 }}>
+                See you next time?
+              </div>
+              <div style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.7)', marginTop: 1, fontStyle: 'italic' }}>The best results come from consistency</div>
             </div>
-          )}
-        </div>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ fontFamily: T.serif, fontSize: 18, fontWeight: 500, lineHeight: 1.4, letterSpacing: '-0.2px', flex: 1, minWidth: 220 }}>
+              Book your next session and keep what we built today moving forward.
+            </div>
+            {bookingUrl ? (
+              <a href={bookingUrl} className="no-print" style={{
+                display: 'inline-block', background: T.gold, color: T.forest,
+                padding: '11px 22px', borderRadius: 10,
+                fontSize: 13.5, fontWeight: 700,
+                textDecoration: 'none', letterSpacing: '0.2px',
+              }}>Book now →</a>
+            ) : (
+              <div style={{ fontSize: 12.5, opacity: 0.9 }}>
+                Reach out to {therapistName}{therapistPhone ? ` at ${therapistPhone}` : ''}
+              </div>
+            )}
+          </div>
+        </Card>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', paddingTop: 18, fontSize: 11, color: T.inkSoft, lineHeight: 1.6 }}>
-          <div style={{ marginBottom: 4 }}>{therapistName}{therapistPhone ? ' · ' + therapistPhone : ''}</div>
+        <div style={{ textAlign: 'center', paddingTop: 12, fontSize: 11, color: T.inkSoft, lineHeight: 1.6 }}>
+          <div style={{ marginBottom: 3 }}>{therapistName}{therapistPhone ? ' · ' + therapistPhone : ''}</div>
           <div>Powered by MyBodyMap · mybodymap.app</div>
         </div>
       </div>
