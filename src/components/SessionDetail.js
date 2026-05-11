@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { db, supabase } from "../lib/supabase";
 import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
+import DocumentJourney from "./DocumentJourney";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -398,29 +399,21 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           .bm-session-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "20px", flexWrap: "wrap" }}>
         <button onClick={onBack} style={{ background: "transparent", border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer" }}>
           ← Sessions
         </button>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: '0 0 auto' }}>
           <h2 style={{ fontFamily: "Georgia, serif", fontSize: "26px", fontWeight: "700", color: C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>{client.name}</h2>
           <p style={{ fontSize: "13px", color: C.gray, margin: 0 }}>
             <span style={{ fontWeight: 600, color: '#2A5741', marginRight: 8 }}>Session Record</span>
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
-          <button onClick={() => window.open("/brief/intake/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📝 Intake</button>
-          {aiEnabled && (
-            <button onClick={() => window.open("/brief/pre/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>🖨️ Pre-Session Brief</button>
-          )}
-
-          {aiEnabled && session.completed && <button onClick={() => window.open("/brief/post/" + session.id, "_blank")} style={{ background: C.forest, color: C.white, border: "none", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📋 Post-Session Brief</button>}
-
-          <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600" }}>
-            {session.completed ? "✓ Completed" : "⏳ Pending Review"}
-          </span>
-        </div>
+        <DocumentJourney session={session} aiEnabled={aiEnabled} />
+        <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600", alignSelf: 'center' }}>
+          {session.completed ? "✓ Completed" : "⏳ Pending Review"}
+        </span>
       </div>
 
       {medFlagValue && (
