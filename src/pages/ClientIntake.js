@@ -136,6 +136,16 @@ export default function ClientIntake() {
         custom_intake_answers: intakeData.customAnswers && Object.keys(intakeData.customAnswers).length > 0
           ? intakeData.customAnswers
           : null,
+        // Focus distribution (Lindsey #4 follow-up, May 10 2026).
+        // Nullable: client may not have reached the back-body screen
+        // (e.g. on an existing-client returning-flow), or may have
+        // not opted to set distribution. NULL means therapist sees
+        // no distribution constraint; the BodySVG heatmap is still
+        // available as a fallback signal.
+        front_pct:  intakeData.frontPct   ?? null,
+        top_pct:    intakeData.topPct     ?? null,
+        middle_pct: intakeData.middlePct  ?? null,
+        bottom_pct: intakeData.bottomPct  ?? null,
         completed: false
       });
 

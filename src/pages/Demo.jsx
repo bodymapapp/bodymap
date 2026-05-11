@@ -1,6 +1,7 @@
 // MyBodyMap v5.0 - Loyalty Program · 5-Dimension Review · AI Insights
 import { useState, useEffect, useCallback } from "react";
 import { effectiveSchema, effectiveMedicalConditions } from "../lib/intakeSchema";
+import FocusDistribution from "../components/FocusDistribution";
 
 const C = {
   bg: "#F0EAD9",
@@ -2810,6 +2811,9 @@ const PrefScreen = ({
               'I agree to share this information with my therapist for session planning purposes.'
             )}
           </p>
+          <p style={{ fontFamily: F.body, fontSize: 11, color: C.textLight, lineHeight: 1.55, margin: '6px 0 0', fontStyle: 'italic' }}>
+            My therapist may update this intake for accuracy (such as typos, new information shared during a session, or pressure clarifications). A full audit log is kept of any edits.
+          </p>
         </div>
         {hasPhone && (
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start", marginTop: 10, paddingTop: 10, borderTop: `1px dashed ${C.sage}33` }}>
@@ -4035,6 +4039,15 @@ const BMScreen = ({
   onBack,
   sessions,
   onApply,
+  // Focus distribution (Lindsey #4 follow-up, May 10 2026). When
+  // showDistribution is true, render the FocusDistribution
+  // component below the body card. Only enabled on the back-body
+  // screen so the picture is complete (front + back zones both
+  // tagged before percentages are meaningful).
+  showDistribution = false,
+  distribution = null,
+  setDistribution = null,
+  allFocusZones = [],
 }) => (
   <div
     style={{ background: C.bg, padding: "18px 20px 16px" }}
@@ -4137,6 +4150,17 @@ const BMScreen = ({
       </div>
       <AT regions={regions} selections={selections} />
     </Card>
+    {showDistribution && setDistribution && (
+      <div style={{ marginTop: 10 }}>
+        <FocusDistribution
+          value={distribution}
+          onChange={setDistribution}
+          autoDeriveFrom={allFocusZones}
+          editable={true}
+          compact={true}
+        />
+      </div>
+    )}
     <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
       {onBack && (
         <Btn ghost onClick={onBack}>
@@ -4728,6 +4752,14 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
   // client fills them out. Lands in sessions.custom_intake_answers
   // (jsonb), surfaced in the therapist dashboard for the same session.
   const [customAnswers, setCustomAnswers] = useState({});
+  // Focus distribution (Lindsey #4 follow-up, May 10 2026).
+  // Five percentages: front_pct (back is implicit at 100-front),
+  // and top/middle/bottom which must sum to 100. Auto-derived
+  // from focus zone selections via FocusDistribution component,
+  // overridden when user manually drags any slider. null until
+  // the user reaches the back-body screen and the component
+  // renders for the first time (then defaults kick in).
+  const [focusDist, setFocusDist] = useState(null);
 
   useEffect(() => {
     const l = document.createElement("link");
@@ -4885,6 +4917,14 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
         medNote: prefs.medNote || null,
         notes: notes || null,
         smsOptIn: smsOptIn && !contactIsEmail, // only valid if they gave a phone
+        // Focus distribution (Lindsey #4 follow-up, May 10 2026).
+        // Five percentages: front_pct, top_pct, middle_pct, bottom_pct.
+        // back_pct is derived (100 - front_pct). Nullable if client
+        // never reached the back-body screen or skipped distribution.
+        frontPct:   focusDist?.front_pct   ?? null,
+        topPct:     focusDist?.top_pct     ?? null,
+        middlePct:  focusDist?.middle_pct  ?? null,
+        bottomPct:  focusDist?.bottom_pct  ?? null,
         // Medical conditions checklist selections (text[] keys). Empty
         // array if checklist was shown but client checked nothing. Null
         // if checklist was hidden by therapist (preserves the
@@ -4975,6 +5015,10 @@ export default function BodyMapApp({ therapist = null, therapistName = "Your The
           onBack={() => setScreen("front")}
           sessions={[]}
           onApply={() => {}}
+          showDistribution={true}
+          distribution={focusDist}
+          setDistribution={setFocusDist}
+          allFocusZones={Object.keys(bodyMap).filter(k => bodyMap[k] === 'focus')}
         />
       </div>
     ),

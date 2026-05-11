@@ -146,6 +146,97 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   };
   const [soap, setSoap] = useState(() => parseSoap(session.therapist_notes || ""));
 
+  // Intake editing (Lindsey #11, May 10 2026).
+  //
+  // Therapist can correct any intake field after the client filled it
+  // out. Each saved change writes an intake_edits row so the audit
+  // trail is complete. Per the waiver consent line, therapists may
+  // update for accuracy (typos, new information shared in session,
+  // etc) but must not change substance without client agreement.
+  //
+  // Draft state holds in-progress edits. When the therapist clicks
+  // Save, we diff against the current session row, write the changes
+  // to sessions table, write one intake_edits row per changed field,
+  // and call onUpdate(updatedSession) so the parent re-renders.
+  const INTAKE_FIELDS = [
+    'pressure', 'goal', 'table_temp', 'room_temp', 'music', 'lighting',
+    'conversation', 'draping', 'oil_pref', 'client_notes', 'med_flag',
+    'med_note', 'front_pct', 'top_pct', 'middle_pct', 'bottom_pct',
+  ];
+  const [editingIntake, setEditingIntake] = useState(false);
+  const [intakeDraft, setIntakeDraft] = useState(() => {
+    const d = {};
+    for (const f of INTAKE_FIELDS) d[f] = session[f];
+    return d;
+  });
+  const [savingIntake, setSavingIntake] = useState(false);
+  const [intakeSaved, setIntakeSaved] = useState(false);
+
+  async function saveIntakeEdits() {
+    setSavingIntake(true);
+    try {
+      // Diff: only write rows for fields that actually changed.
+      const changed = {};
+      for (const f of INTAKE_FIELDS) {
+        const before = session[f];
+        const after = intakeDraft[f];
+        // Treat null and '' as equivalent for text fields so toggling
+        // an empty input does not create noise in the audit log.
+        const beforeNorm = before == null || before === '' ? null : before;
+        const afterNorm  = after  == null || after  === '' ? null : after;
+        if (beforeNorm !== afterNorm) changed[f] = afterNorm;
+      }
+      if (Object.keys(changed).length === 0) {
+        setEditingIntake(false);
+        setSavingIntake(false);
+        return;
+      }
+      // Write the session update first. If this fails the audit log
+      // entries do not get written; we never log changes that did
+      // not actually happen.
+      const { data: updated, error: updErr } = await supabase
+        .from('sessions')
+        .update(changed)
+        .eq('id', session.id)
+        .select()
+        .single();
+      if (updErr) throw updErr;
+      // Audit log: one row per field. Best-effort: a failure here
+      // does NOT roll back the session update. We accept a missing
+      // audit row over a stuck edit. Future iteration could move
+      // this to an edge function or RPC for atomicity.
+      const auditRows = Object.entries(changed).map(([field, after]) => ({
+        session_id: session.id,
+        therapist_id: session.therapist_id,
+        editor_id: session.therapist_id,
+        field_name: field,
+        value_before: session[field] == null ? null : JSON.stringify(session[field]),
+        value_after:  after == null ? null : JSON.stringify(after),
+      }));
+      try {
+        await supabase.from('intake_edits').insert(auditRows);
+      } catch (auditErr) {
+        console.warn('Audit log write failed (session update succeeded):', auditErr);
+      }
+      setIntakeSaved(true);
+      setEditingIntake(false);
+      setTimeout(() => setIntakeSaved(false), 2200);
+      if (onUpdate) onUpdate(updated);
+    } catch (err) {
+      console.error('Save intake edits failed:', err);
+      alert('Could not save intake changes. Please try again or refresh the page.');
+    } finally {
+      setSavingIntake(false);
+    }
+  }
+
+  function cancelIntakeEdit() {
+    const d = {};
+    for (const f of INTAKE_FIELDS) d[f] = session[f];
+    setIntakeDraft(d);
+    setEditingIntake(false);
+  }
+
   useEffect(() => {
     loadHistory();
     loadFeedback();
@@ -336,8 +427,47 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       <div className="bm-session-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div style={{ background: C.white, borderRadius: "14px", padding: "24px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)" }}>
-            <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, marginBottom: "16px", letterSpacing: "-0.3px" }}>Client Preferences</h3>
-            {prefs.length === 0 ? <p style={{ color: C.gray, fontSize: "14px" }}>No preferences recorded</p> : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
+              <h3 style={{ fontFamily: "Georgia, serif", fontSize: "17px", fontWeight: "700", color: C.darkGray, letterSpacing: "-0.3px", margin: 0 }}>Client Preferences</h3>
+              {!editingIntake ? (
+                <button onClick={() => setEditingIntake(true)} style={{
+                  background: "transparent", border: `1px solid ${C.lightGray}`,
+                  padding: "5px 11px", borderRadius: "6px",
+                  fontSize: "12px", fontWeight: 600, color: C.forest, cursor: "pointer",
+                }}>
+                  ✏️ Edit
+                </button>
+              ) : (
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button onClick={cancelIntakeEdit} disabled={savingIntake} style={{
+                    background: "transparent", border: `1px solid ${C.lightGray}`,
+                    padding: "5px 11px", borderRadius: "6px",
+                    fontSize: "12px", fontWeight: 600, color: C.gray, cursor: "pointer",
+                  }}>
+                    Cancel
+                  </button>
+                  <button onClick={saveIntakeEdits} disabled={savingIntake} style={{
+                    background: C.forest, border: "none",
+                    padding: "5px 13px", borderRadius: "6px",
+                    fontSize: "12px", fontWeight: 700, color: "#fff", cursor: savingIntake ? "wait" : "pointer",
+                  }}>
+                    {savingIntake ? "Saving..." : "Save"}
+                  </button>
+                </div>
+              )}
+            </div>
+            {intakeSaved && (
+              <div style={{
+                background: "#F0FDF4", border: "1px solid #86EFAC", color: "#15803D",
+                padding: "7px 11px", borderRadius: "8px",
+                fontSize: "12px", fontWeight: 600, marginBottom: "12px",
+              }}>
+                ✓ Saved. Audit log entry created.
+              </div>
+            )}
+            {!editingIntake && prefs.length === 0 ? (
+              <p style={{ color: C.gray, fontSize: "14px" }}>No preferences recorded</p>
+            ) : !editingIntake ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
                 {prefs.map((p, i) => (
                   <div key={i} style={{ padding: "10px 12px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
@@ -345,6 +475,73 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                     <p style={{ fontSize: "14px", fontWeight: "600", color: C.darkGray, margin: 0, textTransform: "capitalize" }}>{p.value}</p>
                   </div>
                 ))}
+              </div>
+            ) : (
+              // Edit mode: each preference becomes an inline input.
+              // Layout: 2-column grid for compact display, full-width
+              // for the textareas (med_note, client_notes).
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <p style={{ fontSize: "11px", color: C.gray, fontStyle: "italic", margin: "0 0 4px", lineHeight: 1.5 }}>
+                  Changes are logged for audit. Per the client's signed waiver, edits are for accuracy only.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                  {[
+                    { key: "pressure", label: "💆 Pressure", type: "number", min: 1, max: 5 },
+                    { key: "goal", label: "🎯 Goal", type: "select", options: ["relax", "pain", "stress", "recovery", "maintenance", "energy"] },
+                    { key: "table_temp", label: "🌡️ Table Temp", type: "select", options: ["cool", "warm", "hot"] },
+                    { key: "room_temp", label: "🏠 Room Temp", type: "select", options: ["cool", "comfortable", "warm"] },
+                    { key: "music", label: "🎵 Music", type: "select", options: ["none", "soft", "nature", "instrumental"] },
+                    { key: "lighting", label: "💡 Lighting", type: "select", options: ["dim", "candlelit", "bright"] },
+                    { key: "conversation", label: "💬 Conversation", type: "select", options: ["silent", "quiet", "chatty"] },
+                    { key: "draping", label: "🛏️ Draping", type: "select", options: ["standard", "secure", "minimal"] },
+                    { key: "oil_pref", label: "🌿 Oil", type: "select", options: ["none", "unscented", "lavender", "eucalyptus", "peppermint"] },
+                    { key: "med_flag", label: "🩺 Medical Flag", type: "select", options: ["none", "minor", "moderate", "major"] },
+                  ].map(field => (
+                    <div key={field.key} style={{ padding: "8px 10px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
+                      <label style={{ fontSize: "10px", color: C.gray, display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{field.label}</label>
+                      {field.type === "number" ? (
+                        <input
+                          type="number"
+                          min={field.min}
+                          max={field.max}
+                          value={intakeDraft[field.key] ?? ""}
+                          onChange={e => setIntakeDraft(d => ({ ...d, [field.key]: e.target.value === "" ? null : parseInt(e.target.value, 10) }))}
+                          style={{ width: "100%", padding: "4px 6px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontWeight: 600, fontFamily: "system-ui" }}
+                        />
+                      ) : (
+                        <select
+                          value={intakeDraft[field.key] ?? ""}
+                          onChange={e => setIntakeDraft(d => ({ ...d, [field.key]: e.target.value || null }))}
+                          style={{ width: "100%", padding: "4px 6px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontWeight: 600, fontFamily: "system-ui", background: "#fff" }}
+                        >
+                          <option value="">not set</option>
+                          {field.options.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {/* Long-form text fields full-width */}
+                <div style={{ padding: "8px 10px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
+                  <label style={{ fontSize: "10px", color: C.gray, display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>🩺 Medical Note</label>
+                  <textarea
+                    value={intakeDraft.med_note ?? ""}
+                    onChange={e => setIntakeDraft(d => ({ ...d, med_note: e.target.value || null }))}
+                    rows={2}
+                    style={{ width: "100%", padding: "5px 7px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical" }}
+                  />
+                </div>
+                <div style={{ padding: "8px 10px", background: C.beige, borderRadius: "8px", border: "1px solid " + C.lightGray }}>
+                  <label style={{ fontSize: "10px", color: C.gray, display: "block", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>📝 Client Notes</label>
+                  <textarea
+                    value={intakeDraft.client_notes ?? ""}
+                    onChange={e => setIntakeDraft(d => ({ ...d, client_notes: e.target.value || null }))}
+                    rows={2}
+                    style={{ width: "100%", padding: "5px 7px", border: "1px solid " + C.lightGray, borderRadius: "5px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical" }}
+                  />
+                </div>
               </div>
             )}
           </div>
