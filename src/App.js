@@ -45,6 +45,7 @@ import AdminFunnel from './pages/AdminFunnel';
 import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
 import PostSessionSummary from './pages/PostSessionSummary';
+import IntakeBrief from './pages/IntakeBrief';
 import GiftCardPrint from './pages/GiftCardPrint';
 import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
@@ -104,6 +105,7 @@ function App() {
           <Route path="/summary/:code" element={<CareSummary />} />
           <Route path="/brief/pre/:sessionId" element={<PreSessionBrief />} />
           <Route path="/brief/post/:sessionId" element={<PostSessionBrief />} />
+          <Route path="/brief/intake/:sessionId" element={<IntakeBrief />} />
           <Route path="/recap/:sessionId" element={<PostSessionSummary />} />
           <Route path="/gift-card/print/:id" element={<GiftCardPrint />} />
           <Route path="/onboarding" element={<Onboarding />} />

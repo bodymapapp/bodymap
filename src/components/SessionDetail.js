@@ -410,6 +410,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           </p>
         </div>
         <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          <button onClick={() => window.open("/brief/intake/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>📝 Intake</button>
           {aiEnabled && (
             <button onClick={() => window.open("/brief/pre/" + session.id, "_blank")} style={{ background: C.beige, border: "1.5px solid " + C.lightGray, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "13px", cursor: "pointer" }}>🖨️ Pre-Session Brief</button>
           )}

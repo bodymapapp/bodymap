@@ -14,6 +14,7 @@ import Footer from "../components/Footer";
 import HelpWidget from "../components/HelpWidget";
 import FeatureRibbon from "../components/FeatureRibbon";
 import FeatureModal from "../components/FeatureModal";
+import ThreeDotDocumentSystem from "../components/ThreeDotDocumentSystem";
 import {
   RIBBONS,
   TOTAL_FEATURES,
@@ -90,6 +91,9 @@ export default function FeaturesV2() {
       </header>
 
       <main className="bm-features-v2-body">
+        {/* The three-dot document system: core value prop above ribbons */}
+        <ThreeDotDocumentSystem variant="full" />
+
         {RIBBONS.map((ribbon) => (
           <FeatureRibbon
             key={ribbon.id}

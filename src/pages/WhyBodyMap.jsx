@@ -31,6 +31,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import ThreeDotDocumentSystem from "../components/ThreeDotDocumentSystem";
 import { photoForId } from "../data/featuresData";
 
 // ───────────────────────────────────────────────────────────────────────
@@ -217,6 +218,9 @@ export default function WhyBodyMap() {
           focus on what is on the table.
         </p>
       </header>
+
+      {/* The MyBodyMap document system, three dots one client journey */}
+      <ThreeDotDocumentSystem variant="full" />
 
       {/* Peace of Mind quadrant */}
       <section className="bm-why-v2-peace">
