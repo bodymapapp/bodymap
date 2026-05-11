@@ -46,6 +46,7 @@ import PreSessionBrief from './pages/PreSessionBrief';
 import PostSessionBrief from './pages/PostSessionBrief';
 import PostSessionSummary from './pages/PostSessionSummary';
 import IntakeBrief from './pages/IntakeBrief';
+import FounderSeedDemo from './pages/FounderSeedDemo';
 import GiftCardPrint from './pages/GiftCardPrint';
 import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
@@ -77,6 +78,7 @@ function App() {
               specifically; other authenticated therapists are redirected
               to /dashboard. */}
           <Route path="/founder" element={<FounderRoute><FounderHub /></FounderRoute>} />
+          <Route path="/founder/seed-demo" element={<FounderRoute><FounderSeedDemo /></FounderRoute>} />
           <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />

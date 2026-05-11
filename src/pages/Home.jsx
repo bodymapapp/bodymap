@@ -18,7 +18,6 @@ import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import HelpWidget from "../components/HelpWidget";
-import ThreeDotDocumentSystem from "../components/ThreeDotDocumentSystem";
 
 // Interactive product demos (extracted from legacy Features.jsx)
 import BookingDemo from "../components/demos/BookingDemo";
@@ -383,9 +382,6 @@ export default function Home() {
           </p>
         </div>
       </section>
-
-      {/* Three-dot document system, the core MyBodyMap value prop */}
-      <ThreeDotDocumentSystem variant="full" />
 
       {/* ── 7 PRODUCT RIBBONS ────────────────────────────────────────── */}
       <main className="bm-home-ribbons">
