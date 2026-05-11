@@ -55,14 +55,6 @@ export default function IntakeBrief() {
     return v !== null && v !== undefined && v !== '' && !(typeof v === 'string' && /^(no|none|n\/a)$/i.test(v.trim()));
   });
 
-  const hasBands = session.front_pct != null || session.top_pct != null || session.middle_pct != null || session.bottom_pct != null;
-  const bands = hasBands ? [
-    { label: 'Front', pct: session.front_pct },
-    { label: 'Top', pct: session.top_pct },
-    { label: 'Mid', pct: session.middle_pct },
-    { label: 'Bot', pct: session.bottom_pct },
-  ].filter(b => b.pct != null) : [];
-
   // ── Section 03: Their answers (compact)
   const section03 = {
     title: 'Their answers',
@@ -108,40 +100,21 @@ export default function IntakeBrief() {
             background: T.redBg, border: `1px solid ${T.red}40`,
             borderLeft: `3px solid ${T.red}`,
             borderRadius: 6, padding: '7px 10px',
-            marginBottom: conditions.length > 0 || bands.length > 0 ? 8 : 0,
+            marginBottom: conditions.length > 0 ? 8 : 0,
           }}>
             <div style={{ fontSize: 9, fontWeight: 700, color: T.red, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 3 }}>Medical note</div>
             <div style={{ fontSize: 11.5, color: T.redInk, fontWeight: 500, lineHeight: 1.45 }}>{session.med_note}</div>
           </div>
         )}
         {conditions.length > 0 && (
-          <div style={{ marginBottom: bands.length > 0 ? 8 : 0 }}>
+          <div>
             <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>Conditions checked</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
               {conditions.map((c, i) => <Pill key={i} color={T.redInk} bg={T.redBg}>{c}</Pill>)}
             </div>
           </div>
         )}
-        {bands.length > 0 && (
-          <div>
-            <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>Focus distribution</div>
-            <div style={{ display: 'flex', height: 14, borderRadius: 7, overflow: 'hidden', border: `1px solid ${T.lineFaint}` }}>
-              {bands.map((b, i) => (
-                <div key={i} style={{
-                  flex: b.pct,
-                  background: i % 2 === 0 ? T.sage : T.gold,
-                  position: 'relative',
-                }} title={`${b.label}: ${b.pct}%`} />
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 9.5, color: T.inkSoft }}>
-              {bands.map((b, i) => (
-                <span key={i}><strong style={{ color: T.forest }}>{b.pct}%</strong> {b.label}</span>
-              ))}
-            </div>
-          </div>
-        )}
-        {!session.med_note && conditions.length === 0 && bands.length === 0 && (
+        {!session.med_note && conditions.length === 0 && (
           <div style={{ fontSize: 11.5, color: T.inkSoft, fontStyle: 'italic' }}>Nothing to review before the session.</div>
         )}
       </div>

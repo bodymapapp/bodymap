@@ -106,6 +106,94 @@ export function Card({ children, style = {}, accent, className }) {
   );
 }
 
+// Distribution bars: front/back and top/middle/bottom percentages
+// as two stacked horizontal bars. Shows where on the body the
+// client wants focus today. Renders in Section 01 of every doc
+// so all four documents have a consistent body axes visual.
+export function DistributionBars({ session }) {
+  const hasFrontBack = session.front_pct != null;
+  const topPct = session.top_pct || 0;
+  const middlePct = session.middle_pct || 0;
+  const bottomPct = session.bottom_pct || 0;
+  const hasBands = topPct > 0 || middlePct > 0 || bottomPct > 0;
+
+  if (!hasFrontBack && !hasBands) return null;
+
+  const frontPct = session.front_pct;
+  const backPct = hasFrontBack ? 100 - frontPct : 0;
+
+  const SegmentLabel = ({ pct, color, position = 'left' }) => (
+    <span style={{
+      position: 'absolute', top: 0, [position]: 6,
+      fontSize: 9, color: 'white', fontWeight: 700,
+      lineHeight: '14px', letterSpacing: '0.2px',
+      textShadow: '0 1px 0 rgba(0,0,0,0.15)',
+    }}>{pct}%</span>
+  );
+
+  return (
+    <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${T.lineFaint}` }}>
+      <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5, textAlign: 'center' }}>
+        Focus distribution
+      </div>
+
+      {/* Front/Back bar */}
+      {hasFrontBack && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: hasBands ? 5 : 0 }}>
+          <span style={{ fontSize: 8.5, color: T.inkSoft, fontWeight: 600, width: 32, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Front</span>
+          <div style={{ flex: 1, height: 14, display: 'flex', borderRadius: 7, overflow: 'hidden', border: `1px solid ${T.lineFaint}`, position: 'relative' }}>
+            {frontPct > 0 && (
+              <div style={{ width: frontPct + '%', background: T.sage, position: 'relative' }}>
+                {frontPct >= 15 && <SegmentLabel pct={frontPct} position="left" />}
+              </div>
+            )}
+            {backPct > 0 && (
+              <div style={{ width: backPct + '%', background: T.gold, position: 'relative' }}>
+                {backPct >= 15 && <SegmentLabel pct={backPct} position="right" />}
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize: 8.5, color: T.inkSoft, fontWeight: 600, width: 28, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Back</span>
+        </div>
+      )}
+
+      {/* Top/Middle/Bottom bar */}
+      {hasBands && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 8.5, color: T.inkSoft, fontWeight: 600, width: 32, textAlign: 'right', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Top</span>
+          <div style={{ flex: 1, height: 14, display: 'flex', borderRadius: 7, overflow: 'hidden', border: `1px solid ${T.lineFaint}`, position: 'relative' }}>
+            {topPct > 0 && (
+              <div style={{ width: topPct + '%', background: T.sage, position: 'relative' }}>
+                {topPct >= 15 && <SegmentLabel pct={topPct} position="left" />}
+              </div>
+            )}
+            {middlePct > 0 && (
+              <div style={{ width: middlePct + '%', background: T.gold, position: 'relative' }}>
+                {middlePct >= 15 && <SegmentLabel pct={middlePct} position="left" />}
+              </div>
+            )}
+            {bottomPct > 0 && (
+              <div style={{ width: bottomPct + '%', background: T.forest, position: 'relative' }}>
+                {bottomPct >= 15 && <SegmentLabel pct={bottomPct} position="right" />}
+              </div>
+            )}
+          </div>
+          <span style={{ fontSize: 8.5, color: T.inkSoft, fontWeight: 600, width: 28, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bot</span>
+        </div>
+      )}
+
+      {/* Legend below bars */}
+      {hasBands && (
+        <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: 4, fontSize: 9, color: T.inkSoft }}>
+          {topPct > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, background: T.sage, borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Top {topPct}%</span>}
+          {middlePct > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, background: T.gold, borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Middle {middlePct}%</span>}
+          {bottomPct > 0 && <span><span style={{ display: 'inline-block', width: 8, height: 8, background: T.forest, borderRadius: 2, marginRight: 3, verticalAlign: 'middle' }} />Bottom {bottomPct}%</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ────────────────── Body sub-renders ──────────────────
 
 function SectionOneBody({ docAccent, session, cumulativeHeatmap, bodyDisplay }) {
@@ -168,6 +256,7 @@ function SectionOneBody({ docAccent, session, cumulativeHeatmap, bodyDisplay }) 
             </div>
           </div>
         </div>
+        <DistributionBars session={session} />
       </Card>
     );
   }
@@ -205,6 +294,7 @@ function SectionOneBody({ docAccent, session, cumulativeHeatmap, bodyDisplay }) 
           Number inside each dot = visits flagged
         </div>
       )}
+      <DistributionBars session={session} />
     </Card>
   );
 }
