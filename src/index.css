@@ -49,12 +49,13 @@ code {
 html { background: var(--bm-cream); }
 
 * { box-sizing: border-box; }
-/* Use overflow-x: clip to prevent horizontal scroll without creating
-   a nested scroll container. overflow-x: hidden implicitly forces
-   overflow-y: auto on the same element, which nests scroll containers
-   on html+body and breaks wheel scrolling in Chrome. `clip` clips
-   visually without affecting scroll behavior. Chrome 90+, all modern. */
-body { overflow-x: clip; }
+/* Defensive horizontal overflow: hidden universally, upgraded to clip
+   on browsers that support it. Never on html. See "ANDROID SCROLL FIX"
+   block below for full diagnosis. */
+body { overflow-x: hidden; }
+@supports (overflow-x: clip) {
+  body { overflow-x: clip; }
+}
 
 /* Tab bar — consistent across Schedule, Billing, etc. Hide scrollbar on all platforms. */
 .bm-tabbar { scrollbar-width: none !important; }
@@ -186,9 +187,14 @@ body { overflow-x: clip; }
 /* ── HOME PAGE MOBILE (≤640px) ── */
 @media (max-width: 640px) {
 
-  /* Prevent ALL horizontal overflow site-wide. overflow-x: clip avoids
-     creating a nested scroll container (hidden would). */
-  html, body { overflow-x: clip !important; max-width: 100vw !important; }
+  /* Defensive horizontal overflow prevention on mobile.
+     Critical: do NOT set overflow on html. Some Android browsers
+     lock vertical scroll when html has any overflow value. */
+  html, body { max-width: 100vw !important; }
+  body { overflow-x: hidden !important; }
+  @supports (overflow-x: clip) {
+    body { overflow-x: clip !important; }
+  }
   * { max-width: 100%; }
 
   /* Hero: stack columns, hide decorative circle */
@@ -437,13 +443,35 @@ body { overflow-x: clip; }
 }
 
 /* ── GLOBAL OVERFLOW PREVENTION ── */
-/* overflow-x: clip prevents horizontal scroll without creating a scroll
-   container. Using `hidden` instead would force the browser to make
-   overflow-y: auto implicit, creating nested scrollers on html+body,
-   which breaks wheel scrolling in Chrome on tall pages. */
-html { overflow-x: clip !important; }
-body { overflow-x: clip !important; max-width: 100vw !important; }
-section { overflow-x: clip !important; }
+/* CRITICAL: Android scroll-lock fix (May 2026, Jiny report).
+   Previously this block used `overflow-x: clip` on html, body, AND section
+   with !important. On Android Chrome and Samsung Internet, setting any
+   overflow value on the html element can create a viewport-level clipping
+   context that interacts badly with nested section clips, locking vertical
+   scroll across the whole site. iPhone Safari uses body as the viewport
+   scroller so it was unaffected.
+
+   Defensive approach:
+   1. Do not set overflow on html. Let it remain the viewport scroller.
+   2. Use overflow-x: hidden on body (universal support, predictable).
+   3. Upgrade body to overflow-x: clip via @supports for modern browsers
+      that benefit from clip (no nested scroll container).
+   4. Drop the blanket `section` rule entirely. Sections that need clipping
+      can opt in individually.
+   5. Defensive overflow-y: visible on html so vertical scroll can never
+      be blocked even if some other rule leaks. */
+html {
+  overflow-y: visible;
+  width: 100%;
+}
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+  overflow-y: visible;
+}
+@supports (overflow-x: clip) {
+  body { overflow-x: clip; }
+}
 
 /* Features large 2-col sections */
 @media (max-width: 768px) {
