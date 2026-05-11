@@ -495,4 +495,141 @@ fully working.
 
 ---
 
-## 3. (placeholder for future blocked items)
+## 3. Edit button on SessionDetail not visible (May 10 2026 commit 339cfcac)
+
+**Status.** Code shipped, but HK does not see the button. URL
+verified to be `view="session-detail"` so the SessionDetail
+component IS rendering. Edit button code is at
+`src/components/SessionDetail.js` line ~432-439, inside the
+Client Preferences card, gated on `!editingIntake` which starts
+false. No visibility condition should be hiding it.
+
+**Possibilities, ranked.**
+
+1. Vercel build hadn't propagated when HK tested. Hard refresh
+   in incognito on the exact URL HK shared should resolve. Try
+   first.
+2. There is a second SessionDetail-like component elsewhere
+   that the route is actually rendering. Search for
+   `view="session-detail"` consumers and trace.
+3. My str_replace landed in a code branch that's not reached
+   (e.g. there's a conditional that switches between two render
+   paths and I edited the wrong one). Diff the file at line
+   ~430 against what I committed in 339cfcac to confirm.
+4. CSS is hiding it (overflow clipping at small viewports).
+   Inspect the rendered DOM in browser devtools, search for
+   '✏️ Edit' text, see if the element exists but is
+   visually-hidden.
+
+**Reproduction URL:**
+https://www.mybodymap.app/dashboard/clients/1565eac6-ceff-4e81-a038-82fe5e8299c6/sessions/3b07f57d-7e94-432c-a2b5-779c14faad1b
+
+Open in incognito after Vercel cache clears (about 90s after
+the most recent push). Look for "Client Preferences" card on
+the left column. Top-right of that card should show the Edit
+button.
+
+**Diagnostic if still not visible:**
+
+Open browser devtools console on the URL above, paste:
+```
+document.body.innerText.includes('✏️ Edit')
+```
+- Returns true: button exists in DOM, CSS issue.
+- Returns false: render bug, my edit did not land. Re-deploy or
+  re-apply the edit at SessionDetail.js line 432.
+
+---
+
+## 4. Slider redesign + intake flow improvements (HK May 10 2026 feedback)
+
+**Why blocked.** The FocusDistribution component shipped in
+commit 339cfcac works mechanically but HK rejected the design.
+Specific feedback:
+
+- Sliders look like one more thing slapped on at the bottom.
+  Should be next to the body image on top of the page, not
+  below the body card.
+- Percentage numbers on the right (the "20%" labels) should be
+  EDITABLE. Client should be able to type a value directly on
+  top of the number to override the slider position. Currently
+  numbers are display-only.
+- Wants the sliders visually attached to the body, like
+  pointing at it. Suggestion: dotted lines from each band slider
+  to the corresponding zone on the body image.
+- No back button on the Preferences screen. Client cannot
+  return to front-body or back-body screens to fix a tap. They
+  have to start over. Bad persona UX (70-year-old will tap
+  wrong zone, then quit).
+- No auto-save anywhere in the intake flow. If the client
+  drops off mid-form, the work is lost. Wants all selections
+  persisted continuously so resuming picks up where they left.
+
+**Realistic scope estimate.**
+
+- Slider redesign with editable number inputs and side-by-body
+  placement with dotted connector lines: 2-3 hours of focused
+  design and HTML/SVG work. Mobile viewport is tight (~380px)
+  so the geometry has to be exact.
+- Back button on Preferences: 30 min. Add an onBack prop to
+  the preferences screen, render the same back button pattern
+  used on the body screens, hook to setScreen('back').
+- Auto-save: this is bigger than it sounds. Touches every
+  state setter in the intake flow. Two approaches:
+    (a) debounced save on every state change, writing partial
+        sessions row via upsert. Requires schema rework since
+        client_id might not exist yet.
+    (b) localStorage draft, restored on page load. Simpler,
+        avoids partial DB writes. Probably the right answer.
+  Estimate: 1-2 hours with approach (b), 4-6 hours with (a).
+
+**Combined session estimate.** 4-6 hours for a focused
+redesign session covering all three items.
+
+**When to revisit.** Next focused session, after the Edit
+button visibility issue (entry 3 above) is confirmed resolved.
+
+---
+
+## 5. Card-on-file not detected for returning clients
+
+**Why blocked.** HK reports that after booking 5+ times with
+the same name, phone, and email, the booking page still
+prompts for a card every time. It should detect the existing
+saved card on the clients row and skip the prompt, or show
+"card already on file" with the last 4 digits.
+
+Also reports the Client Card view in the Clients tab does not
+show whether a card is on file for that client. Same root
+cause likely.
+
+**Where the bug lives.**
+
+`src/pages/BookingPage.js` line 767 has `isRepeatClient`
+detection. Line 778+ has the card-on-file capture flow.
+Somewhere between detecting the returning client and rendering
+the booking summary, the "skip the card-prompt if
+payment_method_id exists" branch is missing or broken.
+
+`src/components/ClientList.js` and the client detail view do
+not surface payment_method_id status. Add a green chip or
+similar UI that says "Card on file · ending 4242" when set,
+nothing when not.
+
+**Realistic scope estimate.**
+
+- BookingPage card-on-file detection + skip-prompt: 1 hour
+  including correct handling of expired cards and cards on a
+  different processor than the therapist's current one.
+- ClientList / client detail card-on-file indicator: 30 min.
+
+**Total ~1.5 hours.** Customer-facing so high priority for
+next session.
+
+**When to revisit.** Top priority for next session, before
+the slider redesign. This bug affects real customer
+experience right now.
+
+---
+
+## 6. (placeholder for future blocked items)
