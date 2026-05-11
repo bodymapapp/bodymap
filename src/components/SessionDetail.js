@@ -1,6 +1,7 @@
 // src/components/SessionDetail.js
 import React, { useState, useEffect, useMemo } from "react";
 import { db, supabase } from "../lib/supabase";
+import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -140,9 +141,16 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const parseSoap = (raw) => {
     try {
       const p = JSON.parse(raw);
-      if (p && p.__soap) return p;
+      if (p && p.__soap) return {
+        __soap: true,
+        S: p.S || "", O: p.O || "", A: p.A || "", P: p.P || "",
+        noteToClient: p.noteToClient || "",
+        aftercare: Array.isArray(p.aftercare) ? p.aftercare : [],
+        aftercareCustom: p.aftercareCustom || "",
+        legacy: p.legacy || "",
+      };
     } catch(e) {}
-    return { __soap: true, S: "", O: "", A: "", P: "", legacy: raw };
+    return { __soap: true, S: "", O: "", A: "", P: "", noteToClient: "", aftercare: [], aftercareCustom: "", legacy: raw };
   };
   const [soap, setSoap] = useState(() => parseSoap(session.therapist_notes || ""));
 
@@ -712,7 +720,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* SOAP Tab */}
           {soapTab === "soap" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes, private to you, never shared with clients.</p>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes. S, O, A, and P are private clinical fields. Note to Client and Aftercare are sent to the client in their post-session summary.</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }} className="bm-session-grid">
                 {[
                   { key: "S", label: "S, Subjective", hint: "What the client reports: pain level, area, sensation, changes since last visit..." },
@@ -731,6 +739,65 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                   </div>
                 ))}
               </div>
+
+              {/* Fifth field: Note to Client. Saved to publicNotes column AND mirrored into soap.noteToClient. */}
+              <div style={{ marginBottom: "20px", paddingTop: "16px", borderTop: "1px solid " + C.lightGray }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: C.darkGray, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  💌 Note to Client
+                  <span style={{ marginLeft: 8, fontWeight: 500, color: C.gray, textTransform: "none", letterSpacing: 0 }}>(appears in their summary, tap the mic on your keyboard to dictate)</span>
+                </label>
+                <textarea
+                  value={publicNotes}
+                  onChange={e => setPublicNotes(e.target.value)}
+                  placeholder="A warm note for your client. Example: 'Loved having you today, your shoulder felt much looser by the end. Try a few minutes of the neck rolls we talked about this week.'"
+                  style={{ width: "100%", minHeight: "90px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                />
+              </div>
+
+              {/* Aftercare checklist. Saved into soap.aftercare and soap.aftercareCustom. */}
+              <div style={{ marginBottom: "20px", paddingTop: "16px", borderTop: "1px solid " + C.lightGray }}>
+                <label style={{ fontSize: "12px", fontWeight: 700, color: C.darkGray, display: "block", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  🌿 Aftercare for Client
+                  <span style={{ marginLeft: 8, fontWeight: 500, color: C.gray, textTransform: "none", letterSpacing: 0 }}>(tap to include in their summary)</span>
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "12px" }} className="bm-session-grid">
+                  {AFTERCARE_PRESETS.map(item => {
+                    const checked = (soap.aftercare || []).includes(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setSoap(s => {
+                          const cur = Array.isArray(s.aftercare) ? s.aftercare : [];
+                          const next = cur.includes(item.id) ? cur.filter(x => x !== item.id) : [...cur, item.id];
+                          return { ...s, aftercare: next };
+                        })}
+                        style={{
+                          background: checked ? C.sage + "20" : C.beige,
+                          border: "1.5px solid " + (checked ? C.sage : C.lightGray),
+                          color: checked ? C.forest : C.darkGray,
+                          padding: "10px 12px", borderRadius: "8px",
+                          fontSize: "13px", fontWeight: checked ? 600 : 500,
+                          cursor: "pointer", textAlign: "left",
+                          fontFamily: "system-ui", display: "flex", gap: "8px", alignItems: "flex-start",
+                          transition: "all 0.15s",
+                        }}>
+                        <span style={{ flexShrink: 0, width: 18, height: 18, borderRadius: 4, border: "1.5px solid " + (checked ? C.sage : C.gray), background: checked ? C.sage : "transparent", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 700 }}>
+                          {checked ? "✓" : ""}
+                        </span>
+                        <span style={{ flex: 1, lineHeight: 1.4 }}>{item.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <textarea
+                  value={soap.aftercareCustom || ""}
+                  onChange={e => setSoap(s => ({ ...s, aftercareCustom: e.target.value }))}
+                  placeholder="Anything specific to this client (optional, e.g. 'Ice the right hamstring for 10 minutes tonight')"
+                  style={{ width: "100%", minHeight: "60px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                />
+              </div>
+
               {soap.legacy && (
                 <div style={{ background: "#FFFBEB", border: "1px solid #FDE68A", borderRadius: "8px", padding: "10px 14px", marginBottom: "12px", fontSize: "12px", color: "#92400E" }}>
                   Previous note: {soap.legacy}

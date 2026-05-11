@@ -9,10 +9,35 @@
 // noise. A pattern only earns space if it could change what a
 // therapist does in the next 90 minutes.
 
+// ---------- Aftercare presets ----------
+//
+// Standard items most massage therapists recommend after most
+// sessions. The therapist toggles which apply for this client.
+// IDs are stable and used as keys in the SOAP json's aftercare
+// array. Labels are what the client sees on their summary.
+
+export const AFTERCARE_PRESETS = [
+  { id: 'hydrate', label: 'Drink plenty of water today' },
+  { id: 'rest', label: 'Take it easy for the rest of the day' },
+  { id: 'no-strenuous', label: 'Avoid strenuous exercise for 24 hours' },
+  { id: 'epsom-bath', label: 'A warm Epsom salt bath can help' },
+  { id: 'gentle-stretch', label: 'Do some gentle stretching tonight' },
+  { id: 'ice', label: 'Apply ice if you feel any soreness' },
+  { id: 'heat', label: 'Apply heat to help muscles relax' },
+  { id: 'no-alcohol', label: 'Avoid alcohol for 24 hours' },
+];
+
+export function getAftercareItems(soap) {
+  if (!soap || !Array.isArray(soap.aftercare)) return [];
+  return soap.aftercare
+    .map(id => AFTERCARE_PRESETS.find(p => p.id === id))
+    .filter(Boolean);
+}
+
 // ---------- SOAP parsing ----------
 
 export function parseSoap(raw) {
-  if (!raw) return { __soap: true, S: '', O: '', A: '', P: '', noteToClient: '', legacy: '' };
+  if (!raw) return { __soap: true, S: '', O: '', A: '', P: '', noteToClient: '', aftercare: [], aftercareCustom: '', legacy: '' };
   try {
     const p = JSON.parse(raw);
     if (p && p.__soap) {
@@ -23,16 +48,18 @@ export function parseSoap(raw) {
         A: p.A || '',
         P: p.P || '',
         noteToClient: p.noteToClient || '',
+        aftercare: Array.isArray(p.aftercare) ? p.aftercare : [],
+        aftercareCustom: p.aftercareCustom || '',
         legacy: p.legacy || '',
       };
     }
   } catch (e) { /* fall through */ }
-  return { __soap: true, S: '', O: '', A: '', P: '', noteToClient: '', legacy: raw };
+  return { __soap: true, S: '', O: '', A: '', P: '', noteToClient: '', aftercare: [], aftercareCustom: '', legacy: raw };
 }
 
 export function hasSoapContent(soap) {
   if (!soap) return false;
-  return !!(soap.S || soap.O || soap.A || soap.P || soap.noteToClient || soap.legacy);
+  return !!(soap.S || soap.O || soap.A || soap.P || soap.noteToClient || soap.legacy || (Array.isArray(soap.aftercare) && soap.aftercare.length > 0) || soap.aftercareCustom);
 }
 
 // ---------- Session history helpers ----------
