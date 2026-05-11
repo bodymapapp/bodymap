@@ -196,9 +196,9 @@ export const DEMO_SESSIONS = [
     completed_at: dateBack(28),
 
     front_focus: ['f-head', 'f-neck', 'f-r-shldr'],
-    front_avoid: [],
+    front_avoid: ['f-l-forearm'],
     back_focus: ['b-head', 'b-neck', 'b-r-shldr', 'b-upper-bk'],
-    back_avoid: [],
+    back_avoid: ['b-l-forearm'],
 
     pressure: 3,
     goal: 'therapeutic',
@@ -219,7 +219,7 @@ export const DEMO_SESSIONS = [
       'What brings you in today?': 'Had three headaches this past week, want to address my neck and see if that helps. Lower back is better.',
     },
 
-    client_notes: 'Three tension headaches this week, mostly evenings. Neck feels tight. Lower back has improved a lot since last visit.',
+    client_notes: 'Three tension headaches this week, mostly evenings. Neck feels tight. Lower back has improved a lot since last visit. Skip my left forearm please, I have a small bruise from a yoga fall.',
 
     front_pct: 35, top_pct: 60, middle_pct: 25, bottom_pct: 15,
 
@@ -244,7 +244,7 @@ export const DEMO_SESSIONS = [
     completed_at: dateBack(14),
 
     front_focus: ['f-head', 'f-neck', 'f-r-shldr'],
-    front_avoid: [],
+    front_avoid: ['f-l-forearm'],
     back_focus: ['b-neck', 'b-r-shldr', 'b-upper-bk', 'b-mid-bk'],
     back_avoid: [],
 

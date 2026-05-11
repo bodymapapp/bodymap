@@ -1,16 +1,8 @@
 // src/pages/PreSessionBrief.js
 //
-// Dot 2 of 3: pre-session brief. Uses shared DocumentLayout.
-//
-// Section 01: On the body (cumulative heatmap, 5-visit aggregate)
-// Section 02: Today's request (today's marks + pills)
-// Section 03: Intelligence layer (patterns + what changed + last plan
-//             + pressure trend sparkline)
-// Section 04: Visit context (cadence stats + preferences strip)
-//
-// The heatmap on Section 01 shows numbers IN the dots so the
-// reader instantly sees "R shoulder, 5 of 5 visits" rather than
-// counting badges.
+// Dot 2 of 3: Pre-session brief. Split body so the therapist sees
+// the cumulative pattern (heatmap with numbers in dots) alongside
+// today's specific request.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -26,8 +18,7 @@ import {
   getPriorSessions,
 } from '../lib/sessionIntelligence';
 
-// Small sparkline for pressure trend
-function Sparkline({ values, color = T.sage, width = 110, height = 30 }) {
+function Sparkline({ values, color = T.sage, width = 100, height = 26 }) {
   if (!values || values.length < 2) return null;
   const min = Math.min(...values);
   const max = Math.max(...values);
@@ -35,7 +26,7 @@ function Sparkline({ values, color = T.sage, width = 110, height = 30 }) {
   const stepX = width / (values.length - 1);
   const points = values.map((v, i) => {
     const x = i * stepX;
-    const y = height - ((v - min) / range) * (height - 8) - 4;
+    const y = height - ((v - min) / range) * (height - 6) - 3;
     return [x, y];
   });
   const pathD = points.map(([x, y], i) => (i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`)).join(' ');
@@ -51,8 +42,8 @@ function Sparkline({ values, color = T.sage, width = 110, height = 30 }) {
 
 function InsightRow({ children, accent = T.sage }) {
   return (
-    <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.5, paddingLeft: 12, position: 'relative' }}>
-      <span style={{ position: 'absolute', left: 0, top: 7, width: 5, height: 5, borderRadius: 3, background: accent }} />
+    <div style={{ fontSize: 11.5, color: T.ink, lineHeight: 1.45, paddingLeft: 11, position: 'relative' }}>
+      <span style={{ position: 'absolute', left: 0, top: 6, width: 5, height: 5, borderRadius: 3, background: accent }} />
       {children}
     </div>
   );
@@ -93,93 +84,63 @@ export default function PreSessionBrief() {
     };
   }, [data]);
 
-  if (loading) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: T.serif, color: T.inkSoft, background: T.cream }}>Loading brief...</div>;
-  }
-  if (!data) {
-    return <div style={{ padding: 40, fontFamily: T.serif, background: T.cream, minHeight: '100vh' }}>Session not found.</div>;
-  }
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: T.serif, color: T.inkSoft, background: T.cream }}>Loading...</div>;
+  if (!data) return <div style={{ padding: 40, fontFamily: T.serif, background: T.cream, minHeight: '100vh' }}>Session not found.</div>;
 
   const { session, client, therapist } = data;
 
-  // ── Section 03: Intelligence layer
+  // ── Section 03: Intelligence
   const section03 = {
     title: 'Intelligence',
-    sub: 'What we know after every past visit',
+    sub: 'Patterns, change, and last plan',
     content: (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        {/* Left column: changes + last plan */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-          {intel.changes.length > 0 && (
-            <div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>What's different today</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {intel.changes.slice(0, 4).map((c, i) => <InsightRow key={i} accent={T.gold}>{c.text}</InsightRow>)}
-              </div>
+      <div>
+        {intel.changes.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>What's different today</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {intel.changes.slice(0, 3).map((c, i) => <InsightRow key={i} accent={T.gold}>{c.text}</InsightRow>)}
             </div>
-          )}
-
-          {intel.lastPlan && intel.lastPlan.plan && (
-            <div style={{
-              background: T.goldBg, borderRadius: 8,
-              padding: '8px 12px', borderLeft: `3px solid ${T.gold}`,
-            }}>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: '#92660E', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>
-                Plan from last visit · {intel.lastPlan.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </div>
-              <div style={{ fontSize: 11.5, color: T.ink, lineHeight: 1.5, fontFamily: T.serif, fontStyle: 'italic' }}>
-                "{intel.lastPlan.plan.length > 240 ? intel.lastPlan.plan.slice(0, 237) + '...' : intel.lastPlan.plan}"
-              </div>
+          </div>
+        )}
+        {intel.patterns.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>Patterns we've learned</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {intel.patterns.slice(0, 3).map((p, i) => <InsightRow key={i} accent={p.severity === 'high' ? T.gold : T.sage}>{p.text}</InsightRow>)}
             </div>
-          )}
-        </div>
-
-        {/* Right column: patterns + pressure trend */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-
-          {intel.patterns.length > 0 && (
-            <div>
-              <div style={{ fontSize: 9.5, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>Patterns we've learned</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {intel.patterns.slice(0, 4).map((p, i) => (
-                  <InsightRow key={i} accent={p.severity === 'high' ? T.gold : T.sage}>{p.text}</InsightRow>
-                ))}
-              </div>
+          </div>
+        )}
+        {intel.lastPlan && intel.lastPlan.plan && (
+          <div style={{
+            background: T.goldBg, borderRadius: 7,
+            padding: '7px 10px', borderLeft: `3px solid ${T.gold}`,
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: '#92660E', textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 3 }}>
+              Plan from last visit · {intel.lastPlan.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
             </div>
-          )}
-
-          {intel.pressureSeries.length >= 2 && (
-            <div style={{
-              background: T.cream, borderRadius: 8,
-              padding: '8px 12px',
-              display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 2 }}>Pressure trend</div>
-                <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.3, fontWeight: 600 }}>
-                  {intel.pressureSeries[0]}/5 → {intel.pressureSeries[intel.pressureSeries.length - 1]}/5
-                  <span style={{ color: T.inkSoft, fontWeight: 400, marginLeft: 4, fontSize: 10.5 }}>across {intel.pressureSeries.length} visits</span>
-                </div>
-              </div>
-              <Sparkline values={intel.pressureSeries} />
+            <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.45, fontFamily: T.serif, fontStyle: 'italic' }}>
+              "{intel.lastPlan.plan.length > 200 ? intel.lastPlan.plan.slice(0, 197) + '...' : intel.lastPlan.plan}"
             </div>
-          )}
-        </div>
+          </div>
+        )}
+        {intel.changes.length === 0 && intel.patterns.length === 0 && !intel.lastPlan && (
+          <div style={{ fontSize: 11, color: T.inkSoft, fontStyle: 'italic' }}>
+            Not enough history yet to surface intelligence.
+          </div>
+        )}
       </div>
     ),
   };
 
-  // ── Section 04: Visit context + preferences strip
+  // ── Section 04: Visit context (stats + preferences strip + pressure trend)
   const prefs = [
     session.pressure && { label: 'Pressure', val: `${session.pressure}/5` },
     session.goal && { label: 'Goal', val: session.goal },
     session.music && { label: 'Music', val: session.music },
     session.lighting && { label: 'Lighting', val: session.lighting },
-    session.conversation && { label: 'Conversation', val: session.conversation },
-    session.table_temp && { label: 'Table temp', val: session.table_temp },
-    session.room_temp && { label: 'Room temp', val: session.room_temp },
-    session.draping && { label: 'Draping', val: session.draping },
+    session.conversation && { label: 'Conv', val: session.conversation },
+    session.table_temp && { label: 'Table', val: session.table_temp },
   ].filter(Boolean);
 
   const section04 = {
@@ -187,34 +148,43 @@ export default function PreSessionBrief() {
     sub: `${intel.heatmap.count + 1} sessions on file`,
     content: (
       <div>
-        {/* Stats row */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5, marginBottom: 8 }}>
           {[
-            { label: 'Last seen', value: intel.cadence.daysSinceLast !== null ? `${intel.cadence.daysSinceLast}d` : 'first' },
-            { label: 'Avg cadence', value: intel.cadence.avgDays ? `${intel.cadence.avgDays}d` : 'n/a' },
-            { label: 'Visit number', value: intel.cadence.isFirstVisit ? '1st' : `#${intel.cadence.visitNumber}` },
-            { label: 'Status', value: intel.cadence.isOverdue ? 'Overdue' : intel.cadence.isFirstVisit ? 'New' : 'On track' },
+            { label: 'Last seen', value: intel.cadence.daysSinceLast !== null ? `${intel.cadence.daysSinceLast}d` : 'new' },
+            { label: 'Cadence', value: intel.cadence.avgDays ? `${intel.cadence.avgDays}d` : 'n/a' },
+            { label: 'Visit', value: intel.cadence.isFirstVisit ? '1st' : `#${intel.cadence.visitNumber}` },
+            { label: 'Status', value: intel.cadence.isOverdue ? 'Late' : intel.cadence.isFirstVisit ? 'New' : 'Ok' },
           ].map((s, i) => (
-            <div key={i} style={{
-              flex: 1, padding: '8px 10px',
-              background: T.cream, borderRadius: 8,
-              borderLeft: `2px solid ${T.sage}`,
-            }}>
-              <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{s.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: T.forest, fontFamily: T.serif, lineHeight: 1.1, marginTop: 1, letterSpacing: '-0.2px' }}>{s.value}</div>
+            <div key={i} style={{ padding: '6px 8px', background: T.cream, borderRadius: 7, borderLeft: `2px solid ${T.sage}` }}>
+              <div style={{ fontSize: 8.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{s.label}</div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: T.forest, fontFamily: T.serif, lineHeight: 1.1, marginTop: 1 }}>{s.value}</div>
             </div>
           ))}
         </div>
-
-        {/* Preferences */}
+        {intel.pressureSeries.length >= 2 && (
+          <div style={{
+            background: T.cream, borderRadius: 7,
+            padding: '6px 10px', marginBottom: 8,
+            display: 'flex', alignItems: 'center', gap: 10,
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px' }}>Pressure trend</div>
+              <div style={{ fontSize: 11.5, color: T.ink, lineHeight: 1.3, fontWeight: 600 }}>
+                {intel.pressureSeries[0]}/5 → {intel.pressureSeries[intel.pressureSeries.length - 1]}/5
+                <span style={{ color: T.inkSoft, fontWeight: 400, marginLeft: 3, fontSize: 10 }}>({intel.pressureSeries.length} visits)</span>
+              </div>
+            </div>
+            <Sparkline values={intel.pressureSeries} />
+          </div>
+        )}
         {prefs.length > 0 && (
           <div>
-            <div style={{ fontSize: 9.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>Today's preferences</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>Preferences</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
               {prefs.map((p, i) => (
-                <div key={i} style={{ background: T.cream, borderRadius: 6, padding: '5px 9px' }}>
-                  <div style={{ fontSize: 8.5, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{p.label}</div>
-                  <div style={{ fontSize: 11.5, fontWeight: 600, color: T.forest, textTransform: 'capitalize' }}>{p.val}</div>
+                <div key={i} style={{ background: T.cream, borderRadius: 5, padding: '4px 8px' }}>
+                  <div style={{ fontSize: 8, fontWeight: 700, color: T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{p.label}</div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, color: T.forest, textTransform: 'capitalize' }}>{p.val}</div>
                 </div>
               ))}
             </div>
@@ -236,9 +206,10 @@ export default function PreSessionBrief() {
       isFirstVisit={intel.cadence.isFirstVisit}
       isOverdue={intel.cadence.isOverdue}
       cumulativeHeatmap={intel.heatmap}
-      showHeatmap={intel.heatmap.count > 0}
+      bodyDisplay="split"
       section03={section03}
       section04={section04}
+      section04FullWidth
     />
   );
 }

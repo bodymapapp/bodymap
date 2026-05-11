@@ -1,11 +1,9 @@
 // src/pages/PostSessionBrief.js
 //
-// Dot 3 of 3 (therapist record). Uses shared DocumentLayout.
-//
-// Section 01: On the body (today's marks, what got worked)
-// Section 02: Today's request
-// Section 03: SOAP (S/O/A as compact grid, P highlighted, note to client)
-// Section 04: Aftercare sent + Pattern update
+// Dot 3a: Post-session therapist record. Split body (pattern + today)
+// in Section 01 per HK request, so the therapist sees today in
+// context of all visits. SOAP gets the prominent Section 03 slot
+// next to Today's request.
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -17,24 +15,25 @@ import {
   deriveCadence,
   deriveChanges,
   derivePatterns,
+  aggregateHeatmap,
   getLastCompletedSession,
   AFTERCARE_PRESETS,
 } from '../lib/sessionIntelligence';
 
 const AFTERCARE_MAP = Object.fromEntries(AFTERCARE_PRESETS.map(p => [p.id, p.label]));
 
-function SoapCell({ letter, label, body, accent = T.lineFaint, highlight = false }) {
+function SoapCell({ letter, label, body, highlight = false }) {
   return (
     <div style={{
       background: highlight ? T.sageBg : T.cream,
-      borderRadius: 8, padding: '8px 10px',
-      borderLeft: `3px solid ${highlight ? T.sage : accent}`,
+      borderRadius: 6, padding: '6px 9px',
+      borderLeft: `3px solid ${highlight ? T.sage : T.lineFaint}`,
     }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 3 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: T.forest, fontFamily: T.serif, letterSpacing: '-0.2px' }}>{letter}</span>
-        <span style={{ fontSize: 9.5, fontWeight: 700, color: highlight ? T.sage : T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{label}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 5, marginBottom: 2 }}>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: T.forest, fontFamily: T.serif, letterSpacing: '-0.2px' }}>{letter}</span>
+        <span style={{ fontSize: 8.5, fontWeight: 700, color: highlight ? T.sage : T.inkSoft, textTransform: 'uppercase', letterSpacing: '0.6px' }}>{label}</span>
       </div>
-      <div style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, whiteSpace: 'pre-wrap' }}>{body}</div>
+      <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.4, whiteSpace: 'pre-wrap' }}>{body}</div>
     </div>
   );
 }
@@ -66,15 +65,12 @@ export default function PostSessionBrief() {
       cadence: deriveCadence(history, session.id),
       changes: deriveChanges(session, lastSession),
       patterns: derivePatterns(history, session.id),
+      heatmap: aggregateHeatmap(history, session.id, 6),
     };
   }, [data]);
 
-  if (loading) {
-    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: T.serif, color: T.inkSoft, background: T.cream }}>Loading record...</div>;
-  }
-  if (!data) {
-    return <div style={{ padding: 40, fontFamily: T.serif, background: T.cream, minHeight: '100vh' }}>Session not found.</div>;
-  }
+  if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: T.serif, color: T.inkSoft, background: T.cream }}>Loading...</div>;
+  if (!data) return <div style={{ padding: 40, fontFamily: T.serif, background: T.cream, minHeight: '100vh' }}>Session not found.</div>;
 
   const { session, client, therapist } = data;
   const summaryUrl = `${window.location.origin}/recap/${session.id}`;
@@ -82,33 +78,23 @@ export default function PostSessionBrief() {
   const aftercare = Array.isArray(intel.soap.aftercare) ? intel.soap.aftercare : [];
   const aftercareCustom = intel.soap.aftercareCustom || '';
 
-  // ── Section 03: SOAP
+  // ── Section 03: SOAP (sits next to Section 02 in split mode)
   const section03 = {
     title: 'SOAP notes',
-    sub: soapHasContent ? 'Clinical record · drives the next visit' : 'Not yet filled in',
+    sub: soapHasContent ? 'Clinical record' : 'Not yet filled in',
     accent: T.forest,
     content: soapHasContent ? (
       <div>
-        {/* S/O/A in 3-col grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 8 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginBottom: 6 }}>
           {intel.soap.S && <SoapCell letter="S" label="Subjective" body={intel.soap.S} />}
           {intel.soap.O && <SoapCell letter="O" label="Objective" body={intel.soap.O} />}
           {intel.soap.A && <SoapCell letter="A" label="Assessment" body={intel.soap.A} />}
+          {intel.soap.P && <SoapCell letter="P" label="Plan · drives next visit" body={intel.soap.P} highlight />}
         </div>
-
-        {/* P highlighted, full width */}
-        {intel.soap.P && <SoapCell letter="P" label="Plan · drives next visit" body={intel.soap.P} highlight />}
-
-        {/* Note to client echo */}
         {intel.soap.noteToClient && (
-          <div style={{
-            marginTop: 10, paddingTop: 8,
-            borderTop: `1px solid ${T.lineFaint}`,
-          }}>
-            <div style={{ fontSize: 9.5, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 4 }}>
-              Note you sent the client
-            </div>
-            <div style={{ fontSize: 12.5, color: T.ink, lineHeight: 1.5, fontStyle: 'italic', fontFamily: T.serif }}>
+          <div style={{ paddingTop: 6, borderTop: `1px solid ${T.lineFaint}` }}>
+            <div style={{ fontSize: 8.5, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 2 }}>Note sent to client</div>
+            <div style={{ fontSize: 11, color: T.ink, lineHeight: 1.4, fontStyle: 'italic', fontFamily: T.serif }}>
               "{intel.soap.noteToClient}"
             </div>
           </div>
@@ -117,62 +103,57 @@ export default function PostSessionBrief() {
     ) : (
       <div style={{
         background: '#FFFBEB', border: '1px solid #FDE68A',
-        borderRadius: 8, padding: '10px 12px',
-        fontSize: 12.5, color: '#92400E', lineHeight: 1.5,
+        borderRadius: 6, padding: '8px 10px',
+        fontSize: 11.5, color: '#92400E', lineHeight: 1.5,
       }}>
-        Open this session in the dashboard, complete your S/O/A/P, and mark it complete. The client recap is held until you do.
+        Open this session in the dashboard, complete your S/O/A/P, and mark complete. The client recap is held until you do.
       </div>
     ),
   };
 
-  // ── Section 04: Aftercare sent + Pattern update (side-by-side)
+  // ── Section 04: Aftercare + Pattern update side by side (since 04 is full width in split)
   const section04 = {
     title: 'Aftercare and patterns',
-    sub: `${aftercare.length} aftercare items${intel.patterns.length > 0 ? ` · ${intel.patterns.length} pattern${intel.patterns.length === 1 ? '' : 's'} confirmed` : ''}`,
+    sub: `${aftercare.length} aftercare${intel.patterns.length > 0 ? ` · ${intel.patterns.length} pattern${intel.patterns.length === 1 ? '' : 's'}` : ''}`,
     content: (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-
-        {/* Aftercare echo */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {/* Aftercare */}
         <div>
-          <div style={{ fontSize: 9.5, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>
-            Aftercare you sent
-          </div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: T.sage, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>Aftercare sent</div>
           {(aftercare.length > 0 || aftercareCustom) ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
               {aftercare.map((id, i) => (
-                <div key={i} style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, paddingLeft: 16, position: 'relative' }}>
-                  <span style={{ position: 'absolute', left: 0, top: 3, color: T.sage, fontWeight: 800, fontSize: 12 }}>✓</span>
+                <div key={i} style={{ fontSize: 11, color: T.ink, lineHeight: 1.4, paddingLeft: 14, position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: 0, top: 2, color: T.sage, fontWeight: 800, fontSize: 11 }}>✓</span>
                   {AFTERCARE_MAP[id] || id}
                 </div>
               ))}
               {aftercareCustom && (
                 <div style={{
-                  fontSize: 12, color: T.ink, lineHeight: 1.45,
-                  paddingLeft: 16, position: 'relative', fontStyle: 'italic',
-                  marginTop: aftercare.length > 0 ? 4 : 0,
-                  paddingTop: aftercare.length > 0 ? 6 : 0,
+                  fontSize: 11, color: T.ink, lineHeight: 1.4,
+                  paddingLeft: 14, position: 'relative', fontStyle: 'italic',
+                  marginTop: aftercare.length > 0 ? 2 : 0,
+                  paddingTop: aftercare.length > 0 ? 4 : 0,
                   borderTop: aftercare.length > 0 ? `1px solid ${T.lineFaint}` : 'none',
                 }}>
-                  <span style={{ position: 'absolute', left: 0, top: aftercare.length > 0 ? 9 : 3, color: T.gold, fontWeight: 800, fontSize: 12 }}>★</span>
+                  <span style={{ position: 'absolute', left: 0, top: aftercare.length > 0 ? 7 : 2, color: T.gold, fontWeight: 800, fontSize: 11 }}>★</span>
                   {aftercareCustom}
                 </div>
               )}
             </div>
           ) : (
-            <div style={{ fontSize: 12, color: T.inkSoft, fontStyle: 'italic' }}>Nothing sent yet. Add on the SOAP tab.</div>
+            <div style={{ fontSize: 11, color: T.inkSoft, fontStyle: 'italic' }}>Nothing sent yet. Add on the SOAP tab.</div>
           )}
         </div>
 
-        {/* Pattern update + changes */}
+        {/* Patterns + changes */}
         <div>
-          <div style={{ fontSize: 9.5, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 6 }}>
-            What today added to the record
-          </div>
+          <div style={{ fontSize: 9, fontWeight: 700, color: T.gold, textTransform: 'uppercase', letterSpacing: '0.7px', marginBottom: 5 }}>What today added</div>
           {intel.changes.length > 0 && (
-            <div style={{ marginBottom: intel.patterns.length > 0 ? 8 : 0 }}>
+            <div style={{ marginBottom: intel.patterns.length > 0 ? 6 : 0 }}>
               {intel.changes.slice(0, 2).map((c, i) => (
-                <div key={i} style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, paddingLeft: 12, position: 'relative', marginBottom: 3 }}>
-                  <span style={{ position: 'absolute', left: 0, top: 6, width: 4, height: 4, borderRadius: 2, background: T.gold }} />
+                <div key={i} style={{ fontSize: 11, color: T.ink, lineHeight: 1.4, paddingLeft: 10, position: 'relative', marginBottom: 2 }}>
+                  <span style={{ position: 'absolute', left: 0, top: 5, width: 4, height: 4, borderRadius: 2, background: T.gold }} />
                   {c.text}
                 </div>
               ))}
@@ -181,9 +162,9 @@ export default function PostSessionBrief() {
           {intel.patterns.length > 0 && (
             <div>
               {intel.patterns.slice(0, 3).map((p, i) => (
-                <div key={i} style={{ fontSize: 12, color: T.ink, lineHeight: 1.45, paddingLeft: 12, position: 'relative', marginBottom: 3 }}>
+                <div key={i} style={{ fontSize: 11, color: T.ink, lineHeight: 1.4, paddingLeft: 10, position: 'relative', marginBottom: 2 }}>
                   <span style={{
-                    position: 'absolute', left: 0, top: 6, width: 4, height: 4, borderRadius: 2,
+                    position: 'absolute', left: 0, top: 5, width: 4, height: 4, borderRadius: 2,
                     background: p.severity === 'high' ? T.gold : T.sage,
                   }} />
                   {p.text}
@@ -192,9 +173,7 @@ export default function PostSessionBrief() {
             </div>
           )}
           {intel.changes.length === 0 && intel.patterns.length === 0 && (
-            <div style={{ fontSize: 12, color: T.inkSoft, fontStyle: 'italic' }}>
-              Not enough history to surface patterns yet.
-            </div>
+            <div style={{ fontSize: 11, color: T.inkSoft, fontStyle: 'italic' }}>Not enough history yet.</div>
           )}
         </div>
       </div>
@@ -212,17 +191,17 @@ export default function PostSessionBrief() {
       visitNumber={intel.cadence.visitNumber}
       isFirstVisit={intel.cadence.isFirstVisit}
       isOverdue={intel.cadence.isOverdue}
+      cumulativeHeatmap={intel.heatmap}
+      bodyDisplay="split"
       section03={section03}
       section04={section04}
       toolbarExtras={
-        <button
-          onClick={() => window.open(summaryUrl, '_blank')}
-          style={{
-            background: 'transparent', color: 'white',
-            border: '1px solid rgba(255,255,255,0.4)',
-            padding: '6px 13px', borderRadius: 8,
-            fontWeight: 600, fontSize: 12, cursor: 'pointer',
-          }}>View client recap →</button>
+        <button onClick={() => window.open(summaryUrl, '_blank')} style={{
+          background: 'transparent', color: 'white',
+          border: '1px solid rgba(255,255,255,0.4)',
+          padding: '5px 11px', borderRadius: 7,
+          fontWeight: 600, fontSize: 11.5, cursor: 'pointer',
+        }}>View recap →</button>
       }
     />
   );
