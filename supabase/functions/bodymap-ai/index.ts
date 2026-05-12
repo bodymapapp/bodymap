@@ -32,6 +32,80 @@ const corsHeaders = {
 };
 
 const MONTHLY_QUESTION_LIMIT = 10;
+const MONTHLY_DRAFT_LIMIT = 30;
+
+// Draft-note mode generates short text for two specific therapist fields.
+// 'private' = clinical shorthand for the therapist's own record
+// 'client'  = warm 2-3 sentence message that mirrors the recap tone
+function buildDraftSystemPrompt(kind: "private" | "client"): string {
+  const common = `Style rules:
+- No em dashes anywhere. Use periods, commas, parentheses, or middots instead.
+- Always use "MyBodyMap" not "BodyMap".
+- No buzzwords (synergy, leverage, ecosystem, best-in-class, game-changer).
+- 10th grade reading level.
+- Do not invent facts not present in the session data provided.
+- If the SOAP fields are empty, base your draft only on intake data and what areas were worked.`;
+
+  if (kind === "private") {
+    return `You are drafting PRIVATE clinical notes for a solo licensed massage therapist's own record. The therapist will read this, edit, and save. Clients NEVER see this text.
+
+Goal: a short, factual, clinically useful note (50 to 90 words) that captures what happened in today's session and what to remember for next time. Think of it as a quick journal entry for the therapist, not a SOAP note (SOAP is a separate field).
+
+Output format:
+- 1 or 2 short paragraphs, no headers, no bullet points.
+- Include: client's stated focus today, what response the body had (tissue, breath, mood), and 1 to 2 specific things to remember for the next visit.
+- Do NOT include client name or pronouns like "the client", just write directly ("worked R shoulder, holding tension at..." style).
+- Do NOT include warmth, reassurance, or aftercare advice. Those belong in the client-facing message.
+
+${common}`;
+  }
+
+  return `You are drafting a WARM, brief message from a massage therapist to their client. The therapist will read your draft, edit, and send. The client receives this in their post-session summary on MyBodyMap.
+
+Goal: 2 to 3 sentences (40 to 70 words) that feel personal and human. The client should feel seen, encouraged about progress, and gently nudged toward consistency.
+
+Output format:
+- Plain sentences, no greeting line ("Hi Sarah,") and no signature ("from Jane"). The platform adds the therapist name automatically.
+- Reference 1 specific thing from today (a focus area, a shift you noticed, an improvement they mentioned). Specificity beats generic warmth.
+- End with a forward-looking line. Examples: "see you in two weeks", "stretch those shoulders this week", "rest well tonight".
+- Tone: warm professional, not gushing. The therapist is a trusted practitioner, not a friend.
+
+${common}`;
+}
+
+// Build the user message that gives the model the session context
+// it needs to draft a useful note. Kept short to control tokens.
+function buildDraftUserMessage(sessionData: any, kind: "private" | "client"): string {
+  const s = sessionData.session || {};
+  const c = sessionData.client || {};
+  const soap = sessionData.soap || {};
+  const lastVisit = sessionData.lastVisit || null;
+  const firstName = (c.name || "").split(" ")[0] || "client";
+
+  const focusFront = (s.front_focus || []).join(", ");
+  const focusBack = (s.back_focus || []).join(", ");
+  const allFocus = [focusFront, focusBack].filter(Boolean).join("; ") || "(no specific areas)";
+  const avoid = [...(s.front_avoid || []), ...(s.back_avoid || [])].join(", ") || "(none)";
+
+  const soapText = [
+    soap.S ? `S: ${soap.S}` : "",
+    soap.O ? `O: ${soap.O}` : "",
+    soap.A ? `A: ${soap.A}` : "",
+    soap.P ? `P: ${soap.P}` : "",
+  ].filter(Boolean).join("\n");
+
+  const lines = [
+    `Today's session for ${firstName}.`,
+    `Pressure: ${s.pressure || "n/a"}/5. Goal: ${s.goal || "n/a"}.`,
+    `Focus areas: ${allFocus}.`,
+    `Avoid: ${avoid}.`,
+    s.client_notes ? `Client's words: "${s.client_notes}"` : "",
+    soapText ? `Therapist's SOAP notes today:\n${soapText}` : "Therapist SOAP not yet filled in.",
+    lastVisit ? `Last visit (${lastVisit.daysAgo} days ago): pressure ${lastVisit.pressure || "n/a"}/5, focus ${lastVisit.focus || "n/a"}.` : "First visit on record.",
+  ].filter(Boolean).join("\n");
+
+  return `Draft a ${kind === "private" ? "private clinical" : "warm client-facing"} note based on this session:\n\n${lines}`;
+}
 
 // Public mode is a marketing demo, light scope-locked prompt.
 const publicSystemPrompt = `You are the MyBodyMap Practice Assistant, demonstrated on the marketing site. You only answer questions about massage therapy practice management, the MyBodyMap product, and adjacent professional topics like client retention, scheduling, and pricing for solo licensed massage therapists.
@@ -86,7 +160,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, context, mode } = await req.json();
+    const { messages, context, mode, sessionData, kind } = await req.json();
     const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
 
     if (!ANTHROPIC_API_KEY) {
@@ -160,8 +234,98 @@ serve(async (req) => {
     const therapistId = therapistRow.id;
     const yearMonth = currentYearMonth();
 
-    // Read current usage. Row may not exist yet for first question
-    // of the month.
+    // ────────────────── DRAFT-NOTE MODE ──────────────────
+    // Generates a short note for the therapist to edit and save. Uses
+    // a separate rate limit table (ai_drafts_monthly) so drafting
+    // doesn't eat into the Practice Assistant question budget.
+    if (mode === "draft-note") {
+      const draftKind: "private" | "client" = kind === "client" ? "client" : "private";
+
+      if (!sessionData || !sessionData.session) {
+        return new Response(JSON.stringify({ error: "Missing session data for draft" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Read current draft usage
+      const { data: draftUsageRow } = await supabase
+        .from("ai_drafts_monthly")
+        .select("draft_count")
+        .eq("therapist_id", therapistId)
+        .eq("year_month", yearMonth)
+        .maybeSingle();
+
+      const currentDraftCount = draftUsageRow?.draft_count ?? 0;
+
+      if (currentDraftCount >= MONTHLY_DRAFT_LIMIT) {
+        return new Response(JSON.stringify({
+          error: "monthly_limit_reached",
+          message: `You have reached this month's limit of ${MONTHLY_DRAFT_LIMIT} AI drafts. Resets on the 1st.`,
+          drafts_used: currentDraftCount,
+          drafts_limit: MONTHLY_DRAFT_LIMIT,
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const draftUserMsg = buildDraftUserMessage(sessionData, draftKind);
+      const draftSystem = buildDraftSystemPrompt(draftKind);
+
+      const draftResponse = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-haiku-4-5-20251001",
+          max_tokens: 250,
+          system: draftSystem,
+          messages: [{ role: "user", content: draftUserMsg }],
+        }),
+      });
+
+      if (!draftResponse.ok) {
+        const errText = await draftResponse.text();
+        return new Response(JSON.stringify({
+          error: "Anthropic API error",
+          details: errText,
+        }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const draftData = await draftResponse.json();
+      const draftText = (draftData?.content?.[0]?.text || "").trim();
+
+      // Increment draft counter on success
+      await supabase
+        .from("ai_drafts_monthly")
+        .upsert({
+          therapist_id: therapistId,
+          year_month: yearMonth,
+          draft_count: currentDraftCount + 1,
+          last_draft_at: new Date().toISOString(),
+        }, { onConflict: "therapist_id,year_month" });
+
+      return new Response(JSON.stringify({
+        draft: draftText,
+        kind: draftKind,
+        usage_meta: {
+          drafts_used: currentDraftCount + 1,
+          drafts_limit: MONTHLY_DRAFT_LIMIT,
+          drafts_remaining: MONTHLY_DRAFT_LIMIT - (currentDraftCount + 1),
+        },
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ────────────────── PRACTICE MODE ──────────────────
     const { data: usageRow } = await supabase
       .from("ai_usage_monthly")
       .select("question_count")

@@ -156,6 +156,104 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     }, 50);
   };
 
+  // AI draft state for Private Notes and Message to Client.
+  // draftingKind: null | 'private' | 'client' (which textarea is loading)
+  // draftError: null | string (error message shown briefly after failure)
+  // draftsRemaining: null | number (monthly cap counter, populated after first call)
+  const [draftingKind, setDraftingKind] = useState(null);
+  const [draftError, setDraftError] = useState(null);
+  const [draftsRemaining, setDraftsRemaining] = useState(null);
+
+  // Generate an AI draft for the given field. The function is unstyled
+  // until ai_enabled is on for the therapist, so we don't need to
+  // double-check that here.
+  const draftWithAI = async (kind) => {
+    if (draftingKind) return;
+
+    const currentValue = kind === "private" ? notes : publicNotes;
+    if (currentValue && currentValue.trim().length > 0) {
+      const ok = window.confirm(
+        kind === "private"
+          ? "This will replace your existing private notes with an AI draft. You can edit before saving. Continue?"
+          : "This will replace your existing message to the client with an AI draft. You can edit before saving. Continue?"
+      );
+      if (!ok) return;
+    }
+
+    setDraftingKind(kind);
+    setDraftError(null);
+
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error("Not signed in");
+
+      // Build a compact session payload. Server expects: session, client,
+      // soap (today's SOAP if any), lastVisit (light summary).
+      const lastCompleted = (history || []).find(h => h.id !== session.id && h.completed);
+      const lastVisit = lastCompleted ? {
+        daysAgo: Math.round((new Date(session.created_at) - new Date(lastCompleted.created_at)) / (1000 * 60 * 60 * 24)),
+        pressure: lastCompleted.pressure,
+        focus: [
+          ...(lastCompleted.front_focus || []),
+          ...(lastCompleted.back_focus || []),
+        ].slice(0, 4).join(", "),
+      } : null;
+
+      const sessionData = {
+        session: {
+          pressure: session.pressure,
+          goal: session.goal,
+          front_focus: session.front_focus,
+          back_focus: session.back_focus,
+          front_avoid: session.front_avoid,
+          back_avoid: session.back_avoid,
+          client_notes: session.client_notes,
+        },
+        client: { name: client.name },
+        soap: { S: soap.S, O: soap.O, A: soap.A, P: soap.P },
+        lastVisit,
+      };
+
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/bodymap-ai`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${authSession.access_token}`,
+        },
+        body: JSON.stringify({
+          mode: "draft-note",
+          kind,
+          sessionData,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          setDraftError(data.message || "Monthly draft limit reached.");
+        } else {
+          setDraftError(data.error || "Could not generate draft. Try again.");
+        }
+        setDraftingKind(null);
+        setTimeout(() => setDraftError(null), 5500);
+        return;
+      }
+
+      if (data.usage_meta) setDraftsRemaining(data.usage_meta.drafts_remaining);
+      const text = data.draft || "";
+
+      if (kind === "private") setNotes(text);
+      else setPublicNotes(text);
+    } catch (err) {
+      setDraftError(err.message || "Could not generate draft. Try again.");
+      setTimeout(() => setDraftError(null), 5500);
+    } finally {
+      setDraftingKind(null);
+    }
+  };
+
   // Visual cue for therapist input: fields are soft rose while empty
   // (call to action), transition to neutral cream once filled. Gives
   // the therapist a clear "here's where I type" signal at a glance.
@@ -911,7 +1009,31 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* Private Notes Tab */}
           {soapTab === "notes" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>🔒 Private, only visible to you, never shared with clients.</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
+                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>🔒 Private, only visible to you, never shared with clients.</p>
+                {aiEnabled && (
+                  <button onClick={() => draftWithAI("private")} disabled={!!draftingKind}
+                    style={{
+                      background: draftingKind === "private" ? "#E5DAFC" : "#F5F0FE",
+                      border: "1.5px solid #C4B5FD",
+                      color: "#6D28D9",
+                      padding: "6px 12px", borderRadius: "20px",
+                      fontSize: "12px", fontWeight: 700,
+                      cursor: draftingKind ? "wait" : "pointer",
+                      whiteSpace: "nowrap", flexShrink: 0,
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}>
+                    {draftingKind === "private" ? "✨ Drafting..." : (
+                      <>✨ Draft with AI{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
+                    )}
+                  </button>
+                )}
+              </div>
+              {draftError && draftingKind === null && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 6, padding: "7px 10px", fontSize: 12, marginBottom: 8 }}>
+                  {draftError}
+                </div>
+              )}
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
                 style={{ ...therapistInputStyle(notes), minHeight: "160px", padding: "12px", fontSize: "14px", fontFamily: "Georgia, serif" }}
               />
@@ -933,7 +1055,31 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* Message to Client Tab */}
           {soapTab === "client" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>💌 Appears on the Post-Session Brief you share with your client.</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
+                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>💌 Appears on the Post-Session Brief you share with your client.</p>
+                {aiEnabled && (
+                  <button onClick={() => draftWithAI("client")} disabled={!!draftingKind}
+                    style={{
+                      background: draftingKind === "client" ? "#E5DAFC" : "#F5F0FE",
+                      border: "1.5px solid #C4B5FD",
+                      color: "#6D28D9",
+                      padding: "6px 12px", borderRadius: "20px",
+                      fontSize: "12px", fontWeight: 700,
+                      cursor: draftingKind ? "wait" : "pointer",
+                      whiteSpace: "nowrap", flexShrink: 0,
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}>
+                    {draftingKind === "client" ? "✨ Drafting..." : (
+                      <>✨ Draft with AI{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
+                    )}
+                  </button>
+                )}
+              </div>
+              {draftError && draftingKind === null && (
+                <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", color: "#991B1B", borderRadius: 6, padding: "7px 10px", fontSize: 12, marginBottom: 8 }}>
+                  {draftError}
+                </div>
+              )}
               <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
                 style={{ ...therapistInputStyle(publicNotes), minHeight: "160px", padding: "12px", fontSize: "14px", fontFamily: "Georgia, serif" }}
               />
