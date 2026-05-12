@@ -73,13 +73,17 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
       className={`bm-journey-dot${pressed ? ' bm-dot-pressed' : ''}`}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        background: 'transparent', border: 'none',
+        background: C.white,
+        border: `1px solid ${isCurrent ? C.gold : C.lineFaint}`,
         cursor: isLocked ? 'not-allowed' : 'pointer',
-        padding: 0, gap: 7,
-        minWidth: 60,
+        padding: '8px 6px',
+        gap: 7,
+        minWidth: 70,
         position: 'relative', zIndex: 2,
+        borderRadius: 12,
+        boxShadow: isCurrent ? `0 2px 8px ${C.goldBg}` : '0 1px 2px rgba(28,43,34,0.04)',
       }}
-      aria-label={`${label} - ${statusText}`}
+      aria-label={`${label}, ${statusText}, tap to open document`}
     >
       <div style={{
         width: 40, height: 40, borderRadius: '50%',
@@ -146,26 +150,6 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
             textTransform: 'uppercase', letterSpacing: '0.7px',
             marginTop: 1,
           }}>{statusText}</div>
-        )}
-        {/* Explicit "tap to open" mini-pill on every clickable dot.
-            70-year-old persona needs the affordance ON the dot, not
-            in a hint above. Pill matches the dot's state color so it
-            reads as part of the same UI element. */}
-        {!isLocked && (
-          <div style={{
-            marginTop: 4,
-            fontSize: 8.5, fontWeight: 700,
-            color: isDone ? C.sage : isCurrent ? C.goldDeep : C.inkSoft,
-            background: isDone ? C.sageBg : isCurrent ? C.goldBg : '#F5F0E8',
-            border: `1px solid ${isDone ? C.sage : isCurrent ? C.gold : C.lineFaint}`,
-            padding: '2px 7px',
-            borderRadius: 999,
-            letterSpacing: '0.3px',
-            whiteSpace: 'nowrap',
-            lineHeight: 1.3,
-          }}>
-            TAP TO OPEN
-          </div>
         )}
       </div>
     </button>
@@ -371,7 +355,7 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           .bm-journey-dot > div:first-child { width: 44px !important; height: 44px !important; font-size: 16px !important; }
         }
       `}</style>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
         <div style={{
           fontSize: 10, fontWeight: 700, color: C.goldDeep,
           textTransform: 'uppercase', letterSpacing: '1.4px',
@@ -382,17 +366,6 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           {completed ? 'All four documents complete' : 'Tap any step to view'}
         </div>
       </div>
-      {/* Explicit affordance: small one-liner under the header so the
-          70-year-old persona sees that the circles are interactive,
-          not status indicators. */}
-      {!completed && (
-        <div style={{
-          fontSize: 11, color: C.forest, fontWeight: 500,
-          marginBottom: 8, textAlign: 'center',
-        }}>
-          Tap a circle below to open that document
-        </div>
-      )}
       <div className="bm-journey-row">
         {states.map((state, i) => (
           <React.Fragment key={state.n}>

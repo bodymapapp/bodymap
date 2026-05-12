@@ -523,9 +523,13 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
 
         {/* Header. iOS pattern: title on the left, prominent 'Done'
             button on the right. The 70-year-old persona reads English
-            words, not X icons, so we lead with plain text. */}
+            words, not X icons, so we lead with plain text.
+            paddingTop respects the iOS safe-area-inset so the Done
+            button sits below the status bar in standalone PWA mode. */}
         <div style={{
-          background: C.forest, padding: '10px 14px',
+          background: C.forest,
+          padding: '10px 14px',
+          paddingTop: 'calc(10px + env(safe-area-inset-top, 0px))',
           display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0,
         }}>
@@ -613,10 +617,13 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           </div>
           {/* Inline Back button at the end of the doc, OUTSIDE bodyRef
               so it does not appear in the captured image or PDF. Sits
-              on the cream background, full-width comfortable tap. */}
+              on the cream background, full-width comfortable tap.
+              paddingBottom adds the iOS home-indicator inset so the
+              button is never partly under the bottom bar. */}
           <div style={{
             display: 'flex', justifyContent: 'center',
             padding: '8px 16px 24px',
+            paddingBottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
           }}>
             <button
               onClick={onClose}
