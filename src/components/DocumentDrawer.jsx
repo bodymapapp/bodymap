@@ -521,33 +521,39 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           outline: 'none',
         }}>
 
-        {/* Header */}
+        {/* Header. iOS pattern: title on the left, prominent 'Done'
+            button on the right. The 70-year-old persona reads English
+            words, not X icons, so we lead with plain text. */}
         <div style={{
           background: C.forest, padding: '10px 14px',
           display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0,
         }}>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{
-              background: 'transparent', color: 'white',
-              border: '1px solid rgba(255,255,255,0.3)',
-              padding: '6px 8px', borderRadius: 7,
-              cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
-            }}>
-            <Icon name="close" size={14} />
-          </button>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div id="bm-drawer-title" style={{ color: 'white', fontWeight: 600, fontSize: 13.5, lineHeight: 1.2 }}>
+            <div id="bm-drawer-title" style={{ color: 'white', fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>
               {docName}
             </div>
             {typeof docNumber === 'number' && (
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10.5, fontWeight: 500, letterSpacing: '0.5px', marginTop: 1 }}>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 500, letterSpacing: '0.4px', marginTop: 1 }}>
                 Document {docNumber} of {docTotalParts}
               </div>
             )}
           </div>
+          <button
+            onClick={onClose}
+            aria-label="Close document"
+            style={{
+              background: C.gold, color: C.forest,
+              border: 'none',
+              padding: '9px 18px', borderRadius: 8,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontWeight: 700, fontSize: 14, letterSpacing: '0.2px',
+              flexShrink: 0,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
+            }}>
+            <Icon name="close" size={14} />
+            Done
+          </button>
         </div>
 
         {/* Grouped action bar: Send as link | Send as image | Save as PDF
@@ -604,6 +610,27 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
         }}>
           <div ref={bodyRef}>
             {children}
+          </div>
+          {/* Inline Back button at the end of the doc, OUTSIDE bodyRef
+              so it does not appear in the captured image or PDF. Sits
+              on the cream background, full-width comfortable tap. */}
+          <div style={{
+            display: 'flex', justifyContent: 'center',
+            padding: '8px 16px 24px',
+          }}>
+            <button
+              onClick={onClose}
+              style={{
+                background: C.forest, color: 'white',
+                border: 'none',
+                padding: '12px 28px', borderRadius: 10,
+                cursor: 'pointer',
+                fontWeight: 700, fontSize: 14, letterSpacing: '0.3px',
+                boxShadow: '0 2px 8px rgba(28,43,34,0.15)',
+                minWidth: 200,
+              }}>
+              ← Back to session
+            </button>
           </div>
         </div>
       </div>

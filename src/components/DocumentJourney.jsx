@@ -147,6 +147,26 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
             marginTop: 1,
           }}>{statusText}</div>
         )}
+        {/* Explicit "tap to open" mini-pill on every clickable dot.
+            70-year-old persona needs the affordance ON the dot, not
+            in a hint above. Pill matches the dot's state color so it
+            reads as part of the same UI element. */}
+        {!isLocked && (
+          <div style={{
+            marginTop: 4,
+            fontSize: 8.5, fontWeight: 700,
+            color: isDone ? C.sage : isCurrent ? C.goldDeep : C.inkSoft,
+            background: isDone ? C.sageBg : isCurrent ? C.goldBg : '#F5F0E8',
+            border: `1px solid ${isDone ? C.sage : isCurrent ? C.gold : C.lineFaint}`,
+            padding: '2px 7px',
+            borderRadius: 999,
+            letterSpacing: '0.3px',
+            whiteSpace: 'nowrap',
+            lineHeight: 1.3,
+          }}>
+            TAP TO OPEN
+          </div>
+        )}
       </div>
     </button>
   );
