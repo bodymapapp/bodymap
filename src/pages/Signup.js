@@ -83,7 +83,7 @@ export default function Signup() {
   const justPaid = new URLSearchParams(window.location.search).get('paid') === 'true';
   if (justPaid) localStorage.setItem('justPaid', 'true');
   const nextPlan = new URLSearchParams(window.location.search).get('next');
-  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', fullName: '', businessName: '', customUrl: '', phone: '' });
+  const [formData, setFormData] = useState({ email: '', password: '', confirmPassword: '', fullName: '', businessName: '', customUrl: '', phone: '', countryCode: '+1' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -112,16 +112,31 @@ export default function Signup() {
     }
   }, []);
 
-  const formatPhone = (d) => {
-    d = d.replace(/\D/g, '').substring(0, 10);
-    if (d.length <= 3) return d;
-    if (d.length <= 6) return `(${d.slice(0,3)}) ${d.slice(3)}`;
-    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+  // Format just the LOCAL portion of a phone number, never the country
+  // code. The country code lives in its own state field (formData.countryCode)
+  // and the input only collects the local digits. For +1 we format as
+  // (xxx) xxx-xxxx; for everything else we leave the digits spaced
+  // simply so we don't mangle international formats we don't know about.
+  const formatPhone = (raw, countryCode = '+1') => {
+    const d = String(raw || '').replace(/\D/g, '');
+    if (countryCode === '+1') {
+      const trimmed = d.substring(0, 10);
+      if (trimmed.length <= 3) return trimmed;
+      if (trimmed.length <= 6) return `(${trimmed.slice(0,3)}) ${trimmed.slice(3)}`;
+      return `(${trimmed.slice(0,3)}) ${trimmed.slice(3,6)}-${trimmed.slice(6)}`;
+    }
+    // International: just collect raw digits with a single space every 3
+    return d.substring(0, 15).replace(/(\d{3})(?=\d)/g, '$1 ').trim();
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'phone') { setFormData(prev => ({ ...prev, phone: formatPhone(value) })); return; }
+    if (name === 'phone') { setFormData(prev => ({ ...prev, phone: formatPhone(value, prev.countryCode) })); return; }
+    if (name === 'countryCode') {
+      // Re-format the existing phone in the new country code's style
+      setFormData(prev => ({ ...prev, countryCode: value, phone: formatPhone(prev.phone, value) }));
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
     if (name === 'businessName') {
       const url = value.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '').substring(0, 30);
@@ -138,7 +153,19 @@ export default function Signup() {
     // confirm it. Business name and custom URL stay optional.
     const phoneDigits = (formData.phone || '').replace(/\D/g, '');
     if (phoneDigits.length === 0) { setError('Please enter your mobile phone number. We will text you a code to confirm it.'); return; }
-    if (phoneDigits.length < 10) { setError('Phone number must be at least 10 digits.'); return; }
+    // +1 needs 10 digits (US/Canada). Other countries vary 7-12; 7 is the
+    // most permissive floor that still catches obvious typos.
+    const minLocalDigits = formData.countryCode === '+1' ? 10 : 7;
+    if (phoneDigits.length < minLocalDigits) {
+      setError(formData.countryCode === '+1'
+        ? 'Phone number must be 10 digits.'
+        : 'Phone number is too short, please double-check it.');
+      return;
+    }
+    // Compose the E.164 phone we send to the backend. Edge function also
+    // normalizes, but doing it client-side too keeps the therapist row
+    // and the Twilio call in sync.
+    const e164Phone = `${formData.countryCode}${phoneDigits}`;
     if (formData.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match.'); return; }
     const effectiveBusinessName = formData.businessName.trim() || formData.fullName.trim();
@@ -173,7 +200,7 @@ export default function Signup() {
       guardScore = guardData.risk_score || 0;
     } catch (e) { /* guard unreachable, proceed */ }
 
-    const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: effectiveBusinessName, customUrl: effectiveCustomUrl, phone: formData.phone });
+    const result = await signUp(formData.email, formData.password, { fullName: formData.fullName, businessName: effectiveBusinessName, customUrl: effectiveCustomUrl, phone: e164Phone });
     if (result.success) {
       // Mark signup risk on the therapist row so it surfaces in the daily digest and admin views
       if (guardFlags.length > 0 || guardScore > 0) {
@@ -224,7 +251,7 @@ export default function Signup() {
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Name</td><td style="padding:8px 0;font-weight:600">${formData.fullName}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Business</td><td style="padding:8px 0;font-weight:600">${formData.businessName || 'N/A'}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Email</td><td style="padding:8px 0;font-weight:600">${formData.email}</td></tr>
-                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Phone</td><td style="padding:8px 0;font-weight:600">${formData.phone || 'N/A'}</td></tr>
+                <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Phone</td><td style="padding:8px 0;font-weight:600">${e164Phone || 'N/A'}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">URL</td><td style="padding:8px 0;font-weight:600">mybodymap.app/book/${formData.customUrl}</td></tr>
                 <tr><td style="padding:8px 0;color:#6B7280;font-size:13px">Time</td><td style="padding:8px 0;font-weight:600">${new Date().toLocaleString()}</td></tr>
               </table>
@@ -436,20 +463,49 @@ export default function Signup() {
         {/* Phone is required, visible by default. We send a 6-digit
             SMS code right after signup; therapists who do not verify
             cannot reach the dashboard. Moved out of the optional fold
-            on 2026-05-12 per HK direction. */}
+            on 2026-05-12 per HK direction. Country code is a separate
+            selector to avoid the bug where typing '+1 555 ...' caused
+            the leading '1' to be eaten and shoved into the area code. */}
         <div style={{ marginBottom: '18px' }}>
           <label style={labelStyle}>Mobile Phone</label>
-          <input
-            name="phone"
-            type="tel"
-            inputMode="tel"
-            autoComplete="tel"
-            placeholder="(555) 123-4567"
-            value={formData.phone}
-            onChange={handleChange}
-            style={inputStyle}
-            required
-          />
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
+            <select
+              name="countryCode"
+              value={formData.countryCode}
+              onChange={handleChange}
+              style={{
+                ...inputStyle,
+                width: 'auto',
+                flexShrink: 0,
+                padding: '9px 6px',
+                cursor: 'pointer',
+                fontWeight: 600,
+                color: C.darkGray,
+              }}>
+              <option value="+1">🇺🇸 +1</option>
+              <option value="+44">🇬🇧 +44</option>
+              <option value="+61">🇦🇺 +61</option>
+              <option value="+64">🇳🇿 +64</option>
+              <option value="+353">🇮🇪 +353</option>
+              <option value="+33">🇫🇷 +33</option>
+              <option value="+49">🇩🇪 +49</option>
+              <option value="+34">🇪🇸 +34</option>
+              <option value="+39">🇮🇹 +39</option>
+              <option value="+91">🇮🇳 +91</option>
+              <option value="+52">🇲🇽 +52</option>
+            </select>
+            <input
+              name="phone"
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel-national"
+              placeholder={formData.countryCode === '+1' ? '(555) 123-4567' : '555 123 4567'}
+              value={formData.phone}
+              onChange={handleChange}
+              style={{ ...inputStyle, flex: 1, minWidth: 0 }}
+              required
+            />
+          </div>
           <p style={{ fontSize: '11px', color: C.sage, margin: '4px 0 0 0', lineHeight: 1.4 }}>
             We will text you a 6-digit code right after signup. We only use
             this number to verify you and to contact you about your practice.

@@ -20,6 +20,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import BMLogo from '../components/BMLogo';
 
 const C = {
@@ -40,6 +41,7 @@ const C = {
 
 export default function VerifyPhone() {
   const navigate = useNavigate();
+  const { refreshTherapist } = useAuth();
   const [therapist, setTherapist] = useState(null);
   const [maskedPhone, setMaskedPhone] = useState('');
   const [code, setCode] = useState('');
@@ -152,6 +154,14 @@ export default function VerifyPhone() {
         return;
       }
       setStatus('success');
+      // Refresh the AuthContext therapist row so the dashboard gate
+      // sees the freshly-written phone_verified_at. Without this, the
+      // gate reads stale therapist (phone_verified_at = null), bounces
+      // back to /verify-phone, which sees verified and bounces back to
+      // dashboard - flicker loop until React caches catch up. The
+      // refresh is awaited so the navigate happens AFTER the context
+      // is consistent.
+      try { await refreshTherapist(); } catch (e) { /* non-blocking */ }
       // Brief pause to show the success state, then route to dashboard
       // (or the intended post-verify destination set by Signup).
       setTimeout(() => {

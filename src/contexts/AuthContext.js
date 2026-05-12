@@ -170,8 +170,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Re-fetch the therapist row from Supabase and update local state.
+  // Use this after an edge function or other server-side code mutates
+  // the therapist row (e.g. phone verification, billing webhooks). The
+  // AuthContext otherwise only fetches on auth state change, so without
+  // this the in-context therapist value can stay stale and break gates
+  // that depend on freshly-written fields (like phone_verified_at).
+  const refreshTherapist = async () => {
+    if (!user?.id) return null;
+    const { data, error } = await supabase
+      .from('therapists').select('*').eq('id', user.id).single();
+    if (error) return null;
+    setTherapist(data);
+    return data;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, therapist, loading, signIn, signOut, signUp, signInWithGoogle, updateProfile, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, therapist, loading, signIn, signOut, signUp, signInWithGoogle, updateProfile, refreshTherapist, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   );
