@@ -76,6 +76,15 @@ const PEACE_BLOCKS = [
 // ───────────────────────────────────────────────────────────────────────
 const ONLY_MBM = [
   {
+    id: "no-client-login-required",
+    title: "Clients never need to log in",
+    body:
+      "Your clients book, fill intake, redeem gift cards, accept policies, and view their session summaries through one-tap email and SMS links. No account creation. No forgotten passwords. No 'can you help me reset my login?' texts at 9pm. We send them what they need, when they need it. That's it.",
+    proof:
+      "Most platforms in this space require client accounts. Vagaro, Fresha, GlossGenius, Acuity Client Hub, Jane App: all push clients to create logins. We deliberately do not. Solo therapists have small client bases where every relationship matters; portal friction loses bookings. We replace logins with personalized links that work in any browser, no install, no signup. Clients with login fatigue thank you for not adding another one.",
+    photoId: "1.1",
+  },
+  {
     id: "no-marketplace-commission",
     title: "No marketplace commission, ever",
     body:

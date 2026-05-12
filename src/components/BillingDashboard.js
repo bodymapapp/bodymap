@@ -465,7 +465,11 @@ function InsightsView({ sessions }) {
 
 export default function BillingDashboard({ therapist }) {
   const [subView, setSubView] = useState('daily');
+  // Per-processor connection flags. Either one being connected counts
+  // as "the therapist has a real payment processor and we should
+  // pull live data."
   const [stripeConnected, setStripeConnected] = useState(null);
+  const [squareConnected, setSquareConnected] = useState(null);
   const [sessionRate, setSessionRate] = useState(DEFAULT_RATE);
   const [realTransactions, setRealTransactions] = useState(null); // null = loading, [] = connected but empty, [...] = has data
 
@@ -474,50 +478,82 @@ export default function BillingDashboard({ therapist }) {
     import('../lib/supabase').then(({ supabase }) => {
       supabase
         .from('therapists')
-        .select('stripe_account_id, stripe_account_connected, session_rate')
+        .select('stripe_account_id, stripe_account_connected, square_access_token, square_connected, session_rate')
         .eq('id', therapist.id)
         .single()
         .then(async ({ data }) => {
-          const connected = !!(data?.stripe_account_id && data?.stripe_account_connected);
-          setStripeConnected(connected);
+          const stripeOk = !!(data?.stripe_account_id && data?.stripe_account_connected);
+          const squareOk = !!(data?.square_access_token && data?.square_connected);
+          setStripeConnected(stripeOk);
+          setSquareConnected(squareOk);
           if (data?.session_rate && data.session_rate > 0) setSessionRate(data.session_rate);
 
-          if (connected) {
-            // Fetch real transactions from Edge Function
-            try {
-              const { data: fnData, error } = await supabase.functions.invoke('stripe-connect', {
-                body: { action: 'get_transactions', therapist_id: therapist.id }
-              });
-              if (!error && fnData?.transactions) {
-                setRealTransactions(fnData.transactions);
-              } else {
-                setRealTransactions([]);
-              }
-            } catch {
-              setRealTransactions([]);
-            }
+          if (!stripeOk && !squareOk) {
+            // Neither connected. Leave realTransactions null so the
+            // sample-data banner shows.
+            return;
           }
+
+          // Fetch from both processors in parallel. Each is allowed to
+          // fail independently; we surface whatever came back.
+          const fetches = [];
+          if (stripeOk) {
+            fetches.push(
+              supabase.functions
+                .invoke('stripe-connect', { body: { action: 'get_transactions', therapist_id: therapist.id } })
+                .then(r => (r.error || !r.data?.transactions ? [] : r.data.transactions.map(t => ({ ...t, processor: 'stripe' }))))
+                .catch(() => [])
+            );
+          }
+          if (squareOk) {
+            fetches.push(
+              supabase.functions
+                .invoke('square-list-transactions', { body: {} })
+                .then(r => (r.error || !r.data?.transactions ? [] : r.data.transactions))
+                .catch(() => [])
+            );
+          }
+          const results = await Promise.all(fetches);
+          const combined = results.flat();
+          // Sort newest-first across both processors
+          combined.sort((a, b) => {
+            const ta = a.created ? new Date(a.created).getTime() : 0;
+            const tb = b.created ? new Date(b.created).getTime() : 0;
+            return tb - ta;
+          });
+          setRealTransactions(combined);
         });
     });
   }, [therapist]);
 
-  // Determine which sessions to show
-  const isSampleData = !stripeConnected;
-  const isLoading = stripeConnected === null;
+  // "Has live data" if either processor is connected. Drives sample
+  // data fallback and banner copy below.
+  const anyConnected = !!stripeConnected || !!squareConnected;
+  const isSampleData = !anyConnected;
+  const isLoading = stripeConnected === null && squareConnected === null;
 
   const sessions = useMemo(() => {
-    if (stripeConnected && realTransactions && realTransactions.length > 0) {
-      // Map real Stripe transactions to session format
-      return realTransactions.map((t, i) => ({
-        id: i + 1,
-        client: t.client_name || t.description || 'Client',
-        date: new Date(t.created * 1000),
-        time: new Date(t.created * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-        duration: 60,
-        rate: sessionRate,
-        actual: t.amount / 100,
-        status: t.status === 'succeeded' ? 'paid' : 'pending',
-      }));
+    if (anyConnected && realTransactions && realTransactions.length > 0) {
+      // Map real transactions (Stripe + Square) to session format.
+      // Stripe shape: created = epoch seconds, amount = cents
+      // Square shape: created = ISO string, amount = dollars (normalized
+      //   in the square-list-transactions edge function)
+      return realTransactions.map((t, i) => {
+        const isSquare = t.processor === 'square';
+        const dateObj = isSquare ? new Date(t.created) : new Date(t.created * 1000);
+        const dollars = isSquare ? t.amount : t.amount / 100;
+        return {
+          id: i + 1,
+          client: t.client_name || t.description || 'Client',
+          date: dateObj,
+          time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          duration: 60,
+          rate: sessionRate,
+          actual: dollars,
+          status: t.status === 'succeeded' ? 'paid' : 'pending',
+          processor: t.processor || 'stripe',
+        };
+      });
     }
     // Not connected - show sample data with live session rate applied
     return SAMPLE_SESSIONS.map(s => ({
@@ -525,7 +561,7 @@ export default function BillingDashboard({ therapist }) {
       rate:   s.rate   === DEFAULT_RATE ? sessionRate : s.rate,
       actual: s.actual === DEFAULT_RATE ? sessionRate : s.actual,
     }));
-  }, [stripeConnected, realTransactions, sessionRate]);
+  }, [anyConnected, realTransactions, sessionRate]);
 
   const TABS = [
     { id:'daily',    label:'Daily' },
@@ -551,21 +587,21 @@ export default function BillingDashboard({ therapist }) {
         <p style={{ fontSize:14, color:'#6B7280', margin:0 }}>{fmt(TODAY)}</p>
       </div>
 
-      {/* Stripe not connected - sample data, prompt to connect */}
-      {!stripeConnected && <SampleDataBanner />}
+      {/* No processor connected - sample data, prompt to connect */}
+      {!anyConnected && <SampleDataBanner />}
 
-      {/* Stripe connected, no real data yet - sample data but show connected state */}
-      {stripeConnected && realTransactions !== null && realTransactions.length === 0 && (
+      {/* Processor connected, no real data yet - sample data but show connected state */}
+      {anyConnected && realTransactions !== null && realTransactions.length === 0 && (
         <div style={{ background:'#EFF6FF', border:'1.5px dashed #93C5FD', borderRadius:10, padding:'12px 16px', marginBottom:20, fontSize:13, color:'#1D4ED8', display:'flex', alignItems:'center', gap:10 }}>
           <span style={{ fontSize:16 }}>👁️</span>
-          <div><strong>Sample data - preview only.</strong> Your Stripe is connected. Real payments will replace this preview automatically after your first session.</div>
+          <div><strong>Sample data - preview only.</strong> Your payment processor is connected. Real payments will replace this preview automatically after your first session.</div>
         </div>
       )}
 
-      {/* Stripe connected with real transactions */}
-      {stripeConnected && realTransactions && realTransactions.length > 0 && (
+      {/* Processor connected with real transactions */}
+      {anyConnected && realTransactions && realTransactions.length > 0 && (
         <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
-          ✅ <strong>Stripe Connected.</strong>&nbsp;Showing real payment data.
+          ✅ <strong>Connected.</strong>&nbsp;Showing real payment data from {stripeConnected && squareConnected ? 'Stripe and Square' : stripeConnected ? 'Stripe' : 'Square'}.
         </div>
       )}
 

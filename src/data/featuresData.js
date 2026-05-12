@@ -27,6 +27,16 @@ export const RIBBONS = [
         meta: "Setup: 2 minutes · Free during beta",
       },
       {
+        id: "1.1b",
+        name: "No client login, ever",
+        body: [
+          "Clients never have to create an account, set a password, or remember a username. Booking, intake, gift card redemption, policy acceptance, post-session summaries: all delivered through one-tap personal links in email and SMS.",
+          "Most platforms in this space (Vagaro, Fresha, GlossGenius, Acuity, Jane App) push clients into a portal with login credentials. We deliberately do not. Solo therapists have small, high-trust client bases. Portal friction loses bookings; another password to manage loses goodwill. We replace logins with secure, personalized links that just work.",
+          "If a therapist asks 'can my clients see their package balance?' or 'can they redownload their session note?', the answer is yes, and it's a link, not a login.",
+        ],
+        meta: "Zero-friction client experience · MyBodyMap differentiator",
+      },
+      {
         id: "1.2",
         name: "Cycle-aligned scheduling",
         // Image: currently using feature-1-7.jpg as a stand-in placeholder.

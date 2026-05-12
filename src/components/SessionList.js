@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { db, supabase } from "../lib/supabase";
 import BookingModal from "./BookingModal";
+import ClientPackageBalance from "./ClientPackageBalance";
 import { getStripePublishableKey } from "../lib/paymentMode";
 
 const C = {
@@ -407,6 +408,10 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             <p style={{ fontSize: "13px", color: C.gray, margin: "2px 0 0" }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
           </div>
         </div>
+
+        {/* Active balance card: shows remaining sessions on packages and
+            membership cycle. Self-hides if neither exists. */}
+        <ClientPackageBalance clientId={client.id} therapistId={therapistId} />
 
         {/* Action buttons row: scrollable strip on narrow screens, single row otherwise.
             All five buttons same height, same vertical alignment, no wrapping. */}

@@ -67,6 +67,7 @@ const RIBBONS = [
     layout: "demo-right",
     subFeatures: [
       "Custom booking page at mybodymap.app/your-name",
+      "Clients book without creating an account, no login required (only on MyBodyMap)",
       "Services catalog with durations and add-ons",
       "Cycle-aligned scheduling (only on MyBodyMap)",
       "Smart Scheduling that packs your day tight (only on MyBodyMap)",

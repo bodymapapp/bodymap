@@ -632,4 +632,70 @@ experience right now.
 
 ---
 
-## 6. (placeholder for future blocked items)
+## 6. Optional client portal with login
+
+**Current status (May 12 2026).** Ashley Scalzulli asked for a
+client login portal (see her email of May 12 2026 for context).
+Decision: build it eventually, but make it explicitly OPTIONAL and
+keep "no login required" as our headline differentiator.
+
+The "no login required" stance is now codified in:
+
+- `src/pages/WhyBodyMap.jsx` ONLY_MBM[0] "Clients never need to log in"
+- `src/pages/Home.jsx` Find & Book sub-feature listed first under
+  the booking page row
+- `src/data/featuresData.js` Find & Book feature 1.1b "No client
+  login, ever"
+
+So when we eventually build the portal, the framing is:
+"Clients never NEED a login. If you want them to have one, here
+is the option." Not "all clients must create accounts."
+
+**Why blocked.**
+
+1. Only one founding therapist has explicitly asked. Jiny, Terra,
+   and Kathy have not. Hard to justify 10-15 hours of work for an
+   N=1 request.
+2. Building it changes the "no login" marketing claim if we are
+   not careful. Has to be framed as opt-in feature, not default.
+3. Adds password reset and account recovery support burden the
+   therapist would have to handle for their clients. Most solo
+   LMTs do not want this overhead.
+
+**When to revisit.** Build this when ANY of these is true:
+
+- Three or more founding therapists have asked for it
+- A paying clinic (3+ practitioners) requires it for compliance
+  or data sharing
+- A specific feature (e.g., client-to-client referral tracking,
+  package balance viewing on demand by clients) actually requires
+  authenticated client identity to work safely
+
+**Scope (when we build).** ~10-15 hours, multi-session:
+
+- Supabase auth flow for clients, separate from therapists table
+  (new `client_users` table linking auth.users to clients.id)
+- New `/me/...` route group: dashboard, packages, gift cards,
+  referrals
+- Magic-link email login (no password) to keep friction low
+- Therapist setting: `enable_client_portal` boolean per therapist
+  row, defaults false. Therapists who never enable it: zero
+  change. Therapists who enable: clients get an "Optionally
+  create an account" link in confirmation emails.
+- Marketing pages updated to add a small footnote on "no login
+  required" copy: "If you want, an optional client portal is
+  available; most therapists keep it off."
+
+**Materials.**
+
+- Schema: `client_users` table with columns id, auth_user_id,
+  client_id, created_at, last_login_at. Foreign key to clients.id.
+- Magic-link template: needs a new edge function
+  `send-client-magic-link` similar to existing email senders.
+- 70-year-old persona pass on UX copy before launch: avoid
+  symbols, plain language, "Sign in to see your sessions" not
+  "Authenticate to access your account."
+- Mention in the next handover doc once we have 2+ more requests
+  for this feature, to start tracking demand signal.
+
+
