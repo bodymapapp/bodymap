@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { GIFT_CARD_THEMES, ORDERED_THEME_KEYS, getTheme } from '../lib/giftCardThemes';
-import { DESIGNS, ORDERED_DESIGN_KEYS, getDesign, resolveCardBranding, renderCardReact } from '../lib/giftCardDesigns';
+import { DESIGNS, ORDERED_DESIGN_KEYS, getDesign, resolveCardBranding, renderCardReact, renderCardThumbnailReact } from '../lib/giftCardDesigns';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', blush:'#F9A8B4', rose:'#E85C79', rosePale:'#FCE7F3', cream:'#FFF9F3', white:'#FFFFFF', dark:'#1F2937', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -87,11 +87,30 @@ export default function GiftCertificates({ therapist }) {
   const [resendingId, setResendingId] = useState(null);
   const [resendResult, setResendResult] = useState(null);
   const [previewCert, setPreviewCert] = useState(null);
+  // Thumbnail grid modal: which cert is currently expanded to full
+  // size? null = no modal open. Modal renders the full GiftCardPreview
+  // plus the action bar (copy code, print, resend email, cancel).
+  const [selectedCertId, setSelectedCertId] = useState(null);
 
   useEffect(() => {
     load();
     loadClients();
   }, [therapist.id]);
+
+  // Modal keyboard + scroll-lock. Escape closes the thumbnail expand
+  // modal; body overflow is hidden so the page behind doesn't scroll
+  // while the modal is open.
+  useEffect(() => {
+    if (!selectedCertId) return;
+    const onKey = (e) => { if (e.key === 'Escape') setSelectedCertId(null); };
+    document.addEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [selectedCertId]);
 
   async function loadClients() {
     const { data } = await supabase.from('clients').select('id,name,email,phone').eq('therapist_id', therapist.id).order('name');
@@ -276,52 +295,106 @@ export default function GiftCertificates({ therapist }) {
   const activeTheme = getTheme(therapist?.gift_card_theme);
 
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto' }}>
-      {/* Hero header, themed by the therapist's chosen palette */}
-      <div style={{
-        position: 'relative',
-        background: activeTheme.bgGradient,
-        borderRadius: 24,
-        padding: '28px 24px',
-        marginBottom: 24,
-        border: `1.5px solid ${activeTheme.accent}33`,
-        overflow: 'hidden',
-        boxShadow: `0 2px 14px ${activeTheme.accent}26`,
-      }}>
-        <BotanicalFlourish style={{ position: 'absolute', top: -20, right: -10, transform: 'rotate(15deg)' }} color={activeTheme.accent} />
-        <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: -20, transform: 'rotate(-160deg) scale(0.8)' }} color={activeTheme.accent} opacity={0.35} />
+    <div style={{ maxWidth: 1180, margin: '0 auto' }}>
+      {/* Hero. Two states:
+            - idle: full marketing band with title + tagline + CTA. Earns
+              its space when the therapist lands on the page and might
+              not know what gift cards do for them.
+            - creating: thin bar with just title + close affordance.
+              Marketing copy already did its job; now they need to focus
+              on building the card. */}
+      {!showForm && (
+        <div style={{
+          position: 'relative',
+          background: activeTheme.bgGradient,
+          borderRadius: 24,
+          padding: '28px 24px',
+          marginBottom: 24,
+          border: `1.5px solid ${activeTheme.accent}33`,
+          overflow: 'hidden',
+          boxShadow: `0 2px 14px ${activeTheme.accent}26`,
+        }}>
+          <BotanicalFlourish style={{ position: 'absolute', top: -20, right: -10, transform: 'rotate(15deg)' }} color={activeTheme.accent} />
+          <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: -20, transform: 'rotate(-160deg) scale(0.8)' }} color={activeTheme.accent} opacity={0.35} />
 
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: 540 }}>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, color: activeTheme.accent, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
-            ♡ Gift Cards
-          </div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 700, color: activeTheme.ink, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-            Give the gift of <em style={{ color: activeTheme.accent, fontStyle: 'italic' }}>feeling good.</em>
-          </h2>
-          <p style={{ fontSize: 14, color: activeTheme.inkSoft, margin: '0 0 22px', lineHeight: 1.65 }}>
-            For the mother who gives everything. The friend going through a hard season. The partner who deserves to be cared for. A gift card from you is an hour of peace, wrapped in kindness.
-          </p>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button onClick={() => setShowForm(!showForm)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                background: showForm ? 'rgba(255,255,255,0.7)' : activeTheme.accentSolid,
-                color: showForm ? activeTheme.accent : '#fff',
-                border: showForm ? `1.5px solid ${activeTheme.accent}66` : 'none',
-                borderRadius: 24,
-                padding: '12px 22px',
-                fontSize: 14, fontWeight: 700, cursor: 'pointer',
-                boxShadow: showForm ? 'none' : `0 4px 14px ${activeTheme.accent}59`,
-                fontFamily: 'Georgia, serif',
-                letterSpacing: '0.01em',
-                transition: 'all 0.15s',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-              {showForm ? '× Close' : <><span style={{ fontSize: 16 }}>♡</span> Create a gift card</>}
-            </button>
+          <div style={{ position: 'relative', zIndex: 2, maxWidth: 540 }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, color: activeTheme.accent, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
+              ♡ Gift Cards
+            </div>
+            <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 700, color: activeTheme.ink, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+              Give the gift of <em style={{ color: activeTheme.accent, fontStyle: 'italic' }}>feeling good.</em>
+            </h2>
+            <p style={{ fontSize: 14, color: activeTheme.inkSoft, margin: '0 0 22px', lineHeight: 1.65 }}>
+              For the mother who gives everything. The friend going through a hard season. The partner who deserves to be cared for. A gift card from you is an hour of peace, wrapped in kindness.
+            </p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <button onClick={() => setShowForm(true)}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: activeTheme.accentSolid,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 24,
+                  padding: '12px 22px',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                  boxShadow: `0 4px 14px ${activeTheme.accent}59`,
+                  fontFamily: 'Georgia, serif',
+                  letterSpacing: '0.01em',
+                  transition: 'all 0.15s',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                <span style={{ fontSize: 16 }}>♡</span> Create a gift card
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {/* Compact bar shown only when creating: title + close. Replaces
+          the marketing hero so the form has top-of-fold space. */}
+      {showForm && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          padding: '14px 20px',
+          marginBottom: 16,
+          background: activeTheme.bgGradient,
+          border: `1.5px solid ${activeTheme.accent}33`,
+          borderRadius: 14,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div style={{
+              fontSize: 18, lineHeight: 1, color: activeTheme.accent,
+            }}>♡</div>
+            <div style={{
+              fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700,
+              color: activeTheme.ink, letterSpacing: '-0.01em',
+              whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+            }}>
+              Create a gift card
+            </div>
+          </div>
+          <button onClick={() => setShowForm(false)}
+            type="button"
+            aria-label="Close"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.7)',
+              color: activeTheme.accent,
+              border: `1.5px solid ${activeTheme.accent}66`,
+              borderRadius: 999,
+              padding: '6px 14px',
+              fontSize: 13, fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'Georgia, serif',
+              WebkitTapHighlightColor: 'transparent',
+            }}>
+            × Close
+          </button>
+        </div>
+      )}
 
 
       {/* ──────────── Create form: two-column on desktop, single column on mobile.
@@ -366,17 +439,26 @@ export default function GiftCertificates({ therapist }) {
 
           <div className="bm-gift-form__grid" style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 360px',
-            gap: 24,
+            gridTemplateColumns: '1fr 480px',
+            gap: 28,
             alignItems: 'start',
           }}>
 
             {/* ───── LEFT COLUMN: all customization + gift details, vertical sections ───── */}
             <div className="bm-gift-form__left" style={{ minWidth: 0 }}>
 
+              {/* Two-box row. On screens wider than 1280px they sit
+                  side by side (50/50) so the form stops feeling top-
+                  heavy. On narrower screens they stack vertically. */}
+              <div className="bm-gift-form__boxes" style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr',
+                gap: 22,
+                marginBottom: 18,
+              }}>
+
               {/* SECTION 1: Design + color + image + brand message */}
               <div style={{
-                marginBottom: 22,
                 padding: '18px 20px',
                 background: '#fff',
                 border: `1px solid ${activeTheme.accent}24`,
@@ -669,6 +751,9 @@ export default function GiftCertificates({ therapist }) {
                 </div>
               </div>
 
+              </div>
+              {/* end .bm-gift-form__boxes */}
+
               {/* Action row */}
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
                 <button onClick={create} disabled={creating || !form.amount}
@@ -723,6 +808,17 @@ export default function GiftCertificates({ therapist }) {
 
           {/* Responsive: stack columns on mobile, show mobile sticky preview, hide desktop preview */}
           <style>{`
+            /* Wide desktop: two boxes (Customize + Gift) side-by-side
+               in the left column. Threshold high enough that the
+               combined form + 480px preview = ~1180px content width
+               actually fits without crowding. */
+            @media (min-width: 1280px) {
+              .bm-gift-form__boxes {
+                grid-template-columns: 1fr 1fr !important;
+              }
+            }
+            /* Mobile: collapse the two-column outer grid, hide the
+               right-side preview, show the mobile sticky preview. */
             @media (max-width: 820px) {
               .bm-gift-form__grid {
                 grid-template-columns: 1fr !important;
@@ -752,93 +848,33 @@ export default function GiftCertificates({ therapist }) {
                 </div>
                 <div style={{ fontSize: 12, color: C.gray, fontWeight: 600 }}>{active.length} active</div>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                {active.map(cert => (
-                  <div key={cert.id} style={{ position: 'relative' }}>
-                    <GiftCardPreview cert={cert} therapist={therapist} />
-                    {/* Actions row below the card */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                      <button onClick={() => copy(cert.code)}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: copied === cert.code ? '#F0FDF4' : '#fff',
-                          border: `1.5px solid ${copied === cert.code ? '#86EFAC' : C.light}`,
-                          color: copied === cert.code ? C.forest : C.gray,
-                          borderRadius: 20,
-                          padding: '7px 14px',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}>
-                        {copied === cert.code ? '✓ Code copied' : '📋 Copy code'}
-                      </button>
-                      {/* Print button: opens the standalone print page in a new
-                          tab. Therapist picks size in the in-page selector and
-                          uses the browser print dialog. Available on every
-                          active gift cert regardless of recipient_email. */}
-                      <button onClick={() => window.open(`/gift-card/print/${cert.id}`, '_blank')}
-                        style={{
-                          display: 'inline-flex', alignItems: 'center', gap: 6,
-                          background: '#fff',
-                          border: `1.5px solid ${C.light}`,
-                          color: C.gray,
-                          borderRadius: 20,
-                          padding: '7px 14px',
-                          fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}>
-                        🖨️ Print
-                      </button>
-                      {/* Resend email button. Only shown if a recipient email
-                          was captured. Idempotency check on the server is
-                          bypassed via force:true so the button always triggers
-                          a fresh send. Per-row spinner via resendingId. */}
-                      {cert.recipient_email && (
-                        <button onClick={() => resendEmail(cert.id)}
-                          disabled={resendingId === cert.id}
-                          style={{
-                            display: 'inline-flex', alignItems: 'center', gap: 6,
-                            background: (resendResult?.certId === cert.id && resendResult?.ok)
-                              ? '#F0FDF4'
-                              : (resendResult?.certId === cert.id && !resendResult?.ok)
-                                ? '#FEF2F2'
-                                : '#fff',
-                            border: `1.5px solid ${
-                              (resendResult?.certId === cert.id && resendResult?.ok)
-                                ? '#86EFAC'
-                                : (resendResult?.certId === cert.id && !resendResult?.ok)
-                                  ? '#FCA5A5'
-                                  : C.light
-                            }`,
-                            color: (resendResult?.certId === cert.id && resendResult?.ok)
-                              ? C.forest
-                              : (resendResult?.certId === cert.id && !resendResult?.ok)
-                                ? '#DC2626'
-                                : C.gray,
-                            borderRadius: 20,
-                            padding: '7px 14px',
-                            fontSize: 12, fontWeight: 600,
-                            cursor: resendingId === cert.id ? 'wait' : 'pointer',
-                            opacity: resendingId === cert.id ? 0.7 : 1,
-                          }}>
-                          {resendingId === cert.id
-                            ? '⏳ Sending...'
-                            : (resendResult?.certId === cert.id && resendResult?.ok)
-                              ? '✓ Email sent'
-                              : (resendResult?.certId === cert.id && !resendResult?.ok)
-                                ? '✗ Send failed'
-                                : '✉️ Resend email'}
-                        </button>
-                      )}
-                      {cert.remaining < cert.amount && (
-                        <div style={{ fontSize: 12, color: C.gray, fontStyle: 'italic' }}>
-                          ${cert.remaining?.toFixed(0)} of ${cert.amount?.toFixed(0)} remaining
-                        </div>
-                      )}
-                      <button onClick={() => deactivate(cert.id)}
-                        style={{ marginLeft: 'auto', background: 'transparent', color: '#DC2626', border: '1.5px solid #FECACA', borderRadius: 20, padding: '7px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}>
-                        Cancel
-                      </button>
+              {/* Responsive thumbnail grid. Each thumbnail is a click
+                  target that opens the full card view in a modal with
+                  actions (copy code, print, resend, cancel). Keeps the
+                  list compact even when the therapist has 20+ gifts. */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 14,
+              }}>
+                {active.map(cert => {
+                  const branding = resolveCardBranding(cert, therapist);
+                  return (
+                    <div key={cert.id}
+                      onClick={() => setSelectedCertId(cert.id)}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; }}>
+                      {renderCardThumbnailReact({
+                        designKey: branding.designKey,
+                        theme: branding.theme,
+                        amount: cert.amount,
+                        recipient: cert.recipient_name,
+                        status: cert.status,
+                        redeemedAt: cert.redeemed_at,
+                      })}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -890,7 +926,11 @@ export default function GiftCertificates({ therapist }) {
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {past.map(cert => (
-                  <div key={cert.id} style={{ background: '#FAFAF7', borderRadius: 12, padding: '12px 16px', border: `1px solid ${C.light}`, display: 'flex', alignItems: 'center', gap: 12, opacity: 0.75 }}>
+                  <div key={cert.id}
+                    onClick={() => setSelectedCertId(cert.id)}
+                    style={{ background: '#FAFAF7', borderRadius: 12, padding: '12px 16px', border: `1px solid ${C.light}`, display: 'flex', alignItems: 'center', gap: 12, opacity: 0.75, cursor: 'pointer', transition: 'opacity 0.12s' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.75'; }}>
                     <span style={{ fontSize: 14 }}>{cert.status === 'redeemed' ? '✨' : '🗂'}</span>
                     <code style={{ fontSize: 13, fontWeight: 700, color: C.gray, letterSpacing: '0.06em', flex: 1, fontFamily: 'ui-monospace, Menlo, monospace' }}>{cert.code}</code>
                     {cert.recipient_name && <span style={{ fontSize: 12, color: C.gray, fontStyle: 'italic' }}>for {cert.recipient_name}</span>}
@@ -905,6 +945,157 @@ export default function GiftCertificates({ therapist }) {
           )}
         </>
       )}
+
+      {/* ─────── Click-to-expand modal ───────
+          Opens when a thumbnail in the active grid is clicked. Shows
+          the full GiftCardPreview plus an action bar (copy code, copy
+          as image, print, resend email, cancel). Backdrop click and
+          Escape both close. */}
+      {selectedCertId && (() => {
+        const cert = certs.find(c => c.id === selectedCertId);
+        if (!cert) return null;
+        return (
+          <div
+            onClick={() => setSelectedCertId(null)}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              background: 'rgba(28,43,34,0.55)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: 20,
+              overflow: 'auto',
+              animation: 'bm-modal-fade 0.12s ease-out',
+            }}>
+            <style>{`
+              @keyframes bm-modal-fade {
+                from { opacity: 0; }
+                to { opacity: 1; }
+              }
+              @keyframes bm-modal-pop {
+                from { opacity: 0; transform: scale(0.96) translateY(8px); }
+                to { opacity: 1; transform: scale(1) translateY(0); }
+              }
+            `}</style>
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'relative',
+                maxWidth: 540,
+                width: '100%',
+                background: '#fff',
+                borderRadius: 18,
+                padding: '22px 20px',
+                boxShadow: '0 24px 70px rgba(0,0,0,0.25)',
+                animation: 'bm-modal-pop 0.16s ease-out',
+              }}>
+              <button
+                onClick={() => setSelectedCertId(null)}
+                aria-label="Close"
+                style={{
+                  position: 'absolute', top: 14, right: 14,
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: 22, lineHeight: 1,
+                  color: C.gray, cursor: 'pointer',
+                  padding: 4,
+                }}>
+                ×
+              </button>
+
+              <GiftCardPreview cert={cert} therapist={therapist} />
+
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                marginTop: 16,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}>
+                <button onClick={() => copy(cert.code)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: copied === cert.code ? '#F0FDF4' : '#fff',
+                    border: `1.5px solid ${copied === cert.code ? '#86EFAC' : C.light}`,
+                    color: copied === cert.code ? C.forest : C.gray,
+                    borderRadius: 20,
+                    padding: '7px 14px',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}>
+                  {copied === cert.code ? '✓ Code copied' : '📋 Copy code'}
+                </button>
+                <button onClick={() => window.open(`/gift-card/print/${cert.id}`, '_blank')}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: '#fff',
+                    border: `1.5px solid ${C.light}`,
+                    color: C.gray,
+                    borderRadius: 20,
+                    padding: '7px 14px',
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}>
+                  🖨️ Print / share
+                </button>
+                {cert.recipient_email && (
+                  <button onClick={() => resendEmail(cert.id)}
+                    disabled={resendingId === cert.id}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      background: (resendResult?.certId === cert.id && resendResult?.ok)
+                        ? '#F0FDF4'
+                        : (resendResult?.certId === cert.id && !resendResult?.ok)
+                          ? '#FEF2F2'
+                          : '#fff',
+                      border: `1.5px solid ${
+                        (resendResult?.certId === cert.id && resendResult?.ok)
+                          ? '#86EFAC'
+                          : (resendResult?.certId === cert.id && !resendResult?.ok)
+                            ? '#FCA5A5'
+                            : C.light
+                      }`,
+                      color: (resendResult?.certId === cert.id && resendResult?.ok)
+                        ? C.forest
+                        : (resendResult?.certId === cert.id && !resendResult?.ok)
+                          ? '#DC2626'
+                          : C.gray,
+                      borderRadius: 20,
+                      padding: '7px 14px',
+                      fontSize: 12, fontWeight: 600,
+                      cursor: resendingId === cert.id ? 'wait' : 'pointer',
+                      opacity: resendingId === cert.id ? 0.7 : 1,
+                    }}>
+                    {resendingId === cert.id
+                      ? '⏳ Sending...'
+                      : (resendResult?.certId === cert.id && resendResult?.ok)
+                        ? '✓ Email sent'
+                        : (resendResult?.certId === cert.id && !resendResult?.ok)
+                          ? '✗ Send failed'
+                          : '✉️ Resend email'}
+                  </button>
+                )}
+                {cert.status === 'active' && (
+                  <button onClick={() => { deactivate(cert.id); setSelectedCertId(null); }}
+                    style={{
+                      marginLeft: 'auto',
+                      background: 'transparent',
+                      color: '#DC2626',
+                      border: '1.5px solid #FECACA',
+                      borderRadius: 20,
+                      padding: '7px 14px',
+                      fontSize: 12, cursor: 'pointer', fontWeight: 600,
+                    }}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+
+              {cert.remaining < cert.amount && (
+                <div style={{ fontSize: 12, color: C.gray, fontStyle: 'italic', marginTop: 10 }}>
+                  ${cert.remaining?.toFixed(0)} of ${cert.amount?.toFixed(0)} remaining
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

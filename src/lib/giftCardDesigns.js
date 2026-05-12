@@ -554,3 +554,102 @@ export function renderCardReact({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Compact thumbnail card
+// ─────────────────────────────────────────────────────────────────────
+// Small card preview for the gallery grid on /dashboard/gifts. Shows
+// just enough to identify the gift card (recipient, amount, design icon
+// + theme color, status badge). Click expands to the full card in a
+// modal. Designed to fit ~200-240px wide cells in a responsive grid.
+
+export function renderCardThumbnailReact({
+  designKey,
+  theme,
+  amount,
+  recipient,
+  status,
+  redeemedAt,
+}) {
+  const design = getDesign(designKey);
+  // Small decoration count so the thumbnail doesn't get visually noisy.
+  // Override the design's normal count via a one-off call here.
+  const isRedeemed = status === 'redeemed' || !!redeemedAt;
+  const isCancelled = status === 'cancelled';
+
+  return (
+    <div style={{
+      position: 'relative',
+      background: theme.bgGradient,
+      borderRadius: 14,
+      padding: '14px 14px',
+      border: `1.5px solid ${theme.accent}33`,
+      overflow: 'hidden',
+      minHeight: 140,
+      boxShadow: `0 1px 3px rgba(28,43,34,0.06), 0 4px 12px ${theme.accent}1A`,
+      cursor: 'pointer',
+      transition: 'transform 0.15s, box-shadow 0.15s',
+      opacity: isCancelled ? 0.55 : 1,
+    }}>
+      {/* Status badge top-right */}
+      {(isRedeemed || isCancelled) && (
+        <div style={{
+          position: 'absolute', top: 8, right: 8,
+          fontSize: 9, fontWeight: 700,
+          padding: '3px 8px',
+          borderRadius: 999,
+          background: isCancelled ? '#FEE2E2' : '#D1FAE5',
+          color: isCancelled ? '#991B1B' : '#065F46',
+          letterSpacing: '0.05em',
+          textTransform: 'uppercase',
+          zIndex: 2,
+        }}>
+          {isCancelled ? 'Cancelled' : 'Redeemed'}
+        </div>
+      )}
+
+      <div style={{ position: 'relative', zIndex: 2 }}>
+        <div style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 9, fontWeight: 700,
+          color: theme.accent,
+          letterSpacing: '0.18em',
+          textTransform: 'uppercase',
+          marginBottom: 6,
+        }}>
+          {design.eyebrow}
+        </div>
+        <div style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 16, fontWeight: 700,
+          color: theme.ink,
+          marginBottom: 8,
+          lineHeight: 1.2,
+          letterSpacing: '-0.01em',
+          fontStyle: design.headlineStyle === 'italic-serif' ? 'italic' : 'normal',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {recipient ? `For ${recipient}` : 'No recipient'}
+        </div>
+        <div style={{
+          fontFamily: 'Georgia, serif',
+          fontSize: 28, fontWeight: 700,
+          color: theme.accentDeep,
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+        }}>
+          ${typeof amount === 'number' ? amount.toFixed(0) : amount}
+        </div>
+        <div style={{
+          fontSize: 11, color: theme.inkSoft,
+          fontWeight: 600,
+          marginTop: 2,
+        }}>
+          of care
+        </div>
+      </div>
+    </div>
+  );
+}
