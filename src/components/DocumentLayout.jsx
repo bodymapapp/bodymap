@@ -435,9 +435,27 @@ export default function DocumentLayout({
         gap: 10, flexWrap: 'wrap',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <span style={{ color: 'white', fontWeight: 600, fontSize: 13, letterSpacing: '0.3px' }}>
-          {docName}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => {
+              // Smart close: tab opened from session detail closes, otherwise history back, otherwise dashboard
+              if (window.opener && !window.opener.closed) { window.close(); return; }
+              if (window.history.length > 1) { window.history.back(); return; }
+              window.location.href = '/dashboard';
+            }}
+            style={{
+              background: 'transparent', color: 'white',
+              border: '1px solid rgba(255,255,255,0.35)',
+              padding: '5px 11px', borderRadius: 7,
+              fontWeight: 600, fontSize: 12, cursor: 'pointer',
+              letterSpacing: '0.2px',
+            }}
+            aria-label="Close and return to session"
+          >← Back to session</button>
+          <span style={{ color: 'white', fontWeight: 600, fontSize: 13, letterSpacing: '0.3px' }}>
+            {docName}
+          </span>
+        </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {toolbarExtras}
           <button onClick={() => window.print()} style={{
