@@ -556,7 +556,7 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
               boxShadow: '0 2px 6px rgba(0,0,0,0.18)',
             }}>
             <Icon name="close" size={14} />
-            Done
+            Close
           </button>
         </div>
 
