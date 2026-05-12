@@ -38,8 +38,9 @@ function SoapCell({ letter, label, body, highlight = false }) {
   );
 }
 
-export default function PostSessionBrief() {
-  const { sessionId } = useParams();
+export default function PostSessionBrief({ sessionIdProp, chrome = 'full' }) {
+  const params = useParams();
+  const sessionId = sessionIdProp || params.sessionId;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -195,6 +196,7 @@ export default function PostSessionBrief() {
       bodyDisplay="split"
       section03={section03}
       section04={section04}
+      chrome={chrome}
       toolbarExtras={
         <button onClick={() => window.open(summaryUrl, '_blank')} style={{
           background: 'transparent', color: 'white',

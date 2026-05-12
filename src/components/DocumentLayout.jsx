@@ -386,8 +386,15 @@ export default function DocumentLayout({
   // Use for prominent CTAs like the recap's rebook banner.
   section04FullWidth = false,
 
+  // 'full' (default): renders sticky toolbar + identity band + footer.
+  // 'drawer': skips the sticky toolbar and the page-level wrapper
+  // backgrounds. Used by DocumentDrawer which provides its own
+  // toolbar and actions.
+  chrome = 'full',
+
   toolbarExtras,
 }) {
+  const isDrawer = chrome === 'drawer';
   const totalParts = docTotalParts || 4;
   const sessionDate = new Date(session.created_at).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
@@ -405,7 +412,11 @@ export default function DocumentLayout({
   const isSplit = bodyDisplay === 'split';
 
   return (
-    <div style={{ background: T.cream, minHeight: '100vh', color: T.ink, fontFamily: T.sans }}>
+    <div style={{
+      background: isDrawer ? 'transparent' : T.cream,
+      minHeight: isDrawer ? 'auto' : '100vh',
+      color: T.ink, fontFamily: T.sans,
+    }}>
       <style>{`
         @media print {
           .no-print { display: none !important; }
@@ -428,10 +439,8 @@ export default function DocumentLayout({
         }
       `}</style>
 
-      {/* Toolbar. Restructured per HK May 12 2026 feedback: page should
-          feel like a viewable web page, not a static PDF. Made the actions
-          explicit and clearly labeled. PDF is one of three send options,
-          not the primary identity of the page. */}
+      {/* Toolbar (full chrome only; drawer renders its own). */}
+      {!isDrawer && (
       <div className="no-print" style={{
         background: T.forest, padding: '10px 18px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -530,8 +539,13 @@ export default function DocumentLayout({
           </button>
         </div>
       </div>
+      )}
 
-      <div className="bm-doc-wrap" style={{ maxWidth: 880, margin: '0 auto', padding: '14px 16px 24px' }}>
+      <div className="bm-doc-wrap" style={{
+        maxWidth: isDrawer ? '100%' : 880,
+        margin: '0 auto',
+        padding: isDrawer ? '12px 14px 18px' : '14px 16px 24px',
+      }}>
 
         {/* Identity band */}
         <div style={{ marginBottom: 10 }}>

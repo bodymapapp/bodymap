@@ -49,8 +49,9 @@ function InsightRow({ children, accent = T.sage }) {
   );
 }
 
-export default function PreSessionBrief() {
-  const { sessionId } = useParams();
+export default function PreSessionBrief({ sessionIdProp, chrome = 'full' }) {
+  const params = useParams();
+  const sessionId = sessionIdProp || params.sessionId;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -210,6 +211,7 @@ export default function PreSessionBrief() {
       section03={section03}
       section04={section04}
       section04FullWidth
+      chrome={chrome}
     />
   );
 }

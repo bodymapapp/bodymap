@@ -16,8 +16,9 @@ import {
   aggregateHeatmap,
 } from '../lib/sessionIntelligence';
 
-export default function PostSessionSummary() {
-  const { sessionId } = useParams();
+export default function PostSessionSummary({ sessionIdProp, chrome = 'full' }) {
+  const params = useParams();
+  const sessionId = sessionIdProp || params.sessionId;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -198,6 +199,7 @@ export default function PostSessionSummary() {
       bodyDisplay="split"
       section03={section03}
       section04={section04}
+      chrome={chrome}
     />
   );
 }

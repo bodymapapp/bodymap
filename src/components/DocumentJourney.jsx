@@ -176,7 +176,7 @@ function Connector({ leftDone, rightDone }) {
 }
 
 // ─── Main component ───
-export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null }) {
+export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null, onSelect = null }) {
   const [pressedDot, setPressedDot] = React.useState(null);
 
   if (!session) return null;
@@ -225,8 +225,7 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
     if (state.status === 'locked') return;
     // Dot 3 (Record) when session incomplete and parent provided an
     // onSoapClick callback: jump to the inline SOAP editor instead
-    // of opening the read-only document in a new tab. Saves the
-    // therapist a step and makes the input path explicit.
+    // of opening the document.
     if (state.n === 3 && onSoapClick) {
       setPressedDot(state.n);
       setTimeout(() => {
@@ -235,11 +234,18 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
       }, 220);
       return;
     }
-    // Brief pulse so the tap is felt before we navigate away
+    // Drawer mode: tell parent which doc was tapped, parent opens the
+    // drawer with that doc rendered inline. This is the default now;
+    // the new-tab fallback only fires when no onSelect is provided
+    // (e.g. legacy callers using DocumentJourney outside SessionDetail).
     setPressedDot(state.n);
     setTimeout(() => {
       setPressedDot(null);
-      window.open(state.url, '_blank');
+      if (onSelect) {
+        onSelect(state.n);
+      } else {
+        window.open(state.url, '_blank');
+      }
     }, 220);
   };
 

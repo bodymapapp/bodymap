@@ -1,9 +1,17 @@
 // src/pages/IntakeBrief.js
 //
-// Dot 1 of 3: Today's intake form output.
+// Doc 1 of 4: Today's intake form output.
 //
-// Layout: bodyDisplay='today' (no pattern view, this is BEFORE
-// the therapist works the client), sections 03 and 04 side-by-side.
+// Renders in two modes:
+//   1. Full page (default): wrapped in DocumentLayout with the
+//      sticky toolbar, identity band, footer. Reached via the
+//      /brief/intake/:sessionId route.
+//   2. Drawer (chrome={false}): just the sections, no toolbar
+//      or footer chrome. The DocumentDrawer renders its own
+//      toolbar/actions.
+//
+// Accepts an optional sessionIdProp to allow the drawer to pass
+// the session ID directly instead of from URL params.
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
@@ -11,8 +19,9 @@ import { supabase } from '../lib/supabase';
 import DocumentLayout, { T, Pill } from '../components/DocumentLayout';
 import { deriveCadence, getStandingFlags } from '../lib/sessionIntelligence';
 
-export default function IntakeBrief() {
-  const { sessionId } = useParams();
+export default function IntakeBrief({ sessionIdProp, chrome = 'full' }) {
+  const params = useParams();
+  const sessionId = sessionIdProp || params.sessionId;
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -135,6 +144,7 @@ export default function IntakeBrief() {
       bodyDisplay="today"
       section03={section03}
       section04={section04}
+      chrome={chrome}
     />
   );
 }

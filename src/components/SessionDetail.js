@@ -3,6 +3,11 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db, supabase } from "../lib/supabase";
 import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
 import DocumentJourney from "./DocumentJourney";
+import DocumentDrawer from "./DocumentDrawer";
+import IntakeBrief from "../pages/IntakeBrief";
+import PreSessionBrief from "../pages/PreSessionBrief";
+import PostSessionBrief from "../pages/PostSessionBrief";
+import PostSessionSummary from "../pages/PostSessionSummary";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -122,10 +127,21 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   // Track therapist's AI features setting so we can hide the pre/post-session
   // brief buttons when AI is turned off in Settings.
   const [aiEnabled, setAiEnabled] = useState(true);
+  const [therapistMeta, setTherapistMeta] = useState(null);
   useEffect(() => {
     if (!session?.therapist_id) return;
-    supabase.from("therapists").select("ai_enabled").eq("id", session.therapist_id).maybeSingle()
-      .then(({ data }) => { if (data) setAiEnabled(data.ai_enabled !== false); });
+    supabase.from("therapists").select("ai_enabled, full_name, business_name, phone, custom_url").eq("id", session.therapist_id).maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setAiEnabled(data.ai_enabled !== false);
+          setTherapistMeta({
+            full_name: data.full_name,
+            business_name: data.business_name,
+            phone: data.phone,
+            custom_url: data.custom_url,
+          });
+        }
+      });
   }, [session?.therapist_id]);
   const [publicNotes, setPublicNotes] = useState(session.public_notes || "");
   const [saving, setSaving] = useState(false);
@@ -143,6 +159,11 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   // when the session is not yet complete. Scrolls the SOAP card
   // into view and triggers a 1.5s sage glow pulse so the eye can
   // find it immediately.
+  // Document drawer state: which doc is open (1, 2, 3, 4) or null.
+  // Drawer renders inline on the session detail page, replacing the
+  // previous "open in new tab" behavior on the journey timeline.
+  const [drawerDoc, setDrawerDoc] = useState(null);
+
   const soapCardRef = useRef(null);
   const [soapPulsing, setSoapPulsing] = useState(false);
   const jumpToSoap = () => {
@@ -544,7 +565,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <DocumentJourney session={session} aiEnabled={aiEnabled} onSoapClick={!session.completed ? jumpToSoap : null} />
+        <DocumentJourney
+          session={session}
+          aiEnabled={aiEnabled}
+          onSoapClick={!session.completed ? jumpToSoap : null}
+          onSelect={(n) => setDrawerDoc(n)}
+        />
         <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600", alignSelf: 'center' }}>
           {session.completed ? "✓ Completed" : "⏳ Pending Review"}
         </span>
@@ -1139,6 +1165,35 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       </div>
 
       <style>{"@media print { header, nav, button, .no-print { display: none !important; } body { background: white !important; font-size: 11px !important; } * { box-shadow: none !important; } h2 { font-size: 16px !important; } h3 { font-size: 13px !important; } svg { width: 100px !important; height: 160px !important; } }"}</style>
+
+      {/* Document drawer: slides in from the right when a journey
+          timeline dot is tapped. Renders the document inline with
+          the actions toolbar (copy image, share image, email, SMS,
+          PDF) without leaving the session detail page. */}
+      {drawerDoc != null && (() => {
+        const docMeta = {
+          1: { name: "Today's Intake", url: `/brief/intake/${session.id}`, Component: IntakeBrief },
+          2: { name: "Pre-Session Brief", url: `/brief/pre/${session.id}`, Component: PreSessionBrief },
+          3: { name: "Post-Session Record", url: `/brief/post/${session.id}`, Component: PostSessionBrief },
+          4: { name: "Your Recap", url: `/recap/${session.id}`, Component: PostSessionSummary },
+        }[drawerDoc];
+        if (!docMeta) return null;
+        const Comp = docMeta.Component;
+        return (
+          <DocumentDrawer
+            open={true}
+            onClose={() => setDrawerDoc(null)}
+            docNumber={drawerDoc}
+            docName={docMeta.name}
+            docTotalParts={4}
+            fullPageUrl={`${window.location.origin}${docMeta.url}`}
+            client={client}
+            therapist={therapistMeta}
+          >
+            <Comp sessionIdProp={session.id} chrome="drawer" />
+          </DocumentDrawer>
+        );
+      })()}
     </div>
   );
 }
