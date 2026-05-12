@@ -147,7 +147,7 @@ function Connector({ leftDone, rightDone }) {
 }
 
 // ─── Main component ───
-export default function DocumentJourney({ session, aiEnabled = true }) {
+export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null }) {
   const [pressedDot, setPressedDot] = React.useState(null);
 
   if (!session) return null;
@@ -194,6 +194,18 @@ export default function DocumentJourney({ session, aiEnabled = true }) {
 
   const handleClick = (state) => {
     if (state.status === 'locked') return;
+    // Dot 3 (Record) when session incomplete and parent provided an
+    // onSoapClick callback: jump to the inline SOAP editor instead
+    // of opening the read-only document in a new tab. Saves the
+    // therapist a step and makes the input path explicit.
+    if (state.n === 3 && onSoapClick) {
+      setPressedDot(state.n);
+      setTimeout(() => {
+        setPressedDot(null);
+        onSoapClick();
+      }, 220);
+      return;
+    }
     // Brief pulse so the tap is felt before we navigate away
     setPressedDot(state.n);
     setTimeout(() => {

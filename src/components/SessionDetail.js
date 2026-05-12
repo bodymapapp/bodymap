@@ -1,5 +1,5 @@
 // src/components/SessionDetail.js
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db, supabase } from "../lib/supabase";
 import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
 import DocumentJourney from "./DocumentJourney";
@@ -137,6 +137,24 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   const [linkCopied, setLinkCopied] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [soapTab, setSoapTab] = useState("soap"); // "soap" | "notes"
+
+  // Ref + handler for "jump to SOAP" affordances. Used by the
+  // next-step banner button and by the journey timeline's dot 3
+  // when the session is not yet complete. Scrolls the SOAP card
+  // into view and triggers a 1.5s sage glow pulse so the eye can
+  // find it immediately.
+  const soapCardRef = useRef(null);
+  const [soapPulsing, setSoapPulsing] = useState(false);
+  const jumpToSoap = () => {
+    setSoapTab("soap");
+    setTimeout(() => {
+      if (soapCardRef.current) {
+        soapCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      setSoapPulsing(true);
+      setTimeout(() => setSoapPulsing(false), 1600);
+    }, 50);
+  };
 
   // Parse SOAP from therapist_notes if stored as JSON
   const parseSoap = (raw) => {
@@ -410,7 +428,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             {new Date(session.created_at).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
-        <DocumentJourney session={session} aiEnabled={aiEnabled} />
+        <DocumentJourney session={session} aiEnabled={aiEnabled} onSoapClick={!session.completed ? jumpToSoap : null} />
         <span style={{ background: session.completed ? "#D1FAE5" : "#FEF3C7", color: session.completed ? "#065F46" : "#92400E", padding: "6px 16px", borderRadius: "20px", fontSize: "13px", fontWeight: "600", alignSelf: 'center' }}>
           {session.completed ? "✓ Completed" : "⏳ Pending Review"}
         </span>
@@ -693,12 +711,67 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
       </div>
 
+      {/* Therapist's input lives here. When the session is not yet
+          complete, show a soft gold "Next step" banner above the SOAP
+          card so the therapist knows exactly where to type. Once the
+          session is marked complete, the banner disappears. */}
+      {!session.completed && (
+        <div style={{
+          background: "linear-gradient(to right, #FAF3DC, #FEF3C7)",
+          border: "1.5px solid #E0CB7A",
+          borderLeft: "4px solid #C9A84C",
+          borderRadius: "12px",
+          padding: "12px 16px",
+          marginTop: "16px",
+          display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "20px", lineHeight: 1 }}>✏️</span>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <p style={{ fontSize: "12px", fontWeight: "800", color: "#92660E", margin: "0 0 2px 0", textTransform: "uppercase", letterSpacing: "0.7px" }}>
+              Next step: write your session notes
+            </p>
+            <p style={{ fontSize: "13px", color: "#7C5A0E", margin: 0, lineHeight: 1.45 }}>
+              Type your SOAP notes and tap aftercare items below to finish this record. Mark complete to send the client their summary.
+            </p>
+          </div>
+          <button onClick={jumpToSoap} style={{
+            background: "#1C2B22", color: "#fff", border: "none",
+            padding: "9px 16px", borderRadius: "8px",
+            fontSize: "13px", fontWeight: 700,
+            cursor: "pointer", whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}>
+            Jump to SOAP →
+          </button>
+        </div>
+      )}
+
       {/* SOAP Notes + Session Notes */}
-      <div style={{ background: C.white, borderRadius: "14px", border: "1px solid " + C.lightGray, boxShadow: "0 1px 4px rgba(0,0,0,0.05)", marginTop: "16px", overflow: "hidden" }}>
+      <div
+        ref={soapCardRef}
+        className={soapPulsing ? "bm-soap-pulse" : ""}
+        style={{
+          background: C.white, borderRadius: "14px",
+          border: "1px solid " + C.lightGray,
+          boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
+          marginTop: "16px", overflow: "hidden",
+          transition: "box-shadow 0.3s ease, border-color 0.3s ease",
+        }}>
+        <style>{`
+          .bm-soap-pulse {
+            animation: bmSoapPulse 1.5s ease-out;
+            border-color: ${C.sage} !important;
+          }
+          @keyframes bmSoapPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(107,158,128,0.55), 0 1px 4px rgba(0,0,0,0.05); }
+            40%  { box-shadow: 0 0 0 8px rgba(107,158,128,0.18), 0 4px 16px rgba(107,158,128,0.18); }
+            100% { box-shadow: 0 0 0 0 rgba(107,158,128,0), 0 1px 4px rgba(0,0,0,0.05); }
+          }
+        `}</style>
         {/* Tab bar */}
         <div style={{ display: "flex", borderBottom: "1px solid " + C.lightGray }}>
           {[
-            { id: "soap", label: "📋 SOAP Notes" },
+            { id: "soap", label: session.completed ? "📋 SOAP & Aftercare" : "✏️ Write SOAP & Aftercare" },
             { id: "notes", label: "🔒 Private Notes" },
             { id: "client", label: "💌 Message to Client" },
           ].map(t => (
@@ -714,7 +787,12 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {/* SOAP Tab */}
           {soapTab === "soap" && (
             <div>
-              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>Structured clinical notes. S, O, A, and P are private clinical fields. Note to Client and Aftercare are sent to the client in their post-session summary.</p>
+              <p style={{ fontSize: "12px", color: C.gray, marginBottom: "16px" }}>
+                Structured clinical notes. S, O, A, and P are private clinical fields, only you see these. Note to Client and Aftercare are sent to the client in their post-session summary.
+                <span style={{ display: "inline-block", marginTop: 6, padding: "3px 9px", background: "#EEF3EE", color: "#2A5741", borderRadius: 6, fontSize: 11, fontWeight: 600 }}>
+                  🎙️ Tip: tap the mic on your keyboard to dictate any field.
+                </span>
+              </p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }} className="bm-session-grid">
                 {[
                   { key: "S", label: "S, Subjective", hint: "What the client reports: pain level, area, sensation, changes since last visit..." },
