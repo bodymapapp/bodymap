@@ -156,6 +156,24 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     }, 50);
   };
 
+  // Visual cue for therapist input: fields are soft rose while empty
+  // (call to action), transition to neutral cream once filled. Gives
+  // the therapist a clear "here's where I type" signal at a glance.
+  // Border deepens slightly when filled to reinforce the done state.
+  const therapistInputStyle = (value) => {
+    const filled = value && String(value).trim().length > 0;
+    return {
+      width: "100%", padding: "10px 12px",
+      border: "1.5px solid " + (filled ? "#D7CCB5" : "#F0BFB1"),
+      borderRadius: "8px",
+      fontSize: "13px", fontFamily: "system-ui",
+      resize: "vertical", boxSizing: "border-box",
+      background: filled ? C.beige : "#FDF2EE",
+      lineHeight: 1.6, outline: "none",
+      transition: "background 0.4s ease, border-color 0.4s ease",
+    };
+  };
+
   // Parse SOAP from therapist_notes if stored as JSON
   const parseSoap = (raw) => {
     try {
@@ -806,7 +824,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                       value={soap[key] || ""}
                       onChange={e => setSoap(s => ({ ...s, [key]: e.target.value }))}
                       placeholder={hint}
-                      style={{ width: "100%", minHeight: "100px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                      style={{ ...therapistInputStyle(soap[key]), minHeight: "100px" }}
                     />
                   </div>
                 ))}
@@ -822,7 +840,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                   value={publicNotes}
                   onChange={e => setPublicNotes(e.target.value)}
                   placeholder="A warm note for your client. Example: 'Loved having you today, your shoulder felt much looser by the end. Try a few minutes of the neck rolls we talked about this week.'"
-                  style={{ width: "100%", minHeight: "90px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                  style={{ ...therapistInputStyle(publicNotes), minHeight: "90px" }}
                 />
               </div>
 
@@ -866,7 +884,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                   value={soap.aftercareCustom || ""}
                   onChange={e => setSoap(s => ({ ...s, aftercareCustom: e.target.value }))}
                   placeholder="Anything specific to this client (optional, e.g. 'Ice the right hamstring for 10 minutes tonight')"
-                  style={{ width: "100%", minHeight: "60px", padding: "10px 12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "13px", fontFamily: "system-ui", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6, outline: "none" }}
+                  style={{ ...therapistInputStyle(soap.aftercareCustom), minHeight: "60px" }}
                 />
               </div>
 
@@ -895,7 +913,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             <div>
               <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>🔒 Private, only visible to you, never shared with clients.</p>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Your private session notes..."
-                style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
+                style={{ ...therapistInputStyle(notes), minHeight: "160px", padding: "12px", fontSize: "14px", fontFamily: "Georgia, serif" }}
               />
               <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
                 <button onClick={saveNotes} disabled={saving}
@@ -917,7 +935,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
             <div>
               <p style={{ fontSize: "12px", color: C.gray, marginBottom: "12px" }}>💌 Appears on the Post-Session Brief you share with your client.</p>
               <textarea value={publicNotes} onChange={e => setPublicNotes(e.target.value)} placeholder="Optional - write a personal note for your client (e.g. stretches to try, what improved)..."
-                style={{ width: "100%", minHeight: "160px", padding: "12px", border: "1.5px solid " + C.lightGray, borderRadius: "8px", fontSize: "14px", fontFamily: "Georgia, serif", resize: "vertical", boxSizing: "border-box", background: C.beige, lineHeight: 1.6 }}
+                style={{ ...therapistInputStyle(publicNotes), minHeight: "160px", padding: "12px", fontSize: "14px", fontFamily: "Georgia, serif" }}
               />
               <div style={{ display: "flex", gap: "10px", marginTop: "12px" }}>
                 <button onClick={saveNotes} disabled={saving} style={{ flex: 1, background: C.sage, color: C.white, border: "none", padding: "11px", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer", fontFamily: "system-ui" }}>
