@@ -141,7 +141,7 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
       styleTag.innerHTML = `
         @media print {
           html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
-          @page { size: A4; margin: 10mm; }
+          @page { size: A4; margin: 8mm; }
           body > *:not(.bm-print-stage) { display: none !important; }
           .bm-print-stage {
             display: block !important;
@@ -163,6 +163,33 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
             overflow: visible !important;
           }
           .bm-print-stage * { visibility: visible !important; }
+
+          /* Keep split body side-by-side at print width. Without this
+             override, the doc's mobile breakpoint (<760px) kicks in
+             at A4 width (~660px usable) and stacks the pattern/today
+             columns, which makes the doc 2 pages instead of 1. */
+          .bm-print-stage .bm-doc-body-split {
+            grid-template-columns: 1fr 1px 1fr !important;
+            gap: 8px !important;
+          }
+          .bm-print-stage .bm-doc-body-split > div:nth-child(2) {
+            display: block !important;
+          }
+          .bm-print-stage .bm-doc-top-row {
+            grid-template-columns: 280px 1fr !important;
+            gap: 8px !important;
+          }
+          .bm-print-stage .bm-doc-bottom-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          .bm-print-stage .bm-doc-split-row {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+          }
+          /* Tighten paddings during print so docs fit on one page. */
+          .bm-print-stage .bm-doc-card { padding: 10px 12px !important; }
+          .bm-print-stage h1 { font-size: 22px !important; }
         }
       `;
       document.head.appendChild(styleTag);
@@ -200,45 +227,48 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(body)}`;
   };
 
-  // ─── Render the doc to a PNG blob.
+  // Render the doc to a PNG via the off-screen print stage.
   //
-  // Bug fix: previous implementation passed the SCROLLABLE container
-  // to html2canvas which captured only the visible viewport. Now we
-  // pass the inner content element (not the scroll wrapper) with
-  // its natural height, and explicitly set windowHeight/height so
-  // html2canvas paints the full document including content below the
-  // initial fold.
+  // Previous approach (capturing from inside the drawer's scrollable
+  // body) only captured the visible viewport because the drawer's
+  // flex container constrains height. Even with overflow unwrap, the
+  // scrollable div is bounded by flex: 1.
+  //
+  // New approach: clone the doc HTML into the off-screen print stage
+  // sized at 880px wide. The clone renders at its natural height
+  // (no flex container constraining it). html2canvas captures the
+  // clone, which is the full document top to bottom.
   const renderToBlob = async () => {
     if (!bodyRef.current) throw new Error('Document not ready');
+    const stage = printContainerRef.current;
+    if (!stage) throw new Error('Print stage not ready');
 
-    const target = bodyRef.current;
-    // Capture full scrollHeight (the actual content height) not the
-    // visible client height
-    const fullHeight = target.scrollHeight;
-    const fullWidth = target.scrollWidth;
+    // Clone the rendered doc into the stage
+    stage.innerHTML = '';
+    const clone = bodyRef.current.cloneNode(true);
+    clone.style.width = '880px';
+    clone.style.maxWidth = '880px';
+    clone.style.height = 'auto';
+    clone.style.maxHeight = 'none';
+    clone.style.overflow = 'visible';
+    stage.appendChild(clone);
 
-    // Briefly remove the overflow on the scroll parent so html2canvas
-    // can paint everything in one pass without clipping
-    const scrollParent = target.parentElement;
-    const previousOverflow = scrollParent ? scrollParent.style.overflow : null;
-    const previousHeight = scrollParent ? scrollParent.style.height : null;
-    if (scrollParent) {
-      scrollParent.style.overflow = 'visible';
-      scrollParent.style.height = 'auto';
-    }
-
-    // Wait a tick for layout to settle
-    await new Promise(r => setTimeout(r, 50));
+    // Wait for layout + SVG paints. SVG body diagrams need a moment
+    // to compute their bounding boxes inside the cloned tree.
+    await new Promise(r => setTimeout(r, 250));
 
     try {
-      const canvas = await html2canvas(target, {
+      // offsetHeight reflects the full natural height now that the
+      // clone is in the DOM with no height constraint
+      const fullHeight = Math.max(stage.offsetHeight, clone.scrollHeight);
+      const canvas = await html2canvas(stage, {
         backgroundColor: C.cream,
         scale: 2,
         useCORS: true,
         logging: false,
-        width: fullWidth,
+        width: 880,
         height: fullHeight,
-        windowWidth: fullWidth,
+        windowWidth: 880,
         windowHeight: fullHeight,
         scrollX: 0,
         scrollY: 0,
@@ -247,10 +277,7 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
         canvas.toBlob(b => b ? resolve(b) : reject(new Error('Image render failed')), 'image/png');
       });
     } finally {
-      if (scrollParent) {
-        scrollParent.style.overflow = previousOverflow || '';
-        scrollParent.style.height = previousHeight || '';
-      }
+      stage.innerHTML = '';
     }
   };
 

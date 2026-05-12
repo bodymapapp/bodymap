@@ -50,20 +50,20 @@ const C = {
 // ─── Dot component ───
 function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
   const isDone = status === 'done';
-  const isReady = status === 'ready';
-  const isPending = status === 'pending';
+  const isCurrent = status === 'current' || status === 'ready';   // 'current' is new, 'ready' kept for back-compat
+  const isWaiting = status === 'waiting' || status === 'pending';
   const isLocked = status === 'locked';
 
   const ringStyle = (() => {
     if (isDone) return { background: C.sage, border: `2px solid ${C.sage}`, boxShadow: `0 2px 8px rgba(74,107,84,0.25), 0 0 0 4px ${C.sageBg}` };
-    if (isReady) return { background: C.white, border: `2.5px solid ${C.gold}`, boxShadow: `0 0 0 4px ${C.goldBg}, 0 2px 6px rgba(201,168,76,0.20)` };
+    if (isCurrent) return { background: C.white, border: `2.5px solid ${C.gold}`, boxShadow: `0 0 0 4px ${C.goldBg}, 0 2px 6px rgba(201,168,76,0.20)` };
     if (isLocked) return { background: C.cream, border: `2px solid ${C.lineFaint}`, opacity: 0.55 };
     return { background: C.white, border: `2px dashed ${C.muted}`, opacity: 0.7 };
   })();
 
-  const numColor = isDone ? C.white : isReady ? C.forest : C.muted;
-  const labelColor = isDone || isReady ? C.forest : C.muted;
-  const statusColor = isDone ? C.sage : isReady ? C.goldDeep : C.muted;
+  const numColor = isDone ? C.white : isCurrent ? C.forest : C.muted;
+  const labelColor = isDone || isCurrent ? C.forest : C.muted;
+  const statusColor = isDone ? C.sage : isCurrent ? C.goldDeep : C.muted;
 
   return (
     <button
@@ -121,7 +121,7 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
             </svg>
           </span>
         )}
-        {isReady && !isDone && (
+        {isCurrent && !isDone && (
           <span style={{
             position: 'absolute',
             top: -3, right: -3,
@@ -184,49 +184,92 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
   const sessionId = session.id;
   const completed = !!session.completed;
 
-  // States for each dot:
-  // 1. Intake: always done (session exists because client filled it)
-  // 2. Pre-Session: ready (or locked if AI off)
-  // 3. Post-Session Record: done if completed, ready if not (or locked if AI off)
-  // 4. Client Recap: sent (done) if completed, pending otherwise
+  // Sequential journey state. Each step requires the previous to be done.
+  // No more contradictory states (e.g. dot 2 'ready' while 3 and 4 'done').
+  //
+  // Intake:   session exists with client data (effectively always done if
+  //           the session row exists, since the row is created when the
+  //           client submits intake)
+  // Pre:      therapist must have had the session, which we infer from
+  //           session.completed. If session not yet completed, pre is
+  //           the 'current' step (read the brief before seeing them)
+  // Record:   session.completed AND therapist has saved SOAP content
+  // Recap:    session.completed AND therapist has written a message to
+  //           the client (the recap text). Without that there is nothing
+  //           personal to send.
+  //
+  // 'Current' = the first dot that is not yet done. Only one dot at a
+  // time. Subsequent dots are 'waiting' (faded, faint dashed border).
+
+  const intakeDone = !!(
+    (session.front_focus && session.front_focus.length) ||
+    (session.back_focus && session.back_focus.length) ||
+    session.client_notes ||
+    session.pressure
+  );
+
+  // Parse SOAP from therapist_notes to know if record/recap have content
+  let soap = { S: '', O: '', A: '', P: '', noteToClient: '' };
+  try {
+    const parsed = JSON.parse(session.therapist_notes || '');
+    if (parsed && parsed.__soap) soap = parsed;
+  } catch (e) { /* legacy or empty */ }
+
+  const hasSoapContent = !!(soap.S || soap.O || soap.A || soap.P);
+  const hasNoteToClient = !!(session.public_notes || soap.noteToClient);
+
+  const preDone = completed;
+  const recordDone = completed && hasSoapContent;
+  const recapDone = completed && hasNoteToClient;
+
+  // Determine the single 'current' dot (first incomplete)
+  let currentN = null;
+  if (!intakeDone) currentN = 1;
+  else if (!preDone) currentN = 2;
+  else if (!recordDone) currentN = 3;
+  else if (!recapDone) currentN = 4;
+
+  const computeStatus = (n, done) => {
+    if (done) return 'done';
+    if (currentN === n) return 'current';
+    return 'waiting';
+  };
 
   const states = [
     {
-      n: 1,
-      label: 'Intake',
-      status: 'done',
-      statusText: 'Filled',
+      n: 1, label: 'Intake',
+      status: computeStatus(1, intakeDone),
+      statusText: intakeDone ? 'Filled' : 'Awaiting client',
       url: `/brief/intake/${sessionId}`,
     },
     {
-      n: 2,
-      label: 'Pre-Session',
-      status: aiEnabled ? 'ready' : 'locked',
-      statusText: aiEnabled ? 'Ready' : 'AI off',
+      n: 2, label: 'Pre-Session',
+      status: computeStatus(2, preDone),
+      statusText: preDone ? 'Reviewed' : (intakeDone ? 'Read before' : 'Waiting'),
       url: `/brief/pre/${sessionId}`,
     },
     {
-      n: 3,
-      label: 'Record',
-      status: !aiEnabled ? 'locked' : (completed ? 'done' : 'ready'),
-      statusText: !aiEnabled ? 'AI off' : (completed ? 'Saved' : 'Next'),
+      n: 3, label: 'Record',
+      status: computeStatus(3, recordDone),
+      statusText: recordDone ? 'Saved' : (preDone ? 'Write SOAP' : 'Waiting'),
       url: `/brief/post/${sessionId}`,
     },
     {
-      n: 4,
-      label: 'Recap',
-      status: completed ? 'done' : 'pending',
-      statusText: completed ? 'Sent' : 'Waiting',
+      n: 4, label: 'Recap',
+      status: computeStatus(4, recapDone),
+      statusText: recapDone ? 'Sent' : (recordDone ? 'Send to client' : 'Waiting'),
       url: `/recap/${sessionId}`,
     },
   ];
 
   const handleClick = (state) => {
+    // 'waiting' dots are clickable so the therapist can preview, but
+    // they don't have the gold pulse calling attention to them.
     if (state.status === 'locked') return;
-    // Dot 3 (Record) when session incomplete and parent provided an
-    // onSoapClick callback: jump to the inline SOAP editor instead
-    // of opening the document.
-    if (state.n === 3 && onSoapClick) {
+    // Dot 3 (Record) when not done and parent provided an onSoapClick
+    // callback: jump to the inline SOAP editor on the session page
+    // instead of opening the document drawer.
+    if (state.n === 3 && state.status !== 'done' && onSoapClick) {
       setPressedDot(state.n);
       setTimeout(() => {
         setPressedDot(null);
@@ -234,10 +277,6 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
       }, 220);
       return;
     }
-    // Drawer mode: tell parent which doc was tapped, parent opens the
-    // drawer with that doc rendered inline. This is the default now;
-    // the new-tab fallback only fires when no onSelect is provided
-    // (e.g. legacy callers using DocumentJourney outside SessionDetail).
     setPressedDot(state.n);
     setTimeout(() => {
       setPressedDot(null);
@@ -338,6 +377,42 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
             )}
           </React.Fragment>
         ))}
+      </div>
+
+      {/* Legend: explains the three visual states so the therapist
+          can read the journey at a glance without guessing. */}
+      <div style={{
+        marginTop: 10, paddingTop: 8, borderTop: `1px solid ${C.lineFaint}`,
+        display: 'flex', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
+        fontSize: 10, color: C.inkSoft,
+      }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{
+            width: 12, height: 12, borderRadius: '50%',
+            background: C.sage, display: 'inline-flex',
+            alignItems: 'center', justifyContent: 'center',
+          }}>
+            <svg width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </span>
+          Done
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{
+            width: 11, height: 11, borderRadius: '50%',
+            background: C.white, border: `2px solid ${C.gold}`,
+            boxShadow: `0 0 0 2px ${C.goldBg}`,
+          }} />
+          Next step
+        </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+          <span style={{
+            width: 11, height: 11, borderRadius: '50%',
+            background: C.white, border: `1.5px dashed ${C.muted}`,
+          }} />
+          Waiting
+        </span>
       </div>
     </div>
   );
