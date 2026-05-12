@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { GIFT_CARD_THEMES, ORDERED_THEME_KEYS, getTheme } from '../lib/giftCardThemes';
+import { DESIGNS, ORDERED_DESIGN_KEYS, getDesign, resolveCardBranding, renderCardReact } from '../lib/giftCardDesigns';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', blush:'#F9A8B4', rose:'#E85C79', rosePale:'#FCE7F3', cream:'#FFF9F3', white:'#FFFFFF', dark:'#1F2937', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -32,157 +33,48 @@ function BotanicalFlourish({ style, color = '#F9A8B4', opacity = 0.5 }) {
 }
 
 // Visual gift card preview - the actual "card" recipients would feel excited to receive
-function GiftCardPreview({ amount, recipient, purchaser, message, code, compact = false, therapist }) {
-  // Resolve theme + branding data from the therapist row. Falls back
-  // to 'rose' (the original look) if any value is missing.
-  const theme = getTheme(therapist?.gift_card_theme);
-  const photoUrl = therapist?.photo_url || null;
-  const brandMessage = therapist?.gift_card_message || null;
-
-  return (
-    <div style={{
-      position: 'relative',
-      background: theme.bgGradient,
-      borderRadius: 20,
-      padding: compact ? '20px 22px' : '28px 26px',
-      border: `1.5px solid ${theme.accent}33`,
-      overflow: 'hidden',
-      boxShadow: `0 4px 20px ${theme.accent}26, 0 1px 3px rgba(0,0,0,0.04)`,
-    }}>
-      {/* Decorative corner flourish, tinted by the active theme */}
-      <BotanicalFlourish style={{ position: 'absolute', top: -18, right: -18, transform: 'rotate(25deg)' }} color={theme.accent} opacity={0.4} />
-      <BotanicalFlourish style={{ position: 'absolute', bottom: -22, left: -22, transform: 'rotate(-145deg) scale(0.7)' }} color={theme.accent} opacity={0.3} />
-
-      {/* Little flag / ribbon marker */}
-      <div style={{
-        position: 'absolute', top: 0, left: 24,
-        width: 32, height: compact ? 36 : 42,
-        background: theme.accentSolid,
-        clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%)',
-        boxShadow: `0 2px 6px ${theme.accent}4D`,
-      }}/>
-
-      <div style={{ position: 'relative', zIndex: 2 }}>
-        {/* Top row: "A gift for you" eyebrow + therapist photo (if any) */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
-          marginBottom: 4,
-        }}>
-          <div style={{
-            fontFamily: 'Georgia, serif', fontSize: 11, fontWeight: 400,
-            color: theme.accent, letterSpacing: '0.24em', textTransform: 'uppercase',
-            marginLeft: compact ? 44 : 48,
-          }}>
-            ♡ A gift for you
-          </div>
-          {photoUrl && (
-            <img
-              src={photoUrl}
-              alt={therapist?.business_name || therapist?.full_name || ''}
-              style={{
-                width: compact ? 36 : 44,
-                height: compact ? 36 : 44,
-                borderRadius: '50%',
-                objectFit: 'cover',
-                border: `2px solid ${theme.accent}66`,
-                flexShrink: 0,
-                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-              }}
-            />
-          )}
-        </div>
-
-        {/* Recipient name */}
-        {recipient && (
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 20 : 26, fontWeight: 700, color: theme.ink, marginBottom: compact ? 4 : 8, fontStyle: 'italic', letterSpacing: '-0.01em' }}>
-            Dear {recipient},
-          </div>
-        )}
-
-        {/* Amount */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: compact ? 8 : 14 }}>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 14 : 16, color: theme.inkSoft, fontStyle: 'italic' }}>Worth</span>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 34 : 44, fontWeight: 700, color: theme.accentDeep, letterSpacing: '-0.02em' }}>
-            ${amount}
-          </span>
-          <span style={{ fontSize: compact ? 11 : 12, color: theme.inkSoft, fontWeight: 600 }}>of care</span>
-        </div>
-
-        {/* Per-purchase message (what the GIVER wrote to the recipient) */}
-        {message && (
-          <div style={{
-            fontFamily: 'Georgia, serif',
-            fontSize: compact ? 13 : 14,
-            color: theme.ink,
-            fontStyle: 'italic',
-            lineHeight: 1.55,
-            padding: '10px 14px',
-            background: 'rgba(255,255,255,0.55)',
-            borderLeft: `2.5px solid ${theme.accent}`,
-            borderRadius: '4px 12px 12px 4px',
-            marginBottom: compact ? 8 : 14,
-          }}>
-            "{message}"
-          </div>
-        )}
-
-        {/* Therapist's brand message (free-form, set in branding settings).
-            Sits below the per-purchase message so the giver's words land first. */}
-        {brandMessage && (
-          <div style={{
-            fontFamily: 'Georgia, serif',
-            fontSize: compact ? 12 : 13,
-            color: theme.inkSoft,
-            lineHeight: 1.5,
-            marginBottom: compact ? 10 : 14,
-            paddingLeft: 2,
-            fontStyle: 'italic',
-          }}>
-            {brandMessage}
-          </div>
-        )}
-
-        {/* From */}
-        {purchaser && (
-          <div style={{ fontSize: compact ? 12 : 13, color: theme.inkSoft, marginBottom: compact ? 10 : 14 }}>
-            With love, <span style={{ fontFamily: 'Georgia,serif', fontStyle: 'italic', fontWeight: 600, color: theme.ink }}>{purchaser}</span>
-          </div>
-        )}
-
-        {/* Code */}
-        <div style={{
-          marginTop: compact ? 10 : 16,
-          paddingTop: compact ? 10 : 14,
-          borderTop: `1px dashed ${theme.accent}4D`,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-          flexWrap: 'wrap',
-        }}>
-          <div>
-            <div style={{ fontSize: 9, color: theme.inkSoft, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 2 }}>Redemption code</div>
-            <code style={{ fontSize: compact ? 13 : 15, fontWeight: 700, color: theme.accentDeep, letterSpacing: '0.08em', fontFamily: 'ui-monospace, Menlo, monospace' }}>{code}</code>
-          </div>
-          {therapist?.business_name && (
-            <div style={{ fontSize: compact ? 11 : 12, color: theme.inkSoft, fontWeight: 600 }}>
-              {therapist.business_name}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+// Visual gift card preview - dispatches to the design-specific renderer.
+// Accepts a cert-shaped object (real cert from DB or form state for the
+// create preview) plus the therapist row. Resolves theme/image/message
+// falling back to therapist defaults when per-card columns are null.
+function GiftCardPreview({ cert, therapist, compact = false }) {
+  const branding = resolveCardBranding(cert, therapist);
+  return renderCardReact({
+    designKey: branding.designKey,
+    theme: branding.theme,
+    imageUrl: branding.imageUrl,
+    brandMessage: branding.brandMessage,
+    amount: cert?.amount || "___",
+    recipient: cert?.recipient_name,
+    purchaser: cert?.purchaser_name,
+    message: cert?.message,
+    code: cert?.code || "XXXX-XXXX-XXXX",
+    businessName: therapist?.business_name,
+    compact,
+  });
 }
 
 export default function GiftCertificates({ therapist }) {
   const [certs, setCerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ amount: '', recipient_name: '', recipient_email: '', purchaser_name: '', message: '' });
+  const [form, setForm] = useState({
+    amount: '',
+    recipient_name: '',
+    recipient_email: '',
+    purchaser_name: '',
+    message: '',
+    // Per-card branding overrides. Default to "use my defaults" (null)
+    // except for design_template which always has to be set.
+    design_template: 'just-because',
+    theme: null,                 // null = inherit therapist's gift_card_theme
+    card_image_url: null,        // null = inherit therapist's photo_url
+    card_brand_message: '',      // empty = inherit therapist's gift_card_message
+  });
+  const [cardImageFile, setCardImageFile] = useState(null);   // raw File for upload
+  const [cardImagePreview, setCardImagePreview] = useState(null);  // data: URL for instant preview
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const cardImageInputRef = useRef();
   const [clients, setClients] = useState([]);
   const [purchaserSuggestions, setPurchaserSuggestions] = useState([]);
   const [recipientSuggestions, setRecipientSuggestions] = useState([]);
@@ -265,6 +157,33 @@ export default function GiftCertificates({ therapist }) {
     setCreating(true);
     const code = genCode();
 
+    // Step 1: upload per-card image if the therapist picked one. Goes
+    // into the existing bodymap-assets bucket (same one Profile photo
+    // uses). Path namespaced under the therapist id so each card has a
+    // unique key.
+    let cardImageUrl = form.card_image_url;
+    if (cardImageFile) {
+      try {
+        setUploadingImage(true);
+        const ext = (cardImageFile.name.split('.').pop() || 'jpg').toLowerCase();
+        const path = `${therapist.id}/gift-cards/${code}.${ext}`;
+        const { error: upErr } = await supabase.storage
+          .from('bodymap-assets')
+          .upload(path, cardImageFile, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage
+          .from('bodymap-assets')
+          .getPublicUrl(path);
+        cardImageUrl = publicUrl;
+      } catch (e) {
+        console.error('[gift-card] image upload failed:', e);
+        // Fall through and create the card without the image so the
+        // therapist is not blocked. They can edit later.
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
     const { data: inserted, error } = await supabase.from('gift_certificates').insert({
       therapist_id: therapist.id,
       code,
@@ -276,6 +195,12 @@ export default function GiftCertificates({ therapist }) {
       message: form.message || null,
       status: 'active',
       created_at: new Date().toISOString(),
+      // Per-card branding overrides. theme/card_image_url/card_brand_message
+      // pass null when the therapist left the field as "use my defaults".
+      design_template: form.design_template || 'just-because',
+      theme: form.theme || null,
+      card_image_url: cardImageUrl || null,
+      card_brand_message: form.card_brand_message?.trim() || null,
     }).select().single();
 
     if (error || !inserted) {
@@ -298,7 +223,19 @@ export default function GiftCertificates({ therapist }) {
     }
 
     setCreating(false);
-    setForm({ amount: '', recipient_name: '', recipient_email: '', purchaser_name: '', message: '' });
+    setForm({
+      amount: '',
+      recipient_name: '',
+      recipient_email: '',
+      purchaser_name: '',
+      message: '',
+      design_template: 'just-because',
+      theme: null,
+      card_image_url: null,
+      card_brand_message: '',
+    });
+    setCardImageFile(null);
+    setCardImagePreview(null);
     setShowForm(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -529,11 +466,14 @@ export default function GiftCertificates({ therapist }) {
             Live preview
           </div>
           <GiftCardPreview
-            amount="100"
-            recipient="Sarah"
-            purchaser={therapist?.full_name?.split(' ')[0] || 'You'}
-            message="An hour of peace, just for you."
-            code="ABCD-1234-EFGH"
+            cert={{
+              amount: '100',
+              recipient_name: 'Sarah',
+              purchaser_name: therapist?.full_name?.split(' ')[0] || 'You',
+              message: 'An hour of peace, just for you.',
+              code: 'ABCD-1234-EFGH',
+              design_template: 'just-because',
+            }}
             therapist={previewTherapist}
             compact
           />
@@ -602,13 +542,21 @@ export default function GiftCertificates({ therapist }) {
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 10, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>Preview</div>
             <GiftCardPreview
-              amount={form.amount || '___'}
-              recipient={form.recipient_name || 'friend'}
-              purchaser={form.purchaser_name || therapist?.full_name?.split(' ')[0]}
-              message={form.message || 'An hour of peace, just for you.'}
-              code="XXXX-XXXX-XXXX"
-              compact
+              cert={{
+                amount: form.amount || '___',
+                recipient_name: form.recipient_name || 'friend',
+                purchaser_name: form.purchaser_name || therapist?.full_name?.split(' ')[0],
+                message: form.message || 'An hour of peace, just for you.',
+                code: 'XXXX-XXXX-XXXX',
+                design_template: form.design_template,
+                theme: form.theme,
+                // Use the preview blob URL during editing so the upload
+                // shows instantly, then the real public URL after save.
+                card_image_url: cardImagePreview || form.card_image_url,
+                card_brand_message: form.card_brand_message,
+              }}
               therapist={therapist}
+              compact
             />
           </div>
 
@@ -697,8 +645,202 @@ export default function GiftCertificates({ therapist }) {
               style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
           </div>
 
+          {/* ─────── Per-card design + customization ─────── */}
+          {/* This entire block is the answer to HK's feedback:
+              'I should be able to upload any one image per card.
+              It has only one design.'
+              Each card gets its own design, color theme, image, and
+              brand message. Defaults from the therapist row apply if
+              left untouched. */}
+          <div style={{
+            marginBottom: 18,
+            padding: '16px 18px',
+            background: 'rgba(255,255,255,0.55)',
+            border: `1px solid ${C.light}`,
+            borderRadius: 12,
+          }}>
+            <div style={{
+              fontSize: 13, fontWeight: 700, color: C.dark,
+              marginBottom: 4, fontFamily: 'Georgia, serif',
+            }}>
+              ✨ Make this card unique
+            </div>
+            <div style={{ fontSize: 12, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
+              Each gift card can have its own design, color, image, and message. Leave a field alone to use your defaults.
+            </div>
+
+            {/* Design picker */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Design
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8, marginBottom: 16 }}>
+              {ORDERED_DESIGN_KEYS.map(key => {
+                const d = DESIGNS[key];
+                const selected = form.design_template === key;
+                return (
+                  <button key={key} type="button"
+                    onClick={() => setForm(f => ({ ...f, design_template: key }))}
+                    style={{
+                      background: selected ? activeTheme.accent + '14' : '#fff',
+                      border: `2px solid ${selected ? activeTheme.accent : C.light}`,
+                      borderRadius: 10,
+                      padding: '10px 10px',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'all 0.12s',
+                      outline: 'none',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}>
+                    <div style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: 13, fontWeight: 700,
+                      color: C.dark, marginBottom: 2,
+                    }}>{d.label}</div>
+                    <div style={{ fontSize: 10, color: C.gray, lineHeight: 1.3 }}>{d.description}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Theme picker (per-card override) */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Color
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+              {/* "Use my default" pill */}
+              <button type="button"
+                onClick={() => setForm(f => ({ ...f, theme: null }))}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 6,
+                  padding: '7px 12px',
+                  border: `1.5px solid ${form.theme === null ? activeTheme.accent : C.light}`,
+                  background: form.theme === null ? activeTheme.accent + '14' : '#fff',
+                  borderRadius: 999,
+                  fontSize: 12, fontWeight: 600,
+                  color: form.theme === null ? activeTheme.accentDeep : C.gray,
+                  cursor: 'pointer',
+                  WebkitTapHighlightColor: 'transparent',
+                }}>
+                Default
+              </button>
+              {ORDERED_THEME_KEYS.map(key => {
+                const t = GIFT_CARD_THEMES[key];
+                const selected = form.theme === key;
+                return (
+                  <button key={key} type="button"
+                    onClick={() => setForm(f => ({ ...f, theme: key }))}
+                    title={t.label}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      padding: '4px 10px 4px 4px',
+                      border: `1.5px solid ${selected ? t.accent : C.light}`,
+                      background: selected ? t.bgGradient : '#fff',
+                      borderRadius: 999,
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                    }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: t.accentSolid,
+                    }}/>
+                    <span style={{
+                      fontSize: 12, fontWeight: 600,
+                      color: selected ? t.accentDeep : C.gray,
+                    }}>{t.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Image upload (per-card) */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Image for this card
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+              {(cardImagePreview || form.card_image_url || therapist?.photo_url) && (
+                <img
+                  src={cardImagePreview || form.card_image_url || therapist?.photo_url}
+                  alt="Card image"
+                  style={{
+                    width: 56, height: 56, borderRadius: '50%',
+                    objectFit: 'cover',
+                    border: `2px solid ${activeTheme.accent}66`,
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+              <div style={{ flex: 1, minWidth: 200 }}>
+                <input ref={cardImageInputRef} type="file" accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      alert('Image must be smaller than 5MB.');
+                      return;
+                    }
+                    setCardImageFile(file);
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setCardImagePreview(ev.target.result);
+                    reader.readAsDataURL(file);
+                  }}
+                />
+                <button type="button" onClick={() => cardImageInputRef.current?.click()}
+                  style={{
+                    display: 'inline-block',
+                    padding: '8px 14px',
+                    background: '#fff',
+                    border: `1.5px solid ${C.light}`,
+                    borderRadius: 10,
+                    fontSize: 13, fontWeight: 600,
+                    color: C.dark, cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}>
+                  {cardImagePreview || form.card_image_url ? 'Change image' : 'Upload image'}
+                </button>
+                {(cardImagePreview || form.card_image_url) && (
+                  <button type="button"
+                    onClick={() => { setCardImageFile(null); setCardImagePreview(null); setForm(f => ({ ...f, card_image_url: null })); }}
+                    style={{
+                      marginLeft: 8,
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 'none',
+                      fontSize: 12, color: C.gray, cursor: 'pointer',
+                      textDecoration: 'underline',
+                    }}>
+                    Use my default photo
+                  </button>
+                )}
+                <div style={{ fontSize: 11, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
+                  Upload a photo of yourself, your logo, or any image that fits this gift. Max 5MB.
+                </div>
+              </div>
+            </div>
+
+            {/* Per-card brand message override */}
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+              Brand message <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(optional, for this card only)</span>
+            </div>
+            <input type="text" value={form.card_brand_message}
+              onChange={e => setForm(f => ({ ...f, card_brand_message: e.target.value.slice(0, 120) }))}
+              placeholder={therapist?.gift_card_message ? `Default: "${therapist.gift_card_message}"` : 'e.g. From my hands to yours, with care.'}
+              style={{
+                width: '100%', padding: '10px 14px',
+                border: `1.5px solid ${C.light}`,
+                borderRadius: 10,
+                fontSize: 14, boxSizing: 'border-box',
+                outline: 'none',
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+              }}
+            />
+          </div>
+
           <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>A little note</label>
+            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Note to the recipient <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(from the giver)</span>
+            </label>
             <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
               placeholder="Thinking of you. You deserve this..."
               rows={2}
@@ -743,14 +885,7 @@ export default function GiftCertificates({ therapist }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 {active.map(cert => (
                   <div key={cert.id} style={{ position: 'relative' }}>
-                    <GiftCardPreview
-                      amount={cert.amount?.toFixed(0)}
-                      recipient={cert.recipient_name}
-                      purchaser={cert.purchaser_name}
-                      message={cert.message}
-                      code={cert.code}
-                      therapist={therapist}
-                    />
+                    <GiftCardPreview cert={cert} therapist={therapist} />
                     {/* Actions row below the card */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                       <button onClick={() => copy(cert.code)}

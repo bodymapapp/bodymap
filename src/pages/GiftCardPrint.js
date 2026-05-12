@@ -26,6 +26,43 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { getTheme } from "../lib/giftCardThemes";
+import { getDesign, renderDecorationsReact } from "../lib/giftCardDesigns";
+
+// Build a print palette (specific to GiftCardPrint's layout) from a
+// dashboard theme. The print layout uses richer color slots than the
+// dashboard preview (headerStart, headerEnd, ink, amount, warm, noteBg,
+// noteBorder, codeBg, footerBg, divider, petal, petalDeep, leaf) so we
+// derive them with consistent darkening/lightening per theme.
+function paletteFromTheme(theme) {
+  // Helper to lighten a hex by mixing with white at a given pct
+  const mix = (hex, withHex, pct) => {
+    const h = (s) => parseInt(s, 16);
+    const r1 = h(hex.slice(1, 3)), g1 = h(hex.slice(3, 5)), b1 = h(hex.slice(5, 7));
+    const r2 = h(withHex.slice(1, 3)), g2 = h(withHex.slice(3, 5)), b2 = h(withHex.slice(5, 7));
+    const r = Math.round(r1 + (r2 - r1) * pct);
+    const g = Math.round(g1 + (g2 - g1) * pct);
+    const b = Math.round(b1 + (b2 - b1) * pct);
+    return `#${[r,g,b].map(v => v.toString(16).padStart(2,'0')).join('')}`;
+  };
+  return {
+    pageBg:      theme.paperBg,
+    headerStart: mix(theme.accent, '#FFFFFF', 0.7),
+    headerEnd:   mix(theme.accent, '#FFFFFF', 0.45),
+    ink:         theme.ink,
+    eyebrow:     theme.accent,
+    amount:      theme.accentDeep,
+    warm:        theme.inkSoft,
+    noteBg:      mix(theme.accent, '#FFFFFF', 0.88),
+    noteBorder:  theme.accent,
+    codeBg:      mix(theme.accent, '#FFFFFF', 0.82),
+    footerBg:    mix(theme.accent, '#FFFFFF', 0.92),
+    divider:     mix(theme.accent, '#FFFFFF', 0.7),
+    petal:       mix(theme.accent, '#FFFFFF', 0.4),
+    petalDeep:   theme.accentDeep,
+    leaf:        '#9DAA85',
+  };
+}
 
 function formatExpiry(d) {
   if (!d) return "No expiration";
@@ -221,16 +258,25 @@ export default function GiftCardPrint() {
   const amount = Number(cert.amount || 0);
   const code = cert.code || "—";
   const personalNote = (cert.message || "").trim();
-  // Therapist's brand assets: photo (logo OR personal image, their
-  // choice, uploaded in Settings) and brand_message (free-form note,
-  // set in the gift card branding panel). Both optional.
-  const photoUrl = therapist?.photo_url || null;
-  const brandMessage = (therapist?.gift_card_message || "").trim();
+  // Per-card branding resolution: prefer the cert's own values, fall
+  // back to the therapist defaults. Same precedence as the dashboard
+  // preview so what the therapist sees in /dashboard/gifts matches the
+  // print version.
+  const photoUrl = cert.card_image_url || therapist?.photo_url || null;
+  const brandMessage = (cert.card_brand_message || therapist?.gift_card_message || "").trim();
+  // Resolve design + theme from cert (per-card overrides) then fall back.
+  const designKey = cert.design_template || 'just-because';
+  const design = getDesign(designKey);
+  const themeKey = cert.theme || therapist?.gift_card_theme || 'rose';
+  const themeData = getTheme(themeKey);
   const expiry = formatExpiry(cert.expires_at);
 
   const sz = SIZES[size];
-  const tpl = TEMPLATES[template];
-  const p = tpl.palette;
+  // Palette derived from the cert's chosen theme (or therapist default).
+  // The old TEMPLATES object is kept around because templates[].swatch
+  // is used for the legacy style picker in the toolbar, but the actual
+  // card now always renders in the theme palette.
+  const p = paletteFromTheme(themeData);
 
   // print-color-adjust: exact ensures backgrounds print on Chromium +
   // Safari + Firefox even when user has "Background graphics" off.
@@ -305,8 +351,11 @@ export default function GiftCardPrint() {
           🎁 Gift Card Preview
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          {/* Template picker */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Template picker hidden: each gift card has its design and
+              color theme baked in from the create form. Therapist no
+              longer needs to re-pick at print time. Code retained for
+              potential future "preview different theme" feature. */}
+          {false && (<div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ fontSize: 12, opacity: 0.85 }}>Style:</div>
             {Object.entries(TEMPLATES).map(([key, t]) => {
               const active = template === key;
@@ -332,7 +381,7 @@ export default function GiftCardPrint() {
                 </button>
               );
             })}
-          </div>
+          </div>)}
           {/* Size picker */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ fontSize: 12, opacity: 0.85 }}>Size:</div>
@@ -405,22 +454,29 @@ export default function GiftCardPrint() {
             textAlign: "center",
             position: "relative",
             zIndex: 1,
+            overflow: "hidden",
             ...colorExact,
           }}>
+            {/* Design-specific decorations behind the text */}
+            <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+              {renderDecorationsReact(designKey, themeData, { compact: size === "postcard" })}
+            </div>
             <div style={{
               fontSize: 11, fontWeight: 700, color: p.eyebrow,
               letterSpacing: 2, marginBottom: 8,
               fontFamily: "system-ui, sans-serif",
+              position: 'relative', zIndex: 2,
             }}>
-              ♡ A GIFT FOR YOU
+              {design.eyebrow.toUpperCase()}
             </div>
             <div style={{
               fontSize: size === "postcard" ? 26 : (size === "half" ? 36 : 48),
               fontWeight: 700, color: p.ink,
               fontFamily: "Georgia, serif",
               lineHeight: 1.15,
+              position: 'relative', zIndex: 2,
             }}>
-              Dear {recipientName},
+              {design.greeting(recipientName)}
             </div>
           </div>
 
@@ -465,6 +521,20 @@ export default function GiftCardPrint() {
                 ...colorExact,
               }}>
                 "{personalNote}"
+              </div>
+            )}
+
+            {/* Design-specific closing line, only some designs have one */}
+            {design.closingLine && (
+              <div style={{
+                fontSize: size === "postcard" ? 12 : 14,
+                color: p.warm,
+                fontStyle: "italic",
+                fontFamily: "Georgia, serif",
+                maxWidth: "85%",
+                lineHeight: 1.45,
+              }}>
+                {design.closingLine}
               </div>
             )}
 

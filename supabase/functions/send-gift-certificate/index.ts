@@ -100,38 +100,142 @@ serve(async (req) => {
     const amount = Number(cert.amount || 0);
     const code = cert.code;
     const personalNote = (cert.message || '').trim();
-    const brandMessage = (therapist?.gift_card_message || '').trim();
-    const photoUrl = (therapist?.photo_url || '').trim();
+    // Per-card branding resolution: cert columns win, fall back to
+    // therapist defaults. Same precedence as the dashboard preview and
+    // print page.
+    const brandMessage = (cert.card_brand_message || therapist?.gift_card_message || '').trim();
+    const photoUrl = (cert.card_image_url || therapist?.photo_url || '').trim();
+    const themeKey = cert.theme || therapist?.gift_card_theme || 'rose';
+    const designKey = cert.design_template || 'just-because';
+
+    // Design metadata mirrored from src/lib/giftCardDesigns.js. Inline
+    // here because edge functions can't import from src/. Keep in sync.
+    // Greeting is a function: pass recipientName, get the formatted
+    // line ('Happy Birthday, Sarah!' vs 'Dear Sarah,' etc).
+    const DESIGNS: Record<string, any> = {
+      'just-because': {
+        eyebrow: '♡ A GIFT FOR YOU',
+        greeting: (r: string) => r ? `Dear ${r},` : 'For someone special,',
+        closingLine: null,
+        decorationHtml: (a: string, ad: string) =>
+          `<div style="position:absolute;top:6px;right:10px;font-size:24px;opacity:0.35;color:${a};">❋</div>` +
+          `<div style="position:absolute;bottom:6px;left:10px;font-size:20px;opacity:0.3;color:${a};">❋</div>`,
+      },
+      'birthday': {
+        eyebrow: '🎂 A BIRTHDAY GIFT',
+        greeting: (r: string) => r ? `Happy Birthday, ${r}!` : 'Happy Birthday!',
+        closingLine: 'A whole hour of care, just for you this year.',
+        decorationHtml: (a: string, ad: string) => {
+          const seeds = [
+            { top: 8, left: 10, size: 8, shape: '2px', rotate: 12 },
+            { top: 12, left: 78, size: 6, shape: '50%' },
+            { top: 18, left: 38, size: 5, shape: '2px', rotate: 28 },
+            { top: 6, left: 56, size: 7, shape: '50%' },
+            { top: 70, left: 14, size: 6, shape: '50%' },
+            { top: 78, left: 86, size: 6, shape: '2px', rotate: 45 },
+            { top: 88, left: 48, size: 7, shape: '50%' },
+          ];
+          return seeds.map((s, i) => {
+            const c = i % 2 === 0 ? a : ad;
+            const rot = s.rotate ? `transform:rotate(${s.rotate}deg);` : '';
+            return `<div style="position:absolute;top:${s.top}%;left:${s.left}%;width:${s.size}px;height:${s.size}px;background:${c};border-radius:${s.shape};${rot}opacity:0.7;"></div>`;
+          }).join('');
+        },
+      },
+      'anniversary': {
+        eyebrow: '♥ CELEBRATING YOU',
+        greeting: (r: string) => r ? `For ${r},` : 'For your special day,',
+        closingLine: 'On this beautiful day, time to be cared for.',
+        decorationHtml: (a: string, ad: string) => {
+          const seeds = [
+            { top: 8, left: 8, size: 18 },
+            { top: 12, left: 84, size: 14 },
+            { top: 82, left: 10, size: 16 },
+            { top: 78, left: 86, size: 12 },
+          ];
+          return seeds.map((s, i) => {
+            const c = i % 2 === 0 ? a : ad;
+            return `<div style="position:absolute;top:${s.top}%;left:${s.left}%;font-size:${s.size}px;color:${c};opacity:0.4;line-height:1;">♥</div>`;
+          }).join('');
+        },
+      },
+      'thank-you': {
+        eyebrow: '🙏 THANK YOU',
+        greeting: (r: string) => r ? `${r},` : 'Thank you,',
+        closingLine: 'For everything you do. This is for you.',
+        decorationHtml: (a: string, ad: string) => {
+          const seeds = [
+            { top: 8, left: 10 }, { top: 10, left: 88 },
+            { top: 88, left: 14 }, { top: 92, left: 82 },
+          ];
+          return seeds.map(s =>
+            `<div style="position:absolute;top:${s.top}%;left:${s.left}%;width:4px;height:4px;background:${a};border-radius:50%;opacity:0.5;"></div>`
+          ).join('');
+        },
+      },
+      'sympathy': {
+        eyebrow: '🕊 THINKING OF YOU',
+        greeting: (r: string) => r ? `${r},` : 'Thinking of you,',
+        closingLine: 'A moment of peace, for whenever you need it.',
+        decorationHtml: (a: string, ad: string) =>
+          `<div style="position:absolute;bottom:14px;left:25%;right:25%;height:2px;border-top:1.5px solid ${a};opacity:0.4;border-radius:50%;"></div>`,
+      },
+      'holiday': {
+        eyebrow: '✨ SEASON\'S GREETINGS',
+        greeting: (r: string) => r ? `Dear ${r},` : 'Season\'s Greetings,',
+        closingLine: 'The gift of rest, for this season of giving.',
+        decorationHtml: (a: string, ad: string) => {
+          const seeds = [
+            { top: 8, left: 10, size: 18 },
+            { top: 14, left: 82, size: 14 },
+            { top: 26, left: 24, size: 12 },
+            { top: 80, left: 14, size: 14 },
+            { top: 86, left: 60, size: 18 },
+            { top: 70, left: 88, size: 12 },
+          ];
+          return seeds.map((s, i) => {
+            const c = i % 2 === 0 ? a : ad;
+            return `<div style="position:absolute;top:${s.top}%;left:${s.left}%;font-size:${s.size}px;color:${c};opacity:0.5;line-height:1;">✻</div>`;
+          }).join('');
+        },
+      },
+    };
+    const design = DESIGNS[designKey] || DESIGNS['just-because'];
 
     // Theme map mirrored from src/lib/giftCardThemes.js. Inline here
     // because edge functions cannot import from src/. Keep in sync.
     const THEMES: Record<string, any> = {
-      rose: { headerStart: '#FCE8E0', headerEnd: '#F5D5C8', eyebrow: '#A87468', ink: '#5C2E27', amount: '#2A5741', warm: '#7A5C53', noteBg: '#FAF6EE', noteBorder: '#C99488', codeBg: '#F5EFE0', codeInk: '#2A5741', pageBg: '#FCF8EE', divider: '#E5D5C8' },
-      sage: { headerStart: '#E4EBDE', headerEnd: '#C7D5C0', eyebrow: '#5A7064', ink: '#1C2B22', amount: '#2D4A35', warm: '#4A5C50', noteBg: '#F4F7F2', noteBorder: '#7A9683', codeBg: '#EEF3EE', codeInk: '#2D4A35', pageBg: '#F9F5EE', divider: '#D2DCCC' },
-      forest: { headerStart: '#BFD2C0', headerEnd: '#94B098', eyebrow: '#3D5443', ink: '#0F1F16', amount: '#14281E', warm: '#34453A', noteBg: '#F0F4F1', noteBorder: '#5D7A66', codeBg: '#E6EDE7', codeInk: '#14281E', pageBg: '#F5F2EA', divider: '#C5D4C8' },
-      ocean: { headerStart: '#CDDDE7', headerEnd: '#97B5C7', eyebrow: '#4F6F82', ink: '#13293A', amount: '#1A3E54', warm: '#3D5566', noteBg: '#F0F6F9', noteBorder: '#5D8AA8', codeBg: '#E5EEF3', codeInk: '#1A3E54', pageBg: '#F5F7F9', divider: '#C7D5DE' },
-      lavender: { headerStart: '#D9CBE2', headerEnd: '#A892BB', eyebrow: '#6E5784', ink: '#2D1C3E', amount: '#4A2F5A', warm: '#523E63', noteBg: '#F6F1F8', noteBorder: '#9576AE', codeBg: '#EDE5F0', codeInk: '#4A2F5A', pageBg: '#F8F5F9', divider: '#D2C5DC' },
-      terracotta: { headerStart: '#E8C8AC', headerEnd: '#C9986F', eyebrow: '#8E6647', ink: '#3E2814', amount: '#6D3F1F', warm: '#624230', noteBg: '#F8EFE6', noteBorder: '#B68250', codeBg: '#F0E2D2', codeInk: '#6D3F1F', pageBg: '#FAF3EA', divider: '#E5D0BC' },
+      rose: { headerStart: '#FCE8E0', headerEnd: '#F5D5C8', eyebrow: '#A87468', ink: '#5C2E27', amount: '#2A5741', warm: '#7A5C53', noteBg: '#FAF6EE', noteBorder: '#C99488', codeBg: '#F5EFE0', codeInk: '#2A5741', pageBg: '#FCF8EE', divider: '#E5D5C8', accent: '#E85C79', accentDeep: '#D14560' },
+      sage: { headerStart: '#E4EBDE', headerEnd: '#C7D5C0', eyebrow: '#5A7064', ink: '#1C2B22', amount: '#2D4A35', warm: '#4A5C50', noteBg: '#F4F7F2', noteBorder: '#7A9683', codeBg: '#EEF3EE', codeInk: '#2D4A35', pageBg: '#F9F5EE', divider: '#D2DCCC', accent: '#4A6B54', accentDeep: '#2D4A35' },
+      forest: { headerStart: '#BFD2C0', headerEnd: '#94B098', eyebrow: '#3D5443', ink: '#0F1F16', amount: '#14281E', warm: '#34453A', noteBg: '#F0F4F1', noteBorder: '#5D7A66', codeBg: '#E6EDE7', codeInk: '#14281E', pageBg: '#F5F2EA', divider: '#C5D4C8', accent: '#1F4030', accentDeep: '#14281E' },
+      ocean: { headerStart: '#CDDDE7', headerEnd: '#97B5C7', eyebrow: '#4F6F82', ink: '#13293A', amount: '#1A3E54', warm: '#3D5566', noteBg: '#F0F6F9', noteBorder: '#5D8AA8', codeBg: '#E5EEF3', codeInk: '#1A3E54', pageBg: '#F5F7F9', divider: '#C7D5DE', accent: '#2D5A78', accentDeep: '#1A3E54' },
+      lavender: { headerStart: '#D9CBE2', headerEnd: '#A892BB', eyebrow: '#6E5784', ink: '#2D1C3E', amount: '#4A2F5A', warm: '#523E63', noteBg: '#F6F1F8', noteBorder: '#9576AE', codeBg: '#EDE5F0', codeInk: '#4A2F5A', pageBg: '#F8F5F9', divider: '#D2C5DC', accent: '#6A4A7E', accentDeep: '#4A2F5A' },
+      terracotta: { headerStart: '#E8C8AC', headerEnd: '#C9986F', eyebrow: '#8E6647', ink: '#3E2814', amount: '#6D3F1F', warm: '#624230', noteBg: '#F8EFE6', noteBorder: '#B68250', codeBg: '#F0E2D2', codeInk: '#6D3F1F', pageBg: '#FAF3EA', divider: '#E5D0BC', accent: '#9D5E36', accentDeep: '#6D3F1F' },
     };
-    const t = THEMES[therapist?.gift_card_theme || 'rose'] || THEMES.rose;
+    const t = THEMES[themeKey] || THEMES.rose;
+    const decorationHtml = design.decorationHtml(t.accent, t.accentDeep);
 
     // ─────────── HTML email ───────────
-    // Theme-driven palette: every color comes from `t` so the email
-    // matches the dashboard preview and the printable card. Mobile-
-    // responsive single-column. Inline styles only because many email
-    // clients strip <style> blocks.
+    // Theme + design driven: every color from `t`, every textual element
+    // (eyebrow, greeting, closing line, decorations) from `design`. So the
+    // email matches the dashboard preview and the printable card.
+    // Mobile-responsive single-column. Inline styles only because many
+    // email clients strip <style> blocks.
     const html = `
       <div style="background:${t.pageBg};padding:32px 16px;font-family:Georgia,'Iowan Old Style',serif;">
         <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
 
-          <!-- Header band: themed gradient -->
-          <div style="background:linear-gradient(135deg,${t.headerStart} 0%,${t.headerEnd} 100%);padding:36px 32px 28px;text-align:center;position:relative;">
-            <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:${t.eyebrow};letter-spacing:2px;margin-bottom:8px;">
-              ♡ A GIFT FOR YOU
+          <!-- Header band: themed gradient with design-specific decorations -->
+          <div style="background:linear-gradient(135deg,${t.headerStart} 0%,${t.headerEnd} 100%);padding:36px 32px 28px;text-align:center;position:relative;overflow:hidden;">
+            ${decorationHtml}
+            <div style="position:relative;z-index:2;">
+              <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:${t.eyebrow};letter-spacing:2px;margin-bottom:8px;">
+                ${design.eyebrow}
+              </div>
+              <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:${t.ink};margin:0 0 6px;letter-spacing:-0.01em;">
+                ${escapeHtml(design.greeting(recipientName))}
+              </h1>
             </div>
-            <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:${t.ink};margin:0 0 6px;letter-spacing:-0.01em;">
-              Dear ${escapeHtml(recipientName)},
-            </h1>
           </div>
 
           <!-- Amount + redemption code panel -->
@@ -151,6 +255,12 @@ serve(async (req) => {
                 <div style="font-family:Georgia,serif;font-size:15px;color:${t.ink};line-height:1.6;font-style:italic;">
                   "${escapeHtml(personalNote)}"
                 </div>
+              </div>
+            ` : ''}
+
+            ${design.closingLine ? `
+              <div style="margin:18px 0 0;font-family:Georgia,serif;font-size:14px;color:${t.warm};font-style:italic;line-height:1.5;">
+                ${escapeHtml(design.closingLine)}
               </div>
             ` : ''}
 
