@@ -254,19 +254,19 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     }
   };
 
-  // Visual cue for therapist input: fields are soft rose while empty
-  // (call to action), transition to neutral cream once filled. Gives
-  // the therapist a clear "here's where I type" signal at a glance.
-  // Border deepens slightly when filled to reinforce the done state.
+  // Visual cue for therapist input: fields are clearly rose while empty
+  // (call to action), transition to neutral cream once filled. Empty
+  // state is intentionally more saturated so the therapist sees
+  // "here is where I type" at a glance even on a phone screen.
   const therapistInputStyle = (value) => {
     const filled = value && String(value).trim().length > 0;
     return {
       width: "100%", padding: "10px 12px",
-      border: "1.5px solid " + (filled ? "#D7CCB5" : "#F0BFB1"),
+      border: "1.5px solid " + (filled ? "#D7CCB5" : "#F4A3A0"),
       borderRadius: "8px",
       fontSize: "13px", fontFamily: "system-ui",
       resize: "vertical", boxSizing: "border-box",
-      background: filled ? C.beige : "#FDF2EE",
+      background: filled ? C.beige : "#FCE5E0",
       lineHeight: 1.6, outline: "none",
       transition: "background 0.4s ease, border-color 0.4s ease",
     };

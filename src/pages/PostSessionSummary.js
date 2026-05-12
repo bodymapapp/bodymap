@@ -185,7 +185,7 @@ export default function PostSessionSummary() {
 
   return (
     <DocumentLayout
-      docNumber="3b"
+      docNumber={4}
       docName="Your Recap"
       docAccent={T.gold}
       client={client}

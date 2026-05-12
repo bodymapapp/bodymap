@@ -91,17 +91,46 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
         transition: 'transform 0.18s ease, box-shadow 0.18s ease',
         ...ringStyle,
       }}>
+        {/* Always show the number so the user sees the 1/2/3/4 continuum.
+            Lock icon overlays the number when locked (rare). Checkmark
+            sits in a corner badge for done states, not replacing the number. */}
         {isLocked ? (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.muted} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <rect x="5" y="11" width="14" height="10" rx="2" />
             <path d="M8 11V7a4 4 0 0 1 8 0v4" />
           </svg>
-        ) : isDone ? (
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.white} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12" />
-          </svg>
         ) : (
           n
+        )}
+
+        {/* Corner badge: green check for done, gold dot for ready,
+            nothing for pending/locked. Sits top-right outside the
+            dot circle so the number stays the centerpiece. */}
+        {isDone && (
+          <span style={{
+            position: 'absolute',
+            top: -3, right: -3,
+            width: 17, height: 17, borderRadius: '50%',
+            background: '#16A34A', // bright green so it pops against sage
+            border: `2px solid ${C.cream}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+          }}>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </span>
+        )}
+        {isReady && !isDone && (
+          <span style={{
+            position: 'absolute',
+            top: -3, right: -3,
+            width: 13, height: 13, borderRadius: '50%',
+            background: C.gold,
+            border: `2px solid ${C.cream}`,
+            boxShadow: '0 1px 2px rgba(0,0,0,0.15)',
+            animation: 'bmReadyPulse 1.8s ease-in-out infinite',
+          }} />
         )}
       </div>
       <div style={{ textAlign: 'center', lineHeight: 1.15 }}>
@@ -257,6 +286,10 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           0% { box-shadow: 0 0 0 0 rgba(74,107,84,0.5); }
           70% { box-shadow: 0 0 0 14px rgba(74,107,84,0); }
           100% { box-shadow: 0 0 0 0 rgba(74,107,84,0); }
+        }
+        @keyframes bmReadyPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.18); opacity: 0.85; }
         }
         .bm-journey-dot.bm-dot-pressed > div:first-child {
           animation: bmDotPulse 0.55s ease-out;

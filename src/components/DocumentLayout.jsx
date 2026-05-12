@@ -388,7 +388,7 @@ export default function DocumentLayout({
 
   toolbarExtras,
 }) {
-  const totalParts = docTotalParts || 3;
+  const totalParts = docTotalParts || 4;
   const sessionDate = new Date(session.created_at).toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
   });
@@ -428,17 +428,19 @@ export default function DocumentLayout({
         }
       `}</style>
 
-      {/* Toolbar */}
+      {/* Toolbar. Restructured per HK May 12 2026 feedback: page should
+          feel like a viewable web page, not a static PDF. Made the actions
+          explicit and clearly labeled. PDF is one of three send options,
+          not the primary identity of the page. */}
       <div className="no-print" style={{
         background: T.forest, padding: '10px 18px',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         gap: 10, flexWrap: 'wrap',
         position: 'sticky', top: 0, zIndex: 10,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button
             onClick={() => {
-              // Smart close: tab opened from session detail closes, otherwise history back, otherwise dashboard
               if (window.opener && !window.opener.closed) { window.close(); return; }
               if (window.history.length > 1) { window.history.back(); return; }
               window.location.href = '/dashboard';
@@ -455,14 +457,77 @@ export default function DocumentLayout({
           <span style={{ color: 'white', fontWeight: 600, fontSize: 13, letterSpacing: '0.3px' }}>
             {docName}
           </span>
+          {typeof docNumber === 'number' && (
+            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 500, letterSpacing: '0.3px' }}>
+              · {docNumber} of {totalParts}
+            </span>
+          )}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
           {toolbarExtras}
+
+          {/* Email link: opens user's email client pre-filled. Works
+              everywhere (web + mobile). Subject and body adapt to whether
+              this is a client-facing doc (recap) or therapist-internal. */}
+          <button onClick={() => {
+            const isClient = docNumber === 4;
+            const recipient = isClient && client?.email ? client.email : '';
+            const subject = isClient
+              ? `Your session summary from ${therapistName}`
+              : `${docName} for ${client?.name || 'client'}`;
+            const body = isClient
+              ? `Your post-session summary is here: ${window.location.href}\n\nThanks for trusting ${therapistName} with your care.`
+              : `${docName} link: ${window.location.href}`;
+            window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+          }} style={{
+            background: 'transparent', color: 'white',
+            border: '1px solid rgba(255,255,255,0.35)',
+            padding: '5px 11px', borderRadius: 7,
+            fontWeight: 600, fontSize: 12, cursor: 'pointer', letterSpacing: '0.2px',
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="5" width="18" height="14" rx="2" />
+              <polyline points="3 7 12 13 21 7" />
+            </svg>
+            Email link
+          </button>
+
+          {/* SMS link: only for the client-facing recap (doc 4) when we
+              have the client's phone. Opens the user's SMS app on
+              mobile pre-filled. */}
+          {docNumber === 4 && client?.phone && (
+            <button onClick={() => {
+              const body = `Your post-session summary from ${therapistName}: ${window.location.href}`;
+              // iOS uses & or ?, Android uses ?. Most modern handsets handle both.
+              window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(body)}`;
+            }} style={{
+              background: 'transparent', color: 'white',
+              border: '1px solid rgba(255,255,255,0.35)',
+              padding: '5px 11px', borderRadius: 7,
+              fontWeight: 600, fontSize: 12, cursor: 'pointer', letterSpacing: '0.2px',
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              Send via SMS
+            </button>
+          )}
+
           <button onClick={() => window.print()} style={{
             background: T.gold, color: T.forest, border: 'none',
-            padding: '6px 14px', borderRadius: 7,
+            padding: '5px 13px', borderRadius: 7,
             fontWeight: 700, fontSize: 12, cursor: 'pointer', letterSpacing: '0.2px',
-          }}>Save as PDF</button>
+            display: 'inline-flex', alignItems: 'center', gap: 5,
+          }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect x="6" y="14" width="12" height="8" />
+            </svg>
+            Save as PDF
+          </button>
         </div>
       </div>
 

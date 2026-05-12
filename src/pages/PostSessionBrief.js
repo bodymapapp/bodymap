@@ -182,7 +182,7 @@ export default function PostSessionBrief() {
 
   return (
     <DocumentLayout
-      docNumber="3a"
+      docNumber={3}
       docName="Post-Session Record"
       docAccent={T.forest}
       client={client}
