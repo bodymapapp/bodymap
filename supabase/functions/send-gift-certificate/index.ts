@@ -79,10 +79,13 @@ serve(async (req) => {
       });
     }
 
-    // Pull therapist for business name and booking-link slug.
+    // Pull therapist for business name, booking-link slug, and branding.
+    // gift_card_theme picks the palette; gift_card_message is the
+    // therapist's free-form note that appears on every card; photo_url
+    // is the small image (logo or personal photo) shown on the card.
     const { data: therapist } = await supabase
       .from('therapists')
-      .select('id, full_name, business_name, custom_url')
+      .select('id, full_name, business_name, custom_url, photo_url, gift_card_theme, gift_card_message')
       .eq('id', cert.therapist_id)
       .maybeSingle();
 
@@ -97,60 +100,87 @@ serve(async (req) => {
     const amount = Number(cert.amount || 0);
     const code = cert.code;
     const personalNote = (cert.message || '').trim();
+    const brandMessage = (therapist?.gift_card_message || '').trim();
+    const photoUrl = (therapist?.photo_url || '').trim();
+
+    // Theme map mirrored from src/lib/giftCardThemes.js. Inline here
+    // because edge functions cannot import from src/. Keep in sync.
+    const THEMES: Record<string, any> = {
+      rose: { headerStart: '#FCE8E0', headerEnd: '#F5D5C8', eyebrow: '#A87468', ink: '#5C2E27', amount: '#2A5741', warm: '#7A5C53', noteBg: '#FAF6EE', noteBorder: '#C99488', codeBg: '#F5EFE0', codeInk: '#2A5741', pageBg: '#FCF8EE', divider: '#E5D5C8' },
+      sage: { headerStart: '#E4EBDE', headerEnd: '#C7D5C0', eyebrow: '#5A7064', ink: '#1C2B22', amount: '#2D4A35', warm: '#4A5C50', noteBg: '#F4F7F2', noteBorder: '#7A9683', codeBg: '#EEF3EE', codeInk: '#2D4A35', pageBg: '#F9F5EE', divider: '#D2DCCC' },
+      forest: { headerStart: '#BFD2C0', headerEnd: '#94B098', eyebrow: '#3D5443', ink: '#0F1F16', amount: '#14281E', warm: '#34453A', noteBg: '#F0F4F1', noteBorder: '#5D7A66', codeBg: '#E6EDE7', codeInk: '#14281E', pageBg: '#F5F2EA', divider: '#C5D4C8' },
+      ocean: { headerStart: '#CDDDE7', headerEnd: '#97B5C7', eyebrow: '#4F6F82', ink: '#13293A', amount: '#1A3E54', warm: '#3D5566', noteBg: '#F0F6F9', noteBorder: '#5D8AA8', codeBg: '#E5EEF3', codeInk: '#1A3E54', pageBg: '#F5F7F9', divider: '#C7D5DE' },
+      lavender: { headerStart: '#D9CBE2', headerEnd: '#A892BB', eyebrow: '#6E5784', ink: '#2D1C3E', amount: '#4A2F5A', warm: '#523E63', noteBg: '#F6F1F8', noteBorder: '#9576AE', codeBg: '#EDE5F0', codeInk: '#4A2F5A', pageBg: '#F8F5F9', divider: '#D2C5DC' },
+      terracotta: { headerStart: '#E8C8AC', headerEnd: '#C9986F', eyebrow: '#8E6647', ink: '#3E2814', amount: '#6D3F1F', warm: '#624230', noteBg: '#F8EFE6', noteBorder: '#B68250', codeBg: '#F0E2D2', codeInk: '#6D3F1F', pageBg: '#FAF3EA', divider: '#E5D0BC' },
+    };
+    const t = THEMES[therapist?.gift_card_theme || 'rose'] || THEMES.rose;
 
     // ─────────── HTML email ───────────
-    // Soft cream + dusty rose palette to match the gift card create UI
-    // (mirrors the pink banner the therapist sees in the dashboard).
-    // Mobile-responsive single-column layout. Inline styles only because
-    // many email clients strip <style> blocks.
+    // Theme-driven palette: every color comes from `t` so the email
+    // matches the dashboard preview and the printable card. Mobile-
+    // responsive single-column. Inline styles only because many email
+    // clients strip <style> blocks.
     const html = `
-      <div style="background:#FCF8EE;padding:32px 16px;font-family:Georgia,'Iowan Old Style',serif;">
+      <div style="background:${t.pageBg};padding:32px 16px;font-family:Georgia,'Iowan Old Style',serif;">
         <div style="max-width:560px;margin:0 auto;background:white;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.06);">
 
-          <!-- Header band: dusty rose -->
-          <div style="background:linear-gradient(135deg,#FCE8E0 0%,#F5D5C8 100%);padding:36px 32px 28px;text-align:center;position:relative;">
-            <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:#A87468;letter-spacing:2px;margin-bottom:8px;">
+          <!-- Header band: themed gradient -->
+          <div style="background:linear-gradient(135deg,${t.headerStart} 0%,${t.headerEnd} 100%);padding:36px 32px 28px;text-align:center;position:relative;">
+            <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:${t.eyebrow};letter-spacing:2px;margin-bottom:8px;">
               ♡ A GIFT FOR YOU
             </div>
-            <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:#5C2E27;margin:0 0 6px;letter-spacing:-0.01em;">
+            <h1 style="font-family:Georgia,serif;font-size:28px;font-weight:700;color:${t.ink};margin:0 0 6px;letter-spacing:-0.01em;">
               Dear ${escapeHtml(recipientName)},
             </h1>
           </div>
 
           <!-- Amount + redemption code panel -->
           <div style="padding:32px 32px 24px;text-align:center;">
-            <div style="font-family:system-ui,sans-serif;font-size:13px;color:#7A5C53;margin-bottom:6px;letter-spacing:0.5px;">
+            <div style="font-family:system-ui,sans-serif;font-size:13px;color:${t.warm};margin-bottom:6px;letter-spacing:0.5px;">
               Worth
             </div>
-            <div style="font-family:Georgia,serif;font-size:48px;font-weight:700;color:#2A5741;line-height:1;margin-bottom:6px;">
+            <div style="font-family:Georgia,serif;font-size:48px;font-weight:700;color:${t.amount};line-height:1;margin-bottom:6px;">
               $${amount.toFixed(0)}
             </div>
-            <div style="font-family:system-ui,sans-serif;font-size:13px;color:#7A5C53;letter-spacing:0.5px;">
+            <div style="font-family:system-ui,sans-serif;font-size:13px;color:${t.warm};letter-spacing:0.5px;">
               of care
             </div>
 
             ${personalNote ? `
-              <div style="margin:28px 0 0;padding:18px 22px;background:#FAF6EE;border-left:3px solid #C99488;border-radius:8px;text-align:left;">
-                <div style="font-family:Georgia,serif;font-size:15px;color:#5C3A33;line-height:1.6;font-style:italic;">
+              <div style="margin:28px 0 0;padding:18px 22px;background:${t.noteBg};border-left:3px solid ${t.noteBorder};border-radius:8px;text-align:left;">
+                <div style="font-family:Georgia,serif;font-size:15px;color:${t.ink};line-height:1.6;font-style:italic;">
                   "${escapeHtml(personalNote)}"
                 </div>
               </div>
             ` : ''}
 
-            <div style="margin-top:24px;font-family:system-ui,sans-serif;font-size:13px;color:#5C3A33;">
+            ${(photoUrl || brandMessage) ? `
+              <div style="margin:22px 0 0;display:flex;align-items:center;gap:14px;justify-content:center;">
+                ${photoUrl ? `
+                  <img src="${escapeHtml(photoUrl)}" alt="${escapeHtml(businessName)}" width="56" height="56" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid ${t.noteBorder};display:block;" />
+                ` : ''}
+                ${brandMessage ? `
+                  <div style="font-family:Georgia,serif;font-size:13px;color:${t.warm};font-style:italic;line-height:1.45;max-width:340px;text-align:left;">
+                    ${escapeHtml(brandMessage)}
+                  </div>
+                ` : ''}
+              </div>
+            ` : ''}
+
+            <div style="margin-top:24px;font-family:system-ui,sans-serif;font-size:13px;color:${t.ink};">
               With love, <strong>${escapeHtml(purchaserName)}</strong>
             </div>
           </div>
 
           <!-- Dashed divider -->
-          <div style="border-top:1.5px dashed #E5D5C8;margin:0 32px;"></div>
+          <div style="border-top:1.5px dashed ${t.divider};margin:0 32px;"></div>
 
           <!-- Redemption code panel -->
           <div style="padding:24px 32px 16px;text-align:center;">
-            <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:#A87468;letter-spacing:2px;margin-bottom:10px;">
+            <div style="font-family:system-ui,sans-serif;font-size:11px;font-weight:700;color:${t.eyebrow};letter-spacing:2px;margin-bottom:10px;">
               REDEMPTION CODE
             </div>
-            <div style="font-family:'Courier New',monospace;font-size:24px;font-weight:700;color:#2A5741;letter-spacing:3px;background:#F5EFE0;padding:14px 20px;border-radius:10px;display:inline-block;">
+            <div style="font-family:'Courier New',monospace;font-size:24px;font-weight:700;color:${t.codeInk};letter-spacing:3px;background:${t.codeBg};padding:14px 20px;border-radius:10px;display:inline-block;">
               ${escapeHtml(code)}
             </div>
           </div>

@@ -195,7 +195,7 @@ export default function GiftCardPrint() {
       if (c?.therapist_id) {
         const { data: t } = await supabase
           .from("therapists")
-          .select("id, full_name, business_name, custom_url")
+          .select("id, full_name, business_name, custom_url, photo_url, gift_card_theme, gift_card_message")
           .eq("id", c.therapist_id)
           .maybeSingle();
         if (!cancelled) setTherapist(t || null);
@@ -221,6 +221,11 @@ export default function GiftCardPrint() {
   const amount = Number(cert.amount || 0);
   const code = cert.code || "—";
   const personalNote = (cert.message || "").trim();
+  // Therapist's brand assets: photo (logo OR personal image, their
+  // choice, uploaded in Settings) and brand_message (free-form note,
+  // set in the gift card branding panel). Both optional.
+  const photoUrl = therapist?.photo_url || null;
+  const brandMessage = (therapist?.gift_card_message || "").trim();
   const expiry = formatExpiry(cert.expires_at);
 
   const sz = SIZES[size];
@@ -460,6 +465,49 @@ export default function GiftCardPrint() {
                 ...colorExact,
               }}>
                 "{personalNote}"
+              </div>
+            )}
+
+            {/* Therapist brand row: photo + brand_message. Conditional;
+                renders only if at least one is set. Photo is the therapist's
+                profile photo (set in Settings, can be a logo or a personal
+                photo, their choice). Brand message is set in the gift card
+                branding panel. Both optional. */}
+            {(photoUrl || brandMessage) && (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                maxWidth: "85%",
+                marginTop: size === "postcard" ? 2 : 6,
+              }}>
+                {photoUrl && (
+                  <img
+                    src={photoUrl}
+                    alt={businessName}
+                    style={{
+                      width: size === "postcard" ? 40 : 56,
+                      height: size === "postcard" ? 40 : 56,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      border: `2px solid ${p.noteBorder}`,
+                      flexShrink: 0,
+                      ...colorExact,
+                    }}
+                  />
+                )}
+                {brandMessage && (
+                  <div style={{
+                    fontSize: size === "postcard" ? 11 : 13,
+                    color: p.warm,
+                    fontFamily: "Georgia, serif",
+                    fontStyle: "italic",
+                    lineHeight: 1.45,
+                    flex: 1,
+                  }}>
+                    {brandMessage}
+                  </div>
+                )}
               </div>
             )}
 

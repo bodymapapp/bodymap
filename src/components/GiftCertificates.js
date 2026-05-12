@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { GIFT_CARD_THEMES, ORDERED_THEME_KEYS, getTheme } from '../lib/giftCardThemes';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', blush:'#F9A8B4', rose:'#E85C79', rosePale:'#FCE7F3', cream:'#FFF9F3', white:'#FFFFFF', dark:'#1F2937', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -31,63 +32,96 @@ function BotanicalFlourish({ style, color = '#F9A8B4', opacity = 0.5 }) {
 }
 
 // Visual gift card preview - the actual "card" recipients would feel excited to receive
-function GiftCardPreview({ amount, recipient, purchaser, message, code, compact = false }) {
+function GiftCardPreview({ amount, recipient, purchaser, message, code, compact = false, therapist }) {
+  // Resolve theme + branding data from the therapist row. Falls back
+  // to 'rose' (the original look) if any value is missing.
+  const theme = getTheme(therapist?.gift_card_theme);
+  const photoUrl = therapist?.photo_url || null;
+  const brandMessage = therapist?.gift_card_message || null;
+
   return (
     <div style={{
       position: 'relative',
-      background: 'linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 40%, #FEF3F2 100%)',
+      background: theme.bgGradient,
       borderRadius: 20,
       padding: compact ? '20px 22px' : '28px 26px',
-      border: '1.5px solid #FBCFE8',
+      border: `1.5px solid ${theme.accent}33`,
       overflow: 'hidden',
-      boxShadow: '0 4px 20px rgba(249,168,180,0.18), 0 1px 3px rgba(0,0,0,0.04)',
+      boxShadow: `0 4px 20px ${theme.accent}26, 0 1px 3px rgba(0,0,0,0.04)`,
     }}>
-      {/* Decorative corner flourish */}
-      <BotanicalFlourish style={{ position: 'absolute', top: -18, right: -18, transform: 'rotate(25deg)' }} opacity={0.4} />
-      <BotanicalFlourish style={{ position: 'absolute', bottom: -22, left: -22, transform: 'rotate(-145deg) scale(0.7)' }} opacity={0.3} />
+      {/* Decorative corner flourish, tinted by the active theme */}
+      <BotanicalFlourish style={{ position: 'absolute', top: -18, right: -18, transform: 'rotate(25deg)' }} color={theme.accent} opacity={0.4} />
+      <BotanicalFlourish style={{ position: 'absolute', bottom: -22, left: -22, transform: 'rotate(-145deg) scale(0.7)' }} color={theme.accent} opacity={0.3} />
 
       {/* Little flag / ribbon marker */}
       <div style={{
         position: 'absolute', top: 0, left: 24,
         width: 32, height: compact ? 36 : 42,
-        background: 'linear-gradient(180deg, #E85C79, #D14560)',
+        background: theme.accentSolid,
         clipPath: 'polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%)',
-        boxShadow: '0 2px 6px rgba(232,92,121,0.3)',
+        boxShadow: `0 2px 6px ${theme.accent}4D`,
       }}/>
 
       <div style={{ position: 'relative', zIndex: 2 }}>
-        {/* Top: "A gift for you" */}
-        <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, fontWeight: 400, color: C.rose, letterSpacing: '0.24em', textTransform: 'uppercase', marginBottom: 4, marginLeft: compact ? 44 : 48 }}>
-          ♡ A gift for you
+        {/* Top row: "A gift for you" eyebrow + therapist photo (if any) */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          marginBottom: 4,
+        }}>
+          <div style={{
+            fontFamily: 'Georgia, serif', fontSize: 11, fontWeight: 400,
+            color: theme.accent, letterSpacing: '0.24em', textTransform: 'uppercase',
+            marginLeft: compact ? 44 : 48,
+          }}>
+            ♡ A gift for you
+          </div>
+          {photoUrl && (
+            <img
+              src={photoUrl}
+              alt={therapist?.business_name || therapist?.full_name || ''}
+              style={{
+                width: compact ? 36 : 44,
+                height: compact ? 36 : 44,
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: `2px solid ${theme.accent}66`,
+                flexShrink: 0,
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
+              }}
+            />
+          )}
         </div>
 
         {/* Recipient name */}
         {recipient && (
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 20 : 26, fontWeight: 700, color: C.dark, marginBottom: compact ? 4 : 8, fontStyle: 'italic', letterSpacing: '-0.01em' }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 20 : 26, fontWeight: 700, color: theme.ink, marginBottom: compact ? 4 : 8, fontStyle: 'italic', letterSpacing: '-0.01em' }}>
             Dear {recipient},
           </div>
         )}
 
-        {/* Amount - big and proud */}
+        {/* Amount */}
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: compact ? 8 : 14 }}>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 14 : 16, color: C.gray, fontStyle: 'italic' }}>Worth</span>
-          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 34 : 44, fontWeight: 700, color: C.forest, letterSpacing: '-0.02em' }}>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 14 : 16, color: theme.inkSoft, fontStyle: 'italic' }}>Worth</span>
+          <span style={{ fontFamily: 'Georgia, serif', fontSize: compact ? 34 : 44, fontWeight: 700, color: theme.accentDeep, letterSpacing: '-0.02em' }}>
             ${amount}
           </span>
-          <span style={{ fontSize: compact ? 11 : 12, color: C.gray, fontWeight: 600 }}>of care</span>
+          <span style={{ fontSize: compact ? 11 : 12, color: theme.inkSoft, fontWeight: 600 }}>of care</span>
         </div>
 
-        {/* Message */}
+        {/* Per-purchase message (what the GIVER wrote to the recipient) */}
         {message && (
           <div style={{
             fontFamily: 'Georgia, serif',
             fontSize: compact ? 13 : 14,
-            color: '#4B5563',
+            color: theme.ink,
             fontStyle: 'italic',
             lineHeight: 1.55,
             padding: '10px 14px',
             background: 'rgba(255,255,255,0.55)',
-            borderLeft: `2.5px solid ${C.blush}`,
+            borderLeft: `2.5px solid ${theme.accent}`,
             borderRadius: '4px 12px 12px 4px',
             marginBottom: compact ? 8 : 14,
           }}>
@@ -95,10 +129,26 @@ function GiftCardPreview({ amount, recipient, purchaser, message, code, compact 
           </div>
         )}
 
+        {/* Therapist's brand message (free-form, set in branding settings).
+            Sits below the per-purchase message so the giver's words land first. */}
+        {brandMessage && (
+          <div style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: compact ? 12 : 13,
+            color: theme.inkSoft,
+            lineHeight: 1.5,
+            marginBottom: compact ? 10 : 14,
+            paddingLeft: 2,
+            fontStyle: 'italic',
+          }}>
+            {brandMessage}
+          </div>
+        )}
+
         {/* From */}
         {purchaser && (
-          <div style={{ fontSize: compact ? 12 : 13, color: C.gray, marginBottom: compact ? 10 : 14 }}>
-            With love, <span style={{ fontFamily: 'Georgia,serif', fontStyle: 'italic', fontWeight: 600, color: C.dark }}>{purchaser}</span>
+          <div style={{ fontSize: compact ? 12 : 13, color: theme.inkSoft, marginBottom: compact ? 10 : 14 }}>
+            With love, <span style={{ fontFamily: 'Georgia,serif', fontStyle: 'italic', fontWeight: 600, color: theme.ink }}>{purchaser}</span>
           </div>
         )}
 
@@ -106,7 +156,7 @@ function GiftCardPreview({ amount, recipient, purchaser, message, code, compact 
         <div style={{
           marginTop: compact ? 10 : 16,
           paddingTop: compact ? 10 : 14,
-          borderTop: '1px dashed rgba(232,92,121,0.3)',
+          borderTop: `1px dashed ${theme.accent}4D`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -114,9 +164,14 @@ function GiftCardPreview({ amount, recipient, purchaser, message, code, compact 
           flexWrap: 'wrap',
         }}>
           <div>
-            <div style={{ fontSize: 9, color: C.gray, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 2 }}>Redemption code</div>
-            <code style={{ fontSize: compact ? 13 : 15, fontWeight: 700, color: C.forest, letterSpacing: '0.08em', fontFamily: 'ui-monospace, Menlo, monospace' }}>{code}</code>
+            <div style={{ fontSize: 9, color: theme.inkSoft, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 2 }}>Redemption code</div>
+            <code style={{ fontSize: compact ? 13 : 15, fontWeight: 700, color: theme.accentDeep, letterSpacing: '0.08em', fontFamily: 'ui-monospace, Menlo, monospace' }}>{code}</code>
           </div>
+          {therapist?.business_name && (
+            <div style={{ fontSize: compact ? 11 : 12, color: theme.inkSoft, fontWeight: 600 }}>
+              {therapist.business_name}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -278,55 +333,236 @@ export default function GiftCertificates({ therapist }) {
 
   const presetAmounts = [65, 85, 120, 150, 200];
 
+  // Branding panel toggle. When open, the therapist sees the theme
+  // picker + message field with a live preview, all driven by the
+  // therapist row from AuthContext. Saves on click.
+  const [showBranding, setShowBranding] = useState(false);
+  const [brandingTheme, setBrandingTheme] = useState(therapist?.gift_card_theme || 'rose');
+  const [brandingMessage, setBrandingMessage] = useState(therapist?.gift_card_message || '');
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [brandingSaved, setBrandingSaved] = useState(false);
+
+  // Active theme for this entire component. Driven by either the
+  // therapist's saved value or the in-progress preview while editing.
+  const activeTheme = getTheme(showBranding ? brandingTheme : therapist?.gift_card_theme);
+
+  // A therapist object that overrides theme/message with the live
+  // editing values, used to drive the preview component while editing
+  // so changes show before save.
+  const previewTherapist = showBranding
+    ? { ...therapist, gift_card_theme: brandingTheme, gift_card_message: brandingMessage }
+    : therapist;
+
+  async function saveBranding() {
+    setSavingBranding(true);
+    const { error } = await supabase
+      .from('therapists')
+      .update({
+        gift_card_theme: brandingTheme,
+        gift_card_message: brandingMessage || null,
+      })
+      .eq('id', therapist.id);
+    setSavingBranding(false);
+    if (error) {
+      console.error('[gift-card-branding] save failed', error);
+      return;
+    }
+    setBrandingSaved(true);
+    setTimeout(() => setBrandingSaved(false), 2500);
+    // Optimistically mutate the prop so other components reading from
+    // it see the new values without waiting for AuthContext refresh.
+    // The next page load fetches fresh anyway.
+    if (therapist) {
+      therapist.gift_card_theme = brandingTheme;
+      therapist.gift_card_message = brandingMessage || null;
+    }
+  }
+
   return (
     <div style={{ maxWidth: 820, margin: '0 auto' }}>
-      {/* Hero header, warm, storytelling, feminine */}
+      {/* Hero header, themed by the therapist's chosen palette */}
       <div style={{
         position: 'relative',
-        background: 'linear-gradient(135deg, #FFF1F5 0%, #FFE4E6 35%, #FFF9F3 100%)',
+        background: activeTheme.bgGradient,
         borderRadius: 24,
         padding: '28px 24px',
         marginBottom: 24,
-        border: '1.5px solid #FBCFE8',
+        border: `1.5px solid ${activeTheme.accent}33`,
         overflow: 'hidden',
-        boxShadow: '0 2px 14px rgba(249,168,180,0.15)',
+        boxShadow: `0 2px 14px ${activeTheme.accent}26`,
       }}>
-        {/* Botanical decorations */}
-        <BotanicalFlourish style={{ position: 'absolute', top: -20, right: -10, transform: 'rotate(15deg)' }} />
-        <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: -20, transform: 'rotate(-160deg) scale(0.8)' }} opacity={0.35} />
+        <BotanicalFlourish style={{ position: 'absolute', top: -20, right: -10, transform: 'rotate(15deg)' }} color={activeTheme.accent} />
+        <BotanicalFlourish style={{ position: 'absolute', bottom: -30, left: -20, transform: 'rotate(-160deg) scale(0.8)' }} color={activeTheme.accent} opacity={0.35} />
 
         <div style={{ position: 'relative', zIndex: 2, maxWidth: 540 }}>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, color: C.rose, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 11, color: activeTheme.accent, letterSpacing: '0.24em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>
             ♡ Gift Cards
           </div>
-          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 700, color: C.dark, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
-            Give the gift of <em style={{ color: C.rose, fontStyle: 'italic' }}>feeling good.</em>
+          <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 30, fontWeight: 700, color: activeTheme.ink, margin: '0 0 10px', lineHeight: 1.15, letterSpacing: '-0.02em' }}>
+            Give the gift of <em style={{ color: activeTheme.accent, fontStyle: 'italic' }}>feeling good.</em>
           </h2>
-          <p style={{ fontSize: 14, color: '#5B6470', margin: '0 0 22px', lineHeight: 1.65 }}>
+          <p style={{ fontSize: 14, color: activeTheme.inkSoft, margin: '0 0 22px', lineHeight: 1.65 }}>
             For the mother who gives everything. The friend going through a hard season. The partner who deserves to be cared for. A gift card from you is an hour of peace, wrapped in kindness.
           </p>
-          <button onClick={() => setShowForm(!showForm)}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: showForm ? 'rgba(255,255,255,0.7)' : 'linear-gradient(135deg, #E85C79, #D14560)',
-              color: showForm ? C.rose : '#fff',
-              border: showForm ? `1.5px solid ${C.blush}` : 'none',
-              borderRadius: 24,
-              padding: '12px 22px',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-              boxShadow: showForm ? 'none' : '0 4px 14px rgba(232,92,121,0.35)',
-              fontFamily: 'Georgia, serif',
-              letterSpacing: '0.01em',
-              transition: 'all 0.15s',
-              WebkitTapHighlightColor: 'transparent',
-            }}>
-            {showForm ? '× Close' : <>
-              <span style={{ fontSize: 16 }}>♡</span>
-              Create a gift card
-            </>}
-          </button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button onClick={() => setShowForm(!showForm)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: showForm ? 'rgba(255,255,255,0.7)' : activeTheme.accentSolid,
+                color: showForm ? activeTheme.accent : '#fff',
+                border: showForm ? `1.5px solid ${activeTheme.accent}66` : 'none',
+                borderRadius: 24,
+                padding: '12px 22px',
+                fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                boxShadow: showForm ? 'none' : `0 4px 14px ${activeTheme.accent}59`,
+                fontFamily: 'Georgia, serif',
+                letterSpacing: '0.01em',
+                transition: 'all 0.15s',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              {showForm ? '× Close' : <><span style={{ fontSize: 16 }}>♡</span> Create a gift card</>}
+            </button>
+            <button onClick={() => setShowBranding(!showBranding)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'transparent',
+                color: activeTheme.accent,
+                border: `1.5px solid ${activeTheme.accent}66`,
+                borderRadius: 24,
+                padding: '11px 18px',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                fontFamily: 'Georgia, serif',
+                WebkitTapHighlightColor: 'transparent',
+              }}>
+              {showBranding ? '× Close branding' : '✨ Customize your card'}
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Branding panel: theme picker + message + live preview. */}
+      {showBranding && (
+        <div style={{
+          background: '#FFFFFF',
+          border: `1.5px solid ${activeTheme.accent}33`,
+          borderRadius: 18,
+          padding: '22px 22px 20px',
+          marginBottom: 24,
+          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+            Customize your gift card
+          </div>
+          <p style={{ fontSize: 13, color: C.gray, margin: '0 0 16px', lineHeight: 1.5 }}>
+            These choices show up on every gift card you sell: in your dashboard, in the email recipients receive, and on the printable version. Your profile photo (set in Settings) also appears on each card.
+          </p>
+
+          {/* Palette swatches */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
+            Color theme
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 22 }}>
+            {ORDERED_THEME_KEYS.map(key => {
+              const t = GIFT_CARD_THEMES[key];
+              const selected = brandingTheme === key;
+              return (
+                <button key={key} type="button" onClick={() => setBrandingTheme(key)}
+                  style={{
+                    background: t.bgGradient,
+                    border: `2.5px solid ${selected ? t.accent : 'transparent'}`,
+                    borderRadius: 14,
+                    padding: '14px 14px',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    position: 'relative',
+                    transition: 'all 0.12s',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <div style={{
+                      width: 18, height: 18, borderRadius: '50%',
+                      background: t.accentSolid,
+                      boxShadow: `0 2px 4px ${t.accent}66`,
+                    }}/>
+                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, fontWeight: 700, color: t.ink }}>{t.label}</div>
+                    {selected && (
+                      <div style={{ marginLeft: 'auto', fontSize: 14, color: t.accentDeep }}>✓</div>
+                    )}
+                  </div>
+                  <div style={{ fontSize: 11, color: t.inkSoft, lineHeight: 1.35 }}>{t.description}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Brand message */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Personal message <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500, color: C.gray }}>(optional, ~80 chars)</span>
+          </div>
+          <textarea
+            value={brandingMessage}
+            onChange={(e) => setBrandingMessage(e.target.value.slice(0, 120))}
+            placeholder="e.g. From my hands to yours, with care. Jiny"
+            rows={2}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              border: `1.5px solid ${C.light}`,
+              borderRadius: 10,
+              fontSize: 14,
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              color: C.dark,
+              resize: 'vertical',
+              outline: 'none',
+              boxSizing: 'border-box',
+              marginBottom: 8,
+            }}
+          />
+          <div style={{ fontSize: 11, color: C.gray, marginBottom: 18 }}>
+            {brandingMessage.length}/120 characters
+          </div>
+
+          {/* Live preview */}
+          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
+            Live preview
+          </div>
+          <GiftCardPreview
+            amount="100"
+            recipient="Sarah"
+            purchaser={therapist?.full_name?.split(' ')[0] || 'You'}
+            message="An hour of peace, just for you."
+            code="ABCD-1234-EFGH"
+            therapist={previewTherapist}
+            compact
+          />
+
+          {/* Save row */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={saveBranding} disabled={savingBranding}
+              style={{
+                background: activeTheme.accentSolid,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 24,
+                padding: '11px 22px',
+                fontSize: 14, fontWeight: 700,
+                cursor: savingBranding ? 'not-allowed' : 'pointer',
+                opacity: savingBranding ? 0.7 : 1,
+                fontFamily: 'Georgia, serif',
+                boxShadow: `0 3px 10px ${activeTheme.accent}40`,
+              }}>
+              {savingBranding ? 'Saving...' : 'Save branding'}
+            </button>
+            {brandingSaved && (
+              <div style={{ fontSize: 13, color: '#059669', fontWeight: 600 }}>
+                ✓ Saved. New cards will use this branding.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Success toast */}
       {saved && (
@@ -372,6 +608,7 @@ export default function GiftCertificates({ therapist }) {
               message={form.message || 'An hour of peace, just for you.'}
               code="XXXX-XXXX-XXXX"
               compact
+              therapist={therapist}
             />
           </div>
 
@@ -512,6 +749,7 @@ export default function GiftCertificates({ therapist }) {
                       purchaser={cert.purchaser_name}
                       message={cert.message}
                       code={cert.code}
+                      therapist={therapist}
                     />
                     {/* Actions row below the card */}
                     <div style={{ display: 'flex', gap: 8, marginTop: 10, alignItems: 'center', flexWrap: 'wrap' }}>
