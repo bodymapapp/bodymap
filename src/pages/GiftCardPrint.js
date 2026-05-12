@@ -23,11 +23,12 @@
 // Route: /gift-card/print/:id
 // Public access by design — gift cert UUIDs are unguessable.
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { getTheme } from "../lib/giftCardThemes";
 import { getDesign, renderDecorationsReact } from "../lib/giftCardDesigns";
+import html2canvas from "html2canvas";
 
 // Build a print palette (specific to GiftCardPrint's layout) from a
 // dashboard theme. The print layout uses richer color slots than the
@@ -242,6 +243,15 @@ export default function GiftCardPrint() {
     return () => { cancelled = true; };
   }, [id]);
 
+  // ─── Image export refs + state ───
+  // These hooks must live above any early return for React's rules of
+  // hooks. The helpers themselves (renderCardToBlob, handleCopyAsImage,
+  // handleShareAsImage) are defined below once cert/therapist are
+  // resolved, since they read those values.
+  const cardRef = useRef(null);
+  const [imgBusy, setImgBusy] = useState(null);   // 'copy' | 'share' | null
+  const [imgToast, setImgToast] = useState(null); // { text, type } | null
+
   if (loading) {
     return <div style={{ padding: 40, fontFamily: "Georgia, serif", color: "#7A5C53" }}>Loading...</div>;
   }
@@ -285,6 +295,90 @@ export default function GiftCardPrint() {
     printColorAdjust: "exact",
     colorAdjust: "exact",
   };
+
+  // ─── Image export: copy to clipboard or share as native image ───
+  // Pattern mirrored from DocumentDrawer.jsx's proven implementation.
+  // We capture .gc-print-card (the rendered card element) with html2canvas
+  // at 2x scale, then either write the PNG blob to the clipboard or hand
+  // it off to navigator.share so it can attach in the user's email/SMS app.
+  // State + ref are declared above the early returns to satisfy
+  // react-hooks/rules-of-hooks.
+
+  function showImgToast(text, type = "ok") {
+    setImgToast({ text, type });
+    setTimeout(() => setImgToast(null), 3500);
+  }
+
+  async function renderCardToBlob() {
+    if (!cardRef.current) throw new Error("Card not ready yet, please try again.");
+    const canvas = await html2canvas(cardRef.current, {
+      backgroundColor: p.pageBg,
+      scale: 2,
+      useCORS: true,
+      logging: false,
+    });
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(b => b ? resolve(b) : reject(new Error("Image render failed")), "image/png");
+    });
+  }
+
+  async function handleCopyAsImage() {
+    setImgBusy("copy");
+    try {
+      if (!navigator.clipboard || !window.ClipboardItem) {
+        throw new Error("Clipboard images not supported on this browser. Use Share or Save as PDF.");
+      }
+      const blob = await renderCardToBlob();
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      showImgToast("Copied. Paste into your email or message.");
+    } catch (err) {
+      showImgToast(err.message || "Could not copy.", "err");
+    } finally {
+      setImgBusy(null);
+    }
+  }
+
+  async function handleShareAsImage() {
+    setImgBusy("share");
+    try {
+      const blob = await renderCardToBlob();
+      const fileName = `gift-card-${(code || 'card').toLowerCase()}.png`;
+      const file = new File([blob], fileName, { type: "image/png" });
+
+      // Native share sheet (iOS / Android / mac Safari): lets the user
+      // pick Messages, Mail, WhatsApp, AirDrop, etc. and attaches the
+      // image directly into the message.
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Gift card for ${recipientName}`,
+          text: personalNote || `A gift card from ${purchaserName}.`,
+        });
+        showImgToast("Shared.");
+      } else {
+        // Fallback: download the PNG and tell the user to attach it.
+        // This catches desktop Chrome and any browser without
+        // navigator.share file support.
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showImgToast("Saved as PNG. Attach it to your email or text.");
+      }
+    } catch (err) {
+      // navigator.share rejects with AbortError when the user dismisses
+      // the share sheet. That's expected, don't show an error.
+      if (err.name !== "AbortError") {
+        showImgToast(err.message || "Could not share.", "err");
+      }
+    } finally {
+      setImgBusy(null);
+    }
+  }
 
   return (
     <div style={{ background: "#F0EBE0", minHeight: "100vh", fontFamily: "Georgia, 'Iowan Old Style', serif" }}>
@@ -402,6 +496,35 @@ export default function GiftCardPrint() {
               );
             })}
           </div>
+          {/* Copy as image: writes PNG to clipboard so the therapist can
+              paste straight into their email composer or messaging app
+              without saving a file first. */}
+          <button onClick={handleCopyAsImage} disabled={imgBusy !== null} style={{
+            background: imgBusy === "copy" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
+            color: imgBusy === "copy" ? "#2A5741" : "white",
+            border: "1.5px solid rgba(255,255,255,0.4)",
+            padding: "8px 16px",
+            borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: imgBusy ? "not-allowed" : "pointer",
+            opacity: imgBusy && imgBusy !== "copy" ? 0.5 : 1,
+          }}>
+            {imgBusy === "copy" ? "Copying..." : "📋 Copy as image"}
+          </button>
+          {/* Share as image: uses native share sheet on iOS/Android/Safari
+              to let the therapist pick Messages, Mail, WhatsApp, etc and
+              attach the PNG. Falls back to PNG download on desktop Chrome
+              where the file-share API is missing. */}
+          <button onClick={handleShareAsImage} disabled={imgBusy !== null} style={{
+            background: imgBusy === "share" ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.15)",
+            color: imgBusy === "share" ? "#2A5741" : "white",
+            border: "1.5px solid rgba(255,255,255,0.4)",
+            padding: "8px 16px",
+            borderRadius: 8, fontSize: 13, fontWeight: 600,
+            cursor: imgBusy ? "not-allowed" : "pointer",
+            opacity: imgBusy && imgBusy !== "share" ? 0.5 : 1,
+          }}>
+            {imgBusy === "share" ? "Sharing..." : "📤 Share"}
+          </button>
           <button onClick={() => window.print()} style={{
             background: "white", color: "#2A5741",
             border: "none", padding: "8px 22px",
@@ -412,13 +535,32 @@ export default function GiftCardPrint() {
         </div>
       </div>
 
+      {/* Image-action toast */}
+      {imgToast && (
+        <div className="no-print" style={{
+          position: "fixed",
+          bottom: 24, left: "50%", transform: "translateX(-50%)",
+          zIndex: 50,
+          background: imgToast.type === "err" ? "#7F1D1D" : "#1F3D2A",
+          color: "white",
+          padding: "12px 22px",
+          borderRadius: 12,
+          fontSize: 14, fontWeight: 600,
+          boxShadow: "0 8px 28px rgba(0,0,0,0.25)",
+          maxWidth: "calc(100vw - 32px)",
+          fontFamily: "system-ui, sans-serif",
+        }}>
+          {imgToast.text}
+        </div>
+      )}
+
       {/* Helper hint */}
       <div className="no-print" style={{
         background: "#FFF8E1", borderBottom: "1px solid #F0E5C0",
         padding: "10px 24px", fontSize: 13, color: "#6B5A2A",
         textAlign: "center",
       }}>
-        Pick a style and size, then click Print. Card prints edge-to-edge with no header or margins. Background colors will print correctly.
+        Pick a size, then choose how to send: copy the card as an image to paste into email, share to Messages or WhatsApp, or print and save as PDF.
       </div>
 
       {/* The card preview area */}
@@ -427,7 +569,7 @@ export default function GiftCardPrint() {
         display: "flex", justifyContent: "center", alignItems: "flex-start",
         background: "#F0EBE0",
       }}>
-        <div className="gc-print-card" style={{
+        <div ref={cardRef} className="gc-print-card" style={{
           width: sz.screenW,
           height: sz.screenH,            /* fixed, not min — prevents bleed */
           background: p.pageBg,
