@@ -188,18 +188,19 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
   // No more contradictory states (e.g. dot 2 'ready' while 3 and 4 'done').
   //
   // Intake:   session exists with client data (effectively always done if
-  //           the session row exists, since the row is created when the
-  //           client submits intake)
-  // Pre:      therapist must have had the session, which we infer from
-  //           session.completed. If session not yet completed, pre is
-  //           the 'current' step (read the brief before seeing them)
-  // Record:   session.completed AND therapist has saved SOAP content
-  // Recap:    session.completed AND therapist has written a message to
-  //           the client (the recap text). Without that there is nothing
-  //           personal to send.
+  //           the session row exists)
+  // Pre:      ALWAYS done once intake is filled. The Pre-Session Brief is
+  //           a derived reference document the therapist reads, not an
+  //           action item they 'complete'. Marking it as always-green
+  //           (when intake is done) means the journey's 'current' dot
+  //           jumps straight to the actual next action: writing SOAP.
+  //           This makes the banner ('write your session notes') and
+  //           the timeline agree on what's next.
+  // Record:   session.completed AND therapist saved SOAP content
+  // Recap:    session.completed AND therapist wrote a message to client
   //
-  // 'Current' = the first dot that is not yet done. Only one dot at a
-  // time. Subsequent dots are 'waiting' (faded, faint dashed border).
+  // 'Current' is the first dot that needs therapist action. Earlier dots
+  // are 'done', later dots are 'waiting'.
 
   const intakeDone = !!(
     (session.front_focus && session.front_focus.length) ||
@@ -218,14 +219,18 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
   const hasSoapContent = !!(soap.S || soap.O || soap.A || soap.P);
   const hasNoteToClient = !!(session.public_notes || soap.noteToClient);
 
-  const preDone = completed;
+  // preDone is automatic the moment intake is filled. The pre-session
+  // brief is generated from intake data, there is nothing for the
+  // therapist to 'do' here, only to read.
+  const preDone = intakeDone;
   const recordDone = completed && hasSoapContent;
   const recapDone = completed && hasNoteToClient;
 
-  // Determine the single 'current' dot (first incomplete)
+  // Determine the single 'current' dot (first incomplete actionable step)
   let currentN = null;
   if (!intakeDone) currentN = 1;
-  else if (!preDone) currentN = 2;
+  // Skip dot 2: it is never the actionable 'next' step since it auto-
+  // resolves with intake. Jump directly to dot 3 if record is undone.
   else if (!recordDone) currentN = 3;
   else if (!recapDone) currentN = 4;
 
@@ -239,25 +244,25 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
     {
       n: 1, label: 'Intake',
       status: computeStatus(1, intakeDone),
-      statusText: intakeDone ? 'Filled' : 'Awaiting client',
+      statusText: intakeDone ? 'Filled by client' : 'Awaiting client',
       url: `/brief/intake/${sessionId}`,
     },
     {
       n: 2, label: 'Pre-Session',
       status: computeStatus(2, preDone),
-      statusText: preDone ? 'Reviewed' : (intakeDone ? 'Read before' : 'Waiting'),
+      statusText: preDone ? 'Ready to read' : 'Waiting',
       url: `/brief/pre/${sessionId}`,
     },
     {
       n: 3, label: 'Record',
       status: computeStatus(3, recordDone),
-      statusText: recordDone ? 'Saved' : (preDone ? 'Write SOAP' : 'Waiting'),
+      statusText: recordDone ? 'Saved by you' : 'Tap to write',
       url: `/brief/post/${sessionId}`,
     },
     {
       n: 4, label: 'Recap',
       status: computeStatus(4, recapDone),
-      statusText: recapDone ? 'Sent' : (recordDone ? 'Send to client' : 'Waiting'),
+      statusText: recapDone ? 'Sent to client' : (recordDone ? 'Send to client' : 'Waiting'),
       url: `/recap/${sessionId}`,
     },
   ];
@@ -340,13 +345,13 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           animation: bmDotPulse 0.55s ease-out;
         }
         @media (max-width: 520px) {
-          .bm-journey-wrap { padding: 10px 12px 12px !important; }
+          .bm-journey-wrap { padding: 10px 12px 14px !important; }
           .bm-journey-row { gap: 2px !important; }
-          .bm-journey-dot { min-width: 50px !important; }
-          .bm-journey-dot > div:first-child { width: 34px !important; height: 34px !important; font-size: 14px !important; }
+          .bm-journey-dot { min-width: 56px !important; }
+          .bm-journey-dot > div:first-child { width: 44px !important; height: 44px !important; font-size: 16px !important; }
         }
       `}</style>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
         <div style={{
           fontSize: 10, fontWeight: 700, color: C.goldDeep,
           textTransform: 'uppercase', letterSpacing: '1.4px',
@@ -354,9 +359,20 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           The journey
         </div>
         <div style={{ fontSize: 10.5, color: C.inkSoft, fontStyle: 'italic' }}>
-          {completed ? 'All four documents complete' : 'Next steps highlighted'}
+          {completed ? 'All four documents complete' : 'Tap any step to view'}
         </div>
       </div>
+      {/* Explicit affordance: small one-liner under the header so the
+          70-year-old persona sees that the circles are interactive,
+          not status indicators. */}
+      {!completed && (
+        <div style={{
+          fontSize: 11, color: C.forest, fontWeight: 500,
+          marginBottom: 8, textAlign: 'center',
+        }}>
+          Tap a circle below to open that document
+        </div>
+      )}
       <div className="bm-journey-row">
         {states.map((state, i) => (
           <React.Fragment key={state.n}>
