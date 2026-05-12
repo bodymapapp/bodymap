@@ -317,154 +317,148 @@ function ServicesAndAvailability({ therapist }) {
                     ariaLabel={`Description for ${svc.name}`}
                   />
                 </div>
-                {/* Phase tags — only render when cycle scheduling is on.
-                    Each chip toggles whether the service is available in that
-                    phase. NULL or empty array = always available. */}
-                {therapist?.cycle_scheduling_enabled && (
-                  <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}`, display:'flex', flexWrap:'wrap', alignItems:'center', gap:6 }}>
-                    <span style={{ fontSize:11, color:C2.gray, fontWeight:600, marginRight:4 }}>Available in:</span>
-                    {[
-                      { key:'menstrual',  label:'Menstrual',  color:'#C99488' },
-                      { key:'follicular', label:'Follicular', color:'#D4A578' },
-                      { key:'ovulatory',  label:'Ovulatory',  color:'#9DAA85' },
-                      { key:'luteal',     label:'Luteal',     color:'#A87468' },
-                    ].map(ph => {
-                      const phases = svc.phases || [];
-                      const allOff = phases.length === 0; // null/empty = all (always available)
-                      const isOn = allOff || phases.includes(ph.key);
-                      const togglePhase = () => {
-                        let next;
-                        if (allOff) {
-                          // Currently "all phases" — turn this one OFF, others stay on
-                          next = ['menstrual','follicular','ovulatory','luteal'].filter(p => p !== ph.key);
-                        } else if (isOn) {
-                          next = phases.filter(p => p !== ph.key);
-                          if (next.length === 0) next = null; // empty = all (back to default)
-                        } else {
-                          next = [...phases, ph.key];
-                          if (next.length === 4) next = null; // all four = back to "always"
-                        }
-                        updateService(svc.id, { phases: next });
-                      };
-                      return (
-                        <button key={ph.key} onClick={togglePhase} style={{
-                          background: isOn ? ph.color : 'transparent',
-                          color: isOn ? '#fff' : C2.gray,
-                          border: `1.5px solid ${isOn ? ph.color : C2.lightGray}`,
-                          borderRadius: 999,
-                          padding: '3px 10px',
-                          fontSize: 11, fontWeight: 600,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                        }}>
-                          {ph.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Per-service availability, days only (HK May 10 2026
-                    redesign). Inline 7-day pills on each service row.
-                    Tap a pill to exclude that day for this service.
-                    Hours always inherit from master schedule.
-                    Helper text auto-derives:
-                      - "all master days" when no per-service rows exist
-                      - "Tue and Thu only" when only those 2 are enabled
-                    Replaces the previous ServiceHoursEditor expansion
-                    that was endless-clicks. */}
-                <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}`, display:'flex', flexWrap:'wrap', alignItems:'center', gap:6 }}>
-                  <span style={{ fontSize:11, color:C2.gray, fontWeight:600, marginRight:4 }}>Days:</span>
-                  {[
-                    { dow:1, label:'M' }, { dow:2, label:'T' }, { dow:3, label:'W' },
-                    { dow:4, label:'T' }, { dow:5, label:'F' }, { dow:6, label:'S' }, { dow:0, label:'S' },
-                  ].map(({ dow, label }) => {
-                    const svcRows = (availability || []).filter(a => a.service_id === svc.id);
-                    const hasOverride = svcRows.length > 0;
-                    // If service has no overrides, ALL days are inherited from master => all "on"
-                    // If service has overrides, only the dows present are "on"
-                    const isOn = !hasOverride || svcRows.some(r => r.day_of_week === dow);
-                    const togglePill = async () => {
-                      if (!hasOverride) {
-                        // First click on a pill to exclude a day: copy all master days (active rows where service_id IS NULL)
-                        // EXCEPT the one the therapist just clicked.
-                        const masterRows = (availability || []).filter(a => !a.service_id && a.active);
-                        const toCopy = masterRows.filter(r => r.day_of_week !== dow);
-                        if (toCopy.length === 0) return; // no master schedule yet
-                        const inserts = toCopy.map(r => ({
-                          therapist_id: therapist.id,
-                          service_id: svc.id,
-                          day_of_week: r.day_of_week,
-                          start_time: r.start_time,
-                          end_time: r.end_time,
-                          time_blocks: r.time_blocks,
-                          active: true,
-                        }));
-                        const { data } = await supabase.from('availability').insert(inserts).select();
-                        if (data) setAvailability(a => [...a, ...data]);
-                      } else if (isOn) {
-                        // Currently on, exclude it: delete the row for this service+dow
-                        const row = svcRows.find(r => r.day_of_week === dow);
-                        if (row) {
-                          await supabase.from('availability').delete().eq('id', row.id);
-                          setAvailability(a => a.filter(x => x.id !== row.id));
-                          // If after delete, no service rows remain, the service falls back to master.
-                          // If after delete, all 7 days are excluded except 0, that is fine, fallback handled by booking page.
-                        }
-                      } else {
-                        // Currently off, include it: insert a new row inheriting master times for this dow
-                        const masterRow = (availability || []).find(a => !a.service_id && a.active && a.day_of_week === dow);
-                        const insertRow = {
-                          therapist_id: therapist.id,
-                          service_id: svc.id,
-                          day_of_week: dow,
-                          start_time: masterRow?.start_time || '09:00',
-                          end_time: masterRow?.end_time || '17:00',
-                          time_blocks: masterRow?.time_blocks || null,
-                          active: true,
+                {/* Phase tags + Days combined into a single tight block.
+                    Phase pills use 3-letter abbreviations (Men/Fol/Ovu/Lut)
+                    so all 4 fit on one mobile line. Days pills are compact
+                    26px wide single-letter circles. Both rows aligned with
+                    a fixed-width label so the visual grid is clean. */}
+                <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}`, display:'flex', flexDirection:'column', gap:6 }}>
+                  {therapist?.cycle_scheduling_enabled && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap' }}>
+                      <span style={{ fontSize:10, color:C2.gray, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px', width:46, flexShrink:0 }}>Phase</span>
+                      <div style={{ display:'flex', gap:4, flex:1, overflowX:'auto', scrollbarWidth:'none' }}>
+                        {[
+                          { key:'menstrual',  label:'Men', full:'Menstrual',  color:'#C99488' },
+                          { key:'follicular', label:'Fol', full:'Follicular', color:'#D4A578' },
+                          { key:'ovulatory',  label:'Ovu', full:'Ovulatory',  color:'#9DAA85' },
+                          { key:'luteal',     label:'Lut', full:'Luteal',     color:'#A87468' },
+                        ].map(ph => {
+                          const phases = svc.phases || [];
+                          const allOff = phases.length === 0;
+                          const isOn = allOff || phases.includes(ph.key);
+                          const togglePhase = () => {
+                            let next;
+                            if (allOff) {
+                              next = ['menstrual','follicular','ovulatory','luteal'].filter(p => p !== ph.key);
+                            } else if (isOn) {
+                              next = phases.filter(p => p !== ph.key);
+                              if (next.length === 0) next = null;
+                            } else {
+                              next = [...phases, ph.key];
+                              if (next.length === 4) next = null;
+                            }
+                            updateService(svc.id, { phases: next });
+                          };
+                          return (
+                            <button key={ph.key} onClick={togglePhase} title={ph.full} style={{
+                              background: isOn ? ph.color : 'transparent',
+                              color: isOn ? '#fff' : C2.gray,
+                              border: `1.5px solid ${isOn ? ph.color : C2.lightGray}`,
+                              borderRadius: 999,
+                              padding: '3px 9px',
+                              fontSize: 10.5, fontWeight: 700, letterSpacing:'0.3px',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s',
+                              flexShrink: 0,
+                              minWidth: 40,
+                            }}>
+                              {ph.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'nowrap' }}>
+                    <span style={{ fontSize:10, color:C2.gray, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.5px', width:46, flexShrink:0 }}>Days</span>
+                    <div style={{ display:'flex', gap:3, flexShrink:0 }}>
+                      {[
+                        { dow:1, label:'M' }, { dow:2, label:'T' }, { dow:3, label:'W' },
+                        { dow:4, label:'T' }, { dow:5, label:'F' }, { dow:6, label:'S' }, { dow:0, label:'S' },
+                      ].map(({ dow, label }) => {
+                        const svcRows = (availability || []).filter(a => a.service_id === svc.id);
+                        const hasOverride = svcRows.length > 0;
+                        const isOn = !hasOverride || svcRows.some(r => r.day_of_week === dow);
+                        const togglePill = async () => {
+                          if (!hasOverride) {
+                            const masterRows = (availability || []).filter(a => !a.service_id && a.active);
+                            const toCopy = masterRows.filter(r => r.day_of_week !== dow);
+                            if (toCopy.length === 0) return;
+                            const inserts = toCopy.map(r => ({
+                              therapist_id: therapist.id,
+                              service_id: svc.id,
+                              day_of_week: r.day_of_week,
+                              start_time: r.start_time,
+                              end_time: r.end_time,
+                              time_blocks: r.time_blocks,
+                              active: true,
+                            }));
+                            const { data } = await supabase.from('availability').insert(inserts).select();
+                            if (data) setAvailability(a => [...a, ...data]);
+                          } else if (isOn) {
+                            const row = svcRows.find(r => r.day_of_week === dow);
+                            if (row) {
+                              await supabase.from('availability').delete().eq('id', row.id);
+                              setAvailability(a => a.filter(x => x.id !== row.id));
+                            }
+                          } else {
+                            const masterRow = (availability || []).find(a => !a.service_id && a.day_of_week === dow && a.active);
+                            const insertRow = {
+                              therapist_id: therapist.id,
+                              service_id: svc.id,
+                              day_of_week: dow,
+                              start_time: masterRow?.start_time || '09:00',
+                              end_time: masterRow?.end_time || '17:00',
+                              time_blocks: masterRow?.time_blocks || null,
+                              active: true,
+                            };
+                            const { data } = await supabase.from('availability').insert(insertRow).select().single();
+                            if (data) setAvailability(a => [...a, data]);
+                          }
                         };
-                        const { data } = await supabase.from('availability').insert(insertRow).select().single();
-                        if (data) setAvailability(a => [...a, data]);
-                      }
-                    };
-                    return (
-                      <button key={dow} onClick={togglePill} type="button"
-                        style={{
-                          fontSize:10, padding:'3px 8px', borderRadius:999,
-                          background: isOn ? C2.forest : '#F0EDE6',
-                          color: isOn ? '#fff' : '#9A9486',
-                          border:'none', cursor:'pointer', fontFamily:'system-ui',
-                          fontWeight: isOn ? 700 : 500,
-                        }}>
-                        {label}
-                      </button>
-                    );
-                  })}
-                  {(() => {
-                    const svcRows = (availability || []).filter(a => a.service_id === svc.id);
-                    if (svcRows.length === 0) return (
-                      <span style={{ fontSize:10, color:'#9A9486', fontStyle:'italic', marginLeft:4 }}>
-                        all master days
-                      </span>
-                    );
-                    const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-                    const sorted = [...svcRows].sort((a, b) => a.day_of_week - b.day_of_week);
-                    if (sorted.length === 1) return (
-                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
-                        {dayLabels[sorted[0].day_of_week]} only
-                      </span>
-                    );
-                    if (sorted.length === 2) return (
-                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
-                        {dayLabels[sorted[0].day_of_week]} and {dayLabels[sorted[1].day_of_week]} only
-                      </span>
-                    );
-                    return (
-                      <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:4 }}>
-                        {sorted.length} days
-                      </span>
-                    );
-                  })()}
+                        return (
+                          <button key={dow} onClick={togglePill} type="button"
+                            style={{
+                              width: 26, height: 26, borderRadius: '50%',
+                              fontSize: 10.5,
+                              background: isOn ? C2.forest : '#F0EDE6',
+                              color: isOn ? '#fff' : '#9A9486',
+                              border:'none', cursor:'pointer', fontFamily:'system-ui',
+                              fontWeight: isOn ? 700 : 500,
+                              display:'flex', alignItems:'center', justifyContent:'center',
+                              padding: 0, flexShrink: 0,
+                            }}>
+                            {label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {(() => {
+                      const svcRows = (availability || []).filter(a => a.service_id === svc.id);
+                      if (svcRows.length === 0) return (
+                        <span style={{ fontSize:10, color:'#9A9486', fontStyle:'italic', marginLeft:'auto' }}>
+                          all days
+                        </span>
+                      );
+                      const dayLabels = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+                      const sorted = [...svcRows].sort((a, b) => a.day_of_week - b.day_of_week);
+                      if (sorted.length === 1) return (
+                        <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:'auto' }}>
+                          {dayLabels[sorted[0].day_of_week]} only
+                        </span>
+                      );
+                      if (sorted.length === 2) return (
+                        <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:'auto' }}>
+                          {dayLabels[sorted[0].day_of_week]}, {dayLabels[sorted[1].day_of_week]} only
+                        </span>
+                      );
+                      return (
+                        <span style={{ fontSize:10, color:C2.forest, fontStyle:'italic', marginLeft:'auto' }}>
+                          {sorted.length}d
+                        </span>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             ))}

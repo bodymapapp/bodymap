@@ -387,70 +387,83 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
         </div>
       )}
 
-      <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
-        <button onClick={onBack} style={{ background: "transparent", border: `1.5px solid ${C.lightGray}`, color: C.gray, padding: "8px 16px", borderRadius: "8px", fontSize: "14px", cursor: "pointer", fontFamily: "system-ui" }}>
-          ← All Clients
-        </button>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <h2 style={{ fontFamily: "Georgia, serif", fontSize: "28px", fontWeight: "700", color: isArchived ? "#6B7280" : C.darkGray, margin: "0 0 2px 0", letterSpacing: "-0.5px" }}>
-              {client.name}
-            </h2>
-            {isArchived && (
-              <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>
-                ⛔ {dnrReason || "Archived"}
-              </span>
-            )}
+      <div style={{ marginBottom: "20px" }}>
+        {/* Top row: back + name + sessions count */}
+        <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: 10 }}>
+          <button onClick={onBack} style={{ background: "transparent", border: `1.5px solid ${C.lightGray}`, color: C.gray, padding: "8px 14px", borderRadius: "8px", fontSize: "13px", cursor: "pointer", fontFamily: "system-ui", whiteSpace: "nowrap", flexShrink: 0 }}>
+            ← All
+          </button>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <h2 style={{ fontFamily: "Georgia, serif", fontSize: "clamp(20px, 5.5vw, 28px)", fontWeight: "700", color: isArchived ? "#6B7280" : C.darkGray, margin: 0, letterSpacing: "-0.5px", lineHeight: 1.15 }}>
+                {client.name}
+              </h2>
+              {isArchived && (
+                <span style={{ background: "#FEE2E2", color: "#991B1B", fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 20, whiteSpace: "nowrap" }}>
+                  ⛔ {dnrReason || "Archived"}
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: "13px", color: C.gray, margin: "2px 0 0" }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
           </div>
-          <p style={{ fontSize: "14px", color: C.gray, margin: 0 }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
         </div>
 
-        {/* Edit client */}
-        <button onClick={() => setShowEdit(true)}
-          style={{ background:"#F9FAFB", border:"1.5px solid #E5E7EB", color:C.dark, padding:"8px 14px", borderRadius:"8px", fontSize:"13px", fontWeight:600, cursor:"pointer" }}>
-          ✏️ Edit
-        </button>
+        {/* Action buttons row: scrollable strip on narrow screens, single row otherwise.
+            All five buttons same height, same vertical alignment, no wrapping. */}
+        <div className="bm-client-actions" style={{
+          display: "flex", alignItems: "center", gap: 8,
+          overflowX: "auto", paddingBottom: 4,
+          scrollbarWidth: "none",
+          WebkitOverflowScrolling: "touch",
+        }}>
+          <style>{`
+            .bm-client-actions::-webkit-scrollbar { display: none; }
+            .bm-client-actions > button { flex-shrink: 0; }
+          `}</style>
 
-        {/* Book Next Appointment */}
-        {!isArchived && (
-          <button onClick={() => setShowRebook(true)}
-            style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", color: "#16A34A", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-            📅 Book Next
+          <button onClick={() => setShowEdit(true)}
+            style={{ background:"#F9FAFB", border:"1.5px solid #E5E7EB", color:C.dark, padding:"7px 13px", borderRadius:"8px", fontSize:"12.5px", fontWeight:600, cursor:"pointer", whiteSpace: "nowrap" }}>
+            ✏️ Edit
           </button>
-        )}
 
-        {/* Merge button */}
-        <button onClick={() => setShowMerge(true)}
-          style={{ background: "#F5F3FF", border: "1.5px solid #C4B5FD", color: "#7C3AED", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-          ⟵⟶ Merge
-        </button>
-
-        {/* Archive toggle */}
-        <div style={{ position: "relative" }}>
-          {isArchived ? (
-            <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
-              style={{ background: "#F3F4F6", border: "1.5px solid #D1D5DB", color: "#6B7280", padding: "8px 16px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-              {archiveSaving ? "Restoring…" : "↩ Restore"}
-            </button>
-          ) : (
-            <button onClick={() => setShowArchiveMenu(v => !v)}
-              style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "8px 14px", borderRadius: "8px", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
-              ⛔ Archive
+          {!isArchived && (
+            <button onClick={() => setShowRebook(true)}
+              style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", color: "#16A34A", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              📅 Book Next
             </button>
           )}
-          {showArchiveMenu && (
-            <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 190 }}>
-              <p style={{ fontSize: 11, fontWeight: 700, color: "#991B1B", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 6px" }}>Reason</p>
-              {DNR_REASONS.map(r => (
-                <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
-                  style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "8px 10px", borderRadius: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500 }}
-                  onMouseEnter={e => e.target.style.background = "#FEF2F2"}
-                  onMouseLeave={e => e.target.style.background = "transparent"}>
-                  {r}
-                </button>
-              ))}
-            </div>
-          )}
+
+          <button onClick={() => setShowMerge(true)}
+            style={{ background: "#F5F3FF", border: "1.5px solid #C4B5FD", color: "#7C3AED", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+            ⟵⟶ Merge
+          </button>
+
+          <div style={{ position: "relative", flexShrink: 0 }}>
+            {isArchived ? (
+              <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
+                style={{ background: "#F3F4F6", border: "1.5px solid #D1D5DB", color: "#6B7280", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {archiveSaving ? "Restoring…" : "↩ Restore"}
+              </button>
+            ) : (
+              <button onClick={() => setShowArchiveMenu(v => !v)}
+                style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                ⛔ Archive
+              </button>
+            )}
+            {showArchiveMenu && (
+              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", background: "#fff", border: "1.5px solid #FECACA", borderRadius: 10, padding: "8px", zIndex: 100, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", minWidth: 190 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#991B1B", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px 6px" }}>Reason</p>
+                {DNR_REASONS.map(r => (
+                  <button key={r} onClick={() => toggleArchive(r)} disabled={archiveSaving}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", padding: "8px 10px", borderRadius: 7, fontSize: 13, color: "#374151", cursor: "pointer", fontWeight: 500 }}
+                    onMouseEnter={e => e.target.style.background = "#FEF2F2"}
+                    onMouseLeave={e => e.target.style.background = "transparent"}>
+                    {r}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

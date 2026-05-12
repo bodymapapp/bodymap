@@ -48,7 +48,7 @@ const C = {
 };
 
 // ─── Dot component ───
-function JourneyDot({ n, label, status, statusText, onClick, sub }) {
+function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
   const isDone = status === 'done';
   const isReady = status === 'ready';
   const isPending = status === 'pending';
@@ -70,7 +70,7 @@ function JourneyDot({ n, label, status, statusText, onClick, sub }) {
       type="button"
       onClick={onClick}
       disabled={isLocked}
-      className="bm-journey-dot"
+      className={`bm-journey-dot${pressed ? ' bm-dot-pressed' : ''}`}
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         background: 'transparent', border: 'none',
@@ -148,6 +148,8 @@ function Connector({ leftDone, rightDone }) {
 
 // ─── Main component ───
 export default function DocumentJourney({ session, aiEnabled = true }) {
+  const [pressedDot, setPressedDot] = React.useState(null);
+
   if (!session) return null;
 
   const sessionId = session.id;
@@ -192,7 +194,12 @@ export default function DocumentJourney({ session, aiEnabled = true }) {
 
   const handleClick = (state) => {
     if (state.status === 'locked') return;
-    window.open(state.url, '_blank');
+    // Brief pulse so the tap is felt before we navigate away
+    setPressedDot(state.n);
+    setTimeout(() => {
+      setPressedDot(null);
+      window.open(state.url, '_blank');
+    }, 220);
   };
 
   return (
@@ -207,12 +214,40 @@ export default function DocumentJourney({ session, aiEnabled = true }) {
         flex: 1, minWidth: 320,
       }}>
       <style>{`
+        .bm-journey-dot {
+          -webkit-tap-highlight-color: transparent;
+          transition: transform 0.12s ease;
+        }
+        .bm-journey-dot > div:first-child {
+          transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, background 0.18s ease;
+        }
         .bm-journey-dot:hover:not(:disabled) > div:first-child {
-          transform: translateY(-1px);
+          transform: translateY(-2px) scale(1.04);
+        }
+        .bm-journey-dot:active:not(:disabled) > div:first-child {
+          transform: translateY(0) scale(0.94);
+          transition-duration: 0.08s;
+        }
+        .bm-journey-dot:focus-visible {
+          outline: none;
+        }
+        .bm-journey-dot:focus-visible > div:first-child {
+          box-shadow: 0 0 0 4px rgba(74,107,84,0.25), 0 2px 8px rgba(74,107,84,0.20);
+        }
+        .bm-journey-dot:focus-visible > div:nth-child(2) > div:first-child {
+          color: ${C.forest};
         }
         .bm-journey-row {
           display: flex; align-items: flex-start; justify-content: space-between;
           gap: 4px; position: relative;
+        }
+        @keyframes bmDotPulse {
+          0% { box-shadow: 0 0 0 0 rgba(74,107,84,0.5); }
+          70% { box-shadow: 0 0 0 14px rgba(74,107,84,0); }
+          100% { box-shadow: 0 0 0 0 rgba(74,107,84,0); }
+        }
+        .bm-journey-dot.bm-dot-pressed > div:first-child {
+          animation: bmDotPulse 0.55s ease-out;
         }
         @media (max-width: 520px) {
           .bm-journey-wrap { padding: 10px 12px 12px !important; }
@@ -241,6 +276,7 @@ export default function DocumentJourney({ session, aiEnabled = true }) {
               status={state.status}
               statusText={state.statusText}
               onClick={() => handleClick(state)}
+              pressed={pressedDot === state.n}
               sub
             />
             {i < states.length - 1 && (
