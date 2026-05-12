@@ -345,9 +345,10 @@ export const RIBBONS = [
         body: [
           "Sell beautiful gift cards directly from your booking page. Recipient gets an instant email with a code; redeems at booking; you get paid right away.",
           "Print-ready in any size. Postcard, half-page, wallet, or custom. The therapist picks; the browser handles the dialog. No more wrestling with Canva margins.",
+          "Booked the right way for your accountant. Gift card sales are recorded as deferred revenue (a liability), not as income, until the session is actually delivered. This is the GAAP-correct treatment most spa booking tools skip. Square is one of the only platforms in this space that handles it properly; MyBodyMap rides Stripe and Square so your books look right out of the box.",
           "Travels where flowers cannot. The kind of small thing that makes a regular client feel like they have an actual relationship with you.",
         ],
-        meta: "Custom amounts · Print or email · Stripe-powered",
+        meta: "Custom amounts · Print or email · GAAP-correct accounting",
       },
       {
         id: "5.3",

@@ -76,6 +76,15 @@ const PEACE_BLOCKS = [
 // ───────────────────────────────────────────────────────────────────────
 const ONLY_MBM = [
   {
+    id: "no-marketplace-commission",
+    title: "No marketplace commission, ever",
+    body:
+      "Some platforms charge a one-time commission on every new client they consider sourced from their marketplace, sometimes for clients who would have found you anyway. With MyBodyMap there is no marketplace, no commission, and no per-booking cut. The booking link is yours, the relationship is yours, and so is the revenue.",
+    proof:
+      "Fresha charges a one-time 20 percent commission, minimum $6, on every new client who books via their marketplace, even if that client was a referral or saw your link on Google. Vagaro promotes a paid Marketplace listing add-on. We do neither. Your processor fees go to Stripe or Square; nothing extra to us per booking.",
+    photoId: "1.1",
+  },
+  {
     id: "cycle-scheduling",
     title: "Cycle-aligned scheduling, the first ever",
     body:
@@ -183,6 +192,11 @@ const COST_COMPARISON = [
     name: "Acuity Powerhouse",
     price: "$49/mo",
     note: "Text-form SOAP only. No body chart. Originally built for a massage therapist.",
+  },
+  {
+    name: "Fresha Independent",
+    price: "$19.95/mo + fees",
+    note: "Listed price is $19.95, but Fresha takes a one-time 20% commission ($6 min) on every new client booked through their marketplace. Built for salons; no body chart, no clinical SOAP.",
   },
   {
     name: "Noterro",
