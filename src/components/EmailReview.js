@@ -217,7 +217,7 @@ export default function EmailReview() {
               </button>
             )}
             <button
-              onClick={() => navigate("/founder")}
+              onClick={() => navigate("/admin")}
               style={{ padding: "8px 14px", background: "#fff", border: `1px solid ${C.light}`, borderRadius: 6, cursor: "pointer", fontSize: 12, color: C.dark, fontFamily: "system-ui" }}
             >
               ← Back to /founder

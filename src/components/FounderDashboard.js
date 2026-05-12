@@ -533,7 +533,7 @@ export default function FounderDashboard() {
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
             <a
-              href="/founder/emails"
+              href="/admin/emails"
               style={{ padding: "8px 16px", borderRadius: 8, border: `1.5px solid ${C.light}`, background: "#fff", cursor: "pointer", fontSize: 13, color: C.dark, fontWeight: 600, textDecoration: "none", fontFamily: "system-ui" }}
             >
               📧 Email & SMS review

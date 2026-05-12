@@ -117,8 +117,8 @@ function App() {
           <Route path="/demo" element={<Demo />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />
           <Route path="/deposit-success" element={<DepositSuccess />} />
-          <Route path="/founder" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
-          <Route path="/founder/emails" element={<ProtectedRoute><EmailReview /></ProtectedRoute>} />
+          <Route path="/admin" element={<ProtectedRoute><FounderDashboard /></ProtectedRoute>} />
+          <Route path="/admin/emails" element={<ProtectedRoute><EmailReview /></ProtectedRoute>} />
           <Route path="/unsubscribe" element={<Unsubscribe />} />
           <Route path="/:customUrl" element={<ClientIntake />} />
         </Routes>

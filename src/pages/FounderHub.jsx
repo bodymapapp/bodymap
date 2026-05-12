@@ -114,7 +114,7 @@ const SECTIONS = [
     subtitle: "Therapists table, Activation Checklist, Comms Log, mass SMS broadcast tool. Live admin view.",
     status: "live",
     type: "iframe",
-    iframeSrc: "/founder",
+    iframeSrc: "/admin",
   },
   {
     id: "email-sms",
@@ -123,7 +123,7 @@ const SECTIONS = [
     subtitle: "Every email and text the platform sends. Preview, leave feedback, track what needs rewriting.",
     status: "live",
     type: "iframe",
-    iframeSrc: "/founder/emails",
+    iframeSrc: "/admin/emails",
   },
   {
     id: "other-docs",
