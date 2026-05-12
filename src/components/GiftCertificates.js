@@ -270,50 +270,10 @@ export default function GiftCertificates({ therapist }) {
 
   const presetAmounts = [65, 85, 120, 150, 200];
 
-  // Branding panel toggle. When open, the therapist sees the theme
-  // picker + message field with a live preview, all driven by the
-  // therapist row from AuthContext. Saves on click.
-  const [showBranding, setShowBranding] = useState(false);
-  const [brandingTheme, setBrandingTheme] = useState(therapist?.gift_card_theme || 'rose');
-  const [brandingMessage, setBrandingMessage] = useState(therapist?.gift_card_message || '');
-  const [savingBranding, setSavingBranding] = useState(false);
-  const [brandingSaved, setBrandingSaved] = useState(false);
-
-  // Active theme for this entire component. Driven by either the
-  // therapist's saved value or the in-progress preview while editing.
-  const activeTheme = getTheme(showBranding ? brandingTheme : therapist?.gift_card_theme);
-
-  // A therapist object that overrides theme/message with the live
-  // editing values, used to drive the preview component while editing
-  // so changes show before save.
-  const previewTherapist = showBranding
-    ? { ...therapist, gift_card_theme: brandingTheme, gift_card_message: brandingMessage }
-    : therapist;
-
-  async function saveBranding() {
-    setSavingBranding(true);
-    const { error } = await supabase
-      .from('therapists')
-      .update({
-        gift_card_theme: brandingTheme,
-        gift_card_message: brandingMessage || null,
-      })
-      .eq('id', therapist.id);
-    setSavingBranding(false);
-    if (error) {
-      console.error('[gift-card-branding] save failed', error);
-      return;
-    }
-    setBrandingSaved(true);
-    setTimeout(() => setBrandingSaved(false), 2500);
-    // Optimistically mutate the prop so other components reading from
-    // it see the new values without waiting for AuthContext refresh.
-    // The next page load fetches fresh anyway.
-    if (therapist) {
-      therapist.gift_card_theme = brandingTheme;
-      therapist.gift_card_message = brandingMessage || null;
-    }
-  }
+  // Therapist's saved default theme drives the hero color tint. Per-card
+  // overrides happen in the create form (form.theme) and are previewed
+  // there directly without affecting this hero color.
+  const activeTheme = getTheme(therapist?.gift_card_theme);
 
   return (
     <div style={{ maxWidth: 820, margin: '0 auto' }}>
@@ -359,188 +319,34 @@ export default function GiftCertificates({ therapist }) {
               }}>
               {showForm ? '× Close' : <><span style={{ fontSize: 16 }}>♡</span> Create a gift card</>}
             </button>
-            <button onClick={() => setShowBranding(!showBranding)}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                background: 'transparent',
-                color: activeTheme.accent,
-                border: `1.5px solid ${activeTheme.accent}66`,
-                borderRadius: 24,
-                padding: '11px 18px',
-                fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                fontFamily: 'Georgia, serif',
-                WebkitTapHighlightColor: 'transparent',
-              }}>
-              {showBranding ? '× Close branding' : '✨ Customize your card'}
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Branding panel: theme picker + message + live preview. */}
-      {showBranding && (
-        <div style={{
-          background: '#FFFFFF',
-          border: `1.5px solid ${activeTheme.accent}33`,
-          borderRadius: 18,
-          padding: '22px 22px 20px',
-          marginBottom: 24,
-          boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
-        }}>
-          <div style={{ fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-            Customize your gift card
-          </div>
-          <p style={{ fontSize: 13, color: C.gray, margin: '0 0 16px', lineHeight: 1.5 }}>
-            These choices show up on every gift card you sell: in your dashboard, in the email recipients receive, and on the printable version. Your profile photo (set in Settings) also appears on each card.
-          </p>
 
-          {/* Palette swatches */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Color theme
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 10, marginBottom: 22 }}>
-            {ORDERED_THEME_KEYS.map(key => {
-              const t = GIFT_CARD_THEMES[key];
-              const selected = brandingTheme === key;
-              return (
-                <button key={key} type="button" onClick={() => setBrandingTheme(key)}
-                  style={{
-                    background: t.bgGradient,
-                    border: `2.5px solid ${selected ? t.accent : 'transparent'}`,
-                    borderRadius: 14,
-                    padding: '14px 14px',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    outline: 'none',
-                    position: 'relative',
-                    transition: 'all 0.12s',
-                    WebkitTapHighlightColor: 'transparent',
-                  }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: t.accentSolid,
-                      boxShadow: `0 2px 4px ${t.accent}66`,
-                    }}/>
-                    <div style={{ fontFamily: 'Georgia, serif', fontSize: 14, fontWeight: 700, color: t.ink }}>{t.label}</div>
-                    {selected && (
-                      <div style={{ marginLeft: 'auto', fontSize: 14, color: t.accentDeep }}>✓</div>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 11, color: t.inkSoft, lineHeight: 1.35 }}>{t.description}</div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Brand message */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Personal message <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500, color: C.gray }}>(optional, ~80 chars)</span>
-          </div>
-          <textarea
-            value={brandingMessage}
-            onChange={(e) => setBrandingMessage(e.target.value.slice(0, 120))}
-            placeholder="e.g. From my hands to yours, with care. Jiny"
-            rows={2}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: `1.5px solid ${C.light}`,
-              borderRadius: 10,
-              fontSize: 14,
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              color: C.dark,
-              resize: 'vertical',
-              outline: 'none',
-              boxSizing: 'border-box',
-              marginBottom: 8,
-            }}
-          />
-          <div style={{ fontSize: 11, color: C.gray, marginBottom: 18 }}>
-            {brandingMessage.length}/120 characters
-          </div>
-
-          {/* Live preview */}
-          <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 10 }}>
-            Live preview
-          </div>
-          <GiftCardPreview
-            cert={{
-              amount: '100',
-              recipient_name: 'Sarah',
-              purchaser_name: therapist?.full_name?.split(' ')[0] || 'You',
-              message: 'An hour of peace, just for you.',
-              code: 'ABCD-1234-EFGH',
-              design_template: 'just-because',
-            }}
-            therapist={previewTherapist}
-            compact
-          />
-
-          {/* Save row */}
-          <div style={{ display: 'flex', gap: 10, marginTop: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button onClick={saveBranding} disabled={savingBranding}
-              style={{
-                background: activeTheme.accentSolid,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 24,
-                padding: '11px 22px',
-                fontSize: 14, fontWeight: 700,
-                cursor: savingBranding ? 'not-allowed' : 'pointer',
-                opacity: savingBranding ? 0.7 : 1,
-                fontFamily: 'Georgia, serif',
-                boxShadow: `0 3px 10px ${activeTheme.accent}40`,
-              }}>
-              {savingBranding ? 'Saving...' : 'Save branding'}
-            </button>
-            {brandingSaved && (
-              <div style={{ fontSize: 13, color: '#059669', fontWeight: 600 }}>
-                ✓ Saved. New cards will use this branding.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Success toast */}
-      {saved && (
-        <div style={{
-          background: 'linear-gradient(135deg, #FFF1F5, #ECFDF5)',
-          border: '1.5px solid #BBF7D0',
-          borderRadius: 14,
-          padding: '14px 18px',
-          marginBottom: 18,
-          fontSize: 14, color: C.forest, fontWeight: 600,
-          display: 'flex', alignItems: 'center', gap: 10,
-        }}>
-          <span style={{ fontSize: 20 }}>🌸</span>
-          <div>
-            <div style={{ fontFamily: 'Georgia, serif', fontWeight: 700, marginBottom: 1 }}>Beautifully done.</div>
-            <div style={{ fontSize: 12, color: C.gray, fontWeight: 500 }}>Your gift card is ready to share.</div>
-          </div>
-        </div>
-      )}
-
-      {/* Create form, warm, gentle */}
+      {/* ──────────── Create form: two-column on desktop, single column on mobile.
+           Preview is sticky so it stays visible while the therapist fills in fields.
+           Active gift card list is hidden while the form is open (the focus is
+           on what they're creating now).                                          */}
       {showForm && (
-        <div style={{
+        <div className="bm-gift-form" style={{
           background: 'linear-gradient(135deg, #FFFFFF 0%, #FFF9F3 100%)',
-          borderRadius: 18,
-          padding: 24,
-          border: '1.5px solid #FBCFE8',
-          marginBottom: 22,
-          boxShadow: '0 4px 20px rgba(249,168,180,0.1)',
+          borderRadius: 20,
+          padding: '24px 22px',
+          marginBottom: 24,
+          border: `1.5px solid ${activeTheme.accent}33`,
         }}>
-          <div style={{ marginBottom: 20 }}>
-            <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 700, color: C.dark, margin: '0 0 4px', fontStyle: 'italic' }}>A new gift, with care</h3>
-            <p style={{ fontSize: 13, color: C.gray, margin: 0, lineHeight: 1.5 }}>Fill in a few details. Someone on your list is about to feel very loved.</p>
-          </div>
-
-          {/* Live preview at top - so they see what they're creating */}
-          <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 10, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 10 }}>Preview</div>
+          {/* Mobile-only sticky preview at the top of the form.
+              Hidden on desktop where the sticky preview lives in the right column. */}
+          <div className="bm-gift-form__mobile-preview" style={{
+            display: 'none',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            background: 'linear-gradient(180deg, rgba(255,249,243,0.98) 0%, rgba(255,249,243,0.92) 85%, rgba(255,249,243,0) 100%)',
+            margin: '-24px -22px 18px',
+            padding: '14px 22px 18px',
+          }}>
             <GiftCardPreview
               cert={{
                 amount: form.amount || '___',
@@ -550,8 +356,6 @@ export default function GiftCertificates({ therapist }) {
                 code: 'XXXX-XXXX-XXXX',
                 design_template: form.design_template,
                 theme: form.theme,
-                // Use the preview blob URL during editing so the upload
-                // shows instantly, then the real public URL after save.
                 card_image_url: cardImagePreview || form.card_image_url,
                 card_brand_message: form.card_brand_message,
               }}
@@ -560,321 +364,387 @@ export default function GiftCertificates({ therapist }) {
             />
           </div>
 
-          {/* Amount presets */}
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 12, fontWeight: 700, color: C.dark, display:'block', marginBottom: 8, fontFamily: 'Georgia, serif' }}>Choose an amount</label>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              {presetAmounts.map(amt => (
-                <button key={amt} onClick={() => setForm(f => ({ ...f, amount: String(amt) }))}
-                  style={{
-                    background: form.amount == amt ? 'linear-gradient(135deg, #E85C79, #D14560)' : '#fff',
-                    color: form.amount == amt ? '#fff' : C.dark,
-                    border: form.amount == amt ? 'none' : `1.5px solid ${C.light}`,
-                    borderRadius: 22,
-                    padding: '9px 18px',
-                    fontSize: 14, fontWeight: 700,
-                    cursor: 'pointer',
-                    fontFamily: 'Georgia, serif',
-                    boxShadow: form.amount == amt ? '0 2px 8px rgba(232,92,121,0.3)' : 'none',
-                    transition: 'all 0.15s',
-                  }}>
-                  ${amt}
-                </button>
-              ))}
-            </div>
-            <input type="number" min="1" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
-              placeholder="or enter a custom amount"
-              style={{ width: '100%', padding: '12px 14px', border: `1.5px solid ${C.light}`, borderRadius: 12, fontSize: 15, boxSizing: 'border-box', outline: 'none', fontFamily: 'Georgia, serif' }} />
-          </div>
-
-          {/* Names */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }} className="bm-2col">
-            <div style={{ position: 'relative' }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>From</label>
-              <input type="text" value={form.purchaser_name}
-                onChange={e => {
-                  const val = e.target.value;
-                  setForm(f => ({ ...f, purchaser_name: val }));
-                  setPurchaserSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0, 5) : []);
-                }}
-                placeholder="Who's giving?"
-                style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
-              {purchaserSuggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 10, zIndex: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginTop: 4, overflow: 'hidden' }}>
-                  {purchaserSuggestions.map(c => (
-                    <div key={c.id} onClick={() => { setForm(f => ({ ...f, purchaser_name: c.name })); setPurchaserSuggestions([]); }}
-                      style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, borderBottom: `1px solid ${C.light}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FFF9F3'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                      <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ position: 'relative' }}>
-              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>To</label>
-              <input type="text" value={form.recipient_name}
-                onChange={e => {
-                  const val = e.target.value;
-                  setForm(f => ({ ...f, recipient_name: val }));
-                  setRecipientSuggestions(val.length > 0 ? clients.filter(c => c.name?.toLowerCase().includes(val.toLowerCase())).slice(0, 5) : []);
-                }}
-                placeholder="Who's receiving?"
-                style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
-              {recipientSuggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 10, zIndex: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.08)', marginTop: 4, overflow: 'hidden' }}>
-                  {recipientSuggestions.map(c => (
-                    <div key={c.id} onClick={() => { setForm(f => ({ ...f, recipient_name: c.name, recipient_email: c.email || '' })); setRecipientSuggestions([]); }}
-                      style={{ padding: '10px 14px', cursor: 'pointer', fontSize: 13, borderBottom: `1px solid ${C.light}` }}
-                      onMouseEnter={e => e.currentTarget.style.background = '#FFF9F3'}
-                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
-                      <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
-                      {c.email && <div style={{ fontSize: 11, color: C.gray }}>{c.email}</div>}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 14 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Recipient Email</label>
-            <input type="email" value={form.recipient_email} onChange={e => setForm(f => ({ ...f, recipient_email: e.target.value }))}
-              placeholder="So we can send her the beautiful card"
-              style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
-          </div>
-
-          {/* ─────── Per-card design + customization ─────── */}
-          {/* This entire block is the answer to HK's feedback:
-              'I should be able to upload any one image per card.
-              It has only one design.'
-              Each card gets its own design, color theme, image, and
-              brand message. Defaults from the therapist row apply if
-              left untouched. */}
-          <div style={{
-            marginBottom: 18,
-            padding: '16px 18px',
-            background: 'rgba(255,255,255,0.55)',
-            border: `1px solid ${C.light}`,
-            borderRadius: 12,
+          <div className="bm-gift-form__grid" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 360px',
+            gap: 24,
+            alignItems: 'start',
           }}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, color: C.dark,
-              marginBottom: 4, fontFamily: 'Georgia, serif',
-            }}>
-              ✨ Make this card unique
-            </div>
-            <div style={{ fontSize: 12, color: C.gray, marginBottom: 14, lineHeight: 1.5 }}>
-              Each gift card can have its own design, color, image, and message. Leave a field alone to use your defaults.
-            </div>
 
-            {/* Design picker */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Design
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8, marginBottom: 16 }}>
-              {ORDERED_DESIGN_KEYS.map(key => {
-                const d = DESIGNS[key];
-                const selected = form.design_template === key;
-                return (
-                  <button key={key} type="button"
-                    onClick={() => setForm(f => ({ ...f, design_template: key }))}
-                    style={{
-                      background: selected ? activeTheme.accent + '14' : '#fff',
-                      border: `2px solid ${selected ? activeTheme.accent : C.light}`,
-                      borderRadius: 10,
-                      padding: '10px 10px',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      transition: 'all 0.12s',
-                      outline: 'none',
-                      WebkitTapHighlightColor: 'transparent',
-                    }}>
-                    <div style={{
-                      fontFamily: 'Georgia, serif',
-                      fontSize: 13, fontWeight: 700,
-                      color: C.dark, marginBottom: 2,
-                    }}>{d.label}</div>
-                    <div style={{ fontSize: 10, color: C.gray, lineHeight: 1.3 }}>{d.description}</div>
-                  </button>
-                );
-              })}
-            </div>
+            {/* ───── LEFT COLUMN: all customization + gift details, vertical sections ───── */}
+            <div className="bm-gift-form__left" style={{ minWidth: 0 }}>
 
-            {/* Theme picker (per-card override) */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Color
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-              {/* "Use my default" pill */}
-              <button type="button"
-                onClick={() => setForm(f => ({ ...f, theme: null }))}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 6,
-                  padding: '7px 12px',
-                  border: `1.5px solid ${form.theme === null ? activeTheme.accent : C.light}`,
-                  background: form.theme === null ? activeTheme.accent + '14' : '#fff',
-                  borderRadius: 999,
-                  fontSize: 12, fontWeight: 600,
-                  color: form.theme === null ? activeTheme.accentDeep : C.gray,
-                  cursor: 'pointer',
-                  WebkitTapHighlightColor: 'transparent',
-                }}>
-                Default
-              </button>
-              {ORDERED_THEME_KEYS.map(key => {
-                const t = GIFT_CARD_THEMES[key];
-                const selected = form.theme === key;
-                return (
-                  <button key={key} type="button"
-                    onClick={() => setForm(f => ({ ...f, theme: key }))}
-                    title={t.label}
+              {/* SECTION 1: Design + color + image + brand message */}
+              <div style={{
+                marginBottom: 22,
+                padding: '18px 20px',
+                background: '#fff',
+                border: `1px solid ${activeTheme.accent}24`,
+                borderRadius: 14,
+              }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                  ✨ Customize this card
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, marginBottom: 16, lineHeight: 1.5 }}>
+                  Each card can have its own design, color, image, and message. Leave a field alone to use your defaults.
+                </div>
+
+                {/* Design picker */}
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Design
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: 8, marginBottom: 18 }}>
+                  {ORDERED_DESIGN_KEYS.map(key => {
+                    const d = DESIGNS[key];
+                    const selected = form.design_template === key;
+                    return (
+                      <button key={key} type="button"
+                        onClick={() => setForm(f => ({ ...f, design_template: key }))}
+                        style={{
+                          background: selected ? activeTheme.accent + '14' : '#fff',
+                          border: `2px solid ${selected ? activeTheme.accent : C.light}`,
+                          borderRadius: 10,
+                          padding: '10px 10px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          transition: 'all 0.12s',
+                          outline: 'none',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}>
+                        <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, fontWeight: 700, color: C.dark, marginBottom: 2 }}>{d.label}</div>
+                        <div style={{ fontSize: 10, color: C.gray, lineHeight: 1.3 }}>{d.description}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Color picker */}
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Color
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 18 }}>
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, theme: null }))}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6,
-                      padding: '4px 10px 4px 4px',
-                      border: `1.5px solid ${selected ? t.accent : C.light}`,
-                      background: selected ? t.bgGradient : '#fff',
+                      padding: '7px 12px',
+                      border: `1.5px solid ${form.theme === null ? activeTheme.accent : C.light}`,
+                      background: form.theme === null ? activeTheme.accent + '14' : '#fff',
                       borderRadius: 999,
+                      fontSize: 12, fontWeight: 600,
+                      color: form.theme === null ? activeTheme.accentDeep : C.gray,
                       cursor: 'pointer',
                       WebkitTapHighlightColor: 'transparent',
                     }}>
-                    <div style={{
-                      width: 18, height: 18, borderRadius: '50%',
-                      background: t.accentSolid,
-                    }}/>
-                    <span style={{
-                      fontSize: 12, fontWeight: 600,
-                      color: selected ? t.accentDeep : C.gray,
-                    }}>{t.label}</span>
+                    Default
                   </button>
-                );
-              })}
-            </div>
+                  {ORDERED_THEME_KEYS.map(key => {
+                    const tt = GIFT_CARD_THEMES[key];
+                    const selected = form.theme === key;
+                    return (
+                      <button key={key} type="button"
+                        onClick={() => setForm(f => ({ ...f, theme: key }))}
+                        title={tt.label}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center', gap: 6,
+                          padding: '4px 10px 4px 4px',
+                          border: `1.5px solid ${selected ? tt.accent : C.light}`,
+                          background: selected ? tt.bgGradient : '#fff',
+                          borderRadius: 999,
+                          cursor: 'pointer',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: tt.accentSolid }}/>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: selected ? tt.accentDeep : C.gray }}>{tt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-            {/* Image upload (per-card) */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Image for this card
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-              {(cardImagePreview || form.card_image_url || therapist?.photo_url) && (
-                <img
-                  src={cardImagePreview || form.card_image_url || therapist?.photo_url}
-                  alt="Card image"
+                {/* Image upload */}
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Image for this card
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18, flexWrap: 'wrap' }}>
+                  {(cardImagePreview || form.card_image_url || therapist?.photo_url) && (
+                    <img
+                      src={cardImagePreview || form.card_image_url || therapist?.photo_url}
+                      alt="Card image"
+                      style={{
+                        width: 52, height: 52, borderRadius: '50%',
+                        objectFit: 'cover',
+                        border: `2px solid ${activeTheme.accent}66`,
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1, minWidth: 200 }}>
+                    <input ref={cardImageInputRef} type="file" accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 5 * 1024 * 1024) {
+                          alert('Image must be smaller than 5MB.');
+                          return;
+                        }
+                        setCardImageFile(file);
+                        const reader = new FileReader();
+                        reader.onload = (ev) => setCardImagePreview(ev.target.result);
+                        reader.readAsDataURL(file);
+                      }}
+                    />
+                    <button type="button" onClick={() => cardImageInputRef.current?.click()}
+                      style={{
+                        display: 'inline-block',
+                        padding: '8px 14px',
+                        background: '#fff',
+                        border: `1.5px solid ${C.light}`,
+                        borderRadius: 10,
+                        fontSize: 13, fontWeight: 600,
+                        color: C.dark, cursor: 'pointer',
+                        fontFamily: 'inherit',
+                      }}>
+                      {cardImagePreview || form.card_image_url ? 'Change image' : 'Upload image'}
+                    </button>
+                    {(cardImagePreview || form.card_image_url) && (
+                      <button type="button"
+                        onClick={() => { setCardImageFile(null); setCardImagePreview(null); setForm(f => ({ ...f, card_image_url: null })); }}
+                        style={{
+                          marginLeft: 8,
+                          padding: '8px 12px',
+                          background: 'transparent',
+                          border: 'none',
+                          fontSize: 12, color: C.gray, cursor: 'pointer',
+                          textDecoration: 'underline',
+                        }}>
+                        Use my default
+                      </button>
+                    )}
+                    <div style={{ fontSize: 11, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
+                      Max 5MB. Square images work best.
+                    </div>
+                  </div>
+                </div>
+
+                {/* Brand message override */}
+                <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  Brand message <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(optional, for this card only)</span>
+                </div>
+                <input type="text" value={form.card_brand_message}
+                  onChange={e => setForm(f => ({ ...f, card_brand_message: e.target.value.slice(0, 120) }))}
+                  placeholder={therapist?.gift_card_message ? `Default: "${therapist.gift_card_message}"` : 'e.g. From my hands to yours, with care.'}
                   style={{
-                    width: 56, height: 56, borderRadius: '50%',
-                    objectFit: 'cover',
-                    border: `2px solid ${activeTheme.accent}66`,
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <input ref={cardImageInputRef} type="file" accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    if (file.size > 5 * 1024 * 1024) {
-                      alert('Image must be smaller than 5MB.');
-                      return;
-                    }
-                    setCardImageFile(file);
-                    const reader = new FileReader();
-                    reader.onload = (ev) => setCardImagePreview(ev.target.result);
-                    reader.readAsDataURL(file);
-                  }}
-                />
-                <button type="button" onClick={() => cardImageInputRef.current?.click()}
-                  style={{
-                    display: 'inline-block',
-                    padding: '8px 14px',
-                    background: '#fff',
+                    width: '100%', padding: '10px 14px',
                     border: `1.5px solid ${C.light}`,
                     borderRadius: 10,
-                    fontSize: 13, fontWeight: 600,
-                    color: C.dark, cursor: 'pointer',
-                    fontFamily: 'inherit',
-                  }}>
-                  {cardImagePreview || form.card_image_url ? 'Change image' : 'Upload image'}
-                </button>
-                {(cardImagePreview || form.card_image_url) && (
-                  <button type="button"
-                    onClick={() => { setCardImageFile(null); setCardImagePreview(null); setForm(f => ({ ...f, card_image_url: null })); }}
-                    style={{
-                      marginLeft: 8,
-                      padding: '8px 12px',
-                      background: 'transparent',
-                      border: 'none',
-                      fontSize: 12, color: C.gray, cursor: 'pointer',
-                      textDecoration: 'underline',
-                    }}>
-                    Use my default photo
-                  </button>
-                )}
-                <div style={{ fontSize: 11, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
-                  Upload a photo of yourself, your logo, or any image that fits this gift. Max 5MB.
+                    fontSize: 14, boxSizing: 'border-box',
+                    outline: 'none',
+                    fontFamily: 'Georgia, serif',
+                    fontStyle: 'italic',
+                  }}
+                />
+              </div>
+
+              {/* SECTION 2: The gift itself (amount, recipient, giver, note) */}
+              <div style={{
+                padding: '18px 20px',
+                background: '#fff',
+                border: `1px solid ${activeTheme.accent}24`,
+                borderRadius: 14,
+              }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 16, fontWeight: 700, color: C.dark, marginBottom: 14 }}>
+                  💝 The gift
                 </div>
+
+                {/* Amount */}
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Amount</label>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+                    {presetAmounts.map(amt => (
+                      <button key={amt} type="button"
+                        onClick={() => setForm(f => ({ ...f, amount: String(amt) }))}
+                        style={{
+                          padding: '7px 14px',
+                          background: form.amount === String(amt) ? activeTheme.accent + '14' : '#fff',
+                          border: `1.5px solid ${form.amount === String(amt) ? activeTheme.accent : C.light}`,
+                          borderRadius: 999,
+                          fontSize: 13, fontWeight: 600,
+                          color: form.amount === String(amt) ? activeTheme.accentDeep : C.dark,
+                          cursor: 'pointer',
+                          WebkitTapHighlightColor: 'transparent',
+                          fontFamily: 'Georgia, serif',
+                        }}>
+                        ${amt}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 16, color: C.gray }}>$</span>
+                    <input type="number" min="1" step="1"
+                      value={form.amount}
+                      onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                      placeholder="Custom amount"
+                      style={{ flex: 1, padding: '10px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none', fontFamily: 'Georgia, serif' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Recipient name */}
+                <div style={{ marginBottom: 14, position: 'relative' }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Recipient Name</label>
+                  <input type="text" value={form.recipient_name}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setForm(f => ({ ...f, recipient_name: v }));
+                      const q = v.trim().toLowerCase();
+                      if (q.length >= 2) {
+                        setRecipientSuggestions(clients.filter(c => c.name?.toLowerCase().includes(q)).slice(0, 5));
+                      } else {
+                        setRecipientSuggestions([]);
+                      }
+                    }}
+                    placeholder="Who's this gift for?"
+                    style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
+                  {recipientSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${C.light}`, borderRadius: 10, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', zIndex: 5, maxHeight: 180, overflow: 'auto' }}>
+                      {recipientSuggestions.map(c => (
+                        <div key={c.id} onClick={() => { setForm(f => ({ ...f, recipient_name: c.name, recipient_email: c.email || '' })); setRecipientSuggestions([]); }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.light}`, fontSize: 13 }}>
+                          <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
+                          {c.email && <div style={{ fontSize: 11, color: C.gray }}>{c.email}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Recipient email */}
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Recipient Email</label>
+                  <input type="email" value={form.recipient_email}
+                    onChange={e => setForm(f => ({ ...f, recipient_email: e.target.value }))}
+                    placeholder="So we can send her the beautiful card"
+                    style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
+                </div>
+
+                {/* Giver name (purchaser) */}
+                <div style={{ marginBottom: 14, position: 'relative' }}>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>From <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(who's giving the gift)</span></label>
+                  <input type="text" value={form.purchaser_name}
+                    onChange={e => {
+                      const v = e.target.value;
+                      setForm(f => ({ ...f, purchaser_name: v }));
+                      const q = v.trim().toLowerCase();
+                      if (q.length >= 2) {
+                        setPurchaserSuggestions(clients.filter(c => c.name?.toLowerCase().includes(q)).slice(0, 5));
+                      } else {
+                        setPurchaserSuggestions([]);
+                      }
+                    }}
+                    placeholder={therapist?.full_name?.split(' ')[0] || 'Your name'}
+                    style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none' }} />
+                  {purchaserSuggestions.length > 0 && (
+                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: `1px solid ${C.light}`, borderRadius: 10, marginTop: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.06)', zIndex: 5, maxHeight: 180, overflow: 'auto' }}>
+                      {purchaserSuggestions.map(c => (
+                        <div key={c.id} onClick={() => { setForm(f => ({ ...f, purchaser_name: c.name })); setPurchaserSuggestions([]); }}
+                          style={{ padding: '8px 12px', cursor: 'pointer', borderBottom: `1px solid ${C.light}`, fontSize: 13 }}>
+                          <div style={{ fontWeight: 600, color: C.dark }}>{c.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Per-gift note from the giver */}
+                <div>
+                  <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    Note to the recipient <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(from the giver)</span>
+                  </label>
+                  <textarea value={form.message}
+                    onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                    placeholder="Thinking of you. You deserve this..."
+                    rows={2}
+                    style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'Georgia, serif', fontStyle: 'italic', lineHeight: 1.5 }} />
+                </div>
+              </div>
+
+              {/* Action row */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 18 }}>
+                <button onClick={create} disabled={creating || !form.amount}
+                  style={{
+                    flex: 1, minWidth: 180,
+                    background: creating || !form.amount ? '#E5E1D8' : activeTheme.accentSolid,
+                    color: creating || !form.amount ? '#9CA3AF' : '#fff',
+                    border: 'none', borderRadius: 12,
+                    padding: '13px 22px',
+                    fontSize: 14, fontWeight: 700,
+                    cursor: creating || !form.amount ? 'not-allowed' : 'pointer',
+                    fontFamily: 'Georgia, serif',
+                    boxShadow: creating || !form.amount ? 'none' : `0 4px 14px ${activeTheme.accent}4D`,
+                  }}>
+                  {creating ? 'Creating with love...' : '♡ Create this gift'}
+                </button>
+                <button onClick={() => setShowForm(false)}
+                  style={{ background: 'transparent', color: C.gray, border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '13px 22px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
+                  Cancel
+                </button>
               </div>
             </div>
 
-            {/* Per-card brand message override */}
-            <div style={{ fontSize: 10, fontWeight: 700, color: C.gray, letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 8 }}>
-              Brand message <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(optional, for this card only)</span>
+            {/* ───── RIGHT COLUMN: sticky preview (desktop only) ───── */}
+            <div className="bm-gift-form__right" style={{
+              position: 'sticky',
+              top: 16,
+              alignSelf: 'start',
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 10, textAlign: 'left' }}>
+                Live preview
+              </div>
+              <GiftCardPreview
+                cert={{
+                  amount: form.amount || '___',
+                  recipient_name: form.recipient_name || 'friend',
+                  purchaser_name: form.purchaser_name || therapist?.full_name?.split(' ')[0],
+                  message: form.message || 'An hour of peace, just for you.',
+                  code: 'XXXX-XXXX-XXXX',
+                  design_template: form.design_template,
+                  theme: form.theme,
+                  card_image_url: cardImagePreview || form.card_image_url,
+                  card_brand_message: form.card_brand_message,
+                }}
+                therapist={therapist}
+              />
+              <div style={{ marginTop: 10, fontSize: 11, color: C.gray, lineHeight: 1.45 }}>
+                This is exactly what your client will see in their email, on the printable card, and in your dashboard.
+              </div>
             </div>
-            <input type="text" value={form.card_brand_message}
-              onChange={e => setForm(f => ({ ...f, card_brand_message: e.target.value.slice(0, 120) }))}
-              placeholder={therapist?.gift_card_message ? `Default: "${therapist.gift_card_message}"` : 'e.g. From my hands to yours, with care.'}
-              style={{
-                width: '100%', padding: '10px 14px',
-                border: `1.5px solid ${C.light}`,
-                borderRadius: 10,
-                fontSize: 14, boxSizing: 'border-box',
-                outline: 'none',
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-              }}
-            />
           </div>
 
-          <div style={{ marginBottom: 18 }}>
-            <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, display: 'block', marginBottom: 6, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              Note to the recipient <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>(from the giver)</span>
-            </label>
-            <textarea value={form.message} onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-              placeholder="Thinking of you. You deserve this..."
-              rows={2}
-              style={{ width: '100%', padding: '11px 14px', border: `1.5px solid ${C.light}`, borderRadius: 10, fontSize: 14, boxSizing: 'border-box', outline: 'none', resize: 'vertical', fontFamily: 'Georgia, serif', fontStyle: 'italic', lineHeight: 1.5 }} />
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={create} disabled={creating || !form.amount}
-              style={{
-                flex: 1, minWidth: 180,
-                background: creating || !form.amount ? '#E5E1D8' : 'linear-gradient(135deg, #E85C79, #D14560)',
-                color: creating || !form.amount ? '#9CA3AF' : '#fff',
-                border: 'none', borderRadius: 12,
-                padding: '13px 22px',
-                fontSize: 14, fontWeight: 700, cursor: creating || !form.amount ? 'not-allowed' : 'pointer',
-                fontFamily: 'Georgia, serif',
-                boxShadow: creating || !form.amount ? 'none' : '0 4px 14px rgba(232,92,121,0.3)',
-              }}>
-              {creating ? 'Creating with love...' : '♡ Create this gift'}
-            </button>
-            <button onClick={() => setShowForm(false)}
-              style={{ background: 'transparent', color: C.gray, border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '13px 22px', fontSize: 14, cursor: 'pointer', fontWeight: 600 }}>
-              Cancel
-            </button>
-          </div>
+          {/* Responsive: stack columns on mobile, show mobile sticky preview, hide desktop preview */}
+          <style>{`
+            @media (max-width: 820px) {
+              .bm-gift-form__grid {
+                grid-template-columns: 1fr !important;
+              }
+              .bm-gift-form__right {
+                display: none !important;
+              }
+              .bm-gift-form__mobile-preview {
+                display: block !important;
+              }
+            }
+          `}</style>
         </div>
       )}
+
 
       {/* Active cards */}
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0', color: C.gray, fontSize: 14 }}>Loading your gift cards...</div>
       ) : (
         <>
-          {active.length > 0 && (
+          {active.length > 0 && !showForm && (
             <div style={{ marginBottom: 28 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 18, fontWeight: 700, color: C.dark, fontStyle: 'italic' }}>
@@ -1013,7 +883,7 @@ export default function GiftCertificates({ therapist }) {
           )}
 
           {/* Past / redeemed, smaller, humble */}
-          {past.length > 0 && (
+          {past.length > 0 && !showForm && (
             <div style={{ marginTop: 32 }}>
               <div style={{ fontFamily: 'Georgia, serif', fontSize: 13, color: C.gray, fontStyle: 'italic', marginBottom: 12 }}>
                 Already opened ({past.length})
