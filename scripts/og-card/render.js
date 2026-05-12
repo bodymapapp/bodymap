@@ -16,10 +16,10 @@ const { chromium } = require('playwright');
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(800);
   await page.screenshot({
-    path: '/tmp/og-card.png',
+    path: '/tmp/og-card-v3.png',
     type: 'png',
     clip: { x: 0, y: 0, width: 1200, height: 630 },
   });
   await browser.close();
-  console.log('Saved /tmp/og-card.png. Copy to public/og-card.png to ship.');
+  console.log('Saved /tmp/og-card-v3.png. Copy to public/og-card-v3.png to ship.');
 })();

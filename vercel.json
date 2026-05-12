@@ -25,6 +25,12 @@
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
       ]
+    },
+    {
+      "source": "/og-card-v3.png",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=300, must-revalidate" }
+      ]
     }
   ]
 }
