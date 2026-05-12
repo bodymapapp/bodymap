@@ -112,41 +112,114 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     setToast({ message, type });
   }, []);
 
-  // ─── PDF action.
+  // PDF action.
   //
-  // Approach: clone the doc HTML into a print-only container fixed
-  // outside the drawer. At print time, the print stylesheet hides
-  // everything in body except .bm-print-stage and shows only the
-  // doc clone. Previous implementation used `body > * { display:none }`
-  // which broke positioning and produced a blank print.
-  const handlePrint = () => {
+  // Previous approach used the browser's native print engine on the
+  // doc HTML, which strips background colors, gradients, and shadows
+  // unless the user checks 'Background graphics' in the print dialog.
+  // Result: PDFs looked washed out compared to the Copy/Share image.
+  //
+  // New approach (May 12 2026): render the doc to a PNG via the same
+  // html2canvas path that Copy/Share uses, then embed the PNG into the
+  // print stage as <img> tags. The PDF is now a picture of the doc,
+  // identical fidelity to the image actions.
+  //
+  // Multi-page handling: if the rendered canvas is taller than one
+  // A4 page (aspect ratio 1:1.414), we split it into per-page slices
+  // via a temporary sub-canvas, then append each slice as a separate
+  // <img> with page-break-after: always. This produces a proper
+  // multi-page PDF without content being awkwardly clipped mid-line.
+  const handlePrint = async () => {
     setBusy('pdf');
     try {
       if (!bodyRef.current) throw new Error('Document not ready');
-
-      // Clone the rendered doc HTML into the print stage
       const stage = printContainerRef.current;
       if (!stage) throw new Error('Print stage not ready');
+
+      // Render the doc to a single tall canvas via the same path as
+      // the image actions (renderToBlob clones into the stage).
+      // We need the raw canvas here, not the blob, so we re-do the
+      // capture inline. Same logic, different return shape.
       stage.innerHTML = '';
       const clone = bodyRef.current.cloneNode(true);
-      // Strip any height constraints so the doc prints at natural height
+      clone.style.width = '880px';
+      clone.style.maxWidth = '880px';
       clone.style.height = 'auto';
       clone.style.maxHeight = 'none';
       clone.style.overflow = 'visible';
       stage.appendChild(clone);
+      await new Promise(r => setTimeout(r, 250));
+      const fullHeight = Math.max(stage.offsetHeight, clone.scrollHeight);
+      const fullCanvas = await html2canvas(stage, {
+        backgroundColor: C.cream,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: 880,
+        height: fullHeight,
+        windowWidth: 880,
+        windowHeight: fullHeight,
+        scrollX: 0,
+        scrollY: 0,
+      });
 
-      // Add the print-only stylesheet
+      // A4 aspect: 297/210 = 1.414 (height/width)
+      // The canvas is `fullCanvas.width` wide. Each printed page is
+      // that width tall at A4 aspect: pageHeightPx = width * 1.414.
+      const a4Aspect = 297 / 210;
+      const pagePxHeight = Math.floor(fullCanvas.width * a4Aspect);
+      const pages = Math.max(1, Math.ceil(fullCanvas.height / pagePxHeight));
+
+      // Replace the stage with the rendered page images
+      stage.innerHTML = '';
+      for (let p = 0; p < pages; p++) {
+        const sliceCanvas = document.createElement('canvas');
+        sliceCanvas.width = fullCanvas.width;
+        // Last page may be shorter than a full A4 if the content
+        // ends partway. Cap at the canvas tail.
+        const yStart = p * pagePxHeight;
+        const sliceHeight = Math.min(pagePxHeight, fullCanvas.height - yStart);
+        sliceCanvas.height = sliceHeight;
+        const ctx = sliceCanvas.getContext('2d');
+        // Cream background so any rounded-corner content edges blend
+        ctx.fillStyle = C.cream;
+        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+        // Copy the relevant slice from the full canvas
+        ctx.drawImage(
+          fullCanvas,
+          0, yStart, fullCanvas.width, sliceHeight,
+          0, 0, fullCanvas.width, sliceHeight
+        );
+        const img = document.createElement('img');
+        img.src = sliceCanvas.toDataURL('image/png');
+        img.style.cssText = `
+          width: 100%; display: block; margin: 0;
+          page-break-after: ${p < pages - 1 ? 'always' : 'auto'};
+          page-break-inside: avoid;
+        `;
+        stage.appendChild(img);
+      }
+
+      // Wait for all images to load before triggering print
+      const imgs = stage.querySelectorAll('img');
+      await Promise.all(Array.from(imgs).map(img => new Promise(resolve => {
+        if (img.complete && img.naturalHeight) resolve();
+        else { img.onload = resolve; img.onerror = resolve; }
+      })));
+
+      // Print stylesheet: show only the stage, full-bleed image pages
       const styleTag = document.createElement('style');
       styleTag.id = 'bm-print-style';
       styleTag.innerHTML = `
         @media print {
           html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
-          @page { size: A4; margin: 8mm; }
+          @page { size: A4; margin: 0 !important; }
           body > *:not(.bm-print-stage) { display: none !important; }
           .bm-print-stage {
             display: block !important;
             position: static !important;
             left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
             background: white !important;
@@ -155,54 +228,26 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
             box-shadow: none !important;
             z-index: auto !important;
             pointer-events: auto !important;
-          }
-          .bm-print-stage > * {
-            width: 100% !important;
-            max-width: 100% !important;
-            height: auto !important;
             overflow: visible !important;
           }
-          .bm-print-stage * { visibility: visible !important; }
-
-          /* Keep split body side-by-side at print width. Without this
-             override, the doc's mobile breakpoint (<760px) kicks in
-             at A4 width (~660px usable) and stacks the pattern/today
-             columns, which makes the doc 2 pages instead of 1. */
-          .bm-print-stage .bm-doc-body-split {
-            grid-template-columns: 1fr 1px 1fr !important;
-            gap: 8px !important;
-          }
-          .bm-print-stage .bm-doc-body-split > div:nth-child(2) {
+          .bm-print-stage img {
+            width: 100% !important;
+            height: auto !important;
             display: block !important;
+            page-break-inside: avoid !important;
           }
-          .bm-print-stage .bm-doc-top-row {
-            grid-template-columns: 280px 1fr !important;
-            gap: 8px !important;
-          }
-          .bm-print-stage .bm-doc-bottom-row {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 8px !important;
-          }
-          .bm-print-stage .bm-doc-split-row {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 8px !important;
-          }
-          /* Tighten paddings during print so docs fit on one page. */
-          .bm-print-stage .bm-doc-card { padding: 10px 12px !important; }
-          .bm-print-stage h1 { font-size: 22px !important; }
         }
       `;
       document.head.appendChild(styleTag);
 
-      // Give the browser a beat to apply the stage content before printing
       setTimeout(() => {
         window.print();
         setTimeout(() => {
           stage.innerHTML = '';
           document.getElementById('bm-print-style')?.remove();
           setBusy(null);
-        }, 600);
-      }, 80);
+        }, 700);
+      }, 100);
     } catch (err) {
       showToast(err.message || 'Could not prepare PDF.', 'error');
       setBusy(null);
