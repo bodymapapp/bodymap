@@ -914,8 +914,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         <div style={{ display: "flex", borderBottom: "1px solid " + C.lightGray }}>
           {[
             { id: "soap", label: session.completed ? "📋 SOAP & Aftercare" : "✏️ Write SOAP & Aftercare" },
-            { id: "notes", label: "🔒 Private Notes" },
-            { id: "client", label: "💌 Message to Client" },
+            { id: "notes", label: aiEnabled ? "🔒 Private Notes ✨" : "🔒 Private Notes" },
+            { id: "client", label: aiEnabled ? "💌 Message to Client ✨" : "💌 Message to Client" },
           ].map(t => (
             <button key={t.id} onClick={() => setSoapTab(t.id)}
               style={{ flex: 1, padding: "12px 8px", border: "none", borderBottom: soapTab === t.id ? "2px solid " + C.forest : "2px solid transparent", background: "transparent", color: soapTab === t.id ? C.forest : C.gray, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "system-ui", transition: "all 0.15s" }}>
@@ -1036,7 +1036,10 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {soapTab === "notes" && (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
-                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>🔒 Private, only visible to you, never shared with clients.</p>
+                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
+                  🔒 Private, only visible to you, never shared with clients.
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>✨ Tap "Draft with AI" to auto-generate from today's session data.</span>}
+                </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("private")} disabled={!!draftingKind}
                     style={{
@@ -1082,7 +1085,10 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
           {soapTab === "client" && (
             <div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
-                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>💌 Appears on the Post-Session Brief you share with your client.</p>
+                <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
+                  💌 Appears on the Post-Session Brief you share with your client.
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>✨ Tap "Draft with AI" to auto-generate a warm note from today's session.</span>}
+                </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("client")} disabled={!!draftingKind}
                     style={{
