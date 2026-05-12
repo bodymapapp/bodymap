@@ -1,62 +1,93 @@
 // src/components/DocumentDrawer.jsx
 //
-// Slide-in document panel. Replaces the previous "open in new tab"
-// behavior on the journey timeline. Therapist taps a dot, drawer
-// slides in over the session detail page showing the doc inline.
-// From there: PDF, Email link, SMS link, Copy as image, Share image.
+// Slide-in document drawer. Rebuilt May 12 2026 after HK QA caught
+// three bugs in the first pass:
+//   1. Copy/share image rendered only the visible viewport, not the
+//      full scrollable content. Fixed: render the inner doc element
+//      at its natural height with html2canvas windowHeight option.
+//   2. Save as PDF showed a blank print window because the print
+//      stylesheet used 'body > * { display: none }' which hid the
+//      drawer's ancestors. Fixed: render the doc into a hidden
+//      print container outside the drawer (cloned via innerHTML at
+//      print time) and show ONLY that container during print.
+//   3. The five action buttons were not visually grouped, so the
+//      therapist could not tell which button sent a link vs an
+//      image vs a PDF. Fixed: 3 grouped action cards labeled
+//      'Send as link', 'Send as image', 'Save as PDF'.
 //
-// Width: 560px on desktop, full-width on mobile (<768px).
-// Backdrop: forest-tinted dim, click to close. ESC also closes.
-//
-// Image actions use html2canvas to rasterize the drawer body to PNG.
-// - Copy as image: writes PNG to clipboard (Chrome/Edge/Safari).
-// - Share as image: uses navigator.share with files (mobile share
-//   sheet, iOS Safari + Android Chrome). Falls back to download
-//   if not supported.
+// Image quality: rendered at scale 2 (retina), background cream,
+// no scrollbar in the capture, full content height (not viewport).
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import html2canvas from 'html2canvas';
 
 const C = {
   cream: '#F9F5EE',
   forest: '#1C2B22',
+  forestDark: '#0F1A12',
   sage: '#4A6B54',
+  sageBg: '#EEF3EE',
   gold: '#C9A84C',
   goldBg: '#FAF3DC',
+  goldDeep: '#92660E',
   ink: '#3D4F43',
   inkSoft: '#6B7F72',
   white: '#FFFFFF',
   lineFaint: '#E8E0D0',
+  rose: '#FCE5E0',
   serif: "'Fraunces', Georgia, serif",
   sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
 };
 
 function Toast({ message, type, onDismiss }) {
   useEffect(() => {
-    const t = setTimeout(onDismiss, 3500);
+    const t = setTimeout(onDismiss, 4000);
     return () => clearTimeout(t);
   }, [onDismiss]);
   const isError = type === 'error';
   return (
     <div style={{
-      position: 'absolute', bottom: 16, left: '50%', transform: 'translateX(-50%)',
+      position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)',
       background: isError ? '#7F1D1D' : C.forest, color: 'white',
-      padding: '9px 16px', borderRadius: 8,
-      fontSize: 13, fontWeight: 600,
-      boxShadow: '0 4px 14px rgba(0,0,0,0.18)',
-      zIndex: 100, maxWidth: '90%',
-      animation: 'bmDrawerToast 0.25s ease',
+      padding: '11px 18px', borderRadius: 9,
+      fontSize: 13.5, fontWeight: 600,
+      boxShadow: '0 6px 22px rgba(0,0,0,0.22)',
+      zIndex: 10000, maxWidth: '92%',
+      animation: 'bmDrawerToast 0.22s ease',
+      pointerEvents: 'none',
     }}>{message}</div>
+  );
+}
+
+// Small icon helpers for action cards
+const ICONS = {
+  link: <><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" /><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" /></>,
+  image: <><rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></>,
+  pdf: <><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></>,
+  email: <><rect x="3" y="5" width="18" height="14" rx="2" /><polyline points="3 7 12 13 21 7" /></>,
+  sms: <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
+  copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
+  share: <><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></>,
+  download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></>,
+  close: <><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>,
+};
+
+function Icon({ name, size = 14, color = 'currentColor' }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {ICONS[name]}
+    </svg>
   );
 }
 
 export default function DocumentDrawer({ open, onClose, docNumber, docName, docTotalParts = 4, fullPageUrl, client, therapist, children }) {
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
-  const bodyRef = useRef(null);
   const drawerRef = useRef(null);
+  const bodyRef = useRef(null);
+  const printContainerRef = useRef(null);
 
-  // ESC closes
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -64,9 +95,6 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  // Lock body scroll while drawer is open (NOT on html, per Android
-  // scroll-lock fix from earlier). Use position:fixed on body which
-  // is safe on iOS and Android.
   useEffect(() => {
     if (!open) return;
     const original = document.body.style.overflow;
@@ -74,11 +102,8 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     return () => { document.body.style.overflow = original; };
   }, [open]);
 
-  // Focus the drawer when it opens for keyboard accessibility
   useEffect(() => {
-    if (open && drawerRef.current) {
-      drawerRef.current.focus();
-    }
+    if (open && drawerRef.current) drawerRef.current.focus();
   }, [open]);
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your Practice';
@@ -87,33 +112,76 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     setToast({ message, type });
   }, []);
 
-  // ─── Action: print to PDF (scoped to drawer body) ───
+  // ─── PDF action.
+  //
+  // Approach: clone the doc HTML into a print-only container fixed
+  // outside the drawer. At print time, the print stylesheet hides
+  // everything in body except .bm-print-stage and shows only the
+  // doc clone. Previous implementation used `body > * { display:none }`
+  // which broke positioning and produced a blank print.
   const handlePrint = () => {
-    // Add a one-shot print class that hides everything except the
-    // drawer body, lets the doc print cleanly without the session
-    // detail page behind it.
-    const styleTag = document.createElement('style');
-    styleTag.id = 'bm-drawer-print-style';
-    styleTag.innerHTML = `
-      @media print {
-        body > * { display: none !important; }
-        .bm-drawer-print-active { display: block !important; position: absolute !important; inset: 0 !important; background: white !important; overflow: visible !important; }
-        .bm-drawer-print-active * { visibility: visible !important; }
-        .bm-drawer-print-hide { display: none !important; }
-      }
-    `;
-    document.head.appendChild(styleTag);
-    drawerRef.current?.classList.add('bm-drawer-print-active');
-    setTimeout(() => {
-      window.print();
+    setBusy('pdf');
+    try {
+      if (!bodyRef.current) throw new Error('Document not ready');
+
+      // Clone the rendered doc HTML into the print stage
+      const stage = printContainerRef.current;
+      if (!stage) throw new Error('Print stage not ready');
+      stage.innerHTML = '';
+      const clone = bodyRef.current.cloneNode(true);
+      // Strip any height constraints so the doc prints at natural height
+      clone.style.height = 'auto';
+      clone.style.maxHeight = 'none';
+      clone.style.overflow = 'visible';
+      stage.appendChild(clone);
+
+      // Add the print-only stylesheet
+      const styleTag = document.createElement('style');
+      styleTag.id = 'bm-print-style';
+      styleTag.innerHTML = `
+        @media print {
+          html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          @page { size: A4; margin: 10mm; }
+          body > *:not(.bm-print-stage) { display: none !important; }
+          .bm-print-stage {
+            display: block !important;
+            position: static !important;
+            left: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            z-index: auto !important;
+            pointer-events: auto !important;
+          }
+          .bm-print-stage > * {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+          .bm-print-stage * { visibility: visible !important; }
+        }
+      `;
+      document.head.appendChild(styleTag);
+
+      // Give the browser a beat to apply the stage content before printing
       setTimeout(() => {
-        drawerRef.current?.classList.remove('bm-drawer-print-active');
-        document.getElementById('bm-drawer-print-style')?.remove();
-      }, 500);
-    }, 50);
+        window.print();
+        setTimeout(() => {
+          stage.innerHTML = '';
+          document.getElementById('bm-print-style')?.remove();
+          setBusy(null);
+        }, 600);
+      }, 80);
+    } catch (err) {
+      showToast(err.message || 'Could not prepare PDF.', 'error');
+      setBusy(null);
+    }
   };
 
-  // ─── Action: email link ───
   const handleEmail = () => {
     const isClient = docNumber === 4;
     const recipient = isClient && client?.email ? client.email : '';
@@ -126,37 +194,75 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     window.location.href = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   };
 
-  // ─── Action: SMS link (recap only) ───
   const handleSms = () => {
     if (!client?.phone) return;
     const body = `Your post-session summary from ${therapistName}: ${fullPageUrl}`;
     window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(body)}`;
   };
 
-  // ─── Helper: render drawer body to PNG blob ───
+  // ─── Render the doc to a PNG blob.
+  //
+  // Bug fix: previous implementation passed the SCROLLABLE container
+  // to html2canvas which captured only the visible viewport. Now we
+  // pass the inner content element (not the scroll wrapper) with
+  // its natural height, and explicitly set windowHeight/height so
+  // html2canvas paints the full document including content below the
+  // initial fold.
   const renderToBlob = async () => {
-    if (!bodyRef.current) throw new Error('Drawer body not ready');
-    const canvas = await html2canvas(bodyRef.current, {
-      backgroundColor: C.cream,
-      scale: 2, // retina-quality
-      useCORS: true,
-      logging: false,
-    });
-    return new Promise((resolve, reject) => {
-      canvas.toBlob(b => b ? resolve(b) : reject(new Error('PNG render failed')), 'image/png');
-    });
+    if (!bodyRef.current) throw new Error('Document not ready');
+
+    const target = bodyRef.current;
+    // Capture full scrollHeight (the actual content height) not the
+    // visible client height
+    const fullHeight = target.scrollHeight;
+    const fullWidth = target.scrollWidth;
+
+    // Briefly remove the overflow on the scroll parent so html2canvas
+    // can paint everything in one pass without clipping
+    const scrollParent = target.parentElement;
+    const previousOverflow = scrollParent ? scrollParent.style.overflow : null;
+    const previousHeight = scrollParent ? scrollParent.style.height : null;
+    if (scrollParent) {
+      scrollParent.style.overflow = 'visible';
+      scrollParent.style.height = 'auto';
+    }
+
+    // Wait a tick for layout to settle
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+      const canvas = await html2canvas(target, {
+        backgroundColor: C.cream,
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: fullWidth,
+        height: fullHeight,
+        windowWidth: fullWidth,
+        windowHeight: fullHeight,
+        scrollX: 0,
+        scrollY: 0,
+      });
+      return new Promise((resolve, reject) => {
+        canvas.toBlob(b => b ? resolve(b) : reject(new Error('Image render failed')), 'image/png');
+      });
+    } finally {
+      if (scrollParent) {
+        scrollParent.style.overflow = previousOverflow || '';
+        scrollParent.style.height = previousHeight || '';
+      }
+    }
   };
 
-  // ─── Action: copy as image to clipboard ───
   const handleCopyImage = async () => {
     setBusy('copy');
     try {
       if (!navigator.clipboard || !window.ClipboardItem) {
-        throw new Error('Clipboard not supported. Use Share or Save as PDF.');
+        throw new Error('Clipboard not supported on this browser. Use Share or Download instead.');
       }
       const blob = await renderToBlob();
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      showToast('Image copied. Paste it into your email or message.');
+      showToast('Image copied. Paste into your email or message.');
     } catch (err) {
       showToast(err.message || 'Could not copy image.', 'error');
     } finally {
@@ -164,12 +270,11 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
     }
   };
 
-  // ─── Action: share as image (mobile native share sheet) ───
   const handleShareImage = async () => {
     setBusy('share');
     try {
       const blob = await renderToBlob();
-      const fileName = `${docName.replace(/\s+/g, '-').toLowerCase()}.png`;
+      const fileName = `${(docName || 'document').replace(/\s+/g, '-').toLowerCase()}.png`;
       const file = new File([blob], fileName, { type: 'image/png' });
 
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -179,7 +284,6 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           text: docNumber === 4 ? `Your session summary from ${therapistName}` : docName,
         });
       } else {
-        // Fallback: download the image so the therapist can attach manually
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -201,26 +305,72 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
       <style>{`
-        @keyframes bmDrawerSlide {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
+        @keyframes bmDrawerSlide { from { transform: translateX(100%); } to { transform: translateX(0); } }
+        @keyframes bmDrawerFade { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes bmDrawerToast { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .bm-action-btn {
+          display: inline-flex; align-items: center; gap: 6px;
+          background: transparent;
+          border: 1px solid rgba(255,255,255,0.25);
+          color: white;
+          padding: 6px 10px;
+          border-radius: 8px;
+          font-size: 12px; font-weight: 600; letter-spacing: 0.15px;
+          cursor: pointer;
+          transition: background 0.12s ease, border-color 0.12s ease, transform 0.08s ease;
+          white-space: nowrap;
         }
-        @keyframes bmDrawerFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        .bm-action-btn:hover:not(:disabled) {
+          background: rgba(255,255,255,0.08);
+          border-color: rgba(255,255,255,0.4);
         }
-        @keyframes bmDrawerToast {
-          from { opacity: 0; transform: translate(-50%, 8px); }
-          to { opacity: 1; transform: translate(-50%, 0); }
+        .bm-action-btn:active:not(:disabled) { transform: scale(0.97); }
+        .bm-action-btn:disabled { opacity: 0.5; cursor: wait; }
+        .bm-action-btn-primary {
+          background: ${C.gold};
+          color: ${C.forest};
+          border-color: ${C.gold};
+          font-weight: 700;
+        }
+        .bm-action-btn-primary:hover:not(:disabled) {
+          background: #D9B85C;
+          border-color: #D9B85C;
+        }
+        .bm-action-group {
+          display: flex; align-items: center; gap: 0;
+          background: rgba(255,255,255,0.05);
+          border-radius: 9px;
+          padding: 4px;
+        }
+        .bm-action-group-label {
+          font-size: 9.5px; font-weight: 700;
+          color: rgba(255,255,255,0.55);
+          text-transform: uppercase;
+          letter-spacing: 0.7px;
+          padding: 0 6px 0 2px;
+          white-space: nowrap;
+        }
+        .bm-action-group .bm-action-btn {
+          border: none;
+          padding: 5px 9px;
+          font-size: 11.5px;
+        }
+        .bm-action-group .bm-action-btn:hover:not(:disabled) {
+          background: rgba(255,255,255,0.10);
+        }
+        .bm-action-bar {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          align-items: center;
         }
       `}</style>
 
       {/* Backdrop */}
       <div
-        className="bm-drawer-print-hide"
         onClick={onClose}
         style={{
           position: 'fixed', inset: 0,
@@ -240,7 +390,7 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
         tabIndex={-1}
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0,
-          width: 'min(560px, 100vw)',
+          width: 'min(640px, 100vw)',
           background: C.cream,
           boxShadow: '-8px 0 32px rgba(28,43,34,0.18)',
           zIndex: 999,
@@ -249,10 +399,10 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           outline: 'none',
         }}>
 
-        {/* Toolbar */}
-        <div className="bm-drawer-print-hide" style={{
+        {/* Header */}
+        <div style={{
           background: C.forest, padding: '10px 14px',
-          display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+          display: 'flex', alignItems: 'center', gap: 10,
           flexShrink: 0,
         }}>
           <button
@@ -261,93 +411,100 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
             style={{
               background: 'transparent', color: 'white',
               border: '1px solid rgba(255,255,255,0.3)',
-              padding: '6px 10px', borderRadius: 7,
+              padding: '6px 8px', borderRadius: 7,
               cursor: 'pointer', display: 'inline-flex', alignItems: 'center',
-              fontSize: 12, fontWeight: 600,
             }}>
-            ✕
+            <Icon name="close" size={14} />
           </button>
-          <span id="bm-drawer-title" style={{ color: 'white', fontWeight: 600, fontSize: 13, letterSpacing: '0.2px' }}>
-            {docName}
-          </span>
-          {typeof docNumber === 'number' && (
-            <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: 500, letterSpacing: '0.3px' }}>
-              · {docNumber} of {docTotalParts}
-            </span>
-          )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div id="bm-drawer-title" style={{ color: 'white', fontWeight: 600, fontSize: 13.5, lineHeight: 1.2 }}>
+              {docName}
+            </div>
+            {typeof docNumber === 'number' && (
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 10.5, fontWeight: 500, letterSpacing: '0.5px', marginTop: 1 }}>
+                Document {docNumber} of {docTotalParts}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Action bar */}
-        <div className="bm-drawer-print-hide" style={{
-          background: '#0F1A12', padding: '8px 12px',
-          display: 'flex', gap: 6, alignItems: 'center',
-          flexWrap: 'wrap', flexShrink: 0,
+        {/* Grouped action bar: Send as link | Send as image | Save as PDF
+            Each group has a tiny label so the therapist sees at a glance
+            what each cluster does. PDF is its own primary action. */}
+        <div style={{
+          background: C.forestDark, padding: '8px 12px',
+          flexShrink: 0,
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}>
-          <DrawerActionButton onClick={handleCopyImage} busy={busy === 'copy'} label="Copy image" icon="copy" />
-          <DrawerActionButton onClick={handleShareImage} busy={busy === 'share'} label="Share image" icon="share" />
-          <DrawerActionButton onClick={handleEmail} label="Email link" icon="email" />
-          {docNumber === 4 && client?.phone && (
-            <DrawerActionButton onClick={handleSms} label="Send SMS" icon="sms" />
-          )}
-          <DrawerActionButton onClick={handlePrint} label="Save as PDF" icon="pdf" primary />
-          {fullPageUrl && (
-            <a href={fullPageUrl} target="_blank" rel="noopener noreferrer" style={{
-              background: 'transparent', color: 'rgba(255,255,255,0.7)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              padding: '5px 10px', borderRadius: 7,
-              fontWeight: 500, fontSize: 11, letterSpacing: '0.2px',
-              textDecoration: 'none',
-              marginLeft: 'auto',
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-            }}>
-              Open full page ↗
-            </a>
-          )}
+          <div className="bm-action-bar">
+
+            {/* Group 1: Send as link */}
+            <div className="bm-action-group">
+              <span className="bm-action-group-label">
+                <Icon name="link" size={10} color="rgba(255,255,255,0.55)" /> Link
+              </span>
+              <button onClick={handleEmail} className="bm-action-btn" title="Email a link to this document">
+                <Icon name="email" /> Email
+              </button>
+              {docNumber === 4 && client?.phone && (
+                <button onClick={handleSms} className="bm-action-btn" title="Text a link to the client">
+                  <Icon name="sms" /> SMS
+                </button>
+              )}
+            </div>
+
+            {/* Group 2: Send as image */}
+            <div className="bm-action-group">
+              <span className="bm-action-group-label">
+                <Icon name="image" size={10} color="rgba(255,255,255,0.55)" /> Image
+              </span>
+              <button onClick={handleCopyImage} disabled={busy === 'copy'} className="bm-action-btn" title="Copy a PNG of this document to clipboard">
+                <Icon name="copy" /> {busy === 'copy' ? 'Copying...' : 'Copy'}
+              </button>
+              <button onClick={handleShareImage} disabled={busy === 'share'} className="bm-action-btn" title="Share a PNG of this document (mobile) or download">
+                <Icon name="share" /> {busy === 'share' ? 'Preparing...' : 'Share'}
+              </button>
+            </div>
+
+            {/* Group 3: Save as PDF (primary) */}
+            <button onClick={handlePrint} disabled={busy === 'pdf'} className="bm-action-btn bm-action-btn-primary" title="Save the document as a PDF">
+              <Icon name="pdf" /> {busy === 'pdf' ? 'Preparing...' : 'Save PDF'}
+            </button>
+          </div>
         </div>
 
-        {/* Body */}
-        <div
-          ref={bodyRef}
-          style={{
-            flex: 1, overflowY: 'auto',
-            background: C.cream,
-            WebkitOverflowScrolling: 'touch',
-          }}>
-          {children}
+        {/* Scrollable body wrapping the doc content (the html2canvas target).
+            renderToBlob unwraps the overflow so the full content is captured. */}
+        <div style={{
+          flex: 1, overflowY: 'auto',
+          background: C.cream,
+          WebkitOverflowScrolling: 'touch',
+        }}>
+          <div ref={bodyRef}>
+            {children}
+          </div>
         </div>
-
-        {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
       </div>
-    </>
-  );
-}
 
-function DrawerActionButton({ onClick, busy, label, icon, primary }) {
-  const iconSvg = {
-    copy: <><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></>,
-    share: <><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></>,
-    email: <><rect x="3" y="5" width="18" height="14" rx="2" /><polyline points="3 7 12 13 21 7" /></>,
-    sms: <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />,
-    pdf: <><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></>,
-  }[icon];
+      {/* Off-screen print stage. handlePrint clones the doc into here
+          and the print stylesheet shows ONLY this container. */}
+      <div
+        ref={printContainerRef}
+        className="bm-print-stage"
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          left: '-99999px',
+          top: 0,
+          width: '880px',
+          background: 'white',
+          zIndex: -1,
+          pointerEvents: 'none',
+        }}
+      />
 
-  return (
-    <button onClick={onClick} disabled={busy} style={{
-      background: primary ? C.gold : 'transparent',
-      color: primary ? C.forest : 'white',
-      border: primary ? 'none' : '1px solid rgba(255,255,255,0.25)',
-      padding: '5px 10px', borderRadius: 7,
-      fontWeight: primary ? 700 : 600, fontSize: 11.5,
-      cursor: busy ? 'wait' : 'pointer',
-      display: 'inline-flex', alignItems: 'center', gap: 5,
-      opacity: busy ? 0.6 : 1,
-      letterSpacing: '0.2px',
-    }}>
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {iconSvg}
-      </svg>
-      {busy ? '...' : label}
-    </button>
+      {toast && <Toast message={toast.message} type={toast.type} onDismiss={() => setToast(null)} />}
+    </>,
+    document.body
   );
 }
