@@ -168,37 +168,87 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
       // that width tall at A4 aspect: pageHeightPx = width * 1.414.
       const a4Aspect = 297 / 210;
       const pagePxHeight = Math.floor(fullCanvas.width * a4Aspect);
-      const pages = Math.max(1, Math.ceil(fullCanvas.height / pagePxHeight));
+
+      // ── Smart fit-to-page ──
+      // If the rendered doc is between 1.0x and 1.20x the A4 height,
+      // we scale it down to fit on a single page rather than letting
+      // it spill into a mostly-empty second page. Above 1.20x the
+      // content is genuinely two pages, so we slice. (Cutoff chosen
+      // so doc 3 at ~1.10x fits one page, while doc 2 at ~1.6x stays
+      // two pages and reads cleanly.)
+      const ratio = fullCanvas.height / pagePxHeight;
+      const shouldScaleFit = ratio > 1.0 && ratio <= 1.20;
+
+      let pageImages = [];
+      if (shouldScaleFit) {
+        // Scale the entire doc into ONE page-sized canvas.
+        // Scale factor = pagePxHeight / fullCanvas.height
+        // Width scales proportionally; we letterbox horizontally to
+        // keep the doc centered if scaled width is less than page width.
+        const scale = pagePxHeight / fullCanvas.height;
+        const scaledWidth = Math.floor(fullCanvas.width * scale);
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = fullCanvas.width;
+        pageCanvas.height = pagePxHeight;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = C.cream;
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        // Center horizontally if scaled width is smaller than page width
+        const xOffset = Math.floor((pageCanvas.width - scaledWidth) / 2);
+        ctx.drawImage(fullCanvas, 0, 0, fullCanvas.width, fullCanvas.height, xOffset, 0, scaledWidth, pagePxHeight);
+        pageImages.push({ dataUrl: pageCanvas.toDataURL('image/png'), centerVertically: false });
+      } else if (fullCanvas.height < pagePxHeight) {
+        // Doc shorter than one A4 page: vertically center on the page.
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = fullCanvas.width;
+        pageCanvas.height = pagePxHeight;
+        const ctx = pageCanvas.getContext('2d');
+        ctx.fillStyle = C.cream;
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        const yOffset = Math.floor((pagePxHeight - fullCanvas.height) / 2);
+        ctx.drawImage(fullCanvas, 0, yOffset);
+        pageImages.push({ dataUrl: pageCanvas.toDataURL('image/png'), centerVertically: true });
+      } else {
+        // Doc taller than A4 by >20%: genuine multi-page split
+        const pages = Math.ceil(fullCanvas.height / pagePxHeight);
+        for (let p = 0; p < pages; p++) {
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = fullCanvas.width;
+          const yStart = p * pagePxHeight;
+          const sliceHeight = Math.min(pagePxHeight, fullCanvas.height - yStart);
+          // Last page: keep its natural height for content sizing,
+          // but pad to full A4 height with cream so vertical centering
+          // of the last page reads visually balanced.
+          const isLastPage = p === pages - 1;
+          const useFullPageHeight = isLastPage && sliceHeight < pagePxHeight;
+          sliceCanvas.height = useFullPageHeight ? pagePxHeight : sliceHeight;
+          const ctx = sliceCanvas.getContext('2d');
+          ctx.fillStyle = C.cream;
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          const drawY = useFullPageHeight ? Math.floor((pagePxHeight - sliceHeight) / 2) : 0;
+          ctx.drawImage(
+            fullCanvas,
+            0, yStart, fullCanvas.width, sliceHeight,
+            0, drawY, fullCanvas.width, sliceHeight
+          );
+          pageImages.push({ dataUrl: sliceCanvas.toDataURL('image/png'), centerVertically: useFullPageHeight });
+        }
+      }
 
       // Replace the stage with the rendered page images
       stage.innerHTML = '';
-      for (let p = 0; p < pages; p++) {
-        const sliceCanvas = document.createElement('canvas');
-        sliceCanvas.width = fullCanvas.width;
-        // Last page may be shorter than a full A4 if the content
-        // ends partway. Cap at the canvas tail.
-        const yStart = p * pagePxHeight;
-        const sliceHeight = Math.min(pagePxHeight, fullCanvas.height - yStart);
-        sliceCanvas.height = sliceHeight;
-        const ctx = sliceCanvas.getContext('2d');
-        // Cream background so any rounded-corner content edges blend
-        ctx.fillStyle = C.cream;
-        ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-        // Copy the relevant slice from the full canvas
-        ctx.drawImage(
-          fullCanvas,
-          0, yStart, fullCanvas.width, sliceHeight,
-          0, 0, fullCanvas.width, sliceHeight
-        );
+      pageImages.forEach((page, p) => {
         const img = document.createElement('img');
-        img.src = sliceCanvas.toDataURL('image/png');
+        img.src = page.dataUrl;
         img.style.cssText = `
           width: 100%; display: block; margin: 0;
-          page-break-after: ${p < pages - 1 ? 'always' : 'auto'};
+          page-break-after: ${p < pageImages.length - 1 ? 'always' : 'auto'};
           page-break-inside: avoid;
         `;
         stage.appendChild(img);
-      }
+      });
 
       // Wait for all images to load before triggering print
       const imgs = stage.querySelectorAll('img');

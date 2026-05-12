@@ -914,12 +914,26 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         <div style={{ display: "flex", borderBottom: "1px solid " + C.lightGray }}>
           {[
             { id: "soap", label: session.completed ? "📋 SOAP & Aftercare" : "✏️ Write SOAP & Aftercare" },
-            { id: "notes", label: aiEnabled ? "🔒 Private Notes ✨" : "🔒 Private Notes" },
-            { id: "client", label: aiEnabled ? "💌 Message to Client ✨" : "💌 Message to Client" },
+            { id: "notes", label: "🔒 Private Notes", aiBadge: aiEnabled },
+            { id: "client", label: "💌 Message to Client", aiBadge: aiEnabled },
           ].map(t => (
             <button key={t.id} onClick={() => setSoapTab(t.id)}
-              style={{ flex: 1, padding: "12px 8px", border: "none", borderBottom: soapTab === t.id ? "2px solid " + C.forest : "2px solid transparent", background: "transparent", color: soapTab === t.id ? C.forest : C.gray, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "system-ui", transition: "all 0.15s" }}>
-              {t.label}
+              style={{ flex: 1, padding: "12px 8px", border: "none", borderBottom: soapTab === t.id ? "2px solid " + C.forest : "2px solid transparent", background: "transparent", color: soapTab === t.id ? C.forest : C.gray, fontSize: "13px", fontWeight: 600, cursor: "pointer", fontFamily: "system-ui", transition: "all 0.15s", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+              <span>{t.label}</span>
+              {t.aiBadge && (
+                <span style={{
+                  background: "#F5F0FE",
+                  color: "#6D28D9",
+                  border: "1.5px solid #C4B5FD",
+                  padding: "2px 7px",
+                  borderRadius: 999,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: "0.3px",
+                  whiteSpace: "nowrap",
+                  lineHeight: 1.2,
+                }}>AI helps you</span>
+              )}
             </button>
           ))}
         </div>
@@ -1038,7 +1052,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
                 <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
                   🔒 Private, only visible to you, never shared with clients.
-                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>✨ Tap "Draft with AI" to auto-generate from today's session data.</span>}
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with AI" button on the right to auto-generate from today's session.</span>}
                 </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("private")} disabled={!!draftingKind}
@@ -1087,7 +1101,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
                 <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
                   💌 Appears on the Post-Session Brief you share with your client.
-                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>✨ Tap "Draft with AI" to auto-generate a warm note from today's session.</span>}
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with AI" button on the right to auto-generate a warm note.</span>}
                 </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("client")} disabled={!!draftingKind}
