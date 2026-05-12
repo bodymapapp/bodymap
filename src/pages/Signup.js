@@ -133,11 +133,12 @@ export default function Signup() {
     e.preventDefault(); setError('');
     if (!formData.fullName.trim() || formData.fullName.trim().length < 2) { setError('Please enter your full name.'); return; }
     if (!formData.email.trim()) { setError('Please enter your email.'); return; }
-    // Phone, business name, and custom URL are optional at signup.
-    // Business name auto-defaults to the therapist's full name if blank
-    // (they can change it in Settings later).
+    // Phone is required. We send a 6-digit SMS code right after signup
+    // and the new therapist cannot reach the dashboard until they
+    // confirm it. Business name and custom URL stay optional.
     const phoneDigits = (formData.phone || '').replace(/\D/g, '');
-    if (phoneDigits.length > 0 && phoneDigits.length < 10) { setError('Phone number must be at least 10 digits, or leave it blank.'); return; }
+    if (phoneDigits.length === 0) { setError('Please enter your mobile phone number. We will text you a code to confirm it.'); return; }
+    if (phoneDigits.length < 10) { setError('Phone number must be at least 10 digits.'); return; }
     if (formData.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     if (formData.password !== formData.confirmPassword) { setError('Passwords do not match.'); return; }
     const effectiveBusinessName = formData.businessName.trim() || formData.fullName.trim();
@@ -243,6 +244,13 @@ export default function Signup() {
           body: JSON.stringify({ email: formData.email, firstName, customUrl: formData.customUrl }),
         });
       } catch(e) { /* non-blocking */ }
+      // Always route new signups through /verify-phone first. The
+      // dashboard hard-gates them out anyway (Dashboard.js redirects to
+      // /verify-phone when therapist.created_at >= PHONE_GATE_FROM AND
+      // phone_verified_at is null), but going there directly skips the
+      // intermediate dashboard flash. After successful verification,
+      // VerifyPhone routes them to /dashboard (with the same query args
+      // it would have received here).
       const postRedirect = localStorage.getItem('postSignupRedirect');
       if (justPaid) {
         try {
@@ -252,9 +260,14 @@ export default function Signup() {
             await supabase.from('therapists').update({ plan: 'silver' }).eq('id', user.id);
           }
         } catch(e) { console.error('Plan upgrade error:', e); }
-        navigate('/dashboard?upgraded=true');
+        navigate('/verify-phone');
       } else {
-        navigate(postRedirect ? '/dashboard?activate=silver' : '/dashboard');
+        // Stash the intended post-verify destination so VerifyPhone can
+        // route the therapist there after they confirm the code.
+        if (postRedirect) {
+          localStorage.setItem('postVerifyPhoneRedirect', '/dashboard?activate=silver');
+        }
+        navigate('/verify-phone');
       }
     } else { setError(result.error); }
     setLoading(false);
@@ -420,6 +433,29 @@ export default function Signup() {
           </div>
         </div>
 
+        {/* Phone is required, visible by default. We send a 6-digit
+            SMS code right after signup; therapists who do not verify
+            cannot reach the dashboard. Moved out of the optional fold
+            on 2026-05-12 per HK direction. */}
+        <div style={{ marginBottom: '18px' }}>
+          <label style={labelStyle}>Mobile Phone</label>
+          <input
+            name="phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(555) 123-4567"
+            value={formData.phone}
+            onChange={handleChange}
+            style={inputStyle}
+            required
+          />
+          <p style={{ fontSize: '11px', color: C.sage, margin: '4px 0 0 0', lineHeight: 1.4 }}>
+            We will text you a 6-digit code right after signup. We only use
+            this number to verify you and to contact you about your practice.
+          </p>
+        </div>
+
         {/* Optional fields - collapsed by default. Keeps signup to 4 visible
             fields (name, email, password, confirm) unless user expands. */}
         <div style={{ marginBottom: '18px' }}>
@@ -433,7 +469,7 @@ export default function Signup() {
               fontFamily: 'inherit', fontWeight: 600,
             }}>
             <span style={{ fontSize: 10, transition: 'transform 0.2s', transform: showOptional ? 'rotate(90deg)' : 'rotate(0deg)', display: 'inline-block' }}>▶</span>
-            {showOptional ? 'Hide' : 'Add'} business name, custom URL, and phone (optional)
+            {showOptional ? 'Hide' : 'Add'} business name and custom URL (optional)
           </button>
 
           {showOptional && (
@@ -443,7 +479,7 @@ export default function Signup() {
                 <input name="businessName" type="text" placeholder="Healing Hands (we will use your name if blank)" value={formData.businessName} onChange={handleChange} style={inputStyle} />
               </div>
 
-              <div style={{ marginBottom: '14px', marginLeft: 10 }}>
+              <div style={{ marginBottom: '4px', marginLeft: 10 }}>
                 <label style={labelStyle}>Custom Intake URL</label>
                 <div style={{ display: 'flex', alignItems: 'center', borderBottom: '1.5px solid #6B9E80' }}>
                   <span style={{ fontSize: '13px', color: C.sage, fontWeight: '600', whiteSpace: 'nowrap', paddingBottom: '9px' }}>mybodymap.app/</span>
@@ -451,12 +487,6 @@ export default function Signup() {
                     style={{ ...inputStyle, borderBottom: 'none', flex: 1, minWidth: 0 }} />
                 </div>
                 <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>Clients use this link to fill their body map. We auto-generate one if you skip this.</p>
-              </div>
-
-              <div style={{ marginBottom: '4px', marginLeft: 10 }}>
-                <label style={labelStyle}>Phone</label>
-                <input name="phone" type="tel" placeholder="(555) 123-4567" value={formData.phone} onChange={handleChange} style={inputStyle} />
-                <p style={{ fontSize: '10px', color: C.sage, margin: '3px 0 0 0' }}>For account-recovery texts only. We never share it.</p>
               </div>
             </div>
           )}

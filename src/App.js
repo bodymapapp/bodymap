@@ -52,6 +52,7 @@ import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
 import FounderDashboard from './components/FounderDashboard';
 import EmailReview from './components/EmailReview';
+import VerifyPhone from './pages/VerifyPhone';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -91,6 +92,7 @@ function App() {
           <Route path="/terms" element={<Terms />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/verify-phone" element={<ProtectedRoute><VerifyPhone /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard view="clients" /></ProtectedRoute>} />
           <Route path="/admin/funnel" element={<ProtectedRoute><AdminFunnel /></ProtectedRoute>} />
           <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />

@@ -40,6 +40,48 @@ import NotificationPrefsCard from '../components/NotificationPrefsCard';
 import QRCodesCard from '../components/QRCodesCard';
 import CancellationPolicy from '../components/CancellationPolicy';
 
+// Soft banner shown on the dashboard for therapists who pre-date the
+// phone verification feature (created before PHONE_GATE_FROM). Encourages
+// verification without blocking access. New signups (after PHONE_GATE_FROM)
+// are hard-gated and never see this banner because the dashboard
+// redirects them to /verify-phone first.
+function PhoneVerifyBanner({ therapist, navigate }) {
+  const PHONE_GATE_FROM = '2026-05-12T00:00:00Z';
+  if (!therapist) return null;
+  if (therapist.phone_verified_at) return null;
+  if (therapist.created_at && therapist.created_at >= PHONE_GATE_FROM) return null;
+  return (
+    <div style={{
+      background: '#FFF7E6',
+      border: '1px solid #F0C75A',
+      borderRadius: 12,
+      padding: '14px 18px',
+      marginBottom: 16,
+      display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+    }}>
+      <div style={{ fontSize: 22, lineHeight: 1 }}>📱</div>
+      <div style={{ flex: 1, minWidth: 200 }}>
+        <div style={{ fontWeight: 700, color: '#5C4708', marginBottom: 2, fontSize: 14 }}>
+          Verify your phone
+        </div>
+        <div style={{ fontSize: 12.5, color: '#785D14', lineHeight: 1.45 }}>
+          Unlock SMS reminders, gift cards, and client check-ins. Takes 30 seconds.
+        </div>
+      </div>
+      <button
+        onClick={() => navigate('/verify-phone')}
+        style={{
+          background: '#92660E', color: 'white',
+          border: 'none', padding: '9px 16px', borderRadius: 8,
+          fontWeight: 700, fontSize: 13, cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}>
+        Verify now
+      </button>
+    </div>
+  );
+}
+
 // Mobile page-end indicator
 function PageEnd() {
   return (
@@ -3364,6 +3406,21 @@ export default function Dashboard({ view }) {
     }
   }, [therapist?.id]);
 
+  // Phone verification hard gate for new signups.
+  // Therapists created on or after 2026-05-12 (the day this feature
+  // shipped) must verify their phone before they can use the dashboard.
+  // Older therapists are grandfathered in and see a soft banner instead.
+  // See PhoneVerifyBanner below.
+  const PHONE_GATE_FROM = '2026-05-12T00:00:00Z';
+  useEffect(() => {
+    if (!therapist?.id) return;
+    if (therapist.phone_verified_at) return;
+    if (!therapist.created_at) return;
+    if (therapist.created_at >= PHONE_GATE_FROM) {
+      navigate('/verify-phone', { replace: true });
+    }
+  }, [therapist?.id, therapist?.phone_verified_at, therapist?.created_at, navigate]);
+
   useEffect(() => {
     if (clientId) loadClient();
   }, [clientId]);
@@ -3582,6 +3639,7 @@ export default function Dashboard({ view }) {
                 clients={stats?.clients || 0}
                 onNavigate={(v) => navigate(v ? `/dashboard/${v}` : '/dashboard')}
               />
+              <PhoneVerifyBanner therapist={therapist} navigate={navigate} />
               <ActivationNudge sessions={stats?.sessions || 0} />
               <LapsedClientAlert
                 clients={stats?.lapsedClients || []}
