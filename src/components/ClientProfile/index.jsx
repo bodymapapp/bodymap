@@ -20,6 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
 import ProfileHeader from './ProfileHeader';
+import StatusStrip from './StatusStrip';
 import SessionList from '../SessionList';
 import { C, F } from './tokens';
 
@@ -73,7 +74,9 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         </div>
       )}
 
-      {/* TODO section 3: StatusStrip */}
+      {/* Section 3: Status strip with balance, next visit, lifetime, attention */}
+      {profile && <StatusStrip profile={profile} />}
+
       {/* TODO section 4: PatternsCard + PreferencesCard + MedicalCard */}
       {/* TODO section 5: Timeline */}
 
