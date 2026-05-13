@@ -2,20 +2,18 @@
 //
 // Top-level container for the redesigned therapist client view.
 // Replaces SessionList.js as the page shown when therapist taps a
-// client card. Sequentially composed of:
+// client card. Composed of:
 //
-//   ProfileHeader   — sticky, identity + actions
-//   StatusStrip     — balance / next / lifetime / attention tiles
-//   PatternsCard    — body-map intelligence (the moat)
-//   PreferencesCard — pressure/temp/music defaults
-//   MedicalCard     — flags + conditions
-//   Timeline        — unified activity feed
+//   ProfileHeader   sticky identity bar + action buttons
+//   StatusStrip     balance / next / lifetime / attention tiles
+//   PatternsCard    body-map intelligence aggregated across sessions
+//   PreferencesCard pressure/temp/music defaults from last session
+//   MedicalCard     conditions and contraindications
+//   Timeline        unified activity feed: bookings, sessions,
+//                   packages, memberships, gifts
 //
-// This commit ships the skeleton + header only. Section 3+ adds the
-// rest. Until those land, the page shows the new header on top and
-// the old SessionList content below. That keeps the page usable
-// throughout the build while letting HK verify each piece as it
-// arrives.
+// Edit details + archive flow wire-up coming in section 7 (next
+// commit). Until then those menu items in ProfileHeader are no-ops.
 
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
@@ -24,7 +22,7 @@ import StatusStrip from './StatusStrip';
 import PatternsCard from './PatternsCard';
 import PreferencesCard from './PreferencesCard';
 import MedicalCard from './MedicalCard';
-import SessionList from '../SessionList';
+import Timeline from './Timeline';
 import { C, F } from './tokens';
 
 export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession }) {
@@ -110,25 +108,15 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         }
       `}</style>
 
-      {/* TODO section 5: Timeline */}
-
-      {/* Until the new sections land, keep the old SessionList
-          mounted below the new header so the therapist can still
-          work normally. SessionList gets the same props it did when
-          mounted directly from Dashboard. We wrap it in a div that
-          hides SessionList's own header (the old "← Sessions" pill
-          + name) since ProfileHeader already provides that. The
-          duplicate-header hide is done via CSS in section 6 when
-          we wire the full handoff.  */}
-      <div style={{ padding: '0 4px' }}>
-        <SessionList
-          client={profile?.client || client}
-          therapistId={therapistId}
-          therapist={therapist}
-          onBack={onBack}
-          onSelectSession={onSelectSession}
-        />
-      </div>
+      {/* Section 5: Unified Timeline replaces the old SessionList */}
+      {profile && (
+        <div style={{ padding: '0 18px' }}>
+          <Timeline
+            profile={profile}
+            onSelectSession={onSelectSession}
+          />
+        </div>
+      )}
     </div>
   );
 }
