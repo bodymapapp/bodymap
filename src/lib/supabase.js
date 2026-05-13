@@ -90,59 +90,90 @@ export const db = {
   },
 
   async getTherapistClients(therapistId) {
-    // Pull clients with bookings AND sessions joined.
-    // Bookings = appointment records (have booking_date, status,
-    // service_id). The visit-count and last-visit timestamps on
-    // the client list card should reflect bookings, since those
-    // are the actual unit of work that happened.
-    // Sessions are the optional SOAP-note records, separate from
-    // bookings, used here only for the has_pending flag (intake
-    // filled but SOAP not yet written).
-    // Package purchases and member subscriptions are also pulled
-    // so the client list card can show a chip ('5-pack: 3 left',
-    // 'Monthly Member') for clients with active balance.
-    const { data: clients, error } = await supabase
-      .from('clients')
-      .select(`
-        *,
-        bookings(id, booking_date, status),
-        sessions(id, completed, created_at),
-        package_purchases!package_purchases_client_id_fkey(id, sessions_remaining, sessions_purchased, status, package:packages(name)),
-        member_subscriptions!member_subscriptions_client_id_fkey(id, status, membership:memberships(name, monthly_session_credits))
-      `)
-      .eq('therapist_id', therapistId)
-      .order('created_at', { ascending: false });
-    if (error) throw error;
+    // Defensive structure: fetch each related table SEPARATELY and
+    // stitch in JS. A single complex join failed silently in the
+    // earlier version (HK saw 0 clients on dashboard), wiping the
+    // whole dashboard. With this pattern, an auxiliary table failure
+    // (packages or subscriptions) only loses that one piece. Base
+    // clients still render.
+    const [clientsRes, bookingsRes, sessionsRes, packagesRes, subsRes] = await Promise.all([
+      supabase.from('clients').select('*').eq('therapist_id', therapistId).order('created_at', { ascending: false }),
+      supabase.from('bookings').select('id, client_id, client_email, client_phone, booking_date, status').eq('therapist_id', therapistId),
+      supabase.from('sessions').select('id, client_id, completed, created_at').eq('therapist_id', therapistId),
+      supabase.from('package_purchases').select('id, client_id, sessions_remaining, sessions_purchased, status, package:packages(name)').eq('therapist_id', therapistId).eq('status', 'active'),
+      supabase.from('member_subscriptions').select('id, client_id, status, membership:memberships(name, monthly_session_credits)').eq('therapist_id', therapistId).eq('status', 'active'),
+    ]);
 
-    return (clients || []).map(c => {
-      // Booking-derived stats: total visits + last visit. Counts
-      // confirmed and completed bookings. Null status counts as
-      // confirmed (legacy rows from before the column was added).
-      const allBookings = c.bookings || [];
-      const counted = allBookings.filter(b => !b.status || ['confirmed', 'completed'].includes(b.status));
+    if (clientsRes.error) {
+      console.error('[getTherapistClients] base clients query failed:', clientsRes.error);
+      throw clientsRes.error;
+    }
+    // Log but don't throw on auxiliary errors. Dashboard still renders.
+    if (bookingsRes.error) console.error('[getTherapistClients] bookings join failed:', bookingsRes.error);
+    if (sessionsRes.error) console.error('[getTherapistClients] sessions join failed:', sessionsRes.error);
+    if (packagesRes.error) console.error('[getTherapistClients] packages join failed:', packagesRes.error);
+    if (subsRes.error) console.error('[getTherapistClients] subscriptions join failed:', subsRes.error);
+
+    const clients = clientsRes.data || [];
+    const allBookings = bookingsRes.data || [];
+    const allSessions = sessionsRes.data || [];
+    const allPackages = packagesRes.data || [];
+    const allSubs = subsRes.data || [];
+
+    // Index aux data by client_id for O(1) per-client lookup.
+    // Bookings can be linked by client_id OR by email/phone (legacy
+    // bookings sometimes lack client_id). We index by all three.
+    const bookingsById = new Map();
+    const bookingsByEmail = new Map();
+    const bookingsByPhone = new Map();
+    for (const b of allBookings) {
+      if (b.client_id) {
+        if (!bookingsById.has(b.client_id)) bookingsById.set(b.client_id, []);
+        bookingsById.get(b.client_id).push(b);
+      }
+      if (b.client_email) {
+        const k = b.client_email.toLowerCase();
+        if (!bookingsByEmail.has(k)) bookingsByEmail.set(k, []);
+        bookingsByEmail.get(k).push(b);
+      }
+      if (b.client_phone) {
+        if (!bookingsByPhone.has(b.client_phone)) bookingsByPhone.set(b.client_phone, []);
+        bookingsByPhone.get(b.client_phone).push(b);
+      }
+    }
+    const sessionsByClient = new Map();
+    for (const s of allSessions) {
+      if (!s.client_id) continue;
+      if (!sessionsByClient.has(s.client_id)) sessionsByClient.set(s.client_id, []);
+      sessionsByClient.get(s.client_id).push(s);
+    }
+    const packageByClient = new Map();
+    for (const p of allPackages) if (p.client_id) packageByClient.set(p.client_id, p);
+    const subByClient = new Map();
+    for (const m of allSubs) if (m.client_id) subByClient.set(m.client_id, m);
+
+    return clients.map(c => {
+      // Gather bookings: prefer client_id match, fallback to email/phone.
+      let bookings = bookingsById.get(c.id) || [];
+      if (bookings.length === 0 && c.email) bookings = bookingsByEmail.get(c.email.toLowerCase()) || bookings;
+      if (bookings.length === 0 && c.phone) bookings = bookingsByPhone.get(c.phone) || bookings;
+
+      const counted = bookings.filter(b => !b.status || ['confirmed', 'completed'].includes(b.status));
       const sortedBookings = [...counted].sort((a, b) => (b.booking_date || '').localeCompare(a.booking_date || ''));
       const lastBooking = sortedBookings[0];
       const daysSince = lastBooking?.booking_date
         ? Math.floor((Date.now() - new Date(lastBooking.booking_date + 'T00:00:00Z').getTime()) / 86400000)
         : null;
 
-      // Session-derived stats (SOAP records, separate concept).
-      // Used only for has_pending: clients who filled intake but
-      // don't yet have a SOAP note written. Matters for the
-      // therapist's day-of workflow.
-      const sessions = c.sessions || [];
+      const sessions = sessionsByClient.get(c.id) || [];
       const pending = sessions.filter(s => !s.completed);
       const recentPending = pending.filter(s => {
         const hrs = (Date.now() - new Date(s.created_at)) / 3600000;
         return hrs <= 48;
       });
 
-      // Active package / membership for the chip on the card.
-      // Take the first active one; if multiple, the most recently
-      // created one wins (the join doesn't guarantee order so we
-      // just pick whichever the join returned first).
-      const activePackage = (c.package_purchases || []).find(p => p.status === 'active');
-      const activeMembership = (c.member_subscriptions || []).find(m => m.status === 'active');
+      const activePackage = packageByClient.get(c.id);
+      const activeMembership = subByClient.get(c.id);
 
       return {
         ...c,
