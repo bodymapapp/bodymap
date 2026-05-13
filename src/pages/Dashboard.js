@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
+import ClientProfile from '../components/ClientProfile';
 import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
@@ -3679,7 +3680,7 @@ export default function Dashboard({ view }) {
             </>
           )}
           {view === 'sessions' && client && (
-            <SessionList
+            <ClientProfile
               client={client}
               therapist={therapist}
               therapistId={therapist?.id}
