@@ -333,8 +333,18 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           color: ${C.forest};
         }
         .bm-journey-row {
-          display: flex; align-items: flex-start; justify-content: space-between;
+          display: flex; align-items: stretch; justify-content: space-between;
           gap: 4px; position: relative;
+        }
+        /* Equalize card heights so single-line statuses (Waiting) don't
+           render shorter than two-line ones (Filled by client). Cards
+           stretch from align-items: stretch on the row. The inner label
+           block flex-grows so a card with shorter sub text fills the
+           same space as one with longer sub text. */
+        .bm-journey-dot { display: flex; flex-direction: column; }
+        .bm-journey-dot > div:last-child {
+          flex: 1;
+          display: flex; flex-direction: column; justify-content: flex-start;
         }
         @keyframes bmDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(74,107,84,0.5); }
