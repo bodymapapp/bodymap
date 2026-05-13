@@ -82,7 +82,13 @@ BEGIN
     FOR v_client_record IN
       SELECT c.id AS client_id, c.email, c.name, c.phone,
              ROW_NUMBER() OVER (ORDER BY c.name) AS rn,
-             COALESCE(c.visit_count, 5) AS visit_count
+             -- visit_count lives in the import CSV but is not stored
+             -- on the clients row. Derive a proxy from the count of
+             -- past bookings already in the DB so frequent clients
+             -- still get more upcoming appointments.
+             (SELECT COUNT(*) FROM bookings b
+              WHERE b.therapist_id = v_therapist_id
+                AND b.client_id = c.id) AS visit_count
       FROM clients c
       WHERE c.therapist_id = v_therapist_id
         AND c.email LIKE '%@example.com'
