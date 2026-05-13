@@ -415,7 +415,11 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
       {!compact && (
       <div style={{ marginBottom: "20px" }}>
-        {/* Top row: back + name + sessions count */}
+        {/* Top row: back + name + sessions count.
+            In compact mode (mounted inside ClientProfile),
+            ProfileHeader already shows the name + back button,
+            so this whole row is hidden via the outer conditional.
+            Action buttons and balance card below are kept visible. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: 10 }}>
           <button onClick={onBack} style={{ background: "transparent", border: `1.5px solid ${C.lightGray}`, color: C.gray, padding: "8px 14px", borderRadius: "8px", fontSize: "13px", cursor: "pointer", fontFamily: "system-ui", whiteSpace: "nowrap", flexShrink: 0 }}>
             ← All
@@ -434,13 +438,18 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             <p style={{ fontSize: "13px", color: C.gray, margin: "2px 0 0" }}>{bookedCount} session{bookedCount !== 1 ? "s" : ""} on record</p>
           </div>
         </div>
+      </div>
+      )}
 
-        {/* Active balance card: shows remaining sessions on packages and
-            membership cycle. Self-hides if neither exists. */}
+      {/* Action buttons row + balance card.
+          Always visible (no compact gate), so the therapist keeps
+          Edit / Book Next / Merge / Archive access inside the
+          Sessions and SOAP notes section. ClientPackageBalance is
+          slim and informative; keeping it here is harmless even
+          though StatusStrip shows a summary balance tile above. */}
+      <div style={{ marginBottom: "20px" }}>
         <ClientPackageBalance clientId={client.id} therapistId={therapistId} />
 
-        {/* Action buttons row: scrollable strip on narrow screens, single row otherwise.
-            All five buttons same height, same vertical alignment, no wrapping. */}
         <div className="bm-client-actions" style={{
           display: "flex", alignItems: "center", gap: 8,
           overflowX: "auto", paddingBottom: 4,

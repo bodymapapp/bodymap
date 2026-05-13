@@ -1,34 +1,55 @@
 // src/components/ClientProfile/index.jsx
 //
-// Top-level container for the redesigned therapist client view.
-// Replaces SessionList.js as the page shown when therapist taps a
-// client card. Composed of:
+// Top-level container for the therapist client view. Composed of:
 //
-//   ProfileHeader   sticky identity bar + action buttons
-//   StatusStrip     balance / next / lifetime / attention tiles
-//   PatternsCard    body-map intelligence aggregated across sessions
-//   PreferencesCard pressure/temp/music defaults from last session
-//   MedicalCard     conditions and contraindications
-//   Timeline        unified activity feed: bookings, sessions,
-//                   packages, memberships, gifts
+//   ProfileHeader   sticky identity bar (hero band w/ state color)
+//   StatusStrip     balance / next / lifetime tiles
+//   ProfileSection 'Sessions and SOAP notes'   ← primary work area
+//   ProfileSection 'Patterns'                  ← body-map intelligence
+//   ProfileSection 'Preferences'
+//   ProfileSection 'Medical flags'
+//   ProfileSection 'Timeline'
 //
-// Edit details + archive flow wire-up coming in section 7 (next
-// commit). Until then those menu items in ProfileHeader are no-ops.
+// Each ProfileSection is independently collapsible. Defaults to
+// open. The card chrome + italic serif title + sage sprig + chevron
+// matches the Settings page design language (white card, hairline
+// border, cream-soft body when open).
 
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
 import ProfileHeader from './ProfileHeader';
 import StatusStrip from './StatusStrip';
+import ProfileSection from './ProfileSection';
 import PatternsCard from './PatternsCard';
 import PreferencesCard from './PreferencesCard';
 import MedicalCard from './MedicalCard';
 import Timeline from './Timeline';
 import SessionList from '../SessionList';
-import { C, F } from './tokens';
+
+const C = {
+  cream: '#FBF8F1',
+  muted: '#98A395',
+};
+
+const F = {
+  sans: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+};
 
 export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Open/closed state for each section. All sections default to open
+  // so the page is fully informative on first visit; the therapist
+  // can collapse what they don't need.
+  const [openSections, setOpenSections] = useState({
+    soap: true,
+    patterns: true,
+    preferences: true,
+    medical: true,
+    timeline: true,
+  });
+  const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
   useEffect(() => {
     let cancelled = false;
@@ -52,8 +73,17 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
     return () => { cancelled = true; };
   }, [client?.id, therapistId]);
 
-  // Soft loading state: render header skeleton + the existing
-  // SessionList so the page is never blank.
+  // Convenience derived values for section subtitles + counts
+  const totalSessions = profile?.stats?.lifetimeSessions || 0;
+  const soapCount = (profile?.sessions || []).filter(s => s.completed).length;
+  const patternCount = profile?.patterns
+    ? (profile.patterns.topFrontZones?.length || 0)
+      + (profile.patterns.topBackZones?.length || 0)
+      + (profile.patterns.topAvoidZones?.length || 0)
+    : 0;
+  const medicalCount = profile?.medicalFlags?.length || 0;
+  const timelineCount = profile?.bookings?.length || 0;
+
   return (
     <div style={{ background: C.cream, minHeight: '100vh' }}>
       <ProfileHeader
@@ -61,8 +91,8 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         stats={profile?.stats}
         profile={profile}
         onBack={onBack}
-        onEdit={() => { /* TODO section 7: open edit modal */ }}
-        onArchive={() => { /* TODO section 7: archive flow */ }}
+        onEdit={() => { /* wire-up queued */ }}
+        onArchive={() => { /* wire-up queued */ }}
       />
 
       {loading && (
@@ -72,93 +102,31 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           color: C.muted,
           textAlign: 'center',
           padding: '4px 0 8px',
+          fontStyle: 'italic',
         }}>
           Loading profile…
         </div>
       )}
 
-      {/* Section 3: Status strip with balance, next visit, lifetime, attention */}
+      {/* Status strip stays uncollapsible: balance + next + lifetime
+          are too important to hide behind a click. */}
       {profile && <StatusStrip profile={profile} />}
 
-      {/* Section 4: Patterns + Preferences + Medical cards.
-          Responsive grid: single column on mobile/tablet, two columns
-          on wide screens with Patterns spanning full width since its
-          bars need horizontal room to be readable. */}
       {profile && (
-        <div style={{ padding: '0 18px' }}>
-          <PatternsCard
-            patterns={profile.patterns}
-            totalSessions={profile.stats?.lifetimeSessions || 0}
-          />
-          <div className="bm-cp-two-col" style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr',
-            gap: 0,
-          }}>
-            <PreferencesCard preferences={profile.preferences} />
-            <MedicalCard medicalFlags={profile.medicalFlags} />
-          </div>
-        </div>
-      )}
+        <div style={{ padding: '0 18px 24px' }}>
 
-      <style>{`
-        @media (min-width: 768px) {
-          .bm-cp-two-col {
-            grid-template-columns: 1fr 1fr !important;
-            gap: 16px !important;
-          }
-        }
-      `}</style>
-
-      {/* Section 5: Unified Timeline replaces the old SessionList */}
-      {profile && (
-        <div style={{ padding: '0 18px' }}>
-          <Timeline
-            profile={profile}
-            onSelectSession={onSelectSession}
-          />
-        </div>
-      )}
-
-      {/* Sessions + SOAP notes section.
-          Mounts the existing SessionList below the new design so the
-          full SOAP workflow (write, view, edit, delete) stays
-          accessible. SessionList renders its own count + stat boxes +
-          card-on-file controls, which the new design intentionally
-          does not duplicate. Title above the embed clarifies the
-          purpose so the section reads like a deliberate part of the
-          page, not a duplicate header.
-
-          Wrapped in a div so we can theme this section subtly
-          differently than the rest of the new page without modifying
-          SessionList directly. */}
-      {profile && (
-        <div style={{
-          padding: '0 18px',
-          marginTop: 8,
-        }}>
-          <div style={{
-            background: C.paper,
-            border: `1px solid ${C.lineFaint}`,
-            borderRadius: 14,
-            padding: '18px 18px 8px',
-            marginBottom: 16,
-          }}>
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              marginBottom: 12,
-            }}>
-              <span style={{ fontSize: 16 }}>📝</span>
-              <h2 style={{
-                margin: 0,
-                fontFamily: F.serif,
-                fontSize: 17, fontWeight: 700,
-                color: C.forest,
-                lineHeight: 1.2,
-              }}>
-                Sessions and SOAP notes
-              </h2>
-            </div>
+          {/* Sessions and SOAP notes: moved to the top per HK request.
+              This is the primary work surface for the therapist. */}
+          <ProfileSection
+            title="Sessions and SOAP notes"
+            subtitle={soapCount > 0
+              ? `${soapCount} SOAP note${soapCount === 1 ? '' : 's'} written`
+              : 'No SOAP notes written yet'}
+            count={soapCount > 0 ? soapCount : undefined}
+            sprig="note"
+            isOpen={openSections.soap}
+            onToggle={() => toggle('soap')}
+          >
             <SessionList
               client={profile.client}
               therapist={therapist}
@@ -167,7 +135,65 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onSelectSession={onSelectSession}
               compact={true}
             />
-          </div>
+          </ProfileSection>
+
+          <ProfileSection
+            title="Patterns"
+            subtitle={patternCount > 0
+              ? 'Recurring body zones across sessions'
+              : 'Will populate after first sessions'}
+            count={patternCount > 0 ? patternCount : undefined}
+            sprig="dots"
+            isOpen={openSections.patterns}
+            onToggle={() => toggle('patterns')}
+          >
+            <PatternsCard
+              patterns={profile.patterns}
+              totalSessions={totalSessions}
+            />
+          </ProfileSection>
+
+          <ProfileSection
+            title="Preferences"
+            subtitle={profile.preferences
+              ? 'Defaults from last completed session'
+              : 'Pressure, temp, music, draping'}
+            sprig="sun"
+            isOpen={openSections.preferences}
+            onToggle={() => toggle('preferences')}
+          >
+            <PreferencesCard preferences={profile.preferences} />
+          </ProfileSection>
+
+          <ProfileSection
+            title="Medical flags"
+            subtitle={medicalCount > 0
+              ? 'Things to keep in mind'
+              : 'Ask about anything new at next visit'}
+            count={medicalCount > 0 ? medicalCount : undefined}
+            sprig="moon"
+            isOpen={openSections.medical}
+            onToggle={() => toggle('medical')}
+          >
+            <MedicalCard medicalFlags={profile.medicalFlags} />
+          </ProfileSection>
+
+          <ProfileSection
+            title="Timeline"
+            subtitle={timelineCount > 0
+              ? `${timelineCount} event${timelineCount === 1 ? '' : 's'} on record`
+              : 'Bookings, sessions, packages, gifts'}
+            count={timelineCount > 0 ? timelineCount : undefined}
+            sprig="leaf"
+            isOpen={openSections.timeline}
+            onToggle={() => toggle('timeline')}
+          >
+            <Timeline
+              profile={profile}
+              onSelectSession={onSelectSession}
+            />
+          </ProfileSection>
+
         </div>
       )}
     </div>

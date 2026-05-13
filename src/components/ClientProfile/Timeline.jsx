@@ -20,7 +20,7 @@
 // 'unending scroll' HK called out.
 
 import React, { useState, useMemo } from 'react';
-import { C, F, S, formatCurrency } from './tokens';
+import { C, F, formatCurrency } from './tokens';
 
 const RECENT_LIMIT = 6;
 const OLDER_THRESHOLD_DAYS = 90;
@@ -32,13 +32,10 @@ export default function Timeline({ profile, onSelectSession }) {
 
   if (!events.length) {
     return (
-      <Card>
-        <Header count={0} />
-        <EmptyState>
-          Nothing on record yet. Book this client's first session or
-          send them an intake form to get started.
-        </EmptyState>
-      </Card>
+      <EmptyState>
+        Nothing on record yet. Book this client's first session or
+        send them an intake form to get started.
+      </EmptyState>
     );
   }
 
@@ -63,10 +60,8 @@ export default function Timeline({ profile, onSelectSession }) {
   const olderGroups = [...olderByMonth.values()];
 
   return (
-    <Card>
-      <Header count={events.length} />
-
-      <div style={{ marginTop: 6 }}>
+    <div>
+      <div>
         {recent.map((ev, i) => (
           <Row
             key={ev.id}
@@ -113,7 +108,7 @@ export default function Timeline({ profile, onSelectSession }) {
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 }
 
@@ -222,50 +217,6 @@ function buildEvents(profile, onSelectSession) {
 
   out.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
   return out;
-}
-
-function Card({ children }) {
-  return (
-    <div style={{
-      background: C.paper,
-      border: `1px solid ${C.lineFaint}`,
-      borderRadius: 14,
-      padding: '18px 18px 14px',
-      marginBottom: S.lg,
-      boxShadow: '0 1px 2px rgba(28,43,34,0.03)',
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function Header({ count }) {
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
-      marginBottom: 2,
-    }}>
-      <h2 style={{
-        margin: 0,
-        fontFamily: F.serif,
-        fontSize: 18, fontWeight: 700,
-        color: C.forest,
-        lineHeight: 1.2,
-      }}>
-        Timeline
-      </h2>
-      <div style={{
-        fontSize: 11,
-        color: C.muted,
-        fontWeight: 700,
-        letterSpacing: '0.12em',
-        textTransform: 'uppercase',
-        fontFamily: F.sans,
-      }}>
-        {count} event{count === 1 ? '' : 's'}
-      </div>
-    </div>
-  );
 }
 
 function EmptyState({ children }) {
