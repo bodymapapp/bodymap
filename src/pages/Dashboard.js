@@ -3432,7 +3432,13 @@ export default function Dashboard({ view }) {
   async function loadStats() {
     try {
       const clients = await db.getTherapistClients(therapist.id);
-      const { data: sessions } = await supabase.from('sessions').select('id').eq('therapist_id', therapist.id);
+      // Lifetime sessions = total confirmed/completed bookings.
+      // We use bookings (appointment records) not sessions (SOAP-note
+      // records) because bookings is the actual unit of work that
+      // happened. A booking can exist without a SOAP note; a SOAP-only
+      // session (rare) was never an appointment.
+      const { data: sessions } = await supabase.from('bookings').select('id, status').eq('therapist_id', therapist.id);
+      const sessionsCount = (sessions || []).filter(b => !b.status || ['confirmed', 'completed'].includes(b.status)).length;
       const { data: services } = await supabase.from('services').select('id').eq('therapist_id', therapist.id).eq('active', true);
       const { data: availability } = await supabase.from('availability').select('id,active').eq('therapist_id', therapist.id);
       // Lapsed clients for nudge
@@ -3451,29 +3457,42 @@ export default function Dashboard({ view }) {
       const new7d = (clients || []).filter(c => c.created_at && c.created_at >= d7).length;
       const new30d = (clients || []).filter(c => c.created_at && c.created_at >= d30).length;
 
-      // Sessions completed: session_date in window
-      const { data: recentSessions } = await supabase
-        .from('sessions')
-        .select('id, session_date, services(price)')
+      // Sessions completed: count of confirmed/completed bookings in
+      // the window. We read from `bookings` (not `sessions`) because
+      // bookings is the appointment record with date + service link,
+      // while sessions is the SOAP-note record decoupled from any
+      // service or date. booking_date is YYYY-MM-DD format so we slice
+      // the ISO timestamp to 10 chars.
+      //
+      // Status filter: confirmed and completed both count. Anything
+      // cancelled or pending is excluded from the live earnings/sessions
+      // numbers. If status is null (legacy rows from before the column
+      // was added), include it; defaulting to "treat as confirmed" is
+      // less surprising than silently dropping old data.
+      const { data: recentBookings } = await supabase
+        .from('bookings')
+        .select('id, booking_date, status, services(price)')
         .eq('therapist_id', therapist.id)
-        .gte('session_date', d30.slice(0, 10));
+        .gte('booking_date', d30.slice(0, 10));
 
-      const sessions7d = (recentSessions || []).filter(s => s.session_date >= d7.slice(0, 10)).length;
-      const sessions30d = (recentSessions || []).length;
+      const isCounted = (b) => !b.status || ['confirmed', 'completed'].includes(b.status);
+      const counted30d = (recentBookings || []).filter(isCounted);
+      const counted7d = counted30d.filter(b => b.booking_date >= d7.slice(0, 10));
 
-      // Earnings: sum of session.services.price for completed sessions in window.
-      // Sessions don't store actual paid amounts (price comes from service),
-      // but this is the same number a therapist sees on session detail rows
-      // so it stays internally consistent.
-      const earnings7d = (recentSessions || [])
-        .filter(s => s.session_date >= d7.slice(0, 10))
-        .reduce((sum, s) => sum + (s.services?.price || 0), 0);
-      const earnings30d = (recentSessions || [])
-        .reduce((sum, s) => sum + (s.services?.price || 0), 0);
+      const sessions7d = counted7d.length;
+      const sessions30d = counted30d.length;
+
+      // Earnings: sum of booking.services.price for counted bookings.
+      // Falls back to therapist.session_rate when the booking's service
+      // has no price (rare but possible for legacy bookings).
+      const fallbackRate = Number(therapist?.session_rate) || 0;
+      const priceOf = (b) => (b.services?.price ?? fallbackRate) || 0;
+      const earnings7d = counted7d.reduce((sum, b) => sum + priceOf(b), 0);
+      const earnings30d = counted30d.reduce((sum, b) => sum + priceOf(b), 0);
 
       setStats({
         clients: clients?.length || 0,
-        sessions: sessions?.length || 0,
+        sessions: sessionsCount,
         services: services || [],
         availability: availability || [],
         lapsedClients,

@@ -213,49 +213,76 @@ export default function ImportClients({ therapist, onComplete }) {
         // for the same service name. May return null if no service column.
         const serviceId = serviceName ? await resolveServiceId(serviceName, sessionPrice) : null;
 
-        // If we have visit history, create a synthetic session to preserve last visit date.
-        // session_date is the column the dashboard's stats query reads,
-        // so it MUST be set (YYYY-MM-DD format) for the import to count.
+        // Bookings are the appointment records with date + service_id +
+        // FK to services.price. The dashboard counts and earnings strip
+        // both read from `bookings`. Sessions in this codebase are
+        // SOAP-note records that don't track date or service, so
+        // writing to `sessions` wouldn't surface in any counter.
+        //
+        // Strategy: every imported client's last_visit (and historical
+        // visits derived from visit_count) becomes a `confirmed`
+        // booking. start_time defaults to 10:00, end_time = start +
+        // service duration (we look it up from the service we resolved).
+        let serviceDuration = 60;
+        if (serviceId) {
+          const { data: svcRow } = await supabase
+            .from('services').select('duration').eq('id', serviceId).maybeSingle();
+          if (svcRow?.duration) serviceDuration = svcRow.duration;
+        }
+        const fmtTime = (h, m = 0) => `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`;
+        const endTimeFor = (startHour, durationMin) => {
+          const endMin = startHour * 60 + durationMin;
+          return fmtTime(Math.floor(endMin / 60), endMin % 60);
+        };
+
+        // If we have a last_visit, write a booking on that exact date.
         if (lastVisit && client?.id) {
           const parsedDate = new Date(lastVisit);
           if (!isNaN(parsedDate)) {
             const isoDate = parsedDate.toISOString().slice(0, 10);
-            await supabase.from('sessions').upsert({
+            await supabase.from('bookings').insert({
               therapist_id: therapist.id,
-              client_id: client.id,
               service_id: serviceId,
-              session_date: isoDate,
-              completed: true,
-              therapist_notes: JSON.stringify({ __soap: true, S:'', O:'', A:'Imported session history', P:'', imported: true }),
-              created_at: parsedDate.toISOString(),
-              completed_at: parsedDate.toISOString(),
-            }, { ignoreDuplicates: true });
+              client_name: name,
+              client_email: email,
+              client_phone: phone,
+              booking_date: isoDate,
+              start_time: fmtTime(10),
+              end_time: endTimeFor(10, serviceDuration),
+              status: 'completed',
+              notes: 'Imported session history',
+              deposit_required: false,
+              deposit_amount: 0,
+              deposit_paid: false,
+            });
           }
         }
 
-        // If we have visit count, create placeholder historical sessions
-        // spread BACKWARD from last_visit (or today) at ~2-week intervals
-        // so the most recent few fall inside the dashboard's 30-day
-        // window and Sessions/Earnings counters are non-zero immediately
-        // after import.
+        // Historical visits from visit_count: every ~2 weeks back from
+        // the anchor (last_visit or today). Most recent few land inside
+        // the 30-day window so dashboard counters reflect the import.
         if (visitCount && visitCount > 1 && client?.id) {
           const anchor = lastVisit ? new Date(lastVisit) : new Date();
-          // Skip the first one if lastVisit already covered it above
-          const startIdx = lastVisit ? 1 : 0;
+          const startIdx = lastVisit ? 1 : 0; // already wrote lastVisit above
           const totalToCreate = Math.min(visitCount - startIdx, 10);
           for (let i = 0; i < totalToCreate; i++) {
             const d = new Date(anchor);
-            d.setDate(d.getDate() - (i + startIdx) * 14); // every ~2 weeks
+            d.setDate(d.getDate() - (i + startIdx) * 14);
             const isoDate = d.toISOString().slice(0, 10);
-            await supabase.from('sessions').insert({
+            await supabase.from('bookings').insert({
               therapist_id: therapist.id,
-              client_id: client.id,
               service_id: serviceId,
-              session_date: isoDate,
-              completed: true,
-              therapist_notes: JSON.stringify({ __soap: true, S:'', O:'', A:'Imported session history', P:'', imported: true }),
-              created_at: d.toISOString(),
-              completed_at: d.toISOString(),
+              client_name: name,
+              client_email: email,
+              client_phone: phone,
+              booking_date: isoDate,
+              start_time: fmtTime(10),
+              end_time: endTimeFor(10, serviceDuration),
+              status: 'completed',
+              notes: 'Imported session history',
+              deposit_required: false,
+              deposit_amount: 0,
+              deposit_paid: false,
             });
           }
         }
