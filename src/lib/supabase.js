@@ -100,8 +100,8 @@ export const db = {
       supabase.from('clients').select('*').eq('therapist_id', therapistId).order('created_at', { ascending: false }),
       supabase.from('bookings').select('id, client_id, client_email, client_phone, booking_date, status').eq('therapist_id', therapistId),
       supabase.from('sessions').select('id, client_id, completed, created_at').eq('therapist_id', therapistId),
-      supabase.from('package_purchases').select('id, client_id, sessions_remaining, sessions_purchased, status, package:packages(name)').eq('therapist_id', therapistId).eq('status', 'active'),
-      supabase.from('member_subscriptions').select('id, client_id, status, membership:memberships(name, monthly_session_credits)').eq('therapist_id', therapistId).eq('status', 'active'),
+      supabase.from('package_purchases').select('id, client_id, client_email, sessions_remaining, sessions_purchased, status, package:packages(name)').eq('therapist_id', therapistId).eq('status', 'active'),
+      supabase.from('member_subscriptions').select('id, client_id, client_email, status, membership:memberships(name, monthly_session_credits)').eq('therapist_id', therapistId).eq('status', 'active'),
     ]);
 
     if (clientsRes.error) {
@@ -148,9 +148,17 @@ export const db = {
       sessionsByClient.get(s.client_id).push(s);
     }
     const packageByClient = new Map();
-    for (const p of allPackages) if (p.client_id) packageByClient.set(p.client_id, p);
+    const packageByEmail = new Map();
+    for (const p of allPackages) {
+      if (p.client_id) packageByClient.set(p.client_id, p);
+      if (p.client_email) packageByEmail.set(p.client_email.toLowerCase(), p);
+    }
     const subByClient = new Map();
-    for (const m of allSubs) if (m.client_id) subByClient.set(m.client_id, m);
+    const subByEmail = new Map();
+    for (const m of allSubs) {
+      if (m.client_id) subByClient.set(m.client_id, m);
+      if (m.client_email) subByEmail.set(m.client_email.toLowerCase(), m);
+    }
 
     return clients.map(c => {
       // Gather bookings: prefer client_id match, fallback to email/phone.
@@ -172,8 +180,10 @@ export const db = {
         return hrs <= 48;
       });
 
-      const activePackage = packageByClient.get(c.id);
-      const activeMembership = subByClient.get(c.id);
+      let activePackage = packageByClient.get(c.id);
+      if (!activePackage && c.email) activePackage = packageByEmail.get(c.email.toLowerCase());
+      let activeMembership = subByClient.get(c.id);
+      if (!activeMembership && c.email) activeMembership = subByEmail.get(c.email.toLowerCase());
 
       return {
         ...c,

@@ -105,71 +105,126 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
   return (
     <div style={{
-      marginBottom: 16,
-      padding: '14px 16px',
-      background: C.goldBg,
-      border: `1px solid ${C.goldBorder}`,
-      borderRadius: 12,
+      marginBottom: 20,
+      padding: '18px 20px',
+      background: '#FFFFFF',
+      borderRadius: 14,
+      borderLeft: `5px solid ${C.gold}`,
+      boxShadow: '0 6px 18px rgba(146, 102, 14, 0.10), 0 0 0 1px rgba(146, 102, 14, 0.12)',
+      position: 'relative',
     }}>
+      {/* Header: icon block + label + tagline */}
       <div style={{
-        fontSize: 11, fontWeight: 700,
-        color: C.gold, letterSpacing: '0.18em',
-        textTransform: 'uppercase',
-        marginBottom: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 14,
       }}>
-        🎟 Active balance
+        <div style={{
+          width: 40, height: 40,
+          borderRadius: 10,
+          background: `linear-gradient(135deg, ${C.goldBg} 0%, #F5E9C3 100%)`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 22,
+          flexShrink: 0,
+        }}>
+          🎟
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 11, fontWeight: 800,
+            color: C.gold, letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            lineHeight: 1.1,
+            marginBottom: 2,
+          }}>
+            Active Balance
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: C.inkSoft,
+            lineHeight: 1.3,
+          }}>
+            Prepaid sessions on this client's account
+          </div>
+        </div>
       </div>
 
       {/* Packages */}
       {packages.map(p => {
         const pct = p.total > 0 ? Math.round((p.remaining / p.total) * 100) : 0;
+        const isLow = p.remaining > 0 && p.remaining <= 1;
+        const isEmpty = p.remaining === 0;
         return (
           <div key={p.id} style={{
-            background: C.white,
+            background: '#FAF7EE',
             border: `1px solid ${C.lineFaint}`,
             borderRadius: 10,
-            padding: '10px 14px',
+            padding: '14px 16px',
             marginBottom: 8,
+            display: 'grid',
+            gridTemplateColumns: '1fr auto',
+            gap: 14,
+            alignItems: 'center',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ minWidth: 0 }}>
               <div style={{
                 fontFamily: 'Georgia, serif',
-                fontSize: 14, fontWeight: 700,
+                fontSize: 15, fontWeight: 700,
                 color: C.forest,
+                marginBottom: 5,
               }}>
                 {p.name}
               </div>
               <div style={{
-                fontSize: 13, fontWeight: 700,
-                color: p.remaining === 0 ? '#DC2626' : C.sage,
+                height: 8,
+                background: '#EFE7D2',
+                borderRadius: 4,
+                overflow: 'hidden',
+                marginBottom: 6,
               }}>
-                {p.remaining} of {p.total} remaining
+                <div style={{
+                  width: `${pct}%`,
+                  height: '100%',
+                  background: isEmpty ? '#FCA5A5' : isLow ? '#F59E0B' : C.sage,
+                  transition: 'width 0.25s ease-out',
+                }}/>
+              </div>
+              <div style={{
+                fontSize: 12,
+                color: C.inkSoft,
+                display: 'flex', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap',
+              }}>
+                <span>{p.used} used</span>
+                {p.expires_at && (
+                  <span>Expires {formatDate(p.expires_at)}</span>
+                )}
               </div>
             </div>
-            {/* Progress bar */}
-            <div style={{
-              marginTop: 8,
-              height: 6,
-              background: '#F0EBE0',
-              borderRadius: 3,
-              overflow: 'hidden',
-            }}>
+
+            {/* The number you actually want to see: big remaining count */}
+            <div style={{ textAlign: 'right', minWidth: 90, flexShrink: 0 }}>
               <div style={{
-                width: `${pct}%`,
-                height: '100%',
-                background: p.remaining === 0 ? '#FCA5A5' : C.sage,
-                transition: 'width 0.25s ease-out',
-              }}/>
-            </div>
-            <div style={{
-              fontSize: 11, color: C.inkSoft,
-              marginTop: 6,
-              display: 'flex', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap',
-            }}>
-              <span>{p.used} used</span>
-              {p.expires_at && (
-                <span>Expires {formatDate(p.expires_at)}</span>
-              )}
+                fontFamily: 'Georgia, serif',
+                fontSize: 36, fontWeight: 700,
+                color: isEmpty ? '#DC2626' : isLow ? '#D97706' : C.sage,
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {p.remaining}
+              </div>
+              <div style={{
+                fontSize: 11,
+                color: C.inkSoft,
+                marginTop: 4,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontWeight: 600,
+              }}>
+                of {p.total} left
+              </div>
             </div>
           </div>
         );
@@ -181,35 +236,60 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
           background: C.greenBg,
           border: `1px solid #86EFAC`,
           borderRadius: 10,
-          padding: '10px 14px',
+          padding: '14px 16px',
           marginBottom: 8,
+          display: 'grid',
+          gridTemplateColumns: '1fr auto',
+          gap: 14,
+          alignItems: 'center',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{
               fontFamily: 'Georgia, serif',
-              fontSize: 14, fontWeight: 700,
+              fontSize: 15, fontWeight: 700,
               color: C.forest,
+              marginBottom: 5,
+              display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
             }}>
               {m.membership?.name || 'Membership'}
               <span style={{
-                marginLeft: 8,
                 fontSize: 10, fontWeight: 700,
                 color: C.green,
                 background: '#fff',
                 padding: '2px 8px', borderRadius: 999,
                 letterSpacing: '0.04em',
                 textTransform: 'uppercase',
-              }}>Active</span>
+              }}>✓ Active</span>
             </div>
-            {m.membership?.monthly_session_credits > 0 && (
-              <div style={{ fontSize: 13, fontWeight: 700, color: C.sage }}>
-                {m.membership.monthly_session_credits} session{m.membership.monthly_session_credits === 1 ? '' : 's'}/month
+            {m.current_period_end && (
+              <div style={{ fontSize: 12, color: C.inkSoft }}>
+                Cycle renews {formatDate(m.current_period_end)}
               </div>
             )}
           </div>
-          {m.current_period_end && (
-            <div style={{ fontSize: 11, color: C.inkSoft, marginTop: 6 }}>
-              Cycle renews {formatDate(m.current_period_end)}
+
+          {/* Sessions/month, with same visual weight as package remaining */}
+          {m.membership?.monthly_session_credits > 0 && (
+            <div style={{ textAlign: 'right', minWidth: 90, flexShrink: 0 }}>
+              <div style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 36, fontWeight: 700,
+                color: C.green,
+                lineHeight: 1,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {m.membership.monthly_session_credits}
+              </div>
+              <div style={{
+                fontSize: 11,
+                color: C.inkSoft,
+                marginTop: 4,
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+                fontWeight: 600,
+              }}>
+                session{m.membership.monthly_session_credits === 1 ? '' : 's'}/month
+              </div>
             </div>
           )}
         </div>
