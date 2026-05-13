@@ -456,7 +456,36 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
             )}
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+          {/* Active balance chip: shown when the client has an active
+              package or membership. Surfaces the same info as the
+              full Active Balance card on the client profile so the
+              therapist sees it at-a-glance in the list view too.
+              Package wins if both exist (rare). */}
+          {client.active_package && (
+            <span style={{
+              background: '#FAF3DC', color: '#92660E',
+              fontSize: "10.5px", fontWeight: "700",
+              padding: "3px 8px", borderRadius: "20px",
+              whiteSpace: "nowrap",
+              border: '1px solid #E5D085',
+            }}
+            title={`${client.active_package.name}: ${client.active_package.remaining} of ${client.active_package.total} sessions remaining`}>
+              🎟 {client.active_package.remaining}/{client.active_package.total} left
+            </span>
+          )}
+          {!client.active_package && client.active_membership && (
+            <span style={{
+              background: '#F0FDF4', color: '#065F46',
+              fontSize: "10.5px", fontWeight: "700",
+              padding: "3px 8px", borderRadius: "20px",
+              whiteSpace: "nowrap",
+              border: '1px solid #86EFAC',
+            }}
+            title={`Active member: ${client.active_membership.name}`}>
+              ✨ Member
+            </span>
+          )}
           <span style={{ background: status.bg, color: status.color, fontSize: "11px", fontWeight: "700",
             padding: "3px 8px", borderRadius: "20px", whiteSpace: "nowrap" }}>
             {status.icon} {status.label}

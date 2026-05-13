@@ -13,7 +13,18 @@ const C = {
 
 export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession }) {
   const [sessions, setSessions] = useState([]);
+  // Bookings = the actual appointment records this client has had.
+  // Distinct from `sessions` (SOAP-note records). The header count
+  // and stat boxes at the top of the page derive from bookings;
+  // sessions still drive the per-row SOAP list below.
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Derived counts. Filter to confirmed/completed status (null
+  // counts as confirmed for legacy rows).
+  const bookedCount = bookings.filter(b => !b.status || ['confirmed', 'completed'].includes(b.status)).length;
+  const completedCount = bookings.filter(b => b.status === 'completed').length;
+
   const [isArchived, setIsArchived] = useState(client?.do_not_rebook || false);
   const [dnrReason, setDnrReason] = useState(client?.dnr_reason || "");
   const [showArchiveMenu, setShowArchiveMenu] = useState(false);
@@ -240,11 +251,25 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   async function loadSessions() {
     setLoading(true);
     try {
+      // SOAP-note records (what the per-row list below shows)
       const { data, error } = await supabase
         .from("sessions").select("*")
         .eq("client_id", client.id)
         .order("created_at", { ascending: false });
       if (!error) setSessions(data || []);
+
+      // Bookings for this client (the real appointment record).
+      // Counts at the top of the page derive from this so they
+      // reflect what the client list card and dashboard counters
+      // show. Bookings are joined by client_email since some
+      // legacy bookings don't have client_id set.
+      const { data: bookingRows } = await supabase
+        .from("bookings")
+        .select("id, booking_date, status")
+        .eq("therapist_id", therapistId)
+        .or(`client_email.eq.${client.email || ''},client_phone.eq.${client.phone || ''}`)
+        .order("booking_date", { ascending: false });
+      setBookings(bookingRows || []);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
   }
@@ -405,7 +430,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
                 </span>
               )}
             </div>
-            <p style={{ fontSize: "13px", color: C.gray, margin: "2px 0 0" }}>{sessions.length} session{sessions.length !== 1 ? "s" : ""} on record</p>
+            <p style={{ fontSize: "13px", color: C.gray, margin: "2px 0 0" }}>{bookedCount} session{bookedCount !== 1 ? "s" : ""} on record</p>
           </div>
         </div>
 
@@ -474,13 +499,15 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
         {[
-          // "Total" shows the raw row count so the math always reconciles
-          // with Complete + Intake Done. Sublabel makes it clear that this
-          // is "all sessions on record" — intakes count toward this total
-          // even before the session is marked complete. Common confusion
-          // point: a friend tests the intake → row appears here.
-          { label: "Total", sublabel: "intakes + completed", value: sessions.length, color: C.forest },
-          { label: "✅ Complete", value: sessions.filter(s => s.completed).length, color: C.sage },
+          // "Total" = appointments booked (from bookings table, the
+          // real appointment record). Sublabel makes it clear that
+          // this includes pending intake states.
+          // "Complete" = bookings marked completed.
+          // "Intake Done" = SOAP-note records (sessions table) that
+          // have not yet been finalized. Surfaces the day-of workflow
+          // bottleneck of intakes filled but no notes written.
+          { label: "Total", sublabel: "appointments booked", value: bookedCount, color: C.forest },
+          { label: "✅ Complete", value: completedCount, color: C.sage },
           { label: "🧭 Intake Done", value: sessions.filter(s => !s.completed).length, color: C.forest },
         ].map((stat, i) => (
           <div key={i} style={{ background: C.white, borderRadius: "12px", padding: "16px", border: `1px solid ${C.lightGray}`, textAlign: "center" }}>

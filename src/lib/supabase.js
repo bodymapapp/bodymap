@@ -98,12 +98,17 @@ export const db = {
     // Sessions are the optional SOAP-note records, separate from
     // bookings, used here only for the has_pending flag (intake
     // filled but SOAP not yet written).
+    // Package purchases and member subscriptions are also pulled
+    // so the client list card can show a chip ('5-pack: 3 left',
+    // 'Monthly Member') for clients with active balance.
     const { data: clients, error } = await supabase
       .from('clients')
       .select(`
         *,
         bookings(id, booking_date, status),
-        sessions(id, completed, created_at)
+        sessions(id, completed, created_at),
+        package_purchases!package_purchases_client_id_fkey(id, sessions_remaining, sessions_purchased, status, package:packages(name)),
+        member_subscriptions!member_subscriptions_client_id_fkey(id, status, membership:memberships(name, monthly_session_credits))
       `)
       .eq('therapist_id', therapistId)
       .order('created_at', { ascending: false });
@@ -132,6 +137,13 @@ export const db = {
         return hrs <= 48;
       });
 
+      // Active package / membership for the chip on the card.
+      // Take the first active one; if multiple, the most recently
+      // created one wins (the join doesn't guarantee order so we
+      // just pick whichever the join returned first).
+      const activePackage = (c.package_purchases || []).find(p => p.status === 'active');
+      const activeMembership = (c.member_subscriptions || []).find(m => m.status === 'active');
+
       return {
         ...c,
         total_sessions: counted.length,
@@ -140,6 +152,19 @@ export const db = {
         days_since_visit: daysSince,
         has_pending: recentPending.length > 0,
         has_old_pending: pending.length > recentPending.length,
+        active_package: activePackage
+          ? {
+              name: activePackage.package?.name || 'Package',
+              remaining: activePackage.sessions_remaining,
+              total: activePackage.sessions_purchased,
+            }
+          : null,
+        active_membership: activeMembership
+          ? {
+              name: activeMembership.membership?.name || 'Member',
+              credits: activeMembership.membership?.monthly_session_credits || 0,
+            }
+          : null,
       };
     });
   },
