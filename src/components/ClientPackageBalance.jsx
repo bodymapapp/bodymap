@@ -45,38 +45,30 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
     async function load() {
       // 1. Active package purchases for this client.
-      //    Join the package definition so we know the name + count.
+      //    The schema already stores sessions_remaining as a computed
+      //    counter, decremented when a booking redeems against the
+      //    purchase. So we don't need to count package_redemptions
+      //    rows; we just read sessions_remaining directly.
+      //    Joined package.name + package.session_count for display.
       const { data: purchases } = await supabase
         .from('package_purchases')
         .select(`
-          id, status, created_at, expires_at,
-          sessions_included,
-          package:packages(id, name, sessions_count)
+          id, status, purchased_at, expires_at,
+          sessions_purchased, sessions_remaining,
+          package:packages(id, name, session_count)
         `)
         .eq('client_id', clientId)
         .eq('therapist_id', therapistId)
-        .in('status', ['active', 'paid'])
-        .order('created_at', { ascending: false });
+        .in('status', ['active'])
+        .order('purchased_at', { ascending: false });
 
-      // 2. Redemptions: count per purchase
-      const purchaseIds = (purchases || []).map(p => p.id);
-      let redemptionCounts = {};
-      if (purchaseIds.length > 0) {
-        const { data: redemptions } = await supabase
-          .from('package_redemptions')
-          .select('package_purchase_id')
-          .in('package_purchase_id', purchaseIds);
-        for (const r of (redemptions || [])) {
-          redemptionCounts[r.package_purchase_id] = (redemptionCounts[r.package_purchase_id] || 0) + 1;
-        }
-      }
-
-      // 3. Memberships for this client.
+      // 2. Memberships for this client. monthly_session_credits is the
+      //    number of sessions a membership includes per billing cycle.
       const { data: memberRows } = await supabase
         .from('member_subscriptions')
         .select(`
           id, status, current_period_start, current_period_end,
-          membership:memberships(id, name, sessions_included, cycle_days)
+          membership:memberships(id, name, monthly_session_credits, monthly_price)
         `)
         .eq('client_id', clientId)
         .eq('therapist_id', therapistId)
@@ -85,21 +77,16 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
       if (cancelled) return;
 
-      // Compose package list with remaining count.
-      const pkgList = (purchases || []).map(p => {
-        const total = p.sessions_included || p.package?.sessions_count || 0;
-        const used = redemptionCounts[p.id] || 0;
-        const remaining = Math.max(0, total - used);
-        return {
-          id: p.id,
-          name: p.package?.name || 'Session pack',
-          total,
-          used,
-          remaining,
-          expires_at: p.expires_at,
-          created_at: p.created_at,
-        };
-      }).filter(p => p.total > 0);
+      // Compose package list using the DB's precomputed counters.
+      const pkgList = (purchases || []).map(p => ({
+        id: p.id,
+        name: p.package?.name || 'Session pack',
+        total: p.sessions_purchased || p.package?.session_count || 0,
+        used: (p.sessions_purchased || 0) - (p.sessions_remaining || 0),
+        remaining: p.sessions_remaining || 0,
+        expires_at: p.expires_at,
+        purchased_at: p.purchased_at,
+      })).filter(p => p.total > 0);
 
       setPackages(pkgList);
       setMemberships(memberRows || []);
@@ -214,9 +201,9 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
                 textTransform: 'uppercase',
               }}>Active</span>
             </div>
-            {m.membership?.sessions_included > 0 && (
+            {m.membership?.monthly_session_credits > 0 && (
               <div style={{ fontSize: 13, fontWeight: 700, color: C.sage }}>
-                {m.membership.sessions_included} session{m.membership.sessions_included === 1 ? '' : 's'}/cycle
+                {m.membership.monthly_session_credits} session{m.membership.monthly_session_credits === 1 ? '' : 's'}/month
               </div>
             )}
           </div>
