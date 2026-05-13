@@ -90,30 +90,53 @@ export const db = {
   },
 
   async getTherapistClients(therapistId) {
-    // Fetch clients with real session counts from the sessions table
+    // Pull clients with bookings AND sessions joined.
+    // Bookings = appointment records (have booking_date, status,
+    // service_id). The visit-count and last-visit timestamps on
+    // the client list card should reflect bookings, since those
+    // are the actual unit of work that happened.
+    // Sessions are the optional SOAP-note records, separate from
+    // bookings, used here only for the has_pending flag (intake
+    // filled but SOAP not yet written).
     const { data: clients, error } = await supabase
       .from('clients')
-      .select('*, sessions(id, completed, created_at)')
+      .select(`
+        *,
+        bookings(id, booking_date, status),
+        sessions(id, completed, created_at)
+      `)
       .eq('therapist_id', therapistId)
       .order('created_at', { ascending: false });
     if (error) throw error;
 
     return (clients || []).map(c => {
+      // Booking-derived stats: total visits + last visit. Counts
+      // confirmed and completed bookings. Null status counts as
+      // confirmed (legacy rows from before the column was added).
+      const allBookings = c.bookings || [];
+      const counted = allBookings.filter(b => !b.status || ['confirmed', 'completed'].includes(b.status));
+      const sortedBookings = [...counted].sort((a, b) => (b.booking_date || '').localeCompare(a.booking_date || ''));
+      const lastBooking = sortedBookings[0];
+      const daysSince = lastBooking?.booking_date
+        ? Math.floor((Date.now() - new Date(lastBooking.booking_date + 'T00:00:00Z').getTime()) / 86400000)
+        : null;
+
+      // Session-derived stats (SOAP records, separate concept).
+      // Used only for has_pending: clients who filled intake but
+      // don't yet have a SOAP note written. Matters for the
+      // therapist's day-of workflow.
       const sessions = c.sessions || [];
-      const sorted = [...sessions].sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-      const lastSession = sorted[0];
-      const daysSince = lastSession ? Math.floor((Date.now() - new Date(lastSession.created_at)) / 86400000) : null;
       const pending = sessions.filter(s => !s.completed);
-      // Only flag as "today's focus" if intake submitted within 48 hours
       const recentPending = pending.filter(s => {
         const hrs = (Date.now() - new Date(s.created_at)) / 3600000;
         return hrs <= 48;
       });
+
       return {
         ...c,
-        total_sessions: sessions.length,
-        completed_sessions: sessions.filter(s => s.completed).length,
-        last_session_at: lastSession?.created_at || null,
+        total_sessions: counted.length,
+        completed_sessions: counted.filter(b => b.status === 'completed').length,
+        last_session_at: lastBooking?.booking_date || null,
         days_since_visit: daysSince,
         has_pending: recentPending.length > 0,
         has_old_pending: pending.length > recentPending.length,
