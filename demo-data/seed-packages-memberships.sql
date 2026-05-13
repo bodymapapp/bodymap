@@ -35,14 +35,17 @@ DECLARE
   v_linda_id uuid;
   v_patrick_id uuid;
 BEGIN
-  -- Find the signed-in therapist
+  -- Find the therapist by email. SQL Editor uses a different
+  -- session than the MyBodyMap app, so auth.uid() returns null
+  -- here. Using email directly works in both contexts. Change
+  -- this email if your demo account uses a different one.
   SELECT id INTO v_therapist_id
   FROM therapists
-  WHERE email = (SELECT email FROM auth.users WHERE id = auth.uid())
+  WHERE email = 'bodymapdemo@gmail.com'
   LIMIT 1;
 
   IF v_therapist_id IS NULL THEN
-    RAISE EXCEPTION 'Could not find therapist for current auth user. Make sure you are signed in to MyBodyMap.';
+    RAISE EXCEPTION 'Could not find therapist with email bodymapdemo@gmail.com. To find yours, run: SELECT id, email FROM therapists; then edit this script.';
   END IF;
 
   -- ─────────── Package ───────────
