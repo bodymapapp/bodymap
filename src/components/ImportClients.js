@@ -115,7 +115,7 @@ export default function ImportClients({ therapist, onComplete }) {
         return existing.id;
       }
 
-      // Auto-create. Default duration 60 min if not specified. is_active
+      // Auto-create. Default duration 60 min if not specified. active
       // false so the new service is hidden from the live booking page
       // until the therapist reviews it (avoids surprises if their CSV
       // has a typoed service name).
@@ -124,9 +124,9 @@ export default function ImportClients({ therapist, onComplete }) {
         .insert({
           therapist_id: therapist.id,
           name: serviceName,
-          duration_minutes: 60,
+          duration: 60,
           price: defaultPrice || 0,
-          is_active: false,
+          active: false,
         })
         .select('id')
         .single();

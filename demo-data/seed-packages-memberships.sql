@@ -55,7 +55,7 @@ BEGIN
   LIMIT 1;
 
   IF v_package_id IS NULL THEN
-    INSERT INTO packages (therapist_id, name, description, session_count, price, is_active)
+    INSERT INTO packages (therapist_id, name, description, session_count, price, active)
     VALUES (
       v_therapist_id,
       '5-pack Swedish 60',
@@ -74,7 +74,7 @@ BEGIN
   IF v_membership_id IS NULL THEN
     INSERT INTO memberships (
       therapist_id, name, description,
-      monthly_price, monthly_session_credits, addon_discount_percent, is_active
+      monthly_price, monthly_session_credits, addon_discount_percent, active
     )
     VALUES (
       v_therapist_id,
