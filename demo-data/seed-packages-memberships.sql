@@ -148,10 +148,12 @@ BEGIN
   ) THEN
     INSERT INTO member_subscriptions (
       therapist_id, membership_id, client_id, client_email, client_name,
-      status, current_period_start, current_period_end
+      status, current_period_start, current_period_end,
+      monthly_price, monthly_session_credits, current_credits
     ) VALUES (
       v_therapist_id, v_membership_id, v_linda_id, 'linda.park@example.com', 'Linda Park',
-      'active', NOW() - interval '18 days', NOW() + interval '12 days'
+      'active', NOW() - interval '18 days', NOW() + interval '12 days',
+      95, 1, 1
     );
   END IF;
 
@@ -160,10 +162,12 @@ BEGIN
   ) THEN
     INSERT INTO member_subscriptions (
       therapist_id, membership_id, client_id, client_email, client_name,
-      status, current_period_start, current_period_end
+      status, current_period_start, current_period_end,
+      monthly_price, monthly_session_credits, current_credits
     ) VALUES (
       v_therapist_id, v_membership_id, v_patrick_id, 'patrick.murphy@example.com', 'Patrick Murphy',
-      'active', NOW() - interval '5 days', NOW() + interval '25 days'
+      'active', NOW() - interval '5 days', NOW() + interval '25 days',
+      95, 1, 1
     );
   END IF;
 
