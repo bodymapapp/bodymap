@@ -11,7 +11,7 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession }) {
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false }) {
   const [sessions, setSessions] = useState([]);
   // Bookings = the actual appointment records this client has had.
   // Distinct from `sessions` (SOAP-note records). The header count
@@ -413,6 +413,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
         </div>
       )}
 
+      {!compact && (
       <div style={{ marginBottom: "20px" }}>
         {/* Top row: back + name + sessions count */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: 10 }}>
@@ -496,7 +497,9 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           </div>
         </div>
       </div>
+      )}
 
+      {!compact && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>
         {[
           // "Total" = appointments booked (from bookings table, the
@@ -519,6 +522,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           </div>
         ))}
       </div>
+      )}
 
 
       {/* Card on File */}

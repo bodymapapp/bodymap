@@ -165,6 +165,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               therapistId={therapistId}
               onBack={onBack}
               onSelectSession={onSelectSession}
+              compact={true}
             />
           </div>
         </div>

@@ -1,305 +1,227 @@
 // src/components/ClientProfile/Timeline.jsx
 //
-// Unified activity feed for the client profile. Merges five event
-// sources into a single reverse-chronological list:
+// Activity timeline for the client profile, redesigned.
 //
-//   bookings           appointments scheduled / completed / cancelled
-//   sessions           SOAP notes written
-//   package_purchases  package bought
-//   member_subs        membership started or renewed
-//   gift_certificates  gift card received
+// Design principles:
+//   - The DATE is the visual anchor, not the service name. Large
+//     month + day on the left, all detail to the right.
+//   - Repeated service names are suppressed. If three sessions in a
+//     row are 'Sports Massage 60 min', only the first row shows the
+//     name; the next ones say 'Same as above' in italic muted.
+//   - The most recent event gets a 'LATEST' pill so the eye lands
+//     on it first.
+//   - Older history collapses into one summary row per month
+//     ('4 sessions · Sports Massage 60 min'). Click to expand.
+//   - Rows are CLICKABLE when a session exists for them. Click
+//     opens the SOAP editor directly.
 //
-// Each event is normalized to { id, type, timestamp, title, detail,
-// icon, tone, onClick }. The timeline renders with date dividers
-// ("Today", "Yesterday", "This week", "March 2026") so the
-// therapist can scan time periods quickly.
-//
-// Pagination: load all up front (typically <100 events per client),
-// show first 25, "Show more" button reveals the rest. Beats infinite
-// scroll for this density.
+// Replaces the previous design that rendered every event as an
+// identical-looking row in narrow time buckets, producing the
+// 'unending scroll' HK called out.
 
 import React, { useState, useMemo } from 'react';
-import { C, F, S, formatShortDate, formatCurrency } from './tokens';
+import { C, F, S, formatCurrency } from './tokens';
 
-const PAGE_SIZE = 25;
+const RECENT_LIMIT = 6;
+const OLDER_THRESHOLD_DAYS = 90;
 
 export default function Timeline({ profile, onSelectSession }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expandedMonths, setExpandedMonths] = useState(new Set());
 
   const events = useMemo(() => buildEvents(profile, onSelectSession), [profile, onSelectSession]);
-  const visible = expanded ? events : events.slice(0, PAGE_SIZE);
-  const hidden = events.length - visible.length;
 
   if (!events.length) {
     return (
       <Card>
-        <SectionHeader icon="📜" label="Timeline" subtitle="Bookings, sessions, packages, and gifts" />
-        <EmptyState>Nothing on record yet. Book this client's first session or send them an intake form to get started.</EmptyState>
+        <Header count={0} />
+        <EmptyState>
+          Nothing on record yet. Book this client's first session or
+          send them an intake form to get started.
+        </EmptyState>
       </Card>
     );
   }
 
-  // Group by relative time bucket
-  const buckets = groupByBucket(visible);
+  const now = Date.now();
+  const cutoff = now - OLDER_THRESHOLD_DAYS * 86400000;
+  const recent = [];
+  const older = [];
+  for (const ev of events) {
+    const t = new Date(ev.timestamp).getTime();
+    if (t >= cutoff && recent.length < RECENT_LIMIT) recent.push(ev);
+    else older.push(ev);
+  }
+
+  const olderByMonth = new Map();
+  for (const ev of older) {
+    const d = new Date(ev.timestamp);
+    const key = isNaN(d) ? 'Earlier' : `${d.getFullYear()}-${String(d.getMonth()).padStart(2, '0')}`;
+    const label = isNaN(d) ? 'Earlier' : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!olderByMonth.has(key)) olderByMonth.set(key, { key, label, items: [] });
+    olderByMonth.get(key).items.push(ev);
+  }
+  const olderGroups = [...olderByMonth.values()];
 
   return (
     <Card>
-      <SectionHeader
-        icon="📜"
-        label="Timeline"
-        subtitle={`${events.length} event${events.length === 1 ? '' : 's'} on record`}
-      />
-      <div style={{ position: 'relative' }}>
-        {buckets.map(({ label, items }) => (
-          <div key={label} style={{ marginBottom: S.lg }}>
-            <BucketLabel>{label}</BucketLabel>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {items.map(ev => <EventRow key={ev.id} ev={ev} />)}
-            </div>
-          </div>
+      <Header count={events.length} />
+
+      <div style={{ marginTop: 6 }}>
+        {recent.map((ev, i) => (
+          <Row
+            key={ev.id}
+            ev={ev}
+            prevEv={recent[i - 1]}
+            isLatest={i === 0}
+          />
         ))}
-        {hidden > 0 && (
-          <button
-            onClick={() => setExpanded(true)}
-            style={{
-              marginTop: 6,
-              background: C.cream,
-              border: `1px solid ${C.lineFaint}`,
-              borderRadius: 8,
-              padding: '8px 14px',
-              fontSize: 12.5,
-              fontWeight: 600,
-              color: C.ink,
-              cursor: 'pointer',
-              fontFamily: F.sans,
-              width: '100%',
-            }}
-          >
-            Show {hidden} more event{hidden === 1 ? '' : 's'}
-          </button>
-        )}
       </div>
+
+      {olderGroups.length > 0 && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 14,
+          borderTop: `1px solid ${C.lineFaint}`,
+        }}>
+          <div style={{
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: C.muted,
+            letterSpacing: '0.14em',
+            textTransform: 'uppercase',
+            marginBottom: 8,
+            fontFamily: F.sans,
+          }}>
+            Earlier
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {olderGroups.map(g => (
+              <MonthGroup
+                key={g.key}
+                group={g}
+                expanded={expandedMonths.has(g.key)}
+                onToggle={() => {
+                  setExpandedMonths(s => {
+                    const next = new Set(s);
+                    if (next.has(g.key)) next.delete(g.key);
+                    else next.add(g.key);
+                    return next;
+                  });
+                }}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
 
 function buildEvents(profile, onSelectSession) {
   if (!profile) return [];
+
+  const sessionByBookingId = new Map();
+  const standaloneSessions = [];
+  for (const s of profile.sessions || []) {
+    if (s.booking_id) sessionByBookingId.set(s.booking_id, s);
+    else standaloneSessions.push(s);
+  }
+
   const out = [];
 
-  // Bookings
   for (const b of profile.bookings || []) {
     const dateStr = b.booking_date;
     if (!dateStr) continue;
     const isPast = dateStr < new Date().toISOString().slice(0, 10);
     const isCompleted = b.status === 'completed';
     const isCancelled = b.status === 'cancelled' || b.status === 'no_show';
+    const session = sessionByBookingId.get(b.id);
+    const hasSOAP = session && session.completed;
+    const hasIntake = session && !session.completed;
+
     out.push({
       id: `booking-${b.id}`,
       type: 'booking',
-      // Bookings only have a date, no time precision beyond start_time
-      // (which is a string like "10:00:00"). For ordering, combine them.
       timestamp: dateStr + 'T' + (b.start_time || '00:00:00'),
-      icon: isCancelled ? '🚫' : isCompleted ? '✅' : isPast ? '📅' : '🗓️',
-      tone: isCancelled ? 'rose' : isCompleted ? 'sage' : isPast ? 'inkSoft' : 'gold',
-      title: isCancelled
-        ? `Cancelled — ${b.service?.name || 'Session'}`
-        : isCompleted
-          ? `${b.service?.name || 'Session'}`
-          : isPast
-            ? `${b.service?.name || 'Session'} (past, no SOAP)`
-            : `${b.service?.name || 'Session'} (upcoming)`,
-      detail: [
-        b.start_time ? b.start_time.slice(0, 5) : null,
-        b.service?.duration ? `${b.service.duration} min` : null,
-        b.service?.price ? formatCurrency(b.service.price) : null,
-      ].filter(Boolean).join(' · '),
+      service: b.service?.name || 'Session',
+      duration: b.service?.duration,
+      price: b.service?.price,
+      time: b.start_time ? b.start_time.slice(0, 5) : null,
+      tone: isCancelled ? 'rose' : hasSOAP ? 'sage' : hasIntake ? 'gold' : isPast ? 'inkSoft' : 'forest',
+      statusLabel: isCancelled ? 'Cancelled'
+                : hasSOAP ? 'SOAP saved'
+                : hasIntake ? 'Intake pending'
+                : isPast ? 'No notes'
+                : 'Upcoming',
+      onClick: session && onSelectSession ? () => onSelectSession(session) : undefined,
     });
   }
 
-  // Sessions (SOAP notes). Only surface session events that don't
-  // already correspond to a counted booking, to avoid duplicate rows.
-  const bookingIds = new Set((profile.bookings || []).map(b => b.id));
-  for (const s of profile.sessions || []) {
-    if (s.booking_id && bookingIds.has(s.booking_id)) {
-      // Already represented by the booking event.
-      continue;
-    }
+  for (const s of standaloneSessions) {
     const ts = s.completed_at || s.created_at;
     if (!ts) continue;
     out.push({
       id: `session-${s.id}`,
       type: 'session',
       timestamp: ts,
-      icon: s.completed ? '📝' : '🧭',
+      service: 'Session',
+      time: null,
+      duration: null,
+      price: null,
       tone: s.completed ? 'sage' : 'gold',
-      title: s.completed ? 'SOAP note saved' : 'Intake submitted',
-      detail: !s.completed ? 'Awaiting SOAP note' : null,
+      statusLabel: s.completed ? 'SOAP saved' : 'Intake submitted',
       onClick: onSelectSession ? () => onSelectSession(s) : undefined,
     });
   }
 
-  // Package purchases
   for (const p of profile.packagePurchases || []) {
+    if (!p.purchased_at) continue;
     out.push({
       id: `pkg-${p.id}`,
       type: 'package',
       timestamp: p.purchased_at,
-      icon: '🎟',
+      service: `Bought ${p.package?.name || 'package'}`,
+      duration: null,
+      price: p.price_paid,
+      time: null,
       tone: 'gold',
-      title: `Bought ${p.package?.name || 'package'}`,
-      detail: `${p.sessions_purchased} sessions · ${formatCurrency(p.price_paid)}`,
+      statusLabel: `${p.sessions_purchased} sessions`,
     });
   }
 
-  // Member subscriptions (started or renewed)
   for (const m of profile.memberSubscriptions || []) {
+    const ts = m.started_at || m.current_period_start;
+    if (!ts) continue;
     out.push({
       id: `sub-${m.id}`,
       type: 'subscription',
-      timestamp: m.started_at || m.current_period_start,
-      icon: '✨',
+      timestamp: ts,
+      service: `Joined ${m.membership?.name || 'Membership'}`,
+      duration: null,
+      price: m.monthly_price,
+      time: null,
       tone: 'green',
-      title: `Joined ${m.membership?.name || 'Membership'}`,
-      detail: `${m.monthly_session_credits} session${m.monthly_session_credits === 1 ? '' : 's'}/month · ${formatCurrency(m.monthly_price)}/mo`,
+      statusLabel: `${m.monthly_session_credits}/mo`,
     });
   }
 
-  // Gift certificates received
   for (const g of profile.giftCertificates || []) {
+    if (!g.created_at) continue;
     out.push({
       id: `gift-${g.id}`,
       type: 'gift',
       timestamp: g.created_at,
-      icon: '🎁',
+      service: `Gift from ${g.purchaser_name || 'someone'}`,
+      duration: null,
+      price: g.amount,
+      time: null,
       tone: 'rose',
-      title: `Gift card from ${g.purchaser_name || 'someone'}`,
-      detail: `${formatCurrency(g.amount)} · ${g.status === 'redeemed' ? 'Redeemed' : `${formatCurrency(g.remaining)} remaining`}`,
+      statusLabel: g.status === 'redeemed' ? 'Redeemed' : 'Available',
     });
   }
 
-  // Sort reverse chronologically
   out.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
   return out;
-}
-
-function groupByBucket(events) {
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
-  const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-  const weekAgo = Date.now() - 7 * 86400000;
-  const monthAgo = Date.now() - 30 * 86400000;
-
-  const buckets = {
-    today: { label: 'Today', items: [] },
-    yesterday: { label: 'Yesterday', items: [] },
-    thisWeek: { label: 'This week', items: [] },
-    thisMonth: { label: 'This month', items: [] },
-  };
-  const byMonth = new Map();
-
-  for (const ev of events) {
-    const ts = ev.timestamp || '';
-    const datePart = ts.slice(0, 10);
-    const time = new Date(ts).getTime();
-    if (datePart === todayStr) buckets.today.items.push(ev);
-    else if (datePart === yesterdayStr) buckets.yesterday.items.push(ev);
-    else if (time >= weekAgo) buckets.thisWeek.items.push(ev);
-    else if (time >= monthAgo) buckets.thisMonth.items.push(ev);
-    else {
-      const d = new Date(ts);
-      const key = isNaN(d) ? 'Earlier' : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      if (!byMonth.has(key)) byMonth.set(key, { label: key, items: [] });
-      byMonth.get(key).items.push(ev);
-    }
-  }
-
-  const result = [];
-  if (buckets.today.items.length) result.push(buckets.today);
-  if (buckets.yesterday.items.length) result.push(buckets.yesterday);
-  if (buckets.thisWeek.items.length) result.push(buckets.thisWeek);
-  if (buckets.thisMonth.items.length) result.push(buckets.thisMonth);
-  for (const m of byMonth.values()) result.push(m);
-  return result;
-}
-
-function EventRow({ ev }) {
-  const [hover, setHover] = useState(false);
-  const TONES = {
-    sage:    C.sage,
-    gold:    C.gold,
-    rose:    C.rose,
-    green:   C.green,
-    inkSoft: C.inkSoft,
-    amber:   C.amber,
-  };
-  const accent = TONES[ev.tone] || C.inkSoft;
-  const interactive = !!ev.onClick;
-
-  return (
-    <div
-      onClick={ev.onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      role={interactive ? 'button' : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'auto 1fr auto',
-        gap: S.md,
-        alignItems: 'center',
-        padding: '10px 12px',
-        borderRadius: 8,
-        cursor: interactive ? 'pointer' : 'default',
-        background: hover && interactive ? C.cream : 'transparent',
-        transition: 'background 0.12s ease',
-      }}
-    >
-      <div style={{
-        width: 28, height: 28,
-        borderRadius: '50%',
-        background: C.cream,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 14,
-        flexShrink: 0,
-        border: `2px solid ${accent}`,
-      }}>
-        {ev.icon}
-      </div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{
-          fontSize: 13.5,
-          color: C.forest,
-          fontFamily: F.sans,
-          fontWeight: 600,
-          lineHeight: 1.3,
-        }}>
-          {ev.title}
-        </div>
-        {ev.detail && (
-          <div style={{
-            fontSize: 11.5,
-            color: C.inkSoft,
-            fontFamily: F.sans,
-            marginTop: 1,
-          }}>
-            {ev.detail}
-          </div>
-        )}
-      </div>
-      <div style={{
-        fontSize: 11,
-        color: C.muted,
-        fontFamily: F.sans,
-        whiteSpace: 'nowrap',
-        flexShrink: 0,
-      }}>
-        {formatShortDate(ev.timestamp)}
-      </div>
-    </div>
-  );
 }
 
 function Card({ children }) {
@@ -308,7 +230,7 @@ function Card({ children }) {
       background: C.paper,
       border: `1px solid ${C.lineFaint}`,
       borderRadius: 14,
-      padding: S.xl,
+      padding: '18px 18px 14px',
       marginBottom: S.lg,
       boxShadow: '0 1px 2px rgba(28,43,34,0.03)',
     }}>
@@ -317,50 +239,31 @@ function Card({ children }) {
   );
 }
 
-function SectionHeader({ icon, label, subtitle }) {
-  return (
-    <div style={{ marginBottom: S.lg }}>
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        marginBottom: 3,
-      }}>
-        <span style={{ fontSize: 16 }}>{icon}</span>
-        <h2 style={{
-          margin: 0,
-          fontFamily: F.serif,
-          fontSize: 17, fontWeight: 700,
-          color: C.forest,
-          lineHeight: 1.2,
-        }}>
-          {label}
-        </h2>
-      </div>
-      {subtitle && (
-        <div style={{
-          fontSize: 12,
-          color: C.muted,
-          fontFamily: F.sans,
-        }}>
-          {subtitle}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BucketLabel({ children }) {
+function Header({ count }) {
   return (
     <div style={{
-      fontSize: 10.5,
-      fontWeight: 700,
-      color: C.muted,
-      letterSpacing: '0.14em',
-      textTransform: 'uppercase',
-      marginBottom: 6,
-      paddingLeft: 6,
-      fontFamily: F.sans,
+      display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8,
+      marginBottom: 2,
     }}>
-      {children}
+      <h2 style={{
+        margin: 0,
+        fontFamily: F.serif,
+        fontSize: 18, fontWeight: 700,
+        color: C.forest,
+        lineHeight: 1.2,
+      }}>
+        Timeline
+      </h2>
+      <div style={{
+        fontSize: 11,
+        color: C.muted,
+        fontWeight: 700,
+        letterSpacing: '0.12em',
+        textTransform: 'uppercase',
+        fontFamily: F.sans,
+      }}>
+        {count} event{count === 1 ? '' : 's'}
+      </div>
     </div>
   );
 }
@@ -372,9 +275,234 @@ function EmptyState({ children }) {
       color: C.muted,
       fontFamily: F.sans,
       lineHeight: 1.5,
-      padding: '6px 0',
+      padding: '14px 0 6px',
     }}>
       {children}
+    </div>
+  );
+}
+
+function Row({ ev, prevEv, isLatest }) {
+  const [hover, setHover] = useState(false);
+  const interactive = !!ev.onClick;
+  const sameServiceAsPrev = prevEv && prevEv.service === ev.service && prevEv.type === ev.type;
+
+  const TONES = {
+    sage:    { dot: '#4A6B54', text: '#1C2B22', tag: '#F0F7F2' },
+    gold:    { dot: '#92660E', text: '#3A2A04', tag: '#FAF3DC' },
+    rose:    { dot: '#9A3B5E', text: '#3A0A1A', tag: '#FCE5E0' },
+    green:   { dot: '#16A34A', text: '#14532D', tag: '#F0FDF4' },
+    forest:  { dot: '#1C2B22', text: '#1C2B22', tag: '#E8E0D0' },
+    inkSoft: { dot: '#6B7F72', text: '#3D4F43', tag: '#F9F5EE' },
+  };
+  const t = TONES[ev.tone] || TONES.inkSoft;
+
+  const d = new Date(ev.timestamp);
+  const month = isNaN(d) ? '' : d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+  const day = isNaN(d) ? '' : d.getDate();
+  const year = isNaN(d) ? '' : d.getFullYear();
+  const currentYear = new Date().getFullYear();
+  const showYear = year && year !== currentYear;
+
+  return (
+    <div
+      onClick={ev.onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '56px 1fr auto',
+        gap: 14,
+        alignItems: 'center',
+        padding: '10px 8px 10px 4px',
+        borderRadius: 10,
+        cursor: interactive ? 'pointer' : 'default',
+        background: hover && interactive ? C.cream : 'transparent',
+        transition: 'background 0.12s ease',
+      }}
+    >
+      <div style={{
+        textAlign: 'center',
+        padding: '6px 0',
+        background: isLatest ? t.tag : 'transparent',
+        borderRadius: 8,
+        border: isLatest ? `1px solid ${t.dot}33` : '1px solid transparent',
+      }}>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 700,
+          color: t.dot,
+          letterSpacing: '0.12em',
+          fontFamily: F.sans,
+          lineHeight: 1,
+          marginBottom: 2,
+        }}>
+          {month}
+        </div>
+        <div style={{
+          fontFamily: F.serif,
+          fontSize: 22, fontWeight: 700,
+          color: t.text,
+          lineHeight: 1,
+          fontVariantNumeric: 'tabular-nums',
+        }}>
+          {day}
+        </div>
+        {showYear && (
+          <div style={{
+            fontSize: 9,
+            color: C.muted,
+            letterSpacing: '0.04em',
+            fontFamily: F.sans,
+            marginTop: 2,
+          }}>
+            {year}
+          </div>
+        )}
+      </div>
+
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 2,
+        }}>
+          {isLatest && (
+            <span style={{
+              fontSize: 9,
+              fontWeight: 800,
+              letterSpacing: '0.14em',
+              color: t.dot,
+              background: t.tag,
+              padding: '2px 7px',
+              borderRadius: 999,
+              fontFamily: F.sans,
+            }}>
+              LATEST
+            </span>
+          )}
+          <span style={{
+            fontFamily: F.sans,
+            fontSize: 14, fontWeight: 600,
+            color: sameServiceAsPrev ? C.muted : C.forest,
+            fontStyle: sameServiceAsPrev ? 'italic' : 'normal',
+          }}>
+            {sameServiceAsPrev ? 'Same as above' : ev.service}
+          </span>
+        </div>
+        {(ev.time || ev.duration || ev.price != null) && (
+          <div style={{
+            fontSize: 11.5,
+            color: C.inkSoft,
+            fontFamily: F.sans,
+            display: 'flex', gap: 6, alignItems: 'center',
+            flexWrap: 'wrap',
+          }}>
+            {ev.time && <span>{ev.time}</span>}
+            {ev.time && ev.duration && <Dot />}
+            {ev.duration && <span>{ev.duration} min</span>}
+            {(ev.time || ev.duration) && ev.price != null && <Dot />}
+            {ev.price != null && <span>{formatCurrency(ev.price)}</span>}
+          </div>
+        )}
+      </div>
+
+      <div style={{ flexShrink: 0 }}>
+        <span style={{
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: '0.1em',
+          color: t.dot,
+          background: t.tag,
+          padding: '4px 9px',
+          borderRadius: 999,
+          fontFamily: F.sans,
+          textTransform: 'uppercase',
+          whiteSpace: 'nowrap',
+        }}>
+          {ev.statusLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Dot() {
+  return <span style={{ opacity: 0.4 }}>·</span>;
+}
+
+function MonthGroup({ group, expanded, onToggle }) {
+  const [hover, setHover] = useState(false);
+  const count = group.items.length;
+  const services = new Set(group.items.map(e => e.service));
+  const summary = services.size === 1 ? [...services][0] : `${services.size} services`;
+
+  return (
+    <div>
+      <button
+        onClick={onToggle}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '56px 1fr auto',
+          gap: 14,
+          alignItems: 'center',
+          padding: '8px 8px 8px 4px',
+          borderRadius: 10,
+          cursor: 'pointer',
+          background: hover ? C.cream : 'transparent',
+          border: 'none',
+          width: '100%',
+          textAlign: 'left',
+          transition: 'background 0.12s ease',
+          fontFamily: F.sans,
+        }}
+      >
+        <div style={{
+          textAlign: 'center',
+          fontSize: 10.5,
+          fontWeight: 700,
+          color: C.muted,
+          letterSpacing: '0.10em',
+        }}>
+          {group.label.replace(/ \d{4}$/, '').toUpperCase()}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: C.forest,
+          }}>
+            {count} session{count === 1 ? '' : 's'} <span style={{ color: C.muted, fontWeight: 400 }}>· {summary}</span>
+          </div>
+        </div>
+        <div style={{
+          fontSize: 10,
+          color: C.muted,
+          letterSpacing: '0.10em',
+          textTransform: 'uppercase',
+          fontWeight: 700,
+        }}>
+          {expanded ? 'Hide' : 'Show'}
+        </div>
+      </button>
+
+      {expanded && (
+        <div style={{ marginTop: 2, marginBottom: 6 }}>
+          {group.items.map((ev, i) => (
+            <Row
+              key={ev.id}
+              ev={ev}
+              prevEv={group.items[i - 1]}
+              isLatest={false}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
