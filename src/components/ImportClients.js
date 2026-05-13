@@ -411,6 +411,8 @@ export default function ImportClients({ therapist, onComplete }) {
                   { key:'notes',     label:'Notes' },
                   { key:'lastVisit', label:'Last Visit Date' },
                   { key:'visitCount',label:'Visit Count' },
+                  { key:'service',   label:'Service' },
+                  { key:'price',     label:'Price' },
                 ].map(({ key, label }) => (
                   <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:12, color:C.gray, width:100, flexShrink:0 }}>{label}</span>
