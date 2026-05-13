@@ -59,6 +59,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       <ProfileHeader
         client={profile?.client || client}
         stats={profile?.stats}
+        profile={profile}
         onBack={onBack}
         onEdit={() => { /* TODO section 7: open edit modal */ }}
         onArchive={() => { /* TODO section 7: archive flow */ }}
