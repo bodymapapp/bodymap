@@ -243,6 +243,7 @@ export default function ImportClients({ therapist, onComplete }) {
             await supabase.from('bookings').insert({
               therapist_id: therapist.id,
               service_id: serviceId,
+              client_id: client.id,
               client_name: name,
               client_email: email,
               client_phone: phone,
@@ -272,6 +273,7 @@ export default function ImportClients({ therapist, onComplete }) {
             await supabase.from('bookings').insert({
               therapist_id: therapist.id,
               service_id: serviceId,
+              client_id: client.id,
               client_name: name,
               client_email: email,
               client_phone: phone,
