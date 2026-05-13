@@ -21,6 +21,9 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
 import ProfileHeader from './ProfileHeader';
 import StatusStrip from './StatusStrip';
+import PatternsCard from './PatternsCard';
+import PreferencesCard from './PreferencesCard';
+import MedicalCard from './MedicalCard';
 import SessionList from '../SessionList';
 import { C, F } from './tokens';
 
@@ -77,7 +80,36 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       {/* Section 3: Status strip with balance, next visit, lifetime, attention */}
       {profile && <StatusStrip profile={profile} />}
 
-      {/* TODO section 4: PatternsCard + PreferencesCard + MedicalCard */}
+      {/* Section 4: Patterns + Preferences + Medical cards.
+          Responsive grid: single column on mobile/tablet, two columns
+          on wide screens with Patterns spanning full width since its
+          bars need horizontal room to be readable. */}
+      {profile && (
+        <div style={{ padding: '0 18px' }}>
+          <PatternsCard
+            patterns={profile.patterns}
+            totalSessions={profile.stats?.lifetimeSessions || 0}
+          />
+          <div className="bm-cp-two-col" style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr',
+            gap: 0,
+          }}>
+            <PreferencesCard preferences={profile.preferences} />
+            <MedicalCard medicalFlags={profile.medicalFlags} />
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @media (min-width: 768px) {
+          .bm-cp-two-col {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 16px !important;
+          }
+        }
+      `}</style>
+
       {/* TODO section 5: Timeline */}
 
       {/* Until the new sections land, keep the old SessionList
