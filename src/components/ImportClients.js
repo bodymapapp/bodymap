@@ -30,6 +30,14 @@ function detectMapping(headers) {
     notes:        find('notes', 'note', 'comments'),
     visitCount:   find('visit count', 'visits', 'appointment count'),
     lastVisit:    find('last visit', 'last appointment', 'last seen'),
+    // Two new optional columns. When present, every session created
+    // from this row gets the named service (auto-created if it doesn't
+    // exist) and the price. That makes the dashboard's
+    // sessions/earnings counters reflect imported history. Without
+    // these, imported sessions still write but with no session_date /
+    // service_id / price, so the dashboard counters can't see them.
+    service:      find('service', 'treatment', 'appointment type'),
+    price:        find('price', 'session price', 'amount'),
   };
 }
 
@@ -86,6 +94,51 @@ export default function ImportClients({ therapist, onComplete }) {
     setImporting(true);
     let created = 0, skipped = 0, failed = 0;
 
+    // Cache services by name (lowercased) so we don't query/insert
+    // the same service repeatedly across rows. resolveServiceId returns
+    // an existing service id if one matches, otherwise creates a new
+    // service with the given price and returns the new id.
+    const serviceCache = new Map();
+    async function resolveServiceId(serviceName, defaultPrice) {
+      if (!serviceName) return null;
+      const key = serviceName.toLowerCase().trim();
+      if (serviceCache.has(key)) return serviceCache.get(key);
+
+      const { data: existing } = await supabase
+        .from('services')
+        .select('id')
+        .eq('therapist_id', therapist.id)
+        .ilike('name', serviceName)
+        .maybeSingle();
+      if (existing?.id) {
+        serviceCache.set(key, existing.id);
+        return existing.id;
+      }
+
+      // Auto-create. Default duration 60 min if not specified. is_active
+      // false so the new service is hidden from the live booking page
+      // until the therapist reviews it (avoids surprises if their CSV
+      // has a typoed service name).
+      const { data: created, error } = await supabase
+        .from('services')
+        .insert({
+          therapist_id: therapist.id,
+          name: serviceName,
+          duration_minutes: 60,
+          price: defaultPrice || 0,
+          is_active: false,
+        })
+        .select('id')
+        .single();
+      if (error) {
+        console.error('[import] could not auto-create service:', error);
+        serviceCache.set(key, null);
+        return null;
+      }
+      serviceCache.set(key, created.id);
+      return created.id;
+    }
+
     for (const row of rows) {
       const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
@@ -96,12 +149,19 @@ export default function ImportClients({ therapist, onComplete }) {
       const notes     = get(mapping.notes) || null;
       const lastVisit = get(mapping.lastVisit) || null;
       const visitCount = parseInt(get(mapping.visitCount)) || null;
+      // Optional new columns. If absent, sessions are created without
+      // a service_id and the dashboard counters won't see them. If
+      // present, the service is auto-resolved/created and the session
+      // joins to services.price for earnings.
+      const serviceName = get(mapping.service) || null;
+      const priceRaw    = get(mapping.price) || null;
+      const sessionPrice = priceRaw ? parseFloat(priceRaw.replace(/[^0-9.]/g, '')) : null;
 
       // Build best possible name, fall back to email or phone if name missing
       let name = [firstName, lastName].filter(Boolean).join(' ');
       if (!name && email) name = email.split('@')[0].replace(/[._]/g, ' ');
       if (!name && phone) name = `Client ${phone.replace(/\D/g,'').slice(-4)}`;
-      
+
       // Nothing at all, truly skip
       if (!name && !email && !phone) { skipped++; continue; }
 
@@ -149,13 +209,22 @@ export default function ImportClients({ therapist, onComplete }) {
           created++;
         }
 
-        // If we have visit history, create a synthetic session to preserve last visit date
+        // Resolve service id once per row. Re-uses the cache across rows
+        // for the same service name. May return null if no service column.
+        const serviceId = serviceName ? await resolveServiceId(serviceName, sessionPrice) : null;
+
+        // If we have visit history, create a synthetic session to preserve last visit date.
+        // session_date is the column the dashboard's stats query reads,
+        // so it MUST be set (YYYY-MM-DD format) for the import to count.
         if (lastVisit && client?.id) {
           const parsedDate = new Date(lastVisit);
           if (!isNaN(parsedDate)) {
+            const isoDate = parsedDate.toISOString().slice(0, 10);
             await supabase.from('sessions').upsert({
               therapist_id: therapist.id,
               client_id: client.id,
+              service_id: serviceId,
+              session_date: isoDate,
               completed: true,
               therapist_notes: JSON.stringify({ __soap: true, S:'', O:'', A:'Imported session history', P:'', imported: true }),
               created_at: parsedDate.toISOString(),
@@ -164,20 +233,30 @@ export default function ImportClients({ therapist, onComplete }) {
           }
         }
 
-        // If we have visit count but no last visit, create placeholder sessions
-        if (visitCount && visitCount > 1 && !lastVisit && client?.id) {
-          const now = new Date();
-          for (let i = 0; i < Math.min(visitCount - 1, 10); i++) {
-            const d = new Date(now);
-            d.setDate(d.getDate() - (i + 1) * 30); // approximate monthly
+        // If we have visit count, create placeholder historical sessions
+        // spread BACKWARD from last_visit (or today) at ~2-week intervals
+        // so the most recent few fall inside the dashboard's 30-day
+        // window and Sessions/Earnings counters are non-zero immediately
+        // after import.
+        if (visitCount && visitCount > 1 && client?.id) {
+          const anchor = lastVisit ? new Date(lastVisit) : new Date();
+          // Skip the first one if lastVisit already covered it above
+          const startIdx = lastVisit ? 1 : 0;
+          const totalToCreate = Math.min(visitCount - startIdx, 10);
+          for (let i = 0; i < totalToCreate; i++) {
+            const d = new Date(anchor);
+            d.setDate(d.getDate() - (i + startIdx) * 14); // every ~2 weeks
+            const isoDate = d.toISOString().slice(0, 10);
             await supabase.from('sessions').insert({
               therapist_id: therapist.id,
               client_id: client.id,
+              service_id: serviceId,
+              session_date: isoDate,
               completed: true,
               therapist_notes: JSON.stringify({ __soap: true, S:'', O:'', A:'Imported session history', P:'', imported: true }),
               created_at: d.toISOString(),
               completed_at: d.toISOString(),
-            }).select();
+            });
           }
         }
 
