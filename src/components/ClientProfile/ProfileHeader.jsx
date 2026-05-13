@@ -191,7 +191,7 @@ export default function ProfileHeader({
       marginBottom: S.lg,
     }}>
       <div style={{
-        padding: '16px 18px 20px',
+        padding: '14px 14px 18px',
       }}>
         {/* Top row: back button + state pill + actions */}
         <div style={{
@@ -334,15 +334,15 @@ export default function ProfileHeader({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 16,
+          gap: 14,
         }}>
-          <div style={{
-            width: 76, height: 76,
+          <div className="bm-cp-avatar" style={{
+            width: 64, height: 64,
             borderRadius: '50%',
             background: archived ? '#9CA3AF' : avatarColor(client.name),
             color: C.paper,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26, fontWeight: 700,
+            fontSize: 22, fontWeight: 700,
             fontFamily: F.sans,
             flexShrink: 0,
             boxShadow: '0 4px 16px rgba(28,43,34,0.18), 0 0 0 4px rgba(255,255,255,0.6)',
@@ -351,10 +351,10 @@ export default function ProfileHeader({
           </div>
 
           <div style={{ minWidth: 0, flex: 1 }}>
-            <h1 style={{
+            <h1 className="bm-cp-name" style={{
               margin: 0,
               fontFamily: F.serif,
-              fontSize: 32, fontWeight: 700,
+              fontSize: 26, fontWeight: 700,
               color: archived ? C.muted : state.nameColor,
               lineHeight: 1.05,
               letterSpacing: '-0.01em',
@@ -364,6 +364,16 @@ export default function ProfileHeader({
             }}>
               {client.name || 'Unnamed client'}
             </h1>
+            <style>{`
+              @media (min-width: 480px) {
+                .bm-cp-avatar { width: 72px !important; height: 72px !important; font-size: 24px !important; }
+                .bm-cp-name { font-size: 30px !important; }
+              }
+              @media (min-width: 768px) {
+                .bm-cp-avatar { width: 80px !important; height: 80px !important; font-size: 28px !important; }
+                .bm-cp-name { font-size: 34px !important; }
+              }
+            `}</style>
             {subline && (
               <div style={{
                 marginTop: 6,

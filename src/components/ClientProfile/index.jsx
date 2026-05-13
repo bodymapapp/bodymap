@@ -113,7 +113,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       {profile && <StatusStrip profile={profile} />}
 
       {profile && (
-        <div style={{ padding: '0 18px 24px' }}>
+        <div style={{ padding: '0 14px 24px' }}>
 
           {/* Sessions and SOAP notes: moved to the top per HK request.
               This is the primary work surface for the therapist. */}

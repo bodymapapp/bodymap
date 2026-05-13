@@ -452,12 +452,10 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
         <div className="bm-client-actions" style={{
           display: "flex", alignItems: "center", gap: 8,
-          overflowX: "auto", paddingBottom: 4,
-          scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
+          flexWrap: "wrap",
+          paddingBottom: 4,
         }}>
           <style>{`
-            .bm-client-actions::-webkit-scrollbar { display: none; }
             .bm-client-actions > button { flex-shrink: 0; }
           `}</style>
 

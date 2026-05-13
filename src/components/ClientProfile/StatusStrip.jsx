@@ -37,13 +37,13 @@ export default function StatusStrip({ profile, onNextBooking, onAttention }) {
 
   return (
     <div style={{
-      padding: '0 18px',
+      padding: '0 14px',
       marginBottom: S.lg,
     }}>
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-        gap: S.md,
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: 10,
       }}>
         {/* Balance */}
         <Tile

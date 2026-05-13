@@ -78,7 +78,6 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
         cursor: isLocked ? 'not-allowed' : 'pointer',
         padding: '8px 6px',
         gap: 7,
-        minWidth: 70,
         position: 'relative', zIndex: 2,
         borderRadius: 12,
         boxShadow: isCurrent ? `0 2px 8px ${C.goldBg}` : '0 1px 2px rgba(28,43,34,0.04)',
@@ -144,7 +143,7 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
           whiteSpace: 'nowrap',
         }}>{label}</div>
         {sub && (
-          <div style={{
+          <div className="bm-journey-dot-sub" style={{
             fontFamily: C.sans, fontSize: 9.5,
             color: statusColor, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.7px',
@@ -333,18 +332,29 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           color: ${C.forest};
         }
         .bm-journey-row {
-          display: flex; align-items: stretch; justify-content: space-between;
-          gap: 4px; position: relative;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr auto 1fr auto 1fr;
+          gap: 4px;
+          align-items: stretch;
+          position: relative;
         }
         /* Equalize card heights so single-line statuses (Waiting) don't
            render shorter than two-line ones (Filled by client). Cards
            stretch from align-items: stretch on the row. The inner label
            block flex-grows so a card with shorter sub text fills the
            same space as one with longer sub text. */
-        .bm-journey-dot { display: flex; flex-direction: column; }
+        .bm-journey-dot {
+          display: flex; flex-direction: column;
+          min-width: 0;
+        }
         .bm-journey-dot > div:last-child {
           flex: 1;
           display: flex; flex-direction: column; justify-content: flex-start;
+        }
+        /* Sub text wraps gracefully when card width is narrow */
+        .bm-journey-dot-sub {
+          white-space: normal;
+          word-break: break-word;
         }
         @keyframes bmDotPulse {
           0% { box-shadow: 0 0 0 0 rgba(74,107,84,0.5); }
@@ -359,10 +369,13 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
           animation: bmDotPulse 0.55s ease-out;
         }
         @media (max-width: 520px) {
-          .bm-journey-wrap { padding: 10px 12px 14px !important; }
-          .bm-journey-row { gap: 2px !important; }
-          .bm-journey-dot { min-width: 56px !important; }
-          .bm-journey-dot > div:first-child { width: 44px !important; height: 44px !important; font-size: 16px !important; }
+          .bm-journey-wrap { padding: 10px 10px 14px !important; }
+          .bm-journey-row {
+            gap: 2px !important;
+            grid-template-columns: 1fr 12px 1fr 12px 1fr 12px 1fr !important;
+          }
+          .bm-journey-dot > div:first-child { width: 38px !important; height: 38px !important; font-size: 14px !important; }
+          .bm-journey-dot { padding: 6px 3px !important; }
         }
       `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
