@@ -506,7 +506,6 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           </div>
         </div>
       </div>
-      )}
 
       {!compact && (
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px", marginBottom: "24px" }}>

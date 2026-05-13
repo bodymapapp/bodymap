@@ -1,112 +1,88 @@
 // src/components/ClientProfile/ProfileSection.jsx
 //
-// Collapsible section wrapper for the therapist client profile,
-// matching the Settings design language (italic Georgia serif
-// title, sage sprig SVG, chevron toggle, white card with hairline
-// borders, cream-soft background when open).
-//
-// Each major section on the profile (Sessions and SOAP, Patterns,
-// Preferences, Medical, Timeline) renders inside one of these.
-// Header is always visible and clickable; body shows when isOpen.
-//
-// Props:
-//   title       string, the section name
-//   subtitle    optional string under the title (italic muted)
-//   count       optional number badge after the title
-//   sprig       'leaf' | 'sun' | 'moon' | 'dots' | 'note'
-//   isOpen      boolean
-//   onToggle    function
-//   trailing    optional ReactNode rendered on the right (before chevron)
-//   children    body content
+// Collapsible section card for the therapist client profile.
+// Design direction this iteration:
+//   - Stop copying Settings page literally (italic Georgia everywhere
+//     looked generic and dated).
+//   - Header: small caps sans-serif label + bigger sans title.
+//   - 4px colored vertical accent bar on the left, color set per
+//     section (sage for SOAP, gold for Patterns, etc).
+//   - Body uses the SAME white background as the header so empty
+//     states sit cleanly inside the card boundary (the previous
+//     version had a cream body background that leaked visually).
+//   - Subtle hover lifts the whole card when interactive.
+//   - Chevron animates rotation; whole header is the hit target.
 
 import React from 'react';
 
 const C = {
   forestInk: '#1F3A2C',
   forest: '#2A5741',
-  sage: '#6B9E80',
-  sageMute: '#98A395',
-  sageMutePale: '#B5BEB1',
-  border: 'rgba(31,58,44,0.07)',
-  borderOpen: 'rgba(31,58,44,0.10)',
-  creamSoft: '#FAF7EE',
+  sage: '#4A6B54',
+  sageBright: '#6B9E80',
+  gold: '#C9A84C',
+  goldBright: '#E5B948',
+  rose: '#C2526E',
+  border: 'rgba(31,58,44,0.08)',
+  borderHover: 'rgba(31,58,44,0.15)',
+  shadow: '0 1px 2px rgba(31,58,44,0.04), 0 0 0 1px transparent',
+  shadowHover: '0 4px 12px rgba(31,58,44,0.07), 0 0 0 1px rgba(31,58,44,0.04)',
+  paper: '#FFFFFF',
+  muted: '#7E8F84',
+  ink: '#3D4F43',
 };
 
-function Sprig({ type }) {
-  const stroke = C.sage;
-  const props = {
-    width: 22, height: 22, viewBox: '0 0 22 22',
-    fill: 'none', stroke, strokeWidth: 1.2,
-    strokeLinecap: 'round', strokeLinejoin: 'round',
-  };
-  if (type === 'leaf') {
-    return (
-      <svg {...props}>
-        <path d="M11 18 C 11 12, 11 6, 11 4" />
-        <path d="M11 9 C 14 9, 16 7, 17 5" />
-        <path d="M11 12 C 8 12, 6 10, 5 8" />
-        <path d="M11 14 C 14 14, 16 13, 17 11" />
-      </svg>
-    );
-  }
-  if (type === 'sun') {
-    return (
-      <svg {...props}>
-        <circle cx="11" cy="11" r="3.5" />
-        <path d="M11 4v2M11 16v2M4 11h2M16 11h2M6 6l1.5 1.5M14.5 14.5L16 16M6 16l1.5-1.5M14.5 7.5L16 6" />
-      </svg>
-    );
-  }
-  if (type === 'moon') {
-    return (
-      <svg {...props}>
-        <path d="M16 11.5A6 6 0 1 1 10.5 6 a 5 5 0 0 0 5.5 5.5z" />
-      </svg>
-    );
-  }
-  if (type === 'note') {
-    // Folded page with a leaf detail, for SOAP / notes sections
-    return (
-      <svg {...props}>
-        <path d="M6 4h7l4 4v10H6z" />
-        <path d="M13 4v4h4" />
-        <path d="M9 13h5M9 16h3" />
-      </svg>
-    );
-  }
-  // dots (default) — connected pattern, used for the Patterns section
-  return (
-    <svg {...props}>
-      <circle cx="6" cy="11" r="2" />
-      <circle cx="16" cy="6" r="2" />
-      <circle cx="16" cy="16" r="2" />
-      <path d="M8 10l6-3M8 12l6 3" />
-    </svg>
-  );
-}
+const F = {
+  sans: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+};
+
+// Each section has its own accent color so they look related but
+// not identical. Subtle differentiation: a 4px left bar in the
+// section's color. Helps the eye distinguish sections at a glance.
+const ACCENTS = {
+  soap:        { bar: C.sage,       label: 'SOAP NOTES'   },
+  patterns:    { bar: C.gold,       label: 'BODY PATTERNS' },
+  preferences: { bar: C.sageBright, label: 'SETTINGS'      },
+  medical:     { bar: C.rose,       label: 'MEDICAL'       },
+  timeline:    { bar: C.forest,     label: 'ACTIVITY'      },
+};
 
 export default function ProfileSection({
+  accent = 'soap',
   title,
-  subtitle,
+  trailingLabel,
   count,
-  sprig = 'leaf',
   isOpen,
   onToggle,
-  trailing,
   children,
 }) {
+  const [hover, setHover] = React.useState(false);
   const interactive = typeof onToggle === 'function';
+  const a = ACCENTS[accent] || ACCENTS.soap;
 
   return (
-    <div style={{
-      background: '#fff',
-      border: `0.5px solid ${isOpen ? C.borderOpen : C.border}`,
-      borderRadius: 14,
-      marginBottom: 14,
-      overflow: 'hidden',
-      boxShadow: '0 1px 2px rgba(31,58,44,0.025)',
-      transition: 'border-color 0.15s ease',
-    }}>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: C.paper,
+        border: `1px solid ${hover && interactive ? C.borderHover : C.border}`,
+        borderRadius: 12,
+        marginBottom: 12,
+        overflow: 'hidden',
+        boxShadow: hover && interactive ? C.shadowHover : C.shadow,
+        transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+        position: 'relative',
+      }}
+    >
+      {/* 4px vertical accent bar on the left */}
+      <div style={{
+        position: 'absolute',
+        left: 0, top: 0, bottom: 0,
+        width: 4,
+        background: a.bar,
+      }} />
+
       <div
         onClick={interactive ? onToggle : undefined}
         role={interactive ? 'button' : undefined}
@@ -120,89 +96,109 @@ export default function ProfileSection({
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          padding: '14px 16px',
+          gap: 14,
+          padding: '16px 18px 16px 22px',
           cursor: interactive ? 'pointer' : 'default',
           userSelect: 'none',
-          minHeight: 56,
+          minHeight: 64,
         }}
       >
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
-          <Sprig type={sprig} />
-        </div>
-
         <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{
-            fontFamily: 'Georgia, "Times New Roman", serif',
-            fontStyle: 'italic',
-            fontWeight: 400,
-            fontSize: 20,
-            color: C.forestInk,
-            margin: 0,
-            letterSpacing: '-0.005em',
-            lineHeight: 1.2,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
+          <div style={{
+            fontSize: 10.5,
+            fontWeight: 700,
+            color: a.bar,
+            letterSpacing: '0.14em',
+            fontFamily: F.sans,
+            marginBottom: 3,
           }}>
-            {title}
-            {typeof count === 'number' && (
-              <span style={{
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontStyle: 'normal',
-                fontSize: 11,
-                color: C.sageMute,
-                marginLeft: 8,
-                letterSpacing: '0.04em',
-                verticalAlign: 'middle',
-                fontWeight: 600,
-              }}>{count}</span>
-            )}
-          </h3>
-          {subtitle && (
-            <p style={{
-              fontSize: 12,
-              color: C.sageMute,
-              margin: '3px 0 0',
-              fontStyle: 'italic',
-              lineHeight: 1.4,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+            {a.label}
+          </div>
+          <div style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 10,
+            flexWrap: 'wrap',
+          }}>
+            <h3 style={{
+              fontFamily: F.sans,
+              fontWeight: 700,
+              fontSize: 17,
+              color: C.forestInk,
+              margin: 0,
+              letterSpacing: '-0.01em',
+              lineHeight: 1.2,
             }}>
-              {subtitle}
-            </p>
-          )}
+              {title}
+            </h3>
+            {typeof count === 'number' && count > 0 && (
+              <span style={{
+                fontFamily: F.sans,
+                fontSize: 12,
+                color: C.muted,
+                fontWeight: 600,
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                {count}
+              </span>
+            )}
+            {trailingLabel && (
+              <span style={{
+                fontFamily: F.sans,
+                fontSize: 12,
+                color: C.muted,
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
+                {trailingLabel}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          {trailing}
-          {interactive && (
+        {interactive && (
+          <button
+            aria-label={isOpen ? 'Collapse section' : 'Expand section'}
+            style={{
+              flexShrink: 0,
+              background: 'transparent',
+              border: 'none',
+              padding: 6,
+              cursor: 'pointer',
+              borderRadius: 6,
+              color: C.muted,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={(e) => { e.stopPropagation(); onToggle(); }}
+          >
             <svg
-              width="13"
-              height="13"
+              width="14"
+              height="14"
               viewBox="0 0 12 12"
               fill="none"
-              stroke={isOpen ? C.forest : C.sageMutePale}
-              strokeWidth="1.7"
+              stroke="currentColor"
+              strokeWidth="1.8"
               strokeLinecap="round"
               strokeLinejoin="round"
               style={{
                 transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
-                transition: 'transform 0.2s, stroke 0.15s',
+                transition: 'transform 0.2s ease',
               }}
             >
               <path d="M4 2l4 4-4 4" />
             </svg>
-          )}
-        </div>
+          </button>
+        )}
       </div>
 
       {isOpen && (
         <div style={{
-          background: C.creamSoft,
-          borderTop: `0.5px solid ${C.border}`,
-          padding: '16px 18px 18px',
+          padding: '4px 20px 20px 22px',
+          background: C.paper,
         }}>
           {children}
         </div>

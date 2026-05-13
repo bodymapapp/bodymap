@@ -118,12 +118,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           {/* Sessions and SOAP notes: moved to the top per HK request.
               This is the primary work surface for the therapist. */}
           <ProfileSection
+            accent="soap"
             title="Sessions and SOAP notes"
-            subtitle={soapCount > 0
-              ? `${soapCount} SOAP note${soapCount === 1 ? '' : 's'} written`
-              : 'No SOAP notes written yet'}
+            trailingLabel={soapCount > 0
+              ? `${soapCount} note${soapCount === 1 ? '' : 's'} written`
+              : 'No notes yet'}
             count={soapCount > 0 ? soapCount : undefined}
-            sprig="note"
             isOpen={openSections.soap}
             onToggle={() => toggle('soap')}
           >
@@ -138,12 +138,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
+            accent="patterns"
             title="Patterns"
-            subtitle={patternCount > 0
-              ? 'Recurring body zones across sessions'
+            trailingLabel={patternCount > 0
+              ? 'Recurring body zones'
               : 'Will populate after first sessions'}
             count={patternCount > 0 ? patternCount : undefined}
-            sprig="dots"
             isOpen={openSections.patterns}
             onToggle={() => toggle('patterns')}
           >
@@ -154,11 +154,11 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
+            accent="preferences"
             title="Preferences"
-            subtitle={profile.preferences
-              ? 'Defaults from last completed session'
-              : 'Pressure, temp, music, draping'}
-            sprig="sun"
+            trailingLabel={profile.preferences
+              ? 'From last session'
+              : 'Not set yet'}
             isOpen={openSections.preferences}
             onToggle={() => toggle('preferences')}
           >
@@ -166,12 +166,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
+            accent="medical"
             title="Medical flags"
-            subtitle={medicalCount > 0
-              ? 'Things to keep in mind'
-              : 'Ask about anything new at next visit'}
+            trailingLabel={medicalCount > 0
+              ? `${medicalCount} on file`
+              : 'None on file'}
             count={medicalCount > 0 ? medicalCount : undefined}
-            sprig="moon"
             isOpen={openSections.medical}
             onToggle={() => toggle('medical')}
           >
@@ -179,12 +179,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
+            accent="timeline"
             title="Timeline"
-            subtitle={timelineCount > 0
-              ? `${timelineCount} event${timelineCount === 1 ? '' : 's'} on record`
-              : 'Bookings, sessions, packages, gifts'}
+            trailingLabel={timelineCount > 0
+              ? `${timelineCount} event${timelineCount === 1 ? '' : 's'}`
+              : 'No activity yet'}
             count={timelineCount > 0 ? timelineCount : undefined}
-            sprig="leaf"
             isOpen={openSections.timeline}
             onToggle={() => toggle('timeline')}
           >
