@@ -98,18 +98,18 @@ BEGIN
         (ARRAY['relax', 'pain_relief', 'recovery', 'performance'])[1 + floor(random() * 4)::int],
         'warm', 'comfortable', 'soft', 'dim', 'quiet', 'standard', 'medium',
         (CASE floor(random() * 3)::int
-           WHEN 0 THEN ARRAY['neck', 'shoulders']
-           WHEN 1 THEN ARRAY['neck']
-           ELSE ARRAY['shoulders', 'chest']
-         END)::jsonb,
+           WHEN 0 THEN '["neck","shoulders"]'::jsonb
+           WHEN 1 THEN '["neck"]'::jsonb
+           ELSE '["shoulders","chest"]'::jsonb
+         END),
         (CASE floor(random() * 4)::int
-           WHEN 0 THEN ARRAY['lowerBack', 'upperBack']
-           WHEN 1 THEN ARRAY['lowerBack']
-           WHEN 2 THEN ARRAY['upperBack', 'midBack']
-           ELSE ARRAY['glutes', 'hamstrings']
-         END)::jsonb,
-        ARRAY[]::jsonb,
-        ARRAY[]::jsonb,
+           WHEN 0 THEN '["lowerBack","upperBack"]'::jsonb
+           WHEN 1 THEN '["lowerBack"]'::jsonb
+           WHEN 2 THEN '["upperBack","midBack"]'::jsonb
+           ELSE '["glutes","hamstrings"]'::jsonb
+         END),
+        '[]'::jsonb,
+        '[]'::jsonb,
         jsonb_build_object(
           '__soap', true,
           'S', 'Client reported tension in upper back and shoulders. Sleep has been disrupted from work stress.',
@@ -136,10 +136,10 @@ BEGIN
         3 + floor(random() * 3)::int,
         (ARRAY['relax', 'pain_relief', 'recovery'])[1 + floor(random() * 3)::int],
         'warm', 'comfortable', 'soft', 'dim', 'quiet', 'standard', 'medium',
-        ARRAY['neck']::jsonb,
-        ARRAY['lowerBack']::jsonb,
-        ARRAY[]::jsonb,
-        ARRAY[]::jsonb
+        '["neck"]'::jsonb,
+        '["lowerBack"]'::jsonb,
+        '[]'::jsonb,
+        '[]'::jsonb
       );
       v_sessions_created := v_sessions_created + 1;
     END IF;
