@@ -23,6 +23,7 @@ import PatternsCard from './PatternsCard';
 import PreferencesCard from './PreferencesCard';
 import MedicalCard from './MedicalCard';
 import Timeline from './Timeline';
+import SessionList from '../SessionList';
 import { C, F } from './tokens';
 
 export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession }) {
@@ -115,6 +116,56 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             profile={profile}
             onSelectSession={onSelectSession}
           />
+        </div>
+      )}
+
+      {/* Sessions + SOAP notes section.
+          Mounts the existing SessionList below the new design so the
+          full SOAP workflow (write, view, edit, delete) stays
+          accessible. SessionList renders its own count + stat boxes +
+          card-on-file controls, which the new design intentionally
+          does not duplicate. Title above the embed clarifies the
+          purpose so the section reads like a deliberate part of the
+          page, not a duplicate header.
+
+          Wrapped in a div so we can theme this section subtly
+          differently than the rest of the new page without modifying
+          SessionList directly. */}
+      {profile && (
+        <div style={{
+          padding: '0 18px',
+          marginTop: 8,
+        }}>
+          <div style={{
+            background: C.paper,
+            border: `1px solid ${C.lineFaint}`,
+            borderRadius: 14,
+            padding: '18px 18px 8px',
+            marginBottom: 16,
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 8,
+              marginBottom: 12,
+            }}>
+              <span style={{ fontSize: 16 }}>📝</span>
+              <h2 style={{
+                margin: 0,
+                fontFamily: F.serif,
+                fontSize: 17, fontWeight: 700,
+                color: C.forest,
+                lineHeight: 1.2,
+              }}>
+                Sessions and SOAP notes
+              </h2>
+            </div>
+            <SessionList
+              client={profile.client}
+              therapist={therapist}
+              therapistId={therapistId}
+              onBack={onBack}
+              onSelectSession={onSelectSession}
+            />
+          </div>
         </div>
       )}
     </div>
