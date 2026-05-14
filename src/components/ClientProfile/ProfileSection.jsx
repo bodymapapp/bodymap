@@ -40,6 +40,7 @@ const F = {
 // not identical. Subtle differentiation: a 4px left bar in the
 // section's color. Helps the eye distinguish sections at a glance.
 const ACCENTS = {
+  about:       { bar: C.muted,      label: 'CLIENT INFO'  },
   soap:        { bar: C.sage,       label: 'SOAP NOTES'   },
   patterns:    { bar: C.gold,       label: 'BODY PATTERNS' },
   preferences: { bar: C.sageBright, label: 'SETTINGS'      },

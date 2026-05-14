@@ -45,6 +45,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // so the page is fully informative on first visit; the therapist
   // can collapse what they don't need.
   const [openSections, setOpenSections] = useState({
+    about: false,
     soap: true,
     patterns: true,
     preferences: true,
@@ -60,6 +61,15 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // uses the legacy SessionList modal flow (separate UI cleanup).
   const [aboutPulse, setAboutPulse] = useState(0);
   const [archiveTrigger, setArchiveTrigger] = useState(false);
+
+  // When the hero pencil fires (aboutPulse increments), force the
+  // Client info section open so the inline editor is reachable
+  // without an extra tap on the section chevron.
+  useEffect(() => {
+    if (aboutPulse > 0) {
+      setOpenSections(s => ({ ...s, about: true }));
+    }
+  }, [aboutPulse]);
 
   useEffect(() => {
     // If a previewProfile is provided (sample-client demo case), use
@@ -171,26 +181,64 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       {profile && (
         <div style={{ padding: '0 14px 24px' }}>
 
-          {/* About this client. Inline tap-to-edit identity card.
-              Replaces the legacy 'Edit Client' modal. Hero pencil
-              triggers a pulse + scroll via aboutPulse so therapists
-              know where to edit. */}
-          <AboutCard
-            client={profile.client}
-            pulse={aboutPulse}
-            onUpdated={(payload) => {
-              // Mirror the saved fields into the profile so the
-              // header and elsewhere render fresh values without a
-              // refetch.
-              setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
-            }}
-          />
+          {/* Client info: inline tap-to-edit fields wrapped in the
+              same collapsible ProfileSection chrome the rest of the
+              profile uses. Default closed so the SOAP work surface
+              stays primary; tap the section header (or the hero
+              pencil button, which triggers a pulse) to expand. */}
+          <ProfileSection
+            accent="about"
+            order={0}
+            title="Client info"
+            trailingLabel={(profile.client?.email || profile.client?.phone)
+              ? 'Name, email, phone, notes'
+              : 'Add email or phone'}
+            isOpen={openSections.about}
+            onToggle={() => toggle('about')}
+          >
+            <AboutCard
+              client={profile.client}
+              pulse={aboutPulse}
+              onUpdated={(payload) => {
+                setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
+              }}
+            />
+            {/* Quiet Archive affordance: lives at the bottom of the
+                Client Info section so destructive actions sit next to
+                the editing surface, not in the busy hero. */}
+            <div style={{
+              marginTop: 8,
+              paddingTop: 12,
+              borderTop: '1px solid #EEF2F7',
+              display: 'flex',
+              justifyContent: 'flex-end',
+            }}>
+              <button
+                onClick={() => setArchiveTrigger(true)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#94A3B8',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
+                  cursor: 'pointer',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#DC2626'; e.currentTarget.style.background = '#FEF2F2'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#94A3B8'; e.currentTarget.style.background = 'transparent'; }}
+              >
+                Archive this client
+              </button>
+            </div>
+          </ProfileSection>
 
           {/* Sessions and SOAP notes: moved to the top per HK request.
               This is the primary work surface for the therapist. */}
           <ProfileSection
             accent="soap"
-            order={0}
+            order={1}
             title="Sessions and SOAP notes"
             trailingLabel={soapCount > 0
               ? `${soapCount} note${soapCount === 1 ? '' : 's'} written`
@@ -215,7 +263,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="patterns"
-            order={1}
+            order={2}
             title="Patterns"
             trailingLabel={patternCount > 0
               ? 'Recurring body zones'
@@ -232,7 +280,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="preferences"
-            order={2}
+            order={3}
             title="Preferences"
             trailingLabel={profile.preferences
               ? 'From last session'
@@ -245,7 +293,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="medical"
-            order={3}
+            order={4}
             title="Medical flags"
             trailingLabel={medicalCount > 0
               ? `${medicalCount} on file`
@@ -259,7 +307,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="timeline"
-            order={4}
+            order={5}
             title="Timeline"
             trailingLabel={timelineCount > 0
               ? `${timelineCount} event${timelineCount === 1 ? '' : 's'}`

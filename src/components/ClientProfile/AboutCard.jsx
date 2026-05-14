@@ -139,28 +139,16 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     <div
       ref={cardRef}
       style={{
-        background: C.paper,
-        border: `1px solid ${pulsing ? C.focus : C.line}`,
-        borderRadius: 14,
-        padding: '12px 14px 6px',
-        marginBottom: 14,
+        background: 'transparent',
+        borderRadius: 10,
+        padding: '4px 2px',
         fontFamily: F.sans,
-        boxShadow: pulsing ? '0 0 0 4px rgba(42,87,65,0.12)' : 'none',
-        transition: 'box-shadow 0.25s ease, border-color 0.25s ease',
+        outline: pulsing ? `2px solid ${C.focus}` : '2px solid transparent',
+        outlineOffset: pulsing ? 4 : 0,
+        boxShadow: pulsing ? '0 0 0 6px rgba(42,87,65,0.12)' : 'none',
+        transition: 'box-shadow 0.25s ease, outline-color 0.25s ease',
       }}
     >
-      <div style={{
-        fontSize: 10.5,
-        fontWeight: 700,
-        color: C.muted,
-        letterSpacing: '0.14em',
-        textTransform: 'uppercase',
-        marginBottom: 4,
-        paddingLeft: 4,
-      }}>
-        About this client
-      </div>
-
       <Row
         label="Name"
         value={name}
