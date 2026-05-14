@@ -1623,18 +1623,25 @@ export default function Features() {
           </FadeIn>
           <FadeIn delay={0.15}>
             <div>
-              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Schedule</div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Smart Booking</div>
               <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(28px,3vw,44px)", fontWeight:700, color:C.dark, lineHeight:1.2, marginBottom:20 }}>
-                Your Entire Day.<br/>Every Client's Status.<br/>One Screen.
+                The Right Client.<br/>The Right Slot.<br/>One Tap.
               </h2>
               <p style={{ fontSize:16, color:C.gray, lineHeight:1.7, marginBottom:32 }}>
-                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment for their body map history, focus areas, and session count. The left rail surfaces the gap to fill, the client to text, and what your day is about to ask of your body.
+                Most schedules show you what is booked. MyBodyMap shows you what to do about what is not. When a slot opens up, your platform names the one client most likely to take it, gives you three reasons why, and writes the text. You tap once. Before every client walks in, three things you need to remember are already on the screen. Your platform notices when your week is about to overload your wrists.
               </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:32 }}>
-                {["Smart Booking left rail: gap-filler, briefing, body load, revenue","Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Cal.com integration for automatic sync"].map((f,i)=>(
-                  <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, fontSize:15, color:C.dark }}>
-                    <div style={{ width:20, height:20, borderRadius:"50%", background:"#DCFCE7", color:"#16A34A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, marginTop:1 }}>✓</div>
-                    {f}
+              <div style={{ display:"flex", flexDirection:"column", gap:14, marginBottom:32 }}>
+                {[
+                  { title:"Fill This Gap", desc:"A slot opens, your platform picks the right lapsed client, drafts the message, and texts on one tap." },
+                  { title:"Up-Next Briefing", desc:"Three things you need to remember about the next client, pulled from her last session and pattern history." },
+                  { title:"Body Load Awareness", desc:"Built for LMTs by LMTs. Your platform watches your day's service mix and warns you before three deep tissue in a row burns out your wrists." },
+                ].map((p) => (
+                  <div key={p.title} style={{ display:"flex", alignItems:"flex-start", gap:12 }}>
+                    <div style={{ width:28, height:28, borderRadius:8, background:"#DCFCE7", color:"#16A34A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:14, fontWeight:700, flexShrink:0, marginTop:1 }}>✓</div>
+                    <div>
+                      <div style={{ fontSize:15, fontWeight:700, color:C.dark, marginBottom:3 }}>{p.title}</div>
+                      <div style={{ fontSize:13, color:C.gray, lineHeight:1.55 }}>{p.desc}</div>
+                    </div>
                   </div>
                 ))}
               </div>
