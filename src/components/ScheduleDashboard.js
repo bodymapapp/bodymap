@@ -334,6 +334,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
 
 function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh }) {
   const [selected,setSelected] = useState(null);
+  const [showLegend,setShowLegend] = useState(false);
   const scrollRef = useRef(null);
   const now = new Date();
   const nowMin = dayOffset===0 ? now.getHours()*60+now.getMinutes() : -1;
@@ -398,8 +399,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </button>
       </div>
 
-      {/* Scrollable day picker */}
-      <div ref={scrollRef} style={{display:'flex',gap:6,marginBottom:20,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
+      {/* Scrollable day picker, compacted May 14 2026.
+          Was 70px wide, 3-line cards with 'X appts' text on each.
+          Now 56px wide, 2-line cards with a count badge in the
+          corner when non-zero. Saves ~30px vertical and looks
+          tighter against the action row. */}
+      <div ref={scrollRef} style={{display:'flex',gap:6,marginBottom:14,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
         {DAY_RANGE.map(i=>{
           const d=addDays(today,i);
           const count=allAppts.filter(a=>sameDay(a.date,d)&&!a.preview).length;
@@ -408,35 +413,42 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           const isPast=i<0;
           return (
             <button key={i} data-istoday={isToday?'true':undefined} onClick={()=>setDayOffset(i)}
-              style={{flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:12,padding:'10px 14px',cursor:'pointer',minWidth:70,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.8:1}}>
-              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2}}>
+              style={{position:'relative',flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:10,padding:'7px 10px',cursor:'pointer',minWidth:56,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.8:1}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:1,letterSpacing:'0.04em'}}>
                 {i===0?'Today':i===-1?'Yest':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
               </div>
-              <div style={{fontSize:17,fontWeight:700}}>{d.getDate()}</div>
-              {count>0&&<div style={{fontSize:10,marginTop:2,opacity:0.7}}>{count} appt{count!==1?'s':''}</div>}
-              {count===0&&<div style={{fontSize:10,marginTop:2,opacity:0.35}}>, </div>}
+              <div style={{fontSize:15,fontWeight:700}}>{d.getDate()}</div>
+              {count>0&&(
+                <span style={{position:'absolute',top:-5,right:-5,minWidth:16,height:16,padding:'0 4px',borderRadius:8,background:isSel?'#86EFAC':'#2A5741',color:isSel?'#1F3A2C':'#fff',fontSize:10,fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}>{count}</span>
+              )}
             </button>
           );
         })}
       </div>
 
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:12,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
-        <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
-          <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
-            <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
-            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+      {/* Legend, collapsible. HK May 14 2026: the legend was always
+          on, ate ~50px every render. Now hidden by default behind a
+          'Legend' pill. Calendar gets the space back. */}
+      <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <button onClick={()=>setShowLegend(v=>!v)}
+          style={{display:'inline-flex',alignItems:'center',gap:5,background:showLegend?'#F0FDF4':'#fff',border:`1px solid ${showLegend?'#BBF7D0':'#E5E7EB'}`,borderRadius:14,padding:'4px 10px',fontSize:11,color:showLegend?'#16A34A':'#6B7280',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+          <span style={{fontSize:10}}>{showLegend?'▾':'▸'}</span>
+          Legend
+        </button>
+        {showLegend && (
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
+            {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
+              <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
+                <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
+                <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+              </div>
+            ))}
+            <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <div style={{width:10,height:10,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1'}}/>
+              <span style={{fontSize:11,color:'#9CA3AF'}}>Preview</span>
+            </div>
           </div>
-        ))}
-        <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <div style={{width:12,height:12,borderRadius:3,background:'#F8F8F8',border:'1.5px dashed #CBD5E1'}}/>
-          <span style={{fontSize:11,color:'#9CA3AF'}}>Preview</span>
-        </div>
-        <div style={{display:'flex',alignItems:'center',gap:4}}>
-          <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
-          <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
-        </div>
-        <span style={{fontSize:10,color:'#9CA3AF',marginLeft:'auto'}}>Tap block for details</span>
+        )}
       </div>
 
       <div style={{background:'#fff',borderRadius:16,padding:'16px 14px 20px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
@@ -529,6 +541,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
   const APPTS=appointments||[];
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
+  const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
   const getMonday=d=>{const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()+(day===0?-6:1-day));x.setHours(0,0,0,0);return x;};
   const weekStart=addDays(getMonday(today),weekOffset*7);
@@ -539,19 +552,21 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
   const realWeek=weekAppts.filter(a=>!a.preview);
   return (
     <div>
-      {/* Legend */}
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:16,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',alignItems:'center'}}>
-        <span style={{fontSize:11,fontWeight:700,color:'#374151'}}>HOW TO READ:</span>
-        {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
-          <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
-            <div style={{width:12,height:12,borderRadius:3,background:bg,border:`2px solid ${color}`}}/>
-            <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
-          </div>
-        ))}
-        {!isMobile && (
-          <div style={{display:'flex',alignItems:'center',gap:4}}>
-            <div style={{width:18,height:18,borderRadius:'50%',background:'#2A5741',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,color:'#fff'}}>AB</div>
-            <span style={{fontSize:11,color:'#6B7280'}}>Client initials</span>
+      {/* Legend, collapsible. Off by default for vertical space. */}
+      <div style={{marginBottom:12,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+        <button onClick={()=>setShowLegend(v=>!v)}
+          style={{display:'inline-flex',alignItems:'center',gap:5,background:showLegend?'#F0FDF4':'#fff',border:`1px solid ${showLegend?'#BBF7D0':'#E5E7EB'}`,borderRadius:14,padding:'4px 10px',fontSize:11,color:showLegend?'#16A34A':'#6B7280',fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>
+          <span style={{fontSize:10}}>{showLegend?'▾':'▸'}</span>
+          Legend
+        </button>
+        {showLegend && (
+          <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',padding:'6px 10px',background:'#fff',borderRadius:8,border:'1px solid #F3F4F6',flex:1,minWidth:0}}>
+            {[{color:'#16A34A',bg:'#DCFCE7',label:'Brief ready'},{color:'#D97706',bg:'#FEF3C7',label:'No intake yet'},{color:'#6B7280',bg:'#F3F4F6',label:'Complete'},{color:'#7F77DD',bg:'#EFEAFD',label:'From Google'}].map(({color,bg,label})=>(
+              <div key={label} style={{display:'flex',alignItems:'center',gap:4}}>
+                <div style={{width:10,height:10,borderRadius:3,background:bg,border:`1.5px solid ${color}`}}/>
+                <span style={{fontSize:11,color:'#6B7280'}}>{label}</span>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -1085,10 +1100,10 @@ export default function ScheduleDashboard({ therapist }) {
       {rescheduleAppt && (
         <BookingModal therapist={therapist} mode="reschedule" existingBooking={rescheduleAppt} onClose={() => setRescheduleAppt(null)} onSuccess={fetchBookings} />
       )}
-      <div style={{marginBottom:16}}>
-        <div style={{marginBottom:8}}>
-          <h2 style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:700,color:'#1F2937',margin:'0 0 2px'}}>Schedule</h2>
-          <p style={{fontSize:12,color:'#6B7280',margin:0}}>{fmtDay(today)}</p>
+      <div style={{marginBottom:14}}>
+        <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:10}}>
+          <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:'#1F2937',margin:0,lineHeight:1.1}}>Schedule</h2>
+          <span style={{fontSize:13,color:'#6B7280',fontWeight:500}}>{fmtDay(today)}</span>
         </div>
         {/* Action row, unified pill buttons, consistent heights */}
         <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
@@ -1227,36 +1242,37 @@ export default function ScheduleDashboard({ therapist }) {
         </div>
       )}
 
-      {/* Stats, compact on mobile */}
-      {window.innerWidth < 768 ? (
-        <div style={{display:'flex',gap:8,marginBottom:14,overflowX:'auto',paddingBottom:2}}>
-          {[
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
-            {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
-          ].map(s=>(
-            <div key={s.label} style={{background:'#fff',borderRadius:10,padding:'8px 12px',boxShadow:'0 1px 3px rgba(0,0,0,0.06)',flexShrink:0,minWidth:72,textAlign:'center'}}>
-              <div style={{fontSize:20,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
-              <div style={{fontSize:10,color:'#9CA3AF',marginTop:2,whiteSpace:'nowrap'}}>{s.label}</div>
+      {/* Stats: single dense inline row. HK May 14 2026: the four
+          card tiles ate 110px of vertical space above the calendar,
+          which is the star feature. Compressed to one line that
+          carries the same four numbers with a thin separator. Same
+          numbers, ~75px shorter. Wraps on narrow viewports. */}
+      <div className="bm-sched-stats" style={{
+        display:'flex',
+        flexWrap:'wrap',
+        gap:0,
+        marginBottom:14,
+        padding:'10px 14px',
+        background:'#fff',
+        borderRadius:10,
+        border:'1px solid #F3F4F6',
+        alignItems:'center',
+      }}>
+        {[
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
+          {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
+        ].map((s,idx,arr)=>(
+          <React.Fragment key={s.label}>
+            <div style={{display:'inline-flex',alignItems:'baseline',gap:6,padding:'0 14px',flexShrink:0}}>
+              <span style={{fontSize:18,fontWeight:700,fontFamily:'Georgia,serif',color:s.color,lineHeight:1}}>{s.val}</span>
+              <span style={{fontSize:11,color:'#9CA3AF',fontWeight:600,letterSpacing:'0.02em'}}>{s.label}</span>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bm-sched-stats" style={{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))',gap:10,marginBottom:20}}>
-          {[
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-            {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
-            {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
-          ].map(s=>(
-            <div key={s.label} style={{background:'#fff',borderRadius:12,padding:'14px 12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-              <div style={{fontSize:24,fontWeight:700,color:s.color,fontFamily:'Georgia,serif',lineHeight:1}}>{s.val}</div>
-              <div style={{fontSize:11,color:'#9CA3AF',marginTop:3}}>{s.label}</div>
-            </div>
-          ))}
-        </div>
-      )}
+            {idx < arr.length - 1 && <div style={{width:1,height:18,background:'#E5E7EB',flexShrink:0}}/>}
+          </React.Fragment>
+        ))}
+      </div>
 
       {/* Tab bar */}
       <div className="bm-tabbar" style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content',maxWidth:'100%',overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',flexWrap:'nowrap'}}>
