@@ -81,11 +81,7 @@ ALTER TABLE session_intelligence ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS session_intel_therapist_read ON session_intelligence;
 CREATE POLICY session_intel_therapist_read ON session_intelligence
   FOR SELECT
-  USING (
-    auth.uid() IN (
-      SELECT user_id FROM therapists WHERE id = session_intelligence.therapist_id
-    )
-  );
+  USING (auth.uid() = therapist_id);
 
 DROP POLICY IF EXISTS session_intel_service_all ON session_intelligence;
 CREATE POLICY session_intel_service_all ON session_intelligence

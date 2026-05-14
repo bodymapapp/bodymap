@@ -451,31 +451,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         })}
       </div>
 
-      {/* Smart Booking 2-col layout. Left rail = intelligence cards
-          (briefing, body load, revenue, fill-gap). Right = the
-          calendar/timeline. Mobile stacks single-col with rail on top.
-          HK May 14 2026: Phase 1, hardcoded placeholder data per
-          founder playbook formulas. */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: isMobile ? '1fr' : '260px 1fr',
-        gap: isMobile ? 14 : 16,
-        alignItems: 'start',
-      }}>
-        {/* LEFT RAIL. minWidth:0 wrapper prevents grid-item blow-out
-            when the inner carousel has content wider than the column. */}
-        <div style={{ minWidth: 0, width: '100%' }}>
-          <SmartBookingRail
-            isMobile={isMobile}
-            therapist={therapist}
-            allAppts={allAppts}
-            today={today}
-          />
-        </div>
-
-        {/* RIGHT: legend pill + timeline grid */}
-        <div style={{ minWidth: 0 }}>
-
       {/* Legend, collapsible. HK May 14 2026: the legend was always
           on, ate ~50px every render. Now hidden by default behind a
           'Legend' pill. Calendar gets the space back. */}
@@ -613,8 +588,6 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         )}
       </div>
 
-        </div>{/* end right col of Smart Booking grid */}
-      </div>{/* end Smart Booking 2-col grid */}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
@@ -1369,12 +1342,45 @@ export default function ScheduleDashboard({ therapist }) {
 
       {loading
         ?<div style={{textAlign:'center',padding:'40px',color:'#9CA3AF',fontSize:14}}>Loading schedule...</div>
-        :<>
-          {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
-          {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
-          {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
-          {subView==='insights'&&<InsightsView appointments={allAppts}/>}
-        </>
+        :(
+          /* Persistent 2-col layout. Left rail (intelligence) shows on
+             every tab. Right pane swaps Today / Weekly / Monthly /
+             Insights. Mobile collapses to single column with rail on
+             top.
+
+             Per founder playbook (How we win > intelligence layer):
+             insights and intelligence must surface where the decision
+             is made, not in an isolated analytics tab. The same Client
+             Brief, Body Load, Revenue Pulse, Fill This Gap, and Rebook
+             Watch live alongside whichever calendar view the therapist
+             is on. */
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: isMobileW ? '1fr' : '260px 1fr',
+            gap: isMobileW ? 14 : 16,
+            alignItems: 'start',
+          }}>
+            {/* LEFT RAIL. minWidth:0 wrapper prevents grid-item blow-out
+                when the inner carousel has content wider than the column. */}
+            <div style={{ minWidth: 0, width: '100%' }}>
+              <SmartBookingRail
+                isMobile={isMobileW}
+                therapist={therapist}
+                allAppts={allAppts}
+                today={today}
+                scope={subView}
+              />
+            </div>
+
+            {/* RIGHT PANE: tab-selected calendar/insights view. */}
+            <div style={{ minWidth: 0 }}>
+              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='insights'&&<InsightsView appointments={allAppts}/>}
+            </div>
+          </div>
+        )
       }
     </div>
   );
