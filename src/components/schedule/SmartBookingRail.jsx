@@ -141,86 +141,268 @@ const PLACEHOLDER_GAP = {
   otherMatches: 2,
 };
 
-export default function SmartBookingRail({ isMobile = false, therapist, allAppts, today }) {
+export default function SmartBookingRail({ isMobile = false, therapist, allAppts, today, scope = 'today' }) {
   const [intelByClient, setIntelByClient] = useState({});
 
-  // Compute next 4 upcoming bookings from today forward, sorted.
-  const upcomingBookings = useMemo(() => {
-    if (!allAppts || !allAppts.length) return [];
+  // Compute scope time window. All widgets read this so they stay
+  // in sync as the therapist switches tabs.
+  // - today: just today's date
+  // - weekly: today to +7 days
+  // - monthly: today to end of current calendar month
+  // - insights: trailing 30 days (used for top-regulars cohort)
+  const scopeWindow = useMemo(() => {
     const now = new Date();
     const todayDate = today || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date(todayDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    if (scope === 'today') {
+      end.setHours(23, 59, 59, 999);
+    } else if (scope === 'weekly') {
+      end.setDate(end.getDate() + 7);
+    } else if (scope === 'monthly') {
+      end.setMonth(end.getMonth() + 1);
+      end.setDate(0);
+      end.setHours(23, 59, 59, 999);
+    } else if (scope === 'insights') {
+      // Trailing 30 days (going BACKWARD) for the regulars view
+      start.setDate(start.getDate() - 30);
+      end.setDate(end.getDate());
+      end.setHours(23, 59, 59, 999);
+    }
+    return { start, end };
+  }, [scope, today]);
+
+  // Brief carousel: scope-aware list of clients.
+  //   - today/weekly/monthly: upcoming clients in the window (4/7/8)
+  //   - insights: top regulars (most-booked clients trailing 90 days)
+  const upcomingBookings = useMemo(() => {
+    if (!allAppts || !allAppts.length) return [];
+    if (scope === 'insights') {
+      // Top 4 most-booked clients across all known data.
+      // De-dupe by clientId, count bookings, sort.
+      const counts = {};
+      allAppts.forEach(a => {
+        if (a.preview || a.external || !a.clientId) return;
+        if (!counts[a.clientId]) {
+          counts[a.clientId] = { ...a, count: 0, lastBooking: a.date };
+        }
+        counts[a.clientId].count += 1;
+        if (a.date > counts[a.clientId].lastBooking) {
+          counts[a.clientId].lastBooking = a.date;
+        }
+      });
+      return Object.values(counts)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 4)
+        .map(c => ({ ...c, isRegular: true }));
+    }
+    // Forward-looking: upcoming in the scope window
+    const limit = scope === 'today' ? 4 : scope === 'weekly' ? 7 : 8;
     return allAppts
-      .filter(a => !a.preview && !a.external && a.date >= todayDate)
+      .filter(a => !a.preview && !a.external && a.date >= scopeWindow.start && a.date <= scopeWindow.end)
       .sort((a, b) => {
         const da = a.date.getTime();
         const db = b.date.getTime();
         if (da !== db) return da - db;
         return parseTimeToMin(a.startTime || timeFrom12(a.time)) - parseTimeToMin(b.startTime || timeFrom12(b.time));
       })
-      .slice(0, 4);
-  }, [allAppts, today]);
+      .slice(0, limit);
+  }, [allAppts, scope, scopeWindow]);
 
-  // Compute TODAY's body load from confirmed bookings on today.
+  // Body Load: scope-aware. Today: today's load. Weekly: heaviest
+  // day this week + 7-day distribution. Monthly: heaviest week +
+  // 4-week distribution. Insights: avg weekly load + trend direction.
+  //
   // Formula from founder playbook (MyBodyMap Marketing > How we win
   // > formula playbook):
-  //   load = sum(load_factor * duration_min / 60) over today's bookings
-  // Thresholds: < 3 light, 3-5.5 moderate, 5.5-7.5 high, > 7.5 risk.
-  const todayLoad = useMemo(() => {
+  //   load = sum(load_factor * duration_min / 60) per period
+  // Thresholds: < 3 light, 3-5.5 moderate, 5.5-7.5 high, > 7.5 risk
+  // per day. For week/month aggregates we use the max-day threshold
+  // so the warning still represents 'most stressful day in window.'
+  const scopedLoad = useMemo(() => {
     if (!allAppts || !allAppts.length) return null;
     const todayDate = today || new Date();
-    const t0 = new Date(todayDate);
-    t0.setHours(0,0,0,0);
-    const todayAppts = allAppts.filter(a =>
-      !a.preview && !a.external &&
-      a.date.getTime() === t0.getTime()
-    );
-    if (!todayAppts.length) return null;
 
-    let total = 0;
-    const segments = [];
-    let deepCount = 0;
-    let medCount = 0;
-    let easyCount = 0;
-    todayAppts.forEach(a => {
-      const lf = loadFactorFor(a.service);
-      const contrib = lf * (a.duration / 60);
-      total += contrib;
-      const kind = lf >= 0.9 ? 'deep' : lf >= 0.55 ? 'med' : 'easy';
-      if (kind === 'deep') deepCount++;
-      else if (kind === 'med') medCount++;
-      else easyCount++;
-      segments.push({
-        kind,
-        pct: Math.max(8, Math.min(40, contrib * 12)),
-        color: kind === 'deep' ? '#DC2626' : kind === 'med' ? '#F59E0B' : '#86EFAC',
+    // Helper: aggregate one period
+    function aggregatePeriod(rangeStart, rangeEnd) {
+      const periodAppts = allAppts.filter(a =>
+        !a.preview && !a.external &&
+        a.date >= rangeStart && a.date <= rangeEnd
+      );
+      let total = 0;
+      let deep = 0, med = 0, easy = 0;
+      periodAppts.forEach(a => {
+        const lf = loadFactorFor(a.service);
+        total += lf * (a.duration / 60);
+        if (lf >= 0.9) deep++;
+        else if (lf >= 0.55) med++;
+        else easy++;
       });
-    });
-
-    let threshold = 'light';
-    let callout = null;
-    if (total > 7.5) {
-      threshold = 'risk';
-      callout = `${deepCount}+ heavy back to back. Skip a strength session tonight. Wrists, forearms, low back at elevated risk.`;
-    } else if (total > 5.5) {
-      threshold = 'high';
-      callout = 'Hydrate at the mid-afternoon gap. Stretch wrists between deep tissue.';
-    } else if (total > 3) {
-      threshold = 'moderate';
+      return { total, deep, med, easy, count: periodAppts.length };
     }
 
-    const summaryParts = [];
-    if (deepCount) summaryParts.push(`${deepCount} deep`);
-    if (medCount) summaryParts.push(`${medCount} swedish`);
-    if (easyCount) summaryParts.push(`${easyCount} light`);
+    if (scope === 'today') {
+      // Original today rendering: segments per booking
+      const t0 = new Date(todayDate); t0.setHours(0,0,0,0);
+      const todayAppts = allAppts.filter(a =>
+        !a.preview && !a.external && a.date.getTime() === t0.getTime()
+      );
+      if (!todayAppts.length) return null;
 
-    return {
-      total: Math.round(total * 10) / 10,
-      threshold,
-      callout,
-      segments,
-      summary: summaryParts.join(' · ') + ' today',
-    };
-  }, [allAppts, today]);
+      let total = 0;
+      const segments = [];
+      let deepCount = 0, medCount = 0, easyCount = 0;
+      todayAppts.forEach(a => {
+        const lf = loadFactorFor(a.service);
+        const contrib = lf * (a.duration / 60);
+        total += contrib;
+        const kind = lf >= 0.9 ? 'deep' : lf >= 0.55 ? 'med' : 'easy';
+        if (kind === 'deep') deepCount++;
+        else if (kind === 'med') medCount++;
+        else easyCount++;
+        segments.push({
+          kind,
+          pct: Math.max(8, Math.min(40, contrib * 12)),
+          color: kind === 'deep' ? '#DC2626' : kind === 'med' ? '#F59E0B' : '#86EFAC',
+        });
+      });
+
+      let threshold = 'light';
+      let callout = null;
+      if (total > 7.5) {
+        threshold = 'risk';
+        callout = `${deepCount}+ heavy back to back. Skip a strength session tonight. Wrists, forearms, low back at elevated risk.`;
+      } else if (total > 5.5) {
+        threshold = 'high';
+        callout = 'Hydrate at the mid-afternoon gap. Stretch wrists between deep tissue.';
+      } else if (total > 3) {
+        threshold = 'moderate';
+      }
+
+      const summaryParts = [];
+      if (deepCount) summaryParts.push(`${deepCount} deep`);
+      if (medCount) summaryParts.push(`${medCount} swedish`);
+      if (easyCount) summaryParts.push(`${easyCount} light`);
+
+      return {
+        scope: 'today',
+        total: Math.round(total * 10) / 10,
+        threshold, callout, segments,
+        summary: summaryParts.join(' · ') + ' today',
+      };
+    }
+
+    if (scope === 'weekly') {
+      // Day-by-day for the next 7 days
+      const days = [];
+      let maxLoad = 0;
+      let heaviestDayLabel = '';
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(todayDate);
+        d.setHours(0,0,0,0);
+        d.setDate(d.getDate() + i);
+        const dEnd = new Date(d);
+        dEnd.setHours(23,59,59,999);
+        const agg = aggregatePeriod(d, dEnd);
+        const label = d.toLocaleDateString('en-US', { weekday: 'short' });
+        days.push({ label, total: agg.total, count: agg.count });
+        if (agg.total > maxLoad) {
+          maxLoad = agg.total;
+          heaviestDayLabel = label;
+        }
+      }
+      // Threshold = max-day threshold
+      let threshold = 'light';
+      let callout = null;
+      if (maxLoad > 7.5) {
+        threshold = 'risk';
+        callout = `${heaviestDayLabel} is the heaviest. Build recovery time around it.`;
+      } else if (maxLoad > 5.5) {
+        threshold = 'high';
+        callout = `${heaviestDayLabel} is the most loaded day this week.`;
+      } else if (maxLoad > 3) {
+        threshold = 'moderate';
+      }
+      return {
+        scope: 'weekly',
+        total: Math.round(maxLoad * 10) / 10,
+        threshold, callout,
+        days,
+        summary: heaviestDayLabel ? `Heaviest: ${heaviestDayLabel}` : 'This week',
+      };
+    }
+
+    if (scope === 'monthly') {
+      // Week-by-week for the next 4 weeks
+      const weeks = [];
+      let maxLoad = 0;
+      let heaviestWeekIdx = 0;
+      for (let i = 0; i < 4; i++) {
+        const wStart = new Date(todayDate);
+        wStart.setHours(0,0,0,0);
+        wStart.setDate(wStart.getDate() + i * 7);
+        const wEnd = new Date(wStart);
+        wEnd.setDate(wEnd.getDate() + 6);
+        wEnd.setHours(23,59,59,999);
+        const agg = aggregatePeriod(wStart, wEnd);
+        weeks.push({ label: `W${i+1}`, total: agg.total, count: agg.count });
+        if (agg.total > maxLoad) {
+          maxLoad = agg.total;
+          heaviestWeekIdx = i;
+        }
+      }
+      // Threshold: weekly load thresholds scale (rough 7x daily)
+      let threshold = 'light';
+      let callout = null;
+      if (maxLoad > 35) {
+        threshold = 'risk';
+        callout = `Week ${heaviestWeekIdx+1} is the heaviest. Recovery time matters.`;
+      } else if (maxLoad > 22) {
+        threshold = 'high';
+        callout = `Week ${heaviestWeekIdx+1} is the most loaded.`;
+      } else if (maxLoad > 12) {
+        threshold = 'moderate';
+      }
+      return {
+        scope: 'monthly',
+        total: Math.round(maxLoad * 10) / 10,
+        threshold, callout,
+        days: weeks,  // reuse 'days' field name for the bar widget
+        summary: `Next 4 wks · peak W${heaviestWeekIdx+1}`,
+      };
+    }
+
+    if (scope === 'insights') {
+      // Average weekly load + 12-week trend (forward + backward
+      // around 'today')
+      const weeks = [];
+      for (let i = -8; i <= 4; i++) {
+        const wStart = new Date(todayDate);
+        wStart.setHours(0,0,0,0);
+        wStart.setDate(wStart.getDate() + i * 7);
+        const wEnd = new Date(wStart);
+        wEnd.setDate(wEnd.getDate() + 6);
+        wEnd.setHours(23,59,59,999);
+        const agg = aggregatePeriod(wStart, wEnd);
+        weeks.push({ label: i < 0 ? `-${-i}w` : i === 0 ? 'now' : `+${i}w`, total: agg.total, count: agg.count });
+      }
+      const avg = weeks.reduce((s, w) => s + w.total, 0) / weeks.length;
+      let threshold = 'light';
+      if (avg > 35) threshold = 'risk';
+      else if (avg > 22) threshold = 'high';
+      else if (avg > 12) threshold = 'moderate';
+      return {
+        scope: 'insights',
+        total: Math.round(avg * 10) / 10,
+        threshold,
+        callout: null,
+        days: weeks,
+        summary: `Avg ${Math.round(avg*10)/10} / wk`,
+      };
+    }
+    return null;
+  }, [allAppts, today, scope]);
 
   // Compute revenue: current week vs last week, goal from trailing
   // 4-week average × 1.10 per founder playbook. Sunday start.
@@ -477,7 +659,7 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       minWidth: 0,
       fontFamily: F.sans,
     }}>
-      <UpNextCarousel upcoming={upcoming} isMobile={isMobile} />
+      <UpNextCarousel upcoming={upcoming} isMobile={isMobile} scope={scope} />
       {/* Body Load + Revenue: on mobile, 2-up row to cut vertical
           scroll. On desktop, stack vertically in the narrow rail.
           Each card uses 0-width-flex-grow so they share the row
@@ -487,7 +669,7 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
         gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
         gap: isMobile ? 12 : 0,
       }}>
-        <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} compact={isMobile} />
+        <BodyLoadCard load={scopedLoad || PLACEHOLDER_LOAD} compact={isMobile} />
         {!isMobile && <div style={{ height: 14 }} />}
         <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} compact={isMobile} />
       </div>
@@ -655,9 +837,17 @@ function truncate(s, n) {
  * Up-Next Carousel
  * ============================================================= */
 
-function UpNextCarousel({ upcoming, isMobile = false }) {
+function UpNextCarousel({ upcoming, isMobile = false, scope = 'today' }) {
   const trackRef = useRef(null);
   const [index, setIndex] = useState(0);
+
+  // Scope-aware label so the carousel adapts when the user
+  // switches tabs. 'Up next' makes no sense in Monthly view
+  // where we are showing regulars, not future bookings.
+  const eyebrowLabel = scope === 'today'    ? 'Up next'
+                     : scope === 'weekly'   ? 'This week'
+                     : scope === 'monthly'  ? "Top this month"
+                     :                        'Regulars';
 
   function scrollTo(i) {
     if (!trackRef.current) return;
@@ -688,8 +878,8 @@ function UpNextCarousel({ upcoming, isMobile = false }) {
   return (
     <section style={{ minWidth: 0, width: '100%' }}>
       <SectionHeader
-        eyebrow="Up next"
-        trailing={upcoming[0]?.countdown}
+        eyebrow={eyebrowLabel}
+        trailing={scope === 'today' ? upcoming[0]?.countdown : null}
         action={
           <CarouselArrows
             onPrev={() => scrollTo(index - 1)}
@@ -970,24 +1160,79 @@ function ArrowBtn({ dir, onClick, disabled }) {
  * ============================================================= */
 
 function BodyLoadCard({ load, compact = false }) {
+  const scope = load.scope || 'today';
+  const eyebrowLabel = scope === 'today'    ? (compact ? 'Body load' : 'Body load today')
+                     : scope === 'weekly'   ? "Week's load"
+                     : scope === 'monthly'  ? "Month's load"
+                     :                        'Load trend';
+
+  // Renders either segments (today, contribution per booking) or
+  // bars (week/month/insights, contribution per day/week).
+  const useBars = scope !== 'today';
+  const maxBarVal = useBars && load.days ? Math.max(...load.days.map(d => d.total), 1) : 1;
+
   return (
     <section style={cardStyle('status')}>
       <SectionHeader
-        eyebrow={compact ? 'Body load' : 'Body load today'}
+        eyebrow={eyebrowLabel}
         trailing={compact ? null : load.summary}
       />
-      <div style={{
-        height: 8,
-        borderRadius: 4,
-        overflow: 'hidden',
-        display: 'flex',
-        marginBottom: 6,
-        background: C.lineSoft,
-      }}>
-        {load.segments.map((s, i) => (
-          <div key={i} style={{ width: `${s.pct}%`, background: s.color }} />
-        ))}
-      </div>
+
+      {/* SEGMENTS (today): each booking contributes one colored stripe */}
+      {!useBars && (
+        <div style={{
+          height: 8,
+          borderRadius: 4,
+          overflow: 'hidden',
+          display: 'flex',
+          marginBottom: 6,
+          background: C.lineSoft,
+        }}>
+          {load.segments && load.segments.map((s, i) => (
+            <div key={i} style={{ width: `${s.pct}%`, background: s.color }} />
+          ))}
+        </div>
+      )}
+
+      {/* BARS (weekly/monthly/insights): one bar per day or week */}
+      {useBars && load.days && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 4,
+          height: 44,
+          marginBottom: 8,
+        }}>
+          {load.days.map((d, i) => {
+            const ratio = d.total / maxBarVal;
+            const h = Math.max(3, Math.round(ratio * 40));
+            // Color by individual threshold
+            const dailyT = d.total;
+            const dailyThreshold = scope === 'monthly' || scope === 'insights'
+              ? (dailyT > 35 ? 'risk' : dailyT > 22 ? 'high' : dailyT > 12 ? 'moderate' : 'light')
+              : (dailyT > 7.5 ? 'risk' : dailyT > 5.5 ? 'high' : dailyT > 3 ? 'moderate' : 'light');
+            const color = dailyThreshold === 'risk' ? '#DC2626'
+                        : dailyThreshold === 'high' ? '#F59E0B'
+                        : dailyThreshold === 'moderate' ? '#86EFAC'
+                        :                                 C.lineSoft;
+            return (
+              <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{
+                  width: '100%',
+                  height: h,
+                  background: color,
+                  borderRadius: 2,
+                  transition: 'height 0.2s',
+                }} />
+                <div style={{ fontSize: 9, fontWeight: 600, color: C.muted, letterSpacing: '0.02em' }}>
+                  {d.label}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -1005,6 +1250,7 @@ function BodyLoadCard({ load, compact = false }) {
            load.threshold === 'moderate' ? 'Moderate' : 'Light'}
         </span>
       </div>
+
       {/* Callout only shows in full (non-compact) mode. On mobile 2-up
           the callout would crowd the row; full callout returns on
           desktop where the card is full-width in the rail. */}
