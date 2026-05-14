@@ -648,10 +648,17 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
   const rebookWatch = useMemo(() => {
     if (!lapsedClients.length) return [];
     const now = Date.now();
+    // Scope-aware cohort:
+    // - today/weekly: top 3 most-overdue lapsed regulars (existing)
+    // - monthly: top 5 most-overdue, wider time horizon
+    // - insights: hidden because Insights tab has its own cohort cards
+    if (scope === 'insights') return [];
+    const limit = scope === 'monthly' ? 5 : 3;
+    const minDaysLapsed = 30;
+    const maxDaysLapsed = scope === 'monthly' ? 180 : 90;
     return lapsedClients
       .map(c => {
         const daysLapsed = Math.round((now - c.lastVisit.getTime()) / 86400000);
-        // Cadence: typical interval between visits
         let cadence = 30;
         if (c.dates.length >= 3) {
           const sorted = [...c.dates].sort((a, b) => a.getTime() - b.getTime());
@@ -664,10 +671,10 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
         const overdueBy = Math.max(0, daysLapsed - cadence);
         return { ...c, daysLapsed, cadence, overdueBy };
       })
-      .filter(c => c.daysLapsed >= 30 && c.daysLapsed <= 90)
+      .filter(c => c.daysLapsed >= minDaysLapsed && c.daysLapsed <= maxDaysLapsed)
       .sort((a, b) => b.overdueBy - a.overdueBy)
-      .slice(0, 3);
-  }, [lapsedClients]);
+      .slice(0, limit);
+  }, [lapsedClients, scope]);
 
   // Fetch session_intelligence for the client_ids of upcoming bookings.
   useEffect(() => {
