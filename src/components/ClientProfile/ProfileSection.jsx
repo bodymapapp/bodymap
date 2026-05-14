@@ -55,6 +55,7 @@ export default function ProfileSection({
   isOpen,
   onToggle,
   children,
+  order = 0,
 }) {
   const [hover, setHover] = React.useState(false);
   const interactive = typeof onToggle === 'function';
@@ -73,8 +74,15 @@ export default function ProfileSection({
         boxShadow: hover && interactive ? C.shadowHover : C.shadow,
         transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
         position: 'relative',
+        animation: `bm-cp-rise 0.45s ${order * 70}ms cubic-bezier(0.2, 0.6, 0.2, 1) both`,
       }}
     >
+      <style>{`
+        @keyframes bm-cp-rise {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       {/* 4px vertical accent bar on the left */}
       <div style={{
         position: 'absolute',

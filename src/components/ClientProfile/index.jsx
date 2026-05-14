@@ -119,6 +119,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               This is the primary work surface for the therapist. */}
           <ProfileSection
             accent="soap"
+            order={0}
             title="Sessions and SOAP notes"
             trailingLabel={soapCount > 0
               ? `${soapCount} note${soapCount === 1 ? '' : 's'} written`
@@ -139,6 +140,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="patterns"
+            order={1}
             title="Patterns"
             trailingLabel={patternCount > 0
               ? 'Recurring body zones'
@@ -155,6 +157,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="preferences"
+            order={2}
             title="Preferences"
             trailingLabel={profile.preferences
               ? 'From last session'
@@ -167,6 +170,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="medical"
+            order={3}
             title="Medical flags"
             trailingLabel={medicalCount > 0
               ? `${medicalCount} on file`
@@ -180,6 +184,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
 
           <ProfileSection
             accent="timeline"
+            order={4}
             title="Timeline"
             trailingLabel={timelineCount > 0
               ? `${timelineCount} event${timelineCount === 1 ? '' : 's'}`

@@ -198,6 +198,36 @@ function Tile({ icon, label, tone = 'neutral', accentBorder = false, onClick, ch
 }
 
 function BigNumber({ value, suffix, color, subtitle }) {
+  // Count-up animation: when value first appears, the number ticks
+  // from 0 up to the final value over ~700ms. Adds life to data
+  // landing on the page without being gimmicky.
+  const [displayValue, setDisplayValue] = React.useState(
+    typeof value === 'number' ? 0 : value
+  );
+
+  React.useEffect(() => {
+    if (typeof value !== 'number') {
+      setDisplayValue(value);
+      return;
+    }
+    if (value === 0) {
+      setDisplayValue(0);
+      return;
+    }
+    const duration = 700;
+    const start = performance.now();
+    let raf;
+    const tick = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      // ease-out cubic for a smooth deceleration
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplayValue(Math.round(eased * value));
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => raf && cancelAnimationFrame(raf);
+  }, [value]);
+
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
@@ -209,7 +239,7 @@ function BigNumber({ value, suffix, color, subtitle }) {
           letterSpacing: '-0.02em',
           fontVariantNumeric: 'tabular-nums',
         }}>
-          {value}
+          {displayValue}
         </span>
         {suffix && (
           <span style={{
