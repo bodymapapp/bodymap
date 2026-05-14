@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
+import SmartBookingRail from './schedule/SmartBookingRail';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -336,6 +337,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const [selected,setSelected] = useState(null);
   const [showLegend,setShowLegend] = useState(false);
   const scrollRef = useRef(null);
+  const isMobile = window.innerWidth < 900;
   const now = new Date();
   const nowMin = dayOffset===0 ? now.getHours()*60+now.getMinutes() : -1;
   const viewDate = addDays(today,dayOffset);
@@ -425,6 +427,23 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           );
         })}
       </div>
+
+      {/* Smart Booking 2-col layout. Left rail = intelligence cards
+          (briefing, body load, revenue, fill-gap). Right = the
+          calendar/timeline. Mobile stacks single-col with rail on top.
+          HK May 14 2026: Phase 1, hardcoded placeholder data per
+          founder playbook formulas. */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '260px 1fr',
+        gap: isMobile ? 14 : 16,
+        alignItems: 'start',
+      }}>
+        {/* LEFT RAIL */}
+        <SmartBookingRail isMobile={isMobile} />
+
+        {/* RIGHT: legend pill + timeline grid */}
+        <div style={{ minWidth: 0 }}>
 
       {/* Legend, collapsible. HK May 14 2026: the legend was always
           on, ate ~50px every render. Now hidden by default behind a
@@ -532,6 +551,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           </div>
         )}
       </div>
+
+        </div>{/* end right col of Smart Booking grid */}
+      </div>{/* end Smart Booking 2-col grid */}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
   );
