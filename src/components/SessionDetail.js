@@ -559,6 +559,20 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       const { data } = await supabase.from("sessions").update({ therapist_notes: notesToSave, public_notes: publicNotes }).eq("id", session.id).select().single();
       setSaved(true); setTimeout(() => setSaved(false), 2000);
       if (onUpdate && data) onUpdate(data);
+
+      // Fire SOAP intelligence extraction (fire-and-forget). Caches
+      // structured points for the Schedule briefing card. Idempotent:
+      // if notes haven't changed since last extract, edge function
+      // skips re-extraction (source_hash check).
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/extract-session-intelligence`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKey}`, 'apikey': anonKey },
+          body: JSON.stringify({ session_id: session.id }),
+        }).catch(e => console.warn('Intelligence extract failed silently:', e));
+      } catch (e) { /* never block save */ }
     } catch (err) { console.error(err); }
     finally { setSaving(false); }
   }
@@ -584,6 +598,17 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
       }
       const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notesToSave, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
+
+      // Fire SOAP intelligence extraction (fire-and-forget).
+      try {
+        const supabaseUrlIE = process.env.REACT_APP_SUPABASE_URL;
+        const anonKeyIE = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrlIE}/functions/v1/extract-session-intelligence`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${anonKeyIE}`, 'apikey': anonKeyIE },
+          body: JSON.stringify({ session_id: session.id }),
+        }).catch(e => console.warn('Intelligence extract failed silently:', e));
+      } catch (e) { /* never block */ }
 
       // Fire post-session email (non-blocking, don't wait)
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
