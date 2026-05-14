@@ -832,6 +832,113 @@ function InsightsView({ appointments }) {
       <div style={{fontSize:13,color:'#6B7280',lineHeight:1.6}}>Once clients start booking, you'll see your busiest days, top clients, and booking trends.</div>
     </div>
   );
+
+  // ─── COHORT COMPUTATIONS ─────────────────────────────────────
+  // Four action cohorts that answer 'what should I do this month?'
+  // Per founder playbook: insights live where decisions are made.
+  // Each cohort is a card with the 3 most actionable people + 'View
+  // all N'. Existing analytics charts move below as secondary context.
+  const now = Date.now();
+  const DAY_MS = 86400000;
+
+  // Build per-client aggregations from appointments
+  const byClient = {};
+  APPTS.forEach(a => {
+    const key = a.clientId || a.client_id || a.client || 'unknown';
+    if (!byClient[key]) {
+      byClient[key] = {
+        id: key,
+        name: a.client || 'Unknown',
+        dates: [],
+        prices: [],
+        statuses: [],
+        phone: a.client_phone || a.phone || null,
+        clientEmail: a.client_email || null,
+      };
+    }
+    byClient[key].dates.push(a.date);
+    if (a.price) byClient[key].prices.push(Number(a.price) || 0);
+    byClient[key].statuses.push(a.status);
+  });
+
+  const clients = Object.values(byClient).map(c => {
+    const sortedDates = [...c.dates].sort((a, b) => a - b);
+    const totalVisits = sortedDates.length;
+    const lastVisit = sortedDates[sortedDates.length - 1];
+    const firstVisit = sortedDates[0];
+    const daysLapsed = lastVisit ? Math.round((now - lastVisit.getTime()) / DAY_MS) : 999;
+    const lifetimeSpend = c.prices.reduce((s, n) => s + n, 0);
+
+    // No-show rate: count cancellations + no-shows
+    const cancelledCount = c.statuses.filter(s =>
+      s === 'cancelled' || s === 'no-show' || s === 'canceled'
+    ).length;
+    const noShowRate = totalVisits > 0 ? cancelledCount / totalVisits : 0;
+
+    // Cadence: avg interval between visits
+    let cadence = null;
+    if (sortedDates.length >= 3) {
+      const intervals = [];
+      for (let i = 1; i < sortedDates.length; i++) {
+        intervals.push((sortedDates[i].getTime() - sortedDates[i-1].getTime()) / DAY_MS);
+      }
+      cadence = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
+    }
+
+    // Visits in last 90 days
+    const cutoff90 = now - 90 * DAY_MS;
+    const recentVisits = sortedDates.filter(d => d.getTime() >= cutoff90).length;
+
+    return {
+      ...c,
+      totalVisits,
+      lastVisit,
+      firstVisit,
+      daysLapsed,
+      lifetimeSpend,
+      noShowRate,
+      cancelledCount,
+      cadence,
+      recentVisits,
+    };
+  });
+
+  // COHORT 1: HIGH VALUE
+  // Top clients by lifetime visit count (or spend if available).
+  // These are your champions. Action: thank-you or referral ask.
+  const highValue = [...clients]
+    .filter(c => c.totalVisits >= 5)
+    .sort((a, b) => b.totalVisits - a.totalVisits || b.lifetimeSpend - a.lifetimeSpend)
+    .slice(0, 10);
+
+  // COHORT 2: LAPSED
+  // Regulars whose cadence broke. Action: text now.
+  // Per playbook lapsed-regular formula: lifetime_bookings >= 4 AND
+  // last_booking 30-60 days ago. Extending to 60+ days for the
+  // Insights monthly view (broader than the rail's tighter window).
+  const lapsed = [...clients]
+    .filter(c => c.totalVisits >= 4 && c.daysLapsed >= 60 && c.daysLapsed <= 365)
+    .sort((a, b) => b.daysLapsed - a.daysLapsed)
+    .slice(0, 10);
+
+  // COHORT 3: NO-SHOW RISK
+  // >= 20% cancel/no-show rate AND >= 5 bookings.
+  // Per playbook formula. Action: send confirm reminder before next session.
+  const noShowRisk = [...clients]
+    .filter(c => c.noShowRate >= 0.20 && c.totalVisits >= 5)
+    .sort((a, b) => b.noShowRate - a.noShowRate)
+    .slice(0, 10);
+
+  // COHORT 4: MEMBERSHIP CANDIDATES
+  // First-3-visits clients who could become regulars. 2-4 visits in
+  // last 90 days, total visits <= 5. Action: invite to package or
+  // membership.
+  const membershipCandidates = [...clients]
+    .filter(c => c.recentVisits >= 2 && c.recentVisits <= 4 && c.totalVisits <= 5)
+    .sort((a, b) => b.recentVisits - a.recentVisits)
+    .slice(0, 10);
+
+  // ─── LEGACY ANALYTICS (secondary section) ────────────────────
   const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const dayCounts=DAY_NAMES.map((name,i)=>{const jsDay=i===6?0:i+1;return{name,count:APPTS.filter(a=>a.date.getDay()===jsDay).length};});
   const maxDay=Math.max(...dayCounts.map(d=>d.count),1);
@@ -840,47 +947,273 @@ function InsightsView({ appointments }) {
   const total=APPTS.length;
   const intakePct=total>0?Math.round((APPTS.filter(a=>a.status!=='pending-intake').length/total)*100):0;
   const depositPending=APPTS.filter(a=>a.deposit_required&&!a.deposit_paid).length;
+
   return (
-    <div className="bm-insights-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16}}>
-      <div style={{background:'#fff',borderRadius:12,padding:20,gridColumn:'1/-1'}}>
-        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:16}}>📊 Busiest Days</div>
-        <div style={{display:'flex',alignItems:'flex-end',gap:10,height:90}}>
-          {dayCounts.map(({name,count})=>(
-            <div key={name} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
-              <div style={{fontSize:11,fontWeight:700,color:'#6B7280'}}>{count||''}</div>
-              <div style={{width:'100%',background:'#2A5741',borderRadius:'4px 4px 0 0',height:`${Math.max((count/maxDay)*70,count>0?4:2)}px`,opacity:count>0?1:0.1}}/>
-              <div style={{fontSize:10,color:'#9CA3AF'}}>{name}</div>
+    <div style={{display:'flex',flexDirection:'column',gap:18}}>
+      {/* ─── COHORT CARDS ─── */}
+      <div style={{fontSize:11,fontWeight:700,color:'#6B7280',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:-6}}>
+        Action cohorts · what to do this month
+      </div>
+      <div className="bm-cohorts-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <CohortCard
+          color="forest"
+          icon="⭐"
+          title="High Value"
+          subtitle="Your champions. Thank or ask for a referral."
+          clients={highValue}
+          total={clients.filter(c => c.totalVisits >= 5).length}
+          actionLabel="Thank"
+          buildMessage={(c, therapistFirstName) => `Hi ${c.name.split(' ')[0]}, ${therapistFirstName || 'me'} here. I was just looking through my books and realized you've been part of my practice for ${c.totalVisits} sessions. That means a lot. If you ever want to send a friend my way, I have a referral thank-you for you.`}
+          metric={(c) => `${c.totalVisits} visits · $${Math.round(c.lifetimeSpend)}`}
+        />
+        <CohortCard
+          color="amber"
+          icon="🌿"
+          title="Lapsed"
+          subtitle="Regulars who drifted. Text now."
+          clients={lapsed}
+          total={clients.filter(c => c.totalVisits >= 4 && c.daysLapsed >= 60).length}
+          actionLabel="Text"
+          buildMessage={(c, therapistFirstName) => `Hi ${c.name.split(' ')[0]}, ${therapistFirstName || 'me'} here. It's been about ${Math.round(c.daysLapsed / 7)} weeks since your last visit. Want me to find a time that works for you?`}
+          metric={(c) => `${c.daysLapsed}d since last · ${c.totalVisits} lifetime`}
+        />
+        <CohortCard
+          color="danger"
+          icon="⚠️"
+          title="No-show Risk"
+          subtitle="Send a confirm reminder before next session."
+          clients={noShowRisk}
+          total={clients.filter(c => c.noShowRate >= 0.20 && c.totalVisits >= 5).length}
+          actionLabel="Confirm"
+          buildMessage={(c, therapistFirstName) => `Hi ${c.name.split(' ')[0]}, just confirming our upcoming session. Reply YES to confirm or let me know if you need to reschedule. Thanks!`}
+          metric={(c) => `${Math.round(c.noShowRate * 100)}% no-show · ${c.totalVisits} bookings`}
+        />
+        <CohortCard
+          color="sage"
+          icon="🤝"
+          title="Membership Candidates"
+          subtitle="First few visits. Could become regulars."
+          clients={membershipCandidates}
+          total={clients.filter(c => c.recentVisits >= 2 && c.recentVisits <= 4 && c.totalVisits <= 5).length}
+          actionLabel="Invite"
+          buildMessage={(c, therapistFirstName) => `Hi ${c.name.split(' ')[0]}, I've enjoyed our sessions together. If you're thinking about making this a regular routine, I have a package option that saves you money per session. Let me know if you'd like to hear about it.`}
+          metric={(c) => `${c.recentVisits} in 90d · ${c.totalVisits} lifetime`}
+        />
+      </div>
+
+      {/* ─── LEGACY ANALYTICS (secondary) ─── */}
+      <div style={{fontSize:11,fontWeight:700,color:'#6B7280',letterSpacing:'0.12em',textTransform:'uppercase',marginTop:8,marginBottom:-6}}>
+        Practice analytics
+      </div>
+      <div className="bm-insights-grid" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:14}}>
+        <div style={{background:'#fff',borderRadius:12,padding:18,gridColumn:'1/-1',border:'1px solid #EEF2F7'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#6B7280',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:12}}>Busiest Days</div>
+          <div style={{display:'flex',alignItems:'flex-end',gap:10,height:80}}>
+            {dayCounts.map(({name,count})=>(
+              <div key={name} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:4}}>
+                <div style={{fontSize:11,fontWeight:700,color:'#6B7280'}}>{count||''}</div>
+                <div style={{width:'100%',background:'#2A5741',borderRadius:'4px 4px 0 0',height:`${Math.max((count/maxDay)*60,count>0?4:2)}px`,opacity:count>0?1:0.1}}/>
+                <div style={{fontSize:10,color:'#9CA3AF'}}>{name}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{background:'#fff',borderRadius:12,padding:18,border:'1px solid #EEF2F7'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#6B7280',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Intake Rate</div>
+          <div style={{fontSize:32,fontWeight:700,color:'#2A5741',fontFamily:'Georgia,serif'}}>{intakePct}%</div>
+          <div style={{marginTop:8,background:'#E5E7EB',borderRadius:99,height:6}}>
+            <div style={{width:`${intakePct}%`,background:'#2A5741',borderRadius:99,height:6}}/>
+          </div>
+        </div>
+        <div style={{background:'#fff',borderRadius:12,padding:18,border:'1px solid #EEF2F7'}}>
+          <div style={{fontSize:12,fontWeight:700,color:'#6B7280',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:12}}>Top Clients</div>
+          {topClients.map(([name,count])=>(
+            <div key={name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                <div style={{width:24,height:24,borderRadius:'50%',background:ac(name),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,fontWeight:700}}>{initials(name)}</div>
+                <span style={{fontSize:13,fontWeight:600,color:'#1F2937'}}>{name}</span>
+              </div>
+              <span style={{fontSize:12,color:'#6B7280'}}>{count}</span>
             </div>
           ))}
         </div>
+        {depositPending>0&&(
+          <div style={{background:'#FFFBEB',borderRadius:12,padding:18,border:'1px solid #FCD34D',gridColumn:'1/-1'}}>
+            <div style={{fontSize:12,fontWeight:700,color:'#92400E',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:8}}>Deposits Pending</div>
+            <div style={{display:'flex',alignItems:'baseline',gap:10}}>
+              <div style={{fontSize:28,fontWeight:700,color:'#D97706',fontFamily:'Georgia,serif'}}>{depositPending}</div>
+              <div style={{fontSize:12,color:'#92400E'}}>new client deposits awaiting payment</div>
+            </div>
+          </div>
+        )}
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:20}}>
-        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:8}}>✅ Intake Rate</div>
-        <div style={{fontSize:36,fontWeight:700,color:'#2A5741',fontFamily:'Georgia,serif'}}>{intakePct}%</div>
-        <div style={{marginTop:8,background:'#E5E7EB',borderRadius:99,height:6}}>
-          <div style={{width:`${intakePct}%`,background:'#2A5741',borderRadius:99,height:6}}/>
+    </div>
+  );
+}
+
+/* =============================================================
+ * CohortCard
+ *
+ * Action-oriented insights card. Three most relevant clients with
+ * one-tap message action, then 'View all N' to expand. Color-coded
+ * by cohort intent (forest=champions, amber=lapsed, danger=risk,
+ * sage=opportunity).
+ * ============================================================= */
+
+function CohortCard({ color, icon, title, subtitle, clients, total, actionLabel, buildMessage, metric }) {
+  const [expanded, setExpanded] = useState(false);
+
+  const COLOR_MAP = {
+    forest: { bg:'#F0F7F2', border:'#C8E0CC', accent:'#2A5741', actionBg:'#2A5741' },
+    amber:  { bg:'#FEF8EC', border:'#FDE6B5', accent:'#92400E', actionBg:'#D97706' },
+    danger: { bg:'#FEF2F2', border:'#FECACA', accent:'#991B1B', actionBg:'#DC2626' },
+    sage:   { bg:'#F5F8F3', border:'#D6E4D0', accent:'#3D6B4C', actionBg:'#3D6B4C' },
+  };
+  const c = COLOR_MAP[color] || COLOR_MAP.forest;
+
+  function sendMessage(client) {
+    const msg = buildMessage(client, '');
+    if (!client.phone) {
+      alert(`No phone on file for ${client.name}. Pre-drafted:\n\n${msg}`);
+      return;
+    }
+    const isApple = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
+    const sep = isApple ? '&' : '?';
+    window.location.href = `sms:${client.phone}${sep}body=${encodeURIComponent(msg)}`;
+  }
+
+  if (clients.length === 0) {
+    return (
+      <section style={{
+        background: c.bg,
+        border: `1px solid ${c.border}`,
+        borderRadius: 14,
+        padding: '16px 18px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}>
+        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+          <span style={{ fontSize: 18 }}>{icon}</span>
+          <div style={{ fontSize: 15, fontWeight: 700, color: c.accent, fontFamily:'Georgia,serif' }}>
+            {title}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+          No one in this cohort yet. Keep going.
+        </div>
+      </section>
+    );
+  }
+
+  const visible = expanded ? clients : clients.slice(0, 3);
+
+  return (
+    <section style={{
+      background: c.bg,
+      border: `1px solid ${c.border}`,
+      borderRadius: 14,
+      padding: '16px 18px 14px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12,
+    }}>
+      <div>
+        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
+          <span style={{ fontSize: 18 }}>{icon}</span>
+          <div style={{ fontSize: 16, fontWeight: 700, color: c.accent, fontFamily:'Georgia,serif' }}>
+            {title}
+          </div>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: c.accent,
+            background: '#fff',
+            border: `1px solid ${c.border}`,
+            borderRadius: 10,
+            padding: '2px 7px',
+            marginLeft: 'auto',
+          }}>
+            {total}
+          </div>
+        </div>
+        <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.45 }}>
+          {subtitle}
         </div>
       </div>
-      <div style={{background:'#fff',borderRadius:12,padding:20}}>
-        <div style={{fontSize:13,fontWeight:700,color:'#1F2937',marginBottom:14}}>⭐ Top Clients</div>
-        {topClients.map(([name,count])=>(
-          <div key={name} style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-            <div style={{display:'flex',alignItems:'center',gap:8}}>
-              <div style={{width:28,height:28,borderRadius:'50%',background:ac(name),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:700}}>{initials(name)}</div>
-              <span style={{fontSize:13,fontWeight:600,color:'#1F2937'}}>{name}</span>
+
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {visible.map(client => (
+          <div key={client.id} style={{
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'space-between',
+            gap:10,
+            padding:'8px 10px',
+            background:'#fff',
+            border:`1px solid ${c.border}`,
+            borderRadius:10,
+            minWidth: 0,
+          }}>
+            <div style={{ minWidth:0, flex:1 }}>
+              <div style={{
+                fontSize:13,
+                fontWeight:700,
+                color:'#1F2937',
+                fontFamily:'Georgia,serif',
+                overflow:'hidden',
+                textOverflow:'ellipsis',
+                whiteSpace:'nowrap',
+              }}>
+                {client.name}
+              </div>
+              <div style={{ fontSize:11, color:'#6B7280', marginTop:1 }}>
+                {metric(client)}
+              </div>
             </div>
-            <span style={{fontSize:12,color:'#6B7280'}}>{count} sessions</span>
+            <button
+              onClick={() => sendMessage(client)}
+              style={{
+                flexShrink: 0,
+                padding: '6px 12px',
+                background: c.actionBg,
+                color:'#fff',
+                border:'none',
+                borderRadius:8,
+                fontSize:11,
+                fontWeight:700,
+                cursor:'pointer',
+                letterSpacing:'0.02em',
+                boxShadow: `0 1px 3px ${c.actionBg}33`,
+                transition:'transform 0.12s',
+              }}
+              onMouseEnter={e=>{ e.currentTarget.style.transform='translateY(-1px)'; }}
+              onMouseLeave={e=>{ e.currentTarget.style.transform='none'; }}
+            >
+              {actionLabel}
+            </button>
           </div>
         ))}
       </div>
-      {depositPending>0&&(
-        <div style={{background:'#FFFBEB',borderRadius:12,padding:20,border:'1px solid #FCD34D'}}>
-          <div style={{fontSize:13,fontWeight:700,color:'#92400E',marginBottom:8}}>💳 Deposits Pending</div>
-          <div style={{fontSize:36,fontWeight:700,color:'#D97706',fontFamily:'Georgia,serif'}}>{depositPending}</div>
-          <div style={{fontSize:12,color:'#92400E',marginTop:4}}>new client deposits awaiting payment</div>
-        </div>
+
+      {clients.length > 3 && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          style={{
+            background:'transparent',
+            border:'none',
+            color: c.accent,
+            fontSize:12,
+            fontWeight:700,
+            cursor:'pointer',
+            padding:'2px 0',
+            textAlign:'left',
+          }}
+        >
+          {expanded ? '↑ Show fewer' : `+ View all ${clients.length} →`}
+        </button>
       )}
-    </div>
+    </section>
   );
 }
 

@@ -167,6 +167,11 @@ body { overflow-x: hidden; }
     grid-template-columns: 1fr !important;
   }
 
+  /* Cohort cards 2-col → stack on mobile */
+  .bm-cohorts-grid {
+    grid-template-columns: 1fr !important;
+  }
+
   /* QR code section → stack */
   .bm-qr-section {
     flex-direction: column !important;
