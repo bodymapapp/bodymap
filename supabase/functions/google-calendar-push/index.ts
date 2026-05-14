@@ -50,10 +50,17 @@ serve(async (req) => {
   }
 
   // Load the booking + therapist + service.
+  // HK May 14 2026: the prior query selected scheduled_at +
+  // duration_minutes, which do not exist on the bookings table.
+  // Real columns: booking_date (date), start_time (time),
+  // end_time (time). Service info comes from a separate fetch
+  // below. The phantom-column bug caused Date(null) -> Invalid
+  // Date -> Google API to reject the create with a 400 -> our
+  // fire-and-forget caller never saw the error.
   const { data: booking, error: bErr } = await supabase
     .from("bookings")
     .select(
-      "id, therapist_id, service_id, scheduled_at, duration_minutes, client_email, client_name, google_event_id"
+      "id, therapist_id, service_id, booking_date, start_time, end_time, client_email, client_name, google_event_id"
     )
     .eq("id", body.booking_id)
     .single();
@@ -76,13 +83,17 @@ serve(async (req) => {
   }
 
   let serviceName = "Booking";
+  let serviceDurationMin = 60;
   if (booking.service_id) {
     const { data: svc } = await supabase
       .from("services")
       .select("name, duration_minutes")
       .eq("id", booking.service_id)
       .single();
-    if (svc) serviceName = svc.name;
+    if (svc) {
+      serviceName = svc.name;
+      if (svc.duration_minutes) serviceDurationMin = svc.duration_minutes;
+    }
   }
 
   let accessToken: string;
@@ -99,10 +110,51 @@ serve(async (req) => {
   }
 
   const calendarId = therapist.google_calendar_id || "primary";
-  const startAt = new Date(booking.scheduled_at as string);
-  const endAt = new Date(
-    startAt.getTime() + (booking.duration_minutes || 60) * 60 * 1000
-  );
+
+  // Build the Google datetime strings from real columns
+  // (booking_date + start_time / end_time). Format Google expects:
+  //   "YYYY-MM-DDTHH:MM:SS"  (no timezone suffix)
+  // Combined with timeZone field on the start/end object, Google
+  // interprets this as "this wall-clock time in the therapist's
+  // calendar timezone", which is what we want. If we passed a UTC
+  // ISO string, a 2pm booking would be saved to Google as 9am EST
+  // (or wherever the calendar lives), which is the wrong outcome.
+  //
+  // We do NOT have a therapist timezone column yet, so we use
+  // 'UTC' as the timeZone hint. Google will then create the event
+  // at wall-clock UTC time. For a US-Eastern therapist viewing
+  // their calendar, this looks 4-5 hours off. Real fix: add a
+  // therapists.timezone column and read it here. Follow-up bug.
+  //
+  // For now this at least fixes the create-fails-with-Invalid-Date
+  // problem, which is the urgent issue. Time-zone polish is its
+  // own commit.
+  const bookingDate = booking.booking_date as string; // 'YYYY-MM-DD'
+  const startTime = (booking.start_time as string || '').slice(0, 8); // 'HH:MM:SS' or 'HH:MM'
+  const endTime = (booking.end_time as string || '').slice(0, 8);
+
+  if (!bookingDate || !startTime) {
+    return json({ ok: false, error: "missing_booking_date_or_start_time" });
+  }
+
+  // Ensure the time is HH:MM:SS form (pad seconds if absent).
+  const normalize = (t: string) => (t.length === 5 ? `${t}:00` : t);
+  const startLocal = `${bookingDate}T${normalize(startTime)}`;
+  const endLocal = endTime
+    ? `${bookingDate}T${normalize(endTime)}`
+    : (() => {
+        // Fall back to start + service duration if end_time is null
+        const [h, m] = startTime.split(':').map(Number);
+        const totalStartMin = h * 60 + m;
+        const totalEndMin = totalStartMin + serviceDurationMin;
+        const eh = Math.floor(totalEndMin / 60);
+        const em = totalEndMin % 60;
+        return `${bookingDate}T${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}:00`;
+      })();
+
+  // No therapist tz column yet. UTC is the safe placeholder.
+  // TODO: read therapist.timezone when that column exists.
+  const eventTimeZone = "UTC";
 
   if (body.action === "cancel") {
     if (!booking.google_event_id) {
@@ -145,8 +197,11 @@ serve(async (req) => {
   const eventPayload: any = {
     summary,
     description,
-    start: { dateTime: startAt.toISOString() },
-    end: { dateTime: endAt.toISOString() },
+    // Use local datetime + timeZone. Google interprets as wall-
+    // clock in the named tz. Documented format:
+    //   https://developers.google.com/calendar/api/v3/reference/events#resource
+    start: { dateTime: startLocal, timeZone: eventTimeZone },
+    end:   { dateTime: endLocal,   timeZone: eventTimeZone },
     extendedProperties: {
       private: {
         mybodymap_source: "mybodymap",
