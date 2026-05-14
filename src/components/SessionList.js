@@ -12,7 +12,7 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null, externalShowEdit = null, onExternalEditClose = null, externalShowArchive = null, onExternalArchiveClose = null }) {
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null, externalShowEdit = null, onExternalEditClose = null, externalShowArchive = null, onExternalArchiveClose = null, onEditClient = null }) {
   const [sessions, setSessions] = useState(previewSessions || []);
   // Bookings = the actual appointment records this client has had.
   // Distinct from `sessions` (SOAP-note records). The header count
@@ -756,7 +756,11 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             .bm-client-actions > button { flex-shrink: 0; }
           `}</style>
 
-          <button onClick={() => setShowEdit(true)}
+          <button
+            onClick={() => {
+              if (onEditClient) { onEditClient(); return; }
+              setShowEdit(true);
+            }}
             style={{ background:"#FFFFFF", border:"1px solid #E5E7EB", color:"#374151", padding:"8px 14px", borderRadius:"8px", fontSize:"12.5px", fontWeight:600, cursor:"pointer", whiteSpace: "nowrap" }}>
             Edit details
           </button>

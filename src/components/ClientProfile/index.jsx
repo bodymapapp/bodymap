@@ -19,6 +19,7 @@ import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
 import { buildSampleProfile } from '../../data/sampleClients';
 import ProfileHeader from './ProfileHeader';
+import AboutCard from './AboutCard';
 import StatusStrip from './StatusStrip';
 import ProfileSection from './ProfileSection';
 import PatternsCard from './PatternsCard';
@@ -52,11 +53,12 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   });
   const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
-  // Triggers from the ProfileHeader hero buttons. SessionList owns the
-  // actual modal UI for Edit and Archive; the hero just flips these
-  // flags to open the matching modal. See SessionList.js useEffects
-  // that watch externalShowEdit / externalShowArchive.
-  const [editTrigger, setEditTrigger] = useState(false);
+  // Triggers from the ProfileHeader hero buttons. The Edit button
+  // (hero pencil) flips a pulse flag on the AboutCard so the card
+  // scrolls into view and softly highlights, telling the therapist
+  // 'edit your client right here, inline'. No modal. Archive still
+  // uses the legacy SessionList modal flow (separate UI cleanup).
+  const [aboutPulse, setAboutPulse] = useState(0);
   const [archiveTrigger, setArchiveTrigger] = useState(false);
 
   useEffect(() => {
@@ -145,7 +147,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         stats={profile?.stats}
         profile={profile}
         onBack={onBack}
-        onEdit={() => setEditTrigger(true)}
+        onEdit={() => setAboutPulse(n => n + 1)}
         onArchive={() => setArchiveTrigger(true)}
       />
 
@@ -169,6 +171,21 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       {profile && (
         <div style={{ padding: '0 14px 24px' }}>
 
+          {/* About this client. Inline tap-to-edit identity card.
+              Replaces the legacy 'Edit Client' modal. Hero pencil
+              triggers a pulse + scroll via aboutPulse so therapists
+              know where to edit. */}
+          <AboutCard
+            client={profile.client}
+            pulse={aboutPulse}
+            onUpdated={(payload) => {
+              // Mirror the saved fields into the profile so the
+              // header and elsewhere render fresh values without a
+              // refetch.
+              setProfile(p => p ? ({ ...p, client: { ...p.client, ...payload } }) : p);
+            }}
+          />
+
           {/* Sessions and SOAP notes: moved to the top per HK request.
               This is the primary work surface for the therapist. */}
           <ProfileSection
@@ -190,10 +207,9 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onSelectSession={onSelectSession}
               compact={true}
               previewSessions={previewProfile ? profile.sessions : null}
-              externalShowEdit={editTrigger}
-              onExternalEditClose={() => setEditTrigger(false)}
               externalShowArchive={archiveTrigger}
               onExternalArchiveClose={() => setArchiveTrigger(false)}
+              onEditClient={() => setAboutPulse(n => n + 1)}
             />
           </ProfileSection>
 
