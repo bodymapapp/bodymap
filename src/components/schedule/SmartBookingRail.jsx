@@ -12,7 +12,8 @@
 // isn't. Phase 2 wires each data source per the founder playbook
 // formulas (MARKETING_MYBODYMAP.md, How we win section).
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { supabase } from '../../lib/supabase';
 
 const C = {
   forest:    '#1F3A2C',
@@ -140,7 +141,62 @@ const PLACEHOLDER_GAP = {
   otherMatches: 2,
 };
 
-export default function SmartBookingRail({ isMobile = false }) {
+export default function SmartBookingRail({ isMobile = false, therapist, allAppts, today }) {
+  const [intelByClient, setIntelByClient] = useState({});
+
+  // Compute next 4 upcoming bookings from today forward, sorted.
+  const upcomingBookings = useMemo(() => {
+    if (!allAppts || !allAppts.length) return [];
+    const now = new Date();
+    const todayDate = today || new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return allAppts
+      .filter(a => !a.preview && !a.external && a.date >= todayDate)
+      .sort((a, b) => {
+        const da = a.date.getTime();
+        const db = b.date.getTime();
+        if (da !== db) return da - db;
+        return parseTimeToMin(a.startTime || timeFrom12(a.time)) - parseTimeToMin(b.startTime || timeFrom12(b.time));
+      })
+      .slice(0, 4);
+  }, [allAppts, today]);
+
+  // Fetch session_intelligence for the client_ids of upcoming bookings.
+  // Pull each client's MOST RECENT extracted row.
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!therapist?.id) return;
+      const clientIds = Array.from(new Set(upcomingBookings.map(b => b.clientId).filter(Boolean)));
+      if (!clientIds.length) { setIntelByClient({}); return; }
+      const { data, error } = await supabase
+        .from('session_intelligence')
+        .select('client_id, extracted, extracted_at')
+        .eq('therapist_id', therapist.id)
+        .in('client_id', clientIds)
+        .order('extracted_at', { ascending: false });
+      if (cancelled) return;
+      if (error || !data) { setIntelByClient({}); return; }
+      // Keep only the most recent per client_id
+      const byClient = {};
+      data.forEach(row => {
+        if (!byClient[row.client_id]) byClient[row.client_id] = row.extracted;
+      });
+      setIntelByClient(byClient);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [therapist?.id, upcomingBookings.map(b => b.clientId).join(',')]);
+
+  // Transform bookings + intel into briefing card shape.
+  // Fall back to placeholders if there are zero upcoming bookings
+  // (new therapist, empty schedule). Real but empty = friendly hint card.
+  const upcoming = useMemo(() => {
+    if (!upcomingBookings.length) {
+      return PLACEHOLDER_UPCOMING.map((c, i) => ({ ...c, isPlaceholder: true }));
+    }
+    return upcomingBookings.map((b, i) => buildBriefCard(b, intelByClient[b.clientId], i));
+  }, [upcomingBookings, intelByClient]);
+
   return (
     <aside style={{
       display: 'flex',
@@ -149,12 +205,125 @@ export default function SmartBookingRail({ isMobile = false }) {
       width: '100%',
       fontFamily: F.sans,
     }}>
-      <UpNextCarousel upcoming={PLACEHOLDER_UPCOMING} />
+      <UpNextCarousel upcoming={upcoming} />
       <BodyLoadCard load={PLACEHOLDER_LOAD} />
       <RevenueCard revenue={PLACEHOLDER_REVENUE} />
       <FillGapCard gap={PLACEHOLDER_GAP} />
     </aside>
   );
+}
+
+/* =============================================================
+ * Helpers: build the briefing card from a booking + extracted JSON
+ * ============================================================= */
+
+function parseTimeToMin(t) {
+  if (!t) return 0;
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+// Convert "9:00 AM" back to "09:00" for sorting comparability.
+function timeFrom12(s) {
+  if (!s) return '00:00';
+  const m = s.match(/(\d+):(\d+)\s*(AM|PM)/i);
+  if (!m) return '00:00';
+  let h = parseInt(m[1], 10);
+  const min = m[2];
+  const isPm = m[3].toUpperCase() === 'PM';
+  if (isPm && h !== 12) h += 12;
+  if (!isPm && h === 12) h = 0;
+  return `${String(h).padStart(2,'0')}:${min}`;
+}
+
+function countdownFor(booking) {
+  const now = new Date();
+  const apptDate = new Date(booking.date);
+  const startStr = booking.startTime || timeFrom12(booking.time);
+  const [h, m] = startStr.split(':').map(Number);
+  apptDate.setHours(h || 0, m || 0, 0, 0);
+  const diffMs = apptDate.getTime() - now.getTime();
+  if (diffMs < 0) return 'in progress';
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `in ${mins} min`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `+ ${hrs} hr`;
+  const days = Math.round(hrs / 24);
+  return `+ ${days} day${days !== 1 ? 's' : ''}`;
+}
+
+function accentForIndex(i) {
+  if (i === 0) return 'forest';
+  if (i === 1) return 'paper';
+  return 'beige';
+}
+
+// Pick three points per the playbook priority rules:
+//  1. Safety / required action first (allergy, no intake, watch)
+//  2. Continuity from last session (focus, last time outcome)
+//  3. Personalization (preference, pattern)
+// Falls back gracefully when intel is missing.
+function buildBriefCard(booking, intel, index) {
+  const points = [];
+
+  // Safety: no intake yet
+  if (booking.status === 'pending-intake') {
+    points.push({ label: 'No intake yet', text: 'Send link before the session' });
+  }
+
+  // Safety: concerns from intel
+  if (intel?.concerns_flagged?.length) {
+    points.push({ label: 'Concern', text: intel.concerns_flagged[0] });
+  }
+
+  // Continuity: focus
+  if (points.length < 3 && intel?.focus_areas?.length) {
+    points.push({ label: 'Focus', text: intel.focus_areas.slice(0, 2).join(', ') });
+  }
+
+  // Continuity: last time outcome
+  if (points.length < 3 && intel?.outcome) {
+    points.push({ label: 'Last time', text: truncate(intel.outcome, 70) });
+  }
+
+  // Continuity: next priority if no outcome
+  if (points.length < 3 && intel?.next_session_priority) {
+    points.push({ label: 'Priority', text: truncate(intel.next_session_priority, 70) });
+  }
+
+  // Personalization: preferences observed
+  if (points.length < 3 && intel?.preferences_observed?.length) {
+    points.push({ label: 'Pref', text: intel.preferences_observed[0] });
+  }
+
+  // Personalization: homework
+  if (points.length < 3 && intel?.homework_or_followup) {
+    points.push({ label: 'Followup', text: truncate(intel.homework_or_followup, 60) });
+  }
+
+  // If still short, show service + notes from booking
+  if (points.length < 3 && booking.notes) {
+    points.push({ label: 'Note', text: truncate(booking.notes, 60) });
+  }
+  if (points.length === 0) {
+    points.push({ label: 'No prior data', text: 'First visit or no SOAP yet. Use the body map to capture focus areas.' });
+  }
+
+  return {
+    id: booking.id,
+    when: booking.time,
+    duration: booking.duration,
+    countdown: countdownFor(booking),
+    name: booking.client || 'Unnamed',
+    meta: `${booking.service || 'Session'}${booking.status === 'pending-intake' ? ' · needs intake' : ''}`,
+    points: points.slice(0, 3),
+    accent: accentForIndex(index),
+  };
+}
+
+function truncate(s, n) {
+  if (!s) return '';
+  return s.length > n ? s.slice(0, n - 1).trim() + '…' : s;
 }
 
 /* =============================================================

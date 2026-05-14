@@ -440,7 +440,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         alignItems: 'start',
       }}>
         {/* LEFT RAIL */}
-        <SmartBookingRail isMobile={isMobile} />
+        <SmartBookingRail
+          isMobile={isMobile}
+          therapist={therapist}
+          allAppts={allAppts}
+          today={today}
+        />
 
         {/* RIGHT: legend pill + timeline grid */}
         <div style={{ minWidth: 0 }}>
