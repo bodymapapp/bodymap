@@ -17,6 +17,7 @@
 
 import React from 'react';
 import BodyDiagram from '../BodyDiagram';
+import EmptyState from './EmptyStates';
 import { zoneLabel, zonesToBodyDiagram } from '../../lib/bodyZones';
 
 const C = {
@@ -46,10 +47,11 @@ export default function PatternsCard({ patterns, totalSessions }) {
 
   if (empty) {
     return (
-      <Empty>
-        No patterns yet. Send an intake form so the body map starts
-        collecting data across sessions.
-      </Empty>
+      <EmptyState
+        kind="patterns"
+        headline="The body map starts here"
+        body="As sessions are recorded, the recurring zones this client cares about will light up on a body silhouette right here."
+      />
     );
   }
 
@@ -270,20 +272,6 @@ function ZoneList({ title, zones, totalSessions = 0, accent, bgFill }) {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function Empty({ children }) {
-  return (
-    <div style={{
-      fontSize: 13,
-      color: C.muted,
-      fontFamily: F.sans,
-      fontStyle: 'italic',
-      lineHeight: 1.5,
-    }}>
-      {children}
     </div>
   );
 }

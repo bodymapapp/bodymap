@@ -21,6 +21,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { C, F, formatCurrency } from './tokens';
+import RichEmpty from './EmptyStates';
 
 const RECENT_LIMIT = 6;
 const OLDER_THRESHOLD_DAYS = 90;
@@ -32,10 +33,11 @@ export default function Timeline({ profile, onSelectSession }) {
 
   if (!events.length) {
     return (
-      <EmptyState>
-        Nothing on record yet. Book this client's first session or
-        send them an intake form to get started.
-      </EmptyState>
+      <RichEmpty
+        kind="timeline"
+        headline="The story begins with the first booking"
+        body="Bookings, sessions, package purchases, memberships, and gift cards will appear here in chronological order."
+      />
     );
   }
 
@@ -217,20 +219,6 @@ function buildEvents(profile, onSelectSession) {
 
   out.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
   return out;
-}
-
-function EmptyState({ children }) {
-  return (
-    <div style={{
-      fontSize: 13,
-      color: C.muted,
-      fontFamily: F.sans,
-      lineHeight: 1.5,
-      padding: '14px 0 6px',
-    }}>
-      {children}
-    </div>
-  );
 }
 
 function Row({ ev, prevEv, isLatest }) {

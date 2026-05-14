@@ -659,10 +659,18 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           <p style={{ fontFamily: "Georgia, serif" }}>Loading sessions...</p>
         </div>
       ) : sessions.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px", color: C.gray }}>
-          <div style={{ fontSize: "48px", marginBottom: "16px" }}>📋</div>
-          <p style={{ fontFamily: "Georgia, serif", fontSize: "18px", color: C.darkGray }}>No sessions yet</p>
-          <p style={{ fontSize: "14px" }}>Sessions appear here after the client submits their intake form</p>
+        <div style={{ textAlign: "center", padding: "32px 16px 24px", color: C.gray }}>
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+            <svg width="64" height="64" viewBox="0 0 64 64" fill="none">
+              <path d="M18 14 L42 14 L46 18 L46 52 L18 52 Z" stroke="#4A6B54" strokeWidth="1.4" fill="#FFFFFF" />
+              <path d="M42 14 L42 18 L46 18" stroke="#4A6B54" strokeWidth="1.4" fill="none" />
+              <line x1="24" y1="28" x2="40" y2="28" stroke="#4A6B54" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+              <line x1="24" y1="34" x2="40" y2="34" stroke="#4A6B54" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+              <line x1="24" y1="40" x2="36" y2="40" stroke="#4A6B54" strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+            </svg>
+          </div>
+          <p style={{ fontFamily: "Georgia, serif", fontSize: 16, fontWeight: 700, color: "#1F3A2C", margin: "0 0 4px", letterSpacing: "-0.005em" }}>Notes will gather here</p>
+          <p style={{ fontSize: 12.5, color: "#8A9C90", maxWidth: 320, margin: "0 auto", lineHeight: 1.5 }}>SOAP notes appear after each session. The client submits intake before the visit; you write the note after.</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>

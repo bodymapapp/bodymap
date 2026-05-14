@@ -3,6 +3,7 @@
 // Medical flags + conditions. Card chrome provided by ProfileSection.
 
 import React from 'react';
+import EmptyState from './EmptyStates';
 
 const C = {
   rose: '#9A3B5E',
@@ -21,9 +22,11 @@ const F = {
 export default function MedicalCard({ medicalFlags = [] }) {
   if (medicalFlags.length === 0) {
     return (
-      <Empty>
-        No flags on file. Ask about anything new at the next visit.
-      </Empty>
+      <EmptyState
+        kind="medical"
+        headline="No flags on file"
+        body="Conditions, allergies, contraindications, and recent surgeries will surface here when the client mentions them on intake."
+      />
     );
   }
 
@@ -62,13 +65,5 @@ function Chip({ flag }) {
       {flag.text}
       {flag.note && <span style={{ fontSize: 10, opacity: 0.65 }}>ⓘ</span>}
     </span>
-  );
-}
-
-function Empty({ children }) {
-  return (
-    <div style={{ fontSize: 13, color: C.muted, fontFamily: F.sans, fontStyle: 'italic', lineHeight: 1.5 }}>
-      {children}
-    </div>
   );
 }

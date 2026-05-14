@@ -4,6 +4,7 @@
 // completed session. Card chrome provided by ProfileSection.
 
 import React from 'react';
+import EmptyState from './EmptyStates';
 import { pressureLabel, preferenceLabel, goalLabel } from '../../lib/bodyZones';
 
 const C = {
@@ -21,10 +22,11 @@ const F = {
 export default function PreferencesCard({ preferences }) {
   if (!preferences) {
     return (
-      <Empty>
-        Set after the first completed session. Send an intake form
-        so the client tells you their starting preferences.
-      </Empty>
+      <EmptyState
+        kind="preferences"
+        headline="Their preferences land here"
+        body="Pressure, temperature, music, lighting, draping. Set automatically from the first completed session, so you know how to set up next time."
+      />
     );
   }
 
@@ -97,14 +99,6 @@ function PressureDots({ level }) {
       <span style={{ fontSize: 12, color: C.forest, fontWeight: 600, fontFamily: F.sans }}>
         {valid ? pressureLabel(n) : 'Not set'}
       </span>
-    </div>
-  );
-}
-
-function Empty({ children }) {
-  return (
-    <div style={{ fontSize: 13, color: C.muted, fontFamily: F.sans, fontStyle: 'italic', lineHeight: 1.5 }}>
-      {children}
     </div>
   );
 }
