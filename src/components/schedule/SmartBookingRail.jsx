@@ -414,6 +414,47 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
   const monthRevenue = useMemo(() => {
     if (!allAppts || !allAppts.length) return null;
     const todayDate = today || new Date();
+
+    // Insights: show year-to-date + 12-month trend instead of MTD + 4wk
+    if (scope === 'insights') {
+      const startOfYear = new Date(todayDate.getFullYear(), 0, 1);
+      let yearToDate = 0;
+      // 12 months ending current month
+      const monthTotals = new Array(12).fill(0);
+      const monthLabels = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(todayDate.getFullYear(), todayDate.getMonth() - i, 1);
+        monthLabels.push(d.toLocaleDateString('en-US', { month: 'short' }));
+      }
+      allAppts.forEach(a => {
+        if (a.preview || a.external) return;
+        const price = Number(a.price) || 0;
+        const ad = a.date;
+        if (ad >= startOfYear) yearToDate += price;
+        // bucket into the trailing 12 months
+        for (let i = 0; i < 12; i++) {
+          const bStart = new Date(todayDate.getFullYear(), todayDate.getMonth() - (11 - i), 1);
+          const bEnd = new Date(todayDate.getFullYear(), todayDate.getMonth() - (11 - i) + 1, 0);
+          bEnd.setHours(23,59,59,999);
+          if (ad >= bStart && ad <= bEnd) {
+            monthTotals[i] += price;
+            break;
+          }
+        }
+      });
+      // Annual goal estimate: trailing 12 months * 1.10
+      const trailing12 = monthTotals.reduce((s, n) => s + n, 0);
+      const goal = Math.max(20000, Math.round((trailing12 * 1.10) / 1000) * 1000);
+      return {
+        mode: 'insights',
+        monthToDate: Math.round(yearToDate),
+        goal,
+        sparkline: monthTotals.map(v => Math.round(v)),
+        sparklineLabels: monthLabels,
+      };
+    }
+
+    // today/weekly/monthly: month-to-date + 4-week sparkline (existing)
     const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
     const startOfTrailing3M = new Date(todayDate);
     startOfTrailing3M.setMonth(todayDate.getMonth() - 3);
@@ -421,7 +462,6 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
 
     let monthToDate = 0;
     let trailing3M = 0;
-    // 4-week sparkline: weeks ending Saturday going back 4 weeks
     const weekTotals = [0, 0, 0, 0];
     const weekEnds = [];
     for (let i = 3; i >= 0; i--) {
@@ -436,7 +476,6 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       const d = a.date.getTime();
       if (d >= startOfMonth.getTime()) monthToDate += price;
       if (d >= startOfTrailing3M.getTime() && d < startOfMonth.getTime()) trailing3M += price;
-      // bucket into sparkline weeks
       for (let i = 0; i < 4; i++) {
         const wkStart = new Date(weekEnds[i]);
         wkStart.setDate(weekEnds[i].getDate() - 6);
@@ -448,15 +487,15 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       }
     });
 
-    // Monthly goal = trailing 3-month average * 1.10
     const avgMonthly = trailing3M / 3;
     const goal = Math.max(2000, Math.round((avgMonthly * 1.10) / 100) * 100);
     return {
+      mode: 'month',
       monthToDate: Math.round(monthToDate),
       goal,
       sparkline: weekTotals.map(v => Math.round(v)),
     };
-  }, [allAppts, today]);
+  }, [allAppts, today, scope]);
 
 
   // Find the best Fill This Gap candidate. v1 looks for today's
@@ -517,35 +556,43 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
 
   const fillGap = useMemo(() => {
     if (!allAppts || !allAppts.length) return null;
-    const todayDate = today || new Date();
-    const t0 = new Date(todayDate);
-    t0.setHours(0,0,0,0);
-    const todayAppts = allAppts
-      .filter(a => !a.preview && !a.external && a.date.getTime() === t0.getTime())
-      .sort((a, b) => parseTimeToMin(a.startTime || timeFrom12(a.time)) - parseTimeToMin(b.startTime || timeFrom12(b.time)));
+    // Insights tab: no specific slot to fill. Rebook Watch covers the
+    // broader 'who is drifting' question. Hide.
+    if (scope === 'insights') return null;
 
-    // Find the first gap >= 60 min between consecutive bookings
-    let gapStart = null;
-    let gapEnd = null;
-    for (let i = 0; i < todayAppts.length - 1; i++) {
-      const endA = parseTimeToMin(todayAppts[i].startTime || timeFrom12(todayAppts[i].time)) + todayAppts[i].duration;
-      const startB = parseTimeToMin(todayAppts[i + 1].startTime || timeFrom12(todayAppts[i + 1].time));
-      const gap = startB - endA;
-      if (gap >= 60) {
-        gapStart = endA;
-        gapEnd = startB;
-        break;
+    const todayDate = today || new Date();
+    // How many days to scan forward depends on the tab. Today scans
+    // only today (existing behavior). Weekly scans the next 7. Monthly
+    // scans the next 30.
+    const scanDays = scope === 'weekly' ? 7 : scope === 'monthly' ? 30 : 1;
+
+    // Find first gap >= 60 min within the scan window.
+    let bestGap = null; // { dateOffset, gapStart, gapEnd }
+    for (let dayOffset = 0; dayOffset < scanDays && !bestGap; dayOffset++) {
+      const d = new Date(todayDate);
+      d.setHours(0,0,0,0);
+      d.setDate(d.getDate() + dayOffset);
+      const dayAppts = allAppts
+        .filter(a => !a.preview && !a.external && a.date.getTime() === d.getTime())
+        .sort((a, b) => parseTimeToMin(a.startTime || timeFrom12(a.time)) - parseTimeToMin(b.startTime || timeFrom12(b.time)));
+
+      for (let i = 0; i < dayAppts.length - 1; i++) {
+        const endA = parseTimeToMin(dayAppts[i].startTime || timeFrom12(dayAppts[i].time)) + dayAppts[i].duration;
+        const startB = parseTimeToMin(dayAppts[i + 1].startTime || timeFrom12(dayAppts[i + 1].time));
+        const gap = startB - endA;
+        if (gap >= 60) {
+          bestGap = { dateOffset: dayOffset, gapStart: endA, gapEnd: startB, gapDate: d };
+          break;
+        }
       }
     }
-    if (gapStart === null) return null;
+    if (!bestGap) return null;
 
-    // Find best lapsed match
-    const dow = todayDate.getDay();
+    const gapDate = bestGap.gapDate;
+    const dow = gapDate.getDay();
     const ranked = lapsedClients.map(c => {
-      // Score: day-of-week match (count of past visits on same dow / total)
       const sameDow = c.dates.filter(d => d.getDay() === dow).length;
       const dowScore = c.totalBookings > 0 ? sameDow / c.totalBookings : 0;
-      // Days lapsed: penalize too-fresh and too-stale
       const daysLapsed = Math.round((Date.now() - c.lastVisit.getTime()) / 86400000);
       const cadencePenalty = daysLapsed > 120 ? 0.5 : 0;
       const phoneBonus = c.phone ? 0.5 : 0;
@@ -555,19 +602,24 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     const best = ranked[0];
     if (!best) return null;
 
-    // Format gap time as "12:30 PM"
-    const startH = Math.floor(gapStart / 60);
-    const startM = gapStart % 60;
+    // Format gap time. When the gap is today, prefix 'Today'. Otherwise
+    // use weekday + date.
+    const startH = Math.floor(bestGap.gapStart / 60);
+    const startM = bestGap.gapStart % 60;
     const fmtH = startH % 12 || 12;
     const ampm = startH >= 12 ? 'PM' : 'AM';
-    const whenStr = `Today ${fmtH}:${String(startM).padStart(2,'0')} ${ampm}`;
-    const duration = gapEnd - gapStart;
+    const isToday = bestGap.dateOffset === 0;
+    const isTomorrow = bestGap.dateOffset === 1;
+    const dateLabel = isToday ? 'Today'
+                    : isTomorrow ? 'Tomorrow'
+                    : gapDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    const whenStr = `${dateLabel} ${fmtH}:${String(startM).padStart(2,'0')} ${ampm}`;
+    const duration = bestGap.gapEnd - bestGap.gapStart;
 
-    // Build 3 reasons per playbook priority
     const reasons = [];
     reasons.push(`${best.totalBookings} visits over ${Math.round((Date.now() - Math.min(...best.dates.map(d => d.getTime()))) / 86400000)} days, last ${best.daysLapsed} days ago`);
     if (best.sameDowCount >= 2) {
-      const dayName = todayDate.toLocaleDateString('en-US', { weekday: 'long' });
+      const dayName = gapDate.toLocaleDateString('en-US', { weekday: 'long' });
       reasons.push(`Usually books on ${dayName}s (${best.sameDowCount} of ${best.totalBookings} visits)`);
     }
     if (best.daysLapsed > 45 && best.daysLapsed < 90) {
@@ -584,7 +636,7 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       bestClient: { name: best.name, reasons: reasons.slice(0, 3), phone: best.phone, smsOptedIn: best.smsOptedIn },
       otherMatches: Math.max(0, ranked.length - 1),
     };
-  }, [allAppts, today, lapsedClients]);
+  }, [allAppts, today, lapsedClients, scope]);
 
   // Rebook Watch: top 3 lapsed regulars about to break cadence.
   // FillGap is one specific gap with one matched client. Rebook Watch
@@ -1276,13 +1328,17 @@ function BodyLoadCard({ load, compact = false }) {
  * ============================================================= */
 
 function RevenueCard({ revenue, compact = false }) {
+  const isInsights = revenue.mode === 'insights';
   const pct = Math.min(100, Math.round((revenue.monthToDate / revenue.goal) * 100));
   const sparkMax = Math.max(...revenue.sparkline, 1);
   const monthShort = new Date().toLocaleDateString('en-US', { month: 'short' });
   const monthLong = new Date().toLocaleDateString('en-US', { month: 'long' });
+  const year = new Date().getFullYear();
+  // Eyebrow shifts in insights mode: '2026 revenue' instead of 'May'
+  const eyebrow = isInsights ? `${year} revenue` : `${compact ? monthShort : monthLong} revenue`;
   return (
     <section style={cardStyle('status')}>
-      <SectionHeader eyebrow={`${compact ? monthShort : monthLong} revenue`} />
+      <SectionHeader eyebrow={eyebrow} />
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
@@ -1301,7 +1357,7 @@ function RevenueCard({ revenue, compact = false }) {
         </span>
         {!compact && (
           <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
-            of ${revenue.goal.toLocaleString()} goal
+            of ${revenue.goal.toLocaleString()} {isInsights ? 'annual goal' : 'goal'}
           </span>
         )}
       </div>
@@ -1319,17 +1375,17 @@ function RevenueCard({ revenue, compact = false }) {
           transition: 'width 0.3s',
         }} />
       </div>
-      {/* Sparkline. In compact mode the 4-week trend bar is shorter
-          and we drop the 'Last 4 weeks' label since the row is tight. */}
+      {/* Sparkline. In compact mode the trend bar is shorter and
+          we drop the trailing label since the row is tight. */}
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
-        gap: 3,
-        height: compact ? 12 : 18,
+        gap: 2,
+        height: compact ? 12 : (isInsights ? 32 : 18),
         marginBottom: compact ? 0 : 4,
       }}>
         {revenue.sparkline.map((v, i) => {
-          const h = Math.max(3, Math.round((v / sparkMax) * (compact ? 12 : 18)));
+          const h = Math.max(3, Math.round((v / sparkMax) * (compact ? 12 : (isInsights ? 32 : 18))));
           const isCurrent = i === revenue.sparkline.length - 1;
           return (
             <div key={i} style={{
@@ -1350,7 +1406,7 @@ function RevenueCard({ revenue, compact = false }) {
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
         }}>
-          Last 4 weeks
+          {isInsights ? 'Last 12 months' : 'Last 4 weeks'}
         </div>
       )}
     </section>
