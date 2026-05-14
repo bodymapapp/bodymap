@@ -84,3 +84,63 @@ export function preferenceLabel(field, value) {
   const str = String(value).replace(/_/g, ' ');
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
+
+// ────────────────────────────────────────────────────────────────
+// Body-diagram zone mapping
+// ────────────────────────────────────────────────────────────────
+// The intake form's simple zone IDs ('neck', 'lowerBack', 'shoulders')
+// don't have x/y coordinates. The reusable BodyDiagram in
+// src/components/BodyDiagram.jsx expects detailed left/right zone IDs
+// like 'f-l-shldr', 'b-lower-bk' that map to ZONE_COORDS.
+//
+// This map converts a simple zone to the list of BodyDiagram zones to
+// light up. For symmetric zones (shoulders), we light BOTH left+right.
+// For midline zones (lower back, neck), we light the single center
+// zone. Used by PatternsCard so the body silhouette renders heat dots
+// from aggregated session data even when the data was written with the
+// simple ID scheme.
+
+export const ZONE_TO_DIAGRAM = {
+  neck:        ['f-neck', 'b-neck'],
+  shoulders:   ['f-l-shldr', 'f-r-shldr', 'b-l-shldr', 'b-r-shldr'],
+  upperBack:   ['b-upper-bk'],
+  midBack:     ['b-mid-bk'],
+  lowerBack:   ['b-lower-bk'],
+  hips:        ['f-l-hip', 'f-r-hip'],
+  glutes:      ['b-l-glute', 'b-r-glute'],
+  hamstrings:  ['b-l-hamstr', 'b-r-hamstr'],
+  calves:      ['b-l-calf', 'b-r-calf'],
+  feet:        ['f-l-foot', 'f-r-foot', 'b-l-foot', 'b-r-foot'],
+  chest:       ['f-l-chest', 'f-r-chest'],
+  abdomen:     ['f-abdomen'],
+  arms:        ['f-l-arm-u', 'f-r-arm-u', 'f-l-forearm', 'f-r-forearm'],
+  hands:       ['f-l-hand', 'f-r-hand'],
+  thighsFront: ['f-l-thigh', 'f-r-thigh'],
+  head:        ['f-head', 'b-head'],
+};
+
+/**
+ * Splits a list of simple zones into front vs back BodyDiagram IDs.
+ * Returns { frontIds: [], backIds: [] } so the caller can render two
+ * silhouettes side-by-side (front view + back view).
+ *
+ * @param zones - array of simple IDs ('neck', 'shoulders', ...)
+ *                or BodyDiagram IDs ('f-l-shldr', 'b-lower-bk', ...)
+ */
+export function zonesToBodyDiagram(zones) {
+  const frontIds = [];
+  const backIds = [];
+  for (const z of zones || []) {
+    // Pass-through if it's already a BodyDiagram ID
+    if (typeof z === 'string' && (z.startsWith('f-') || z.startsWith('b-'))) {
+      if (z.startsWith('f-')) frontIds.push(z); else backIds.push(z);
+      continue;
+    }
+    const mapped = ZONE_TO_DIAGRAM[z] || [];
+    for (const m of mapped) {
+      if (m.startsWith('f-')) frontIds.push(m);
+      else backIds.push(m);
+    }
+  }
+  return { frontIds, backIds };
+}
