@@ -3528,7 +3528,20 @@ export default function Dashboard({ view }) {
           <p style={{ fontSize: '13px', color: '#047857', margin: 0 }}>Unlimited clients and sessions are now unlocked. Let's get to work!</p>
         </div>
       )}
-      <header style={{ background: C.white, borderBottom: `1px solid ${C.lightGray}`, padding: isMobile ? '10px 14px' : '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+      <header style={{
+        background: C.white,
+        borderBottom: `1px solid ${C.lightGray}`,
+        padding: isMobile
+          ? 'max(10px, env(safe-area-inset-top, 10px)) 14px 10px'
+          : '12px 16px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+      }}>
         <div onClick={() => navigate('/dashboard')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
           <BMLogo size={isMobile ? 26 : 30} variant="dark" showWordmark={false} />
           <div>
@@ -3598,11 +3611,18 @@ export default function Dashboard({ view }) {
         </div>
       )}
 
-      {/* Content area */}
+      {/* Content area.
+          Mobile bottom padding needs to clear the fixed bottom nav
+          (74px) + iOS home indicator safe area + a comfortable gap
+          so users can scroll the last item above the nav, not
+          hidden behind it. Earlier value (90px flat) was too short
+          on iPhones with home indicator. */}
       <div className="bm-dash-pad" style={{
         maxWidth: isMobile ? '100%' : '1200px',
         margin: '0 auto',
-        padding: isMobile ? '12px 12px 90px' : '0 16px 32px',
+        padding: isMobile
+          ? '12px 12px calc(96px + env(safe-area-inset-bottom, 0px))'
+          : '0 16px 32px',
       }}>
         <div style={{
           background: C.white,
