@@ -2704,12 +2704,46 @@ export default function BookingPage() {
                 }
                 if (Array.isArray(clientRows) && clientRows.length > 1) {
                   console.warn(
-                    `[Booking] %cDuplicate client rows detected: ${clientRows.length} for therapist=${therapist.id} email=${email}. Using most recent. Cleanup TODO.`,
+                    `[Booking] %cDuplicate client rows detected: ${clientRows.length} for therapist=${therapist.id} email=${email}. Picking row with most bookings (then most recent card). Cleanup TODO.`,
                     'color:#92400E;font-weight:bold;',
                     clientRows.map(r => ({ id: r.id, saved: r.card_saved_at, created: r.created_at }))
                   );
                 }
-                const clientRow = Array.isArray(clientRows) && clientRows.length > 0 ? clientRows[0] : null;
+                // Pick the right row. When duplicates exist, prefer the
+                // one with the most booking history. HK May 14: in the
+                // demo dataset, the most-recent-card-saved row had 0
+                // bookings while an older sibling had 13. Always tying
+                // the new booking onto the dead row would have orphaned
+                // future history. Priority order:
+                //   1. Most bookings (the active row, where history lives)
+                //   2. Most recent card_saved_at (freshest card data)
+                //   3. Most recent created_at (final tiebreaker)
+                let clientRow = null;
+                if (Array.isArray(clientRows) && clientRows.length > 0) {
+                  if (clientRows.length === 1) {
+                    clientRow = clientRows[0];
+                  } else {
+                    // Count bookings per candidate. Run in parallel to
+                    // keep the booking page snappy on big duplicate sets.
+                    const counts = await Promise.all(
+                      clientRows.map(async (r) => {
+                        const { count } = await supabase
+                          .from('bookings').select('id', { count: 'exact', head: true })
+                          .eq('client_id', r.id);
+                        return { row: r, bookingCount: count || 0 };
+                      })
+                    );
+                    counts.sort((a, b) => {
+                      if (b.bookingCount !== a.bookingCount) return b.bookingCount - a.bookingCount;
+                      const aSaved = a.row.card_saved_at ? new Date(a.row.card_saved_at).getTime() : 0;
+                      const bSaved = b.row.card_saved_at ? new Date(b.row.card_saved_at).getTime() : 0;
+                      if (bSaved !== aSaved) return bSaved - aSaved;
+                      return new Date(b.row.created_at).getTime() - new Date(a.row.created_at).getTime();
+                    });
+                    clientRow = counts[0].row;
+                    console.warn(`[Booking] Picked row ${clientRow.id} with ${counts[0].bookingCount} bookings.`);
+                  }
+                }
                 if (clientRow?.id) {
                   setCardSavedClientId(clientRow.id);
                   // Order of preference for the saved-card identifier:
