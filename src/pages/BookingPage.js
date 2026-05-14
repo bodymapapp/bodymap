@@ -2109,16 +2109,28 @@ export default function BookingPage() {
               // from the booking page if therapist has no Stripe so
               // clients never hit a Square membership error path.
               const hasStripeForMembership = !!therapist?.stripe_account_id;
-              const visibleMemberships = hasStripeForMembership ? membershipsList : [];
+              // Always show memberships if the therapist has defined any,
+              // even when Stripe is not connected. In that case the cards
+              // render in a disabled state with a 'Stripe required' badge,
+              // so the therapist (looking at their own booking page) sees
+              // exactly what is missing instead of having memberships
+              // silently disappear. Ashley Scalzulli May 2026: her booking
+              // page hid memberships because she only had Square, and she
+              // assumed Square itself was broken.
+              const visibleMemberships = membershipsList;
               const showOffers = packagesList.length > 0 || visibleMemberships.length > 0;
               if (!showOffers) return null;
               return (
               <div style={{ marginBottom: 24 }}>
                 {(() => {
-                  const totalCount = packagesList.length + visibleMemberships.length;
+                  // Only count PURCHASABLE memberships toward the price
+                  // shown on the collapsed offers card, so 'from $X' is
+                  // never quoting a disabled item.
+                  const purchasableMemberships = hasStripeForMembership ? visibleMemberships : [];
+                  const totalCount = packagesList.length + purchasableMemberships.length;
                   const allPrices = [
                     ...packagesList.map(p => Number(p.price)),
-                    ...visibleMemberships.map(m => Number(m.monthly_price)),
+                    ...purchasableMemberships.map(m => Number(m.monthly_price)),
                   ].filter(p => !isNaN(p) && p > 0);
                   const lowestPrice = allPrices.length > 0 ? Math.min(...allPrices) : null;
                   return (
@@ -2245,19 +2257,29 @@ export default function BookingPage() {
                     {visibleMemberships.map((m) => (
                       <button
                         key={m.id}
-                        onClick={() => openOffer('membership', m)}
+                        onClick={() => hasStripeForMembership ? openOffer('membership', m) : null}
+                        disabled={!hasStripeForMembership}
                         style={{
-                          background: '#F0F9F4',
-                          border: '1.5px solid #B5D4BE',
+                          background: hasStripeForMembership ? '#F0F9F4' : '#F5F5F0',
+                          border: `1.5px solid ${hasStripeForMembership ? '#B5D4BE' : '#D9D5C9'}`,
                           borderRadius: 14,
                           padding: '14px 16px',
                           textAlign: 'left',
-                          cursor: 'pointer',
+                          cursor: hasStripeForMembership ? 'pointer' : 'not-allowed',
                           width: '100%',
                           transition: 'all 0.15s',
+                          opacity: hasStripeForMembership ? 1 : 0.72,
                         }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#B5D4BE'; e.currentTarget.style.transform = 'none'; }}
+                        onMouseEnter={(e) => {
+                          if (!hasStripeForMembership) return;
+                          e.currentTarget.style.borderColor = C.forest;
+                          e.currentTarget.style.transform = 'translateY(-1px)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!hasStripeForMembership) return;
+                          e.currentTarget.style.borderColor = '#B5D4BE';
+                          e.currentTarget.style.transform = 'none';
+                        }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -2273,12 +2295,32 @@ export default function BookingPage() {
                                 {m.description}
                               </div>
                             )}
-                            <div style={{ fontSize: 10, color: C.gray, fontStyle: 'italic', marginTop: 6 }}>
-                              Memberships subscribe directly · not cart-eligible
-                            </div>
+                            {hasStripeForMembership ? (
+                              <div style={{ fontSize: 10, color: C.gray, fontStyle: 'italic', marginTop: 6 }}>
+                                Memberships subscribe directly · not cart-eligible
+                              </div>
+                            ) : (
+                              <div style={{
+                                marginTop: 8,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                background: '#FEF3C7',
+                                border: '1px solid #FCD34D',
+                                borderRadius: 999,
+                                padding: '3px 10px',
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                color: '#92400E',
+                                letterSpacing: '0.04em',
+                              }}>
+                                <span>🔒</span>
+                                <span>Stripe required for monthly auto-renew</span>
+                              </div>
+                            )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: C.forest }}>${Number(m.monthly_price).toFixed(0)}</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: hasStripeForMembership ? C.forest : C.gray }}>${Number(m.monthly_price).toFixed(0)}</div>
                             <div style={{ fontSize: 10, color: C.gray }}>per month</div>
                           </div>
                         </div>
@@ -2294,7 +2336,7 @@ export default function BookingPage() {
                 expanded. Uses the same hasStripeForMembership logic so
                 the divider does not appear when there is nothing to
                 divide. */}
-            {(packagesList.length > 0 || (!!therapist?.stripe_account_id && membershipsList.length > 0)) && offersExpanded && (
+            {(packagesList.length > 0 || (membershipsList.length > 0)) && offersExpanded && (
               <div style={{
                 fontSize: 13, fontWeight: 700, color: C.dark, textTransform: 'uppercase', letterSpacing: '0.5px',
                 margin: '0 0 10px', display: 'flex', alignItems: 'center', gap: 8,
