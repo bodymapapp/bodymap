@@ -63,6 +63,57 @@ Defaults live in this section. When we add an intelligence feature, we document 
 
 **Gap-finding for revenue lever cards:** scan the next 7 days for unbooked slots that match `gap_duration >= service_min_duration AND gap_duration <= service_max_duration AND gap_falls_in_availability_window`. Smallest gap that fits a real service wins. Show only if at least 1 lapsed regular exists who could fill it.
 
+**Revenue lever match scoring (Fill This Gap card).** Refined version of the gap-finder, informed by industry research. Competitors (MassageBook AutoPilot, ClinicSense win-back, Phorest SMS templates) all do bulk emails to lapsed clients. The differentiation is matching the right client to the right gap, with a reason, in one tap.
+
+For a gap (date, start_time, duration) and a candidate client, score:
+
+```
+score = 1.5 * cadence_match
+      + 1.0 * time_of_day_match
+      + 0.8 * day_of_week_match
+      + 1.2 * recent_contact_signal
+      + 1.0 * service_fit
+      - 0.6 * no_show_rate
+```
+
+Where each subscore is 0 to 1:
+
+- **cadence_match:** bell curve peaked when `days_since_last_visit` is within plus or minus 15 days of the client's mean inter-visit interval. Computed from at least 3 historical bookings. If sparse, default to 30-day cadence.
+- **time_of_day_match:** fraction of past bookings within plus or minus 90 min of the gap start time. Thursday lunch person scores high for a Thursday lunch gap.
+- **day_of_week_match:** fraction of past bookings on the same day-of-week as the gap.
+- **recent_contact_signal:** 1.0 if the client texted, emailed, or visited the booking page within the last 14 days. Otherwise 0.
+- **service_fit:** 1.0 if the gap duration accommodates a service the client has booked before. 0 otherwise.
+- **no_show_rate:** cancellations divided by total_bookings. Capped at 1.0.
+
+Rank candidates by score descending. Show top 1 as the primary "Fill This Gap" card. Top 4 in a carousel.
+
+**Match-card content:** one primary card per gap. Card shows:
+- Gap time, duration, dollar value (service price the client usually books).
+- Best-match client name.
+- Three reasons (one line each), pulled from the highest-weighted scoring inputs that hit a threshold:
+  1. Cadence: "8 months of monthly visits, last 42 days ago" (only show if cadence_match > 0.5).
+  2. Time-of-day pattern: "Usually books Thursdays at lunch" (only if time_of_day_match > 0.6 or day_of_week_match > 0.6).
+  3. Recent contact signal: "Texted you 2 weeks ago asking about availability" (only if recent_contact_signal == 1.0). If no recent contact, replace with "Has 4 unused sessions in current package" or another signal of latent intent.
+- One CTA: "Text {name} this slot."
+
+**Pre-drafted SMS template** (sent on CTA tap):
+
+If recent_contact_signal hit:
+```
+Hi {client_first_name}, {therapist_first_name} here. Had a {time} open up today and thought of you since you mentioned you were looking for a {dow} {time_of_day} slot. Want it? Reply YES and I'll book it.
+```
+
+If no recent contact signal:
+```
+Hi {client_first_name}, {therapist_first_name} here. It's been about {weeks_since_last} weeks since your last visit. Just had a {time} open up today if you'd like it. Reply YES and I'll lock it in.
+```
+
+Template is rule-based and free in v1. AI can layer prose polish in v2 if data shows manual edits are common.
+
+**Why this beats competitors:** MassageBook AutoPilot and ClinicSense win-back both send bulk emails to lapsed clients. That is spam to the client and embarrassing to the therapist. Our card targets ONE client for ONE gap with three personalized reasons and a one-tap action. The matching algorithm uses booking-pattern data they do not have access to.
+
+---
+
 When a future feature needs a new formula, the formula lives here, alongside the others. One file, easy to audit, easy to tune.
 
 ### Mindset checklist for any new feature
