@@ -372,49 +372,185 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
   return (
     <div>
-      {/* Edit client modal */}
+      {/* Edit client modal. Centered overlay with sticky header and
+          footer so the action buttons stay reachable even when the
+          body content scrolls. HK May 14 2026: previous design cut
+          off the phone field on shorter viewports because the modal
+          had overflow:hidden + auto margin + no maxHeight. */}
       {showEdit && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-start", justifyContent:"center", zIndex:3000, padding:"max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))", overflowY:"auto", overscrollBehavior:"contain" }}
-          onClick={e => { if (e.target===e.currentTarget) setShowEdit(false); }}>
-          <div style={{ background:"#fff", borderRadius:20, width:"100%", maxWidth:440, boxShadow:"0 24px 64px rgba(0,0,0,0.25)", overflow:"hidden", margin:"auto 0" }}>
-            <div style={{ padding:"24px 24px 16px", borderBottom:"1px solid #E8E4DC", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-              <h3 style={{ fontFamily:"Georgia, serif", fontSize:20, fontWeight:700, color:C.darkGray, margin:0 }}>Edit Client</h3>
-              <button onClick={() => setShowEdit(false)} style={{ background:"#F3F4F6", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16, color:C.gray }}>✕</button>
+        <div
+          onClick={e => { if (e.target===e.currentTarget) setShowEdit(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,30,0.55)",
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 3000,
+            padding: "max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div style={{
+            background: "#fff",
+            borderRadius: 16,
+            width: "100%",
+            maxWidth: 480,
+            maxHeight: "calc(100vh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}>
+            {/* STICKY HEADER */}
+            <div style={{
+              padding: "18px 22px",
+              borderBottom: "1px solid #E8E4DC",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexShrink: 0,
+              background: "#fff",
+            }}>
+              <h3 style={{
+                fontFamily: "Georgia, serif",
+                fontSize: 19,
+                fontWeight: 700,
+                color: C.darkGray,
+                margin: 0,
+                lineHeight: 1,
+              }}>
+                Edit client
+              </h3>
+              <button
+                onClick={() => setShowEdit(false)}
+                aria-label="Close"
+                style={{
+                  background: "#F3F4F6",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: C.gray,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  lineHeight: 1,
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
             </div>
-            <div style={{ padding:24, display:"flex", flexDirection:"column", gap:12 }}>
+
+            {/* SCROLLABLE BODY */}
+            <div style={{
+              padding: "20px 22px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 14,
+              overflowY: "auto",
+              flex: 1,
+              minHeight: 0,
+            }}>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Name *</label>
-                <input value={editName} onChange={e=>setEditName(e.target.value)} placeholder="Full name"
-                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>Name *</label>
+                <input
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  placeholder="Full name"
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #E8E4DC", borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                />
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Email</label>
-                <input value={editEmail} onChange={e=>setEditEmail(e.target.value)} placeholder="email@example.com" type="email"
-                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>Email</label>
+                <input
+                  value={editEmail}
+                  onChange={e => setEditEmail(e.target.value)}
+                  placeholder="email@example.com"
+                  type="email"
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #E8E4DC", borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                />
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Phone</label>
-                <input value={editPhone} onChange={e=>setEditPhone(e.target.value)} placeholder="(512) 555-1234" type="tel"
-                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", boxSizing:"border-box" }} />
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>Phone</label>
+                <input
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder="(512) 555-1234"
+                  type="tel"
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #E8E4DC", borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box" }}
+                />
               </div>
               <div>
-                <label style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:"uppercase", letterSpacing:"0.07em", display:"block", marginBottom:6 }}>Notes</label>
-                <textarea value={editNotes} onChange={e=>setEditNotes(e.target.value)} rows={2} placeholder="Internal notes about this client…"
-                  style={{ width:"100%", padding:"10px 12px", border:"1.5px solid #E8E4DC", borderRadius:10, fontSize:14, outline:"none", resize:"vertical", boxSizing:"border-box", fontFamily:"system-ui" }} />
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: "uppercase", letterSpacing: "0.07em", display: "block", marginBottom: 6 }}>Notes</label>
+                <textarea
+                  value={editNotes}
+                  onChange={e => setEditNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Internal notes about this client…"
+                  style={{ width: "100%", padding: "10px 12px", border: "1.5px solid #E8E4DC", borderRadius: 10, fontSize: 14, outline: "none", resize: "vertical", boxSizing: "border-box", fontFamily: "system-ui", minHeight: 70 }}
+                />
               </div>
               {editMsg && (
-                <div style={{ fontSize:13, fontWeight:600, color: editMsg.startsWith("✓") ? "#16A34A" : "#DC2626" }}>{editMsg}</div>
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: editMsg.startsWith("✓") ? "#16A34A" : "#DC2626",
+                  padding: "6px 0",
+                }}>
+                  {editMsg}
+                </div>
               )}
-              <div style={{ display:"flex", gap:10 }}>
-                <button onClick={() => setShowEdit(false)}
-                  style={{ flex:1, padding:"11px 0", borderRadius:10, border:"1.5px solid #E8E4DC", background:"#fff", color:C.gray, fontSize:14, fontWeight:600, cursor:"pointer" }}>
-                  Cancel
-                </button>
-                <button onClick={saveClient} disabled={editSaving}
-                  style={{ flex:1, padding:"11px 0", borderRadius:10, border:"none", background:C.forest, color:"#fff", fontSize:14, fontWeight:700, cursor:"pointer", opacity:editSaving?0.6:1 }}>
-                  {editSaving ? "Saving…" : "Save Changes"}
-                </button>
-              </div>
+            </div>
+
+            {/* STICKY FOOTER */}
+            <div style={{
+              padding: "14px 22px",
+              borderTop: "1px solid #E8E4DC",
+              display: "flex",
+              gap: 10,
+              flexShrink: 0,
+              background: "#fff",
+            }}>
+              <button
+                onClick={() => setShowEdit(false)}
+                style={{
+                  flex: 1,
+                  padding: "11px 0",
+                  borderRadius: 10,
+                  border: "1.5px solid #E8E4DC",
+                  background: "#fff",
+                  color: C.gray,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveClient}
+                disabled={editSaving}
+                style={{
+                  flex: 1,
+                  padding: "11px 0",
+                  borderRadius: 10,
+                  border: "none",
+                  background: C.forest,
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: editSaving ? "wait" : "pointer",
+                  opacity: editSaving ? 0.6 : 1,
+                }}
+              >
+                {editSaving ? "Saving…" : "Save changes"}
+              </button>
             </div>
           </div>
         </div>
@@ -431,65 +567,143 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
       {/* Merge Modal */}
       {showMerge && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, padding: "max(24px, env(safe-area-inset-top, 24px)) 16px calc(24px + env(safe-area-inset-bottom, 0px))", overflowY: "auto", overscrollBehavior: "contain" }}
-          onClick={e => { if (e.target === e.currentTarget) { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", margin: "auto 0" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <div>
-                <h3 style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: 700, color: C.darkGray, margin: "0 0 4px" }}>Merge Duplicate Client</h3>
-                <p style={{ fontSize: 12, color: C.gray, margin: 0 }}>All sessions from the duplicate will move to <strong>{client.name}</strong>, then the duplicate is deleted.</p>
+        <div
+          onClick={e => { if (e.target === e.currentTarget) { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15,23,30,0.55)",
+            backdropFilter: "blur(2px)",
+            WebkitBackdropFilter: "blur(2px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 2000,
+            padding: "max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))",
+          }}
+        >
+          <div style={{
+            background: "#fff",
+            borderRadius: 16,
+            width: "100%",
+            maxWidth: 480,
+            maxHeight: "calc(100vh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
+            boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}>
+            {/* STICKY HEADER */}
+            <div style={{
+              padding: "18px 22px",
+              borderBottom: "1px solid #E8E4DC",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 12,
+              flexShrink: 0,
+              background: "#fff",
+            }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{
+                  fontFamily: "Georgia, serif",
+                  fontSize: 19,
+                  fontWeight: 700,
+                  color: C.darkGray,
+                  margin: "0 0 4px",
+                  lineHeight: 1.15,
+                }}>
+                  Merge duplicate client
+                </h3>
+                <p style={{ fontSize: 12, color: C.gray, margin: 0, lineHeight: 1.45 }}>
+                  All sessions from the duplicate will move to <strong>{client.name}</strong>, then the duplicate is deleted.
+                </p>
               </div>
-              <button onClick={() => { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}
-                style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: C.gray, padding: 4 }}>✕</button>
+              <button
+                onClick={() => { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}
+                aria-label="Close"
+                style={{
+                  background: "#F3F4F6",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: 30,
+                  height: 30,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: C.gray,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                ✕
+              </button>
             </div>
 
-            {/* Primary client */}
-            <div style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Keep this record (primary)</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: C.darkGray }}>{client.name}</div>
-              <div style={{ fontSize: 12, color: C.gray }}>{client.email || client.phone || "No contact on file"}</div>
+            {/* SCROLLABLE BODY */}
+            <div style={{
+              padding: "18px 22px",
+              overflowY: "auto",
+              flex: 1,
+              minHeight: 0,
+            }}>
+              {/* Primary client */}
+              <div style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Keep this record (primary)</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: C.darkGray }}>{client.name}</div>
+                <div style={{ fontSize: 12, color: C.gray }}>{client.email || client.phone || "No contact on file"}</div>
+              </div>
+
+              {/* Search for duplicate */}
+              <input
+                autoFocus
+                value={mergeSearch}
+                onChange={e => searchClients(e.target.value)}
+                placeholder="Search for the duplicate by name…"
+                style={{ width: "100%", padding: "10px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+              />
+
+              {mergeResults.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 14 }}>
+                  {mergeResults.map(r => (
+                    <div key={r.id} onClick={() => setMergeTarget(r)}
+                      style={{ padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${mergeTarget?.id === r.id ? "#DC2626" : C.lightGray}`,
+                        background: mergeTarget?.id === r.id ? "#FEF2F2" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: mergeTarget?.id === r.id ? "#DC2626" : C.darkGray }}>{r.name}</div>
+                      <div style={{ fontSize: 12, color: C.gray }}>{r.email || r.phone || "No contact"} · Added {new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {mergeTarget && (
+                <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 12, padding: "12px 16px", marginBottom: 6 }}>
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Duplicate to delete after merge</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: "#991B1B" }}>{mergeTarget.name}</div>
+                  <div style={{ fontSize: 12, color: "#DC2626" }}>{mergeTarget.email || mergeTarget.phone || "No contact on file"}</div>
+                </div>
+              )}
+
+              {mergeError && <div style={{ fontSize: 13, color: "#DC2626", marginTop: 6, fontWeight: 600 }}>⚠ {mergeError}</div>}
             </div>
 
-            {/* Search for duplicate */}
-            <input
-              autoFocus
-              value={mergeSearch}
-              onChange={e => searchClients(e.target.value)}
-              placeholder="Search for the duplicate by name…"
-              style={{ width: "100%", padding: "10px 14px", border: `1.5px solid ${C.lightGray}`, borderRadius: 10, fontSize: 14, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
-            />
-
-            {mergeResults.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 220, overflowY: "auto" }}>
-                {mergeResults.map(r => (
-                  <div key={r.id} onClick={() => setMergeTarget(r)}
-                    style={{ padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${mergeTarget?.id === r.id ? "#DC2626" : C.lightGray}`,
-                      background: mergeTarget?.id === r.id ? "#FEF2F2" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: mergeTarget?.id === r.id ? "#DC2626" : C.darkGray }}>{r.name}</div>
-                    <div style={{ fontSize: 12, color: C.gray }}>{r.email || r.phone || "No contact"} · Added {new Date(r.created_at).toLocaleDateString()}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {mergeTarget && (
-              <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 12, padding: "12px 16px", marginBottom: 16 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Duplicate to delete after merge</div>
-                <div style={{ fontSize: 15, fontWeight: 700, color: "#991B1B" }}>{mergeTarget.name}</div>
-                <div style={{ fontSize: 12, color: "#DC2626" }}>{mergeTarget.email || mergeTarget.phone || "No contact on file"}</div>
-              </div>
-            )}
-
-            {mergeError && <div style={{ fontSize: 13, color: "#DC2626", marginBottom: 12, fontWeight: 600 }}>⚠ {mergeError}</div>}
-
-            <div style={{ display: "flex", gap: 10 }}>
+            {/* STICKY FOOTER */}
+            <div style={{
+              padding: "14px 22px",
+              borderTop: "1px solid #E8E4DC",
+              display: "flex",
+              gap: 10,
+              flexShrink: 0,
+              background: "#fff",
+            }}>
               <button onClick={() => { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}
                 style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: `1.5px solid ${C.lightGray}`, background: "#fff", color: C.gray, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                 Cancel
               </button>
               <button onClick={executeMerge} disabled={!mergeTarget || mergeSaving}
                 style={{ flex: 1, padding: "11px 0", borderRadius: 10, border: "none", background: mergeTarget ? "#DC2626" : "#E5E7EB", color: "#fff", fontSize: 14, fontWeight: 700, cursor: mergeTarget ? "pointer" : "not-allowed", opacity: mergeSaving ? 0.6 : 1 }}>
-                {mergeSaving ? "Merging…" : "Merge & Delete Duplicate"}
+                {mergeSaving ? "Merging…" : "Merge & delete duplicate"}
               </button>
             </div>
           </div>
