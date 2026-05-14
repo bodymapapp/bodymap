@@ -460,32 +460,32 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
           `}</style>
 
           <button onClick={() => setShowEdit(true)}
-            style={{ background:"#F9FAFB", border:"1.5px solid #E5E7EB", color:C.dark, padding:"7px 13px", borderRadius:"8px", fontSize:"12.5px", fontWeight:600, cursor:"pointer", whiteSpace: "nowrap" }}>
-            ✏️ Edit
+            style={{ background:"#FFFFFF", border:"1px solid #E5E7EB", color:"#374151", padding:"8px 14px", borderRadius:"8px", fontSize:"12.5px", fontWeight:600, cursor:"pointer", whiteSpace: "nowrap" }}>
+            Edit details
           </button>
 
           {!isArchived && (
             <button onClick={() => setShowRebook(true)}
-              style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", color: "#16A34A", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-              📅 Book Next
+              style={{ background: "#1C2B22", border: "1px solid #1C2B22", color: "#FFFFFF", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Book next
             </button>
           )}
 
           <button onClick={() => setShowMerge(true)}
-            style={{ background: "#F5F3FF", border: "1.5px solid #C4B5FD", color: "#7C3AED", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-            ⟵⟶ Merge
+            style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#374151", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+            Merge
           </button>
 
           <div style={{ position: "relative", flexShrink: 0 }}>
             {isArchived ? (
               <button onClick={() => toggleArchive(null)} disabled={archiveSaving}
-                style={{ background: "#F3F4F6", border: "1.5px solid #D1D5DB", color: "#6B7280", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                {archiveSaving ? "Restoring…" : "↩ Restore"}
+                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#374151", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                {archiveSaving ? "Restoring…" : "Restore"}
               </button>
             ) : (
               <button onClick={() => setShowArchiveMenu(v => !v)}
-                style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", color: "#DC2626", padding: "7px 13px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                ⛔ Archive
+                style={{ background: "#FFFFFF", border: "1px solid #E5E7EB", color: "#6B7280", padding: "8px 14px", borderRadius: "8px", fontSize: "12.5px", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                Archive
               </button>
             )}
             {showArchiveMenu && (

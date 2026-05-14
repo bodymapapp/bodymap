@@ -140,11 +140,15 @@ function nextLabel(dateStr) {
 
 function Tile({ icon, label, tone = 'neutral', accentBorder = false, onClick, children }) {
   const [hover, setHover] = React.useState(false);
+  // Muted palette by default. Borders stay soft cream-gray; the
+  // accent comes from the 4px left edge only when accentBorder is
+  // true. This keeps the page calm and lets the silhouette + active
+  // state pill be the visual punctuation.
   const TONES = {
     neutral: { bg: C.paper, border: C.lineFaint, labelColor: C.inkSoft, edge: 'transparent' },
-    gold:    { bg: C.paper, border: C.goldBorder, labelColor: C.gold, edge: C.gold },
-    sage:    { bg: C.paper, border: '#86EFAC', labelColor: C.sage, edge: C.sageBright },
-    amber:   { bg: '#FFFBEB', border: '#FCD34D', labelColor: C.amber, edge: C.amber },
+    gold:    { bg: C.paper, border: C.lineFaint, labelColor: C.gold,    edge: C.goldBright },
+    sage:    { bg: C.paper, border: C.lineFaint, labelColor: C.sage,    edge: C.sage },
+    amber:   { bg: C.paper, border: C.lineFaint, labelColor: C.amber,   edge: C.amber },
   };
   const t = TONES[tone];
   const interactive = !!onClick;
