@@ -114,12 +114,12 @@ serve(async (req) => {
   if (booking.service_id) {
     const { data: svc } = await supabase
       .from("services")
-      .select("name, duration_minutes")
+      .select("name, duration")
       .eq("id", booking.service_id)
       .single();
     if (svc) {
       serviceName = svc.name;
-      if (svc.duration_minutes) serviceDurationMin = svc.duration_minutes;
+      if (svc.duration) serviceDurationMin = svc.duration;
     }
   }
 
