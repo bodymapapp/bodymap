@@ -746,6 +746,18 @@ export default function BookingPage() {
   // has booking_policies_enabled, client must check this box before
   // the Confirm button fires. Captured into booking row for audit.
   const [bookingPoliciesAgreed, setBookingPoliciesAgreed] = useState(false);
+
+  // Cancellation-policy explicit agreement (HK May 14). Both gates now
+  // use the same compact 1-row design with a checkbox on the right and
+  // optional expansion to read full text. Required to tick when the
+  // cancellation policy is enabled.
+  const [cancellationAgreed, setCancellationAgreed] = useState(false);
+
+  // Expanded state for each gate's read-the-text panel. Default both
+  // collapsed so the booking page stays compact; client clicks the row
+  // header to expand and read before agreeing.
+  const [bookingPoliciesExpanded, setBookingPoliciesExpanded] = useState(false);
+  const [cancellationExpanded, setCancellationExpanded] = useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
   // Pay-in-full + tips at booking (Lindsey #2, May 10 2026).
@@ -3010,56 +3022,98 @@ export default function BookingPage() {
                 lifetime per-client. */}
             {therapist?.booking_policies_enabled && therapist?.booking_policies && (
               <div style={{
-                marginBottom: 14,
+                marginBottom: 12,
                 background: '#FFFBEB',
                 border: '1px solid #FCD34D',
                 borderRadius: 12,
-                padding: '14px 16px',
+                overflow: 'hidden',
               }}>
+                {/* Compact 1-row header: chevron + label + checkbox.
+                    Click the chevron / label area to expand the policy
+                    text below. Click the checkbox to agree without
+                    expanding. Two separate click surfaces so checking
+                    does not jiggle expansion. */}
                 <div style={{
-                  fontSize: 11,
-                  fontWeight: 800,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  color: '#92400E',
-                  marginBottom: 10,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
-                }}>
-                  <span>📋</span>
-                  <span>Practice policies</span>
-                </div>
-                <div style={{
-                  background: '#FFFFFF',
-                  border: '1px solid #E8E0D0',
-                  borderRadius: 10,
+                  gap: 8,
                   padding: '12px 14px',
-                  marginBottom: 12,
                 }}>
-                  <PolicyDisplay text={therapist.booking_policies} />
+                  <button
+                    onClick={() => setBookingPoliciesExpanded(v => !v)}
+                    aria-label={bookingPoliciesExpanded ? 'Collapse practice policies' : 'Expand practice policies'}
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 18, height: 18,
+                      flexShrink: 0,
+                      color: '#92400E',
+                      transform: bookingPoliciesExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                      transition: 'transform 0.18s',
+                    }}>
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                        <polyline points="5 3 11 8 5 13" />
+                      </svg>
+                    </span>
+                    <span style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.35, flex: 1 }}>
+                      <span style={{ fontWeight: 600 }}>📋 Practice policies.</span>{' '}
+                      <span style={{ color: '#7C2D12' }}>{bookingPoliciesExpanded ? 'Tap to hide.' : 'Tap to read.'}</span>
+                    </span>
+                  </button>
+                  <label
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      padding: '4px 10px 4px 6px',
+                      borderRadius: 999,
+                      background: bookingPoliciesAgreed ? '#ECFDF5' : 'transparent',
+                      border: `1px solid ${bookingPoliciesAgreed ? '#86EFAC' : 'transparent'}`,
+                      transition: 'background 0.15s, border 0.15s',
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={bookingPoliciesAgreed}
+                      onChange={(e) => setBookingPoliciesAgreed(e.target.checked)}
+                      style={{ flexShrink: 0, width: 16, height: 16, cursor: 'pointer', accentColor: '#16A34A' }}
+                    />
+                    <span style={{
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      color: bookingPoliciesAgreed ? '#166534' : '#92400E',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      Agree
+                    </span>
+                  </label>
                 </div>
-                <label style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 10,
-                  cursor: 'pointer',
-                  padding: '8px 10px',
-                  background: bookingPoliciesAgreed ? '#ECFDF5' : '#FFFFFF',
-                  border: `1px solid ${bookingPoliciesAgreed ? '#86EFAC' : '#E8E0D0'}`,
-                  borderRadius: 10,
-                  transition: 'background 0.15s ease, border 0.15s ease',
-                }}>
-                  <input
-                    type="checkbox"
-                    checked={bookingPoliciesAgreed}
-                    onChange={(e) => setBookingPoliciesAgreed(e.target.checked)}
-                    style={{ marginTop: 3, flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: 13.5, color: '#1F2937', lineHeight: 1.45 }}>
-                    I have read and agree to these policies.
-                  </span>
-                </label>
+                {bookingPoliciesExpanded && (
+                  <div style={{
+                    background: '#FFFFFF',
+                    borderTop: '1px solid #FCD34D',
+                    padding: '12px 16px',
+                  }}>
+                    <PolicyDisplay text={therapist.booking_policies} />
+                  </div>
+                )}
               </div>
             )}
             {/* Cancellation policy display — sleek compact version.
@@ -3095,57 +3149,131 @@ export default function BookingPage() {
               };
               return (
                 <div style={{
-                  marginBottom: 14,
+                  marginBottom: 12,
                   background: '#FAF6EE',
                   border: '1px solid #E5D5C8',
                   borderRadius: 12,
-                  padding: '12px 14px',
+                  overflow: 'hidden',
                 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                    <span style={{ fontSize: 14 }}>🕐</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: '#5C2E27', letterSpacing: 0.3, textTransform: 'uppercase' }}>Cancellation policy</span>
+                  {/* Compact 1-row header matching the booking-policies
+                      gate above: chevron + label + Agree checkbox.
+                      Click chevron / label to expand the tier breakdown.
+                      Click checkbox to agree. */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '12px 14px',
+                  }}>
+                    <button
+                      onClick={() => setCancellationExpanded(v => !v)}
+                      aria-label={cancellationExpanded ? 'Collapse cancellation policy' : 'Expand cancellation policy'}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        background: 'transparent',
+                        border: 'none',
+                        padding: 0,
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 18, height: 18,
+                        flexShrink: 0,
+                        color: '#5C2E27',
+                        transform: cancellationExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.18s',
+                      }}>
+                        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12 }}>
+                          <polyline points="5 3 11 8 5 13" />
+                        </svg>
+                      </span>
+                      <span style={{ fontSize: 14, color: '#1F2937', lineHeight: 1.35, flex: 1 }}>
+                        <span style={{ fontWeight: 600 }}>🕐 Cancellation policy.</span>{' '}
+                        <span style={{ color: '#7A5C53' }}>{cancellationExpanded ? 'Tap to hide.' : 'Tap to read.'}</span>
+                      </span>
+                    </button>
+                    <label
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        padding: '4px 10px 4px 6px',
+                        borderRadius: 999,
+                        background: cancellationAgreed ? '#ECFDF5' : 'transparent',
+                        border: `1px solid ${cancellationAgreed ? '#86EFAC' : 'transparent'}`,
+                        transition: 'background 0.15s, border 0.15s',
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={cancellationAgreed}
+                        onChange={(e) => setCancellationAgreed(e.target.checked)}
+                        style={{ flexShrink: 0, width: 16, height: 16, cursor: 'pointer', accentColor: '#16A34A' }}
+                      />
+                      <span style={{
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        color: cancellationAgreed ? '#166534' : '#5C2E27',
+                        whiteSpace: 'nowrap',
+                      }}>
+                        Agree
+                      </span>
+                    </label>
                   </div>
-
-                  {/* Headline cancel tiers — most important rules at a glance */}
-                  {(c1 > 0 || c2 > 0 || c3 > 0) && (
-                    <div style={{ marginBottom: 6 }}>
-                      {tierRow('More than 24h ahead', c1, c1 === 0 ? 'green' : 'amber')}
-                      {c2 > 0 && tierRow('Within 24h', c2, 'amber')}
-                      {c3 > 0 && tierRow('Within 2h', c3, 'red')}
-                    </div>
-                  )}
-
-                  {/* Compact secondary lines for reschedule + no-show */}
-                  {(r1 > 0 || r2 > 0 || ns > 0) && (
+                  {cancellationExpanded && (
                     <div style={{
-                      fontSize: 11, color: '#5C2E27', lineHeight: 1.6,
-                      paddingTop: 6, borderTop: '1px dashed #E5D5C8',
+                      background: '#FFFFFF',
+                      borderTop: '1px solid #E5D5C8',
+                      padding: '12px 14px',
                     }}>
-                      {(r1 > 0 || r2 > 0) && (
-                        <div>
-                          <strong>Reschedule:</strong> {r1 === 0 ? 'free if 24h+ ahead' : `${r1}% if 24h+ ahead`}
-                          {r2 > 0 && `, ${r2}% within 24h`}
+                      {/* Headline cancel tiers */}
+                      {(c1 > 0 || c2 > 0 || c3 > 0) && (
+                        <div style={{ marginBottom: 6 }}>
+                          {tierRow('More than 24h ahead', c1, c1 === 0 ? 'green' : 'amber')}
+                          {c2 > 0 && tierRow('Within 24h', c2, 'amber')}
+                          {c3 > 0 && tierRow('Within 2h', c3, 'red')}
                         </div>
                       )}
-                      {ns > 0 && (
-                        <div><strong>No-show:</strong> {ns}% of session.</div>
+
+                      {(r1 > 0 || r2 > 0 || ns > 0) && (
+                        <div style={{
+                          fontSize: 11, color: '#5C2E27', lineHeight: 1.6,
+                          paddingTop: 6, borderTop: '1px dashed #E5D5C8',
+                        }}>
+                          {(r1 > 0 || r2 > 0) && (
+                            <div>
+                              <strong>Reschedule:</strong> {r1 === 0 ? 'free if 24h+ ahead' : `${r1}% if 24h+ ahead`}
+                              {r2 > 0 && `, ${r2}% within 24h`}
+                            </div>
+                          )}
+                          {ns > 0 && (
+                            <div><strong>No-show:</strong> {ns}% of session.</div>
+                          )}
+                        </div>
+                      )}
+
+                      {p.custom_text && p.custom_text.trim().length > 0 && (
+                        <details style={{ marginTop: 8 }}>
+                          <summary style={{ fontSize: 11, color: '#7A5C53', cursor: 'pointer' }}>Read therapist's full policy</summary>
+                          <pre style={{
+                            margin: '6px 0 0', fontSize: 11, fontFamily: 'inherit',
+                            whiteSpace: 'pre-wrap', color: '#1F2937', lineHeight: 1.6,
+                          }}>{p.custom_text}</pre>
+                        </details>
                       )}
                     </div>
                   )}
-
-                  {p.custom_text && p.custom_text.trim().length > 0 && (
-                    <details style={{ marginTop: 8 }}>
-                      <summary style={{ fontSize: 11, color: '#7A5C53', cursor: 'pointer' }}>Read therapist's full policy</summary>
-                      <pre style={{
-                        margin: '6px 0 0', fontSize: 11, fontFamily: 'inherit',
-                        whiteSpace: 'pre-wrap', color: '#1F2937', lineHeight: 1.6,
-                      }}>{p.custom_text}</pre>
-                    </details>
-                  )}
-
-                  <div style={{ fontSize: 10, color: '#7A5C53', marginTop: 8, fontStyle: 'italic' }}>
-                    By confirming, you agree to the policy above.
-                  </div>
                 </div>
               );
             })()}
@@ -3329,17 +3457,29 @@ export default function BookingPage() {
             ) : (
               <>
                 {(() => {
-                  // Booking-policies gate: if therapist has enabled
-                  // booking_policies, client must check the agreement
-                  // checkbox before Confirm fires.
-                  const policiesRequired = !!(therapist?.booking_policies_enabled && therapist?.booking_policies);
-                  const policiesBlocked = policiesRequired && !bookingPoliciesAgreed;
+                  // Both policies gate: if a therapist has either or
+                  // both enabled, the client must tick the matching
+                  // Agree checkbox(es) before Confirm fires. Message
+                  // names the specific outstanding agreement so the
+                  // client knows which row to look at.
+                  const bkRequired = !!(therapist?.booking_policies_enabled && therapist?.booking_policies);
+                  const cxRequired = !!(therapist?.cancellation_policy_enabled && therapist?.cancellation_policy);
+                  const bkBlocked = bkRequired && !bookingPoliciesAgreed;
+                  const cxBlocked = cxRequired && !cancellationAgreed;
+                  const policiesBlocked = bkBlocked || cxBlocked;
+                  const blockedLabel = (bkBlocked && cxBlocked)
+                    ? 'Please agree to the policies above'
+                    : bkBlocked
+                      ? 'Please agree to the practice policies above'
+                      : cxBlocked
+                        ? 'Please agree to the cancellation policy above'
+                        : '';
                   const isBlocked = submitting || policiesBlocked;
                   return (
                 <button onClick={submit} disabled={isBlocked}
                   style={{width:'100%',background:isBlocked?'#9CA3AF':C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:isBlocked?'not-allowed':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${isBlocked?0.05:0.3})`,opacity:policiesBlocked?0.85:1}}>
                   {policiesBlocked
-                    ? 'Please agree to the policies above'
+                    ? blockedLabel
                     : (submitting
                     ? (requiresApproval?'Sending…':'Confirming…')
                     : (requiresApproval
