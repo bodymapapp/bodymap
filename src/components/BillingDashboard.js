@@ -250,6 +250,11 @@ function WeeklyView({ sessions }) {
         <StatCard label="Sessions" value={weekSessions.length} sub="total" color="#6B9E80" />
         <StatCard label="Avg/Session" value={weekSessions.length>0?currency(actual/weekSessions.length):'-'} sub="collected" color="#C9A84C" small />
       </StatRow>
+      <style>{`
+        @media (max-width: 420px) {
+          .bm-bill-bar-amount { display: none !important; }
+        }
+      `}</style>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
         {weekDays.map((d,i) => {
           const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
@@ -266,7 +271,7 @@ function WeeklyView({ sessions }) {
                   <div style={{ position:'absolute', bottom:0, width:'100%', background:'#2A5741', borderRadius:'3px 3px 0 0', height:`${actH}px` }} />
                 </div>
               </div>
-              {dayExp > 0 && <div style={{ fontSize:10, color:'#6B7280', marginTop:4 }}>{currency(dayExp)}</div>}
+              {dayExp > 0 && <div className="bm-bill-bar-amount" style={{ fontSize:10, color:'#6B7280', marginTop:4, whiteSpace:'nowrap' }}>{currency(dayExp)}</div>}
             </div>
           );
         })}
