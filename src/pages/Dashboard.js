@@ -41,6 +41,7 @@ import WaiverCard from '../components/WaiverCard';
 import NotificationPrefsCard from '../components/NotificationPrefsCard';
 import QRCodesCard from '../components/QRCodesCard';
 import CancellationPolicy from '../components/CancellationPolicy';
+import BookingPolicies from '../components/BookingPolicies';
 
 // Soft banner shown on the dashboard for therapists who pre-date the
 // phone verification feature (created before PHONE_GATE_FROM). Encourages
@@ -3200,18 +3201,27 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <PaymentRouting therapist={therapist} onSaved={() => updateProfile({ ...therapist })} />
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Cancellation policy', 'Charge for late cancels reschedules no-shows', '4.3') && (<>
+      {matchesSearch('Booking & cancellation policies', 'Practice rules clients see before booking, charge for late cancels reschedules no-shows', '4.3') && (<>
       <CollapsibleSection
         id="cancellation"
         taxonomy="4.3"
-        timeBadge="~3m"
-        label="Cancellation policy"
-        summary={therapist?.cancellation_policy_enabled ? "On · clients see policy at booking" : "Off · protect your time from late cancels"}
-        status={therapist?.cancellation_policy_enabled ? "done" : "todo"}
+        timeBadge="~5m"
+        label="Booking & cancellation policies"
+        summary={(() => {
+          const cx = therapist?.cancellation_policy_enabled;
+          const bk = therapist?.booking_policies_enabled;
+          if (cx && bk) return "Both on · clients agree at booking";
+          if (cx && !bk) return "Cancellation on · booking policies off";
+          if (!cx && bk) return "Booking policies on · cancellation off";
+          return "Off · set expectations and protect your time";
+        })()}
+        status={(therapist?.cancellation_policy_enabled || therapist?.booking_policies_enabled) ? "done" : "todo"}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 2v10l4 4"/><circle cx="12" cy="12" r="10"/></svg>}
         isOpen={openRow === 'cancellation'}
         onToggle={toggleRow}
       >
+        <BookingPolicies therapist={therapist} />
+        <div style={{ height: 14 }} />
         <CancellationPolicy therapist={therapist} />
       </CollapsibleSection>
       </>)}

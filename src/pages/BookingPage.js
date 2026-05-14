@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
+import { PolicyDisplay } from '../components/BookingPolicies';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444', amber:'#F59E0B' };
 
@@ -740,6 +741,11 @@ export default function BookingPage() {
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
   const [submitting,setSubmitting]=useState(false);
+
+  // Booking-policies gate (Ashley Scalzulli May 2026). When therapist
+  // has booking_policies_enabled, client must check this box before
+  // the Confirm button fires. Captured into booking row for audit.
+  const [bookingPoliciesAgreed, setBookingPoliciesAgreed] = useState(false);
   const [depositRequired,setDepositRequired]=useState(false);
   const [depositAmount,setDepositAmount]=useState(0);
   // Pay-in-full + tips at booking (Lindsey #2, May 10 2026).
@@ -1573,6 +1579,16 @@ export default function BookingPage() {
       // they agreed to at this booking.
       card_on_file_payment_method_id: cardSavedPaymentMethodId || null,
       card_on_file_customer_id: cardSavedCustomerId || null,
+      // Booking-policies audit trail (Ashley Scalzulli May 2026). When
+      // the therapist has booking_policies enabled, snapshot the exact
+      // text the client agreed to plus the agree timestamp. Protects
+      // the therapist if policy text is later edited.
+      booking_policies_agreed_at: (therapist?.booking_policies_enabled && bookingPoliciesAgreed)
+        ? new Date().toISOString()
+        : null,
+      booking_policies_text_snapshot: (therapist?.booking_policies_enabled && bookingPoliciesAgreed)
+        ? (therapist.booking_policies || null)
+        : null,
     }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
@@ -2944,6 +2960,66 @@ export default function BookingPage() {
                 <span style={{fontSize:13,color:'#16A34A',fontWeight:600}}>Welcome back! As a returning client, no deposit is required, your booking is confirmed instantly.</span>
               </div>
             )}
+            {/* Booking policies gate (Ashley Scalzulli May 2026).
+                Shows therapist's practice policies in a scrollable box,
+                requires explicit checkbox before Confirm fires.
+                Returning clients still see this; agreement is recorded
+                per-booking so the audit trail is per-session, not
+                lifetime per-client. */}
+            {therapist?.booking_policies_enabled && therapist?.booking_policies && (
+              <div style={{
+                marginBottom: 14,
+                background: '#FFFBEB',
+                border: '1px solid #FCD34D',
+                borderRadius: 12,
+                padding: '14px 16px',
+              }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                  color: '#92400E',
+                  marginBottom: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}>
+                  <span>📋</span>
+                  <span>Practice policies</span>
+                </div>
+                <div style={{
+                  background: '#FFFFFF',
+                  border: '1px solid #E8E0D0',
+                  borderRadius: 10,
+                  padding: '12px 14px',
+                  marginBottom: 12,
+                }}>
+                  <PolicyDisplay text={therapist.booking_policies} />
+                </div>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  cursor: 'pointer',
+                  padding: '8px 10px',
+                  background: bookingPoliciesAgreed ? '#ECFDF5' : '#FFFFFF',
+                  border: `1px solid ${bookingPoliciesAgreed ? '#86EFAC' : '#E8E0D0'}`,
+                  borderRadius: 10,
+                  transition: 'background 0.15s ease, border 0.15s ease',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={bookingPoliciesAgreed}
+                    onChange={(e) => setBookingPoliciesAgreed(e.target.checked)}
+                    style={{ marginTop: 3, flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: 13.5, color: '#1F2937', lineHeight: 1.45 }}>
+                    I have read and agree to these policies.
+                  </span>
+                </label>
+              </div>
+            )}
             {/* Cancellation policy display — sleek compact version.
                 Shows the headline rules at a glance via colored tier
                 rows. Full prose available on tap-to-expand. */}
@@ -3210,9 +3286,19 @@ export default function BookingPage() {
               </p>
             ) : (
               <>
-                <button onClick={submit} disabled={submitting}
-                  style={{width:'100%',background:submitting?C.sage:C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:submitting?'wait':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${submitting?0.1:0.3})`}}>
-                  {submitting
+                {(() => {
+                  // Booking-policies gate: if therapist has enabled
+                  // booking_policies, client must check the agreement
+                  // checkbox before Confirm fires.
+                  const policiesRequired = !!(therapist?.booking_policies_enabled && therapist?.booking_policies);
+                  const policiesBlocked = policiesRequired && !bookingPoliciesAgreed;
+                  const isBlocked = submitting || policiesBlocked;
+                  return (
+                <button onClick={submit} disabled={isBlocked}
+                  style={{width:'100%',background:isBlocked?'#9CA3AF':C.forest,color:C.white,border:'none',borderRadius:14,padding:'17px',fontSize:16,fontWeight:700,cursor:isBlocked?'not-allowed':'pointer',transition:'background 0.2s',boxShadow:`0 4px 20px rgba(42,87,65,${isBlocked?0.05:0.3})`,opacity:policiesBlocked?0.85:1}}>
+                  {policiesBlocked
+                    ? 'Please agree to the policies above'
+                    : (submitting
                     ? (requiresApproval?'Sending…':'Confirming…')
                     : (requiresApproval
                         ? 'Send Request'
@@ -3220,8 +3306,10 @@ export default function BookingPage() {
                             ? `✓ Confirm & Pay $${((svc.price*100 + tipCents)/100).toFixed(0)}`
                             : (depositRequired
                                 ? `✓ Confirm & Pay $${(depositAmount/100).toFixed(0)} Deposit`
-                                : '✓ Confirm Booking')))}
+                                : '✓ Confirm Booking'))))}
                 </button>
+                  );
+                })()}
                 {!requiresApproval&&!depositRequired&&!isRepeatClient&&!cardOnFileRequired&&(
                   <p style={{fontSize:11,color:C.gray,textAlign:'center',marginTop:10,lineHeight:1.5}}>
                     No payment now. You'll fill your intake form right after booking.
