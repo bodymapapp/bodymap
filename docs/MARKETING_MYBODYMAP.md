@@ -112,6 +112,87 @@ Template is rule-based and free in v1. AI can layer prose polish in v2 if data s
 
 **Why this beats competitors:** MassageBook AutoPilot and ClinicSense win-back both send bulk emails to lapsed clients. That is spam to the client and embarrassing to the therapist. Our card targets ONE client for ONE gap with three personalized reasons and a one-tap action. The matching algorithm uses booking-pattern data they do not have access to.
 
+**Up-next briefing card (the three-point format).** Card stack on the Schedule page Left rail showing the next 4 upcoming clients as a horizontal carousel. Each card shows three numbered points pulled from the highest-signal sources for that specific client. Selection priority:
+
+1. **Safety / required action first.** Allergies, intake-not-filled, cancel-risk warnings. Cannot be hidden by the algorithm.
+2. **Continuity from last session.** Focus area, last session outcome. What was promised or worked.
+3. **Personalization.** Preferences, lifestyle context (runner, desk worker), referral source.
+
+Source-of-truth map for the three-point card:
+
+| Point label | Pulled from |
+|---|---|
+| Focus | Last session's `body_zones_focused` from SOAP note |
+| Pref | `preferences` table or last session's preferences field |
+| Last time | AI-extracted summary of last session's `therapist_notes` (see SOAP intelligence below) |
+| No intake yet | `bookings.intake_filled == false` |
+| Watch | computed: cancellation rate > 20% AND >= 5 bookings |
+| Pattern | recurring body zone from longitudinal patterns query |
+| Package | `package_purchases` remaining_sessions if < 50% remaining |
+| Allergy | `medical_flags.allergies` (highest severity first) |
+| Note | `client.notes` (therapist freetext) |
+| Referred by | `client.referred_by_client_id`, if set |
+
+For each upcoming client, the system picks the THREE most surprising / urgent / actionable points. The chosen three vary by client state.
+
+### SOAP intelligence: how we extract from unstructured notes
+
+The therapist_notes field is unstructured prose. Therapists write however they want. The Up-Next briefing card needs structured points pulled from this prose. Two approaches considered:
+
+**Approach 1 (rejected): regex + keyword heuristics.** Scan for body-zone keywords ("lower back," "shoulders," "neck"), sentiment markers ("loved," "uncomfortable"), preference markers ("quiet," "firm pressure"). Output structured points from pattern matching. **Cost: $0. Quality: 60-70%.** Works for structured-ish notes, fails on stream-of-consciousness. We keep this as a fallback when AI extraction is unavailable.
+
+**Approach 2 (chosen): cached AI extraction.** Run a single AI call per SOAP note at save time. Output a structured JSON with the fields we care about. Store in a `session_intelligence` table keyed by `session_id`. Briefing cards read the cached JSON. No AI call at view time.
+
+The schema we ask the model to fill, on each SOAP save:
+
+```json
+{
+  "focus_areas": ["lower back", "right shoulder"],
+  "preferences_observed": ["quiet session, dim lights"],
+  "outcome": "Loved forearm pressure on glutes. Asked for similar next time.",
+  "concerns_flagged": [],
+  "homework_or_followup": null,
+  "next_session_priority": "continue glute work, add hip flexor"
+}
+```
+
+Model: Claude Haiku (cheapest in the Anthropic family). Tokens per call: ~500 in, ~150 out. Cost per call: ~$0.0013 (about one-eighth of a cent). Estimated steady-state at 100 active therapists writing 10 SOAP notes/day = ~$40/month total. Anthropic eats this cost during early growth; future pricing may pass it through as a Silver+ feature if economics demand.
+
+Fallback ladder when AI unavailable or call fails:
+1. Cached AI JSON if present, regardless of age (SOAP notes rarely change).
+2. Regex extraction (Approach 1 above) on the latest therapist_notes blob.
+3. Static fallback: medical_flags + intake_filled + lifetime_sessions count. Plain text, less useful, never wrong.
+
+The therapist never sees the difference. Card always shows three points. Quality degrades gracefully when AI is not available.
+
+**Privacy note.** SOAP notes contain medical and personal information. Calls to AI for extraction route through our own server, not directly from the therapist's browser. We send only the minimum needed (the therapist_notes text, no PII like client name or DOB). The extraction result is stored only in our own database and never shared with any third party other than the LLM provider during the call itself. Anthropic does not train on API data. This is documented in the privacy policy.
+
+### Smart Booking: the marketing pillar
+
+The Schedule-tab intelligence we have just defined is bigger than one tab. It is a marketing pillar in its own right. We give it a name and use it everywhere.
+
+**The name:** "Smart Booking."
+
+**The promise:** "Your platform reaches out to the right client for the right gap with one tap." That sentence, or a variant of it, leads any home, features, or Why-MyBodyMap page section that talks about scheduling or retention.
+
+**The three pillars inside Smart Booking:**
+
+1. **Fill This Gap.** When a slot opens up or sits empty, we name the best client to text and pre-draft the message. One tap to send.
+2. **Up-Next Briefing.** Before every client walks in, three things you need to remember. Pulled automatically from past sessions, preferences, and patterns. No notes app, no scrambling.
+3. **Body Load Awareness.** Your platform watches your day's mix of services and warns you before three deep tissue in a row burns out your wrists. Built for LMTs by LMTs.
+
+**Why this matters for the 70-year-old persona** (Sarah from PART ONE): a kebab-icon edit button confuses her. But "your platform knows which client to text and writes the message for you" maps to her existing mental model of "having an assistant." That's the framing for every public surface.
+
+**Public-page placement:**
+
+- **Home page hero or sub-hero.** "Smart Booking: your retention engine, built in." Sub-line: "The platform tells you who to text when a slot opens up, what to remember about every client, and when your body is about to burn out." With a single illustrative screenshot of the Fill This Gap card.
+- **Features page.** New section: "Smart Booking" between the existing Body Map and Client Intelligence sections. Each pillar as a sub-card with the same three-point format the actual card uses, so the page IS the demo.
+- **Why MyBodyMap page.** Replace one of the existing differentiator points with Smart Booking. Lead with a competitor-comparison table: MassageBook says "we email all your lapsed clients," we say "we text the right one for this specific gap." Cal.com says "online booking," we say "online booking that knows what to remember." Show the gap.
+
+**Public copy guardrails** (per voice rules in PART TWO): never use the phrase "AI-powered." Therapists distrust it. Say "the platform notices..." or "your dashboard shows..." or "this slot, this client." Implementation detail (AI vs. heuristic) is not the user's concern. Outcome is.
+
+When we build the Phase 2 home / features / Why pages, the copy and the screenshots live downstream of this playbook. Do not freelance the framing on a marketing page if it has not been added here first.
+
 ---
 
 When a future feature needs a new formula, the formula lives here, alongside the others. One file, easy to audit, easy to tune.
