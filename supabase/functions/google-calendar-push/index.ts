@@ -32,10 +32,22 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  // HK May 14 2026: verbose logs at every step so we can see in
+  // edge function logs exactly where forward push fails. Was flying
+  // blind before; logs showed only boot / shutdown noise.
+  console.log("[push] invoked", { method: req.method });
+
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
   const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
+
+  console.log("[push] env check", {
+    hasUrl: !!SUPABASE_URL,
+    hasServiceKey: !!SUPABASE_SERVICE_KEY,
+    hasGoogleId: !!GOOGLE_CLIENT_ID,
+    hasGoogleSecret: !!GOOGLE_CLIENT_SECRET,
+  });
 
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -43,20 +55,17 @@ serve(async (req) => {
   try {
     body = await req.json();
   } catch (_e) {
+    console.error("[push] invalid body");
     return json({ error: "invalid_body" }, 400);
   }
+  console.log("[push] body parsed", body);
+
   if (!body.booking_id || !body.action) {
+    console.error("[push] missing booking_id or action");
     return json({ error: "missing_booking_id_or_action" }, 400);
   }
 
   // Load the booking + therapist + service.
-  // HK May 14 2026: the prior query selected scheduled_at +
-  // duration_minutes, which do not exist on the bookings table.
-  // Real columns: booking_date (date), start_time (time),
-  // end_time (time). Service info comes from a separate fetch
-  // below. The phantom-column bug caused Date(null) -> Invalid
-  // Date -> Google API to reject the create with a 400 -> our
-  // fire-and-forget caller never saw the error.
   const { data: booking, error: bErr } = await supabase
     .from("bookings")
     .select(
@@ -65,8 +74,16 @@ serve(async (req) => {
     .eq("id", body.booking_id)
     .single();
   if (bErr || !booking) {
+    console.error("[push] booking not found", { bookingId: body.booking_id, error: bErr });
     return json({ error: "booking_not_found", details: bErr?.message }, 404);
   }
+  console.log("[push] booking loaded", {
+    id: booking.id,
+    booking_date: booking.booking_date,
+    start_time: booking.start_time,
+    end_time: booking.end_time,
+    has_google_event_id: !!booking.google_event_id,
+  });
 
   const { data: therapist, error: tErr } = await supabase
     .from("therapists")
@@ -76,9 +93,19 @@ serve(async (req) => {
     .eq("id", booking.therapist_id)
     .single();
   if (tErr || !therapist) {
+    console.error("[push] therapist not found", { therapistId: booking.therapist_id, error: tErr });
     return json({ error: "therapist_not_found" }, 404);
   }
+  console.log("[push] therapist loaded", {
+    id: therapist.id,
+    connected: therapist.google_calendar_connected,
+    hasAccessToken: !!therapist.google_access_token,
+    hasRefreshToken: !!therapist.google_refresh_token,
+    expiresAt: therapist.google_token_expires_at,
+    calendarId: therapist.google_calendar_id,
+  });
   if (!therapist.google_calendar_connected) {
+    console.warn("[push] therapist not connected to Google");
     return json({ ok: true, skipped: "not_connected" });
   }
 
@@ -104,8 +131,10 @@ serve(async (req) => {
       GOOGLE_CLIENT_ID,
       GOOGLE_CLIENT_SECRET
     );
+    console.log("[push] access token ready (length:", accessToken.length, ")");
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
+    console.error("[push] token refresh failed:", msg);
     return json({ ok: false, error: msg });
   }
 
@@ -242,6 +271,13 @@ serve(async (req) => {
   }
 
   // Create
+  console.log("[push] creating Google event", {
+    calendarId,
+    summary,
+    startLocal,
+    endLocal,
+    timeZone: eventTimeZone,
+  });
   const cRes = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       calendarId
@@ -257,9 +293,11 @@ serve(async (req) => {
   );
   if (!cRes.ok) {
     const txt = await cRes.text();
+    console.error("[push] Google create failed", { status: cRes.status, body: txt.slice(0, 500) });
     return json({ ok: false, error: `create_failed: ${txt.slice(0, 200)}` });
   }
   const created = await cRes.json();
+  console.log("[push] Google event created", { eventId: created.id, htmlLink: created.htmlLink });
   await supabase
     .from("bookings")
     .update({

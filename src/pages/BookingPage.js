@@ -1611,10 +1611,23 @@ export default function BookingPage() {
     // Only confirmed bookings sync immediately. Pending-approval and
     // pending-deposit bookings sync after they become confirmed via
     // the appropriate flow (approval, deposit capture).
+    //
+    // HK May 14 2026: verbose logging added to console. Edge function
+    // logs showed no invocations at all on the May 14 test, meaning
+    // either this guard short-circuited, or the fetch never reached
+    // the network. Console.log each branch so we can see which.
+    console.log('[Booking] post-create google sync check:', {
+      bid,
+      bookingStatus: newBooking?.status,
+      therapistConnected: therapist?.google_calendar_connected,
+      hasUrl: !!process.env.REACT_APP_SUPABASE_URL,
+      hasKey: !!process.env.REACT_APP_SUPABASE_ANON_KEY,
+    });
     if (bid && newBooking?.status === 'confirmed' && therapist?.google_calendar_connected) {
       try {
         const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL;
         const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        console.log('[Booking] firing google-calendar-push for booking', bid);
         fetch(`${SUPABASE_URL}/functions/v1/google-calendar-push`, {
           method: 'POST',
           headers: {
@@ -1622,10 +1635,20 @@ export default function BookingPage() {
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ booking_id: bid, action: 'create' }),
-        }).catch(() => {}); // fire and forget
-      } catch (_e) {
-        // do not block booking on sync failure
+        })
+          .then(r => r.json())
+          .then(j => console.log('[Booking] google-calendar-push response:', j))
+          .catch(e => console.error('[Booking] google-calendar-push failed:', e));
+      } catch (e) {
+        console.error('[Booking] google-calendar-push threw before fetch:', e);
       }
+    } else {
+      console.warn('[Booking] google-calendar-push SKIPPED. Reason:',
+        !bid ? 'no booking id' :
+        newBooking?.status !== 'confirmed' ? `status=${newBooking?.status}` :
+        !therapist?.google_calendar_connected ? 'therapist not connected' :
+        'unknown'
+      );
     }
 
     // Apply gift certificate if present

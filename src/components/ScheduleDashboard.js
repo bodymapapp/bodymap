@@ -399,11 +399,11 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </button>
       </div>
 
-      {/* Scrollable day picker, compacted May 14 2026.
-          Was 70px wide, 3-line cards with 'X appts' text on each.
-          Now 56px wide, 2-line cards with a count badge in the
-          corner when non-zero. Saves ~30px vertical and looks
-          tighter against the action row. */}
+      {/* Scrollable day picker. HK May 14: the floating corner badge
+          looked spammy. Moved the count back inside the card as a
+          quiet line under the date, half the size of the date. Reads
+          like 'Today 14 / 5 appts' top-to-bottom with strong type
+          hierarchy. */}
       <div ref={scrollRef} style={{display:'flex',gap:6,marginBottom:14,overflowX:'auto',paddingBottom:4,scrollbarWidth:'none',WebkitOverflowScrolling:'touch'}}>
         {DAY_RANGE.map(i=>{
           const d=addDays(today,i);
@@ -413,14 +413,14 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           const isPast=i<0;
           return (
             <button key={i} data-istoday={isToday?'true':undefined} onClick={()=>setDayOffset(i)}
-              style={{position:'relative',flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:10,padding:'7px 10px',cursor:'pointer',minWidth:56,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.8:1}}>
-              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:1,letterSpacing:'0.04em'}}>
+              style={{flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:10,padding:'8px 10px',cursor:'pointer',minWidth:60,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.85:1}}>
+              <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2,letterSpacing:'0.04em'}}>
                 {i===0?'Today':i===-1?'Yest':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
               </div>
-              <div style={{fontSize:15,fontWeight:700}}>{d.getDate()}</div>
-              {count>0&&(
-                <span style={{position:'absolute',top:-5,right:-5,minWidth:16,height:16,padding:'0 4px',borderRadius:8,background:isSel?'#86EFAC':'#2A5741',color:isSel?'#1F3A2C':'#fff',fontSize:10,fontWeight:700,display:'inline-flex',alignItems:'center',justifyContent:'center',boxShadow:'0 1px 3px rgba(0,0,0,0.15)'}}>{count}</span>
-              )}
+              <div style={{fontSize:15,fontWeight:700,lineHeight:1.1}}>{d.getDate()}</div>
+              <div style={{fontSize:10,fontWeight:600,marginTop:3,opacity:count>0?0.7:0.3}}>
+                {count > 0 ? `${count} appt${count!==1?'s':''}` : '·'}
+              </div>
             </button>
           );
         })}
