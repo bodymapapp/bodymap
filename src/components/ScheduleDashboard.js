@@ -360,10 +360,26 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   const GUTTER = 48;
 
   const gaps = [];
+  // Pre-day open block (before first booking). Per founder playbook:
+  // showing open time is the point of the calendar, since Fill This
+  // Gap is the differentiating feature. Don't hide unbooked stretches.
+  if (sorted.length > 0) {
+    const firstStart = t2m(sorted[0].time);
+    if (firstStart - TL_START > 90) {
+      gaps.push({ start: TL_START, end: firstStart, mins: firstStart - TL_START });
+    }
+  }
   for(let i=0;i<sorted.length-1;i++){
     const aEnd=t2m(sorted[i].time)+sorted[i].duration;
     const bStart=t2m(sorted[i+1].time);
     if(bStart-aEnd>90) gaps.push({start:aEnd,end:bStart,mins:bStart-aEnd});
+  }
+  // Post-day open block (after last booking to end of working day).
+  if (sorted.length > 0) {
+    const lastEnd = t2m(sorted[sorted.length-1].time) + sorted[sorted.length-1].duration;
+    if (TL_END - lastEnd > 90) {
+      gaps.push({ start: lastEnd, end: TL_END, mins: TL_END - lastEnd });
+    }
   }
   const hourNums = [];
   for(let h=Math.floor(TL_START/60);h<=Math.ceil(TL_END/60);h++) hourNums.push(h);
@@ -505,10 +521,40 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               const y=(g.start-TL_START)*PX;
               const gh=g.mins*PX;
               const hrs=Math.floor(g.mins/60), mins=g.mins%60;
-              const lbl=hrs>0?`${hrs}h${mins>0?` ${mins}m`:''} gap`:`${mins}m gap`;
+              // Two visual treatments by length:
+              //   <= 90 min: amber stripes + 'book here' urgency (real fillable gap)
+              //   > 90 min: soft amber tint + 'Open · Nh available' (general open time)
+              // Either way the eye sees the schedule has space.
+              const isShortGap = g.mins <= 90;
+              const lbl=hrs>0?(mins>0?`${hrs}h ${mins}m`:`${hrs}h`):`${mins}m`;
               return (
-                <div key={i} style={{position:'absolute',top:y,left:0,right:0,height:gh,background:'repeating-linear-gradient(45deg,transparent,transparent 5px,#FFFBEB 5px,#FFFBEB 6px)',border:'1px dashed #FCD34D',borderRadius:6,display:'flex',alignItems:'center',justifyContent:'center',opacity:0.8}}>
-                  {gh>18 && <span style={{fontSize:10,fontWeight:700,color:'#D97706',background:'#FFFBEB',padding:'2px 8px',borderRadius:20,border:'1px solid #FCD34D'}}>⚡ {lbl} - book a client here</span>}
+                <div key={i} style={{
+                  position:'absolute',
+                  top:y,
+                  left:0,
+                  right:0,
+                  height:gh,
+                  background: isShortGap
+                    ? 'repeating-linear-gradient(45deg,transparent,transparent 5px,#FFFBEB 5px,#FFFBEB 6px)'
+                    : 'linear-gradient(180deg, rgba(254,243,199,0.35) 0%, rgba(254,243,199,0.18) 100%)',
+                  border: isShortGap ? '1px dashed #FCD34D' : '1px dashed rgba(252,211,77,0.45)',
+                  borderRadius:8,
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  opacity: isShortGap ? 0.9 : 1,
+                }}>
+                  {gh>18 && (
+                    isShortGap ? (
+                      <span style={{fontSize:10,fontWeight:700,color:'#D97706',background:'#FFFBEB',padding:'2px 8px',borderRadius:20,border:'1px solid #FCD34D'}}>
+                        ⚡ {lbl} open · fill this gap
+                      </span>
+                    ) : (
+                      <span style={{fontSize:11,fontWeight:600,color:'#92400E',letterSpacing:'0.04em'}}>
+                        Open · {lbl} available
+                      </span>
+                    )
+                  )}
                 </div>
               );
             })}

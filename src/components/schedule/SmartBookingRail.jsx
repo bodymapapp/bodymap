@@ -121,9 +121,9 @@ const PLACEHOLDER_LOAD = {
 };
 
 const PLACEHOLDER_REVENUE = {
-  thisWeek: 1840,
-  goal: 2200,
-  vsLastWeek: 120,
+  monthToDate: 5420,
+  goal: 11000,
+  sparkline: [1840, 1720, 1960, 2100],
 };
 
 const PLACEHOLDER_GAP = {
@@ -224,39 +224,58 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
 
   // Compute revenue: current week vs last week, goal from trailing
   // 4-week average × 1.10 per founder playbook. Sunday start.
-  const weekRevenue = useMemo(() => {
+  // Revenue: month-to-date vs monthly goal. Per the playbook the
+  // default goal is trailing 3-month average. Monthly framing avoids
+  // emotional whiplash from a single slow week. Also expose a 4-week
+  // mini-trend for a sparkline on the card so you see direction not
+  // just one number.
+  const monthRevenue = useMemo(() => {
     if (!allAppts || !allAppts.length) return null;
     const todayDate = today || new Date();
-    const startOfWeek = new Date(todayDate);
-    startOfWeek.setHours(0,0,0,0);
-    startOfWeek.setDate(todayDate.getDate() - todayDate.getDay()); // Sunday
-    const startOfLastWeek = new Date(startOfWeek);
-    startOfLastWeek.setDate(startOfWeek.getDate() - 7);
-    const startOfTrailing4 = new Date(startOfWeek);
-    startOfTrailing4.setDate(startOfWeek.getDate() - 28);
+    const startOfMonth = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+    const startOfTrailing3M = new Date(todayDate);
+    startOfTrailing3M.setMonth(todayDate.getMonth() - 3);
+    startOfTrailing3M.setDate(1);
 
-    let thisWeek = 0;
-    let lastWeek = 0;
-    let trailing4 = 0;
+    let monthToDate = 0;
+    let trailing3M = 0;
+    // 4-week sparkline: weeks ending Saturday going back 4 weeks
+    const weekTotals = [0, 0, 0, 0];
+    const weekEnds = [];
+    for (let i = 3; i >= 0; i--) {
+      const end = new Date(todayDate);
+      end.setHours(23,59,59,999);
+      end.setDate(todayDate.getDate() - (i * 7));
+      weekEnds.push(end);
+    }
     allAppts.forEach(a => {
       if (a.preview || a.external) return;
       const price = Number(a.price) || 0;
       const d = a.date.getTime();
-      if (d >= startOfWeek.getTime()) thisWeek += price;
-      else if (d >= startOfLastWeek.getTime()) lastWeek += price;
-      if (d >= startOfTrailing4.getTime() && d < startOfWeek.getTime()) {
-        trailing4 += price;
+      if (d >= startOfMonth.getTime()) monthToDate += price;
+      if (d >= startOfTrailing3M.getTime() && d < startOfMonth.getTime()) trailing3M += price;
+      // bucket into sparkline weeks
+      for (let i = 0; i < 4; i++) {
+        const wkStart = new Date(weekEnds[i]);
+        wkStart.setDate(weekEnds[i].getDate() - 6);
+        wkStart.setHours(0,0,0,0);
+        if (d >= wkStart.getTime() && d <= weekEnds[i].getTime()) {
+          weekTotals[i] += price;
+          break;
+        }
       }
     });
 
-    const avgWeekly = trailing4 / 4;
-    const goal = Math.max(500, Math.round((avgWeekly * 1.10) / 10) * 10);
+    // Monthly goal = trailing 3-month average * 1.10
+    const avgMonthly = trailing3M / 3;
+    const goal = Math.max(2000, Math.round((avgMonthly * 1.10) / 100) * 100);
     return {
-      thisWeek: Math.round(thisWeek),
+      monthToDate: Math.round(monthToDate),
       goal,
-      vsLastWeek: Math.round(thisWeek - lastWeek),
+      sparkline: weekTotals.map(v => Math.round(v)),
     };
   }, [allAppts, today]);
+
 
   // Find the best Fill This Gap candidate. v1 looks for today's
   // first gap > 60 min between confirmed bookings, then matches it
@@ -428,8 +447,16 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     }}>
       <UpNextCarousel upcoming={upcoming} />
       <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} />
-      <RevenueCard revenue={weekRevenue || PLACEHOLDER_REVENUE} />
-      <FillGapCard gap={fillGap || PLACEHOLDER_GAP} therapistFirstName={(therapist?.full_name || '').split(' ')[0]} />
+      <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} />
+      {/* Fill This Gap only renders when there's a real gap AND a real
+          candidate. On a real account with no qualifying gap, we hide
+          rather than show fake data. Placeholder shows ONLY in the
+          completely empty seed/demo case. */}
+      {fillGap ? (
+        <FillGapCard gap={fillGap} therapistFirstName={(therapist?.full_name || '').split(' ')[0]} />
+      ) : (!therapist?.id ? (
+        <FillGapCard gap={PLACEHOLDER_GAP} therapistFirstName="" />
+      ) : null)}
     </aside>
   );
 }
@@ -887,10 +914,13 @@ function BodyLoadCard({ load }) {
  * ============================================================= */
 
 function RevenueCard({ revenue }) {
-  const pct = Math.min(100, Math.round((revenue.thisWeek / revenue.goal) * 100));
+  const pct = Math.min(100, Math.round((revenue.monthToDate / revenue.goal) * 100));
+  const sparkMax = Math.max(...revenue.sparkline, 1);
+  // Get current month short name for the eyebrow
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
   return (
     <section style={cardStyle()}>
-      <SectionHeader eyebrow="Week revenue" />
+      <SectionHeader eyebrow={`${monthName} revenue`} />
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
@@ -904,7 +934,7 @@ function RevenueCard({ revenue }) {
           color: C.forestMid,
           lineHeight: 1,
         }}>
-          ${revenue.thisWeek.toLocaleString()}
+          ${revenue.monthToDate.toLocaleString()}
         </span>
         <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
           of ${revenue.goal.toLocaleString()} goal
@@ -915,7 +945,7 @@ function RevenueCard({ revenue }) {
         background: C.lineSoft,
         borderRadius: 2,
         overflow: 'hidden',
-        marginBottom: 6,
+        marginBottom: 10,
       }}>
         <div style={{
           height: '100%',
@@ -924,12 +954,36 @@ function RevenueCard({ revenue }) {
           transition: 'width 0.3s',
         }} />
       </div>
+      {/* 4-week sparkline. Most recent week on the right. */}
       <div style={{
-        fontSize: 11,
-        color: revenue.vsLastWeek >= 0 ? C.saved : C.dangerBd,
-        fontWeight: 600,
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: 3,
+        height: 18,
+        marginBottom: 4,
       }}>
-        {revenue.vsLastWeek >= 0 ? '↑' : '↓'} ${Math.abs(revenue.vsLastWeek)} from last week
+        {revenue.sparkline.map((v, i) => {
+          const h = Math.max(3, Math.round((v / sparkMax) * 18));
+          const isCurrent = i === revenue.sparkline.length - 1;
+          return (
+            <div key={i} style={{
+              flex: 1,
+              height: h,
+              background: isCurrent ? C.forestMid : C.sage,
+              borderRadius: 1,
+              opacity: isCurrent ? 1 : 0.55,
+            }} />
+          );
+        })}
+      </div>
+      <div style={{
+        fontSize: 10,
+        color: C.muted,
+        fontWeight: 600,
+        letterSpacing: '0.04em',
+        textTransform: 'uppercase',
+      }}>
+        Last 4 weeks
       </div>
     </section>
   );
