@@ -10,6 +10,85 @@ This document combines the strategic thinking (market sizing, channels, funnel m
 
 # PART ONE: STRATEGY
 
+## How we win: commodity surface plus intelligence layer
+
+**The thesis.** Every booking platform has a calendar. Every CRM has a client list. Every spa POS has a payment screen. Those surfaces are commodities. They do not differentiate. Cal.com, Acuity, Mindbody, Jane App, Vagaro, MassageBook all have polished versions of the same surfaces. Trying to beat them at "nicer calendar" is a losing game.
+
+**Where we win.** Layer proprietary intelligence on top of the commodity surface so the same screen answers questions the others cannot answer. The Schedule tab still looks like a calendar. But the next-up card on the left side knows what to remind the therapist about Emma, because we have her last four SOAP notes and her body map history. That card cannot exist on Cal.com because they do not have the data. It can barely exist on Mindbody because they have notes but no pattern engine. On our screen it shows up automatically, no extra clicks, no extra data entry.
+
+**The rule of intelligence.** Three filters every new feature has to pass:
+
+1. **Is the commodity surface (the calendar, the list, the payment screen) calm and familiar?** A therapist with one hour on the platform should know how to read it. Do not reinvent UI patterns that already work.
+2. **Is there an intelligence layer sitting on top that uses data competitors do not have?** Body map zones, longitudinal pattern detection, SOAP note history, no-show pattern math, lapsed-regular retargeting. These are ours. Surface them where the decisions get made, not buried in an analytics tab nobody opens.
+3. **Does the intelligence require zero extra data entry from the therapist or client?** If we have to ask either party to fill out a new form to make a feature work, the feature is dead on arrival. They are already stretched. Every new input is a tax on adoption.
+
+### The "no data asks" rule
+
+We never ask therapists for more inputs to power intelligence features. Same for clients. Every coefficient, threshold, weight, and parameter is computed from data we already collect, or seeded with a sensible default baked into the playbook. The therapist can override it in Advanced Settings if she is the kind of person who wants to tune. She never has to.
+
+Examples:
+- **Body load meter** (Schedule tab). Do not ask therapists to tag services with effort levels. Compute load from service name keywords (deep tissue, sports, prenatal, hot stone, swedish, reflexology) mapped to default load factors in this playbook. Override available in Advanced Settings, never required.
+- **Revenue goal** (Schedule tab). Do not ask the therapist to set a weekly goal in onboarding. Compute a default from her trailing 4-week revenue plus 10%. Override available, never required.
+- **No-show pattern alerts** (Schedule tab). Do not ask the therapist to flag risky clients. Compute the rate per client from booking history. Show the alert only after 5 or more bookings to avoid false signals.
+- **Lapsed-regular detection** (Schedule tab). Do not ask the therapist to define who is lapsed. Use a sliding-window default: clients who booked 4 or more times historically AND have not booked in the trailing 30 days. Override available, never required.
+- **Next-up briefing** (Schedule tab). Do not ask therapists to write briefs. Pull three points from the most recent SOAP note, the recurring patterns table, and the medical flags. Templated phrasing, not blurb-style.
+
+### The formula playbook
+
+Defaults live in this section. When we add an intelligence feature, we document its formula here so anyone debugging can see what number came from where.
+
+**Body load factors by service-name keyword:**
+
+| Keyword (case-insensitive substring of service.name) | Load factor |
+|---|---|
+| deep tissue, sports, trigger point, myofascial, neuromuscular | 1.0 (high) |
+| swedish, relaxation, integrative, custom, full body | 0.6 (medium) |
+| prenatal, geriatric, lymphatic, reflexology, foot, scalp | 0.4 (low) |
+| hot stone, aromatherapy, cupping, gua sha | 0.5 (low-medium) |
+| (fallback when no keyword matches) | 0.7 (medium-high, conservative) |
+
+**Body load aggregation:** sum of `(load_factor * duration_minutes / 60)` across confirmed bookings for the day. Thresholds: under 3.0 is light, 3.0 to 5.5 is moderate, 5.5 to 7.5 is high, over 7.5 is injury risk.
+
+**Body load recommendations** at each threshold:
+- Light: no callout.
+- Moderate: no callout.
+- High: "Hydrate at the mid-afternoon gap. Stretch wrists between deep tissue."
+- Injury risk: "Three or more deep tissue back-to-back. Skip a strength session tonight. Wrists, forearms, low back at elevated risk."
+
+**Revenue goal default:** trailing 4-week revenue (confirmed bookings, completed sessions, applied payments) times 1.10. Floored at $500 per week if history is sparse.
+
+**No-show rate threshold:** show the alert when `cancellations / total_bookings is greater than or equal to 0.20` and `total_bookings is greater than or equal to 5`. Below 5 bookings show nothing. Sample size too small.
+
+**Lapsed regular definition:** any client with `lifetime_bookings >= 4` AND `last_booking_date < now - 30 days` AND `status != 'archived'`. Sorted by recency of last booking descending.
+
+**Gap-finding for revenue lever cards:** scan the next 7 days for unbooked slots that match `gap_duration >= service_min_duration AND gap_duration <= service_max_duration AND gap_falls_in_availability_window`. Smallest gap that fits a real service wins. Show only if at least 1 lapsed regular exists who could fill it.
+
+When a future feature needs a new formula, the formula lives here, alongside the others. One file, easy to audit, easy to tune.
+
+### Mindset checklist for any new feature
+
+Before shipping any feature, run through these. If any answer is "no," the feature is not done.
+
+- [ ] Is the surface familiar (calendar, list, card, form), or did we invent something the user has to learn?
+- [ ] Is there an intelligence layer that uses our proprietary data (body map zones, SOAP history, patterns)?
+- [ ] Does the intelligence require zero new inputs from therapists or clients?
+- [ ] Are the defaults documented in the formula playbook above?
+- [ ] Is there an Advanced Settings override path for therapists who want to tune?
+- [ ] Would a competitor with only commodity data (just a calendar, just a payment processor) be unable to build this?
+
+The last question is the test of whether the feature is a moat or a polish. Polish features are fine but they do not differentiate. Moat features do.
+
+### Anti-patterns we avoid
+
+Things that look smart but actually fail the principle:
+
+- **"Let the therapist configure it" features.** Settings menus full of toggles are dead screens. Therapists do not open them. Defaults must work for 95 percent of users out of the box.
+- **"AI-generated" features without a deterministic backbone.** The next-up briefing can be templated from three structured fields (medical flag, last focus area, preference). AI can layer prose on top later. Do not ship the AI layer first. Ship the deterministic layer first so the feature is predictable and free.
+- **Insights tabs that summarize data nobody reads in the moment.** A "monthly retention rate" chart is useless if it does not tell the therapist what to do today. Surface the action where the decision is made (next-to-the-calendar gap card), not in an analytics tab.
+- **Onboarding asks.** Every field added to onboarding loses a percentage of conversions. Do not ask. Compute and let her override.
+
+---
+
 ## How we think about the market
 
 ### The total addressable market
