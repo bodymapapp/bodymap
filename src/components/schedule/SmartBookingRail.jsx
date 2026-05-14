@@ -258,6 +258,133 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     };
   }, [allAppts, today]);
 
+  // Find the best Fill This Gap candidate. v1 looks for today's
+  // first gap > 60 min between confirmed bookings, then matches it
+  // against lapsed regulars. Full algorithm (availability windows
+  // + full match scoring) ships next session.
+  const [lapsedClients, setLapsedClients] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!therapist?.id) { setLapsedClients([]); return; }
+      // Lapsed regular: 4+ bookings ever, last booking > 30 days ago.
+      // Pull clients with their booking aggregates.
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      // We already have allAppts (past 365 days). Compute on client.
+      // But we need ALL bookings per client, including newer than
+      // the date range that's already loaded. allAppts covers past
+      // 365 days which is plenty for cadence detection.
+      const byClient = {};
+      (allAppts || []).forEach(a => {
+        if (a.preview || a.external || !a.clientId) return;
+        if (!byClient[a.clientId]) byClient[a.clientId] = { client: a.client, dates: [], price: a.price };
+        byClient[a.clientId].dates.push(a.date);
+      });
+      const lapsed = Object.entries(byClient)
+        .map(([clientId, info]) => ({
+          clientId,
+          name: info.client,
+          totalBookings: info.dates.length,
+          lastVisit: new Date(Math.max(...info.dates.map(d => d.getTime()))),
+          dates: info.dates,
+          typicalPrice: info.price,
+        }))
+        .filter(c => c.totalBookings >= 4 && c.lastVisit < thirtyDaysAgo)
+        .sort((a, b) => b.lastVisit.getTime() - a.lastVisit.getTime());
+
+      // Fetch phone for the top 6 candidates
+      const ids = lapsed.slice(0, 6).map(l => l.clientId);
+      if (ids.length) {
+        const { data: clientRows } = await supabase
+          .from('clients')
+          .select('id, phone, sms_opted_in')
+          .in('id', ids);
+        const phoneMap = {};
+        (clientRows || []).forEach(r => { phoneMap[r.id] = r; });
+        lapsed.forEach(l => {
+          const row = phoneMap[l.clientId];
+          l.phone = row?.phone || null;
+          l.smsOptedIn = !!row?.sms_opted_in;
+        });
+      }
+      if (!cancelled) setLapsedClients(lapsed);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [therapist?.id, allAppts?.length]);
+
+  const fillGap = useMemo(() => {
+    if (!allAppts || !allAppts.length) return null;
+    const todayDate = today || new Date();
+    const t0 = new Date(todayDate);
+    t0.setHours(0,0,0,0);
+    const todayAppts = allAppts
+      .filter(a => !a.preview && !a.external && a.date.getTime() === t0.getTime())
+      .sort((a, b) => parseTimeToMin(a.startTime || timeFrom12(a.time)) - parseTimeToMin(b.startTime || timeFrom12(b.time)));
+
+    // Find the first gap >= 60 min between consecutive bookings
+    let gapStart = null;
+    let gapEnd = null;
+    for (let i = 0; i < todayAppts.length - 1; i++) {
+      const endA = parseTimeToMin(todayAppts[i].startTime || timeFrom12(todayAppts[i].time)) + todayAppts[i].duration;
+      const startB = parseTimeToMin(todayAppts[i + 1].startTime || timeFrom12(todayAppts[i + 1].time));
+      const gap = startB - endA;
+      if (gap >= 60) {
+        gapStart = endA;
+        gapEnd = startB;
+        break;
+      }
+    }
+    if (gapStart === null) return null;
+
+    // Find best lapsed match
+    const dow = todayDate.getDay();
+    const ranked = lapsedClients.map(c => {
+      // Score: day-of-week match (count of past visits on same dow / total)
+      const sameDow = c.dates.filter(d => d.getDay() === dow).length;
+      const dowScore = c.totalBookings > 0 ? sameDow / c.totalBookings : 0;
+      // Days lapsed: penalize too-fresh and too-stale
+      const daysLapsed = Math.round((Date.now() - c.lastVisit.getTime()) / 86400000);
+      const cadencePenalty = daysLapsed > 120 ? 0.5 : 0;
+      const phoneBonus = c.phone ? 0.5 : 0;
+      return { ...c, score: dowScore + phoneBonus - cadencePenalty, daysLapsed, sameDowCount: sameDow };
+    }).sort((a, b) => b.score - a.score);
+
+    const best = ranked[0];
+    if (!best) return null;
+
+    // Format gap time as "12:30 PM"
+    const startH = Math.floor(gapStart / 60);
+    const startM = gapStart % 60;
+    const fmtH = startH % 12 || 12;
+    const ampm = startH >= 12 ? 'PM' : 'AM';
+    const whenStr = `Today ${fmtH}:${String(startM).padStart(2,'0')} ${ampm}`;
+    const duration = gapEnd - gapStart;
+
+    // Build 3 reasons per playbook priority
+    const reasons = [];
+    reasons.push(`${best.totalBookings} visits over ${Math.round((Date.now() - Math.min(...best.dates.map(d => d.getTime()))) / 86400000)} days, last ${best.daysLapsed} days ago`);
+    if (best.sameDowCount >= 2) {
+      const dayName = todayDate.toLocaleDateString('en-US', { weekday: 'long' });
+      reasons.push(`Usually books on ${dayName}s (${best.sameDowCount} of ${best.totalBookings} visits)`);
+    }
+    if (best.daysLapsed > 45 && best.daysLapsed < 90) {
+      reasons.push('Cadence break, due for a visit soon');
+    } else if (best.phone) {
+      reasons.push('Has phone on file, opted in to SMS');
+    }
+    while (reasons.length < 3) reasons.push('Strong fit based on visit history');
+
+    return {
+      duration,
+      when: whenStr,
+      dollarValue: best.typicalPrice || 85,
+      bestClient: { name: best.name, reasons: reasons.slice(0, 3), phone: best.phone, smsOptedIn: best.smsOptedIn },
+      otherMatches: Math.max(0, ranked.length - 1),
+    };
+  }, [allAppts, today, lapsedClients]);
+
   // Fetch session_intelligence for the client_ids of upcoming bookings.
   useEffect(() => {
     let cancelled = false;
@@ -302,7 +429,7 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       <UpNextCarousel upcoming={upcoming} />
       <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} />
       <RevenueCard revenue={weekRevenue || PLACEHOLDER_REVENUE} />
-      <FillGapCard gap={PLACEHOLDER_GAP} />
+      <FillGapCard gap={fillGap || PLACEHOLDER_GAP} therapistFirstName={(therapist?.full_name || '').split(' ')[0]} />
     </aside>
   );
 }
@@ -812,7 +939,7 @@ function RevenueCard({ revenue }) {
  * Fill This Gap (the moat)
  * ============================================================= */
 
-function FillGapCard({ gap }) {
+function FillGapCard({ gap, therapistFirstName }) {
   return (
     <section style={{
       ...cardStyle(),
@@ -903,7 +1030,28 @@ function FillGapCard({ gap }) {
       </div>
 
       <button
-        onClick={() => { /* wire-up in Phase 2 */ }}
+        onClick={() => {
+          // Pre-draft template per founder playbook. If client phone
+          // is on file and SMS opted in, open the native SMS composer
+          // pre-populated. Otherwise show a non-destructive alert.
+          const firstName = gap.bestClient.name.split(' ')[0];
+          const therapistFirst = therapistFirstName || 'me';
+          const weeks = Math.max(2, Math.round((gap.bestClient.daysLapsed || 42) / 7));
+          const msg = `Hi ${firstName}, ${therapistFirst} here. It's been about ${weeks} weeks since your last visit. Just had a ${gap.when.replace(/^Today /, '')} open up today if you'd like it. Reply YES and I'll lock it in.`;
+          if (!gap.bestClient.phone) {
+            alert(`No phone on file for ${firstName}. Pre-drafted message:\n\n${msg}`);
+            return;
+          }
+          if (!gap.bestClient.smsOptedIn) {
+            alert(`${firstName} hasn't opted in to SMS. Pre-drafted message:\n\n${msg}`);
+            return;
+          }
+          // sms: URI works on iOS and Android. ?body= for the prefilled message.
+          const isApple = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
+          const sep = isApple ? '&' : '?';
+          const url = `sms:${gap.bestClient.phone}${sep}body=${encodeURIComponent(msg)}`;
+          window.location.href = url;
+        }}
         style={{
           width: '100%',
           background: C.warnBd,

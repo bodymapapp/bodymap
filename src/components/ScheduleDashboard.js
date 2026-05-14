@@ -346,8 +346,15 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
 
   const starts = dayAppts.map(a=>t2m(a.time));
   const ends = dayAppts.map(a=>t2m(a.time)+a.duration);
-  const TL_START = starts.length ? Math.max(7*60, Math.min(...starts)-30) : 8*60;
-  const TL_END   = ends.length   ? Math.min(21*60, Math.max(...ends)+45)  : 17*60;
+  // Full working-day window. Per founder playbook: showing empty
+  // time is the point. Compressing the calendar to first/last
+  // booking hides the gaps that Fill This Gap is meant to surface.
+  // Default 8 AM to 7 PM. Stretches earlier or later only if a
+  // booking falls outside that range.
+  const DEFAULT_START = 8 * 60;   // 8:00 AM
+  const DEFAULT_END   = 19 * 60;  // 7:00 PM
+  const TL_START = starts.length ? Math.min(DEFAULT_START, Math.min(...starts) - 30) : DEFAULT_START;
+  const TL_END   = ends.length   ? Math.max(DEFAULT_END,   Math.max(...ends) + 45)   : DEFAULT_END;
   const PX = 0.85;
   const H = (TL_END-TL_START)*PX;
   const GUTTER = 48;
