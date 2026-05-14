@@ -100,13 +100,6 @@ body { overflow-x: hidden; }
   padding-bottom: var(--bm-nav-clearance);
 }
 
-/* When any full-screen modal is open we add 'bm-modal-open' to
-   <body>. This hides the fixed bottom nav so it doesn't shine
-   through the modal's semi-transparent overlay.
-   Toggled by SampleClientPreview, DocumentPreview, and any other
-   full-screen modal that should fully occlude the page chrome. */
-body.bm-modal-open #bm-mobile-bottom-nav { display: none !important; }
-
 /* ── MOBILE FIXES (≤640px) ── */
 @media (max-width: 640px) {
 

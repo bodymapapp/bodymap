@@ -15,6 +15,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { isSampleSessionId, getSampleSession, getSampleClient, getSampleSessions } from '../data/sampleClients';
 import { supabase } from '../lib/supabase';
 import DocumentLayout, { T, Pill } from '../components/DocumentLayout';
 import { deriveCadence, getStandingFlags } from '../lib/sessionIntelligence';
@@ -27,6 +28,26 @@ export default function IntakeBrief({ sessionIdProp, chrome = 'full' }) {
 
   useEffect(() => {
     async function load() {
+      // Sample session route: build the brief from in-memory demo
+      // data so the therapist's tour of the four-document journey
+      // works identically to a real session.
+      if (isSampleSessionId(sessionId)) {
+        const session = getSampleSession(sessionId);
+        if (!session) { setLoading(false); return; }
+        const client = getSampleClient(session.client_id);
+        const therapist = {
+          full_name: 'Your name here',
+          business_name: 'Your practice',
+          custom_url: '',
+          phone: '',
+        };
+        const history = getSampleSessions(session.client_id).map(s => ({
+          id: s.id, created_at: s.created_at, completed: s.completed,
+        }));
+        setData({ session, client, therapist, history });
+        setLoading(false);
+        return;
+      }
       const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from('clients').select('name,phone,email').eq('id', session.client_id).maybeSingle();

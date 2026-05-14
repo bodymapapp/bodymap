@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/supabase";
 import AddClientModal from "./AddClientModal";
-import SampleClientPreview from "./SampleClientPreview";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -28,7 +27,6 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
   const [showAddModal, setShowAddModal] = useState(false);
   const [justAddedToast, setJustAddedToast] = useState("");
   const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
-  const [previewSample, setPreviewSample] = React.useState(null);
   const isPaid = true; // All clients visible on all tiers - only pattern depth is tier-limited
 
   useEffect(() => {
@@ -256,7 +254,7 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
             {/* Preview banner, sets expectations that the cards below are a glimpse of the future */}
             <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>👁️</span>
-              <div><strong>A preview of your practice.</strong> These are sample clients. <strong>Tap any card</strong> to see what a populated profile looks like, with the full four-document session journey.</div>
+              <div><strong>A preview of your practice.</strong> Tap any sample client to see the full profile, just like a real one. Sessions, body-map patterns, SOAP notes, and the four-document journey are all clickable.</div>
             </div>
 
             {/* Retention insight card, the exact thing the Day 2 email points at */}
@@ -289,16 +287,16 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
               {[
-                { id:'s1', full_name:'Sarah Mitchell', focus:'Neck, Upper Back', sessions:7, status:'active', last:'2 days ago', initials:'SM', color:'#2A5741', interactive: true },
-                { id:'s2', full_name:'Jennifer Kim',   focus:'Lower Back, Hip', sessions:4, status:'active', last:'5 days ago', initials:'JK', color:'#6B9E80', interactive: true },
-                { id:'s3', full_name:'Maria Lopez',    focus:'Shoulders',       sessions:12,status:'active', last:'1 week ago',  initials:'ML', color:'#C9A84C', interactive: true },
-                { id:'s4', full_name:'Rachel Torres',  focus:'Full Body',       sessions:2, status:'new',    last:'New client',  initials:'RT', color:'#9CA3AF' },
-                { id:'s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626', highlight:true, interactive: true },
+                { id:'sample-s1', full_name:'Sarah Mitchell', focus:'Neck, Upper Back', sessions:7, status:'active', last:'2 days ago', initials:'SM', color:'#2A5741', interactive: true },
+                { id:'sample-s2', full_name:'Jennifer Kim',   focus:'Lower Back, Hip', sessions:4, status:'active', last:'5 days ago', initials:'JK', color:'#6B9E80', interactive: true },
+                { id:'sample-s3', full_name:'Maria Lopez',    focus:'Shoulders',       sessions:12,status:'active', last:'1 week ago',  initials:'ML', color:'#C9A84C', interactive: true },
+                { id:'sample-s4', full_name:'Rachel Torres',  focus:'Full Body',       sessions:2, status:'new',    last:'New client',  initials:'RT', color:'#9CA3AF', interactive: true },
+                { id:'sample-s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626', highlight:true, interactive: true },
               ].map(c => (
                 <SampleCard
                   key={c.id}
                   c={c}
-                  onPreview={() => setPreviewSample(c)}
+                  onPreview={() => onSelectClient && onSelectClient({ id: c.id, name: c.full_name })}
                 />
               ))}
             </div>
@@ -383,12 +381,6 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
             setTimeout(() => setJustAddedToast(""), 5000);
             await loadClients();
           }}
-        />
-      )}
-      {previewSample && (
-        <SampleClientPreview
-          sampleClient={previewSample}
-          onClose={() => setPreviewSample(null)}
         />
       )}
     </div>

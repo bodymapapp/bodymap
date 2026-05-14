@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { isSampleSessionId, getSampleSession, getSampleClient, getSampleSessions } from '../data/sampleClients';
 import DocumentLayout, { T } from '../components/DocumentLayout';
 import {
   parseSoap,
@@ -46,6 +47,21 @@ export default function PostSessionBrief({ sessionIdProp, chrome = 'full' }) {
 
   useEffect(() => {
     async function load() {
+      if (isSampleSessionId(sessionId)) {
+        const session = getSampleSession(sessionId);
+        if (!session) { setLoading(false); return; }
+        const client = getSampleClient(session.client_id);
+        const therapist = {
+          full_name: 'Your name here',
+          business_name: 'Your practice',
+          custom_url: '',
+          phone: '',
+        };
+        const history = getSampleSessions(session.client_id);
+        setData({ session, client, therapist, history });
+        setLoading(false);
+        return;
+      }
       const { data: session } = await supabase.from('sessions').select('*').eq('id', sessionId).maybeSingle();
       if (!session) { setLoading(false); return; }
       const { data: client } = await supabase.from('clients').select('name,phone,email').eq('id', session.client_id).maybeSingle();

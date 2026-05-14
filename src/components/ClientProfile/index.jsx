@@ -17,6 +17,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { db } from '../../lib/supabase';
+import { buildSampleProfile } from '../../data/sampleClients';
 import ProfileHeader from './ProfileHeader';
 import StatusStrip from './StatusStrip';
 import ProfileSection from './ProfileSection';
@@ -60,6 +61,16 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
       setLoading(false);
       return;
     }
+    // Sample client routed by URL (clientId starts with 'sample-').
+    // The Dashboard set `client` to a sample row carrying __sample:true.
+    // Build the profile from the in-memory sample store; do not query
+    // Supabase. Renders identically to the real path.
+    if (client?.__sample) {
+      const sampleProfile = buildSampleProfile(client.id);
+      setProfile(sampleProfile);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -79,7 +90,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
     }
     if (client?.id && therapistId) load();
     return () => { cancelled = true; };
-  }, [client?.id, therapistId, previewProfile]);
+  }, [client?.id, client?.__sample, therapistId, previewProfile]);
 
   // Convenience derived values for section subtitles + counts
   const totalSessions = profile?.stats?.lifetimeSessions || 0;
@@ -92,8 +103,36 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   const medicalCount = profile?.medicalFlags?.length || 0;
   const timelineCount = profile?.bookings?.length || 0;
 
+  const isSample = !!(profile?.client?.__sample || client?.__sample);
+
   return (
     <div style={{ background: C.cream }}>
+      {isSample && (
+        <div style={{
+          background: '#FFF7ED',
+          borderBottom: '1px dashed #F97316',
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontFamily: F.sans,
+        }}>
+          <span style={{
+            background: '#F97316',
+            color: '#fff',
+            fontSize: 9,
+            fontWeight: 800,
+            letterSpacing: '0.12em',
+            padding: '3px 7px',
+            borderRadius: 4,
+            textTransform: 'uppercase',
+            flexShrink: 0,
+          }}>Sample</span>
+          <span style={{ fontSize: 12.5, color: '#9A3412', lineHeight: 1.4 }}>
+            A preview. Your real clients will look exactly like this.
+          </span>
+        </div>
+      )}
       <ProfileHeader
         client={profile?.client || client}
         stats={profile?.stats}

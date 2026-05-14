@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
+import { isSampleId, isSampleSessionId, getSampleClient, getSampleSession, buildSampleProfile } from '../data/sampleClients';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
 import ClientProfile from '../components/ClientProfile';
@@ -3504,6 +3505,17 @@ export default function Dashboard({ view }) {
 
   async function loadClient() {
     try {
+      // Sample-client preview path: a new therapist tapped one of the
+      // sample cards on the empty Clients tab. The clientId is
+      // 'sample-s1' etc., not a real UUID. Resolve from the sample
+      // store instead of querying Supabase. The rest of the page
+      // (ClientProfile, SessionList, four-document journey) renders
+      // identically to a real client.
+      if (isSampleId(clientId)) {
+        const sample = getSampleClient(clientId);
+        if (sample) setClient(sample);
+        return;
+      }
       const { data, error } = await supabase.from('clients').select('*').eq('id', clientId).single();
       if (!error) setClient(data);
     } catch (err) { console.error(err); }
@@ -3511,6 +3523,15 @@ export default function Dashboard({ view }) {
 
   async function loadSession() {
     try {
+      // Sample-session path: parallel to sample clients above. The
+      // sessionId is 'sample-session-s1-3', resolve from the sample
+      // store. Brief routes (/brief/intake/<id> etc) handle their
+      // own sample resolution in their respective page files.
+      if (isSampleSessionId(sessionId)) {
+        const sample = getSampleSession(sessionId);
+        if (sample) setSession(sample);
+        return;
+      }
       const { data, error } = await supabase.from('sessions').select('*').eq('id', sessionId).single();
       if (!error) setSession(data);
     } catch (err) { console.error(err); }

@@ -1,6 +1,7 @@
 // src/components/SessionList.js
 import React, { useState, useEffect } from "react";
 import { db, supabase } from "../lib/supabase";
+import { getSampleSessions } from "../data/sampleClients";
 import BookingModal from "./BookingModal";
 import ClientPackageBalance from "./ClientPackageBalance";
 import { getStripePublishableKey } from "../lib/paymentMode";
@@ -158,6 +159,13 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   async function saveClient() {
     if (!editName.trim()) { setEditMsg("Name is required."); return; }
     setEditSaving(true);
+    // Sample client: show the saved indicator but don't write.
+    if (client.__sample) {
+      setEditSaving(false);
+      setEditMsg("✓ Saved");
+      setTimeout(() => { setEditMsg(""); setShowEdit(false); }, 1200);
+      return;
+    }
     const { error } = await supabase.from("clients").update({
       name:  editName.trim(),
       email: editEmail.trim().toLowerCase() || null,
@@ -188,6 +196,14 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   async function toggleArchive(reason) {
     setArchiveSaving(true);
     const newVal = !isArchived;
+    // Sample client: flip the local UI state only.
+    if (client.__sample) {
+      setIsArchived(newVal);
+      setDnrReason(newVal ? reason : "");
+      setShowArchiveMenu(false);
+      setArchiveSaving(false);
+      return;
+    }
     await supabase.from("clients")
       .update({ do_not_rebook: newVal, dnr_reason: newVal ? reason : null })
       .eq("id", client.id);
@@ -200,6 +216,19 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   async function searchClients(q) {
     setMergeSearch(q);
     if (q.trim().length < 2) { setMergeResults([]); return; }
+    // Sample client: return the other sample cards filtered by name.
+    // Gives the therapist something to see in the merge UI.
+    if (client.__sample) {
+      const others = ['s1','s2','s3','s5']
+        .filter(k => `sample-${k}` !== client.id)
+        .map(k => {
+          const data = { s1:'Sarah Mitchell', s2:'Jennifer Kim', s3:'Maria Lopez', s5:'Dana Park' };
+          return { id: `sample-${k}`, name: data[k], email: null, phone: null, created_at: new Date().toISOString() };
+        })
+        .filter(r => r.name.toLowerCase().includes(q.trim().toLowerCase()));
+      setMergeResults(others.slice(0, 8));
+      return;
+    }
     const { data } = await supabase.from("clients")
       .select("id, name, email, phone, created_at")
       .eq("therapist_id", therapistId)
@@ -214,6 +243,15 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     setMergeSaving(true);
     setMergeError("");
     try {
+      // Sample client: just close the modal. Nothing to merge.
+      if (client.__sample) {
+        setShowMerge(false);
+        setMergeTarget(null);
+        setMergeSearch("");
+        setMergeResults([]);
+        setMergeSaving(false);
+        return;
+      }
       // Move all sessions from duplicate to primary (this client)
       const { error: sessErr } = await supabase.from("sessions")
         .update({ client_id: client.id })
@@ -253,8 +291,16 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
       setLoading(false);
       return;
     }
+    // Sample client routed by URL. Load sessions from the sample
+    // store. Same shape the real loadSessions populates, so the
+    // SOAP list, journey, and per-session detail all work.
+    if (client?.__sample) {
+      setSessions(getSampleSessions(client.id));
+      setLoading(false);
+      return;
+    }
     if (client?.id) loadSessions();
-  }, [client?.id, previewSessions]);
+  }, [client?.id, client?.__sample, previewSessions]);
 
   async function loadSessions() {
     setLoading(true);

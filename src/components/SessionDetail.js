@@ -506,6 +506,14 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     setSaving(true);
     try {
       const notesToSave = JSON.stringify(soap);
+      // Sample session: don't write to Supabase; nothing to persist.
+      // Show the saved indicator so the therapist sees what the
+      // happy path looks like.
+      if (typeof session.id === 'string' && session.id.startsWith('sample-')) {
+        setSaved(true); setTimeout(() => setSaved(false), 2000);
+        if (onUpdate) onUpdate({ ...session, therapist_notes: notesToSave, public_notes: publicNotes });
+        return;
+      }
       const { data } = await supabase.from("sessions").update({ therapist_notes: notesToSave, public_notes: publicNotes }).eq("id", session.id).select().single();
       setSaved(true); setTimeout(() => setSaved(false), 2000);
       if (onUpdate && data) onUpdate(data);
@@ -517,6 +525,20 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     setCompleting(true);
     try {
       const notesToSave = JSON.stringify(soap);
+      // Sample session: short-circuit. Update local state via
+      // onUpdate so the UI flips to completed without a DB write
+      // or the post-session email send.
+      if (typeof session.id === 'string' && session.id.startsWith('sample-')) {
+        if (onUpdate) onUpdate({
+          ...session,
+          completed: true,
+          therapist_notes: notesToSave,
+          public_notes: publicNotes,
+          completed_at: new Date().toISOString(),
+        });
+        setCompleting(false);
+        return;
+      }
       const { data } = await supabase.from("sessions").update({ completed: true, therapist_notes: notesToSave, public_notes: publicNotes, completed_at: new Date().toISOString() }).eq("id", session.id).select().single();
       if (onUpdate && data) onUpdate(data);
 
