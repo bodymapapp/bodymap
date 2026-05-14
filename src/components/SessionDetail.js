@@ -1,6 +1,7 @@
 // src/components/SessionDetail.js
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { db, supabase } from "../lib/supabase";
+import { getSampleSessions } from "../data/sampleClients";
 import { AFTERCARE_PRESETS } from "../lib/sessionIntelligence";
 import DocumentJourney from "./DocumentJourney";
 import DocumentDrawer from "./DocumentDrawer";
@@ -123,7 +124,20 @@ function BodySVG({ focusAreas = [], avoidAreas = [], heatmapFocus = {}, heatmapA
 }
 
 export default function SessionDetail({ session, client, onBack, onUpdate }) {
-  const [notes, setNotes] = useState(session.therapist_notes || "");
+  // Private Notes textarea value. The DB column therapist_notes is
+  // shared with SOAP data: if it parses to a SOAP JSON blob, the
+  // plain-text 'legacy' field inside (if any) is what belongs in the
+  // private notes textarea. Otherwise the column is already a plain
+  // string. Displaying the raw column when it's SOAP JSON shows
+  // gibberish like {"__soap":true,"S":"..."} - HK caught this.
+  const [notes, setNotes] = useState(() => {
+    const raw = session.therapist_notes || "";
+    try {
+      const p = JSON.parse(raw);
+      if (p && p.__soap) return p.legacy || "";
+    } catch (e) {}
+    return raw;
+  });
   // Track therapist's AI features setting so we can hide the pre/post-session
   // brief buttons when AI is turned off in Settings.
   const [aiEnabled, setAiEnabled] = useState(true);
@@ -404,12 +418,26 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   useEffect(() => {
     loadHistory();
     loadFeedback();
+    // Always build the feedback link, even if the therapist hasn't
+    // set a custom_url yet. Falls back to the session-id path so the
+    // therapist has a usable link to share from day one. Without
+    // this fallback, the 'Send this link to your client' CTA showed
+    // empty - HK caught this on screen.
+    const code = session.feedback_code || session.id;
+    // Sample session: synthesize a plausible-looking link so the
+    // therapist sees the full empty-state UI exactly as it will
+    // appear once they have a custom_url.
+    if (typeof session.id === 'string' && session.id.startsWith('sample-')) {
+      setFeedbackLink(window.location.origin + "/your-practice/feedback/" + code);
+      return;
+    }
     supabase.from("therapists").select("custom_url").eq("id", session.therapist_id).maybeSingle()
       .then(({ data: t }) => {
-        if (t) {
-          const code = session.feedback_code || session.id;
-          setFeedbackLink(window.location.origin + "/" + t.custom_url + "/feedback/" + code);
-        }
+        const slug = (t && t.custom_url) ? t.custom_url : "feedback";
+        setFeedbackLink(window.location.origin + "/" + slug + "/feedback/" + code);
+      })
+      .catch(() => {
+        setFeedbackLink(window.location.origin + "/feedback/" + code);
       });
   }, [client?.id]);
 
@@ -428,6 +456,14 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
 
   async function loadHistory() {
     try {
+      // Sample client: pull history from the in-memory sample store so
+      // the patterns/heatmap on the session detail render the same as
+      // a real client.
+      if (client?.__sample) {
+        const samples = getSampleSessions(client.id);
+        setHistory(samples);
+        return;
+      }
       const { data } = await supabase
         .from("sessions").select("*")
         .eq("client_id", client.id)
@@ -505,7 +541,13 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function saveNotes() {
     setSaving(true);
     try {
-      const notesToSave = JSON.stringify(soap);
+      // Merge the Private Notes textarea (notes state) into the SOAP
+      // JSON blob's 'legacy' field so it survives the column round-trip
+      // and renders back correctly. Without this merge, typing in
+      // Private Notes does nothing on save because notesToSave is built
+      // only from the structured SOAP state.
+      const soapWithNotes = { ...soap, legacy: notes };
+      const notesToSave = JSON.stringify(soapWithNotes);
       // Sample session: don't write to Supabase; nothing to persist.
       // Show the saved indicator so the therapist sees what the
       // happy path looks like.
@@ -524,7 +566,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   async function markComplete() {
     setCompleting(true);
     try {
-      const notesToSave = JSON.stringify(soap);
+      const soapWithNotes = { ...soap, legacy: notes };
+      const notesToSave = JSON.stringify(soapWithNotes);
       // Sample session: short-circuit. Update local state via
       // onUpdate so the UI flips to completed without a DB write
       // or the post-session email send.
