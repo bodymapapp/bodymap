@@ -462,13 +462,16 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         gap: isMobile ? 14 : 16,
         alignItems: 'start',
       }}>
-        {/* LEFT RAIL */}
-        <SmartBookingRail
-          isMobile={isMobile}
-          therapist={therapist}
-          allAppts={allAppts}
-          today={today}
-        />
+        {/* LEFT RAIL. minWidth:0 wrapper prevents grid-item blow-out
+            when the inner carousel has content wider than the column. */}
+        <div style={{ minWidth: 0, width: '100%' }}>
+          <SmartBookingRail
+            isMobile={isMobile}
+            therapist={therapist}
+            allAppts={allAppts}
+            today={today}
+          />
+        </div>
 
         {/* RIGHT: legend pill + timeline grid */}
         <div style={{ minWidth: 0 }}>
@@ -498,7 +501,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         )}
       </div>
 
-      <div style={{background:'#fff',borderRadius:16,padding:'16px 14px 20px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
+      <div style={{background:'#FBF8F1',borderRadius:16,padding:'16px 14px 20px',border:'1px solid #EEF2F7'}}>
         {dayAppts.length===0 ? (
           <div style={{textAlign:'center',padding:'32px 0'}}>
             <div style={{fontSize:32,marginBottom:10}}>🌿</div>

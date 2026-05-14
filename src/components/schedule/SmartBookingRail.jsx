@@ -443,9 +443,10 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       flexDirection: 'column',
       gap: 14,
       width: '100%',
+      minWidth: 0,
       fontFamily: F.sans,
     }}>
-      <UpNextCarousel upcoming={upcoming} />
+      <UpNextCarousel upcoming={upcoming} isMobile={isMobile} />
       <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} />
       <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} />
       {/* Fill This Gap only renders when there's a real gap AND a real
@@ -601,7 +602,7 @@ function truncate(s, n) {
  * Up-Next Carousel
  * ============================================================= */
 
-function UpNextCarousel({ upcoming }) {
+function UpNextCarousel({ upcoming, isMobile = false }) {
   const trackRef = useRef(null);
   const [index, setIndex] = useState(0);
 
@@ -609,22 +610,30 @@ function UpNextCarousel({ upcoming }) {
     if (!trackRef.current) return;
     const clamped = Math.max(0, Math.min(upcoming.length - 1, i));
     setIndex(clamped);
-    const cardWidth = trackRef.current.firstChild?.offsetWidth || 280;
-    const gap = 12;
+    // Card width: on mobile each card fills the track viewport; on
+    // desktop cards are a fixed 268. Read from firstChild as fallback.
+    const trackWidth = trackRef.current.offsetWidth || 280;
+    const cardWidth = isMobile
+      ? trackWidth
+      : (trackRef.current.firstChild?.offsetWidth || 268);
+    const gap = isMobile ? 0 : 12;
     trackRef.current.scrollTo({ left: clamped * (cardWidth + gap), behavior: 'smooth' });
   }
 
   // Sync index with manual scroll so dots stay accurate
   function onScroll() {
     if (!trackRef.current) return;
-    const cardWidth = trackRef.current.firstChild?.offsetWidth || 280;
-    const gap = 12;
+    const trackWidth = trackRef.current.offsetWidth || 280;
+    const cardWidth = isMobile
+      ? trackWidth
+      : (trackRef.current.firstChild?.offsetWidth || 268);
+    const gap = isMobile ? 0 : 12;
     const i = Math.round(trackRef.current.scrollLeft / (cardWidth + gap));
     if (i !== index) setIndex(i);
   }
 
   return (
-    <section>
+    <section style={{ minWidth: 0, width: '100%' }}>
       <SectionHeader
         eyebrow="Up next"
         trailing={upcoming[0]?.countdown}
@@ -643,16 +652,19 @@ function UpNextCarousel({ upcoming }) {
         onScroll={onScroll}
         style={{
           display: 'flex',
-          gap: 12,
+          gap: isMobile ? 0 : 12,
           overflowX: 'auto',
+          overflowY: 'hidden',
           scrollSnapType: 'x mandatory',
           paddingBottom: 6,
           scrollbarWidth: 'none',
           WebkitOverflowScrolling: 'touch',
+          width: '100%',
+          minWidth: 0,
         }}
       >
         {upcoming.map((c, i) => (
-          <BriefCard key={c.id} client={c} active={i === 0} />
+          <BriefCard key={c.id} client={c} active={i === 0} isMobile={isMobile} />
         ))}
       </div>
 
@@ -685,56 +697,41 @@ function UpNextCarousel({ upcoming }) {
   );
 }
 
-function BriefCard({ client, active }) {
-  const style = (() => {
-    if (client.accent === 'forest') {
-      return {
-        background: `linear-gradient(180deg, ${C.forest} 0%, ${C.forestMid} 100%)`,
-        color: '#fff',
-        border: 'none',
-      };
-    }
-    if (client.accent === 'paper') {
-      return {
-        background: C.paper,
-        color: C.ink,
-        border: `1px solid ${C.line}`,
-      };
-    }
-    return {
-      background: C.beige,
-      color: C.inkSoft,
-      border: `1px solid ${C.line}`,
-    };
-  })();
-
-  const isDark = client.accent === 'forest';
-  const subtleText = isDark ? 'rgba(255,255,255,0.78)' : C.muted;
-  const labelColor = isDark ? C.sageBright : (client.accent === 'paper' ? C.briefBd : C.muted);
-  const bulletBg = isDark ? 'rgba(255,255,255,0.12)' : (client.accent === 'paper' ? C.brief : '#F1F5F9');
-  const bulletFg = isDark ? C.sageBright : (client.accent === 'paper' ? C.briefBd : C.muted);
+function BriefCard({ client, active, isMobile = false }) {
+  // Unified visual family. First card gets a thick forest left-edge
+  // stripe + 'NEXT' pill to identify it as the upcoming session.
+  // All other cards are the same plain paper card. No more beige/
+  // forest/paper jumble. Family reads as one set, not three styles.
+  const isNext = client.accent === 'forest';
 
   return (
     <article style={{
-      ...style,
       flexShrink: 0,
-      width: 268,
+      // Mobile: each card fills the carousel viewport so only ONE is
+      // visible at a time (swipe to advance). Desktop: fixed 268 to
+      // peek the next card and signal there's more.
+      width: isMobile ? '100%' : 268,
+      minWidth: isMobile ? '100%' : 268,
       scrollSnapAlign: 'start',
       borderRadius: 12,
       padding: '12px 14px',
+      paddingLeft: isNext ? 18 : 14,
       position: 'relative',
       overflow: 'hidden',
+      background: C.paper,
+      color: C.ink,
+      border: `1px solid ${isNext ? C.forestMid : C.line}`,
+      boxShadow: isNext ? '0 1px 4px rgba(31,58,44,0.08)' : 'none',
     }}>
-      {/* corner sheen on the active card */}
-      {isDark && (
+      {/* Left edge stripe for the next-up card */}
+      {isNext && (
         <div style={{
           position: 'absolute',
-          right: -24,
-          bottom: -24,
-          width: 70,
-          height: 70,
-          background: 'radial-gradient(circle, rgba(255,255,255,0.06) 0%, transparent 70%)',
-          pointerEvents: 'none',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: 4,
+          background: C.forestMid,
         }} />
       )}
 
@@ -745,26 +742,42 @@ function BriefCard({ client, active }) {
         alignItems: 'baseline',
         marginBottom: 4,
       }}>
-        <span style={{ fontSize: 10.5, fontWeight: 600, color: subtleText, letterSpacing: '0.03em' }}>
+        <span style={{ fontSize: 10.5, fontWeight: 600, color: C.muted, letterSpacing: '0.03em' }}>
           {client.when} · {client.duration} min
         </span>
-        <span style={{ fontSize: 10, fontWeight: 600, color: subtleText }}>
-          {client.countdown}
-        </span>
+        {isNext ? (
+          <span style={{
+            fontSize: 9,
+            fontWeight: 700,
+            color: C.forestMid,
+            background: C.brief,
+            border: `1px solid ${C.briefBd}`,
+            borderRadius: 10,
+            padding: '1px 7px',
+            letterSpacing: '0.08em',
+          }}>
+            NEXT · {client.countdown}
+          </span>
+        ) : (
+          <span style={{ fontSize: 10, fontWeight: 600, color: C.muted }}>
+            {client.countdown}
+          </span>
+        )}
       </div>
 
       <div style={{
         fontFamily: F.serif,
-        fontSize: client.accent === 'beige' ? 17 : 19,
+        fontSize: 19,
         fontWeight: 700,
         lineHeight: 1.05,
         marginBottom: 1,
+        color: C.ink,
       }}>
         {client.name}
       </div>
       <div style={{
         fontSize: 11,
-        color: subtleText,
+        color: C.muted,
         marginBottom: 10,
         lineHeight: 1.35,
       }}>
@@ -780,8 +793,8 @@ function BriefCard({ client, active }) {
               width: 17,
               height: 17,
               borderRadius: '50%',
-              background: bulletBg,
-              color: bulletFg,
+              background: isNext ? C.brief : '#F1F5F9',
+              color: isNext ? C.briefBd : C.muted,
               fontSize: 9,
               fontWeight: 700,
               display: 'inline-flex',
@@ -795,7 +808,7 @@ function BriefCard({ client, active }) {
               <span style={{
                 fontSize: 9,
                 fontWeight: 700,
-                color: labelColor,
+                color: isNext ? C.briefBd : C.muted,
                 letterSpacing: '0.06em',
                 textTransform: 'uppercase',
                 marginRight: 4,
@@ -803,7 +816,7 @@ function BriefCard({ client, active }) {
               }}>
                 {p.label}
               </span>
-              <span style={{ color: isDark ? 'rgba(255,255,255,0.92)' : C.ink }}>
+              <span style={{ color: C.ink }}>
                 {p.text}
               </span>
             </div>
@@ -862,7 +875,7 @@ function ArrowBtn({ dir, onClick, disabled }) {
 
 function BodyLoadCard({ load }) {
   return (
-    <section style={cardStyle()}>
+    <section style={cardStyle('status')}>
       <SectionHeader eyebrow="Body load today" trailing={load.summary} />
       <div style={{
         height: 8,
@@ -919,7 +932,7 @@ function RevenueCard({ revenue }) {
   // Get current month short name for the eyebrow
   const monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
   return (
-    <section style={cardStyle()}>
+    <section style={cardStyle('status')}>
       <SectionHeader eyebrow={`${monthName} revenue`} />
       <div style={{
         display: 'flex',
@@ -995,11 +1008,7 @@ function RevenueCard({ revenue }) {
 
 function FillGapCard({ gap, therapistFirstName }) {
   return (
-    <section style={{
-      ...cardStyle(),
-      background: C.warm,
-      border: `1px solid ${C.warmBd}`,
-    }}>
+    <section style={cardStyle('action')}>
       <div style={{
         fontSize: 10,
         fontWeight: 700,
@@ -1144,7 +1153,25 @@ function FillGapCard({ gap, therapistFirstName }) {
  * Shared
  * ============================================================= */
 
-function cardStyle() {
+function cardStyle(variant) {
+  // 'action' = warm amber (Fill This Gap), 'status' = cream (Body Load/Revenue)
+  // default = paper white (used by Up Next carousel container)
+  if (variant === 'status') {
+    return {
+      background: C.cream,
+      border: `1px solid ${C.line}`,
+      borderRadius: 12,
+      padding: '12px 14px',
+    };
+  }
+  if (variant === 'action') {
+    return {
+      background: C.warm,
+      border: `1px solid ${C.warmBd}`,
+      borderRadius: 12,
+      padding: '12px 14px',
+    };
+  }
   return {
     background: C.paper,
     border: `1px solid ${C.line}`,

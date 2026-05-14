@@ -2527,6 +2527,138 @@ section[id] {
   box-shadow: 0 10px 22px rgba(42, 87, 65, 0.28);
 }
 
+/* ── Smart Booking pillar ───────────────────────────────────────
+   HK May 14 2026: Pillar section per founder playbook. Three sub
+   pillars: Fill This Gap (warm amber), Up-Next Briefing (forest),
+   Body Load Awareness (sage). Cards stack on mobile, 3-up on
+   desktop. No 'AI-powered' phrasing anywhere. */
+.bm-home-smartbooking {
+  padding: 48px 22px;
+  background: #FFFFFF;
+  border-top: 1px solid var(--bm-cream-deep);
+  border-bottom: 1px solid var(--bm-cream-deep);
+}
+@media (min-width: 768px) { .bm-home-smartbooking { padding: 72px 32px; } }
+.bm-home-smartbooking__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.bm-home-smartbooking__intro {
+  text-align: center;
+  margin-bottom: 36px;
+  max-width: 720px;
+  margin-left: auto;
+  margin-right: auto;
+}
+@media (min-width: 768px) { .bm-home-smartbooking__intro { margin-bottom: 48px; } }
+.bm-home-smartbooking__eyebrow {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--bm-forest);
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  border-radius: 99px;
+  padding: 4px 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  margin-bottom: 16px;
+}
+.bm-home-smartbooking__title {
+  font-family: var(--bm-serif);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--bm-forest-deep);
+  margin: 0 0 14px;
+  letter-spacing: -0.012em;
+}
+@media (min-width: 768px) {
+  .bm-home-smartbooking__title { font-size: 36px; }
+}
+.bm-home-smartbooking__title em {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--bm-forest);
+}
+.bm-home-smartbooking__sub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--bm-ink-soft);
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .bm-home-smartbooking__sub { font-size: 16px; }
+}
+.bm-home-smartbooking__cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .bm-home-smartbooking__cards {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+.bm-home-smartbooking__card {
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--bm-cream);
+  border: 1px solid var(--bm-cream-deep);
+  display: flex;
+  flex-direction: column;
+}
+.bm-home-smartbooking__card--gap {
+  background: #FEF3C7;
+  border-color: #FCD34D;
+}
+.bm-home-smartbooking__card--brief {
+  background: #F0FDF4;
+  border-color: #BBF7D0;
+}
+.bm-home-smartbooking__card--load {
+  background: var(--bm-cream);
+  border-color: var(--bm-cream-deep);
+}
+.bm-home-smartbooking__card-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--bm-forest-deep);
+  margin-bottom: 12px;
+}
+.bm-home-smartbooking__card--gap .bm-home-smartbooking__card-eyebrow { color: #92400E; }
+.bm-home-smartbooking__card--brief .bm-home-smartbooking__card-eyebrow { color: #166534; }
+.bm-home-smartbooking__card-title {
+  font-family: var(--bm-serif);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--bm-forest-deep);
+  margin: 0 0 12px;
+  letter-spacing: -0.005em;
+}
+@media (min-width: 768px) {
+  .bm-home-smartbooking__card-title { font-size: 19px; }
+}
+.bm-home-smartbooking__card-body {
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--bm-ink-soft);
+  margin: 0 0 16px;
+  flex: 1;
+}
+.bm-home-smartbooking__card-foot {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--bm-ink-soft);
+  border-top: 1px solid rgba(0,0,0,0.06);
+  padding-top: 12px;
+  margin-top: auto;
+}
+
 /* ── Lifestyle moment band ──────────────────────────────────────── */
 .bm-home-band {
   padding: 56px 22px;

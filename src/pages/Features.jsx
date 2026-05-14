@@ -1628,10 +1628,10 @@ export default function Features() {
                 Your Entire Day.<br/>Every Client's Status.<br/>One Screen.
               </h2>
               <p style={{ fontSize:16, color:C.gray, lineHeight:1.7, marginBottom:32 }}>
-                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment - their body map history, focus areas, and session count appear instantly.
+                Daily, weekly, and monthly views show you exactly who's ready, who needs an intake link, and who to follow up with. Click any appointment for their body map history, focus areas, and session count. The left rail surfaces the gap to fill, the client to text, and what your day is about to ask of your body.
               </p>
               <div style={{ display:"flex", flexDirection:"column", gap:10, marginBottom:32 }}>
-                {["Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Action hub: send intake, open brief, view profile - all from schedule","Cal.com integration coming for automatic sync"].map((f,i)=>(
+                {["Smart Booking left rail: gap-filler, briefing, body load, revenue","Daily, weekly, monthly, and insights views","One-tap SMS to send intake links to pending clients","Slide-out client profile with full body map history","Cal.com integration for automatic sync"].map((f,i)=>(
                   <div key={i} style={{ display:"flex", alignItems:"flex-start", gap:10, fontSize:15, color:C.dark }}>
                     <div style={{ width:20, height:20, borderRadius:"50%", background:"#DCFCE7", color:"#16A34A", display:"flex", alignItems:"center", justifyContent:"center", fontSize:12, flexShrink:0, marginTop:1 }}>✓</div>
                     {f}
@@ -1643,6 +1643,76 @@ export default function Features() {
               </Link>
             </div>
           </FadeIn>
+        </div>
+      </section>
+
+      {/* SMART BOOKING PILLAR
+          HK May 14 2026: The differentiating intelligence layer on top
+          of the Schedule. Per founder playbook, this is the moat.
+          Three sub-pillars rendered as a grid. */}
+      <section id="smart-booking" style={{ scrollMarginTop:"112px", padding:"100px 24px", background:"#fff" }}>
+        <div style={{ maxWidth:1100, margin:"0 auto" }}>
+          <FadeIn>
+            <div style={{ textAlign:"center", marginBottom:56 }}>
+              <div style={{ display:"inline-block", fontSize:11, fontWeight:700, color:"#2A5741", background:"#DCFCE7", border:"1px solid #BBF7D0", borderRadius:99, padding:"4px 14px", textTransform:"uppercase", letterSpacing:"0.14em", marginBottom:16 }}>
+                Smart Booking
+              </div>
+              <h2 style={{ fontFamily:"Georgia,serif", fontSize:"clamp(28px,3.5vw,42px)", fontWeight:700, color:C.dark, margin:"0 0 16px", lineHeight:1.2, letterSpacing:"-0.012em" }}>
+                The intelligence that makes <em style={{ fontStyle:"italic", fontWeight:400, color:"#2A5741" }}>everything else worth it.</em>
+              </h2>
+              <p style={{ fontSize:16, color:C.gray, lineHeight:1.7, maxWidth:720, margin:"0 auto" }}>
+                Every booking platform has a calendar. Ours notices what's missing, what to remember, and what's about to wear you out. Three things woven directly into your Schedule. No new screens. No new logins for your clients. No data you have to enter twice.
+              </p>
+            </div>
+          </FadeIn>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(280px, 1fr))", gap:20 }}>
+
+            <FadeIn delay={0.1}>
+              <article style={{ background:"#FEF3C7", border:"1px solid #FCD34D", borderRadius:16, padding:28, height:"100%", display:"flex", flexDirection:"column" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#92400E", letterSpacing:"0.10em", textTransform:"uppercase", marginBottom:12 }}>⚡ Fill this gap</div>
+                <h3 style={{ fontFamily:"Georgia,serif", fontSize:20, fontWeight:700, color:C.dark, margin:"0 0 14px", lineHeight:1.3 }}>
+                  A cancellation opens at noon. We name who to text.
+                </h3>
+                <p style={{ fontSize:14.5, color:C.dark, lineHeight:1.6, margin:"0 0 18px", flex:1 }}>
+                  Not a mass email to your whole client list. One specific client who books Tuesdays at noon, hasn't been in six weeks, and texted you recently asking about availability. With three reasons why she's the best fit. One tap sends a pre-drafted message.
+                </p>
+                <div style={{ fontSize:12, fontStyle:"italic", color:"#92400E", borderTop:"1px solid rgba(146,64,14,0.15)", paddingTop:14, marginTop:"auto" }}>
+                  Match scoring uses booking pattern data competitors don't have access to.
+                </div>
+              </article>
+            </FadeIn>
+
+            <FadeIn delay={0.2}>
+              <article style={{ background:"#F0FDF4", border:"1px solid #BBF7D0", borderRadius:16, padding:28, height:"100%", display:"flex", flexDirection:"column" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#166534", letterSpacing:"0.10em", textTransform:"uppercase", marginBottom:12 }}>📋 Up-next briefing</div>
+                <h3 style={{ fontFamily:"Georgia,serif", fontSize:20, fontWeight:700, color:C.dark, margin:"0 0 14px", lineHeight:1.3 }}>
+                  Three things to remember before each client walks in.
+                </h3>
+                <p style={{ fontSize:14.5, color:C.dark, lineHeight:1.6, margin:"0 0 18px", flex:1 }}>
+                  Pulled from your most recent session notes. Focus area, preferences, what worked last time. Sits in a small card to the left of your calendar. Reads in four seconds between sessions. No more scrambling through old notes when the door opens.
+                </p>
+                <div style={{ fontSize:12, fontStyle:"italic", color:"#166534", borderTop:"1px solid rgba(22,101,52,0.15)", paddingTop:14, marginTop:"auto" }}>
+                  Updates automatically each time you save a SOAP note.
+                </div>
+              </article>
+            </FadeIn>
+
+            <FadeIn delay={0.3}>
+              <article style={{ background:C.beige, border:`1px solid ${C.lightGray || '#E8E0D0'}`, borderRadius:16, padding:28, height:"100%", display:"flex", flexDirection:"column" }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"#2A5741", letterSpacing:"0.10em", textTransform:"uppercase", marginBottom:12 }}>🌿 Body load awareness</div>
+                <h3 style={{ fontFamily:"Georgia,serif", fontSize:20, fontWeight:700, color:C.dark, margin:"0 0 14px", lineHeight:1.3 }}>
+                  A warning when your day is about to wear you out.
+                </h3>
+                <p style={{ fontSize:14.5, color:C.dark, lineHeight:1.6, margin:"0 0 18px", flex:1 }}>
+                  Three deep tissue back to back? The platform sees it before you do and tells you where to hydrate, stretch your wrists, or skip strength training tonight. Built by therapists for therapists who want a long career, not an early injury.
+                </p>
+                <div style={{ fontSize:12, fontStyle:"italic", color:"#2A5741", borderTop:"1px solid rgba(42,87,65,0.15)", paddingTop:14, marginTop:"auto" }}>
+                  No competitor offers this. Because no competitor was built by people who actually do this work.
+                </div>
+              </article>
+            </FadeIn>
+
+          </div>
         </div>
       </section>
 

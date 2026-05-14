@@ -112,6 +112,15 @@ const ONLY_MBM = [
     photoId: "1.9",
   },
   {
+    id: "smart-booking-intelligence",
+    title: "Smart Booking: a retention engine that knows your clients",
+    body:
+      "Your Schedule tab quietly answers the questions you'd ask yourself if you had time. A slot opens at noon? It tells you which lapsed regular to text and writes the message for you. Next client walks in? Three things to remember about her, pulled from your last session with her. Three deep tissue back to back today? A warning before your wrists pay the price.",
+    proof:
+      "Competitors do bulk lapsed-client emails (MassageBook AutoPilot, ClinicSense win-back) which feel like spam to the client and embarrassing to the therapist. Acuity, Vagaro, GlossGenius, Jane App: no body load awareness anywhere. No platform in this space matches one specific gap to one specific client with the reasons you can act on in one tap. This is the retention engine the others promise and never deliver.",
+    photoId: "1.7",
+  },
+  {
     id: "service-days",
     title: "Different services on different days",
     body:
@@ -261,7 +270,7 @@ export default function WhyBodyMap() {
         <div className="bm-why-v2-only__intro">
           <p className="bm-why-v2-only__eyebrow">What only MyBodyMap does</p>
           <h2 className="bm-why-v2-only__title">
-            The five things you cannot get <em>anywhere else.</em>
+            The things you cannot get <em>anywhere else.</em>
           </h2>
           <p className="bm-why-v2-only__sub">
             Every claim below is researched against the current public

@@ -364,6 +364,80 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── SMART BOOKING PILLAR ─────────────────────────────────────
+          Per founder playbook: the gap-filler and briefing intelligence
+          is the moat. Home page leads with a plain-language explanation
+          so a 70-year-old therapist understands what the platform does
+          for her. Three sub-pillars: Fill This Gap, Up-Next Briefing,
+          Body Load Awareness. No 'AI-powered' phrasing per playbook
+          copy guardrails. ──────────────────────────────────────────── */}
+      <section className="bm-home-smartbooking">
+        <div className="bm-home-smartbooking__inner">
+          <div className="bm-home-smartbooking__intro">
+            <div className="bm-home-smartbooking__eyebrow">Smart Booking</div>
+            <h2 className="bm-home-smartbooking__title">
+              Your platform notices the things you'd remember <em>if you had time.</em>
+            </h2>
+            <p className="bm-home-smartbooking__sub">
+              You already write your notes after each session. We already see who
+              books with you and when. We put those two together so your Schedule
+              quietly answers the questions you ask yourself every day. No new forms,
+              no extra clicks.
+            </p>
+          </div>
+
+          <div className="bm-home-smartbooking__cards">
+
+            <article className="bm-home-smartbooking__card bm-home-smartbooking__card--gap">
+              <div className="bm-home-smartbooking__card-eyebrow">⚡ Fill this gap</div>
+              <h3 className="bm-home-smartbooking__card-title">
+                A slot opens. We name the right client to text.
+              </h3>
+              <p className="bm-home-smartbooking__card-body">
+                When a cancellation leaves you with a Tuesday at noon, the platform
+                points to the client who usually books Tuesdays at noon and hasn't
+                been in six weeks. With a one-tap text message already written.
+                You hit send.
+              </p>
+              <div className="bm-home-smartbooking__card-foot">
+                Not a mass email. One client. One reason. One tap.
+              </div>
+            </article>
+
+            <article className="bm-home-smartbooking__card bm-home-smartbooking__card--brief">
+              <div className="bm-home-smartbooking__card-eyebrow">📋 Up-next briefing</div>
+              <h3 className="bm-home-smartbooking__card-title">
+                Three things to remember before your next client walks in.
+              </h3>
+              <p className="bm-home-smartbooking__card-body">
+                Pulled from your last session notes. What area to focus on. What
+                they preferred. What worked last time. Right next to your calendar,
+                so you can glance and walk in ready.
+              </p>
+              <div className="bm-home-smartbooking__card-foot">
+                Reads in four seconds. Already on your screen.
+              </div>
+            </article>
+
+            <article className="bm-home-smartbooking__card bm-home-smartbooking__card--load">
+              <div className="bm-home-smartbooking__card-eyebrow">🌿 Body load awareness</div>
+              <h3 className="bm-home-smartbooking__card-title">
+                A warning when your day is about to wear you out.
+              </h3>
+              <p className="bm-home-smartbooking__card-body">
+                Three deep tissue back to back? The platform sees it before you do
+                and suggests where to hydrate, stretch your wrists, or skip strength
+                training tonight. Built for the long career.
+              </p>
+              <div className="bm-home-smartbooking__card-foot">
+                Because retirement should be a choice, not an injury.
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
       {/* ── LIFESTYLE MOMENT 1: settling-in band between hero and product ── */}
       <section className="bm-home-band">
         <p className="bm-home-band__quote">
