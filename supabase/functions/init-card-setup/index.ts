@@ -107,21 +107,37 @@ serve(async (req) => {
     }
 
     // Upsert the client record (same as legacy save-card-on-booking).
+    // When duplicates exist (HK May 14 2026: bodymap01 has 4 rows on
+    // demo), prior maybeSingle() returned null and this branch
+    // inserted yet ANOTHER row, compounding the problem. New behavior:
+    // pull the freshest row by card_saved_at desc then created_at
+    // desc, prefer that one, log a warning so duplicates surface in
+    // the function logs for later cleanup.
     const normalizedEmail = (client_email || '').trim().toLowerCase();
     const normalizedPhone = (client_phone || '').replace(/\D/g, '').slice(-10);
 
     let clientId: string | null = null;
     if (normalizedEmail) {
-      const { data: c } = await supabase
-        .from('clients').select('id')
-        .eq('therapist_id', therapist_id).eq('email', normalizedEmail).maybeSingle();
-      if (c) clientId = c.id;
+      const { data: rows } = await supabase
+        .from('clients').select('id, card_saved_at, created_at')
+        .eq('therapist_id', therapist_id).eq('email', normalizedEmail)
+        .order('card_saved_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (Array.isArray(rows) && rows.length > 1) {
+        console.warn(`[init-card-setup] duplicate client rows: ${rows.length} for therapist=${therapist_id} email=${normalizedEmail}. Using ${rows[0].id}.`);
+      }
+      if (Array.isArray(rows) && rows.length > 0) clientId = rows[0].id;
     }
     if (!clientId && normalizedPhone) {
-      const { data: c } = await supabase
-        .from('clients').select('id')
-        .eq('therapist_id', therapist_id).ilike('phone', `%${normalizedPhone}%`).maybeSingle();
-      if (c) clientId = c.id;
+      const { data: rows } = await supabase
+        .from('clients').select('id, card_saved_at, created_at')
+        .eq('therapist_id', therapist_id).ilike('phone', `%${normalizedPhone}%`)
+        .order('card_saved_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (Array.isArray(rows) && rows.length > 1) {
+        console.warn(`[init-card-setup] duplicate client rows by phone: ${rows.length} for therapist=${therapist_id}. Using ${rows[0].id}.`);
+      }
+      if (Array.isArray(rows) && rows.length > 0) clientId = rows[0].id;
     }
     if (!clientId) {
       const { data: created, error: cErr } = await supabase

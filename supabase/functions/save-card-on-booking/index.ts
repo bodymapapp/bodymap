@@ -61,20 +61,31 @@ serve(async (req) => {
 
     let clientId: string | null = null;
     if (normalizedEmail) {
-      const { data: c } = await supabase
-        .from('clients').select('id, stripe_customer_id')
+      // Pick the freshest row when duplicates exist. Logs a warning so
+      // ops can see how often it happens (HK May 14 fix, mirrors
+      // init-card-setup and BookingPage logic).
+      const { data: rows } = await supabase
+        .from('clients').select('id, stripe_customer_id, card_saved_at, created_at')
         .eq('therapist_id', therapist_id)
         .eq('email', normalizedEmail)
-        .maybeSingle();
-      if (c) clientId = c.id;
+        .order('card_saved_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (Array.isArray(rows) && rows.length > 1) {
+        console.warn(`[save-card-on-booking] duplicate client rows: ${rows.length} for therapist=${therapist_id} email=${normalizedEmail}. Using ${rows[0].id}.`);
+      }
+      if (Array.isArray(rows) && rows.length > 0) clientId = rows[0].id;
     }
     if (!clientId && normalizedPhone) {
-      const { data: c } = await supabase
-        .from('clients').select('id, stripe_customer_id')
+      const { data: rows } = await supabase
+        .from('clients').select('id, stripe_customer_id, card_saved_at, created_at')
         .eq('therapist_id', therapist_id)
         .ilike('phone', `%${normalizedPhone}%`)
-        .maybeSingle();
-      if (c) clientId = c.id;
+        .order('card_saved_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
+      if (Array.isArray(rows) && rows.length > 1) {
+        console.warn(`[save-card-on-booking] duplicate client rows by phone: ${rows.length} for therapist=${therapist_id}. Using ${rows[0].id}.`);
+      }
+      if (Array.isArray(rows) && rows.length > 0) clientId = rows[0].id;
     }
 
     // Create the client row if it doesn't exist

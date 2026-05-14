@@ -2670,31 +2670,67 @@ export default function BookingPage() {
 
               // For returning customers, look up the saved card on the
               // clients row so the payment step can skip the card form
-              // and use the existing card_on_file. HK reported May 8
-              // QA: 'If the card was already there from previously, it
-              // is still asking for a card.' Root cause was that the
-              // returning-customer recognition step did not also load
-              // the saved card; this branch fixes it.
+              // and use the existing card_on_file. Two earlier bugs HK
+              // caught in May 2026 are addressed here:
+              //
+              // 1. The previous SELECT named 'card_on_file_id', a column
+              //    that has never existed on the clients table. Supabase
+              //    silently returned undefined for it, so the Square
+              //    fallback never fired. Fixed: select the real columns
+              //    that exist (payment_method_id for Stripe-saved cards,
+              //    square_card_id + square_customer_id for Square-saved
+              //    cards, plus card_last4 / card_brand for display).
+              //
+              // 2. With duplicate client rows for the same therapist +
+              //    email (4 rows for bodymap01@gmail.com on demo), the
+              //    earlier maybeSingle() returned null because more than
+              //    one row matched, which made detection fail entirely
+              //    and triggered yet another row insert downstream. New
+              //    behavior: order by card_saved_at desc + most-recent
+              //    created_at, pick the freshest row, console.warn loudly
+              //    when duplicates are seen so HK can clean them up
+              //    later. Real audit-friendly fix would be a dedupe job;
+              //    this is the watchpoint until then.
               if (isRepeat && email) {
-                const { data: clientRow } = await supabase
+                const { data: clientRows, error: lookupErr } = await supabase
                   .from('clients')
-                  .select('id, payment_method_id, card_on_file_id, stripe_customer_id')
+                  .select('id, payment_method_id, stripe_customer_id, square_card_id, square_customer_id, card_last4, card_brand, card_saved_at, created_at')
                   .eq('therapist_id', therapist.id)
                   .ilike('email', email)
-                  .maybeSingle();
+                  .order('card_saved_at', { ascending: false, nullsFirst: false })
+                  .order('created_at', { ascending: false });
+                if (lookupErr) {
+                  console.error('[Booking] returning-client lookup failed', lookupErr);
+                }
+                if (Array.isArray(clientRows) && clientRows.length > 1) {
+                  console.warn(
+                    `[Booking] %cDuplicate client rows detected: ${clientRows.length} for therapist=${therapist.id} email=${email}. Using most recent. Cleanup TODO.`,
+                    'color:#92400E;font-weight:bold;',
+                    clientRows.map(r => ({ id: r.id, saved: r.card_saved_at, created: r.created_at }))
+                  );
+                }
+                const clientRow = Array.isArray(clientRows) && clientRows.length > 0 ? clientRows[0] : null;
                 if (clientRow?.id) {
                   setCardSavedClientId(clientRow.id);
-                  // payment_method_id is the legacy save-card path field;
-                  // card_on_file_id is the new auto-save-from-deposit
-                  // field. Either is valid as a saved card identifier
-                  // for charging later. Prefer payment_method_id if
-                  // both exist (newer mandates).
-                  const savedPm = clientRow.payment_method_id || clientRow.card_on_file_id;
+                  // Order of preference for the saved-card identifier:
+                  //   1. Stripe payment_method_id (legacy save-card path)
+                  //   2. Square square_card_id (newer save-card-on-booking-token path)
+                  // Either one means 'this client has a card on file and
+                  // we can skip the card form'. The provider gets
+                  // resolved downstream from which one is populated +
+                  // therapist's payment_routing.
+                  const savedPm = clientRow.payment_method_id || clientRow.square_card_id;
                   if (savedPm) {
                     setCardSavedPaymentMethodId(savedPm);
                   }
+                  // Surface a processor-agnostic customer id so the
+                  // cancellation charge later has the right provider
+                  // customer reference. Stripe wins when both exist
+                  // (matches the savedPm tiebreaker above).
                   if (clientRow.stripe_customer_id) {
                     setCardSavedCustomerId(clientRow.stripe_customer_id);
+                  } else if (clientRow.square_customer_id) {
+                    setCardSavedCustomerId(clientRow.square_customer_id);
                   }
                 }
               }
