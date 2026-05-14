@@ -52,6 +52,13 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   });
   const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
+  // Triggers from the ProfileHeader hero buttons. SessionList owns the
+  // actual modal UI for Edit and Archive; the hero just flips these
+  // flags to open the matching modal. See SessionList.js useEffects
+  // that watch externalShowEdit / externalShowArchive.
+  const [editTrigger, setEditTrigger] = useState(false);
+  const [archiveTrigger, setArchiveTrigger] = useState(false);
+
   useEffect(() => {
     // If a previewProfile is provided (sample-client demo case), use
     // it directly without hitting Supabase. Real therapist clients go
@@ -138,8 +145,8 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         stats={profile?.stats}
         profile={profile}
         onBack={onBack}
-        onEdit={() => { /* wire-up queued */ }}
-        onArchive={() => { /* wire-up queued */ }}
+        onEdit={() => setEditTrigger(true)}
+        onArchive={() => setArchiveTrigger(true)}
       />
 
       {loading && (
@@ -183,6 +190,10 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onSelectSession={onSelectSession}
               compact={true}
               previewSessions={previewProfile ? profile.sessions : null}
+              externalShowEdit={editTrigger}
+              onExternalEditClose={() => setEditTrigger(false)}
+              externalShowArchive={archiveTrigger}
+              onExternalArchiveClose={() => setArchiveTrigger(false)}
             />
           </ProfileSection>
 

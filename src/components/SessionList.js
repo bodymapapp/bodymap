@@ -12,7 +12,7 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null }) {
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null, externalShowEdit = null, onExternalEditClose = null, externalShowArchive = null, onExternalArchiveClose = null }) {
   const [sessions, setSessions] = useState(previewSessions || []);
   // Bookings = the actual appointment records this client has had.
   // Distinct from `sessions` (SOAP-note records). The header count
@@ -155,6 +155,35 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   const [editNotes, setEditNotes] = useState(client?.notes || "");
   const [editSaving, setEditSaving] = useState(false);
   const [editMsg, setEditMsg] = useState("");
+
+  // External Edit trigger from the ClientProfile hero pencil button.
+  // When parent flips externalShowEdit true, open the modal here.
+  // When the modal closes locally, call onExternalEditClose so parent
+  // resets its own state. Lets the hero pencil and the SOAP-area
+  // 'Edit details' button share one modal source-of-truth.
+  useEffect(() => {
+    if (externalShowEdit) {
+      setEditName(client?.name || "");
+      setEditEmail(client?.email || "");
+      setEditPhone(client?.phone || "");
+      setEditNotes(client?.notes || "");
+      setShowEdit(true);
+    }
+  }, [externalShowEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showEdit && externalShowEdit) {
+      onExternalEditClose?.();
+    }
+  }, [showEdit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (externalShowArchive) setShowArchiveMenu(true);
+  }, [externalShowArchive]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showArchiveMenu && externalShowArchive) {
+      onExternalArchiveClose?.();
+    }
+  }, [showArchiveMenu]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveClient() {
     if (!editName.trim()) { setEditMsg("Name is required."); return; }

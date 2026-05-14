@@ -13,7 +13,7 @@
 // subline, then a row of icon-buttons for phone/email and a menu.
 // Mobile-adapts: avatar stays large, action buttons wrap below.
 
-import React, { useState } from 'react';
+import React from 'react';
 import { C, F, S, initials, avatarColor, formatMonthYear } from './tokens';
 
 // Inline SVGs for tooling icons. Better contrast and weight control
@@ -30,11 +30,21 @@ const IconMail = () => (
     <path d="m22 7-10 5L2 7"/>
   </svg>
 );
-const IconMore = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="12" cy="12" r="1"/>
-    <circle cx="12" cy="5" r="1"/>
-    <circle cx="12" cy="19" r="1"/>
+// Pencil for the prominent 'Edit' button in the hero. Labeled button
+// is preferred over a hamburger / 3-dot menu for the 70-year-old LMT
+// persona who would not associate an icon-only kebab with 'edit my
+// client's phone number'. HK direction May 14 2026.
+const IconEdit = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+  </svg>
+);
+const IconArchive = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="3" width="20" height="5" rx="1"/>
+    <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/>
+    <line x1="10" y1="12" x2="14" y2="12"/>
   </svg>
 );
 const IconBack = () => (
@@ -143,8 +153,6 @@ export default function ProfileHeader({
   onEdit,
   onArchive,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-
   if (!client) return null;
 
   const state = computeState({ client, stats, profile });
@@ -284,48 +292,36 @@ export default function ProfileHeader({
                 <IconMail />
               </a>
             )}
-            <div style={{ position: 'relative' }}>
-              <button
-                onClick={() => setMenuOpen(o => !o)}
-                aria-label="More options"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                style={{
-                  ...glassBtnStyle(state),
-                  background: menuOpen ? 'rgba(255,255,255,0.95)' : glassBtnStyle(state).background,
-                }}
-              >
-                <IconMore />
-              </button>
-              {menuOpen && (
-                <div
-                  role="menu"
-                  style={{
-                    position: 'absolute',
-                    top: 'calc(100% + 6px)',
-                    right: 0,
-                    background: C.paper,
-                    border: `1px solid ${C.lineFaint}`,
-                    borderRadius: 10,
-                    boxShadow: '0 8px 24px rgba(28,43,34,0.14)',
-                    padding: 6,
-                    minWidth: 170,
-                    zIndex: 20,
-                  }}
-                  onMouseLeave={() => setMenuOpen(false)}
-                >
-                  <MenuItem
-                    label="Edit details"
-                    onClick={() => { setMenuOpen(false); onEdit?.(); }}
-                  />
-                  <MenuItem
-                    label={archived ? 'Restore client' : 'Archive client'}
-                    destructive={!archived}
-                    onClick={() => { setMenuOpen(false); onArchive?.(); }}
-                  />
-                </div>
-              )}
-            </div>
+            {/* Labeled 'Edit' pill replaces the prior 3-dot menu. HK
+                May 14 2026: 70-year-old LMT persona will never
+                associate a kebab icon with 'edit my client's phone
+                number'. Pencil + 'Edit' label is universally
+                recognized on web and mobile. Archive moves into its
+                own icon-only button next to Edit, still discoverable
+                but secondary. */}
+            <button
+              onClick={() => onEdit?.()}
+              aria-label="Edit client details"
+              style={{
+                ...glassBtnStyle(state),
+                width: 'auto',
+                padding: '0 14px 0 12px',
+                gap: 6,
+                display: 'inline-flex',
+                alignItems: 'center',
+              }}
+            >
+              <IconEdit />
+              <span style={{ fontSize: 13, fontWeight: 600, fontFamily: F.sans }}>Edit</span>
+            </button>
+            <button
+              onClick={() => onArchive?.()}
+              aria-label={archived ? 'Restore client' : 'Archive client'}
+              title={archived ? 'Restore client' : 'Archive client'}
+              style={glassBtnStyle(state)}
+            >
+              <IconArchive />
+            </button>
           </div>
         </div>
 
@@ -407,33 +403,5 @@ function glassBtnStyle(state) {
     fontFamily: F.sans,
     transition: 'background 0.18s ease',
   };
-}
-
-function MenuItem({ label, onClick, destructive = false }) {
-  const [hover, setHover] = React.useState(false);
-  return (
-    <button
-      role="menuitem"
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        display: 'block',
-        width: '100%',
-        textAlign: 'left',
-        padding: '9px 12px',
-        borderRadius: 7,
-        background: hover ? (destructive ? C.redBg : C.cream) : 'transparent',
-        border: 'none',
-        cursor: 'pointer',
-        fontFamily: F.sans,
-        fontSize: 13,
-        fontWeight: 500,
-        color: destructive ? C.red : C.ink,
-      }}
-    >
-      {label}
-    </button>
-  );
 }
 
