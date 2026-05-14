@@ -200,22 +200,25 @@ function Tile({ icon, label, tone = 'neutral', accentBorder = false, onClick, ch
 function BigNumber({ value, suffix, color, subtitle }) {
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 7, flexWrap: 'wrap' }}>
         <span style={{
           fontFamily: F.serif,
-          fontSize: 28, fontWeight: 700,
+          fontSize: 36, fontWeight: 700,
           color,
-          lineHeight: 1,
+          lineHeight: 0.95,
+          letterSpacing: '-0.02em',
           fontVariantNumeric: 'tabular-nums',
         }}>
           {value}
         </span>
         {suffix && (
           <span style={{
-            fontSize: 11,
-            color: C.inkSoft,
-            fontWeight: 600,
-            letterSpacing: '0.04em',
+            fontFamily: F.sans,
+            fontSize: 10.5,
+            color: C.muted,
+            fontWeight: 700,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
           }}>
             {suffix}
           </span>

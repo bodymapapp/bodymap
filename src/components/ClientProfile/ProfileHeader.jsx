@@ -354,7 +354,7 @@ export default function ProfileHeader({
             <h1 className="bm-cp-name" style={{
               margin: 0,
               fontFamily: F.serif,
-              fontSize: 26, fontWeight: 700,
+              fontSize: 28, fontWeight: 700,
               color: archived ? C.muted : state.nameColor,
               lineHeight: 1.05,
               letterSpacing: '-0.01em',
@@ -367,17 +367,17 @@ export default function ProfileHeader({
             <style>{`
               @media (min-width: 480px) {
                 .bm-cp-avatar { width: 72px !important; height: 72px !important; font-size: 24px !important; }
-                .bm-cp-name { font-size: 30px !important; }
+                .bm-cp-name { font-size: 32px !important; }
               }
               @media (min-width: 768px) {
                 .bm-cp-avatar { width: 80px !important; height: 80px !important; font-size: 28px !important; }
-                .bm-cp-name { font-size: 34px !important; }
+                .bm-cp-name { font-size: 38px !important; }
               }
             `}</style>
             {subline && (
               <div style={{
                 marginTop: 6,
-                fontSize: 13.5,
+                fontSize: 12.5,
                 color: state.sublineColor,
                 fontWeight: 600,
                 fontFamily: F.sans,
