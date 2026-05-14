@@ -93,7 +93,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   const timelineCount = profile?.bookings?.length || 0;
 
   return (
-    <div style={{ background: C.cream, minHeight: '100vh' }}>
+    <div style={{ background: C.cream }}>
       <ProfileHeader
         client={profile?.client || client}
         stats={profile?.stats}

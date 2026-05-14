@@ -183,7 +183,6 @@ export default function ProfileHeader({
 
   return (
     <div style={{
-      position: 'sticky', top: 0, zIndex: 10,
       background: archived
         ? `linear-gradient(135deg, #F3F4F6 0%, #E5E7EB 100%)`
         : state.bg,

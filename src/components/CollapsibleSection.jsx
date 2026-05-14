@@ -139,19 +139,18 @@ export default function CollapsibleSection({
       >
         {/* Taxonomy + icon column. Stacks them vertically: the taxonomy
             number sits above the icon as a tiny mono cap, not inline
-            with the label so it doesn't compete.
-            Justify center keeps the stack vertically centered when
-            the label + summary row grows to two lines (e.g., when a
-            long URL summary wraps), so rows don't look indented. */}
+            with the label so it doesn't compete. Center-aligned vertically
+            against the label column (via the parent row's alignItems:center).
+            Do NOT stretch this column to row height or the small stack
+            ends up centered in dead space and visually floats away from
+            the label. */}
         <div style={{
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          justifyContent: 'center',
           width: 28,
           flexShrink: 0,
           gap: 2,
-          alignSelf: 'stretch',
         }}>
           {taxonomy && (
             <span style={{

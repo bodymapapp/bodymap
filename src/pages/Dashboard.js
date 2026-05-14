@@ -3521,7 +3521,7 @@ export default function Dashboard({ view }) {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.beige, fontFamily: 'system-ui, sans-serif', overflowX: 'hidden', paddingTop: '0' }}>
+    <div style={{ minHeight: '100vh', background: C.beige, fontFamily: 'system-ui, sans-serif', paddingTop: '0' }}>
       {new URLSearchParams(window.location.search).get('upgraded') === 'true' && (
         <div style={{ background: '#ECFDF5', borderBottom: '2px solid #059669', padding: '16px 24px', textAlign: 'center' }}>
           <p style={{ fontSize: '17px', fontWeight: '700', color: '#065F46', margin: '0 0 2px 0' }}>🎉 Congratulations! You're now on Silver.</p>
