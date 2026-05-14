@@ -404,6 +404,37 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     };
   }, [allAppts, today, lapsedClients]);
 
+  // Rebook Watch: top 3 lapsed regulars about to break cadence.
+  // FillGap is one specific gap with one matched client. Rebook Watch
+  // is the broader view: which regulars are drifting away that need
+  // a nudge regardless of whether there's a specific gap right now.
+  // Per founder playbook lapsed-regular formula:
+  //   lifetime_bookings >= 4 AND last_booking 30-60 days ago
+  // Sorted by days lapsed descending (most overdue first).
+  const rebookWatch = useMemo(() => {
+    if (!lapsedClients.length) return [];
+    const now = Date.now();
+    return lapsedClients
+      .map(c => {
+        const daysLapsed = Math.round((now - c.lastVisit.getTime()) / 86400000);
+        // Cadence: typical interval between visits
+        let cadence = 30;
+        if (c.dates.length >= 3) {
+          const sorted = [...c.dates].sort((a, b) => a.getTime() - b.getTime());
+          const intervals = [];
+          for (let i = 1; i < sorted.length; i++) {
+            intervals.push((sorted[i].getTime() - sorted[i-1].getTime()) / 86400000);
+          }
+          cadence = Math.round(intervals.reduce((s, n) => s + n, 0) / intervals.length);
+        }
+        const overdueBy = Math.max(0, daysLapsed - cadence);
+        return { ...c, daysLapsed, cadence, overdueBy };
+      })
+      .filter(c => c.daysLapsed >= 30 && c.daysLapsed <= 90)
+      .sort((a, b) => b.overdueBy - a.overdueBy)
+      .slice(0, 3);
+  }, [lapsedClients]);
+
   // Fetch session_intelligence for the client_ids of upcoming bookings.
   useEffect(() => {
     let cancelled = false;
@@ -469,6 +500,17 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       ) : (!therapist?.id ? (
         <FillGapCard gap={PLACEHOLDER_GAP} therapistFirstName="" />
       ) : null)}
+      {/* Rebook Watch: top 3 lapsed regulars approaching cadence break.
+          Same data source as FillGap but a different lens. FillGap is
+          'fill this slot with one client.' Rebook Watch is 'these
+          three regulars need a nudge before they drift.' Shown on
+          every tab when there are qualifying candidates. */}
+      {rebookWatch && rebookWatch.length > 0 && (
+        <RebookWatchCard
+          clients={rebookWatch}
+          therapistFirstName={(therapist?.full_name || '').split(' ')[0]}
+        />
+      )}
     </aside>
   );
 }
@@ -840,7 +882,7 @@ function BriefCard({ client, active, isMobile = false }) {
 
 function CarouselArrows({ onPrev, onNext, canPrev, canNext }) {
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
+    <div style={{ display: 'flex', gap: 6 }}>
       <ArrowBtn dir="prev" onClick={onPrev} disabled={!canPrev} />
       <ArrowBtn dir="next" onClick={onNext} disabled={!canNext} />
     </div>
@@ -848,28 +890,34 @@ function CarouselArrows({ onPrev, onNext, canPrev, canNext }) {
 }
 
 function ArrowBtn({ dir, onClick, disabled }) {
+  // Sized for the 70-year-old persona (per founder playbook persona
+  // Sarah). 36x36 hit target, high-contrast forest stroke when active,
+  // muted when disabled. Bumped from 24x24/10px chevron to 36x36/16px
+  // chevron after HK feedback that older therapists couldn't see it.
   return (
     <button
       onClick={onClick}
       disabled={disabled}
       aria-label={dir === 'prev' ? 'Previous client' : 'Next client'}
       style={{
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        border: `1px solid ${C.line}`,
+        width: 36,
+        height: 36,
+        borderRadius: 10,
+        border: `1.5px solid ${disabled ? C.line : C.forestMid}`,
         background: disabled ? C.lineSoft : '#fff',
-        color: disabled ? C.muted : C.ink,
+        color: disabled ? C.muted : C.forestMid,
         cursor: disabled ? 'default' : 'pointer',
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: 0,
-        fontSize: 11,
-        transition: 'background 0.1s',
+        transition: 'all 0.12s',
+        boxShadow: disabled ? 'none' : '0 1px 3px rgba(0,0,0,0.06)',
       }}
+      onMouseEnter={e => { if (!disabled) e.currentTarget.style.background = C.cream; }}
+      onMouseLeave={e => { if (!disabled) e.currentTarget.style.background = '#fff'; }}
     >
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         {dir === 'prev' ? (
           <path d="m15 18-6-6 6-6"/>
         ) : (
@@ -1169,6 +1217,101 @@ function FillGapCard({ gap, therapistFirstName }) {
           + {gap.otherMatches} other strong matches →
         </button>
       )}
+    </section>
+  );
+}
+
+/* =============================================================
+ * Rebook Watch
+ *
+ * Top 3 lapsed regulars about to break cadence. Different lens
+ * from Fill This Gap (which matches one client to one specific
+ * slot). Rebook Watch is the broader "who is drifting away that
+ * needs a nudge today" view.
+ *
+ * Per founder playbook (How we win > formula playbook > Lapsed
+ * regular definition).
+ * ============================================================= */
+
+function RebookWatchCard({ clients, therapistFirstName }) {
+  function textClient(client) {
+    const firstName = (client.name || '').split(' ')[0];
+    const therapistFirst = therapistFirstName || 'me';
+    const weeks = Math.max(2, Math.round(client.daysLapsed / 7));
+    const msg = `Hi ${firstName}, ${therapistFirst} here. It's been about ${weeks} weeks since your last visit and I had a slot open up. Want me to lock something in?`;
+    if (!client.phone) {
+      alert(`No phone on file for ${firstName}. Pre-drafted message:\n\n${msg}`);
+      return;
+    }
+    const isApple = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent);
+    const sep = isApple ? '&' : '?';
+    window.location.href = `sms:${client.phone}${sep}body=${encodeURIComponent(msg)}`;
+  }
+
+  return (
+    <section style={cardStyle('status')}>
+      <SectionHeader
+        eyebrow="Rebook watch"
+        trailing={`${clients.length} drifting`}
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {clients.map((c, i) => (
+          <div key={c.clientId} style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            padding: '8px 10px',
+            background: '#fff',
+            border: `1px solid ${C.line}`,
+            borderRadius: 8,
+            minWidth: 0,
+          }}>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{
+                fontFamily: F.serif,
+                fontSize: 14,
+                fontWeight: 700,
+                color: C.ink,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}>
+                {c.name}
+              </div>
+              <div style={{ fontSize: 11, color: C.muted, marginTop: 1 }}>
+                {c.daysLapsed} days since last · usually every {c.cadence}d
+              </div>
+            </div>
+            <button
+              onClick={() => textClient(c)}
+              aria-label={`Text ${c.name}`}
+              style={{
+                flexShrink: 0,
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: `1.5px solid ${C.forestMid}`,
+                background: '#fff',
+                color: C.forestMid,
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 0,
+                transition: 'all 0.12s',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.cream; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }

@@ -181,6 +181,20 @@ The Schedule-tab intelligence we have just defined is bigger than one tab. It is
 2. **Up-Next Briefing.** Before every client walks in, three things you need to remember. Pulled automatically from past sessions, preferences, and patterns. No notes app, no scrambling.
 3. **Body Load Awareness.** Your platform watches your day's mix of services and warns you before three deep tissue in a row burns out your wrists. Built for LMTs by LMTs.
 
+### Schedule rail widget names
+
+The Schedule tab's intelligence rail consists of five named widgets. These are product names, not generic UI cards. Use these names consistently in marketing copy, customer support articles, and internal discussion so therapists can refer to them by name.
+
+| Widget | Eyebrow | What it does |
+|---|---|---|
+| **Client Brief** | "Up next" | Carousel of next 4 upcoming clients, each as a 3-point card pulled from SOAP history, preferences, and medical flags. |
+| **Body Load** | "Today's load" / "Week's load" | Service-mix gauge with light/moderate/high/risk threshold. Warns of injury risk from too many heavy sessions back-to-back. |
+| **Revenue Pulse** | "May revenue" (or current month) | Month-to-date dollars vs. monthly goal (trailing-3-month avg × 1.10) with a 4-week sparkline showing direction. |
+| **Fill This Gap** | "Fill this gap" | One specific gap matched to one specific lapsed regular, with three reasons and a one-tap SMS. The moat. |
+| **Rebook Watch** | "Rebook watch" | Top 3 regulars approaching cadence break (30-90 days since last visit, lifetime ≥ 4 visits). Different lens from Fill This Gap: broader "who is drifting" view. One-tap text per client. |
+
+These widgets persist across all four Schedule sub-tabs (Today / Weekly / Monthly / Insights). The right pane swaps to the time-scoped calendar view but the rail remains. Per the principle that intelligence must live where decisions are made, not in a separate analytics tab.
+
 **Why this matters for the 70-year-old persona** (Sarah from PART ONE): a kebab-icon edit button confuses her. But "your platform knows which client to text and writes the message for you" maps to her existing mental model of "having an assistant." That's the framing for every public surface.
 
 **Public-page placement:**
