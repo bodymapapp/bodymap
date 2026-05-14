@@ -153,11 +153,18 @@ export default function SampleClientPreview({ sampleClient, onClose }) {
   const [docSession, setDocSession] = useState(null);
 
   // Lock body scroll while modal is open so background doesn't
-  // shift while interacting with the preview.
+  // shift while interacting with the preview. Also adds a class
+  // 'bm-modal-open' to body which CSS uses to hide the fixed
+  // bottom nav (otherwise it shows through the modal overlay since
+  // the overlay is semi-transparent).
   React.useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
+    document.body.classList.add('bm-modal-open');
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.classList.remove('bm-modal-open');
+    };
   }, []);
 
   return (
@@ -171,12 +178,13 @@ export default function SampleClientPreview({ sampleClient, onClose }) {
         background: 'rgba(15, 23, 18, 0.55)',
         backdropFilter: 'blur(4px)',
         WebkitBackdropFilter: 'blur(4px)',
-        zIndex: 1000,
+        zIndex: 9999,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '24px 0',
+        padding: 'max(16px, env(safe-area-inset-top, 16px)) 0 calc(16px + env(safe-area-inset-bottom, 0px))',
         overflowY: 'auto',
+        overscrollBehavior: 'contain',
       }}
     >
       <div style={{
@@ -302,12 +310,13 @@ function DocumentPreview({ session, clientName, onClose }) {
         background: 'rgba(15, 23, 18, 0.7)',
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
-        zIndex: 1100,
+        zIndex: 10000,
         display: 'flex',
         alignItems: 'flex-start',
         justifyContent: 'center',
-        padding: '24px 0',
+        padding: 'max(16px, env(safe-area-inset-top, 16px)) 0 calc(16px + env(safe-area-inset-bottom, 0px))',
         overflowY: 'auto',
+        overscrollBehavior: 'contain',
       }}
     >
       <div style={{

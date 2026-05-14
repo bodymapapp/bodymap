@@ -194,7 +194,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
       </div>
 
       {/* Modern bottom nav bar */}
-      <div style={{
+      <div id="bm-mobile-bottom-nav" style={{
         position: 'fixed', bottom: 0, left: 0, right: 0,
         zIndex: 1000,
         background: 'rgba(255,255,255,0.96)',

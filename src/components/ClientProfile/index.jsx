@@ -143,6 +143,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onBack={onBack}
               onSelectSession={onSelectSession}
               compact={true}
+              previewSessions={previewProfile ? profile.sessions : null}
             />
           </ProfileSection>
 

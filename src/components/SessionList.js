@@ -11,8 +11,8 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false }) {
-  const [sessions, setSessions] = useState([]);
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null }) {
+  const [sessions, setSessions] = useState(previewSessions || []);
   // Bookings = the actual appointment records this client has had.
   // Distinct from `sessions` (SOAP-note records). The header count
   // and stat boxes at the top of the page derive from bookings;
@@ -245,8 +245,16 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   }
 
   useEffect(() => {
+    // Preview mode: sessions came in via the previewSessions prop
+    // and bookings stay empty. Skip the Supabase load entirely so
+    // the demo modal doesn't issue queries with a fake therapist id.
+    if (previewSessions) {
+      setSessions(previewSessions);
+      setLoading(false);
+      return;
+    }
     if (client?.id) loadSessions();
-  }, [client?.id]);
+  }, [client?.id, previewSessions]);
 
   async function loadSessions() {
     setLoading(true);
@@ -291,9 +299,9 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     <div>
       {/* Edit client modal */}
       {showEdit && (
-        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:3000, padding:20 }}
+        <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.45)", display:"flex", alignItems:"flex-start", justifyContent:"center", zIndex:3000, padding:"max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))", overflowY:"auto", overscrollBehavior:"contain" }}
           onClick={e => { if (e.target===e.currentTarget) setShowEdit(false); }}>
-          <div style={{ background:"#fff", borderRadius:20, width:"100%", maxWidth:440, boxShadow:"0 24px 64px rgba(0,0,0,0.25)", overflow:"hidden" }}>
+          <div style={{ background:"#fff", borderRadius:20, width:"100%", maxWidth:440, boxShadow:"0 24px 64px rgba(0,0,0,0.25)", overflow:"hidden", margin:"auto 0" }}>
             <div style={{ padding:"24px 24px 16px", borderBottom:"1px solid #E8E4DC", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
               <h3 style={{ fontFamily:"Georgia, serif", fontSize:20, fontWeight:700, color:C.darkGray, margin:0 }}>Edit Client</h3>
               <button onClick={() => setShowEdit(false)} style={{ background:"#F3F4F6", border:"none", borderRadius:"50%", width:32, height:32, cursor:"pointer", fontSize:16, color:C.gray }}>✕</button>
@@ -348,9 +356,9 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
 
       {/* Merge Modal */}
       {showMerge && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000, padding: 24 }}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-start", justifyContent: "center", zIndex: 2000, padding: "max(24px, env(safe-area-inset-top, 24px)) 16px calc(24px + env(safe-area-inset-bottom, 0px))", overflowY: "auto", overscrollBehavior: "contain" }}
           onClick={e => { if (e.target === e.currentTarget) { setShowMerge(false); setMergeTarget(null); setMergeSearch(""); setMergeResults([]); }}}>
-          <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "#fff", borderRadius: 20, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 20px 60px rgba(0,0,0,0.25)", margin: "auto 0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
               <div>
                 <h3 style={{ fontFamily: "Georgia, serif", fontSize: 20, fontWeight: 700, color: C.darkGray, margin: "0 0 4px" }}>Merge Duplicate Client</h3>
