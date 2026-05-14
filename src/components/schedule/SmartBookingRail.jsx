@@ -447,8 +447,19 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       fontFamily: F.sans,
     }}>
       <UpNextCarousel upcoming={upcoming} isMobile={isMobile} />
-      <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} />
-      <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} />
+      {/* Body Load + Revenue: on mobile, 2-up row to cut vertical
+          scroll. On desktop, stack vertically in the narrow rail.
+          Each card uses 0-width-flex-grow so they share the row
+          equally and don't blow out the column. */}
+      <div style={{
+        display: isMobile ? 'grid' : 'block',
+        gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
+        gap: isMobile ? 12 : 0,
+      }}>
+        <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} compact={isMobile} />
+        {!isMobile && <div style={{ height: 14 }} />}
+        <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} compact={isMobile} />
+      </div>
       {/* Fill This Gap only renders when there's a real gap AND a real
           candidate. On a real account with no qualifying gap, we hide
           rather than show fake data. Placeholder shows ONLY in the
@@ -873,10 +884,13 @@ function ArrowBtn({ dir, onClick, disabled }) {
  * Body Load Meter
  * ============================================================= */
 
-function BodyLoadCard({ load }) {
+function BodyLoadCard({ load, compact = false }) {
   return (
     <section style={cardStyle('status')}>
-      <SectionHeader eyebrow="Body load today" trailing={load.summary} />
+      <SectionHeader
+        eyebrow={compact ? 'Body load' : 'Body load today'}
+        trailing={compact ? null : load.summary}
+      />
       <div style={{
         height: 8,
         borderRadius: 4,
@@ -893,19 +907,23 @@ function BodyLoadCard({ load }) {
         display: 'flex',
         justifyContent: 'space-between',
         fontSize: 11,
-        marginBottom: 6,
+        marginBottom: compact ? 0 : 6,
       }}>
-        <span style={{ color: C.muted }}>Light · Moderate · High · Risk</span>
+        {!compact && <span style={{ color: C.muted }}>Light · Moderate · High · Risk</span>}
         <span style={{
           fontWeight: 700,
           color: load.threshold === 'risk' ? C.dangerBd : (load.threshold === 'high' ? C.warnBd : C.saved),
+          marginLeft: compact ? 'auto' : 0,
         }}>
           {load.threshold === 'risk' ? 'Injury risk' :
            load.threshold === 'high' ? 'High' :
            load.threshold === 'moderate' ? 'Moderate' : 'Light'}
         </span>
       </div>
-      {load.callout && (
+      {/* Callout only shows in full (non-compact) mode. On mobile 2-up
+          the callout would crowd the row; full callout returns on
+          desktop where the card is full-width in the rail. */}
+      {!compact && load.callout && (
         <div style={{
           background: C.warm,
           border: `1px solid ${C.warmBd}`,
@@ -926,39 +944,42 @@ function BodyLoadCard({ load }) {
  * Revenue Card
  * ============================================================= */
 
-function RevenueCard({ revenue }) {
+function RevenueCard({ revenue, compact = false }) {
   const pct = Math.min(100, Math.round((revenue.monthToDate / revenue.goal) * 100));
   const sparkMax = Math.max(...revenue.sparkline, 1);
-  // Get current month short name for the eyebrow
-  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' });
+  const monthShort = new Date().toLocaleDateString('en-US', { month: 'short' });
+  const monthLong = new Date().toLocaleDateString('en-US', { month: 'long' });
   return (
     <section style={cardStyle('status')}>
-      <SectionHeader eyebrow={`${monthName} revenue`} />
+      <SectionHeader eyebrow={`${compact ? monthShort : monthLong} revenue`} />
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
         justifyContent: 'space-between',
         marginBottom: 6,
+        gap: 6,
       }}>
         <span style={{
           fontFamily: F.serif,
-          fontSize: 22,
+          fontSize: compact ? 18 : 22,
           fontWeight: 700,
           color: C.forestMid,
           lineHeight: 1,
         }}>
           ${revenue.monthToDate.toLocaleString()}
         </span>
-        <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
-          of ${revenue.goal.toLocaleString()} goal
-        </span>
+        {!compact && (
+          <span style={{ fontSize: 11, color: C.muted, fontWeight: 600 }}>
+            of ${revenue.goal.toLocaleString()} goal
+          </span>
+        )}
       </div>
       <div style={{
         height: 4,
         background: C.lineSoft,
         borderRadius: 2,
         overflow: 'hidden',
-        marginBottom: 10,
+        marginBottom: compact ? 6 : 10,
       }}>
         <div style={{
           height: '100%',
@@ -967,16 +988,17 @@ function RevenueCard({ revenue }) {
           transition: 'width 0.3s',
         }} />
       </div>
-      {/* 4-week sparkline. Most recent week on the right. */}
+      {/* Sparkline. In compact mode the 4-week trend bar is shorter
+          and we drop the 'Last 4 weeks' label since the row is tight. */}
       <div style={{
         display: 'flex',
         alignItems: 'flex-end',
         gap: 3,
-        height: 18,
-        marginBottom: 4,
+        height: compact ? 12 : 18,
+        marginBottom: compact ? 0 : 4,
       }}>
         {revenue.sparkline.map((v, i) => {
-          const h = Math.max(3, Math.round((v / sparkMax) * 18));
+          const h = Math.max(3, Math.round((v / sparkMax) * (compact ? 12 : 18)));
           const isCurrent = i === revenue.sparkline.length - 1;
           return (
             <div key={i} style={{
@@ -989,15 +1011,17 @@ function RevenueCard({ revenue }) {
           );
         })}
       </div>
-      <div style={{
-        fontSize: 10,
-        color: C.muted,
-        fontWeight: 600,
-        letterSpacing: '0.04em',
-        textTransform: 'uppercase',
-      }}>
-        Last 4 weeks
-      </div>
+      {!compact && (
+        <div style={{
+          fontSize: 10,
+          color: C.muted,
+          fontWeight: 600,
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+        }}>
+          Last 4 weeks
+        </div>
+      )}
     </section>
   );
 }
