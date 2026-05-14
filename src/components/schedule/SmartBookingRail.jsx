@@ -160,8 +160,105 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       .slice(0, 4);
   }, [allAppts, today]);
 
+  // Compute TODAY's body load from confirmed bookings on today.
+  // Formula from founder playbook (MyBodyMap Marketing > How we win
+  // > formula playbook):
+  //   load = sum(load_factor * duration_min / 60) over today's bookings
+  // Thresholds: < 3 light, 3-5.5 moderate, 5.5-7.5 high, > 7.5 risk.
+  const todayLoad = useMemo(() => {
+    if (!allAppts || !allAppts.length) return null;
+    const todayDate = today || new Date();
+    const t0 = new Date(todayDate);
+    t0.setHours(0,0,0,0);
+    const todayAppts = allAppts.filter(a =>
+      !a.preview && !a.external &&
+      a.date.getTime() === t0.getTime()
+    );
+    if (!todayAppts.length) return null;
+
+    let total = 0;
+    const segments = [];
+    let deepCount = 0;
+    let medCount = 0;
+    let easyCount = 0;
+    todayAppts.forEach(a => {
+      const lf = loadFactorFor(a.service);
+      const contrib = lf * (a.duration / 60);
+      total += contrib;
+      const kind = lf >= 0.9 ? 'deep' : lf >= 0.55 ? 'med' : 'easy';
+      if (kind === 'deep') deepCount++;
+      else if (kind === 'med') medCount++;
+      else easyCount++;
+      segments.push({
+        kind,
+        pct: Math.max(8, Math.min(40, contrib * 12)),
+        color: kind === 'deep' ? '#DC2626' : kind === 'med' ? '#F59E0B' : '#86EFAC',
+      });
+    });
+
+    let threshold = 'light';
+    let callout = null;
+    if (total > 7.5) {
+      threshold = 'risk';
+      callout = `${deepCount}+ heavy back to back. Skip a strength session tonight. Wrists, forearms, low back at elevated risk.`;
+    } else if (total > 5.5) {
+      threshold = 'high';
+      callout = 'Hydrate at the mid-afternoon gap. Stretch wrists between deep tissue.';
+    } else if (total > 3) {
+      threshold = 'moderate';
+    }
+
+    const summaryParts = [];
+    if (deepCount) summaryParts.push(`${deepCount} deep`);
+    if (medCount) summaryParts.push(`${medCount} swedish`);
+    if (easyCount) summaryParts.push(`${easyCount} light`);
+
+    return {
+      total: Math.round(total * 10) / 10,
+      threshold,
+      callout,
+      segments,
+      summary: summaryParts.join(' · ') + ' today',
+    };
+  }, [allAppts, today]);
+
+  // Compute revenue: current week vs last week, goal from trailing
+  // 4-week average × 1.10 per founder playbook. Sunday start.
+  const weekRevenue = useMemo(() => {
+    if (!allAppts || !allAppts.length) return null;
+    const todayDate = today || new Date();
+    const startOfWeek = new Date(todayDate);
+    startOfWeek.setHours(0,0,0,0);
+    startOfWeek.setDate(todayDate.getDate() - todayDate.getDay()); // Sunday
+    const startOfLastWeek = new Date(startOfWeek);
+    startOfLastWeek.setDate(startOfWeek.getDate() - 7);
+    const startOfTrailing4 = new Date(startOfWeek);
+    startOfTrailing4.setDate(startOfWeek.getDate() - 28);
+
+    let thisWeek = 0;
+    let lastWeek = 0;
+    let trailing4 = 0;
+    allAppts.forEach(a => {
+      if (a.preview || a.external) return;
+      const price = Number(a.price) || 0;
+      const d = a.date.getTime();
+      if (d >= startOfWeek.getTime()) thisWeek += price;
+      else if (d >= startOfLastWeek.getTime()) lastWeek += price;
+      if (d >= startOfTrailing4.getTime() && d < startOfWeek.getTime()) {
+        trailing4 += price;
+      }
+    });
+
+    const avgWeekly = trailing4 / 4;
+    const goal = Math.max(500, Math.round((avgWeekly * 1.10) / 10) * 10);
+    return {
+      thisWeek: Math.round(thisWeek),
+      goal,
+      vsLastWeek: Math.round(thisWeek - lastWeek),
+    };
+  }, [allAppts, today]);
+
   // Fetch session_intelligence for the client_ids of upcoming bookings.
-  // Pull each client's MOST RECENT extracted row.
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -176,7 +273,6 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
         .order('extracted_at', { ascending: false });
       if (cancelled) return;
       if (error || !data) { setIntelByClient({}); return; }
-      // Keep only the most recent per client_id
       const byClient = {};
       data.forEach(row => {
         if (!byClient[row.client_id]) byClient[row.client_id] = row.extracted;
@@ -188,8 +284,6 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
   }, [therapist?.id, upcomingBookings.map(b => b.clientId).join(',')]);
 
   // Transform bookings + intel into briefing card shape.
-  // Fall back to placeholders if there are zero upcoming bookings
-  // (new therapist, empty schedule). Real but empty = friendly hint card.
   const upcoming = useMemo(() => {
     if (!upcomingBookings.length) {
       return PLACEHOLDER_UPCOMING.map((c, i) => ({ ...c, isPlaceholder: true }));
@@ -206,11 +300,34 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       fontFamily: F.sans,
     }}>
       <UpNextCarousel upcoming={upcoming} />
-      <BodyLoadCard load={PLACEHOLDER_LOAD} />
-      <RevenueCard revenue={PLACEHOLDER_REVENUE} />
+      <BodyLoadCard load={todayLoad || PLACEHOLDER_LOAD} />
+      <RevenueCard revenue={weekRevenue || PLACEHOLDER_REVENUE} />
       <FillGapCard gap={PLACEHOLDER_GAP} />
     </aside>
   );
+}
+
+/* =============================================================
+ * Body load: service-name keyword to load factor
+ * Per founder playbook formula table.
+ * ============================================================= */
+
+const LOAD_KEYWORDS = [
+  // High (1.0)
+  { match: /\b(deep tissue|sports|trigger point|myofascial|neuromuscular)\b/i, factor: 1.0 },
+  // Medium (0.6)
+  { match: /\b(swedish|relaxation|integrative|custom|full body)\b/i, factor: 0.6 },
+  // Low-medium (0.5)
+  { match: /\b(hot stone|aromatherapy|cupping|gua sha)\b/i, factor: 0.5 },
+  // Low (0.4)
+  { match: /\b(prenatal|geriatric|lymphatic|reflexology|foot|scalp)\b/i, factor: 0.4 },
+];
+function loadFactorFor(serviceName) {
+  if (!serviceName) return 0.7;
+  for (const k of LOAD_KEYWORDS) {
+    if (k.match.test(serviceName)) return k.factor;
+  }
+  return 0.7; // fallback per playbook
 }
 
 /* =============================================================
