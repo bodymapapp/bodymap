@@ -12,6 +12,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import FounderMassSms from "./FounderMassSms";
+import AiCostCard from "./AiCostCard";
 
 const ADMIN_EMAILS = new Set([
   "bodymap01@gmail.com",
@@ -573,6 +574,13 @@ export default function FounderDashboard() {
           <InlineStat n={s.cold} label="need nudge" tint={C.fall} onClick={() => activateFilter("cold")} active={cohortFilter === "cold"} />
           <InlineStat n={s.champions} label="champions" tint={C.rise} onClick={() => activateFilter("champions")} active={cohortFilter === "champions"} />
         </div>
+
+        {/* AI cost meter. HK May 14 2026: 'I need to know how much
+            the website is costing me in terms of AI cost.' Tracks
+            every Anthropic API call made by the platform code (not
+            HK's dev work in Claude.ai chat, that is separate). Reads
+            from ai_call_log via the ai_cost_rollup view. */}
+        <AiCostCard />
 
         {/* Shared filter bar - applies to all three tables */}
         <div style={{ marginTop: 20, marginBottom: 14 }}>

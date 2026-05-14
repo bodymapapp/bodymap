@@ -22,6 +22,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiCall } from "../_shared/ai_cost.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,6 +142,7 @@ ${corpus}`;
       content: m.content,
     }));
 
+    const FOUNDER_MODEL = "claude-opus-4-7";
     const anthropicRes = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -149,7 +151,7 @@ ${corpus}`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-opus-4-7",
+        model: FOUNDER_MODEL,
         max_tokens: 2048,
         system: systemPrompt,
         messages: userMessages,
@@ -158,6 +160,16 @@ ${corpus}`;
 
     if (!anthropicRes.ok) {
       const errText = await anthropicRes.text();
+      await logAiCall({
+        supabase,
+        caller: "founder-chat",
+        purpose: "founder_chat",
+        model: FOUNDER_MODEL,
+        usage: null,
+        therapist_id: null,
+        success: false,
+        error_message: errText.slice(0, 200),
+      });
       return new Response(JSON.stringify({
         error: "Anthropic API error",
         details: errText,
@@ -169,6 +181,16 @@ ${corpus}`;
 
     const data = await anthropicRes.json();
     const responseText = data.content?.[0]?.text ?? "(empty response)";
+    // Log the call so the founder dashboard counter sees it.
+    await logAiCall({
+      supabase,
+      caller: "founder-chat",
+      purpose: "founder_chat",
+      model: FOUNDER_MODEL,
+      usage: data?.usage,
+      therapist_id: null,
+      success: true,
+    });
 
     return new Response(JSON.stringify({
       message: responseText,

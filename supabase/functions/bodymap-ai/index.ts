@@ -25,6 +25,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logAiCall } from "../_shared/ai_cost.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -173,6 +174,7 @@ serve(async (req) => {
     // PUBLIC MODE: marketing demo. No auth, no rate limit per user
     // because there is no user. Could be abused so we keep tokens low.
     if (mode === "public") {
+      const PUBLIC_MODEL = "claude-haiku-4-5-20251001";
       const response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: {
@@ -181,13 +183,33 @@ serve(async (req) => {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: PUBLIC_MODEL,
           max_tokens: 512,
           system: publicSystemPrompt,
           messages,
         }),
       });
       const data = await response.json();
+      // Log the call so the founder dashboard counter sees it.
+      // No therapist_id since this is the unauthenticated demo.
+      try {
+        const logSupabase = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        );
+        await logAiCall({
+          supabase: logSupabase,
+          caller: "bodymap-ai",
+          purpose: "public_demo",
+          model: PUBLIC_MODEL,
+          usage: data?.usage,
+          therapist_id: null,
+          success: response.ok,
+          error_message: response.ok ? undefined : JSON.stringify(data).slice(0, 200),
+        });
+      } catch (e) {
+        console.error("[bodymap-ai public] log failed:", e);
+      }
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -272,6 +294,7 @@ serve(async (req) => {
 
       const draftUserMsg = buildDraftUserMessage(sessionData, draftKind);
       const draftSystem = buildDraftSystemPrompt(draftKind);
+      const DRAFT_MODEL = "claude-haiku-4-5-20251001";
 
       const draftResponse = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -281,7 +304,7 @@ serve(async (req) => {
           "anthropic-version": "2023-06-01",
         },
         body: JSON.stringify({
-          model: "claude-haiku-4-5-20251001",
+          model: DRAFT_MODEL,
           max_tokens: 250,
           system: draftSystem,
           messages: [{ role: "user", content: draftUserMsg }],
@@ -290,6 +313,16 @@ serve(async (req) => {
 
       if (!draftResponse.ok) {
         const errText = await draftResponse.text();
+        await logAiCall({
+          supabase,
+          caller: "bodymap-ai",
+          purpose: `outreach_draft_${draftKind}`,
+          model: DRAFT_MODEL,
+          usage: null,
+          therapist_id: therapistId,
+          success: false,
+          error_message: errText.slice(0, 200),
+        });
         return new Response(JSON.stringify({
           error: "Anthropic API error",
           details: errText,
@@ -301,6 +334,16 @@ serve(async (req) => {
 
       const draftData = await draftResponse.json();
       const draftText = (draftData?.content?.[0]?.text || "").trim();
+      // Log the call so the founder dashboard counter sees it.
+      await logAiCall({
+        supabase,
+        caller: "bodymap-ai",
+        purpose: `outreach_draft_${draftKind}`,
+        model: DRAFT_MODEL,
+        usage: draftData?.usage,
+        therapist_id: therapistId,
+        success: true,
+      });
 
       // Increment draft counter on success
       await supabase
@@ -348,6 +391,7 @@ serve(async (req) => {
     }
 
     // Call Anthropic
+    const PRACTICE_MODEL = "claude-haiku-4-5-20251001";
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -356,7 +400,7 @@ serve(async (req) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-haiku-4-5-20251001",
+        model: PRACTICE_MODEL,
         max_tokens: 1024,
         system: buildPracticeSystemPrompt(context || ""),
         messages,
@@ -365,6 +409,16 @@ serve(async (req) => {
 
     if (!response.ok) {
       const errText = await response.text();
+      await logAiCall({
+        supabase,
+        caller: "bodymap-ai",
+        purpose: "practice_q",
+        model: PRACTICE_MODEL,
+        usage: null,
+        therapist_id: therapistId,
+        success: false,
+        error_message: errText.slice(0, 200),
+      });
       return new Response(JSON.stringify({
         error: "Anthropic API error",
         details: errText,
@@ -375,6 +429,16 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    // Log the call so the founder dashboard counter sees it.
+    await logAiCall({
+      supabase,
+      caller: "bodymap-ai",
+      purpose: "practice_q",
+      model: PRACTICE_MODEL,
+      usage: data?.usage,
+      therapist_id: therapistId,
+      success: true,
+    });
 
     // Increment usage counter ONLY on successful response. Use upsert
     // to handle the first question of the month cleanly.
