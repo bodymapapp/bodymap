@@ -35,9 +35,9 @@ const F = {
   sans: '-apple-system, BlinkMacSystemFont, "Inter", system-ui, sans-serif',
 };
 
-export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession }) {
-  const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function ClientProfile({ client, therapistId, therapist, onBack, onSelectSession, previewProfile = null }) {
+  const [profile, setProfile] = useState(previewProfile);
+  const [loading, setLoading] = useState(!previewProfile);
 
   // Open/closed state for each section. All sections default to open
   // so the page is fully informative on first visit; the therapist
@@ -52,6 +52,14 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
 
   useEffect(() => {
+    // If a previewProfile is provided (sample-client demo case), use
+    // it directly without hitting Supabase. Real therapist clients go
+    // through the normal fetch path.
+    if (previewProfile) {
+      setProfile(previewProfile);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     async function load() {
       setLoading(true);
@@ -71,7 +79,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
     }
     if (client?.id && therapistId) load();
     return () => { cancelled = true; };
-  }, [client?.id, therapistId]);
+  }, [client?.id, therapistId, previewProfile]);
 
   // Convenience derived values for section subtitles + counts
   const totalSessions = profile?.stats?.lifetimeSessions || 0;

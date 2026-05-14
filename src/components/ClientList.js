@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/supabase";
 import AddClientModal from "./AddClientModal";
+import SampleClientPreview from "./SampleClientPreview";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -27,6 +28,7 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
   const [showAddModal, setShowAddModal] = useState(false);
   const [justAddedToast, setJustAddedToast] = useState("");
   const [nudgeDismissed, setNudgeDismissed] = React.useState(false);
+  const [previewSample, setPreviewSample] = React.useState(null);
   const isPaid = true; // All clients visible on all tiers - only pattern depth is tier-limited
 
   useEffect(() => {
@@ -254,7 +256,7 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
             {/* Preview banner, sets expectations that the cards below are a glimpse of the future */}
             <div style={{ background:'#FFF7ED', border:'1.5px dashed #F97316', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#9A3412', display:'flex', alignItems:'center', gap:10 }}>
               <span style={{ fontSize:16 }}>👁️</span>
-              <div><strong>A preview of your practice.</strong> These are sample clients. The real ones appear the moment someone fills out your body map. Tap <strong>Send Intake</strong> above to invite your first.</div>
+              <div><strong>A preview of your practice.</strong> These are sample clients. <strong>Tap any card</strong> to see what a populated profile looks like, with the full four-document session journey.</div>
             </div>
 
             {/* Retention insight card, the exact thing the Day 2 email points at */}
@@ -287,41 +289,17 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(280px, 1fr))', gap:12 }}>
               {[
-                { id:'s1', full_name:'Sarah Mitchell', focus:'Neck, Upper Back', sessions:7, status:'active', last:'2 days ago', initials:'SM', color:'#2A5741' },
-                { id:'s2', full_name:'Jennifer Kim',   focus:'Lower Back, Hip', sessions:4, status:'active', last:'5 days ago', initials:'JK', color:'#6B9E80' },
-                { id:'s3', full_name:'Maria Lopez',    focus:'Shoulders',       sessions:12,status:'active', last:'1 week ago',  initials:'ML', color:'#C9A84C' },
+                { id:'s1', full_name:'Sarah Mitchell', focus:'Neck, Upper Back', sessions:7, status:'active', last:'2 days ago', initials:'SM', color:'#2A5741', interactive: true },
+                { id:'s2', full_name:'Jennifer Kim',   focus:'Lower Back, Hip', sessions:4, status:'active', last:'5 days ago', initials:'JK', color:'#6B9E80', interactive: true },
+                { id:'s3', full_name:'Maria Lopez',    focus:'Shoulders',       sessions:12,status:'active', last:'1 week ago',  initials:'ML', color:'#C9A84C', interactive: true },
                 { id:'s4', full_name:'Rachel Torres',  focus:'Full Body',       sessions:2, status:'new',    last:'New client',  initials:'RT', color:'#9CA3AF' },
-                { id:'s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626', highlight:true },
+                { id:'s5', full_name:'Dana Park',      focus:'Neck, Shoulders', sessions:9, status:'lapsed', last:'68 days ago', initials:'DP', color:'#DC2626', highlight:true, interactive: true },
               ].map(c => (
-                <div key={c.id} style={{
-                  background:'#FFFFFF',
-                  borderRadius:12,
-                  padding:16,
-                  boxShadow: c.highlight ? '0 2px 8px rgba(220, 38, 38, 0.12)' : '0 1px 4px rgba(0,0,0,0.07)',
-                  opacity: 0.9,
-                  border: c.highlight ? '1.5px solid #F4C46C' : '1px solid #E5E7EB',
-                  position: 'relative',
-                }}>
-                  {c.highlight && (
-                    <div style={{ position: 'absolute', top: -8, right: 12, background: '#F4C46C', color: '#78350F', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, letterSpacing: "0.04em" }}>
-                      NEEDS A NUDGE
-                    </div>
-                  )}
-                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                    <div style={{ width:40, height:40, borderRadius:'50%', background:c.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0 }}>{c.initials}</div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontSize:14, fontWeight:700, color:'#1F2937' }}>{c.full_name}</div>
-                      <div style={{ fontSize:12, color:'#6B7280' }}>Last: {c.last}</div>
-                    </div>
-                    <div style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:20,
-                      background: c.status==='active'?'#DCFCE7':c.status==='new'?'#EDE9FE':'#FEE2E2',
-                      color: c.status==='active'?'#16A34A':c.status==='new'?'#7C3AED':'#DC2626' }}>
-                      {c.status==='active'?'🌿 Active':c.status==='new'?'🌸 New':'🍂 Lapsed'}
-                    </div>
-                  </div>
-                  <div style={{ fontSize:12, color:'#6B7280', marginBottom:4 }}>📍 Focus: <strong style={{ color:'#1F2937' }}>{c.focus}</strong></div>
-                  <div style={{ fontSize:12, color:'#6B7280' }}>📋 {c.sessions} sessions recorded</div>
-                </div>
+                <SampleCard
+                  key={c.id}
+                  c={c}
+                  onPreview={() => setPreviewSample(c)}
+                />
               ))}
             </div>
           </div>
@@ -405,6 +383,12 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
             setTimeout(() => setJustAddedToast(""), 5000);
             await loadClients();
           }}
+        />
+      )}
+      {previewSample && (
+        <SampleClientPreview
+          sampleClient={previewSample}
+          onClose={() => setPreviewSample(null)}
         />
       )}
     </div>
@@ -566,5 +550,90 @@ function LockedClientCard({ client, initials, avatarColor }) {
       </div>
     </div>
     </a>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────
+// SampleCard
+// Sample client card rendered in the zero-state of the Clients tab.
+// Three of the five sample cards are interactive: tap to open a
+// preview modal showing what a real, populated client profile will
+// look like once the therapist has clients of their own.
+// The remaining two render the same visual but are non-interactive
+// (no preview to show for those).
+// ────────────────────────────────────────────────────────────────
+function SampleCard({ c, onPreview }) {
+  const [hover, setHover] = React.useState(false);
+  const interactive = !!c.interactive;
+  return (
+    <div
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onClick={interactive ? onPreview : undefined}
+      onKeyDown={(e) => {
+        if (interactive && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onPreview();
+        }
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background:'#FFFFFF',
+        borderRadius:12,
+        padding:16,
+        boxShadow: hover && interactive
+          ? '0 6px 18px rgba(28, 43, 34, 0.12)'
+          : c.highlight ? '0 2px 8px rgba(220, 38, 38, 0.12)' : '0 1px 4px rgba(0,0,0,0.07)',
+        opacity: interactive ? 1 : 0.85,
+        border: c.highlight ? '1.5px solid #F4C46C' : '1px solid #E5E7EB',
+        position: 'relative',
+        cursor: interactive ? 'pointer' : 'default',
+        transform: hover && interactive ? 'translateY(-2px)' : 'none',
+        transition: 'box-shadow 0.18s ease, transform 0.18s ease',
+      }}>
+      {c.highlight && (
+        <div style={{ position: 'absolute', top: -8, right: 12, background: '#F4C46C', color: '#78350F', fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10, letterSpacing: "0.04em" }}>
+          NEEDS A NUDGE
+        </div>
+      )}
+      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+        <div style={{ width:40, height:40, borderRadius:'50%', background:c.color, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:700, flexShrink:0 }}>{c.initials}</div>
+        <div style={{ flex:1, minWidth: 0 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'#1F2937' }}>{c.full_name}</div>
+          <div style={{ fontSize:12, color:'#6B7280' }}>Last: {c.last}</div>
+        </div>
+        <div style={{ fontSize:11, fontWeight:600, padding:'3px 10px', borderRadius:20,
+          background: c.status==='active'?'#DCFCE7':c.status==='new'?'#EDE9FE':'#FEE2E2',
+          color: c.status==='active'?'#16A34A':c.status==='new'?'#7C3AED':'#DC2626' }}>
+          {c.status==='active'?'🌿 Active':c.status==='new'?'🌸 New':'🍂 Lapsed'}
+        </div>
+      </div>
+      <div style={{ fontSize:12, color:'#6B7280', marginBottom:4 }}>📍 Focus: <strong style={{ color:'#1F2937' }}>{c.focus}</strong></div>
+      <div style={{ fontSize:12, color:'#6B7280' }}>📋 {c.sessions} sessions recorded</div>
+      {interactive && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: '1px dashed #E5E7EB',
+          fontSize: 11,
+          fontWeight: 700,
+          color: hover ? '#2A5741' : '#6B7280',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          transition: 'color 0.18s ease',
+        }}>
+          <span>Tap to preview</span>
+          <span style={{
+            fontSize: 14,
+            transform: hover ? 'translateX(2px)' : 'translateX(0)',
+            transition: 'transform 0.18s ease',
+          }}>→</span>
+        </div>
+      )}
+    </div>
   );
 }
