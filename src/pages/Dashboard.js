@@ -1593,6 +1593,20 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
+  // Within 4.3 'Booking & cancellation policies' the two policy cards
+  // are individually collapsible so therapists can focus on one at a
+  // time. Default: both collapsed when 4.3 opens. State is a Set so
+  // both can be open simultaneously, unlike openRow which is one-at-a-
+  // time at the section level.
+  const [openPolicySubs, setOpenPolicySubs] = React.useState(() => new Set());
+  const togglePolicySub = React.useCallback((id) => {
+    setOpenPolicySubs(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
   // Hash-based deep-link to a specific Settings collapsible section.
   // OnboardingChecklist links like /dashboard/settings#import use this to
   // auto-open the row matching the hash and scroll it into view. Critical
@@ -3220,9 +3234,102 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'cancellation'}
         onToggle={toggleRow}
       >
-        <BookingPolicies therapist={therapist} />
-        <div style={{ height: 14 }} />
-        <CancellationPolicy therapist={therapist} />
+        {/* Two sibling policy editors inside 4.3, each individually
+            collapsible. Same visual chrome on both rows (chevron +
+            label + on/off pill). Click anywhere on the header bar to
+            expand or collapse. Both start collapsed so opening 4.3
+            shows two clean rows the therapist can choose from rather
+            than a wall of two stacked editors. */}
+        {(() => {
+          const PolicySubRow = ({ id, title, blurb, on, children }) => {
+            const isOpen = openPolicySubs.has(id);
+            return (
+              <div style={{
+                background: '#fff',
+                border: '1px solid #E5E7EB',
+                borderRadius: 12,
+                overflow: 'hidden',
+                marginBottom: 10,
+              }}>
+                <button
+                  onClick={() => togglePolicySub(id)}
+                  style={{
+                    width: '100%',
+                    background: isOpen ? '#FAF6EE' : '#fff',
+                    border: 'none',
+                    borderBottom: isOpen ? '1px solid #E5E7EB' : 'none',
+                    padding: '14px 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    transition: 'background 0.15s',
+                  }}
+                >
+                  <span style={{
+                    display: 'inline-block',
+                    width: 14, height: 14, flexShrink: 0,
+                    color: '#6B7280',
+                    transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.18s',
+                  }}>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="5 3 11 8 5 13" />
+                    </svg>
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', lineHeight: 1.3 }}>
+                      {title}
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
+                      {blurb}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    padding: '3px 9px',
+                    borderRadius: 999,
+                    background: on ? '#DCFCE7' : '#F3F4F6',
+                    color: on ? '#166534' : '#6B7280',
+                    border: `1px solid ${on ? '#86EFAC' : '#E5E7EB'}`,
+                    flexShrink: 0,
+                  }}>
+                    {on ? 'On' : 'Off'}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div style={{ padding: '12px 14px 14px' }}>
+                    {children}
+                  </div>
+                )}
+              </div>
+            );
+          };
+          return (
+            <>
+              <PolicySubRow
+                id="booking-policies"
+                title="Booking policies"
+                blurb="Practice rules clients agree to before confirming a booking"
+                on={!!therapist?.booking_policies_enabled}
+              >
+                <BookingPolicies therapist={therapist} />
+              </PolicySubRow>
+              <PolicySubRow
+                id="cancellation-policy"
+                title="Cancellation policy"
+                blurb="What you charge for late cancels, reschedules, and no-shows"
+                on={!!therapist?.cancellation_policy_enabled}
+              >
+                <CancellationPolicy therapist={therapist} />
+              </PolicySubRow>
+            </>
+          );
+        })()}
       </CollapsibleSection>
       </>)}
       {matchesSearch('Custom SMS sender (Twilio)', '', '4.4') && (<>
