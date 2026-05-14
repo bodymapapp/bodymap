@@ -364,7 +364,7 @@ export default function Signup() {
       )}
 
       {/* ── RIGHT PANEL ── */}
-      <div style={{ flex: 1, background: '#FAFAF8', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isDesktop ? '32px 48px' : '24px 20px', overflowY: 'auto' }}>
+      <div style={{ flex: 1, background: '#FAFAF8', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: isDesktop ? '32px 48px' : 'max(24px, env(safe-area-inset-top, 24px)) 20px max(24px, env(safe-area-inset-bottom, 24px))', overflowY: 'auto' }}>
 
         {/* Mobile logo. Smaller size, no tagline on this page
             since the context (signup) already implies who we are. */}

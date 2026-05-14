@@ -106,7 +106,7 @@ export default function FounderSeedDemo() {
   const recapBase = `${window.location.origin}/recap`;
 
   return (
-    <div style={{ background: T.cream, minHeight: '100vh', color: T.ink, fontFamily: T.sans, padding: '32px 20px' }}>
+    <div style={{ background: T.cream, minHeight: '100vh', color: T.ink, fontFamily: T.sans, padding: 'max(32px, env(safe-area-inset-top, 32px)) 20px calc(32px + env(safe-area-inset-bottom, 0px))' }}>
       <div style={{ maxWidth: 880, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div>

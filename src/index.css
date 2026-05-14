@@ -61,6 +61,45 @@ body { overflow-x: hidden; }
 .bm-tabbar { scrollbar-width: none !important; }
 .bm-tabbar::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Safe-area utilities
+   index.html sets viewport-fit=cover + status-bar-style=black-translucent
+   which makes iOS extend content under the status bar and home indicator
+   in PWA mode. Pages that don't have their own dashboard chrome use these
+   utilities so the top header doesn't sit under the notch and the bottom
+   content can scroll clear of the home indicator. Page-specific bottom
+   nav clearance still uses --bm-nav-clearance defined in :root.
+   ───────────────────────────────────────────────────────────────────── */
+
+/* Top of outer container of a page. Adds the iOS top inset. */
+.bm-safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Header that sits at the top of a non-dashboard page. Use this on
+   the visible header element so the iOS status bar doesn't overlap
+   it. The 14px floor keeps the spacing pleasant on browsers that
+   return 0 for the inset (every non-iOS browser). */
+.bm-safe-top-pad {
+  padding-top: max(14px, env(safe-area-inset-top, 14px));
+}
+
+/* Bottom of outer container of a page. Adds the iOS home indicator
+   inset only. Use on pages that don't have a fixed bottom nav.
+   For pages with the dashboard's fixed bottom nav, use .bm-safe-nav
+   below which adds nav height + inset + breathing room. */
+.bm-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Bottom padding sized to clear the dashboard's fixed bottom nav
+   plus the iOS home indicator plus breathing room. Use this on any
+   inner container that scrolls under the bottom nav so the last row
+   isn't hidden behind it. Same as --bm-nav-clearance above. */
+.bm-safe-nav {
+  padding-bottom: var(--bm-nav-clearance);
+}
+
 /* ── MOBILE FIXES (≤640px) ── */
 @media (max-width: 640px) {
 

@@ -52,7 +52,7 @@ export default function Login() {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '24px',
+      padding: 'max(24px, env(safe-area-inset-top, 24px)) 24px max(24px, env(safe-area-inset-bottom, 24px))',
       fontFamily: 'system-ui, sans-serif'
     }}>
       <div style={{ maxWidth: '400px', width: '100%' }}>

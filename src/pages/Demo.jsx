@@ -2359,7 +2359,7 @@ const ReviewScreen = ({ clientInfo, onDone }) => {
       <div
         style={{
           background: C.bg,
-          padding: "60px 20px",
+          padding: "max(60px, env(safe-area-inset-top, 60px)) 20px max(60px, env(safe-area-inset-bottom, 60px))",
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
@@ -2491,7 +2491,7 @@ const ReviewScreen = ({ clientInfo, onDone }) => {
     <div
       style={{
         background: C.bg,
-        padding: "24px 20px 60px",
+        padding: "max(24px, env(safe-area-inset-top, 24px)) 20px calc(60px + env(safe-area-inset-bottom, 0px))",
         minHeight: "100vh",
       }}
     >
@@ -2656,7 +2656,7 @@ const PrefScreen = ({
     <div
       style={{
         background: C.bg,
-        padding: "18px 20px 60px",
+        padding: "max(18px, env(safe-area-inset-top, 18px)) 20px calc(60px + env(safe-area-inset-bottom, 0px))",
         minHeight: "100vh",
       }}
     >
@@ -2948,7 +2948,7 @@ const TherapistView = ({
       style={{
         background: "#EEF2EC",
         minHeight: "100vh",
-        padding: "0 20px 60px",
+        padding: "env(safe-area-inset-top, 0px) 20px calc(60px + env(safe-area-inset-bottom, 0px))",
       }}
     >
       <div
@@ -3508,7 +3508,7 @@ const HistoryScreen = ({ sessions, clientName, onBack, onNewSession }) => {
       <div
         style={{
           background: C.bg,
-          padding: "60px 20px",
+          padding: "max(60px, env(safe-area-inset-top, 60px)) 20px max(60px, env(safe-area-inset-bottom, 60px))",
           minHeight: "100vh",
           textAlign: "center",
         }}
@@ -3559,7 +3559,7 @@ const HistoryScreen = ({ sessions, clientName, onBack, onNewSession }) => {
     <div
       style={{
         background: C.bg,
-        padding: "20px 20px 60px",
+        padding: "max(20px, env(safe-area-inset-top, 20px)) 20px calc(60px + env(safe-area-inset-bottom, 0px))",
         minHeight: "100vh",
       }}
     >

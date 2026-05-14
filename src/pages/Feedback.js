@@ -78,12 +78,12 @@ export default function Feedback() {
   const allAnswered = Object.keys(ratings).length === DIMS.length;
   return (
     <div style={{ minHeight:"100vh", background:C.bg }}>
-      <div style={{ background:"linear-gradient(155deg,#2A5741,#1E4230)", padding:"28px 20px 24px", textAlign:"center" }}>
+      <div style={{ background:"linear-gradient(155deg,#2A5741,#1E4230)", padding:"max(28px, env(safe-area-inset-top, 28px)) 20px 24px", textAlign:"center" }}>
         <BMLogo size={32} variant="dark" showWordmark={true} />
         <h1 style={{ fontFamily:"Georgia, serif", fontSize:26, fontWeight:600, color:"#fff", margin:0 }}>{therapist.business_name || "MyBodyMap"}</h1>
         <p style={{ fontSize:13, color:"rgba(255,255,255,0.75)", marginTop:4 }}>Session Feedback</p>
       </div>
-      <div style={{ padding:"20px 16px 40px", maxWidth:500, margin:"0 auto" }}>
+      <div style={{ padding:"20px 16px calc(40px + env(safe-area-inset-bottom, 0px))", maxWidth:500, margin:"0 auto" }}>
         <p style={{ fontFamily:"Georgia, serif", fontSize:15, color:C.text, textAlign:"center", marginBottom:24 }}>How was your session? Your honest feedback helps us improve.</p>
         {DIMS.map(dim => (
           <div key={dim.key} style={{ background:C.white, borderRadius:16, padding:"18px 16px", marginBottom:12, border: ratings[dim.key]!==undefined ? "1.5px solid #6B9E80" : "1.5px solid #E8E4DC" }}>

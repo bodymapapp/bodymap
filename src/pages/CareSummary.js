@@ -153,9 +153,9 @@ export default function CareSummary() {
   const sessionDate = new Date(session.created_at).toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric", year:"numeric" });
 
   return (
-    <div style={{ minHeight:"100vh", background:C.beige, fontFamily:"system-ui, sans-serif", padding:"0 0 60px 0" }}>
+    <div style={{ minHeight:"100vh", background:C.beige, fontFamily:"system-ui, sans-serif", padding:"0 0 calc(60px + env(safe-area-inset-bottom, 0px)) 0" }}>
       {/* Header */}
-      <div style={{ background:`linear-gradient(135deg, ${C.sage}, ${C.forest})`, padding:"32px 24px", textAlign:"center", color:"white" }}>
+      <div style={{ background:`linear-gradient(135deg, ${C.sage}, ${C.forest})`, padding:"max(32px, env(safe-area-inset-top, 32px)) 24px 32px", textAlign:"center", color:"white" }}>
         <div style={{ fontSize:"32px", marginBottom:"8px" }}>🌿</div>
         <h1 style={{ fontFamily:"Georgia, serif", fontSize:"24px", fontWeight:"700", margin:"0 0 4px 0" }}>Care Summary</h1>
         <p style={{ fontSize:"14px", opacity:0.85, margin:0 }}>{therapistName}</p>

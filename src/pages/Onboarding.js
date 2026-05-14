@@ -141,7 +141,7 @@ export default function Onboarding() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui' }}>
+    <div style={{ minHeight: '100vh', background: C.lightGray, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'max(24px, env(safe-area-inset-top, 24px)) 24px max(24px, env(safe-area-inset-bottom, 24px))', fontFamily: 'system-ui' }}>
       <div style={{ maxWidth: '480px', width: '100%', background: 'white', borderRadius: '16px', padding: '40px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <BMLogo size={44} variant="dark" showWordmark={true} showTagline={true} />

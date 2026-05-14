@@ -1961,7 +1961,7 @@ export default function BookingPage() {
 
   return (
     <div style={{minHeight:'100vh',background:C.beige,fontFamily:'system-ui,sans-serif'}}>
-      <div style={{background:C.white,borderBottom:`1px solid ${C.light}`,padding:'14px 20px',position:'sticky',top:0,zIndex:10}}>
+      <div style={{background:C.white,borderBottom:`1px solid ${C.light}`,padding:'max(14px, env(safe-area-inset-top, 14px)) 20px 14px',position:'sticky',top:0,zIndex:10}}>
         <div style={{maxWidth:560,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             {therapist.photo_url
@@ -1982,7 +1982,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px 100px'}}>
+      <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px calc(100px + env(safe-area-inset-bottom, 0px))'}}>
 
         {/* STEP 1 */}
         {step===1&&(

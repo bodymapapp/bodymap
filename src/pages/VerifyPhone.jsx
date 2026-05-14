@@ -353,7 +353,7 @@ const pageStyle = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  padding: '24px 20px',
+  padding: 'max(24px, env(safe-area-inset-top, 24px)) 20px max(24px, env(safe-area-inset-bottom, 24px))',
   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif",
 };
 

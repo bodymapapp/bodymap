@@ -544,7 +544,9 @@ export default function DocumentLayout({
       <div className="bm-doc-wrap" style={{
         maxWidth: isDrawer ? '100%' : 880,
         margin: '0 auto',
-        padding: isDrawer ? '12px 14px 18px' : '14px 16px 24px',
+        padding: isDrawer
+          ? '12px 14px 18px'
+          : 'max(14px, env(safe-area-inset-top, 14px)) 16px calc(24px + env(safe-area-inset-bottom, 0px))',
       }}>
 
         {/* Identity band */}

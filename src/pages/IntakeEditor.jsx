@@ -725,12 +725,12 @@ export default function IntakeEditor() {
   const totalConditions = schema.medical_checklist_enabled ? conditions.length : 0;
 
   return (
-    <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 60 }}>
+    <div style={{ background: C.bg, minHeight: '100vh', paddingBottom: 'calc(60px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Top bar */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 10,
         background: '#fff', borderBottom: `1px solid ${C.light}`,
-        padding: '12px 16px',
+        padding: 'max(12px, env(safe-area-inset-top, 12px)) 16px 12px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         gap: 12, flexWrap: 'wrap',
       }}>
