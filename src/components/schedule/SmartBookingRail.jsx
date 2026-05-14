@@ -751,10 +751,14 @@ function UpNextCarousel({ upcoming, isMobile = false }) {
 }
 
 function BriefCard({ client, active, isMobile = false }) {
-  // Unified visual family. First card gets a thick forest left-edge
-  // stripe + 'NEXT' pill to identify it as the upcoming session.
-  // All other cards are the same plain paper card. No more beige/
-  // forest/paper jumble. Family reads as one set, not three styles.
+  // Hero vs secondary hierarchy. The next-up card commands attention
+  // (bigger type, more padding, generous whitespace, forest accent).
+  // Other cards in the carousel are visibly secondary: tighter,
+  // smaller name, lighter weight. This creates visual pull toward
+  // the one thing that matters next.
+  //
+  // HK May 14 evening: 'The carousel and overall design looks a
+  // little weak. It is not pulling me in.' Hero treatment fixes that.
   const isNext = client.accent === 'forest';
 
   return (
@@ -766,25 +770,44 @@ function BriefCard({ client, active, isMobile = false }) {
       width: isMobile ? '100%' : 268,
       minWidth: isMobile ? '100%' : 268,
       scrollSnapAlign: 'start',
-      borderRadius: 12,
-      padding: '12px 14px',
-      paddingLeft: isNext ? 18 : 14,
+      borderRadius: 14,
+      // Hero gets a larger pad and more vertical room; secondary cards
+      // are tighter so the visual difference is felt at a glance.
+      padding: isNext ? '16px 16px 18px' : '12px 14px',
+      paddingLeft: isNext ? 22 : 14,
       position: 'relative',
       overflow: 'hidden',
-      background: C.paper,
+      background: isNext
+        ? `linear-gradient(180deg, #FFFFFF 0%, ${C.cream} 100%)`
+        : C.paper,
       color: C.ink,
       border: `1px solid ${isNext ? C.forestMid : C.line}`,
-      boxShadow: isNext ? '0 1px 4px rgba(31,58,44,0.08)' : 'none',
+      boxShadow: isNext
+        ? '0 4px 14px rgba(31,58,44,0.10), 0 1px 3px rgba(31,58,44,0.06)'
+        : '0 1px 2px rgba(0,0,0,0.03)',
     }}>
-      {/* Left edge stripe for the next-up card */}
+      {/* Left edge stripe for the next-up card. Thicker for the hero. */}
       {isNext && (
         <div style={{
           position: 'absolute',
           left: 0,
           top: 0,
           bottom: 0,
-          width: 4,
-          background: C.forestMid,
+          width: 6,
+          background: `linear-gradient(180deg, ${C.forestMid} 0%, ${C.forest} 100%)`,
+        }} />
+      )}
+
+      {/* Subtle sheen in top-right of hero only. Adds depth. */}
+      {isNext && (
+        <div style={{
+          position: 'absolute',
+          top: -30,
+          right: -30,
+          width: 90,
+          height: 90,
+          background: 'radial-gradient(circle, rgba(134,239,172,0.18) 0%, transparent 70%)',
+          pointerEvents: 'none',
         }} />
       )}
 
@@ -793,20 +816,25 @@ function BriefCard({ client, active, isMobile = false }) {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'baseline',
-        marginBottom: 4,
+        marginBottom: isNext ? 8 : 4,
+        position: 'relative',
       }}>
-        <span style={{ fontSize: 10.5, fontWeight: 600, color: C.muted, letterSpacing: '0.03em' }}>
+        <span style={{
+          fontSize: isNext ? 12 : 10.5,
+          fontWeight: 700,
+          color: isNext ? C.forestMid : C.muted,
+          letterSpacing: '0.04em',
+        }}>
           {client.when} · {client.duration} min
         </span>
         {isNext ? (
           <span style={{
-            fontSize: 9,
+            fontSize: 10,
             fontWeight: 700,
-            color: C.forestMid,
-            background: C.brief,
-            border: `1px solid ${C.briefBd}`,
-            borderRadius: 10,
-            padding: '1px 7px',
+            color: '#fff',
+            background: C.forestMid,
+            borderRadius: 12,
+            padding: '3px 10px',
             letterSpacing: '0.08em',
           }}>
             NEXT · {client.countdown}
@@ -820,51 +848,60 @@ function BriefCard({ client, active, isMobile = false }) {
 
       <div style={{
         fontFamily: F.serif,
-        fontSize: 19,
+        // Hero name is much bigger to anchor the eye.
+        fontSize: isNext ? 26 : 16,
         fontWeight: 700,
         lineHeight: 1.05,
-        marginBottom: 1,
+        marginBottom: isNext ? 4 : 1,
         color: C.ink,
+        position: 'relative',
       }}>
         {client.name}
       </div>
       <div style={{
-        fontSize: 11,
+        fontSize: isNext ? 12 : 11,
         color: C.muted,
-        marginBottom: 10,
+        marginBottom: isNext ? 14 : 8,
         lineHeight: 1.35,
+        position: 'relative',
       }}>
         {client.meta}
       </div>
 
-      {/* three points */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+      {/* three points. Hero version has more breathing room. */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isNext ? 10 : 6,
+        position: 'relative',
+      }}>
         {client.points.map((p, i) => (
-          <div key={i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+          <div key={i} style={{ display: 'flex', gap: isNext ? 10 : 7, alignItems: 'flex-start' }}>
             <span style={{
               flexShrink: 0,
-              width: 17,
-              height: 17,
+              width: isNext ? 22 : 17,
+              height: isNext ? 22 : 17,
               borderRadius: '50%',
-              background: isNext ? C.brief : '#F1F5F9',
-              color: isNext ? C.briefBd : C.muted,
-              fontSize: 9,
+              background: isNext ? C.forestMid : '#F1F5F9',
+              color: isNext ? '#fff' : C.muted,
+              fontSize: isNext ? 11 : 9,
               fontWeight: 700,
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              marginTop: 1,
+              marginTop: isNext ? 0 : 1,
+              boxShadow: isNext ? '0 1px 2px rgba(31,58,44,0.18)' : 'none',
             }}>
               {i + 1}
             </span>
-            <div style={{ fontSize: 11.5, lineHeight: 1.4, flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: isNext ? 13 : 11.5, lineHeight: 1.45, flex: 1, minWidth: 0 }}>
               <span style={{
-                fontSize: 9,
+                fontSize: isNext ? 10 : 9,
                 fontWeight: 700,
-                color: isNext ? C.briefBd : C.muted,
-                letterSpacing: '0.06em',
+                color: isNext ? C.sage : C.muted,
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
-                marginRight: 4,
+                marginRight: 5,
                 whiteSpace: 'nowrap',
               }}>
                 {p.label}
@@ -1189,15 +1226,26 @@ function FillGapCard({ gap, therapistFirstName }) {
         }}
         style={{
           width: '100%',
-          background: C.warnBd,
+          background: `linear-gradient(180deg, #E89625 0%, ${C.warnBd} 100%)`,
           color: '#fff',
           border: 'none',
-          borderRadius: 8,
-          padding: '9px 0',
-          fontSize: 12,
+          borderRadius: 10,
+          padding: '12px 0',
+          fontSize: 13,
           fontWeight: 700,
           cursor: 'pointer',
           marginBottom: 6,
+          boxShadow: '0 4px 12px rgba(217,119,6,0.30), 0 1px 2px rgba(217,119,6,0.15)',
+          transition: 'all 0.15s',
+          letterSpacing: '0.01em',
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.transform = 'translateY(-1px)';
+          e.currentTarget.style.boxShadow = '0 6px 18px rgba(217,119,6,0.36), 0 2px 4px rgba(217,119,6,0.18)';
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(217,119,6,0.30), 0 1px 2px rgba(217,119,6,0.15)';
         }}
       >
         Text {gap.bestClient.name.split(' ')[0]} this slot
