@@ -1,84 +1,100 @@
 // src/components/PracticeAgreement.jsx
 //
-// Single live document. Therapist sees the rendered agreement
-// EXACTLY as the client will see it: branded header, forest serif
-// title, warm amber section dividers, signature block at bottom.
+// HK May 14 2026 redesign brief: 'the current policies are not even
+// as good as MassageBook form. Theirs is colorful, comes out nicely
+// in orange and their logo, is easy to read. We have provided 12
+// edit buttons again increasing work. Can you think of a better
+// alternative and design.'
 //
-// Tap any block to highlight + open a small inline edit chip.
-// Edit in place, tap outside to commit.
+// THE NEW APPROACH:
 //
-// Quiet '+' affordances between blocks let the therapist add custom
-// sections without a top-level button cluttering the chrome.
+//   - ONE scrollable preview, branded, looks exactly like what the
+//     client will see
+//   - Tap any paragraph / heading to edit it in place
+//     (contenteditable with a thin amber border, no separate
+//     textarea, no card-list breakup)
+//   - Tap outside (or press Esc) commits the edit
+//   - Floating Save bar appears at the bottom when dirty
+//   - Quiet "+" between sections to add a new section
+//   - Per-section "remove" appears on hover/tap of H2
+//   - MyBodyMap forest green primary + warm amber accent on
+//     headers and the signature block
+//   - "Download / Print PDF" button uses the same render path,
+//     no separate template
 //
-// HK May 14 2026 direction:
-//   - One document the therapist edits inline
-//   - One signature the client provides at intake
-//   - Booking-time hard gate re-acknowledges cancellation policy
-//   - Older clients: PDF export with signature lines
-//   - Visual quality must match or beat MassageBook's printed PDF
-//
-// Visual palette: MyBodyMap forest green with warm amber accent
-// for headers + signature block (gives a presentation feel that
-// the plain green-on-white doesn't).
+// The therapist is editing the live document. No more "12 edit
+// buttons increasing work."
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   DEFAULT_PRACTICE_AGREEMENT,
-  parseAgreementSections,
-  sectionsToMarkdown,
 } from '../lib/practiceAgreement';
 
 const C = {
-  forest: '#2A5741',
-  forestDark: '#1F3A2C',
-  forestMid: '#3D6B4C',
-  sage:   '#5C7A4F',
-  ink:    '#1F2937',
-  inkSoft:'#374151',
-  gray:   '#6B7280',
-  graySoft: '#9CA3AF',
-  line:   '#E5E7EB',
-  lineSoft: '#F3F4F6',
-  cream:  '#FAF6EE',
-  beige:  '#F5EFE0',
-  paper:  '#FFFFFF',
-  amber:  '#D97706',
-  amberSoft: '#FEF3C7',
-  amberBd: '#FCD34D',
-  amberInk: '#92400E',
-  editBg: '#FFFBEB',
-  editBd: '#FBBF24',
+  forest:     '#2A5741',
+  forestMid:  '#3D6B4C',
+  forestInk:  '#1F3A2C',
+  sage:       '#5C7A4F',
+  amber:      '#B87840',
+  amberPale:  '#F5EDD8',
+  amberLine:  '#D4B070',
+  ink:        '#1F2937',
+  inkDim:     '#4B5563',
+  gray:       '#6B7280',
+  line:       '#E5E7EB',
+  lineSoft:   '#F3F4F6',
+  cream:      '#FAF6EE',
+  beige:      '#F5EFE0',
+  paper:      '#FFFFFF',
+  pageBg:     '#FBF8F1',
+  saved:      '#16A34A',
 };
+
+function parseBlocks(text) {
+  if (!text) return [];
+  const lines = text.split('\n');
+  const blocks = [];
+  for (const raw of lines) {
+    const line = raw.replace(/\r$/, '');
+    if (line.startsWith('# ')) {
+      blocks.push({ kind: 'h1', text: line.slice(2) });
+    } else if (line.startsWith('## ')) {
+      blocks.push({ kind: 'h2', text: line.slice(3) });
+    } else if (/^[-*]\s+/.test(line)) {
+      blocks.push({ kind: 'li', text: line.replace(/^[-*]\s+/, '') });
+    } else if (line.trim() === '') {
+      // skip blank lines
+    } else {
+      blocks.push({ kind: 'p', text: line });
+    }
+  }
+  return blocks;
+}
+
+function blocksToMarkdown(blocks) {
+  return blocks.map(b => {
+    if (b.kind === 'h1') return `# ${b.text}`;
+    if (b.kind === 'h2') return `## ${b.text}`;
+    if (b.kind === 'li') return `- ${b.text}`;
+    return b.text;
+  }).join('\n\n');
+}
 
 export default function PracticeAgreement({ therapist }) {
   const initialText = therapist?.practice_agreement_text || '';
   const [text, setText] = useState(initialText);
-  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
-  const editRef = useRef(null);
+  const [editingIdx, setEditingIdx] = useState(null);
+  const [hoveredH2, setHoveredH2] = useState(null);
 
   useEffect(() => {
     setText(therapist?.practice_agreement_text || '');
   }, [therapist?.practice_agreement_text]);
 
-  useEffect(() => {
-    if (!editing) return;
-    function onClick(e) {
-      if (editRef.current && !editRef.current.contains(e.target)) {
-        commitEdit();
-      }
-    }
-    document.addEventListener('mousedown', onClick);
-    return () => document.removeEventListener('mousedown', onClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing]);
-
-  const sections = parseAgreementSections(text);
-  const isEmpty = !text || text.trim().length === 0;
+  const blocks = parseBlocks(text);
   const dirty = text !== initialText;
-  const business = therapist?.business_name || therapist?.full_name || 'Your practice';
 
   async function save() {
     if (!therapist?.id) return;
@@ -109,75 +125,91 @@ export default function PracticeAgreement({ therapist }) {
     setText(DEFAULT_PRACTICE_AGREEMENT);
   }
 
-  function startEdit(idx) {
-    const s = sections[idx];
-    setEditing({ idx, title: s.title, body: s.body });
+  const commitBlockEdit = useCallback((idx, newText) => {
+    setText(prev => {
+      const cur = parseBlocks(prev);
+      if (idx < 0 || idx >= cur.length) return prev;
+      cur[idx] = { ...cur[idx], text: newText };
+      return blocksToMarkdown(cur);
+    });
+    setEditingIdx(null);
+  }, []);
+
+  function removeBlock(idx) {
+    if (!window.confirm('Remove this line?')) return;
+    setText(prev => {
+      const cur = parseBlocks(prev);
+      cur.splice(idx, 1);
+      return blocksToMarkdown(cur);
+    });
   }
 
-  function commitEdit() {
-    if (!editing) return;
-    const next = [...sections];
-    next[editing.idx] = {
-      ...next[editing.idx],
-      title: editing.title,
-      body: editing.body,
-    };
-    setText(sectionsToMarkdown(next));
-    setEditing(null);
+  function removeSection(h2Idx) {
+    const cur = parseBlocks(text);
+    if (!window.confirm(`Remove the "${cur[h2Idx].text}" section and everything under it?`)) return;
+    let end = cur.length;
+    for (let i = h2Idx + 1; i < cur.length; i++) {
+      if (cur[i].kind === 'h2') { end = i; break; }
+    }
+    cur.splice(h2Idx, end - h2Idx);
+    setText(blocksToMarkdown(cur));
   }
 
-  function deleteSection(idx) {
-    if (!window.confirm(`Remove the section "${sections[idx].title || 'Untitled'}"?`)) return;
-    const next = sections.filter((_, i) => i !== idx);
-    setText(sectionsToMarkdown(next));
-    setEditing(null);
-  }
-
-  function addSectionAt(idx) {
-    const title = window.prompt('New section heading? (e.g. "Membership policy")', '');
+  function addSectionAfter(idx) {
+    const title = window.prompt('Section heading (e.g. "Membership policy")', '');
     if (!title || !title.trim()) return;
-    const newSection = { title: title.trim(), body: 'Edit this section to describe your policy.', level: 2 };
-    const next = [...sections];
-    next.splice(idx, 0, newSection);
-    setText(sectionsToMarkdown(next));
-    setTimeout(() => startEdit(idx), 50);
+    setText(prev => {
+      const cur = parseBlocks(prev);
+      cur.splice(idx + 1, 0,
+        { kind: 'h2', text: title.trim() },
+        { kind: 'p', text: 'Edit this section to fit your practice.' },
+      );
+      return blocksToMarkdown(cur);
+    });
   }
 
   function downloadPdf() {
     window.open('/dashboard/practice-agreement/print?print=1', '_blank', 'noopener,noreferrer');
   }
 
-  // ─── EMPTY STATE ─────────────────────────────────────────────
-  if (isEmpty) {
+  // Empty state: prominent CTA, no clutter
+  if (!text || !text.trim()) {
     return (
       <div style={{
-        background: C.cream,
-        border: `1.5px solid ${C.beige}`,
+        background: `linear-gradient(135deg, ${C.cream} 0%, ${C.beige} 100%)`,
+        border: `1.5px solid ${C.amberLine}`,
         borderRadius: 14,
-        padding: '24px 24px 22px',
+        padding: '28px 24px',
         textAlign: 'center',
       }}>
         <div style={{
           fontSize: 11,
-          color: C.amberInk,
           fontWeight: 700,
+          color: C.amber,
           letterSpacing: '0.12em',
           textTransform: 'uppercase',
           marginBottom: 8,
         }}>
-          Based on ABMP and AMTA standards
+          Industry standard, ready to use
         </div>
         <div style={{
-          fontSize: 17,
+          fontFamily: 'Georgia, serif',
+          fontSize: 19,
           fontWeight: 700,
           color: C.forest,
-          fontFamily: 'Georgia, serif',
-          marginBottom: 8,
+          marginBottom: 10,
         }}>
-          Load the industry standard
+          Your Practice Agreement
         </div>
-        <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.6, marginBottom: 16, maxWidth: 420, margin: '0 auto 16px' }}>
-          We have drafted a complete practice agreement based on ABMP and AMTA standards. Combines policies, guidelines, consent, and waiver in one document. Tap to load it, then edit any section inline.
+        <div style={{
+          fontSize: 13,
+          color: C.gray,
+          lineHeight: 1.6,
+          marginBottom: 18,
+          maxWidth: 460,
+          margin: '0 auto 18px',
+        }}>
+          Load a complete agreement based on ABMP and AMTA standards, then tap any paragraph to make it yours.
         </div>
         <button
           onClick={loadStandard}
@@ -185,479 +217,526 @@ export default function PracticeAgreement({ therapist }) {
             background: C.forest,
             color: '#fff',
             border: 'none',
-            borderRadius: 12,
+            borderRadius: 10,
             padding: '12px 26px',
             fontSize: 14,
             fontWeight: 700,
             cursor: 'pointer',
-            boxShadow: '0 3px 10px rgba(42,87,65,0.22)',
+            boxShadow: `0 4px 12px ${C.forest}33`,
           }}
         >
-          Load industry standard →
+          Load industry standard
         </button>
       </div>
     );
   }
 
-  // ─── LIVE DOCUMENT EDITOR ──────────────────────────────────
   return (
-    <div>
+    <div style={{ position: 'relative' }}>
       <div style={{
         display: 'flex',
         gap: 8,
-        marginBottom: 12,
-        alignItems: 'center',
+        marginBottom: 14,
         flexWrap: 'wrap',
       }}>
-        <button onClick={downloadPdf} style={toolbarButton(C)}>📄 Download / Print PDF</button>
-        <button onClick={loadStandard} style={toolbarButton(C)}>↻ Reset to standard</button>
-        <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 11, color: C.gray }}>
-          {savedAt && !dirty ? `✓ Saved ${savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` :
-           dirty ? 'Unsaved changes' :
-           'Tap any text to edit'}
+        <button onClick={downloadPdf} style={pill(C)}>Download / Print PDF</button>
+        <button onClick={loadStandard} style={pill(C)}>Reset to standard</button>
+        <span style={{
+          marginLeft: 'auto',
+          fontSize: 11,
+          color: C.gray,
+          alignSelf: 'center',
+        }}>
+          Tap any line to edit · click outside to apply
         </span>
-        {dirty && (
-          <button
-            onClick={save}
-            disabled={saving}
-            style={{
-              background: saving ? '#9CA3AF' : C.forest,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              padding: '8px 16px',
-              fontSize: 13,
-              fontWeight: 700,
-              cursor: saving ? 'not-allowed' : 'pointer',
-            }}
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        )}
       </div>
 
       <div style={{
         background: '#fff',
-        border: `1px solid ${C.line}`,
         borderRadius: 14,
+        border: `1px solid ${C.line}`,
         overflow: 'hidden',
-        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
       }}>
+        {/* Branded header */}
         <div style={{
-          background: `linear-gradient(180deg, ${C.forest} 0%, ${C.forestDark} 100%)`,
+          background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestInk} 100%)`,
           color: '#fff',
-          padding: '22px 28px 20px',
+          padding: '16px 24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
         }}>
-          <div style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.65)',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            marginBottom: 6,
-          }}>
-            {business}
+          <div>
+            <div style={{
+              fontSize: 10,
+              fontWeight: 700,
+              color: 'rgba(255,255,255,0.7)',
+              letterSpacing: '0.14em',
+              textTransform: 'uppercase',
+              marginBottom: 2,
+            }}>
+              {therapist?.business_name || therapist?.full_name || 'Your Practice'}
+            </div>
+            <div style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 16,
+              fontWeight: 700,
+            }}>
+              Practice Agreement
+            </div>
           </div>
           <div style={{
-            fontFamily: 'Georgia, serif',
-            fontSize: 22,
-            fontWeight: 700,
-            lineHeight: 1.15,
-            marginBottom: 4,
+            fontSize: 10,
+            color: 'rgba(255,255,255,0.6)',
+            textAlign: 'right',
+            lineHeight: 1.4,
           }}>
-            Practice Agreement
-          </div>
-          <div style={{
-            fontSize: 11,
-            color: 'rgba(255,255,255,0.7)',
-            letterSpacing: '0.04em',
-          }}>
-            Based on ABMP and AMTA professional standards
+            Based on ABMP and AMTA<br/>standards
           </div>
         </div>
 
-        <div style={{ padding: '18px 28px 32px' }}>
-          {sections.map((s, i) => (
-            <React.Fragment key={i}>
-              <InsertSlot onAdd={() => addSectionAt(i)} C={C} />
-              <SectionBlock
-                section={s}
-                index={i}
-                isEditing={editing?.idx === i}
-                editing={editing}
-                setEditing={setEditing}
-                editRef={editRef}
-                onCommit={commitEdit}
-                onDelete={() => deleteSection(i)}
-                startEdit={() => startEdit(i)}
-                C={C}
-              />
-            </React.Fragment>
-          ))}
-          <InsertSlot onAdd={() => addSectionAt(sections.length)} C={C} />
+        <div style={{
+          padding: '24px 28px 32px',
+          background: '#fff',
+          maxHeight: 580,
+          overflowY: 'auto',
+          fontFamily: 'Georgia, serif',
+          fontSize: 14,
+          lineHeight: 1.65,
+          color: C.ink,
+        }}>
+          {blocks.map((b, i) => {
+            const isEditing = editingIdx === i;
+            const showAdd = b.kind === 'h2' || b.kind === 'h1';
+            return (
+              <React.Fragment key={i}>
+                <EditableBlock
+                  block={b}
+                  isEditing={isEditing}
+                  onStart={() => setEditingIdx(i)}
+                  onCommit={(t) => commitBlockEdit(i, t)}
+                  onCancel={() => setEditingIdx(null)}
+                  onRemove={() => removeBlock(i)}
+                  onRemoveSection={b.kind === 'h2' ? () => removeSection(i) : null}
+                  hovered={hoveredH2 === i}
+                  onHover={(v) => b.kind === 'h2' && setHoveredH2(v ? i : null)}
+                  C={C}
+                />
+                {showAdd && (
+                  <AddDivider onAdd={() => addSectionAfter(i)} C={C} />
+                )}
+              </React.Fragment>
+            );
+          })}
 
+          {/* Signature block, always rendered, never editable. */}
           <div style={{
-            marginTop: 28,
-            background: `linear-gradient(180deg, transparent 0%, ${C.amberSoft} 100%)`,
-            borderTop: `2px solid ${C.amberBd}`,
-            margin: '28px -28px -32px',
-            padding: '22px 28px 32px',
+            marginTop: 36,
+            paddingTop: 18,
+            borderTop: `1px solid ${C.line}`,
           }}>
             <div style={{
-              fontSize: 10.5,
-              color: C.amberInk,
+              fontSize: 11,
               fontWeight: 700,
-              letterSpacing: '0.14em',
+              color: C.amber,
+              letterSpacing: '0.12em',
               textTransform: 'uppercase',
-              marginBottom: 12,
+              marginBottom: 14,
             }}>
-              Signature
+              Client signature
             </div>
-            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.65 }}>
-              At intake, your client types their full name as their e-signature. We capture the name, timestamp, and the document text exactly as it appeared. For pen signatures, use the Download / Print PDF button above and have them sign on paper.
+            <div style={{
+              fontSize: 13,
+              color: C.gray,
+              lineHeight: 1.6,
+            }}>
+              The client signs once at intake, capturing this entire agreement. For older clients, tap "Download / Print PDF" above to print a paper version.
+            </div>
+            <div style={{
+              marginTop: 14,
+              background: C.amberPale,
+              border: `1px solid ${C.amberLine}`,
+              borderRadius: 10,
+              padding: '12px 14px',
+              fontSize: 12,
+              color: C.amber,
+              fontFamily: 'system-ui, sans-serif',
+              lineHeight: 1.5,
+            }}>
+              <strong>Note:</strong> at booking time, clients also confirm your specific cancellation fee as a hard gate. They cannot complete a booking without acknowledging the fee structure you set under "Cancellation fee + auto-charge" below.
             </div>
           </div>
         </div>
       </div>
+
+      {dirty && (
+        <div style={{
+          position: 'sticky',
+          bottom: 12,
+          marginTop: 14,
+          background: '#fff',
+          border: `1.5px solid ${C.forestMid}`,
+          borderRadius: 12,
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 10,
+          boxShadow: '0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05)',
+          zIndex: 10,
+        }}>
+          <span style={{ fontSize: 13, color: C.forest, fontWeight: 600 }}>
+            You have unsaved changes
+          </span>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => setText(initialText)}
+              style={{
+                background: 'transparent',
+                border: `1px solid ${C.line}`,
+                borderRadius: 8,
+                padding: '7px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                color: C.gray,
+                cursor: 'pointer',
+              }}
+            >
+              Discard
+            </button>
+            <button
+              onClick={save}
+              disabled={saving}
+              style={{
+                background: C.forest,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 8,
+                padding: '7px 18px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: saving ? 'not-allowed' : 'pointer',
+                boxShadow: `0 2px 6px ${C.forest}33`,
+              }}
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!dirty && savedAt && (
+        <div style={{ marginTop: 10, textAlign: 'right' }}>
+          <span style={{ fontSize: 11, color: C.saved, fontWeight: 600 }}>
+            ✓ Saved {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
 
-function SectionBlock({ section, isEditing, editing, setEditing, editRef, onCommit, onDelete, startEdit, C }) {
-  const isH1 = section.level === 1;
+function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove, onRemoveSection, hovered, onHover, C }) {
+  const ref = useRef(null);
+  const startText = useRef(block.text);
 
-  if (isEditing) {
+  useEffect(() => {
+    if (isEditing) {
+      startText.current = block.text;
+      setTimeout(() => {
+        if (ref.current) {
+          ref.current.focus();
+          const range = document.createRange();
+          range.selectNodeContents(ref.current);
+          range.collapse(false);
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+        }
+      }, 0);
+    }
+  }, [isEditing, block.text]);
+
+  function handleBlur() {
+    if (!ref.current) return;
+    const newText = ref.current.innerText.trim();
+    if (newText === '' && block.kind !== 'h1') {
+      onRemove();
+      return;
+    }
+    if (newText !== startText.current) onCommit(newText);
+    else onCancel();
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (ref.current) ref.current.innerText = startText.current;
+      onCancel();
+      ref.current?.blur();
+    } else if (e.key === 'Enter' && (block.kind === 'h1' || block.kind === 'h2')) {
+      e.preventDefault();
+      ref.current?.blur();
+    }
+  }
+
+  const wrapperStyle = {
+    position: 'relative',
+    transition: 'background 0.12s, outline-color 0.12s',
+    borderRadius: 6,
+  };
+  const editingStyle = isEditing ? {
+    background: C.amberPale,
+    outline: `2px solid ${C.amberLine}`,
+    outlineOffset: 4,
+  } : {};
+
+  if (block.kind === 'h1') {
+    return (
+      <div style={{ ...wrapperStyle, ...editingStyle, marginBottom: 18 }}>
+        <h1
+          ref={ref}
+          contentEditable={isEditing}
+          suppressContentEditableWarning
+          onClick={!isEditing ? onStart : undefined}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          style={{
+            fontSize: 22,
+            fontWeight: 700,
+            fontFamily: 'Georgia, serif',
+            color: C.forest,
+            margin: 0,
+            cursor: isEditing ? 'text' : 'pointer',
+            outline: 'none',
+          }}
+        >
+          {block.text}
+        </h1>
+      </div>
+    );
+  }
+
+  if (block.kind === 'h2') {
     return (
       <div
-        ref={editRef}
-        style={{
-          background: C.editBg,
-          border: `2px solid ${C.editBd}`,
-          borderRadius: 10,
-          padding: '12px 14px',
-          margin: '4px -10px 4px',
-          boxShadow: '0 2px 12px rgba(217,119,6,0.10)',
-        }}
+        onMouseEnter={() => onHover(true)}
+        onMouseLeave={() => onHover(false)}
+        style={{ ...wrapperStyle, ...editingStyle, marginTop: 20, marginBottom: 6 }}
       >
-        {section.level === 2 && (
-          <input
-            value={editing.title}
-            onChange={e => setEditing({ ...editing, title: e.target.value })}
-            placeholder="Section heading"
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <h2
+            ref={ref}
+            contentEditable={isEditing}
+            suppressContentEditableWarning
+            onClick={!isEditing ? onStart : undefined}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
             style={{
-              width: '100%',
-              border: `1px solid ${C.line}`,
-              borderRadius: 6,
-              padding: '6px 10px',
-              fontSize: 15,
+              fontSize: 17,
               fontWeight: 700,
               fontFamily: 'Georgia, serif',
               color: C.ink,
-              marginBottom: 8,
-              boxSizing: 'border-box',
-              background: '#fff',
-            }}
-            autoFocus
-          />
-        )}
-        <textarea
-          value={editing.body}
-          onChange={e => setEditing({ ...editing, body: e.target.value })}
-          rows={Math.max(3, editing.body.split('\n').length)}
-          style={{
-            width: '100%',
-            border: `1px solid ${C.line}`,
-            borderRadius: 6,
-            padding: '8px 10px',
-            fontSize: 13.5,
-            lineHeight: 1.65,
-            fontFamily: 'inherit',
-            color: C.ink,
-            boxSizing: 'border-box',
-            resize: 'vertical',
-            minHeight: 80,
-            background: '#fff',
-          }}
-          autoFocus={section.level === 1}
-        />
-        <div style={{
-          display: 'flex',
-          gap: 8,
-          marginTop: 8,
-          alignItems: 'center',
-        }}>
-          <button
-            onClick={onCommit}
-            style={{
-              background: C.forest,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '6px 14px',
-              fontSize: 12,
-              fontWeight: 700,
-              cursor: 'pointer',
+              margin: 0,
+              flex: 1,
+              cursor: isEditing ? 'text' : 'pointer',
+              outline: 'none',
+              borderLeft: `3px solid ${C.amber}`,
+              paddingLeft: 10,
             }}
           >
-            Apply
-          </button>
-          <button
-            onClick={() => setEditing(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: C.gray,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            Cancel
-          </button>
-          {section.level === 2 && (
-            <>
-              <div style={{ flex: 1 }} />
-              <button
-                onClick={onDelete}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: '#DC2626',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Remove section
-              </button>
-            </>
+            {block.text}
+          </h2>
+          {hovered && !isEditing && onRemoveSection && (
+            <button
+              onClick={(e) => { e.stopPropagation(); onRemoveSection(); }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#DC2626',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '4px 8px',
+                opacity: 0.7,
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+            >
+              Remove section
+            </button>
           )}
-        </div>
-        <div style={{
-          fontSize: 10.5,
-          color: C.gray,
-          marginTop: 8,
-          fontStyle: 'italic',
-        }}>
-          Tip: tap anywhere outside this box to save.
         </div>
       </div>
     );
   }
 
+  if (block.kind === 'li') {
+    return (
+      <div style={{
+        ...wrapperStyle, ...editingStyle,
+        display: 'flex', gap: 10, paddingLeft: 8, marginBottom: 4,
+      }}>
+        <span style={{
+          color: C.sage, flexShrink: 0, marginTop: 2,
+          fontFamily: 'system-ui, sans-serif',
+        }}>•</span>
+        <p
+          ref={ref}
+          contentEditable={isEditing}
+          suppressContentEditableWarning
+          onClick={!isEditing ? onStart : undefined}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          style={{
+            margin: 0, flex: 1,
+            cursor: isEditing ? 'text' : 'pointer',
+            outline: 'none',
+          }}
+        >
+          {block.text}
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div
-      onClick={startEdit}
-      style={{
-        cursor: 'pointer',
-        borderRadius: 6,
-        padding: '2px 4px',
-        margin: '0 -4px',
-        transition: 'background 0.12s',
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = C.cream; }}
-      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-    >
-      {isH1 ? (
-        <h2 style={{
-          fontSize: 19,
-          fontWeight: 700,
-          fontFamily: 'Georgia, serif',
-          color: C.forest,
-          margin: '4px 0 12px',
-        }}>
-          {section.title || 'Untitled'}
-        </h2>
-      ) : (
-        <h3 style={{
-          fontSize: 14.5,
-          fontWeight: 700,
-          fontFamily: 'Georgia, serif',
-          color: C.amberInk,
-          margin: '18px 0 6px',
-          letterSpacing: '0.01em',
-        }}>
-          {section.title || '(untitled section)'}
-        </h3>
-      )}
-      <ProseBody body={section.body} C={C} />
+    <div style={{ ...wrapperStyle, ...editingStyle, marginBottom: 10 }}>
+      <p
+        ref={ref}
+        contentEditable={isEditing}
+        suppressContentEditableWarning
+        onClick={!isEditing ? onStart : undefined}
+        onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
+        style={{
+          margin: 0, padding: '2px 4px',
+          cursor: isEditing ? 'text' : 'pointer',
+          outline: 'none',
+        }}
+      >
+        {block.text}
+      </p>
     </div>
   );
 }
 
-function ProseBody({ body, C }) {
-  if (!body) return null;
-  const lines = body.split('\n');
-  const elements = [];
-  let listItems = [];
-
-  function flushList() {
-    if (listItems.length) {
-      elements.push(
-        <ul key={`l-${elements.length}`} style={{ margin: '6px 0 10px 0', paddingLeft: 22 }}>
-          {listItems.map((li, i) => (
-            <li key={i} style={{ marginBottom: 4, fontSize: 13.5, lineHeight: 1.65, color: C.inkSoft }}>
-              {li}
-            </li>
-          ))}
-        </ul>
-      );
-    }
-    listItems = [];
-  }
-
-  lines.forEach((line, idx) => {
-    if (/^[-*]\s+/.test(line)) {
-      listItems.push(line.replace(/^[-*]\s+/, ''));
-    } else if (line.trim() === '') {
-      flushList();
-    } else {
-      flushList();
-      elements.push(
-        <p key={idx} style={{
-          margin: '0 0 10px 0',
-          fontSize: 13.5,
-          lineHeight: 1.7,
-          color: C.inkSoft,
-        }}>
-          {line}
-        </p>
-      );
-    }
-  });
-  flushList();
-  return <>{elements}</>;
-}
-
-function InsertSlot({ onAdd, C }) {
+function AddDivider({ onAdd, C }) {
   const [hover, setHover] = useState(false);
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        height: hover ? 22 : 8,
-        position: 'relative',
-        transition: 'height 0.18s',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+      onClick={onAdd}
+      style={{ height: 16, position: 'relative', cursor: 'pointer' }}
     >
-      <button
-        onClick={onAdd}
-        aria-label="Add section here"
-        style={{
-          opacity: hover ? 1 : 0,
-          background: '#fff',
-          border: `1.5px solid ${C.forestMid}`,
-          color: C.forestMid,
-          width: 24,
-          height: 24,
-          borderRadius: '50%',
-          fontSize: 14,
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: 0,
+        right: 0,
+        height: 1,
+        background: hover ? C.amberLine : 'transparent',
+        transform: 'translateY(-50%)',
+        transition: 'background 0.15s',
+      }} />
+      {hover && (
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: C.amber,
+          color: '#fff',
+          borderRadius: 12,
+          padding: '2px 10px',
+          fontSize: 11,
           fontWeight: 700,
-          cursor: 'pointer',
-          display: 'inline-flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: 0,
-          transition: 'opacity 0.15s',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        }}
-      >
-        +
-      </button>
+          letterSpacing: '0.04em',
+        }}>
+          + add section
+        </div>
+      )}
     </div>
   );
 }
 
-function toolbarButton(C) {
+function pill(C) {
   return {
     background: '#fff',
     border: `1px solid ${C.line}`,
     borderRadius: 999,
-    padding: '7px 13px',
+    padding: '7px 14px',
     fontSize: 12,
-    fontWeight: 600,
+    fontWeight: 700,
     color: C.ink,
     cursor: 'pointer',
     transition: 'all 0.12s',
   };
 }
 
-// Renderer for use outside the editor (print, intake, etc.)
-export function AgreementRenderer({ text, businessName }) {
+// AgreementRenderer exported for backward-compat with
+// PracticeAgreementPrint + ClientIntake which import it.
+export function AgreementRenderer({ text }) {
   if (!text) return null;
-  const sections = parseAgreementSections(text);
-  return (
-    <div>
-      <div style={{
-        background: `linear-gradient(180deg, ${C.forest} 0%, ${C.forestDark} 100%)`,
-        color: '#fff',
-        padding: '22px 28px 20px',
-        borderRadius: '14px 14px 0 0',
-      }}>
-        {businessName && (
-          <div style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            color: 'rgba(255,255,255,0.65)',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-            marginBottom: 6,
-          }}>
-            {businessName}
-          </div>
-        )}
-        <div style={{
-          fontFamily: 'Georgia, serif',
+  const blocks = parseBlocks(text);
+  const elements = [];
+  let listBuffer = [];
+
+  function flushList() {
+    if (listBuffer.length) {
+      elements.push(
+        <ul key={`l-${elements.length}`} style={{
+          margin: '8px 0 14px 0',
+          paddingLeft: 22,
+        }}>
+          {listBuffer.map((li, i) => (
+            <li key={i} style={{ marginBottom: 5 }}>{li}</li>
+          ))}
+        </ul>
+      );
+      listBuffer = [];
+    }
+  }
+
+  blocks.forEach((b, i) => {
+    if (b.kind === 'h1') {
+      flushList();
+      elements.push(
+        <h1 key={i} style={{
           fontSize: 22,
           fontWeight: 700,
-          marginBottom: 4,
-        }}>
-          Practice Agreement
-        </div>
-        <div style={{
-          fontSize: 11,
-          color: 'rgba(255,255,255,0.7)',
-          letterSpacing: '0.04em',
-        }}>
-          Based on ABMP and AMTA professional standards
-        </div>
-      </div>
-      <div style={{
-        background: '#fff',
-        padding: '18px 28px 32px',
-        borderRadius: '0 0 14px 14px',
-      }}>
-        {sections.map((s, i) => {
-          const isH1 = s.level === 1;
-          return (
-            <div key={i}>
-              {isH1 ? (
-                <h2 style={{
-                  fontSize: 19,
-                  fontWeight: 700,
-                  fontFamily: 'Georgia, serif',
-                  color: C.forest,
-                  margin: '4px 0 12px',
-                }}>{s.title}</h2>
-              ) : (
-                <h3 style={{
-                  fontSize: 14.5,
-                  fontWeight: 700,
-                  fontFamily: 'Georgia, serif',
-                  color: C.amberInk,
-                  margin: '18px 0 6px',
-                }}>{s.title}</h3>
-              )}
-              <ProseBody body={s.body} C={C} />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+          fontFamily: 'Georgia, serif',
+          color: C.forest,
+          margin: '0 0 14px 0',
+        }}>{b.text}</h1>
+      );
+    } else if (b.kind === 'h2') {
+      flushList();
+      elements.push(
+        <h2 key={i} style={{
+          fontSize: 16,
+          fontWeight: 700,
+          fontFamily: 'Georgia, serif',
+          color: C.ink,
+          margin: '18px 0 6px 0',
+          borderLeft: `3px solid ${C.amber}`,
+          paddingLeft: 10,
+        }}>{b.text}</h2>
+      );
+    } else if (b.kind === 'li') {
+      listBuffer.push(b.text);
+    } else {
+      flushList();
+      elements.push(
+        <p key={i} style={{ margin: '0 0 10px 0', lineHeight: 1.65 }}>
+          {b.text}
+        </p>
+      );
+    }
+  });
+  flushList();
+  return <>{elements}</>;
 }
