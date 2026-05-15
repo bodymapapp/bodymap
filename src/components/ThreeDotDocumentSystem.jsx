@@ -219,7 +219,7 @@ export default function ThreeDotDocumentSystem({ variant = 'full' }) {
               marginTop: 12, fontSize: 12, color: T.inkSoft,
               fontStyle: 'italic',
             }}>
-              Free for the first 100 founding therapists.
+              Free for early therapists by invitation.
             </div>
           </div>
         )}

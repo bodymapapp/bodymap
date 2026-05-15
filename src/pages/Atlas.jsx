@@ -616,7 +616,7 @@ export default function Atlas() {
             color: 'rgba(247,241,227,0.4)',
             marginTop: 36,
           }}>
-            Free for a limited time for the first 100 therapists. A few seats left.
+            Free during beta. By invitation.
           </p>
         </div>
       </section>

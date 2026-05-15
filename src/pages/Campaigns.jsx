@@ -398,7 +398,7 @@ export default function Campaigns() {
             textTransform: "uppercase",
             letterSpacing: "0.14em",
             marginBottom: 12,
-          }}>Free for the first 100 founders</div>
+          }}>Free during beta · by invitation</div>
           <h2 style={{
             fontFamily: "Georgia, serif",
             fontSize: "clamp(26px, 4vw, 34px)",
@@ -413,7 +413,7 @@ export default function Campaigns() {
             margin: "0 auto 26px",
             maxWidth: 480,
           }}>
-            No credit card. Import your client list, send your first campaign in under five minutes. Free forever for the first 100 therapists.
+            No credit card. Import your client list, send your first campaign in under five minutes.
           </p>
           <Link to="/signup" style={{
             display: "inline-block",

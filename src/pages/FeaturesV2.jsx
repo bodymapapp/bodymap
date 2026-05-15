@@ -104,7 +104,7 @@ export default function FeaturesV2() {
           Built by therapists, for <em>therapists.</em>
         </h2>
         <p>
-          Free for the first 100 founding therapists. Silver tier, all
+          Free for early therapists by invitation. Silver tier, all
           features, forever.
         </p>
         <a href="/signup" className="bm-features-v2-cta">

@@ -475,7 +475,7 @@ export default function Home() {
           "I can finally sit at the end of a day and breathe instead of
           opening my laptop."
         </p>
-        <p className="bm-home-band__attr">A founding therapist, 7 years in practice</p>
+        <p className="bm-home-band__attr">A solo LMT, 7 years in practice</p>
       </section>
 
       {/* ── CLOSING CTA ──────────────────────────────────────────────── */}
@@ -484,8 +484,8 @@ export default function Home() {
           Free during beta. <em>Forever, if you join now.</em>
         </h2>
         <p>
-          The first 100 founding therapists keep Silver tier free for life.
-          Message us on Instagram or Facebook for the founder code.
+          Early therapists keep Silver tier free for life.
+          Message us on Instagram or Facebook to ask about a discount code.
         </p>
         <div className="bm-home-closing__ctas">
           <Link to="/signup" className="bm-home-closing__cta-primary">

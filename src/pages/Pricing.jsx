@@ -3,7 +3,7 @@
 // Pricing — editorial rebuild matching the FeaturesV2 design language.
 // Cream palette + Fraunces serif + Inter body + warm photo per tier.
 // Three tiers (Bronze, Silver, Gold). Silver is the highlight.
-// BETAONE coupon NOT shown publicly: therapists DM via IG/FB for a founder code.
+// BETAONE coupon NOT shown publicly: therapists DM via IG/FB for a discount code.
 
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -79,7 +79,7 @@ function buildTiers({ isAuthenticated, navigate, billingCycle }) {
         "Priority support",
       ],
       founderNote:
-        "Limited founder codes available. The first 100 therapists get Silver free for 12 months. Message us on Instagram or Facebook and tell us about your practice.",
+        "Limited discount codes available by invitation. Message us on Instagram or Facebook and tell us about your practice.",
     },
     {
       id: "gold",
@@ -123,12 +123,12 @@ const FAQ = [
     a: "On Bronze, you get a taste of intelligence based on the last 5 sessions per client. On Silver, the intelligence goes back through every session you have ever recorded.",
   },
   {
-    q: "How do founder codes work?",
-    a: "We are looking for the first 100 therapists who genuinely want to help shape MyBodyMap. Message us on Instagram or Facebook with a few words about your practice. If you are a fit, we send you a code that gives you Silver free for 12 months.",
+    q: "How do discount codes work?",
+    a: "We are looking for early therapists who genuinely want to help shape MyBodyMap. Message us on Instagram or Facebook with a few words about your practice. If you are a fit, we send you a code that gives you Silver free for an extended period.",
   },
   {
     q: "When is Gold launching?",
-    a: "Gold is in development. Sign up for Bronze or Silver now and you get early access and founding pricing when it launches.",
+    a: "Gold is in development. Sign up for Bronze or Silver now and you get early access and early-supporter pricing when it launches.",
   },
   {
     q: "Is my client information secure?",
@@ -456,13 +456,13 @@ function SilverConfirmModal({ stripeUrl, billingCycle, onClose }) {
           id="silver-confirm-title"
           className="bm-pricing-v2-confirm-modal__title"
         >
-          Have your founder code ready?
+          Have your discount code ready?
         </h2>
 
         <div className="bm-pricing-v2-confirm-modal__body">
           <p>
-            <strong>With a founder code:</strong> 12 months free. Then{" "}
-            {priceLabel}. Cancel anytime.
+            <strong>With a discount code:</strong> extended free period.
+            Then {priceLabel}. Cancel anytime.
           </p>
           <p>
             <strong>Without a code:</strong> {priceLabel} starting today.
@@ -470,7 +470,7 @@ function SilverConfirmModal({ stripeUrl, billingCycle, onClose }) {
           </p>
           <p className="bm-pricing-v2-confirm-modal__note">
             On the next screen, look for the "Add promo code" link to enter
-            your founder code.
+            your code.
           </p>
         </div>
 

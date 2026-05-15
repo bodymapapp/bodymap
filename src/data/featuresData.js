@@ -500,22 +500,22 @@ export const RIBBONS = [
       },
       {
         id: "7.3",
-        name: "Founding Therapist emails",
+        name: "Insider emails",
         automated: true,
         body: [
-          'As a founding therapist you get product updates, behind-the-scenes notes, and direct access to the founder. No marketing fluff, no "growth hacks," no daily tips.',
+          'You get product updates, behind-the-scenes notes, and direct access to the team. No marketing fluff, no "growth hacks," no daily tips.',
           "When something ships, you hear about it. When something is broken, we tell you first.",
         ],
-        meta: "Direct from the founder · Reply anytime",
+        meta: "Direct from the team · Reply anytime",
       },
       {
         id: "7.4",
         name: "Refer and reward",
         body: [
-          "Send another therapist your founder code via Instagram or Facebook DM. They get Silver tier free for life. You get a thank-you, a credit, and the satisfaction of helping a colleague.",
+          "Send another therapist your invite code via Instagram or Facebook DM. They get Silver tier free for life. You get a thank-you, a credit, and the satisfaction of helping a colleague.",
           "Built like a private invitation, not a referral program.",
         ],
-        meta: "IG/FB DM only · Limited to 100 founders",
+        meta: "IG/FB DM only · By invitation",
       },
       {
         id: "7.5",
