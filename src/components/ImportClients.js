@@ -22,9 +22,42 @@ function detectMapping(headers) {
     }
     return -1;
   };
+  // Smarter name detection. Some platforms (GlossGenius, Square,
+  // Mindbody exports) put first+last in ONE column called "Client
+  // Name", "Customer Name", "Name", or "Full Name". Detect that
+  // case separately so we can split it at import time. Skip the
+  // generic 'name' match when a more specific column (first/last)
+  // is already found -- prevents matching "Last Name" against the
+  // fullName slot. Also avoid false matches on things like
+  // "Business Name", "Service Name", "File Name".
+  const firstName = find('first name', 'firstname', 'given name', 'client first');
+  const lastName  = find('last name', 'lastname', 'family name', 'client last');
+  // Look for a single-column full name only if NEITHER first nor
+  // last was found via the explicit patterns above. Also exclude
+  // columns whose header is clearly something else with "name" in
+  // it (business, service, plan, file, user, screen, display, etc).
+  let fullName = -1;
+  if (firstName < 0 && lastName < 0) {
+    fullName = h.findIndex(x => {
+      const isName = /\b(name)\b/.test(x);
+      if (!isName) return false;
+      // Allowlist
+      if (/(full name|client name|customer name|patient name|contact name|^name$|^name |^name$)/i.test(x)) {
+        return true;
+      }
+      // Just "name" by itself, with nothing disqualifying
+      if (/^name\s*$/i.test(x.trim())) return true;
+      // Reject obvious non-client names
+      if (/(business|service|plan|file|user|screen|display|company|product|membership|subscription|category)/i.test(x)) {
+        return false;
+      }
+      return true;
+    });
+  }
   return {
-    firstName:    find('first name', 'firstname', 'given name', 'client first'),
-    lastName:     find('last name', 'lastname', 'family name', 'client last'),
+    firstName,
+    lastName,
+    fullName,
     email:        find('email'),
     phone:        find('mobile', 'phone', 'cell'),
     notes:        find('notes', 'note', 'comments'),
@@ -206,8 +239,28 @@ export default function ImportClients({ therapist, onComplete }) {
     for (const row of rows) {
       const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
-      const firstName = get(mapping.firstName);
-      const lastName  = get(mapping.lastName);
+      // Resolve first/last name. Three cases:
+      //   1. Both firstName + lastName columns mapped (most platforms)
+      //   2. Only fullName mapped (GlossGenius "Client Name", etc.)
+      //      → split on first space: "Mary Anne Williams" becomes
+      //        first="Mary", last="Anne Williams" so the full name
+      //        is preserved on the client record.
+      //   3. Nothing → fall through to email/phone fallback below.
+      let firstName = get(mapping.firstName);
+      let lastName  = get(mapping.lastName);
+      if (!firstName && !lastName && mapping.fullName >= 0) {
+        const full = get(mapping.fullName);
+        if (full) {
+          const trimmed = full.trim().replace(/\s+/g, ' ');
+          const spaceIdx = trimmed.indexOf(' ');
+          if (spaceIdx > 0) {
+            firstName = trimmed.slice(0, spaceIdx);
+            lastName = trimmed.slice(spaceIdx + 1);
+          } else {
+            firstName = trimmed;
+          }
+        }
+      }
       const email     = get(mapping.email)?.toLowerCase() || null;
       const phone     = get(mapping.phone) || null;
       const notes     = get(mapping.notes) || null;
@@ -597,9 +650,12 @@ export default function ImportClients({ therapist, onComplete }) {
 
             {/* Column mapping */}
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, marginBottom:10 }}>Column mapping, auto-detected, adjust if needed:</div>
+              <div style={{ fontSize:12, fontWeight:700, color:C.gray, marginBottom:10 }}>
+                Column mapping, auto-detected, adjust if needed. Use <strong>Full Name</strong> if your file has first + last in ONE column.
+              </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }} className="bm-2col">
                 {[
+                  { key:'fullName',  label:'Full Name *' },
                   { key:'firstName', label:'First Name *' },
                   { key:'lastName',  label:'Last Name' },
                   { key:'email',     label:'Email' },
@@ -620,12 +676,17 @@ export default function ImportClients({ therapist, onComplete }) {
                     <select value={mapping[key] >= 0 ? mapping[key] : -1}
                       onChange={e => setMapping(m => ({ ...m, [key]: parseInt(e.target.value) }))}
                       style={{ flex:1, padding:'6px 8px', border:`1.5px solid ${C.light}`, borderRadius:6, fontSize:12, outline:'none', background:'#fff' }}>
-                      <option value={-1}>,  skip , </option>
+                      <option value={-1}>skip</option>
                       {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
                     </select>
                   </div>
                 ))}
               </div>
+              {mapping.fullName < 0 && mapping.firstName < 0 && (
+                <div style={{ marginTop:10, fontSize:11.5, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', lineHeight:1.5 }}>
+                  Map either <strong>Full Name</strong> (single column) or <strong>First Name</strong> (split columns) before importing.
+                </div>
+              )}
             </div>
 
             {/* Preview table */}
@@ -641,8 +702,14 @@ export default function ImportClients({ therapist, onComplete }) {
                 </thead>
                 <tbody>
                   {previewRows.map((row, i) => {
-                    const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : ', ';
-                    const name = [get(mapping.firstName), get(mapping.lastName)].filter(v => v && v !== ', ').join(' ') || ', ';
+                    const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx] : '';
+                    // Mirror the row-processor name logic: prefer
+                    // first+last, fall back to splitting fullName.
+                    let name = [get(mapping.firstName), get(mapping.lastName)].filter(Boolean).join(' ');
+                    if (!name && mapping.fullName >= 0) {
+                      name = (get(mapping.fullName) || '').trim().replace(/\s+/g, ' ');
+                    }
+                    if (!name) name = '-';
                     return (
                       <tr key={i} style={{ borderBottom:`1px solid ${C.light}` }}>
                         <td style={{ padding:'8px 10px', color:C.dark, fontWeight:600 }}>{name}</td>
@@ -658,8 +725,8 @@ export default function ImportClients({ therapist, onComplete }) {
               {rows.length > 5 && <div style={{ fontSize:11, color:C.gray, marginTop:6 }}>...and {rows.length - 5} more clients</div>}
             </div>
 
-            <button onClick={runImport} disabled={importing || mapping.firstName < 0}
-              style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:importing?'wait':'pointer' }}>
+            <button onClick={runImport} disabled={importing || (mapping.firstName < 0 && mapping.fullName < 0)}
+              style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:importing?'wait':'pointer', opacity:(mapping.firstName < 0 && mapping.fullName < 0) ? 0.5 : 1 }}>
               {importing ? `Importing ${rows.length} clients…` : `Import ${rows.length} Clients →`}
             </button>
             <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>
