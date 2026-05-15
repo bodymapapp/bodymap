@@ -4039,7 +4039,14 @@ export default function Dashboard({ view }) {
             </div>
             <div style={{ background: '#F5F0E8', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your booking link</p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all' }}>{window.location.origin}/book/{therapist?.custom_url}</p>
+              <a
+                href={`${window.location.origin}/book/${therapist?.custom_url}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all', textDecoration: 'underline', textDecorationColor: 'rgba(42,87,65,0.3)', textUnderlineOffset: 3 }}
+              >
+                {window.location.origin}/book/{therapist?.custom_url}
+              </a>
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: '700', color: '#1A1A2E', display: 'block', marginBottom: '8px' }}>Client phone number (optional)</label>
