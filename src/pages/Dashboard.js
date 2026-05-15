@@ -3261,10 +3261,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         summary={(() => {
           const hasAgreement = !!therapist?.practice_agreement_text;
           const cancelOn = !!therapist?.cancellation_policy_enabled;
-          if (hasAgreement && cancelOn) return "Practice agreement set · cancellation fee on";
-          if (hasAgreement && !cancelOn) return "Practice agreement set · no cancellation fee";
-          if (!hasAgreement) return "Set up your practice agreement and policies";
-          return "Set up your practice agreement and policies";
+          if (hasAgreement && cancelOn) return "Client agreement set · cancellation fee on";
+          if (hasAgreement && !cancelOn) return "Client agreement set · no cancellation fee";
+          if (!hasAgreement) return "Set up your client agreement and policies";
+          return "Set up your client agreement and policies";
         })()}
         status={(therapist?.practice_agreement_text || therapist?.cancellation_policy_enabled) ? "done" : "todo"}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 2v10l4 4"/><circle cx="12" cy="12" r="10"/></svg>}
@@ -3387,7 +3387,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 </span>
               </div>
 
-              {/* Practice Agreement: ONE document for all policies +
+              {/* Client Agreement: ONE document for all policies +
                   guidelines + consent + waiver. Client e-signs once. */}
               <div style={{
                 background: '#fff',
@@ -3404,7 +3404,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>
-                      Practice agreement
+                      Client agreement
                     </div>
                     <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
                       One document: policies, guidelines, consent, waiver. Client signs once at intake.

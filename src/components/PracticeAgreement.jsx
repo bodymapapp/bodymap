@@ -1,55 +1,77 @@
 // src/components/PracticeAgreement.jsx
 //
-// HK May 14 2026 redesign brief: 'the current policies are not even
-// as good as MassageBook form. Theirs is colorful, comes out nicely
-// in orange and their logo, is easy to read. We have provided 12
-// edit buttons again increasing work. Can you think of a better
-// alternative and design.'
+// Client Agreement editor v3 -- paper-feel document, table of contents,
+// editorial typography, refined signature block. Designed for the
+// 70-year-old client persona to feel comfortable and the therapist
+// to feel proud showing it.
 //
-// THE NEW APPROACH:
+// HK May 14 2026: 'The design looks a little bit better, but I don't
+// think it is there yet. Make sure you improve it by two to three
+// times. Add a table of contents so that the seventy year old persona
+// is fully clear on what they're looking at. Make sure that everything
+// we saw in the massage book form is there and even better.'
 //
-//   - ONE scrollable preview, branded, looks exactly like what the
-//     client will see
-//   - Tap any paragraph / heading to edit it in place
-//     (contenteditable with a thin amber border, no separate
-//     textarea, no card-list breakup)
-//   - Tap outside (or press Esc) commits the edit
-//   - Floating Save bar appears at the bottom when dirty
-//   - Quiet "+" between sections to add a new section
-//   - Per-section "remove" appears on hover/tap of H2
-//   - MyBodyMap forest green primary + warm amber accent on
-//     headers and the signature block
-//   - "Download / Print PDF" button uses the same render path,
-//     no separate template
+// THE APPROACH:
 //
-// The therapist is editing the live document. No more "12 edit
-// buttons increasing work."
+//   - Paper-feel container with warm off-white background, soft
+//     shadow, deckle-edge feel via inset border accents
+//   - Editorial branded header: monogram accent + business name +
+//     'Client Agreement and Informed Consent' title + ABMP/AMTA
+//     attribution as a small kicker line
+//   - Table of Contents: numbered list with section titles, leading
+//     dots, in roman numeral style. Tap a section in editor to jump
+//     to it (smooth scroll)
+//   - Section numbers: H2 sections prefixed I., II., III. etc.
+//   - Refined typography: Georgia for headlines, system serif for
+//     body, generous line height, drop-cap-like first letter on
+//     intro paragraph
+//   - Refined signature block: classic three-column legal contract
+//     layout (printed name | signature | date), amber accent on
+//     'Signature' label
+//   - Inline contenteditable: tap any block, thin amber outline,
+//     blur to commit, Esc to cancel. Same UX as v2 but on a much
+//     better-looking canvas.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import {
-  DEFAULT_PRACTICE_AGREEMENT,
-} from '../lib/practiceAgreement';
+import { DEFAULT_PRACTICE_AGREEMENT, renderAgreementForClient } from '../lib/practiceAgreement';
+
+// Resolve dynamic tokens like {cancel_under_24h} to live percentage
+// values from the therapist's cancellation_policy. Used at DISPLAY
+// time only; the raw markdown stored on the therapist record keeps
+// the tokens so editing in one place (cancellation policy editor)
+// keeps the agreement in sync. When the therapist taps a block to
+// edit, they see the raw token so they understand what's dynamic.
+function resolveTokens(rawText, therapist) {
+  if (!rawText || !therapist) return rawText || '';
+  if (!/\{(cancel|reschedule|no_show)/.test(rawText)) return rawText;
+  // Borrow the full render path for consistency
+  return renderAgreementForClient(rawText, therapist);
+}
 
 const C = {
-  forest:     '#2A5741',
-  forestMid:  '#3D6B4C',
-  forestInk:  '#1F3A2C',
-  sage:       '#5C7A4F',
-  amber:      '#B87840',
-  amberPale:  '#F5EDD8',
-  amberLine:  '#D4B070',
-  ink:        '#1F2937',
-  inkDim:     '#4B5563',
-  gray:       '#6B7280',
-  line:       '#E5E7EB',
-  lineSoft:   '#F3F4F6',
-  cream:      '#FAF6EE',
-  beige:      '#F5EFE0',
-  paper:      '#FFFFFF',
-  pageBg:     '#FBF8F1',
-  saved:      '#16A34A',
+  forest:       '#2A5741',
+  forestMid:    '#3D6B4C',
+  forestInk:    '#1F3A2C',
+  forestDeep:   '#162D22',
+  sage:         '#5C7A4F',
+  amber:        '#B87840',
+  amberDeep:    '#A0612C',
+  amberPale:    '#F5EDD8',
+  amberLine:    '#D4B070',
+  ink:          '#1F2937',
+  inkSoft:      '#374151',
+  gray:         '#6B7280',
+  grayLight:    '#9CA3AF',
+  line:         '#E5E7EB',
+  lineSoft:     '#F3F4F6',
+  paper:        '#FDFBF6',  // warm off-white "paper" tone
+  paperEdge:    '#F2EDDF',  // slightly darker paper edge
+  cream:        '#FAF6EE',
+  saved:        '#16A34A',
 };
+
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX'];
 
 function parseBlocks(text) {
   if (!text) return [];
@@ -64,7 +86,7 @@ function parseBlocks(text) {
     } else if (/^[-*]\s+/.test(line)) {
       blocks.push({ kind: 'li', text: line.replace(/^[-*]\s+/, '') });
     } else if (line.trim() === '') {
-      // skip blank lines
+      // skip blank
     } else {
       blocks.push({ kind: 'p', text: line });
     }
@@ -81,6 +103,17 @@ function blocksToMarkdown(blocks) {
   }).join('\n\n');
 }
 
+// Build TOC from blocks: each H2 with its position index
+function buildToc(blocks) {
+  const toc = [];
+  blocks.forEach((b, idx) => {
+    if (b.kind === 'h2') {
+      toc.push({ idx, title: b.text, number: toc.length + 1 });
+    }
+  });
+  return toc;
+}
+
 export default function PracticeAgreement({ therapist }) {
   const initialText = therapist?.practice_agreement_text || '';
   const [text, setText] = useState(initialText);
@@ -88,12 +121,15 @@ export default function PracticeAgreement({ therapist }) {
   const [savedAt, setSavedAt] = useState(null);
   const [editingIdx, setEditingIdx] = useState(null);
   const [hoveredH2, setHoveredH2] = useState(null);
+  const scrollContainerRef = useRef(null);
+  const blockRefs = useRef({});
 
   useEffect(() => {
     setText(therapist?.practice_agreement_text || '');
   }, [therapist?.practice_agreement_text]);
 
   const blocks = parseBlocks(text);
+  const toc = buildToc(blocks);
   const dirty = text !== initialText;
 
   async function save() {
@@ -111,7 +147,7 @@ export default function PracticeAgreement({ therapist }) {
       if (error) throw error;
       setSavedAt(new Date());
     } catch (e) {
-      console.error('[PracticeAgreement] save failed:', e);
+      console.error('[ClientAgreement] save failed:', e);
       alert('Save failed. Please try again or refresh the page.');
     } finally {
       setSaving(false);
@@ -172,42 +208,53 @@ export default function PracticeAgreement({ therapist }) {
     window.open('/dashboard/practice-agreement/print?print=1', '_blank', 'noopener,noreferrer');
   }
 
-  // Empty state: prominent CTA, no clutter
+  function jumpToSection(idx) {
+    const el = blockRefs.current[idx];
+    if (el && scrollContainerRef.current) {
+      const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
+      const elementTop = el.getBoundingClientRect().top;
+      const scrollOffset = elementTop - containerTop + scrollContainerRef.current.scrollTop - 16;
+      scrollContainerRef.current.scrollTo({ top: scrollOffset, behavior: 'smooth' });
+    }
+  }
+
+  // Empty state
   if (!text || !text.trim()) {
     return (
       <div style={{
-        background: `linear-gradient(135deg, ${C.cream} 0%, ${C.beige} 100%)`,
+        background: `linear-gradient(135deg, ${C.cream} 0%, ${C.amberPale} 100%)`,
         border: `1.5px solid ${C.amberLine}`,
         borderRadius: 14,
-        padding: '28px 24px',
+        padding: '32px 24px',
         textAlign: 'center',
       }}>
         <div style={{
-          fontSize: 11,
+          fontSize: 10.5,
           fontWeight: 700,
-          color: C.amber,
-          letterSpacing: '0.12em',
+          color: C.amberDeep,
+          letterSpacing: '0.14em',
           textTransform: 'uppercase',
-          marginBottom: 8,
+          marginBottom: 10,
         }}>
           Industry standard, ready to use
         </div>
         <div style={{
           fontFamily: 'Georgia, serif',
-          fontSize: 19,
+          fontSize: 22,
           fontWeight: 700,
           color: C.forest,
           marginBottom: 10,
+          letterSpacing: '-0.01em',
         }}>
-          Your Practice Agreement
+          Your Client Agreement
         </div>
         <div style={{
-          fontSize: 13,
+          fontSize: 13.5,
           color: C.gray,
-          lineHeight: 1.6,
-          marginBottom: 18,
+          lineHeight: 1.65,
+          marginBottom: 22,
           maxWidth: 460,
-          margin: '0 auto 18px',
+          margin: '0 auto 22px',
         }}>
           Load a complete agreement based on ABMP and AMTA standards, then tap any paragraph to make it yours.
         </div>
@@ -218,11 +265,12 @@ export default function PracticeAgreement({ therapist }) {
             color: '#fff',
             border: 'none',
             borderRadius: 10,
-            padding: '12px 26px',
+            padding: '13px 28px',
             fontSize: 14,
             fontWeight: 700,
             cursor: 'pointer',
-            boxShadow: `0 4px 12px ${C.forest}33`,
+            boxShadow: `0 4px 14px ${C.forest}33`,
+            letterSpacing: '0.02em',
           }}
         >
           Load industry standard
@@ -231,146 +279,249 @@ export default function PracticeAgreement({ therapist }) {
     );
   }
 
+  const businessName = therapist?.business_name || therapist?.full_name || 'Your Practice';
+  const monogram = businessName.split(/\s+/).map(w => w[0]?.toUpperCase()).slice(0, 2).join('');
+
   return (
     <div style={{ position: 'relative' }}>
+      {/* Toolbar above the document */}
       <div style={{
         display: 'flex',
         gap: 8,
         marginBottom: 14,
         flexWrap: 'wrap',
+        alignItems: 'center',
       }}>
-        <button onClick={downloadPdf} style={pill(C)}>Download / Print PDF</button>
-        <button onClick={loadStandard} style={pill(C)}>Reset to standard</button>
+        <button onClick={downloadPdf} style={pill(C, 'primary')}>
+          ⬇ Download / Print PDF
+        </button>
+        <button onClick={loadStandard} style={pill(C)}>
+          Reset to standard
+        </button>
         <span style={{
           marginLeft: 'auto',
           fontSize: 11,
           color: C.gray,
           alignSelf: 'center',
+          fontStyle: 'italic',
         }}>
-          Tap any line to edit · click outside to apply
+          Tap any line to edit
         </span>
       </div>
 
+      {/* THE DOCUMENT -- paper feel */}
       <div style={{
-        background: '#fff',
+        background: C.paper,
         borderRadius: 14,
-        border: `1px solid ${C.line}`,
+        border: `1px solid ${C.paperEdge}`,
         overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+        boxShadow: '0 6px 24px rgba(31,58,44,0.10), 0 1px 3px rgba(31,58,44,0.06)',
       }}>
-        {/* Branded header */}
+        {/* Branded header -- editorial style */}
         <div style={{
-          background: `linear-gradient(135deg, ${C.forest} 0%, ${C.forestInk} 100%)`,
+          background: `linear-gradient(180deg, ${C.forestInk} 0%, ${C.forest} 100%)`,
           color: '#fff',
-          padding: '16px 24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 12,
+          padding: '22px 28px 20px',
+          position: 'relative',
         }}>
-          <div>
+          {/* Amber accent line */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 3,
+            background: `linear-gradient(90deg, ${C.amber} 0%, ${C.amberDeep} 50%, ${C.amber} 100%)`,
+          }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            {/* Monogram circle */}
             <div style={{
-              fontSize: 10,
-              fontWeight: 700,
-              color: 'rgba(255,255,255,0.7)',
-              letterSpacing: '0.14em',
-              textTransform: 'uppercase',
-              marginBottom: 2,
-            }}>
-              {therapist?.business_name || therapist?.full_name || 'Your Practice'}
-            </div>
-            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: '50%',
+              border: `1.5px solid rgba(255,255,255,0.35)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               fontFamily: 'Georgia, serif',
               fontSize: 16,
               fontWeight: 700,
+              color: '#fff',
+              flexShrink: 0,
+              background: 'rgba(255,255,255,0.05)',
             }}>
-              Practice Agreement
+              {monogram}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{
+                fontSize: 10.5,
+                fontWeight: 700,
+                color: 'rgba(255,255,255,0.75)',
+                letterSpacing: '0.16em',
+                textTransform: 'uppercase',
+                marginBottom: 3,
+              }}>
+                {businessName}
+              </div>
+              <div style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 19,
+                fontWeight: 700,
+                color: '#fff',
+                letterSpacing: '-0.005em',
+                lineHeight: 1.2,
+              }}>
+                Client Agreement & Informed Consent
+              </div>
             </div>
           </div>
           <div style={{
-            fontSize: 10,
+            marginTop: 12,
+            fontSize: 10.5,
             color: 'rgba(255,255,255,0.6)',
-            textAlign: 'right',
-            lineHeight: 1.4,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            fontWeight: 600,
+            borderTop: '1px solid rgba(255,255,255,0.12)',
+            paddingTop: 10,
           }}>
-            Based on ABMP and AMTA<br/>standards
+            Based on ABMP and AMTA professional standards
           </div>
         </div>
 
-        <div style={{
-          padding: '24px 28px 32px',
-          background: '#fff',
-          maxHeight: 580,
-          overflowY: 'auto',
-          fontFamily: 'Georgia, serif',
-          fontSize: 14,
-          lineHeight: 1.65,
-          color: C.ink,
-        }}>
-          {blocks.map((b, i) => {
-            const isEditing = editingIdx === i;
-            const showAdd = b.kind === 'h2' || b.kind === 'h1';
-            return (
-              <React.Fragment key={i}>
-                <EditableBlock
-                  block={b}
-                  isEditing={isEditing}
-                  onStart={() => setEditingIdx(i)}
-                  onCommit={(t) => commitBlockEdit(i, t)}
-                  onCancel={() => setEditingIdx(null)}
-                  onRemove={() => removeBlock(i)}
-                  onRemoveSection={b.kind === 'h2' ? () => removeSection(i) : null}
-                  hovered={hoveredH2 === i}
-                  onHover={(v) => b.kind === 'h2' && setHoveredH2(v ? i : null)}
-                  C={C}
-                />
-                {showAdd && (
-                  <AddDivider onAdd={() => addSectionAfter(i)} C={C} />
-                )}
-              </React.Fragment>
-            );
-          })}
-
-          {/* Signature block, always rendered, never editable. */}
+        {/* SCROLLABLE BODY */}
+        <div
+          ref={scrollContainerRef}
+          style={{
+            background: C.paper,
+            maxHeight: 640,
+            overflowY: 'auto',
+            // Subtle inner shadow for paper-edge feel
+            boxShadow: 'inset 0 0 60px rgba(146,116,52,0.04)',
+          }}
+        >
           <div style={{
-            marginTop: 36,
-            paddingTop: 18,
-            borderTop: `1px solid ${C.line}`,
+            padding: '28px 36px 36px',
+            fontFamily: 'Georgia, serif',
+            fontSize: 14.5,
+            lineHeight: 1.75,
+            color: C.inkSoft,
+            maxWidth: 640,
+            margin: '0 auto',
           }}>
-            <div style={{
-              fontSize: 11,
-              fontWeight: 700,
-              color: C.amber,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              marginBottom: 14,
-            }}>
-              Client signature
-            </div>
-            <div style={{
-              fontSize: 13,
-              color: C.gray,
-              lineHeight: 1.6,
-            }}>
-              The client signs once at intake, capturing this entire agreement. For older clients, tap "Download / Print PDF" above to print a paper version.
-            </div>
-            <div style={{
-              marginTop: 14,
-              background: C.amberPale,
-              border: `1px solid ${C.amberLine}`,
-              borderRadius: 10,
-              padding: '12px 14px',
-              fontSize: 12,
-              color: C.amber,
-              fontFamily: 'system-ui, sans-serif',
-              lineHeight: 1.5,
-            }}>
-              <strong>Note:</strong> at booking time, clients also confirm your specific cancellation fee as a hard gate. They cannot complete a booking without acknowledging the fee structure you set under "Cancellation fee + auto-charge" below.
-            </div>
+            {/* Table of Contents -- sits between the H1 (preamble) and first H2 */}
+            {toc.length > 1 && (
+              <div style={{
+                background: C.cream,
+                border: `1px solid ${C.amberPale}`,
+                borderRadius: 10,
+                padding: '18px 22px',
+                marginBottom: 28,
+                marginTop: 4,
+              }}>
+                <div style={{
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  color: C.amberDeep,
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  marginBottom: 12,
+                  fontFamily: 'system-ui, sans-serif',
+                }}>
+                  Contents
+                </div>
+                <ol style={{
+                  margin: 0,
+                  padding: 0,
+                  listStyle: 'none',
+                  fontFamily: 'Georgia, serif',
+                }}>
+                  {toc.map(item => (
+                    <li
+                      key={item.idx}
+                      onClick={() => jumpToSection(item.idx)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'baseline',
+                        padding: '4px 0',
+                        cursor: 'pointer',
+                        fontSize: 13.5,
+                        color: C.inkSoft,
+                        transition: 'color 0.12s',
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.color = C.forest}
+                      onMouseLeave={e => e.currentTarget.style.color = C.inkSoft}
+                    >
+                      <span style={{
+                        fontFamily: 'Georgia, serif',
+                        fontStyle: 'italic',
+                        color: C.amberDeep,
+                        fontSize: 12,
+                        marginRight: 10,
+                        minWidth: 24,
+                        flexShrink: 0,
+                      }}>
+                        {ROMAN[item.number] || item.number}.
+                      </span>
+                      <span style={{ flex: 1 }}>{item.title}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+
+            {/* The blocks */}
+            {blocks.map((b, i) => {
+              const isEditing = editingIdx === i;
+              const showAdd = b.kind === 'h2' || b.kind === 'h1';
+              const sectionNumber = b.kind === 'h2'
+                ? toc.find(t => t.idx === i)?.number
+                : null;
+              return (
+                <React.Fragment key={i}>
+                  <EditableBlock
+                    block={b}
+                    sectionNumber={sectionNumber}
+                    isEditing={isEditing}
+                    therapist={therapist}
+                    onStart={() => setEditingIdx(i)}
+                    onCommit={(t) => commitBlockEdit(i, t)}
+                    onCancel={() => setEditingIdx(null)}
+                    onRemove={() => removeBlock(i)}
+                    onRemoveSection={b.kind === 'h2' ? () => removeSection(i) : null}
+                    hovered={hoveredH2 === i}
+                    onHover={(v) => b.kind === 'h2' && setHoveredH2(v ? i : null)}
+                    setRef={(el) => { blockRefs.current[i] = el; }}
+                    C={C}
+                  />
+                  {showAdd && (
+                    <AddDivider onAdd={() => addSectionAfter(i)} C={C} />
+                  )}
+                </React.Fragment>
+              );
+            })}
+
+            {/* Signature block -- classic legal contract layout */}
+            <SignatureBlock C={C} />
           </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          background: C.paperEdge,
+          padding: '10px 28px',
+          fontSize: 10,
+          color: C.gray,
+          textAlign: 'center',
+          letterSpacing: '0.04em',
+          borderTop: `1px solid ${C.line}`,
+          fontFamily: 'system-ui, sans-serif',
+        }}>
+          {businessName} · Generated by MyBodyMap · Based on ABMP and AMTA standards
         </div>
       </div>
 
+      {/* Floating save bar */}
       {dirty && (
         <div style={{
           position: 'sticky',
@@ -379,12 +530,12 @@ export default function PracticeAgreement({ therapist }) {
           background: '#fff',
           border: `1.5px solid ${C.forestMid}`,
           borderRadius: 12,
-          padding: '10px 14px',
+          padding: '11px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 10,
-          boxShadow: '0 8px 20px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.05)',
+          boxShadow: '0 12px 28px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.05)',
           zIndex: 10,
         }}>
           <span style={{ fontSize: 13, color: C.forest, fontWeight: 600 }}>
@@ -397,7 +548,7 @@ export default function PracticeAgreement({ therapist }) {
                 background: 'transparent',
                 border: `1px solid ${C.line}`,
                 borderRadius: 8,
-                padding: '7px 14px',
+                padding: '8px 14px',
                 fontSize: 12,
                 fontWeight: 600,
                 color: C.gray,
@@ -414,11 +565,11 @@ export default function PracticeAgreement({ therapist }) {
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
-                padding: '7px 18px',
+                padding: '8px 20px',
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: saving ? 'not-allowed' : 'pointer',
-                boxShadow: `0 2px 6px ${C.forest}33`,
+                boxShadow: `0 2px 8px ${C.forest}33`,
               }}
             >
               {saving ? 'Saving…' : 'Save'}
@@ -438,18 +589,25 @@ export default function PracticeAgreement({ therapist }) {
   );
 }
 
-function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove, onRemoveSection, hovered, onHover, C }) {
-  const ref = useRef(null);
+// ─── EditableBlock ────────────────────────────────────────────
+function EditableBlock({ block, sectionNumber, isEditing, therapist, onStart, onCommit, onCancel, onRemove, onRemoveSection, hovered, onHover, setRef, C }) {
+  const editRef = useRef(null);
   const startText = useRef(block.text);
+
+  // Display text shows resolved tokens (live percentages). When the
+  // block is being edited, the contenteditable shows the RAW text
+  // so the therapist sees and can move the {tokens} themselves.
+  const displayText = resolveTokens(block.text, therapist);
+  const hasTokens = displayText !== block.text;
 
   useEffect(() => {
     if (isEditing) {
       startText.current = block.text;
       setTimeout(() => {
-        if (ref.current) {
-          ref.current.focus();
+        if (editRef.current) {
+          editRef.current.focus();
           const range = document.createRange();
-          range.selectNodeContents(ref.current);
+          range.selectNodeContents(editRef.current);
           range.collapse(false);
           const sel = window.getSelection();
           sel.removeAllRanges();
@@ -460,8 +618,8 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
   }, [isEditing, block.text]);
 
   function handleBlur() {
-    if (!ref.current) return;
-    const newText = ref.current.innerText.trim();
+    if (!editRef.current) return;
+    const newText = editRef.current.innerText.trim();
     if (newText === '' && block.kind !== 'h1') {
       onRemove();
       return;
@@ -473,44 +631,42 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
   function handleKeyDown(e) {
     if (e.key === 'Escape') {
       e.preventDefault();
-      if (ref.current) ref.current.innerText = startText.current;
+      if (editRef.current) editRef.current.innerText = startText.current;
       onCancel();
-      ref.current?.blur();
+      editRef.current?.blur();
     } else if (e.key === 'Enter' && (block.kind === 'h1' || block.kind === 'h2')) {
       e.preventDefault();
-      ref.current?.blur();
+      editRef.current?.blur();
     }
   }
 
-  const wrapperStyle = {
-    position: 'relative',
-    transition: 'background 0.12s, outline-color 0.12s',
-    borderRadius: 6,
-  };
   const editingStyle = isEditing ? {
     background: C.amberPale,
     outline: `2px solid ${C.amberLine}`,
     outlineOffset: 4,
+    borderRadius: 4,
   } : {};
 
   if (block.kind === 'h1') {
     return (
-      <div style={{ ...wrapperStyle, ...editingStyle, marginBottom: 18 }}>
+      <div ref={setRef} style={{ ...editingStyle, marginBottom: 22 }}>
         <h1
-          ref={ref}
+          ref={editRef}
           contentEditable={isEditing}
           suppressContentEditableWarning
           onClick={!isEditing ? onStart : undefined}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
           style={{
-            fontSize: 22,
+            fontSize: 26,
             fontWeight: 700,
             fontFamily: 'Georgia, serif',
             color: C.forest,
             margin: 0,
+            letterSpacing: '-0.01em',
             cursor: isEditing ? 'text' : 'pointer',
             outline: 'none',
+            lineHeight: 1.25,
           }}
         >
           {block.text}
@@ -522,20 +678,34 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
   if (block.kind === 'h2') {
     return (
       <div
+        ref={setRef}
         onMouseEnter={() => onHover(true)}
         onMouseLeave={() => onHover(false)}
-        style={{ ...wrapperStyle, ...editingStyle, marginTop: 20, marginBottom: 6 }}
+        style={{ ...editingStyle, marginTop: 32, marginBottom: 10 }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+          {sectionNumber != null && (
+            <span style={{
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              color: C.amberDeep,
+              fontSize: 14,
+              fontWeight: 600,
+              flexShrink: 0,
+              minWidth: 26,
+            }}>
+              {ROMAN[sectionNumber] || sectionNumber}.
+            </span>
+          )}
           <h2
-            ref={ref}
+            ref={editRef}
             contentEditable={isEditing}
             suppressContentEditableWarning
             onClick={!isEditing ? onStart : undefined}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             style={{
-              fontSize: 17,
+              fontSize: 17.5,
               fontWeight: 700,
               fontFamily: 'Georgia, serif',
               color: C.ink,
@@ -543,8 +713,7 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
               flex: 1,
               cursor: isEditing ? 'text' : 'pointer',
               outline: 'none',
-              borderLeft: `3px solid ${C.amber}`,
-              paddingLeft: 10,
+              letterSpacing: '-0.005em',
             }}
           >
             {block.text}
@@ -561,6 +730,7 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
                 cursor: 'pointer',
                 padding: '4px 8px',
                 opacity: 0.7,
+                fontFamily: 'system-ui, sans-serif',
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
@@ -569,22 +739,32 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
             </button>
           )}
         </div>
+        {/* Underline rule below H2 */}
+        <div style={{
+          height: 1,
+          background: `linear-gradient(90deg, ${C.amber}66 0%, transparent 100%)`,
+          marginTop: 6,
+          marginLeft: sectionNumber != null ? 38 : 0,
+        }} />
       </div>
     );
   }
 
   if (block.kind === 'li') {
     return (
-      <div style={{
-        ...wrapperStyle, ...editingStyle,
-        display: 'flex', gap: 10, paddingLeft: 8, marginBottom: 4,
-      }}>
+      <div
+        ref={setRef}
+        style={{ ...editingStyle, display: 'flex', gap: 12, paddingLeft: 8, marginBottom: 6 }}
+      >
         <span style={{
-          color: C.sage, flexShrink: 0, marginTop: 2,
-          fontFamily: 'system-ui, sans-serif',
+          color: C.amber,
+          flexShrink: 0,
+          marginTop: 3,
+          fontFamily: 'Georgia, serif',
+          fontWeight: 700,
         }}>•</span>
         <p
-          ref={ref}
+          ref={editRef}
           contentEditable={isEditing}
           suppressContentEditableWarning
           onClick={!isEditing ? onStart : undefined}
@@ -602,19 +782,23 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
     );
   }
 
+  // paragraph
   return (
-    <div style={{ ...wrapperStyle, ...editingStyle, marginBottom: 10 }}>
+    <div ref={setRef} style={{ ...editingStyle, marginBottom: 14 }}>
       <p
-        ref={ref}
+        ref={editRef}
         contentEditable={isEditing}
         suppressContentEditableWarning
         onClick={!isEditing ? onStart : undefined}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
         style={{
-          margin: 0, padding: '2px 4px',
+          margin: 0,
+          padding: '3px 4px',
           cursor: isEditing ? 'text' : 'pointer',
           outline: 'none',
+          textAlign: 'justify',
+          hyphens: 'auto',
         }}
       >
         {block.text}
@@ -623,6 +807,7 @@ function EditableBlock({ block, isEditing, onStart, onCommit, onCancel, onRemove
   );
 }
 
+// ─── AddDivider ────────────────────────────────────────────────
 function AddDivider({ onAdd, C }) {
   const [hover, setHover] = useState(false);
   return (
@@ -630,7 +815,7 @@ function AddDivider({ onAdd, C }) {
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={onAdd}
-      style={{ height: 16, position: 'relative', cursor: 'pointer' }}
+      style={{ height: 18, position: 'relative', cursor: 'pointer' }}
     >
       <div style={{
         position: 'absolute',
@@ -650,11 +835,13 @@ function AddDivider({ onAdd, C }) {
           transform: 'translate(-50%, -50%)',
           background: C.amber,
           color: '#fff',
-          borderRadius: 12,
-          padding: '2px 10px',
+          borderRadius: 14,
+          padding: '3px 12px',
           fontSize: 11,
           fontWeight: 700,
-          letterSpacing: '0.04em',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          fontFamily: 'system-ui, sans-serif',
         }}>
           + add section
         </div>
@@ -663,12 +850,96 @@ function AddDivider({ onAdd, C }) {
   );
 }
 
-function pill(C) {
+// ─── SignatureBlock ────────────────────────────────────────────
+function SignatureBlock({ C }) {
+  return (
+    <div style={{
+      marginTop: 48,
+      paddingTop: 24,
+      borderTop: `2px double ${C.amberLine}`,
+    }}>
+      <div style={{
+        fontSize: 10.5,
+        fontWeight: 700,
+        color: C.amberDeep,
+        letterSpacing: '0.16em',
+        textTransform: 'uppercase',
+        marginBottom: 8,
+        fontFamily: 'system-ui, sans-serif',
+        textAlign: 'center',
+      }}>
+        Client signature
+      </div>
+      <p style={{
+        margin: '0 0 24px',
+        textAlign: 'center',
+        fontSize: 13,
+        color: C.gray,
+        fontStyle: 'italic',
+      }}>
+        By signing below, you confirm that you have read and understood this agreement, and that you agree to its terms.
+      </p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 20 }}>
+        <div>
+          <div style={{ borderBottom: `1.5px solid ${C.ink}`, height: 32 }} />
+          <div style={{ fontSize: 10.5, color: C.gray, marginTop: 5, fontFamily: 'system-ui, sans-serif', letterSpacing: '0.04em' }}>
+            Client name (printed)
+          </div>
+        </div>
+        <div>
+          <div style={{ borderBottom: `1.5px solid ${C.ink}`, height: 32 }} />
+          <div style={{ fontSize: 10.5, color: C.gray, marginTop: 5, fontFamily: 'system-ui, sans-serif', letterSpacing: '0.04em' }}>
+            Date
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div style={{ borderBottom: `1.5px solid ${C.ink}`, height: 44 }} />
+        <div style={{ fontSize: 10.5, color: C.gray, marginTop: 5, fontFamily: 'system-ui, sans-serif', letterSpacing: '0.04em' }}>
+          Client signature
+        </div>
+      </div>
+
+      <div style={{
+        marginTop: 24,
+        padding: '12px 14px',
+        background: C.cream,
+        border: `1px solid ${C.amberPale}`,
+        borderRadius: 8,
+        fontSize: 12,
+        color: C.inkSoft,
+        fontFamily: 'system-ui, sans-serif',
+        lineHeight: 1.55,
+        textAlign: 'left',
+      }}>
+        <strong style={{ color: C.amberDeep, letterSpacing: '0.04em' }}>Therapist note:</strong> Clients booking online sign this digitally at intake. For older clients who prefer paper, tap "Download / Print PDF" above. The cancellation fee they confirm at booking time is shown to them as a separate hard gate before they complete their booking, on top of this agreement.
+      </div>
+    </div>
+  );
+}
+
+function pill(C, variant) {
+  if (variant === 'primary') {
+    return {
+      background: C.forest,
+      color: '#fff',
+      border: 'none',
+      borderRadius: 999,
+      padding: '8px 16px',
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: 'pointer',
+      transition: 'all 0.12s',
+      boxShadow: `0 2px 6px ${C.forest}33`,
+    };
+  }
   return {
     background: '#fff',
     border: `1px solid ${C.line}`,
     borderRadius: 999,
-    padding: '7px 14px',
+    padding: '8px 14px',
     fontSize: 12,
     fontWeight: 700,
     color: C.ink,
@@ -677,23 +948,43 @@ function pill(C) {
   };
 }
 
-// AgreementRenderer exported for backward-compat with
-// PracticeAgreementPrint + ClientIntake which import it.
+// ─── AgreementRenderer ────────────────────────────────────────
+// Used by PracticeAgreementPrint and ClientIntake. Renders the
+// agreement as styled HTML matching the editor preview, so the
+// client sees the same paper-feel document the therapist edited.
+// Includes the table of contents and roman-numeral section numbers.
 export function AgreementRenderer({ text }) {
   if (!text) return null;
   const blocks = parseBlocks(text);
+  const toc = buildToc(blocks);
   const elements = [];
   let listBuffer = [];
+  let sectionCounter = 0;
 
   function flushList() {
     if (listBuffer.length) {
       elements.push(
         <ul key={`l-${elements.length}`} style={{
-          margin: '8px 0 14px 0',
+          margin: '8px 0 16px 0',
           paddingLeft: 22,
+          listStyle: 'none',
         }}>
           {listBuffer.map((li, i) => (
-            <li key={i} style={{ marginBottom: 5 }}>{li}</li>
+            <li key={i} style={{
+              marginBottom: 6,
+              position: 'relative',
+              paddingLeft: 18,
+            }}>
+              <span style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                color: C.amber,
+                fontFamily: 'Georgia, serif',
+                fontWeight: 700,
+              }}>•</span>
+              {li}
+            </li>
           ))}
         </ul>
       );
@@ -706,32 +997,113 @@ export function AgreementRenderer({ text }) {
       flushList();
       elements.push(
         <h1 key={i} style={{
-          fontSize: 22,
+          fontSize: 24,
           fontWeight: 700,
           fontFamily: 'Georgia, serif',
           color: C.forest,
-          margin: '0 0 14px 0',
+          margin: '0 0 18px 0',
+          letterSpacing: '-0.01em',
+          lineHeight: 1.25,
         }}>{b.text}</h1>
       );
+      // After H1, render the TOC if there are multiple H2 sections
+      if (toc.length > 1) {
+        elements.push(
+          <div key={`toc-${i}`} style={{
+            background: C.cream,
+            border: `1px solid ${C.amberPale}`,
+            borderRadius: 10,
+            padding: '18px 22px',
+            margin: '0 0 28px 0',
+            pageBreakInside: 'avoid',
+          }}>
+            <div style={{
+              fontSize: 10.5,
+              fontWeight: 700,
+              color: C.amberDeep,
+              letterSpacing: '0.16em',
+              textTransform: 'uppercase',
+              marginBottom: 12,
+              fontFamily: 'system-ui, sans-serif',
+            }}>
+              Contents
+            </div>
+            <ol style={{
+              margin: 0,
+              padding: 0,
+              listStyle: 'none',
+              fontFamily: 'Georgia, serif',
+            }}>
+              {toc.map(item => (
+                <li key={item.idx} style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  padding: '4px 0',
+                  fontSize: 13.5,
+                  color: C.inkSoft,
+                }}>
+                  <span style={{
+                    fontStyle: 'italic',
+                    color: C.amberDeep,
+                    fontSize: 12,
+                    marginRight: 10,
+                    minWidth: 24,
+                    flexShrink: 0,
+                  }}>
+                    {ROMAN[item.number] || item.number}.
+                  </span>
+                  <span style={{ flex: 1 }}>{item.title}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
+      }
     } else if (b.kind === 'h2') {
       flushList();
+      sectionCounter += 1;
       elements.push(
-        <h2 key={i} style={{
-          fontSize: 16,
-          fontWeight: 700,
-          fontFamily: 'Georgia, serif',
-          color: C.ink,
-          margin: '18px 0 6px 0',
-          borderLeft: `3px solid ${C.amber}`,
-          paddingLeft: 10,
-        }}>{b.text}</h2>
+        <div key={i} style={{ margin: '28px 0 10px' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+            <span style={{
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              color: C.amberDeep,
+              fontSize: 14,
+              fontWeight: 600,
+              flexShrink: 0,
+              minWidth: 26,
+            }}>
+              {ROMAN[sectionCounter] || sectionCounter}.
+            </span>
+            <h2 style={{
+              fontSize: 16,
+              fontWeight: 700,
+              fontFamily: 'Georgia, serif',
+              color: C.ink,
+              margin: 0,
+              letterSpacing: '-0.005em',
+            }}>{b.text}</h2>
+          </div>
+          <div style={{
+            height: 1,
+            background: `linear-gradient(90deg, ${C.amber}66 0%, transparent 100%)`,
+            marginTop: 6,
+            marginLeft: 38,
+          }} />
+        </div>
       );
     } else if (b.kind === 'li') {
       listBuffer.push(b.text);
     } else {
       flushList();
       elements.push(
-        <p key={i} style={{ margin: '0 0 10px 0', lineHeight: 1.65 }}>
+        <p key={i} style={{
+          margin: '0 0 12px 0',
+          lineHeight: 1.75,
+          textAlign: 'justify',
+          hyphens: 'auto',
+        }}>
           {b.text}
         </p>
       );

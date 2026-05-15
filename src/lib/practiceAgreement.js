@@ -20,13 +20,13 @@
 // The first paragraph of the default text cites these sources so the
 // therapist and client see the lineage.
 
-export const DEFAULT_PRACTICE_AGREEMENT = `# Practice Agreement and Informed Consent
+export const DEFAULT_PRACTICE_AGREEMENT = `# Client Agreement and Informed Consent
 
 This agreement is based on the standards published by the Associated Bodywork & Massage Professionals (ABMP) and the American Massage Therapy Association (AMTA). It explains what to expect from your sessions, the policies that govern this practice, and your rights as a client. Please read it carefully. Your signature confirms you understand and agree.
 
 ## About these sessions
 
-The sessions you receive at this practice are therapeutic massage and bodywork for general wellness, stress reduction, relief of muscular tension, and improvement of circulation. Massage therapy is not a substitute for medical care. The therapist does not diagnose, prescribe, or treat illness, injury, or disease. If you have a specific medical concern, please consult your physician. Clients with acute injuries or conditions outside the scope of massage practice should consult their doctor before booking. If your therapist determines that massage is not appropriate for your condition, they will let you know and may refer you to a more suitable healthcare provider.
+The sessions you receive at this practice are therapeutic massage and bodywork for general wellness, stress reduction, relief of muscular tension, and improvement of circulation. Massage therapy is not a substitute for medical care. The therapist does not diagnose, prescribe, or treat illness, injury, or disease. Nothing said during a session should be interpreted as medical advice or diagnosis. If you have a specific medical concern, please consult your physician. Clients with acute injuries or conditions outside the scope of massage practice should consult their doctor before booking. If your therapist determines that massage is not appropriate for your condition, they will let you know and may refer you to a more suitable healthcare provider.
 
 ## Your consent
 
@@ -62,13 +62,20 @@ For your first appointment, please arrive 15 minutes before your scheduled time 
 
 ## Cancellation policy
 
-Standard cancellation tiers at this practice:
+If you cannot make your appointment, please give as much notice as you can. Standard practice is to require at least 24 hours' notice. The fees your therapist charges depend on how much notice you give:
 
-- More than 24 hours notice: no fee
-- Less than 24 hours notice: up to 50% of the session fee
-- No-show or same-day cancellation without notice: full session fee
+If you cancel:
+- More than 24 hours before your appointment: {cancel_24h_plus}% of the session fee
+- Within 24 hours: {cancel_under_24h}% of the session fee
+- Within 2 hours: {cancel_under_2h}% of the session fee
 
-Your therapist may waive these fees at their discretion for verifiable emergencies, illness, or inclement weather. The exact fee amounts for your booking will appear on the booking page when you confirm, and you will see and acknowledge them before the booking is confirmed.
+If you reschedule:
+- More than 24 hours before your appointment: {reschedule_24h_plus}% of the session fee
+- Within 24 hours: {reschedule_under_24h}% of the session fee
+
+If you do not show up at your appointment time: {no_show}% of the session fee.
+
+You will see and confirm these amounts on the booking page before each booking is finalized, so there are no surprises. Last-minute cancellations due to verifiable emergencies, illness, or inclement weather may not result in charges, at your therapist's discretion.
 
 ## Illness
 
@@ -140,12 +147,47 @@ export function sectionsToMarkdown(sections) {
   }).join('\n\n');
 }
 
-// Render the agreement with the therapist's substitutions
-// (business name, cancellation fee, etc).
+// Render the agreement with the therapist's substitutions:
+//   - Business name + therapist name in []
+//   - Cancellation policy tokens in {} pulled live from
+//     therapist.cancellation_policy JSON. This keeps the agreement
+//     text in sync with the actual configured percentages so the
+//     therapist edits one place (cancellation policy editor) and
+//     the agreement reflects it. Therapists who want fixed numbers
+//     can edit their agreement and replace tokens with concrete
+//     values; tokens that don't appear in the text are simply
+//     ignored.
+//
+// Token reference:
+//   {cancel_24h_plus}        cancel.cancel_24h_plus_percent
+//   {cancel_under_24h}       cancel.cancel_2_to_24h_percent
+//   {cancel_under_2h}        cancel.cancel_under_2h_percent
+//   {reschedule_24h_plus}    cancel.reschedule_24h_plus_percent
+//   {reschedule_under_24h}   cancel.reschedule_under_24h_percent
+//   {no_show}                cancel.no_show_percent
 export function renderAgreementForClient(agreementText, therapist) {
   if (!agreementText) return '';
   const business = therapist?.business_name || therapist?.full_name || 'your therapist';
-  return agreementText
+
+  // Pull cancellation policy. Default to sensible values when the
+  // therapist hasn't set up cancellation yet so the agreement reads
+  // cleanly out of the box rather than showing 0% everywhere.
+  const cx = therapist?.cancellation_policy || {};
+  const enabled = !!therapist?.cancellation_policy_enabled;
+  const tokens = {
+    cancel_24h_plus:      enabled ? (cx.cancel_24h_plus_percent ?? 0)    : 0,
+    cancel_under_24h:     enabled ? (cx.cancel_2_to_24h_percent ?? 50)   : 50,
+    cancel_under_2h:      enabled ? (cx.cancel_under_2h_percent ?? 100)  : 100,
+    reschedule_24h_plus:  enabled ? (cx.reschedule_24h_plus_percent ?? 0): 0,
+    reschedule_under_24h: enabled ? (cx.reschedule_under_24h_percent ?? 0): 0,
+    no_show:              enabled ? (cx.no_show_percent ?? 100)          : 100,
+  };
+
+  let out = agreementText
     .replace(/\[Business Name\]/g, business)
     .replace(/\[Therapist Name\]/g, therapist?.full_name || business);
+  for (const [key, val] of Object.entries(tokens)) {
+    out = out.replace(new RegExp(`\\{${key}\\}`, 'g'), String(val));
+  }
+  return out;
 }
