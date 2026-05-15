@@ -637,6 +637,32 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
         <button onClick={()=>setWeekOffset(w=>w+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
 
+      {/* Explanatory banner when the displayed week is empty AND
+          is current or future. Past weeks intentionally don't show
+          this (imported history may be sparse and that's not
+          confusing). HK May 14 2026: 'past weeks are there, but
+          there's nothing after today for the coming weeks' from
+          Candice. The empty state was correct (CSV imports don't
+          carry future bookings) but read as a sync bug. */}
+      {realWeek.length === 0 && weekOffset >= 0 && (
+        <div style={{
+          background:'#FEFCE8',
+          border:'1px solid #FDE68A',
+          borderRadius:10,
+          padding:'12px 14px',
+          marginBottom:16,
+          display:'flex',
+          alignItems:'flex-start',
+          gap:10,
+        }}>
+          <div style={{fontSize:18, lineHeight:1, marginTop:2}}>🌱</div>
+          <div style={{flex:1, fontSize:12.5, color:'#78350F', lineHeight:1.55}}>
+            <strong style={{color:'#78350F'}}>No bookings yet for {weekOffset===0?'this week':weekOffset===1?'next week':'this week'}.</strong>{' '}
+            CSV imports bring over past visit history, not future appointments. To fill your week, tap <strong>Book Appointment</strong> at the top of the page to add bookings manually, or share your booking link so clients can book themselves.
+          </div>
+        </div>
+      )}
+
       {/* MOBILE: vertical day list, full-width rows, no truncation */}
       {isMobile ? (
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
@@ -774,6 +800,40 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
         <div style={{fontSize:16,fontWeight:700,color:'#1F2937'}}>{fmtMonth(viewMonth)}</div>
         <button onClick={()=>setMonthOffset(m=>m+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>Next →</button>
       </div>
+
+      {/* Empty-state banner for current/future months with zero
+          real bookings. Same rationale as the weekly banner: CSV
+          imports don't bring forward future appointments and the
+          empty state was confusing. */}
+      {(() => {
+        const monthAppts = APPTS.filter(a => {
+          const ad = a.date instanceof Date ? a.date : new Date(a.date + 'T12:00:00');
+          return ad.getFullYear() === viewMonth.getFullYear() && ad.getMonth() === viewMonth.getMonth() && !a.preview;
+        });
+        const isCurrentOrFutureMonth = monthOffset >= 0;
+        if (monthAppts.length === 0 && isCurrentOrFutureMonth) {
+          return (
+            <div style={{
+              background:'#FEFCE8',
+              border:'1px solid #FDE68A',
+              borderRadius:10,
+              padding:'12px 14px',
+              marginBottom:16,
+              display:'flex',
+              alignItems:'flex-start',
+              gap:10,
+            }}>
+              <div style={{fontSize:18, lineHeight:1, marginTop:2}}>🌱</div>
+              <div style={{flex:1, fontSize:12.5, color:'#78350F', lineHeight:1.55}}>
+                <strong style={{color:'#78350F'}}>No bookings yet for {fmtMonth(viewMonth)}.</strong>{' '}
+                CSV imports bring over past visit history, not future appointments. To fill your month, tap <strong>Book Appointment</strong> at the top to add bookings manually, or share your booking link so clients can book themselves.
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       <div className="bm-monthly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:4}}>
         {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',padding:'4px 0'}}>{d}</div>)}
       </div>
