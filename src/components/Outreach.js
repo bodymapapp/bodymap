@@ -5,12 +5,13 @@ import QuickSendBlocks from './QuickSendBlocks';
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
 const SEGMENTS = [
-  { id:'lapsed',   label:'Lapsed clients',   desc:'Haven\'t visited in X days' },
-  { id:'due',      label:'Due for a visit',  desc:'Past their usual booking interval' },
-  { id:'onetimer', label:'Never rebooked',   desc:'Came once, never returned' },
-  { id:'frequent', label:'Your regulars',    desc:'4+ visits' },
-  { id:'all',      label:'All clients',      desc:'Everyone with at least one visit' },
-  { id:'custom',   label:'Custom filter',    desc:'You define the conditions' },
+  { id:'lapsed',     label:'Lapsed clients',   desc:'Haven\'t visited in X days' },
+  { id:'due',        label:'Due for a visit',  desc:'Past their usual booking interval' },
+  { id:'onetimer',   label:'Never rebooked',   desc:'Came once, never returned' },
+  { id:'frequent',   label:'Your regulars',    desc:'4+ visits' },
+  { id:'no_history', label:'Newly imported',   desc:'No bookings yet, recently added to your list' },
+  { id:'all',        label:'All clients',      desc:'Everyone with email or phone' },
+  { id:'custom',     label:'Custom filter',    desc:'You define the conditions' },
 ];
 
 // Tokens that can be inserted into the message body and resolved per
@@ -140,15 +141,29 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   function getSegment() {
     // Always exclude unsubscribed clients from segment counts so the
     // count the therapist sees matches what'll actually receive.
-    const eligible = clients.filter(c => !c.outreach_unsubscribed);
+    // Also exclude clients with no way to reach them at all (no email
+    // and no phone) since a campaign send to them would just fail.
+    const eligible = clients.filter(c =>
+      !c.outreach_unsubscribed && (c.email || c.phone)
+    );
     switch(segment) {
-      case 'lapsed':   return eligible.filter(c => c.days_since_visit !== null && c.days_since_visit >= customLapsed);
-      case 'due':      return eligible.filter(c => { const avg=avgInterval(c); return avg && c.days_since_visit && c.days_since_visit >= avg*1.2; });
-      case 'onetimer': return eligible.filter(c => c.total_sessions === 1);
-      case 'frequent': return eligible.filter(c => c.total_sessions >= 4);
-      case 'all':      return eligible.filter(c => c.total_sessions >= 1);
-      case 'custom':   return eligible.filter(c => conditions.every(cond => applyOp(getClientValue(c, cond.field), cond.op, Number(cond.value))));
-      default:         return [];
+      case 'lapsed':     return eligible.filter(c => c.days_since_visit !== null && c.days_since_visit >= customLapsed);
+      case 'due':        return eligible.filter(c => { const avg=avgInterval(c); return avg && c.days_since_visit && c.days_since_visit >= avg*1.2; });
+      case 'onetimer':   return eligible.filter(c => c.total_sessions === 1);
+      case 'frequent':   return eligible.filter(c => c.total_sessions >= 4);
+      // 'no_history' specifically covers imported clients with no
+      // bookings yet. Common after a CSV migration. HK May 14 2026:
+      // Candice imported from GlossGenius and her clients did not
+      // come with visit history columns, so they were invisible to
+      // every prior segment.
+      case 'no_history': return eligible.filter(c => (c.total_sessions || 0) === 0);
+      // 'all' now means every reachable client, regardless of session
+      // count. Was previously 'everyone with at least one visit'
+      // which silently excluded imported clients. Therapists expect
+      // 'all' to mean all.
+      case 'all':        return eligible;
+      case 'custom':     return eligible.filter(c => conditions.every(cond => applyOp(getClientValue(c, cond.field), cond.op, Number(cond.value))));
+      default:           return [];
     }
   }
 
