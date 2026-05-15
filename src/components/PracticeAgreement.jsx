@@ -309,6 +309,24 @@ export default function PracticeAgreement({ therapist }) {
         </span>
       </div>
 
+      {/* Live-percentage note. Only shown when the agreement text
+          contains cancellation tokens, so therapists who customized
+          their agreement (and removed the tokens) don't see this. */}
+      {/\{(cancel|reschedule|no_show)/.test(text) && (
+        <div style={{
+          background: '#FFF8E7',
+          border: '1px solid #F3D88E',
+          borderRadius: 10,
+          padding: '9px 12px',
+          marginBottom: 14,
+          fontSize: 11.5,
+          color: '#7A5A18',
+          lineHeight: 1.5,
+        }}>
+          The cancellation percentages in your agreement fill in automatically from your cancellation settings below. Edit them once in the cancellation editor and the numbers update everywhere.
+        </div>
+      )}
+
       {/* THE DOCUMENT -- paper feel */}
       <div style={{
         background: C.paper,
@@ -669,7 +687,7 @@ function EditableBlock({ block, sectionNumber, isEditing, therapist, onStart, on
             lineHeight: 1.25,
           }}
         >
-          {block.text}
+          {isEditing ? block.text : displayText}
         </h1>
       </div>
     );
@@ -716,7 +734,7 @@ function EditableBlock({ block, sectionNumber, isEditing, therapist, onStart, on
               letterSpacing: '-0.005em',
             }}
           >
-            {block.text}
+            {isEditing ? block.text : displayText}
           </h2>
           {hovered && !isEditing && onRemoveSection && (
             <button
@@ -776,7 +794,7 @@ function EditableBlock({ block, sectionNumber, isEditing, therapist, onStart, on
             outline: 'none',
           }}
         >
-          {block.text}
+          {isEditing ? block.text : displayText}
         </p>
       </div>
     );
@@ -801,7 +819,7 @@ function EditableBlock({ block, sectionNumber, isEditing, therapist, onStart, on
           hyphens: 'auto',
         }}
       >
-        {block.text}
+        {isEditing ? block.text : displayText}
       </p>
     </div>
   );

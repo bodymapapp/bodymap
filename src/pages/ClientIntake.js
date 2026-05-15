@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { db, supabase } from '../lib/supabase';
 import Demo from './Demo';
+import { renderAgreementForClient } from '../lib/practiceAgreement';
 
 export default function ClientIntake() {
   const { customUrl } = useParams();
@@ -175,19 +176,26 @@ export default function ClientIntake() {
       if (therapist.practice_agreement_enabled !== false && therapist.practice_agreement_text) {
         try {
           const nowIso = new Date().toISOString();
-          // Stamp on the client record so future bookings can see
-          // they already agreed without re-prompting.
+          // Snapshot the RESOLVED text (with current cancellation
+          // percentages substituted in) so the audit trail shows
+          // exactly what the client agreed to. If the therapist
+          // updates their percentages later, the historical
+          // signature still reflects the concrete numbers shown at
+          // the moment of signing.
+          const resolvedSnapshot = renderAgreementForClient(
+            therapist.practice_agreement_text,
+            therapist
+          );
           await supabase.from('clients').update({
             practice_agreement_signed_at: nowIso,
             practice_agreement_signer_name: intakeData.clientName,
-            practice_agreement_text_snapshot: therapist.practice_agreement_text,
+            practice_agreement_text_snapshot: resolvedSnapshot,
           }).eq('id', client.id);
-          // Stamp on this booking too if we have one
           if (newSession?.id) {
             await supabase.from('bookings').update({
               practice_agreement_signed_at: nowIso,
               practice_agreement_signer_name: intakeData.clientName,
-              practice_agreement_text_snapshot: therapist.practice_agreement_text,
+              practice_agreement_text_snapshot: resolvedSnapshot,
             }).eq('id', newSession.id);
           }
         } catch (e) { /* non-blocking */ }
@@ -385,8 +393,15 @@ export default function ClientIntake() {
         // Prefer the unified practice agreement when set. Falls back
         // to the legacy waiver_text for therapists who haven't
         // migrated yet. HK May 14 2026.
+        //
+        // Tokens like {cancel_under_24h} get resolved here against
+        // the therapist's live cancellation policy so the client sees
+        // concrete percentages, not raw template tokens. The resolved
+        // text is also what gets snapshotted on signature, so the
+        // audit trail shows exactly what the client agreed to even
+        // if percentages change later.
         (therapist.practice_agreement_enabled !== false && therapist.practice_agreement_text)
-          ? therapist.practice_agreement_text
+          ? renderAgreementForClient(therapist.practice_agreement_text, therapist)
           : (therapist.waiver_text || '')
       }
       initialName={nameFromUrl}
