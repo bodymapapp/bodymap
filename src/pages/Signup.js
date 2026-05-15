@@ -569,18 +569,13 @@ export default function Signup() {
           Already have an account? <Link to="/login" style={{ color: C.forest, fontWeight: '700', textDecoration: 'none' }}>Sign in</Link>
         </p>
 
-        {/* Founding therapist promo entry. Therapists who received
-            the BETAONE code via Instagram or Facebook DM were landing
-            here looking for a code field. They needed somewhere to
-            actually enter it.
-            BETAONE is a Stripe coupon, applied at checkout, not at
-            signup. So this link sends them straight to the Silver
-            checkout with the promo prefilled. They sign up for free,
-            then on the next page Stripe shows the discount applied
-            ($0 for the trial period). After payment confirms, the
-            justPaid flow in AuthContext upgrades them to Silver. */}
+        {/* Discount code entry. Sends therapist to the Silver
+            checkout with promo code prefilled. The code is whichever
+            campaign code we are currently distributing. Copy says
+            'discount code' not 'founder code' so we don't signal
+            'new company still giving out founder codes.' */}
         <p style={{ textAlign: 'center', fontSize: '12px', color: C.gray, margin: '6px 0 0 0' }}>
-          Got a founding therapist code? <a
+          Have a discount code? <a
             href={`https://buy.stripe.com/5kQbJ23kC0eAfVe9vGeQM03?prefilled_promo_code=BETAONE`}
             style={{ color: C.forest, fontWeight: '700', textDecoration: 'none' }}
           >Apply it here</a>
