@@ -944,7 +944,7 @@ function SignatureBlock({ C }) {
         lineHeight: 1.55,
         textAlign: 'left',
       }}>
-        <strong style={{ color: C.amberDeep, letterSpacing: '0.04em' }}>Therapist note:</strong> Clients booking online sign this digitally at intake. For older clients who prefer paper, tap "Download / Print PDF" above. The cancellation fee they confirm at booking time is shown to them as a separate hard gate before they complete their booking, on top of this agreement.
+        <strong style={{ color: C.amberDeep, letterSpacing: '0.04em' }}>Therapist note:</strong> Clients booking online sign this digitally at intake. To collect a pen signature in person, tap "Download / Print PDF" above and bring it to the session. The cancellation fee they confirm at booking time is shown to them as a separate hard gate before they complete their booking, on top of this agreement.
       </div>
     </div>
   );
