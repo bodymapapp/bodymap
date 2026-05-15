@@ -42,6 +42,7 @@ import NotificationPrefsCard from '../components/NotificationPrefsCard';
 import QRCodesCard from '../components/QRCodesCard';
 import CancellationPolicy from '../components/CancellationPolicy';
 import BookingPolicies from '../components/BookingPolicies';
+import PracticeAgreement from '../components/PracticeAgreement';
 
 // Soft banner shown on the dashboard for therapists who pre-date the
 // phone verification feature (created before PHONE_GATE_FROM). Encourages
@@ -3214,16 +3215,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         timeBadge="~10m"
         label="Client agreements"
         summary={(() => {
-          const cx = therapist?.cancellation_policy_enabled;
-          const bk = therapist?.booking_policies_enabled;
-          const wv = therapist?.waiver_enabled !== false;
-          const onCount = [cx, bk, wv].filter(Boolean).length;
-          if (onCount === 3) return "Intake, booking, cancellation, waiver all set";
-          if (onCount === 2) return `${onCount} of 3 policies on · waiver always on`;
-          if (onCount === 1) return "Waiver on · add booking and cancellation policies";
-          return "Set what clients agree to before their session";
+          const hasAgreement = !!therapist?.practice_agreement_text;
+          const cancelOn = !!therapist?.cancellation_policy_enabled;
+          if (hasAgreement && cancelOn) return "Practice agreement set · cancellation fee on";
+          if (hasAgreement && !cancelOn) return "Practice agreement set · no cancellation fee";
+          if (!hasAgreement) return "Set up your practice agreement and policies";
+          return "Set up your practice agreement and policies";
         })()}
-        status={(therapist?.cancellation_policy_enabled || therapist?.booking_policies_enabled) ? "done" : "todo"}
+        status={(therapist?.practice_agreement_text || therapist?.cancellation_policy_enabled) ? "done" : "todo"}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 2v10l4 4"/><circle cx="12" cy="12" r="10"/></svg>}
         isOpen={openRow === 'cancellation'}
         onToggle={toggleRow}
@@ -3305,16 +3304,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           };
           return (
             <>
-              {/* Intake form: opens the dedicated editor route. Linked
-                  here from Client agreements so therapists see the
-                  intake AS ONE OF the things clients sign, not buried
-                  in a separate area. HK May 14 2026 ask. */}
+              {/* Intake form link (separate from the practice agreement
+                  because intake is data collection, agreement is consent). */}
               <div style={{
                 background: '#fff',
                 borderRadius: 12,
                 border: '1.5px solid #E5E7EB',
                 padding: '12px 14px',
-                marginBottom: 8,
+                marginBottom: 10,
                 display: 'flex',
                 alignItems: 'center',
                 gap: 12,
@@ -3335,22 +3332,9 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     Intake form
                   </div>
                   <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
-                    Health history, focus areas, preferences. Customize questions per practice.
+                    Health history, focus areas, preferences. Customize the questions per practice.
                   </div>
                 </div>
-                <span style={{
-                  fontSize: 10.5, fontWeight: 700,
-                  color: '#16A34A',
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  padding: '3px 8px',
-                  borderRadius: 999,
-                  background: '#F0FDF4',
-                  border: '1px solid #BBF7D0',
-                  flexShrink: 0,
-                }}>
-                  ALWAYS ON
-                </span>
                 <span style={{
                   fontSize: 10.5, fontWeight: 700, color: '#2A5741',
                   flexShrink: 0,
@@ -3358,29 +3342,49 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   Edit →
                 </span>
               </div>
-              <PolicySubRow
-                id="booking-policies"
-                title="Booking & practice policies"
-                blurb="Practice rules clients agree to before confirming. Late arrival, draping, scope, etc."
-                on={!!therapist?.booking_policies_enabled}
-              >
-                <BookingPolicies therapist={therapist} />
-              </PolicySubRow>
+
+              {/* Practice Agreement: ONE document for all policies +
+                  guidelines + consent + waiver. Client e-signs once. */}
+              <div style={{
+                background: '#fff',
+                borderRadius: 12,
+                border: '1.5px solid #E5E7EB',
+                padding: '14px 16px',
+                marginBottom: 10,
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 6,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>
+                      Practice agreement
+                    </div>
+                    <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
+                      One document: policies, guidelines, consent, waiver. Client signs once at intake.
+                    </div>
+                  </div>
+                </div>
+                <div style={{ marginTop: 12 }}>
+                  <PracticeAgreement therapist={therapist} />
+                </div>
+              </div>
+
+              {/* Cancellation fee: drives the auto-charge logic, separate
+                  from the agreement text. The text of the cancellation
+                  policy lives inside the practice agreement (and is shown
+                  to clients there). The FEE amount + auto-charge toggle
+                  live here because that's what triggers billing. Also
+                  re-acknowledged at booking time as a hard gate. */}
               <PolicySubRow
                 id="cancellation-policy"
-                title="Cancellation policy"
-                blurb="What you charge for late cancels, reschedules, and no-shows"
+                title="Cancellation fee + auto-charge"
+                blurb="What you charge for late cancels and no-shows. Re-acknowledged at every booking."
                 on={!!therapist?.cancellation_policy_enabled}
               >
                 <CancellationPolicy therapist={therapist} />
-              </PolicySubRow>
-              <PolicySubRow
-                id="waiver"
-                title="Liability waiver"
-                blurb="Standard release the client signs at intake. Legally protects you."
-                on={therapist?.waiver_enabled !== false}
-              >
-                <WaiverCard therapist={therapist} C2={C2} />
               </PolicySubRow>
             </>
           );

@@ -167,6 +167,32 @@ export default function ClientIntake() {
         } catch (e) { /* non-blocking */ }
       }
 
+      // Step 4b: Record the practice agreement signature if therapist
+      // has the unified agreement set. Non-blocking, same pattern as
+      // waiver above. The agreement text is snapshotted at signing time
+      // so future edits to the therapist's agreement don't retroactively
+      // change what the client signed.
+      if (therapist.practice_agreement_enabled !== false && therapist.practice_agreement_text) {
+        try {
+          const nowIso = new Date().toISOString();
+          // Stamp on the client record so future bookings can see
+          // they already agreed without re-prompting.
+          await supabase.from('clients').update({
+            practice_agreement_signed_at: nowIso,
+            practice_agreement_signer_name: intakeData.clientName,
+            practice_agreement_text_snapshot: therapist.practice_agreement_text,
+          }).eq('id', client.id);
+          // Stamp on this booking too if we have one
+          if (newSession?.id) {
+            await supabase.from('bookings').update({
+              practice_agreement_signed_at: nowIso,
+              practice_agreement_signer_name: intakeData.clientName,
+              practice_agreement_text_snapshot: therapist.practice_agreement_text,
+            }).eq('id', newSession.id);
+          }
+        } catch (e) { /* non-blocking */ }
+      }
+
       // Step 5: Redirect to thank you page (or back to booking if the
       // intake was triggered by the intake-before-booking gate).
       if (returnToBookSlug) {
@@ -350,8 +376,19 @@ export default function ClientIntake() {
       therapist={therapist}
       therapistName={therapist.full_name || therapist.business_name}
       businessName={therapist.business_name}
-      waiverEnabled={therapist.waiver_enabled !== false}
-      waiverText={therapist.waiver_text || ''}
+      waiverEnabled={
+        (therapist.practice_agreement_enabled !== false && therapist.practice_agreement_text)
+          ? true
+          : (therapist.waiver_enabled !== false)
+      }
+      waiverText={
+        // Prefer the unified practice agreement when set. Falls back
+        // to the legacy waiver_text for therapists who haven't
+        // migrated yet. HK May 14 2026.
+        (therapist.practice_agreement_enabled !== false && therapist.practice_agreement_text)
+          ? therapist.practice_agreement_text
+          : (therapist.waiver_text || '')
+      }
       initialName={nameFromUrl}
       initialEmail={emailFromUrl}
       initialPhone={phoneFromUrl}
