@@ -102,7 +102,7 @@ export default function MembershipCard({ client, therapist }) {
           membership_id: plan.id,
           client_id: client.id,
           client_email: client.email || '',
-          client_name: client.full_name || null,
+          client_name: client.name || null,
           // No stripe_subscription_id, this is a manually attached sub.
           // The therapist collects payment outside the platform until
           // they convert it to a Stripe-backed sub.

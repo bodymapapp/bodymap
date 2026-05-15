@@ -121,7 +121,7 @@ export default function PracticeAgreement({ therapist }) {
   const [savedAt, setSavedAt] = useState(null);
   const [editingIdx, setEditingIdx] = useState(null);
   const [hoveredH2, setHoveredH2] = useState(null);
-  const [showSendModal, setShowSendModal] = useState(false);
+  const [showSendPanel, setShowSendPanel] = useState(false);
   const scrollContainerRef = useRef(null);
   const blockRefs = useRef({});
 
@@ -293,8 +293,8 @@ export default function PracticeAgreement({ therapist }) {
         flexWrap: 'wrap',
         alignItems: 'center',
       }}>
-        <button onClick={() => setShowSendModal(true)} style={pill(C, 'primary')}>
-          ✉ Send for signature
+        <button onClick={() => setShowSendPanel(v => !v)} style={pill(C, showSendPanel ? 'active' : 'primary')}>
+          {showSendPanel ? '✕ Close' : '✉ Send for signature'}
         </button>
         <button onClick={downloadPdf} style={pill(C)}>
           ⬇ Download / Print PDF
@@ -312,6 +312,18 @@ export default function PracticeAgreement({ therapist }) {
           Tap any line to edit
         </span>
       </div>
+
+      {/* Inline Send for signature panel. Expands below the toolbar
+          instead of opening a centered modal overlay. Matches the
+          collapse/expand design pattern used elsewhere in Settings
+          (PolicySubRow, etc). Closed by default. */}
+      {showSendPanel && (
+        <SendForSignaturePanel
+          therapist={therapist}
+          onClose={() => setShowSendPanel(false)}
+          C={C}
+        />
+      )}
 
       {/* Live-percentage note. Only shown when the agreement text
           contains cancellation tokens, so therapists who customized
@@ -606,14 +618,6 @@ export default function PracticeAgreement({ therapist }) {
             ✓ Saved {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </span>
         </div>
-      )}
-
-      {showSendModal && (
-        <SendForSignatureModal
-          therapist={therapist}
-          onClose={() => setShowSendModal(false)}
-          C={C}
-        />
       )}
     </div>
   );
@@ -950,14 +954,24 @@ function SignatureBlock({ C }) {
   );
 }
 
-// ─── SendForSignatureModal ─────────────────────────────────
-// Therapist picks an existing client (or types a new one), we mint
-// a token, save a row in agreement_send_requests, and surface the
-// signing link the therapist can send via SMS/email/copy.
-function SendForSignatureModal({ therapist, onClose, C }) {
+// ─── SendForSignaturePanel ─────────────────────────────────
+// Inline panel that expands below the agreement editor toolbar.
+// NOT a modal: it sits in-flow inside the agreement card, matching
+// the collapse/expand pattern used by PolicySubRow elsewhere in
+// Settings.
+//
+// Client picker is a SEARCHABLE LIST of avatar rows (matching the
+// ClientList card pattern used everywhere in the app), NOT a
+// dropdown. The therapist scrolls or searches, taps a row to pick.
+//
+// HK May 14 2026 design feedback: 'modal was against the design
+// principles' + 'dropdown was against the design principles'.
+function SendForSignaturePanel({ therapist, onClose, C }) {
   const [clients, setClients] = useState([]);
   const [loadingClients, setLoadingClients] = useState(true);
   const [pickedClientId, setPickedClientId] = useState('');
+  const [search, setSearch] = useState('');
+  const [showNewContact, setShowNewContact] = useState(false);
   const [manualName, setManualName] = useState('');
   const [manualEmail, setManualEmail] = useState('');
   const [manualPhone, setManualPhone] = useState('');
@@ -970,28 +984,40 @@ function SendForSignatureModal({ therapist, onClose, C }) {
     let mounted = true;
     (async () => {
       try {
-        const { data } = await supabase
+        // Note: column is `name`, not `full_name`. clients table.
+        const { data, error: fetchErr } = await supabase
           .from('clients')
-          .select('id, full_name, email, phone, practice_agreement_signed_at')
+          .select('id, name, email, phone, practice_agreement_signed_at')
           .eq('therapist_id', therapist.id)
-          .order('full_name', { ascending: true })
-          .limit(200);
+          .order('name', { ascending: true })
+          .limit(500);
+        if (fetchErr) console.error('[SendForSignature] client fetch error:', fetchErr);
         if (mounted) setClients(data || []);
-      } catch (e) { /* non-blocking */ }
-      finally { if (mounted) setLoadingClients(false); }
+      } catch (e) {
+        console.error('[SendForSignature] client fetch threw:', e);
+      } finally {
+        if (mounted) setLoadingClients(false);
+      }
     })();
     return () => { mounted = false; };
   }, [therapist?.id]);
 
   const pickedClient = clients.find(c => c.id === pickedClientId);
-  const canSend = !!(pickedClient || manualName.trim());
+  const canSend = !!(pickedClient || (showNewContact && manualName.trim()));
+
+  // Filter clients by search term. Match on name or email.
+  const filtered = !search.trim() ? clients : clients.filter(c => {
+    const q = search.trim().toLowerCase();
+    return (c.name || '').toLowerCase().includes(q) ||
+           (c.email || '').toLowerCase().includes(q) ||
+           (c.phone || '').includes(q);
+  });
 
   async function send() {
     if (!canSend) return;
     setSending(true);
     setError(null);
     try {
-      // Mint a hard-to-guess token (32 chars)
       const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
@@ -1000,7 +1026,7 @@ function SendForSignatureModal({ therapist, onClose, C }) {
         token,
         therapist_id: therapist.id,
         client_id: pickedClient?.id || null,
-        client_name: pickedClient?.full_name || manualName.trim() || null,
+        client_name: pickedClient?.name || manualName.trim() || null,
         client_email: pickedClient?.email || manualEmail.trim() || null,
         client_phone: pickedClient?.phone || manualPhone.trim() || null,
       };
@@ -1027,179 +1053,332 @@ function SendForSignatureModal({ therapist, onClose, C }) {
     });
   }
 
+  function reset() {
+    setSentLink(null);
+    setPickedClientId('');
+    setShowNewContact(false);
+    setManualName('');
+    setManualEmail('');
+    setManualPhone('');
+    setSearch('');
+  }
+
+  // Avatar color helper, matches ClientList pattern
+  const initials = (name) => (name || '').split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
+  const avatarColor = (name) => {
+    const colors = ['#6B8E5A', '#8B6F47', '#5A8C8F', '#A87856', '#7A6FA0', '#4F7A8F'];
+    let hash = 0;
+    for (let i = 0; i < (name || '').length; i++) hash = ((hash << 5) - hash) + (name || '').charCodeAt(i);
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   // SMS body and mailto body construction
-  const recipient = pickedClient || { full_name: manualName, email: manualEmail, phone: manualPhone };
-  const recipientFirst = (recipient.full_name || '').split(/\s+/)[0] || 'there';
+  const recipient = pickedClient || { name: manualName, email: manualEmail, phone: manualPhone };
+  const recipientFirst = (recipient.name || '').split(/\s+/)[0] || 'there';
   const businessName = therapist?.business_name || therapist?.full_name || 'your therapist';
   const smsBody = sentLink ? `Hi ${recipientFirst}, here's the client agreement from ${businessName} for you to read and sign: ${sentLink}` : '';
   const emailBody = sentLink ? `Hi ${recipientFirst},\n\nPlease take a few minutes to read and sign the client agreement before our next session:\n\n${sentLink}\n\nThank you,\n${businessName}` : '';
   const emailSubject = `Client agreement to sign · ${businessName}`;
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(15,30,22,0.55)',
-        backdropFilter: 'blur(4px)',
-        zIndex: 9000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%',
-          maxWidth: 480,
-          background: '#fff',
-          borderRadius: 14,
-          padding: 0,
-          overflow: 'hidden',
-          boxShadow: '0 24px 60px rgba(0,0,0,0.30)',
-        }}
-      >
-        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif' }}>Send for signature</div>
-            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Client reads, types their name, signs. You get notified.</div>
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${C.line}`,
+      borderRadius: 12,
+      padding: '14px 16px 16px',
+      marginBottom: 14,
+      boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+    }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif' }}>
+            {sentLink ? 'Signing link ready' : 'Send for signature'}
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.gray, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+          <div style={{ fontSize: 12, color: C.gray, marginTop: 2, lineHeight: 1.5 }}>
+            {sentLink
+              ? `Send this link to ${recipientFirst}. When they sign, the signature is recorded on their client profile.`
+              : 'Pick a client below. A signing link is created. You share it however works best, text, email, or copy/paste.'}
+          </div>
         </div>
+        <button
+          onClick={onClose}
+          style={{ background: 'transparent', border: 'none', color: C.gray, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 2, flexShrink: 0 }}
+          aria-label="Close"
+        >×</button>
+      </div>
 
-        <div style={{ padding: '18px 22px 20px' }}>
-          {!sentLink ? (
-            <>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-                Pick an existing client
-              </div>
+      {!sentLink ? (
+        <>
+          {/* Search */}
+          {!showNewContact && (
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search clients by name, email, or phone"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: `1.5px solid ${C.line}`,
+                borderRadius: 10,
+                fontSize: 13,
+                color: C.ink,
+                background: '#fff',
+                boxSizing: 'border-box',
+                marginBottom: 10,
+                outline: 'none',
+              }}
+              onFocus={e => { e.target.style.borderColor = C.forest; }}
+              onBlur={e => { e.target.style.borderColor = C.line; }}
+            />
+          )}
+
+          {/* Client rows list */}
+          {!showNewContact && (
+            <div style={{
+              maxHeight: 320,
+              overflowY: 'auto',
+              border: `1px solid ${C.line}`,
+              borderRadius: 10,
+              background: '#FAFAFA',
+              marginBottom: 12,
+            }}>
               {loadingClients ? (
-                <div style={{ fontSize: 13, color: C.gray, padding: '10px 0' }}>Loading clients…</div>
+                <div style={{ padding: '24px 16px', fontSize: 13, color: C.gray, textAlign: 'center' }}>
+                  Loading your clients...
+                </div>
+              ) : filtered.length === 0 ? (
+                <div style={{ padding: '24px 16px', fontSize: 13, color: C.gray, textAlign: 'center' }}>
+                  {search.trim()
+                    ? `No clients match "${search.trim()}".`
+                    : 'No clients on your list yet. Add one below to send to a new contact.'}
+                </div>
               ) : (
-                <select
-                  value={pickedClientId}
-                  onChange={e => { setPickedClientId(e.target.value); if (e.target.value) { setManualName(''); setManualEmail(''); setManualPhone(''); } }}
-                  style={{
-                    width: '100%',
-                    padding: '10px 12px',
-                    border: `1.5px solid ${C.line}`,
-                    borderRadius: 10,
-                    fontSize: 14,
-                    color: C.ink,
-                    background: '#fff',
-                    boxSizing: 'border-box',
-                    marginBottom: 14,
-                  }}
-                >
-                  <option value="">Choose a client</option>
-                  {clients.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name}{c.practice_agreement_signed_at ? ' (already signed)' : ''}
-                    </option>
-                  ))}
-                </select>
+                filtered.map(c => {
+                  const isPicked = c.id === pickedClientId;
+                  const hasSigned = !!c.practice_agreement_signed_at;
+                  return (
+                    <div
+                      key={c.id}
+                      onClick={() => setPickedClientId(c.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '11px 14px',
+                        background: isPicked ? '#F0FDF4' : 'transparent',
+                        borderBottom: `1px solid ${C.line}`,
+                        cursor: 'pointer',
+                        transition: 'background 0.1s',
+                      }}
+                    >
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: '50%',
+                        background: avatarColor(c.name),
+                        color: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        flexShrink: 0,
+                      }}>
+                        {initials(c.name)}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.name || 'Unnamed client'}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: C.gray, marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.email || c.phone || 'No contact info'}
+                        </div>
+                      </div>
+                      {hasSigned && (
+                        <span style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: C.saved,
+                          background: '#DCFCE7',
+                          border: '1px solid #BBF7D0',
+                          padding: '2px 7px',
+                          borderRadius: 99,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                          flexShrink: 0,
+                        }}>
+                          Signed
+                        </span>
+                      )}
+                      {isPicked && (
+                        <span style={{
+                          fontSize: 14,
+                          color: C.forest,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}>
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                  );
+                })
               )}
+            </div>
+          )}
 
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '6px 0 8px', textAlign: 'center' }}>
-                or send to a new contact
+          {/* New-contact form (expanded inline when chosen) */}
+          {showNewContact ? (
+            <div style={{
+              background: '#FAFAFA',
+              border: `1px solid ${C.line}`,
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 12,
+            }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>
+                Send to a new contact
               </div>
               <input
                 type="text"
                 value={manualName}
-                onChange={e => { setManualName(e.target.value); if (e.target.value) setPickedClientId(''); }}
+                onChange={e => setManualName(e.target.value)}
                 placeholder="Client name"
-                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 8 }}
+                style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, boxSizing: 'border-box', marginBottom: 6, outline: 'none' }}
               />
               <input
                 type="email"
                 value={manualEmail}
                 onChange={e => setManualEmail(e.target.value)}
                 placeholder="Email (optional)"
-                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 8 }}
+                style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, boxSizing: 'border-box', marginBottom: 6, outline: 'none' }}
               />
               <input
                 type="tel"
                 value={manualPhone}
                 onChange={e => setManualPhone(e.target.value)}
                 placeholder="Phone (optional)"
-                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 14 }}
+                style={{ width: '100%', padding: '9px 12px', border: `1.5px solid ${C.line}`, borderRadius: 8, fontSize: 13, color: C.ink, boxSizing: 'border-box', outline: 'none' }}
               />
-
-              {error && (
-                <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontSize: 12.5, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
-                  {error}
-                </div>
-              )}
-
               <button
-                onClick={send}
-                disabled={!canSend || sending}
+                onClick={() => { setShowNewContact(false); setManualName(''); setManualEmail(''); setManualPhone(''); }}
                 style={{
-                  width: '100%',
-                  background: canSend && !sending ? C.forest : '#D1D5DB',
-                  color: '#fff',
+                  background: 'transparent',
                   border: 'none',
-                  borderRadius: 10,
-                  padding: '12px',
-                  fontSize: 14,
-                  fontWeight: 700,
-                  cursor: canSend && !sending ? 'pointer' : 'not-allowed',
-                  boxShadow: canSend && !sending ? `0 4px 10px ${C.forest}33` : 'none',
+                  color: C.gray,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  padding: '8px 0 0',
+                  textDecoration: 'underline',
                 }}
               >
-                {sending ? 'Creating link…' : 'Create signing link →'}
+                Back to client list
               </button>
-            </>
+            </div>
           ) : (
-            <>
-              <div style={{ fontSize: 12, color: C.gray, marginBottom: 8 }}>
-                Signing link ready. Send it via text, email, or just copy and share however works for {recipientFirst}.
-              </div>
-              <div style={{
-                background: '#FAF6EE',
-                border: `1px solid ${C.amberLine}`,
-                borderRadius: 10,
-                padding: '10px 12px',
+            <button
+              onClick={() => { setShowNewContact(true); setPickedClientId(''); }}
+              style={{
+                background: 'transparent',
+                border: `1px dashed ${C.line}`,
+                color: C.gray,
                 fontSize: 12,
-                color: C.ink,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                wordBreak: 'break-all',
-                marginBottom: 14,
-                lineHeight: 1.5,
-              }}>
-                {sentLink}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <button onClick={copyLink} style={{ width: '100%', background: copied ? C.saved : C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
-                  {copied ? '✓ Copied to clipboard' : '📋 Copy link'}
-                </button>
-                {recipient.phone && (
-                  <a
-                    href={`sms:${recipient.phone.replace(/\D/g, '')}?body=${encodeURIComponent(smsBody)}`}
-                    style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
-                  >
-                    💬 Open in Messages
-                  </a>
-                )}
-                {recipient.email && (
-                  <a
-                    href={`mailto:${recipient.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
-                    style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
-                  >
-                    ✉ Open in Email
-                  </a>
-                )}
-              </div>
-              <div style={{ marginTop: 14, fontSize: 11, color: C.gray, lineHeight: 1.5, textAlign: 'center' }}>
-                When {recipientFirst} signs, you'll see the signature recorded on their client profile.
-              </div>
-            </>
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '8px 12px',
+                borderRadius: 8,
+                width: '100%',
+                marginBottom: 12,
+              }}
+            >
+              + Send to someone not on your client list
+            </button>
           )}
-        </div>
-      </div>
+
+          {error && (
+            <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '9px 12px', fontSize: 12.5, color: '#991B1B', marginBottom: 10, lineHeight: 1.5 }}>
+              {error}
+            </div>
+          )}
+
+          <button
+            onClick={send}
+            disabled={!canSend || sending}
+            style={{
+              width: '100%',
+              background: canSend && !sending ? C.forest : '#D1D5DB',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              padding: '12px',
+              fontSize: 13.5,
+              fontWeight: 700,
+              cursor: canSend && !sending ? 'pointer' : 'not-allowed',
+              boxShadow: canSend && !sending ? `0 4px 10px ${C.forest}33` : 'none',
+            }}
+          >
+            {sending ? 'Creating link...' : 'Create signing link →'}
+          </button>
+        </>
+      ) : (
+        <>
+          {/* Result: link ready */}
+          <div style={{
+            background: '#FAF6EE',
+            border: `1px solid ${C.amberLine}`,
+            borderRadius: 10,
+            padding: '10px 12px',
+            fontSize: 11.5,
+            color: C.ink,
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+            wordBreak: 'break-all',
+            marginBottom: 12,
+            lineHeight: 1.5,
+          }}>
+            {sentLink}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <button onClick={copyLink} style={{ width: '100%', background: copied ? C.saved : C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {copied ? '✓ Copied to clipboard' : '📋 Copy link'}
+            </button>
+            {recipient.phone && (
+              <a
+                href={`sms:${(recipient.phone || '').replace(/\D/g, '')}?body=${encodeURIComponent(smsBody)}`}
+                style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+              >
+                💬 Open in Messages
+              </a>
+            )}
+            {recipient.email && (
+              <a
+                href={`mailto:${recipient.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+              >
+                ✉ Open in Email
+              </a>
+            )}
+            <button
+              onClick={reset}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: C.gray,
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: '8px 0 0',
+                textDecoration: 'underline',
+                marginTop: 4,
+              }}
+            >
+              Send to another client
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1217,6 +1396,19 @@ function pill(C, variant) {
       cursor: 'pointer',
       transition: 'all 0.12s',
       boxShadow: `0 2px 6px ${C.forest}33`,
+    };
+  }
+  if (variant === 'active') {
+    return {
+      background: C.amberPale,
+      color: C.amberDeep,
+      border: `1px solid ${C.amberLine}`,
+      borderRadius: 999,
+      padding: '8px 14px',
+      fontSize: 12,
+      fontWeight: 700,
+      cursor: 'pointer',
+      transition: 'all 0.12s',
     };
   }
   return {
