@@ -123,7 +123,11 @@ export function BookingLinkNudge({ therapist, bookings }) {
 
   if (dismissed || (bookings && bookings > 0)) return null;
 
-  const link = `https://mybodymap.app/book/${therapist?.custom_url || therapist?.id}`;
+  // The booking URL is mybodymap.app/<custom_url>, not /book/<custom_url>.
+  // Per HK May 14 2026: the same URL handles booking + intake; we don't
+  // have separate URLs. Earlier code used /book/<slug> which 404'd in
+  // some flows; fixed here.
+  const link = `https://mybodymap.app/${therapist?.custom_url || therapist?.id}`;
 
   function copyLink() {
     navigator.clipboard.writeText(link).then(() => {
@@ -146,7 +150,7 @@ export function BookingLinkNudge({ therapist, bookings }) {
           style={{ background:'transparent', border:'none', color:C.gray, fontSize:16, cursor:'pointer', lineHeight:1 }}>×</button>
       </div>
       <div style={{ fontSize:12, color:C.gray, marginBottom:12, lineHeight:1.5 }}>
-        Send this to your clients and they can book anytime, no calls, no texts back and forth.
+        Send this to clients. They book a session and fill intake in one flow. No calls, no texts back and forth.
       </div>
       <div style={{ background:'#fff', borderRadius:8, padding:'8px 12px', fontSize:11, color:'#374151', fontFamily:'monospace', marginBottom:10, wordBreak:'break-all' }}>
         {link}

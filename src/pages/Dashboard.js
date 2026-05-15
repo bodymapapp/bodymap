@@ -1749,7 +1749,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       return { practice: true, offer: true, restEasier: true, plugIn: true, membership: true, anyMatch: true };
     }
     const groups = {
-      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Client intake & QR codes','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
+      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Booking & intake links','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
       offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Waiver text','','2.6']],
       restEasier:  [['Platform features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
       plugIn:      [['Cal.com sync','','4.1'],['Google Calendar sync','Two-way sync with Google Calendar','4.1.5'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
@@ -2274,13 +2274,13 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={toggleRow}
       ><div className="bm-section-bare"><ImportClients therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
       </>)}
-      {matchesSearch('Client intake & QR codes', 'Share your link or QR codes for clients', '1.3') && (<>
+      {matchesSearch('Booking & intake links', 'Share your booking link or QR codes for clients. Intake is part of the booking flow.', '1.3') && (<>
       <CollapsibleSection
         id="intake_qr"
         taxonomy="1.3"
         timeBadge="~30s"
-        label="Client intake & QR codes"
-        summary="Your link plus 3 QR codes ready to share"
+        label="Booking & intake links"
+        summary="Your booking link plus QR codes ready to share"
         status="done"
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>}
         isOpen={openRow === 'intake_qr'}
@@ -3973,21 +3973,28 @@ export default function Dashboard({ view }) {
       {(view === 'clients' || view === 'sessions' || view === 'session-detail') && (
         <button onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
           style={{ position: 'fixed', bottom: isMobile ? '80px' : '32px', right: isMobile ? '16px' : '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? '14px' : '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999 }}>
-          📤 Send Intake
+          🔗 Share booking link
         </button>
       )}
+      {/* Share booking link modal.
+          HK May 14 2026: the URL we share IS the booking page URL.
+          Intake is a step inside that booking flow. We were labeling
+          the same URL as 'intake link' in some places and 'booking
+          link' in others, which confused therapists ('where is the
+          booking link?'). Single label now: booking link, with a
+          subtitle reminding them intake is included. */}
       {showSendModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '24px' }} onClick={() => setShowSendModal(false)}>
           <div style={{ background: 'white', borderRadius: '20px', padding: '32px', width: '100%', maxWidth: '440px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px' }}>
               <div>
-                <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', margin: '0 0 4px 0' }}>📤 Send Intake Form</h2>
-                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Client fills it on their phone in 60 seconds</p>
+                <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', margin: '0 0 4px 0' }}>🔗 Share your booking link</h2>
+                <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Includes intake automatically. Client books and fills intake in one flow.</p>
               </div>
               <button onClick={() => setShowSendModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}>✕</button>
             </div>
             <div style={{ background: '#F5F0E8', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
-              <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your intake link</p>
+              <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your booking link</p>
               <p style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all' }}>{window.location.origin}/{therapist?.custom_url}</p>
             </div>
             <div style={{ marginBottom: '16px' }}>
@@ -3995,7 +4002,7 @@ export default function Dashboard({ view }) {
               <input type="tel" value={sendPhone} onChange={e => { const d=e.target.value.replace(/\D/g,'').slice(0,10); const f=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; setSendPhone(f); }} placeholder="(512) 555-1234" autoFocus style={{ width: '100%', padding: '12px 16px', border: '2px solid #E8E4DC', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Please fill out my quick intake form before your session: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) { e.preventDefault(); return; } if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
+              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Here is my booking link, you can pick a time and fill the intake in one go: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) { e.preventDefault(); return; } if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
                 💬 Open in Messages →
               </a>
               <button onClick={() => { navigator.clipboard.writeText(window.location.origin + '/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } }} style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>

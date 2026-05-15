@@ -482,6 +482,24 @@ export default function ImportClients({ therapist, onComplete }) {
         <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:0 }}>Transfer clients, visit history, and active memberships from MassageBook, Vagaro, GlossGenius, Mindbody, or any CSV file.</p>
       </div>
 
+      {/* Migration guardrail. Candice P. (May 14 2026) flagged she has a
+          Stripe Capital loan tied to her GlossGenius Stripe account.
+          Closing that account could trigger accelerated repayment.
+          Therapists sometimes have similar entanglements: outstanding
+          loan balances, prepaid annual contracts, processor-locked
+          gift card liabilities. We don't want to be the platform that
+          tells them to cancel their current setup before they've
+          checked the financial side. */}
+      <div style={{
+        background: '#FEF3C7',
+        borderBottom: '1px solid #FCD34D',
+        padding: '12px 24px',
+      }}>
+        <div style={{ fontSize: 12.5, color: '#78350F', lineHeight: 1.55 }}>
+          <span style={{ fontWeight: 700 }}>Before you fully cancel your current platform:</span> check for active loans, prepaid contracts, or outstanding balances on it. We're happy to run alongside while you sort that out, you can import everything to MyBodyMap today without cancelling the other.
+        </div>
+      </div>
+
       {/* Mobile notice */}
       {isMobile && (
         <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', margin:16, borderRadius:10, padding:'14px 16px' }}>
