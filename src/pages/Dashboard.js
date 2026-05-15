@@ -3387,34 +3387,32 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 </span>
               </div>
 
+              {/* How signing works: short explainer so therapists
+                  understand the agreement is signed at intake AND
+                  can be sent separately for re-signature. */}
+              <div style={{
+                background: '#FAF6EE',
+                border: '1px solid #E5DCC4',
+                borderRadius: 10,
+                padding: '10px 14px',
+                marginBottom: 10,
+                fontSize: 12,
+                color: '#5A4A2A',
+                lineHeight: 1.55,
+              }}>
+                <strong style={{ color: '#3D2F18' }}>How signing works:</strong> new clients sign the agreement automatically when they complete intake before their first session. For existing clients, or when you update your agreement, tap <strong>Send for signature</strong> inside the agreement editor below to send a private signing link.
+              </div>
+
               {/* Client Agreement: ONE document for all policies +
                   guidelines + consent + waiver. Client e-signs once. */}
-              <div style={{
-                background: '#fff',
-                borderRadius: 12,
-                border: '1.5px solid #E5E7EB',
-                padding: '14px 16px',
-                marginBottom: 10,
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  marginBottom: 6,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937' }}>
-                      Client agreement
-                    </div>
-                    <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
-                      One document: policies, guidelines, consent, waiver. Client signs once at intake.
-                    </div>
-                  </div>
-                </div>
-                <div style={{ marginTop: 12 }}>
-                  <PracticeAgreement therapist={therapist} />
-                </div>
-              </div>
+              <PolicySubRow
+                id="client_agreement"
+                title="Client agreement"
+                blurb="One document, policies + guidelines + consent + waiver. Client signs once at intake."
+                on={!!therapist?.practice_agreement_text}
+              >
+                <PracticeAgreement therapist={therapist} />
+              </PolicySubRow>
 
               {/* Cancellation fee: drives the auto-charge logic, separate
                   from the agreement text. The text of the cancellation

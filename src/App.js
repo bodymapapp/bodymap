@@ -20,6 +20,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import IntakeEditor from './pages/IntakeEditor';
 import PracticeAgreementPrint from './pages/PracticeAgreementPrint';
+import AgreementSign from './pages/AgreementSign';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
 import FounderHub from './pages/FounderHub';
@@ -99,6 +100,7 @@ function App() {
           <Route path="/dashboard/settings" element={<ProtectedRoute><Dashboard view="settings" /></ProtectedRoute>} />
           <Route path="/dashboard/intake/edit" element={<ProtectedRoute><IntakeEditor /></ProtectedRoute>} />
           <Route path="/dashboard/practice-agreement/print" element={<ProtectedRoute><PracticeAgreementPrint /></ProtectedRoute>} />
+          <Route path="/agreement-sign/:token" element={<AgreementSign />} />
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
           <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />

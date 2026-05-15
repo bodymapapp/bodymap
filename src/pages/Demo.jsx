@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { effectiveSchema, effectiveMedicalConditions } from "../lib/intakeSchema";
 import FocusDistribution from "../components/FocusDistribution";
+import { AgreementRenderer } from "../components/PracticeAgreement";
 
 const C = {
   bg: "#F0EAD9",
@@ -2799,13 +2800,13 @@ const PrefScreen = ({
           <p style={{ fontFamily: F.body, fontSize: 12, color: C.textMid, lineHeight: 1.6, margin: 0 }}>
             {waiverEnabled ? (
               <>
-                I confirm my information is accurate and I agree to{therapistName ? ` ${therapistName}'s` : ''} <button
+                I confirm my information is accurate and I have read and agree to{therapistName ? ` ${therapistName}'s` : ''} <button
                   type="button"
                   onClick={() => setShowWaiver(true)}
-                  style={{ background: 'transparent', border: 'none', padding: 0, color: C.green, textDecoration: 'underline', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit' }}
+                  style={{ background: 'transparent', border: 'none', padding: 0, color: C.green, textDecoration: 'underline', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 600 }}
                 >
-                  treatment waiver
-                </button>.
+                  client agreement
+                </button>. Tap to read it in full.
               </>
             ) : (
               'I agree to share this information with my therapist for session planning purposes.'
@@ -2854,11 +2855,11 @@ const PrefScreen = ({
             }}
           >
             <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #E8E4DC' }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B9E80', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Treatment Waiver</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: '#6B9E80', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Client Agreement</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#1A3A28', fontFamily: 'Georgia, serif' }}>{businessName || therapistName || 'Your therapist'}</div>
             </div>
-            <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1, fontSize: 14, color: '#374151', lineHeight: 1.7, fontFamily: 'Georgia, serif', whiteSpace: 'pre-wrap' }}>
-              {waiverText}
+            <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1, fontSize: 14, color: '#374151', lineHeight: 1.7, fontFamily: 'Georgia, serif' }}>
+              <AgreementRenderer text={waiverText} />
             </div>
             <div style={{ padding: '14px 22px', borderTop: '1px solid #E8E4DC', textAlign: 'right' }}>
               <button

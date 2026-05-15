@@ -121,6 +121,7 @@ export default function PracticeAgreement({ therapist }) {
   const [savedAt, setSavedAt] = useState(null);
   const [editingIdx, setEditingIdx] = useState(null);
   const [hoveredH2, setHoveredH2] = useState(null);
+  const [showSendModal, setShowSendModal] = useState(false);
   const scrollContainerRef = useRef(null);
   const blockRefs = useRef({});
 
@@ -292,7 +293,10 @@ export default function PracticeAgreement({ therapist }) {
         flexWrap: 'wrap',
         alignItems: 'center',
       }}>
-        <button onClick={downloadPdf} style={pill(C, 'primary')}>
+        <button onClick={() => setShowSendModal(true)} style={pill(C, 'primary')}>
+          ✉ Send for signature
+        </button>
+        <button onClick={downloadPdf} style={pill(C)}>
           ⬇ Download / Print PDF
         </button>
         <button onClick={loadStandard} style={pill(C)}>
@@ -602,6 +606,14 @@ export default function PracticeAgreement({ therapist }) {
             ✓ Saved {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </span>
         </div>
+      )}
+
+      {showSendModal && (
+        <SendForSignatureModal
+          therapist={therapist}
+          onClose={() => setShowSendModal(false)}
+          C={C}
+        />
       )}
     </div>
   );
@@ -938,6 +950,260 @@ function SignatureBlock({ C }) {
   );
 }
 
+// ─── SendForSignatureModal ─────────────────────────────────
+// Therapist picks an existing client (or types a new one), we mint
+// a token, save a row in agreement_send_requests, and surface the
+// signing link the therapist can send via SMS/email/copy.
+function SendForSignatureModal({ therapist, onClose, C }) {
+  const [clients, setClients] = useState([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [pickedClientId, setPickedClientId] = useState('');
+  const [manualName, setManualName] = useState('');
+  const [manualEmail, setManualEmail] = useState('');
+  const [manualPhone, setManualPhone] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sentLink, setSentLink] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('clients')
+          .select('id, full_name, email, phone, practice_agreement_signed_at')
+          .eq('therapist_id', therapist.id)
+          .order('full_name', { ascending: true })
+          .limit(200);
+        if (mounted) setClients(data || []);
+      } catch (e) { /* non-blocking */ }
+      finally { if (mounted) setLoadingClients(false); }
+    })();
+    return () => { mounted = false; };
+  }, [therapist?.id]);
+
+  const pickedClient = clients.find(c => c.id === pickedClientId);
+  const canSend = !!(pickedClient || manualName.trim());
+
+  async function send() {
+    if (!canSend) return;
+    setSending(true);
+    setError(null);
+    try {
+      // Mint a hard-to-guess token (32 chars)
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const payload = {
+        token,
+        therapist_id: therapist.id,
+        client_id: pickedClient?.id || null,
+        client_name: pickedClient?.full_name || manualName.trim() || null,
+        client_email: pickedClient?.email || manualEmail.trim() || null,
+        client_phone: pickedClient?.phone || manualPhone.trim() || null,
+      };
+      const { error: insErr } = await supabase
+        .from('agreement_send_requests')
+        .insert(payload);
+      if (insErr) throw insErr;
+
+      const link = `${window.location.origin}/agreement-sign/${token}`;
+      setSentLink(link);
+    } catch (e) {
+      console.error('[SendForSignature] failed:', e);
+      setError('Could not create the signing link. Please try again, or check your network and refresh.');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function copyLink() {
+    if (!sentLink) return;
+    navigator.clipboard.writeText(sentLink).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  // SMS body and mailto body construction
+  const recipient = pickedClient || { full_name: manualName, email: manualEmail, phone: manualPhone };
+  const recipientFirst = (recipient.full_name || '').split(/\s+/)[0] || 'there';
+  const businessName = therapist?.business_name || therapist?.full_name || 'your therapist';
+  const smsBody = sentLink ? `Hi ${recipientFirst}, here's the client agreement from ${businessName} for you to read and sign: ${sentLink}` : '';
+  const emailBody = sentLink ? `Hi ${recipientFirst},\n\nPlease take a few minutes to read and sign the client agreement before our next session:\n\n${sentLink}\n\nThank you,\n${businessName}` : '';
+  const emailSubject = `Client agreement to sign · ${businessName}`;
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15,30,22,0.55)',
+        backdropFilter: 'blur(4px)',
+        zIndex: 9000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 480,
+          background: '#fff',
+          borderRadius: 14,
+          padding: 0,
+          overflow: 'hidden',
+          boxShadow: '0 24px 60px rgba(0,0,0,0.30)',
+        }}
+      >
+        <div style={{ padding: '18px 22px 14px', borderBottom: `1px solid ${C.line}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif' }}>Send for signature</div>
+            <div style={{ fontSize: 11.5, color: C.gray, marginTop: 2 }}>Client reads, types their name, signs. You get notified.</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.gray, fontSize: 22, cursor: 'pointer', lineHeight: 1, padding: 4 }}>×</button>
+        </div>
+
+        <div style={{ padding: '18px 22px 20px' }}>
+          {!sentLink ? (
+            <>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                Pick an existing client
+              </div>
+              {loadingClients ? (
+                <div style={{ fontSize: 13, color: C.gray, padding: '10px 0' }}>Loading clients…</div>
+              ) : (
+                <select
+                  value={pickedClientId}
+                  onChange={e => { setPickedClientId(e.target.value); if (e.target.value) { setManualName(''); setManualEmail(''); setManualPhone(''); } }}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: `1.5px solid ${C.line}`,
+                    borderRadius: 10,
+                    fontSize: 14,
+                    color: C.ink,
+                    background: '#fff',
+                    boxSizing: 'border-box',
+                    marginBottom: 14,
+                  }}
+                >
+                  <option value="">Choose a client</option>
+                  {clients.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name}{c.practice_agreement_signed_at ? ' (already signed)' : ''}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '6px 0 8px', textAlign: 'center' }}>
+                or send to a new contact
+              </div>
+              <input
+                type="text"
+                value={manualName}
+                onChange={e => { setManualName(e.target.value); if (e.target.value) setPickedClientId(''); }}
+                placeholder="Client name"
+                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 8 }}
+              />
+              <input
+                type="email"
+                value={manualEmail}
+                onChange={e => setManualEmail(e.target.value)}
+                placeholder="Email (optional)"
+                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 8 }}
+              />
+              <input
+                type="tel"
+                value={manualPhone}
+                onChange={e => setManualPhone(e.target.value)}
+                placeholder="Phone (optional)"
+                style={{ width: '100%', padding: '10px 12px', border: `1.5px solid ${C.line}`, borderRadius: 10, fontSize: 14, color: C.ink, boxSizing: 'border-box', marginBottom: 14 }}
+              />
+
+              {error && (
+                <div style={{ background: '#FEE2E2', border: '1px solid #FCA5A5', borderRadius: 8, padding: '8px 12px', fontSize: 12.5, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
+                  {error}
+                </div>
+              )}
+
+              <button
+                onClick={send}
+                disabled={!canSend || sending}
+                style={{
+                  width: '100%',
+                  background: canSend && !sending ? C.forest : '#D1D5DB',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 10,
+                  padding: '12px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: canSend && !sending ? 'pointer' : 'not-allowed',
+                  boxShadow: canSend && !sending ? `0 4px 10px ${C.forest}33` : 'none',
+                }}
+              >
+                {sending ? 'Creating link…' : 'Create signing link →'}
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 12, color: C.gray, marginBottom: 8 }}>
+                Signing link ready. Send it via text, email, or just copy and share however works for {recipientFirst}.
+              </div>
+              <div style={{
+                background: '#FAF6EE',
+                border: `1px solid ${C.amberLine}`,
+                borderRadius: 10,
+                padding: '10px 12px',
+                fontSize: 12,
+                color: C.ink,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                wordBreak: 'break-all',
+                marginBottom: 14,
+                lineHeight: 1.5,
+              }}>
+                {sentLink}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={copyLink} style={{ width: '100%', background: copied ? C.saved : C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+                  {copied ? '✓ Copied to clipboard' : '📋 Copy link'}
+                </button>
+                {recipient.phone && (
+                  <a
+                    href={`sms:${recipient.phone.replace(/\D/g, '')}?body=${encodeURIComponent(smsBody)}`}
+                    style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    💬 Open in Messages
+                  </a>
+                )}
+                {recipient.email && (
+                  <a
+                    href={`mailto:${recipient.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                    style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+                  >
+                    ✉ Open in Email
+                  </a>
+                )}
+              </div>
+              <div style={{ marginTop: 14, fontSize: 11, color: C.gray, lineHeight: 1.5, textAlign: 'center' }}>
+                When {recipientFirst} signs, you'll see the signature recorded on their client profile.
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function pill(C, variant) {
   if (variant === 'primary') {
     return {
@@ -983,23 +1249,26 @@ export function AgreementRenderer({ text }) {
     if (listBuffer.length) {
       elements.push(
         <ul key={`l-${elements.length}`} style={{
-          margin: '8px 0 16px 0',
-          paddingLeft: 22,
+          margin: '10px 0 18px 0',
+          paddingLeft: 0,
           listStyle: 'none',
         }}>
           {listBuffer.map((li, i) => (
             <li key={i} style={{
-              marginBottom: 6,
+              marginBottom: 8,
               position: 'relative',
-              paddingLeft: 18,
+              paddingLeft: 22,
+              lineHeight: 1.7,
             }}>
               <span style={{
                 position: 'absolute',
-                left: 0,
+                left: 6,
                 top: 0,
                 color: C.amber,
                 fontFamily: 'Georgia, serif',
+                fontSize: '1.1em',
                 fontWeight: 700,
+                lineHeight: 1.7,
               }}>•</span>
               {li}
             </li>
