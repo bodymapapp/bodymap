@@ -26,11 +26,11 @@ This agreement is based on the standards published by the Associated Bodywork & 
 
 ## About these sessions
 
-The sessions you receive at this practice are therapeutic massage and bodywork for general wellness, stress reduction, relief of muscular tension, and improvement of circulation. Massage therapy is not a substitute for medical care. The therapist does not diagnose, prescribe, or treat illness, injury, or disease. If you have a specific medical concern, please consult your physician. Clients with acute injuries or conditions outside the scope of massage practice should consult their doctor before booking.
+The sessions you receive at this practice are therapeutic massage and bodywork for general wellness, stress reduction, relief of muscular tension, and improvement of circulation. Massage therapy is not a substitute for medical care. The therapist does not diagnose, prescribe, or treat illness, injury, or disease. If you have a specific medical concern, please consult your physician. Clients with acute injuries or conditions outside the scope of massage practice should consult their doctor before booking. If your therapist determines that massage is not appropriate for your condition, they will let you know and may refer you to a more suitable healthcare provider.
 
 ## Your consent
 
-You voluntarily request and consent to receiving massage therapy. You have had the opportunity to ask questions about your sessions, and your questions have been answered to your satisfaction. Your consent is informed and voluntary, and you may withdraw it at any time, except for services already provided.
+You voluntarily request and consent to receiving massage therapy. You have had the opportunity to ask questions about your sessions, alternative therapies, and the potential benefits and risks, and your questions have been answered to your satisfaction. Your consent is informed and voluntary, and you may withdraw it at any time, except for services already provided.
 
 ## Known risks
 
@@ -48,15 +48,27 @@ You have provided an accurate and complete health history to the best of your kn
 
 You authorize your therapist to update this intake record for accuracy when new information comes up during a session (for example, a new medication you mention, a typo correction, or a clarification of a pressure preference). Your therapist will not change the substance of your consent or your medical history without your agreement.
 
+## Appointment confirmations
+
+Appointments are typically confirmed one to two days before the scheduled time. If you do not receive a confirmation, please reach out to your therapist before your session.
+
+## Appointment confirmation
+
+Appointments are typically confirmed one to two days before your scheduled time. If you do not receive a confirmation message and need to reach your therapist, please use the contact information provided in your booking confirmation.
+
 ## Arrival and timing
 
-For your first appointment, please arrive 15 minutes before your scheduled time to complete intake. For all other appointments, please arrive 5 minutes early so we can begin on time. If you arrive late, your session may be shortened to keep the schedule on time, and the full session fee still applies. If you are more than 15 minutes late and have not reached out, the session may be cancelled.
+For your first appointment, please arrive 15 minutes before your scheduled time to complete intake. For all other appointments, please arrive 5 minutes early so we can begin on time. If you arrive late, your session will end at the scheduled end time so the schedule stays on track, and the full session fee still applies. If you are more than 15 minutes late and have not reached out, the session may be cancelled.
 
 ## Cancellation policy
 
-If you cannot make your appointment, please give as much notice as you can. Standard practice is to require at least 24 hours' notice. Cancellations made with less than 24 hours' notice may be billed up to 50% of the scheduled service price. No-shows or same-day cancellations made without notice may be billed for the full session fee.
+Standard cancellation tiers at this practice:
 
-Last-minute cancellations due to verifiable emergencies, illness, or inclement weather may not result in charges, at your therapist's discretion. [Your therapist sets the exact fee on their booking page; you will see and confirm the amount when booking.]
+- More than 24 hours notice: no fee
+- Less than 24 hours notice: up to 50% of the session fee
+- No-show or same-day cancellation without notice: full session fee
+
+Your therapist may waive these fees at their discretion for verifiable emergencies, illness, or inclement weather. The exact fee amounts for your booking will appear on the booking page when you confirm, and you will see and acknowledge them before the booking is confirmed.
 
 ## Illness
 
@@ -66,13 +78,15 @@ If you are feeling sick (cold, flu, fever, anything contagious), please reschedu
 
 You will be appropriately draped with a sheet at all times during your massage. Only the area being worked on is uncovered. The breast and genital areas are always covered and never massaged. Your therapist will respect your physical comfort and your right to ask for pressure or technique adjustments at any time.
 
-## Hygiene and preparation
+## Hygiene and environment
 
-Please arrive showered and clean. Please avoid heavy meals during the two hours before your session. This is a non-smoking, odor-neutral practice.
+Please arrive showered and clean. Please avoid heavy meals during the two hours before your session. This is a non-smoking, odor-neutral practice. Both you and your therapist contribute to keeping the environment safe and comfortable.
 
 ## Professional conduct
 
-You agree to treat your therapist with respect and dignity. Harassment, threatening behavior, sexual advances or requests, or disrespectful language will result in the session being ended immediately, and the full session fee still applies. Clients who arrive under the influence of drugs or alcohol will be asked to leave, and the full session fee still applies. Your therapist agrees to the same standards of respect, professionalism, and ethical conduct in return.
+You agree to treat your therapist with respect and dignity. Harassment, threatening behavior, sexual advances or requests, or disrespectful language will result in the session being ended immediately, and the full session fee still applies. Clients who arrive under the influence of drugs or alcohol will be asked to leave, and the full session fee still applies.
+
+Your therapist commits to the same standards of respect, professionalism, and ethical conduct in return. The therapist will not engage in any sexual conduct or activity during a session. Your therapist serves all clients without discrimination based on race, ethnicity, religion, age, sex, gender identity, sexual orientation, disability, or socioeconomic status.
 
 ## Ending the session
 
@@ -80,7 +94,7 @@ You can ask to stop the session at any time, for any reason. Your therapist can 
 
 ## Confidentiality
 
-Your session notes and intake information are confidential and will not be shared without your written permission, except as required by law.
+Your session notes and intake information are confidential and will not be shared without your written permission, except as required by law. Your therapist follows HIPAA-aligned privacy standards: information is stored securely, accessed only when needed, and never sold or shared with third parties for marketing.
 
 ## Liability release
 
