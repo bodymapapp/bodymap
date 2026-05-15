@@ -2569,19 +2569,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         onToggle={toggleRow}
       ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
       </>)}
-      {matchesSearch('Waiver text', '', '2.6') && (<>
-      <CollapsibleSection
-        id="waiver"
-        taxonomy="2.6"
-        timeBadge="~1m"
-        label="Waiver text"
-        summary={therapist?.waiver_text ? "Custom waiver" : "Standard release · edit to customize"}
-        status="done"
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M6 3h9l4 4v14H6z"/><path d="M14 3v4h4M9 12h7M9 16h5"/></svg>}
-        isOpen={openRow === 'waiver'}
-        onToggle={toggleRow}
-      ><div className="bm-section-bare"><WaiverCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
-      </>)}
+      {/* Waiver text moved into the consolidated "Client agreements"
+          section at 4.3 below. HK May 14 2026: Alison G. asked for a
+          single place for client-facing agreements (intake, booking
+          policies, cancellation policy, waiver) instead of waiver
+          living in its own section away from the others. */}
       </SettingsGroup></>)}
       </>)}
 
@@ -3215,19 +3207,21 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         <PaymentRouting therapist={therapist} onSaved={() => updateProfile({ ...therapist })} />
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Booking & cancellation policies', 'Practice rules clients see before booking, charge for late cancels reschedules no-shows', '4.3') && (<>
+      {matchesSearch('Client agreements', 'Intake form, booking policies, cancellation policy, liability waiver, practice rules clients see before booking, charge for late cancels reschedules no-shows', '4.3') && (<>
       <CollapsibleSection
         id="cancellation"
         taxonomy="4.3"
-        timeBadge="~5m"
-        label="Booking & cancellation policies"
+        timeBadge="~10m"
+        label="Client agreements"
         summary={(() => {
           const cx = therapist?.cancellation_policy_enabled;
           const bk = therapist?.booking_policies_enabled;
-          if (cx && bk) return "Both on · clients agree at booking";
-          if (cx && !bk) return "Cancellation on · booking policies off";
-          if (!cx && bk) return "Booking policies on · cancellation off";
-          return "Off · set expectations and protect your time";
+          const wv = therapist?.waiver_enabled !== false;
+          const onCount = [cx, bk, wv].filter(Boolean).length;
+          if (onCount === 3) return "Intake, booking, cancellation, waiver all set";
+          if (onCount === 2) return `${onCount} of 3 policies on · waiver always on`;
+          if (onCount === 1) return "Waiver on · add booking and cancellation policies";
+          return "Set what clients agree to before their session";
         })()}
         status={(therapist?.cancellation_policy_enabled || therapist?.booking_policies_enabled) ? "done" : "todo"}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M12 2v10l4 4"/><circle cx="12" cy="12" r="10"/></svg>}
@@ -3311,10 +3305,63 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           };
           return (
             <>
+              {/* Intake form: opens the dedicated editor route. Linked
+                  here from Client agreements so therapists see the
+                  intake AS ONE OF the things clients sign, not buried
+                  in a separate area. HK May 14 2026 ask. */}
+              <div style={{
+                background: '#fff',
+                borderRadius: 12,
+                border: '1.5px solid #E5E7EB',
+                padding: '12px 14px',
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                cursor: 'pointer',
+              }}
+                onClick={() => { window.location.href = '/dashboard/intake/edit'; }}
+              >
+                <span style={{
+                  display:'inline-block', width:14, height:14, flexShrink:0,
+                  color:'#6B7280',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="5 3 11 8 5 13" />
+                  </svg>
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', lineHeight: 1.3 }}>
+                    Intake form
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
+                    Health history, focus areas, preferences. Customize questions per practice.
+                  </div>
+                </div>
+                <span style={{
+                  fontSize: 10.5, fontWeight: 700,
+                  color: '#16A34A',
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  flexShrink: 0,
+                }}>
+                  ALWAYS ON
+                </span>
+                <span style={{
+                  fontSize: 10.5, fontWeight: 700, color: '#2A5741',
+                  flexShrink: 0,
+                }}>
+                  Edit →
+                </span>
+              </div>
               <PolicySubRow
                 id="booking-policies"
-                title="Booking policies"
-                blurb="Practice rules clients agree to before confirming a booking"
+                title="Booking & practice policies"
+                blurb="Practice rules clients agree to before confirming. Late arrival, draping, scope, etc."
                 on={!!therapist?.booking_policies_enabled}
               >
                 <BookingPolicies therapist={therapist} />
@@ -3326,6 +3373,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 on={!!therapist?.cancellation_policy_enabled}
               >
                 <CancellationPolicy therapist={therapist} />
+              </PolicySubRow>
+              <PolicySubRow
+                id="waiver"
+                title="Liability waiver"
+                blurb="Standard release the client signs at intake. Legally protects you."
+                on={therapist?.waiver_enabled !== false}
+              >
+                <WaiverCard therapist={therapist} C2={C2} />
               </PolicySubRow>
             </>
           );

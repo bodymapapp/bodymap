@@ -71,25 +71,55 @@ function Toggle({ on, onChange, ariaLabel, disabled }) {
 // Default starter draft so therapists are not staring at a blank
 // box. Plain text. ALL-CAPS short lines render as section headings
 // in PolicyDisplay below.
-const DEFAULT_DRAFT = `Welcome! A few things to know before your first session:
+//
+// HK May 14 2026: Alison G. shared a MassageBook policy packet (PDF)
+// as her reference for what "professional standard" looks like in the
+// LMT industry. Sections she wanted covered:
+//   - Cancellation + late arrival (already in CancellationPolicy)
+//   - Massage guidelines/expectations (13-point list)
+//   - Service termination for harassment, intoxication, inappropriate
+//     conduct
+//   - Draping policy with specific genital/breast language
+//   - Hygiene expectations
+//   - Scope of practice + medical disclaimer
+//   - Reciprocal termination rights (client OR therapist can stop
+//     the session at any time)
+// This default now mirrors that structure. Therapists can delete
+// any section that doesn't fit their practice.
+const DEFAULT_DRAFT = `Welcome! Please read through the practice policies before your session.
 
 INTAKE FORM
 Please fill out the intake form at least 24 hours before your appointment so I can prepare for your session. The link is in your confirmation email.
 
 ARRIVING ON TIME
-If you arrive late, your session may be shortened to keep me on schedule for the next client. The full session fee still applies. If you are more than 15 minutes late and have not reached out, the session may be cancelled.
+For your first appointment, please arrive 15 minutes early to complete the intake form. For all other appointments, arrive 5 minutes before your scheduled time so we can begin on time. If you arrive late, your session may be shortened to keep me on schedule, and the full session fee still applies. If you are more than 15 minutes late and have not reached out, the session may be cancelled.
 
 ILLNESS
-If you are feeling sick (cold, flu, fever, anything contagious) please reschedule. There is no fee to reschedule for illness with at least 4 hours notice.
+If you are feeling sick (cold, flu, fever, anything contagious) please reschedule. There is no fee to reschedule for illness with reasonable notice. Clients with signs, symptoms, or diagnosed contagious conditions or active infections are asked to notify me and reschedule.
 
 DRAPING AND COMFORT
-You will be properly draped at all times. Only the area being worked on is uncovered. You decide what level of pressure feels right and you can ask me to adjust anything at any time.
+You will be properly draped with a sheet at all times. Only the area being worked on is uncovered. The breast and genital areas are always covered and never massaged. You decide what level of pressure feels right, and you can ask me to adjust anything at any time.
 
 SCOPE OF PRACTICE
-I provide therapeutic massage focused on muscle and tissue health. I do not diagnose medical conditions. If you have a specific medical concern, please speak with your physician.
+I provide therapeutic massage and bodywork within the scope of practice of a licensed massage therapist. I do not diagnose, prescribe, or treat medical conditions. Massage therapy is not a substitute for medical care. If you have a specific medical concern, please speak with your physician. Clients with acute injuries or conditions outside this scope should consult their doctor.
+
+HEALTH HISTORY
+Please provide an accurate and complete health history during intake. Inform me of any new diagnoses, medications, injuries, or changes in your health before each session. This keeps you safe.
+
+HYGIENE AND PREPARATION
+Please arrive showered and clean. Please avoid eating a heavy meal during the two hours before your session.
+
+PROFESSIONAL ENVIRONMENT
+This is a non-smoking, odor-neutral practice. All clients are treated with respect and dignity. Personal and professional boundaries are respected at all times. Harassment, threatening behavior, sexual advances or requests, or disrespectful language will result in the session being ended immediately, and the full session fee still applies.
+
+INTOXICATION
+Clients who arrive under the influence of drugs or alcohol will be asked to leave, and the full session fee still applies.
+
+ENDING THE SESSION
+You can ask me to stop the session at any time, for any reason. I can also end the session at any time, for any reason, including the situations described above.
 
 COMMUNICATION
-The best way to reach me is by text. I will respond within 24 hours on weekdays. For urgent rescheduling, please call.
+The best way to reach me is by text. I respond within 24 hours on weekdays. For urgent rescheduling, please call.
 
 Thank you for trusting me with your care.`;
 
