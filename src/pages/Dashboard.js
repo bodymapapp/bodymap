@@ -97,6 +97,83 @@ function PageEnd() {
   );
 }
 
+// Compact link row with copy + preview buttons. Used in Section 1.3
+// for both the booking link and intake link. Replaces the previous
+// big-green-card hero treatment which was visually too heavy and
+// had its preview pointed at the wrong URL.
+function LinkRow({ label, sublabel, url, C2 }) {
+  const [copied, setCopied] = useState(false);
+  const displayUrl = url.replace(/^https?:\/\//, '');
+  function copy() {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${C2.lightGray}`,
+      borderRadius: 10,
+      padding: '11px 14px',
+    }}>
+      <div style={{ marginBottom: 6 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C2.darkGray }}>{label}</div>
+        <div style={{ fontSize: 11, color: C2.gray, marginTop: 1 }}>{sublabel}</div>
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{
+          flex: 1,
+          minWidth: 0,
+          background: '#F9FAFB',
+          border: `1px solid ${C2.lightGray}`,
+          borderRadius: 8,
+          padding: '7px 10px',
+          fontSize: 12,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+          color: C2.darkGray,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}>
+          {displayUrl}
+        </div>
+        <button onClick={copy} style={{
+          background: copied ? C2.forest : '#fff',
+          color: copied ? '#fff' : C2.darkGray,
+          border: `1px solid ${copied ? C2.forest : C2.lightGray}`,
+          borderRadius: 8,
+          padding: '7px 12px',
+          fontSize: 12,
+          fontWeight: 700,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+        }}>
+          {copied ? '✓ Copied' : 'Copy'}
+        </button>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            background: '#fff',
+            color: C2.darkGray,
+            border: `1px solid ${C2.lightGray}`,
+            borderRadius: 8,
+            padding: '7px 12px',
+            fontSize: 12,
+            fontWeight: 700,
+            textDecoration: 'none',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          Preview →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 const C = {
   sage: '#6B9E80', forest: '#2A5741', beige: '#F0EAD9',
   lightBeige: '#F9FAFB', darkGray: '#1F2937', gray: '#6B7280',
@@ -1749,7 +1826,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       return { practice: true, offer: true, restEasier: true, plugIn: true, membership: true, anyMatch: true };
     }
     const groups = {
-      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Booking & intake links','Share your link or QR codes for clients','1.3'],['Booking page','','1.4'],['Booking flow','','1.5'],['Time off','','1.6']],
+      practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Booking & intake links','Share your link or QR codes for clients','1.3'],['Booking page setup','Approval and intake gates, embed','1.4'],['Time off','','1.5']],
       offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Waiver text','','2.6']],
       restEasier:  [['Platform features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
       plugIn:      [['Cal.com sync','','4.1'],['Google Calendar sync','Two-way sync with Google Calendar','4.1.5'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
@@ -2280,134 +2357,94 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         taxonomy="1.3"
         timeBadge="~30s"
         label="Booking & intake links"
-        summary="Your booking link plus QR codes ready to share"
+        summary="Your booking link, intake link, and QR codes"
         status="done"
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="4" y="4" width="6" height="6"/><rect x="14" y="4" width="6" height="6"/><rect x="4" y="14" width="6" height="6"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z"/></svg>}
         isOpen={openRow === 'intake_qr'}
         onToggle={toggleRow}
       ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize: 13, color: C2.gray, margin: '0 0 12px 0', lineHeight: 1.5 }}>
-          Share your intake link with clients, or print a QR code for your room or front desk.
-        </p>
-        {/* Entry button to the WYSIWYG intake editor. Lives at the top
-            of the Intake & QR section so therapists looking to customize
-            their intake see it before they get into the link/QR widgets.
+        {/* Two clean link rows up top. HK May 14 2026 ask: 'If we say
+            Booking and Intake Links, first thing therapist should see
+            is booking and intake link with both preview and copy.'
+            Booking link first (most-used for client-facing share).
+            Intake link second (used for sending to existing clients to
+            update intake). Same compact row pattern, no big colored
+            card, no redundancy. */}
+        <LinkRow
+          label="Booking link"
+          sublabel="Share with clients to book a session"
+          url={bookingUrl}
+          C2={C2}
+        />
+        <div style={{ height: 8 }} />
+        <LinkRow
+          label="Intake link"
+          sublabel="Send to existing clients to update their intake"
+          url={intakeUrl}
+          C2={C2}
+        />
 
-            HIGHLIGHTED with the dusty-rose "JUST SHIPPED" treatment we
-            use elsewhere for new features. The previous cream-on-cream
-            gradient blended into the surrounding panel and was easy to
-            miss. Border is 2px dusty rose, soft rose box-shadow gives
-            elevation, and a NEW pill on the right pulls the eye. Slightly
-            larger padding (14px 16px) so it reads as a primary action,
-            not just another row. */}
+        <div style={{ borderTop: `1px solid ${C2.lightGray}`, margin: '16px 0 14px' }} />
+
+        {/* Customize-intake button. Less visual weight than before
+            because the link rows above are the primary affordance. */}
         <button
           onClick={() => navigate('/dashboard/intake/edit')}
           style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             width: '100%',
-            background: 'linear-gradient(135deg, #FCF8EE 0%, #FCE8E0 50%, #FAF6EE 100%)',
-            border: '2px solid #E8C5B5',
-            borderRadius: 12,
-            padding: '14px 16px',
+            background: '#fff',
+            border: `1.5px solid ${C2.lightGray}`,
+            borderRadius: 10,
+            padding: '11px 14px',
             cursor: 'pointer',
-            marginBottom: 16,
-            transition: 'all 0.18s',
-            boxShadow: '0 4px 16px rgba(168, 116, 104, 0.12)',
+            marginBottom: 14,
+            transition: 'all 0.15s',
             textAlign: 'left',
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = '#A87468';
-            e.currentTarget.style.boxShadow = '0 6px 20px rgba(168, 116, 104, 0.20)';
-            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.borderColor = C2.sage;
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#E8C5B5';
-            e.currentTarget.style.boxShadow = '0 4px 16px rgba(168, 116, 104, 0.12)';
-            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.borderColor = C2.lightGray;
           }}
         >
           <div style={{ textAlign: 'left', flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#5C2E27', marginBottom: 3 }}>
-              ✏️ Customize what clients see
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: C2.darkGray, marginBottom: 2 }}>
+              Customize your intake form
             </div>
-            <div style={{ fontSize: 11, color: '#7A5C53', lineHeight: 1.45 }}>
-              Hide questions, edit options, add your own. Plus medical checklist + HIPAA mode.
+            <div style={{ fontSize: 11, color: C2.gray, lineHeight: 1.45 }}>
+              Hide questions, edit options, add your own. Medical checklist + HIPAA mode.
             </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, marginLeft: 12 }}>
-            <span style={{
-              background: '#A87468',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 800,
-              letterSpacing: 1,
-              padding: '3px 7px',
-              borderRadius: 99,
-              textTransform: 'uppercase',
-            }}>New</span>
-            <span style={{ color: '#A87468', fontSize: 16, fontWeight: 700 }}>→</span>
-          </div>
+          <span style={{ color: C2.forest, fontSize: 14, fontWeight: 700, flexShrink: 0, marginLeft: 12 }}>Edit →</span>
         </button>
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 18 }}>
-          <div style={{ flex: 1, background: C2.white, border: `1.5px solid ${C2.lightGray}`, borderRadius: 8, padding: '10px 14px', fontSize: 13, fontFamily: 'monospace', color: C2.darkGray, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {intakeUrl}
-          </div>
-          <button onClick={copyLink} style={{ background: copied ? C2.forest : C2.sage, color: '#fff', border: 'none', padding: '10px 20px', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background 0.2s' }}>
-            {copied ? '✓ Copied' : 'Copy Link'}
-          </button>
-        </div>
-        <div style={{ borderTop: `1px solid ${C2.lightGray}`, margin: '0 0 14px' }} />
+
         <QRCodesCard intakeUrl={intakeUrl} bookingUrl={bookingUrl} businessName={therapist?.business_name || therapist?.full_name} C2={C2} />
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Booking page', '', '1.4') && (<>
-      <CollapsibleSection
-        id="booking"
-        taxonomy="1.4"
-        timeBadge="~1m"
-        label="Booking page"
-        summary={therapist?.custom_url ? `mybodymap.app/book/${therapist.custom_url}` : "Set your URL above"}
-        status={therapist?.custom_url ? "done" : "todo"}
-        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 15a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M15 9a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/></svg>}
-        isOpen={openRow === 'booking'}
-        onToggle={toggleRow}
-      ><div style={{ padding: '4px 4px' }}>
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 12px', lineHeight:1.5 }}>Share this link so clients can book directly with you - no back-and-forth needed.</p>
-        <div className="bm-settings-btn-row" style={{ display:'flex', gap:8, alignItems:'center' }}>
-          <div style={{ flex:1, background:C2.white, border:`1.5px solid ${C2.lightGray}`, borderRadius:8, padding:'9px 12px', fontSize:'12px', fontFamily:'monospace', color:C2.darkGray, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-            {window.location.origin}/book/{therapist?.custom_url}
-          </div>
-          <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/book/${therapist?.custom_url}`); }} style={{ background:C2.sage, color:'#fff', border:'none', padding:'9px 16px', borderRadius:8, fontSize:'12px', fontWeight:600, cursor:'pointer', whiteSpace:'nowrap' }}>
-            Copy
-          </button>
-          <a href={`/book/${therapist?.custom_url}`} target="_blank" rel="noreferrer" style={{ background:C2.forest, color:'#fff', border:'none', padding:'9px 14px', borderRadius:8, fontSize:'12px', fontWeight:600, textDecoration:'none', whiteSpace:'nowrap' }}>
-            Preview →
-          </a>
-        </div>
-
-        {/* Embed on your website */}
-        <BookingEmbedPanel customUrl={therapist?.custom_url} />
-      </div></CollapsibleSection>
-      </>)}
-      {matchesSearch('Booking flow', '', '1.5') && (<>
+      {matchesSearch('Booking page setup', 'Approve new clients, require intake before booking, embed on your website', '1.4') && (<>
       <CollapsibleSection
         id="bookingflow"
-        taxonomy="1.5"
-        label="Booking flow"
+        taxonomy="1.4"
+        timeBadge="~3m"
+        label="Booking page setup"
         summary={(() => {
           const a = !!therapist?.require_approval;
           const i = !!therapist?.require_intake_before_booking;
-          if (a && i) return 'Approval ON · Intake collected after approval';
+          if (a && i) return 'Approval ON · Intake required';
           if (a) return 'Approval required for new clients';
           if (i) return 'Intake required before booking';
-          return 'Optional gates · both off';
+          return 'Open booking · both gates off';
         })()}
-        status={(therapist?.require_approval || therapist?.require_intake_before_booking) ? 'done' : 'todo'}
+        status={therapist?.custom_url ? 'done' : 'todo'}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg>}
         isOpen={openRow === 'bookingflow'}
         onToggle={toggleRow}
       ><div style={{ padding:'4px 4px' }}>
-        <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>Two optional gates for first-time clients only. Returning clients always book straight through.</p>
+        <p style={{ fontSize:12, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>
+          Configure how your booking page behaves for new clients. Returning clients always book straight through.
+        </p>
 
         {/* Approval gate. Compact toggle row. */}
         <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 0', borderBottom:`1px dashed ${C2.lightGray}` }}>
@@ -2425,7 +2462,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
 
         {/* Intake-first gate. Compact toggle row. */}
-        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 0' }}>
+        <div style={{ display:'flex', alignItems:'flex-start', gap:12, padding:'12px 0', borderBottom:`1px dashed ${C2.lightGray}` }}>
           <button onClick={async () => {
             const newVal = !therapist?.require_intake_before_booking;
             await supabase.from('therapists').update({ require_intake_before_booking: newVal }).eq('id', therapist.id);
@@ -2443,12 +2480,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             )}
           </div>
         </div>
+
+        {/* Embed-on-your-website panel. Was previously its own section
+            (1.4) sibling. Folded in here so all booking-page setup
+            lives in one place. */}
+        <div style={{ marginTop: 14 }}>
+          <BookingEmbedPanel customUrl={therapist?.custom_url} />
+        </div>
       </div></CollapsibleSection>
       </>)}
-      {matchesSearch('Time off', '', '1.6') && (<>
+      {matchesSearch('Time off', '', '1.5') && (<>
       <CollapsibleSection
         id="timeoff"
-        taxonomy="1.6"
+        taxonomy="1.5"
         timeBadge="~1m"
         label="Time off"
         summary={blockedDays.length === 0 ? "None scheduled" : `${blockedDays.length} day${blockedDays.length === 1 ? '' : 's'} blocked`}
@@ -3995,17 +4039,17 @@ export default function Dashboard({ view }) {
             </div>
             <div style={{ background: '#F5F0E8', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your booking link</p>
-              <p style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all' }}>{window.location.origin}/{therapist?.custom_url}</p>
+              <p style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all' }}>{window.location.origin}/book/{therapist?.custom_url}</p>
             </div>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ fontSize: '13px', fontWeight: '700', color: '#1A1A2E', display: 'block', marginBottom: '8px' }}>Client phone number (optional)</label>
               <input type="tel" value={sendPhone} onChange={e => { const d=e.target.value.replace(/\D/g,'').slice(0,10); const f=d.length<=3?d:d.length<=6?`(${d.slice(0,3)}) ${d.slice(3)}`:`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`; setSendPhone(f); }} placeholder="(512) 555-1234" autoFocus style={{ width: '100%', padding: '12px 16px', border: '2px solid #E8E4DC', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box' }} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Here is my booking link, you can pick a time and fill the intake in one go: ' + window.location.origin + '/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) { e.preventDefault(); return; } if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
+              <a href={sendPhone.replace(/\D/g,'').length >= 10 ? 'sms:' + sendPhone.replace(/\D/g,'') + '?body=' + encodeURIComponent('Hi! Here is my booking link, you can pick a time and fill the intake in one go: ' + window.location.origin + '/book/' + (therapist?.custom_url || '')) : undefined} onClick={e => { if(sendPhone.replace(/\D/g,'').length < 10) { e.preventDefault(); return; } if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } setTimeout(() => setShowSendModal(false), 500); }} style={{ display: 'block', textAlign: 'center', background: sendPhone.replace(/\D/g,'').length >= 10 ? '#2A5741' : '#C8BFB0', color: 'white', padding: '14px', borderRadius: '50px', fontWeight: '700', fontSize: '15px', textDecoration: 'none', cursor: sendPhone.replace(/\D/g,'').length >= 10 ? 'pointer' : 'not-allowed' }}>
                 💬 Open in Messages →
               </a>
-              <button onClick={() => { navigator.clipboard.writeText(window.location.origin + '/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } }} style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
+              <button onClick={() => { navigator.clipboard.writeText(window.location.origin + '/book/' + (therapist?.custom_url || '')); setSendCopied(true); setTimeout(() => setSendCopied(false), 2000); if (therapist?.id) { import('../lib/activation').then(({ trackActivation }) => trackActivation(therapist.id, 'sent_first_intake')).catch(()=>{}); } }} style={{ background: sendCopied ? '#E8F5EE' : '#F5F0E8', border: '1.5px solid ' + (sendCopied ? '#6B9E80' : '#E8E4DC'), color: sendCopied ? '#2A5741' : '#6B7280', padding: '12px', borderRadius: '50px', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}>
                 {sendCopied ? '✓ Copied!' : '📋 Copy Link Only'}
               </button>
             </div>
