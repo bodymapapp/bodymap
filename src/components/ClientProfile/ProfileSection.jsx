@@ -45,6 +45,7 @@ const ACCENTS = {
   patterns:    { bar: C.gold,       label: 'BODY PATTERNS' },
   preferences: { bar: C.sageBright, label: 'SETTINGS'      },
   medical:     { bar: C.rose,       label: 'MEDICAL'       },
+  membership:  { bar: C.gold,       label: 'MEMBERSHIP'    },
   timeline:    { bar: C.forest,     label: 'ACTIVITY'      },
 };
 
