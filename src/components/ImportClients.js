@@ -38,6 +38,17 @@ function detectMapping(headers) {
     // service_id / price, so the dashboard counters can't see them.
     service:      find('service', 'treatment', 'appointment type'),
     price:        find('price', 'session price', 'amount'),
+    // Optional membership columns. When any of these are present we
+    // create a member_subscriptions row alongside the client. Plan
+    // is auto-created in the memberships table if it doesn't exist
+    // yet. Per HK May 14 2026: memberships are part of client import,
+    // not a separate flow. Therapists think of a client and their
+    // active membership as one record.
+    membershipPlan:    find('membership plan', 'membership name', 'membership', 'plan name', 'subscription plan', 'subscription'),
+    membershipPrice:   find('membership price', 'monthly price', 'plan price', 'subscription price'),
+    membershipCredits: find('monthly credits', 'sessions per month', 'sessions/month', 'monthly sessions', 'credits per month', 'credits'),
+    membershipRenewal: find('next renewal', 'renewal date', 'next bill', 'next billing', 'renews on', 'next charge'),
+    membershipStatus:  find('membership status', 'subscription status'),
   };
 }
 
@@ -93,6 +104,10 @@ export default function ImportClients({ therapist, onComplete }) {
   async function runImport() {
     setImporting(true);
     let created = 0, skipped = 0, failed = 0;
+    // Track membership creation separately. A client row can both
+    // succeed and have a membership attached, so this counter is
+    // independent of created/skipped.
+    let membershipsCreated = 0, membershipsFailed = 0;
 
     // Cache services by name (lowercased) so we don't query/insert
     // the same service repeatedly across rows. resolveServiceId returns
@@ -139,6 +154,55 @@ export default function ImportClients({ therapist, onComplete }) {
       return created.id;
     }
 
+    // Cache memberships by plan name (lowercased). Same pattern as
+    // resolveServiceId: look up existing, otherwise auto-create with
+    // the price + credits we found in the CSV. The newly-created
+    // membership has stripe_price_id = NULL because we don't have
+    // a Stripe price yet for migrated plans. Therapist sees a
+    // "Connect Stripe billing" prompt on the membership page after
+    // import to finish wiring up recurring charges.
+    const membershipCache = new Map();
+    async function resolveMembershipId(planName, monthlyPrice, monthlyCredits) {
+      if (!planName) return null;
+      const key = planName.toLowerCase().trim();
+      if (membershipCache.has(key)) return membershipCache.get(key);
+
+      const { data: existing } = await supabase
+        .from('memberships')
+        .select('id')
+        .eq('therapist_id', therapist.id)
+        .ilike('name', planName)
+        .maybeSingle();
+      if (existing?.id) {
+        membershipCache.set(key, existing.id);
+        return existing.id;
+      }
+
+      // Auto-create with values from the CSV. If price or credits
+      // are missing, default to 0 / 1 so the row inserts cleanly.
+      // Therapist can edit later. active defaults to true so the
+      // plan shows in the dashboard right away.
+      const { data: newPlan, error } = await supabase
+        .from('memberships')
+        .insert({
+          therapist_id: therapist.id,
+          name: planName,
+          monthly_price: monthlyPrice || 0,
+          monthly_session_credits: monthlyCredits || 1,
+          description: 'Imported plan, edit details and connect Stripe billing to enable recurring charges.',
+          active: true,
+        })
+        .select('id')
+        .single();
+      if (error) {
+        console.error('[import] could not auto-create membership plan:', error);
+        membershipCache.set(key, null);
+        return null;
+      }
+      membershipCache.set(key, newPlan.id);
+      return newPlan.id;
+    }
+
     for (const row of rows) {
       const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
@@ -156,6 +220,26 @@ export default function ImportClients({ therapist, onComplete }) {
       const serviceName = get(mapping.service) || null;
       const priceRaw    = get(mapping.price) || null;
       const sessionPrice = priceRaw ? parseFloat(priceRaw.replace(/[^0-9.]/g, '')) : null;
+
+      // Membership columns. Only attempt to create a member_subscription
+      // if a plan name is present AND it's not 'none' / 'no membership'.
+      // Therapist may have a column with mostly blanks plus a few rows
+      // with real plans; we don't want to error on blanks or auto-create
+      // a "None" plan.
+      const membershipPlanRaw    = get(mapping.membershipPlan) || '';
+      const membershipPriceRaw   = get(mapping.membershipPrice) || '';
+      const membershipCreditsRaw = get(mapping.membershipCredits) || '';
+      const membershipRenewalRaw = get(mapping.membershipRenewal) || '';
+      const membershipStatusRaw  = (get(mapping.membershipStatus) || '').toLowerCase();
+      const hasMembership = membershipPlanRaw &&
+        !['none','no','no membership','n/a','na','-'].includes(membershipPlanRaw.toLowerCase());
+      const membershipPlan = hasMembership ? membershipPlanRaw : null;
+      const membershipPrice = membershipPriceRaw
+        ? parseFloat(membershipPriceRaw.replace(/[^0-9.]/g, ''))
+        : null;
+      const membershipCredits = membershipCreditsRaw
+        ? parseInt(membershipCreditsRaw.replace(/[^0-9]/g, ''), 10) || null
+        : null;
 
       // Build best possible name, fall back to email or phone if name missing
       let name = [firstName, lastName].filter(Boolean).join(' ');
@@ -289,10 +373,93 @@ export default function ImportClients({ therapist, onComplete }) {
           }
         }
 
+        // ─── MEMBERSHIP CREATION ──────────────────────────────────────
+        // If the CSV row has a plan name, resolve/auto-create the plan
+        // in `memberships` and then create a member_subscriptions row
+        // tied to this client. stripe_subscription_id is NULL because
+        // the recurring billing is still on the therapist's old
+        // platform (GlossGenius, Vagaro, etc). After import, therapist
+        // sees a "Connect Stripe billing" CTA on each migrated
+        // subscription to wire up MyBodyMap-side recurring charges.
+        //
+        // Idempotency: if a subscription with status='active' already
+        // exists for this client+plan, skip rather than duplicate.
+        if (hasMembership && client?.id) {
+          try {
+            const planId = await resolveMembershipId(membershipPlan, membershipPrice, membershipCredits);
+            if (!planId) {
+              membershipsFailed++;
+            } else {
+              // Check for an existing active sub on this plan for this client
+              const { data: existingSub } = await supabase
+                .from('member_subscriptions')
+                .select('id')
+                .eq('therapist_id', therapist.id)
+                .eq('client_id', client.id)
+                .eq('membership_id', planId)
+                .eq('status', 'active')
+                .maybeSingle();
+              if (existingSub?.id) {
+                // Already imported, skip duplicate
+              } else {
+                // Map status string from CSV to schema's allowed values
+                const statusRaw = membershipStatusRaw;
+                let status = 'active';
+                if (['paused','pause'].includes(statusRaw)) status = 'paused';
+                else if (['canceled','cancelled','cancel'].includes(statusRaw)) status = 'canceled';
+                else if (['past_due','past due','overdue'].includes(statusRaw)) status = 'past_due';
+
+                // Parse renewal date; bad/blank values fall back to one
+                // month from today so the subscription has a sensible
+                // current_period_end.
+                let periodEnd = null;
+                if (membershipRenewalRaw) {
+                  const parsed = new Date(membershipRenewalRaw);
+                  if (!isNaN(parsed)) periodEnd = parsed.toISOString();
+                }
+                if (!periodEnd) {
+                  const fallback = new Date();
+                  fallback.setMonth(fallback.getMonth() + 1);
+                  periodEnd = fallback.toISOString();
+                }
+
+                const finalPrice = membershipPrice || 0;
+                const finalCredits = membershipCredits || 1;
+
+                const { error: subErr } = await supabase
+                  .from('member_subscriptions')
+                  .insert({
+                    therapist_id: therapist.id,
+                    membership_id: planId,
+                    client_id: client.id,
+                    client_email: email || `${name.replace(/\s+/g,'.').toLowerCase()}@imported.placeholder`,
+                    client_name: name,
+                    stripe_subscription_id: null,
+                    stripe_customer_id: null,
+                    status: status,
+                    current_period_end: periodEnd,
+                    monthly_price: finalPrice,
+                    monthly_session_credits: finalCredits,
+                    current_credits: finalCredits,
+                  });
+                if (subErr) {
+                  console.error('[import] could not create member subscription:', subErr);
+                  membershipsFailed++;
+                } else {
+                  membershipsCreated++;
+                }
+              }
+            }
+          } catch (mErr) {
+            console.error('[import] membership block threw:', mErr);
+            membershipsFailed++;
+          }
+        }
+
       } catch(e) { console.error('Import row error:', e, row); failed++; }
     }
 
-    setResults({ created, skipped, failed, total: rows.length });
+    setResults({ created, skipped, failed, total: rows.length, membershipsCreated, membershipsFailed });
     setImporting(false);
     setStep(4);
     // Log activation (imported at least one client)
@@ -312,7 +479,7 @@ export default function ImportClients({ therapist, onComplete }) {
       {/* Header */}
       <div style={{ background:C.forest, padding:'20px 24px' }}>
         <h3 style={{ fontFamily:'Georgia,serif', fontSize:18, fontWeight:700, color:'#fff', margin:'0 0 4px' }}>Import Clients from Another Platform</h3>
-        <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:0 }}>Transfer your client list from MassageBook, Vagaro, GlossGenius, Mindbody, or any CSV file.</p>
+        <p style={{ fontSize:13, color:'rgba(255,255,255,0.7)', margin:0 }}>Transfer clients, visit history, and active memberships from MassageBook, Vagaro, GlossGenius, Mindbody, or any CSV file.</p>
       </div>
 
       {/* Mobile notice */}
@@ -399,6 +566,15 @@ export default function ImportClients({ therapist, onComplete }) {
 
             <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#16A34A', fontWeight:600 }}>
               ✅ Found {rows.length} clients in your file
+              {mapping.membershipPlan >= 0 && (() => {
+                // Count rows that look like they have an active membership
+                const memberCount = rows.filter(r => {
+                  const v = (r[mapping.membershipPlan] || '').trim();
+                  return v && v.toLowerCase() !== 'none';
+                }).length;
+                if (memberCount === 0) return null;
+                return <span style={{ marginLeft: 10, fontWeight: 600 }}>· {memberCount} with active membership</span>;
+              })()}
             </div>
 
             {/* Column mapping */}
@@ -415,6 +591,11 @@ export default function ImportClients({ therapist, onComplete }) {
                   { key:'visitCount',label:'Visit Count' },
                   { key:'service',   label:'Service' },
                   { key:'price',     label:'Price' },
+                  { key:'membershipPlan',    label:'Membership Plan' },
+                  { key:'membershipPrice',   label:'Membership $/mo' },
+                  { key:'membershipCredits', label:'Sessions/mo' },
+                  { key:'membershipRenewal', label:'Next Renewal' },
+                  { key:'membershipStatus',  label:'Membership Status' },
                 ].map(({ key, label }) => (
                   <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:12, color:C.gray, width:100, flexShrink:0 }}>{label}</span>
@@ -491,6 +672,31 @@ export default function ImportClients({ therapist, onComplete }) {
                 </div>
               ))}
             </div>
+            {/* Memberships migrated callout. Only shows when the CSV
+                actually had a Membership Plan column with at least one
+                non-empty row. Stripe billing has to be wired separately
+                via "Connect billing" on each subscription. */}
+            {results.membershipsCreated > 0 && (
+              <div style={{
+                background:'#F0F7F2',
+                border:'1.5px solid #C8E0CC',
+                borderRadius:10,
+                padding:'12px 16px',
+                marginBottom:16,
+                fontSize:13,
+                color:'#2A5741',
+                textAlign:'left',
+                lineHeight:1.6,
+              }}>
+                <strong>✅ {results.membershipsCreated} active membership{results.membershipsCreated !== 1 ? 's' : ''} migrated.</strong>
+                {' '}Plans appear under Billing → Memberships. To start recurring Stripe charges for these members, open each subscription and tap "Connect billing".
+                {results.membershipsFailed > 0 && (
+                  <div style={{ marginTop: 6, color: '#92400E' }}>
+                    {results.membershipsFailed} membership row{results.membershipsFailed !== 1 ? 's' : ''} couldn't be created. Check the console for details.
+                  </div>
+                )}
+              </div>
+            )}
             {results.failed > 0 && (
               <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:10, padding:'12px 16px', marginBottom:16, fontSize:13, color:'#991B1B', textAlign:'left', lineHeight:1.6 }}>
                 <strong>{results.failed} rows failed.</strong> Most common cause: rows missing both a name and email. Open your CSV, make sure every client has at least a first name, then try again.
