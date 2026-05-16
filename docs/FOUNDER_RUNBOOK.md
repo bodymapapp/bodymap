@@ -654,6 +654,38 @@ When everything is broken and you just want to reset:
 
 Then go to Settings, Payments. The fresh two-path UI shows. Connect again from a clean state.
 
+### Procedure 9: Two Stripe accounts with the same email (Google OAuth vs password)
+
+Discovered May 16 2026 morning. Stripe's authentication system treats "Continue with Google using email X" and "email X plus password" as TWO DIFFERENT humans. They never link. You can end up with two parallel Stripe accounts using the same email, where:
+
+- One is the verified production platform (where Connect accounts and real transactions live)
+- The other is a test / abandoned identity that came from a Google OAuth signup attempt
+
+Symptoms this is happening:
+- Stripe Dashboard shows different data depending on whether you came in via Google OAuth or password
+- You 'cannot see your Connect accounts' but they exist
+- You 'cannot see your transactions' but real money is flowing
+- The Manage in Stripe link from MyBodyMap lands you in sandbox even though customer payments are working
+- Standard Connect OAuth picker shows the wrong accounts because Stripe used your current browser session's Stripe identity, which might be the wrong one
+
+To diagnose:
+1. Open an incognito window
+2. Go to `dashboard.stripe.com/login`
+3. Try logging in with email + password (NOT Google)
+4. Check Connect, Accounts. Do you see the 31 platform accounts? If YES, this is the real platform.
+5. Sign out, try Google OAuth from a fresh incognito window
+6. Check Connect, Accounts. If you see NOTHING or just one test account, this is the abandoned identity.
+
+To recover:
+- Always use the password-based login going forward for platform operations
+- The Google-OAuth identity can be ignored or left to die; it has no production data
+- Verify the STRIPE_CLIENT_ID in Supabase is from the PASSWORD-based account, not the Google-OAuth one (they have different Client IDs)
+- Bookmark `https://dashboard.stripe.com/connect/accounts/acct_xxx` URLs for direct access to specific connected accounts rather than relying on Stripe Dashboard's session memory
+
+To prevent recurrence:
+- Pick ONE auth method for Stripe and never use the other
+- Recommended: email plus password with a saved password manager entry, since Google OAuth introduces this duplicate-identity risk
+
 ### Stripe Dashboard configuration (canonical state)
 
 If you ever need to restore Stripe Dashboard settings to working state:
