@@ -11,6 +11,8 @@ execute when unblocked. Each block has:
 If a block becomes unblocked, move it into an active session and
 delete the entry from here after it ships.
 
+**Most recent session handover:** `docs/HANDOVER_2026-05-15.md` (Stripe Connect marathon, May 15-16 2026). Read that first if returning after a break.
+
 ---
 
 ## 1. Google OAuth app verification
@@ -771,3 +773,40 @@ forced to build the wizard):
 single month, build (b) immediately. The cost of HK handholding
 each new therapist through Twilio is higher than building the
 wizard once.
+
+---
+
+## 8. StatusStrip Agreement tile (deferred from May 15-16 session)
+
+**Current status (May 16 2026).** The Send-for-Signature flow shipped this session as an inline panel from the PracticeAgreement editor. Therapists can pick a client, edit a custom prepared message, generate a short URL, and have the agreement email auto-fire. Once the client signs, a new AgreementCard surfaces on the client profile (order=6) showing signer name, datetime, and the snapshot of agreed text. All complete.
+
+**Deferred piece.** The client profile StatusStrip (the row of compact attention tiles at the top of every client profile) still uses the old `pendingIntake` logic and does not yet have a permanent Agreement tile. The plan is to replace the conditional Attention chip with a permanent Agreement tile that always shows current agreement state at a glance.
+
+**Why blocked.** Stripe Connect debugging became urgent during the session (HK and Candice both stuck on Stripe issues). All 75 minutes of remaining attention went to Stripe. The StatusStrip work was at a clean stopping point with no half-shipped state.
+
+**When to revisit.** Next focused session. Should take 75 minutes including verification.
+
+**Materials.** All design decisions confirmed by HK during the session before deferral:
+
+1. **Tile content when signed.** Two lines: "Signed [date]" on top, "by [signer name]" underneath. Uses the agreement_send_requests row's `signed_at` and `signer_name`. Forest accent color matching the rest of the agreement surface.
+
+2. **Tile content when unsigned.** "Not on file" on top, "Tap to send" underneath in subtle italic. Amber tone to indicate action needed without alarm.
+
+3. **Tap behavior.** When signed, tap scrolls the profile to the AgreementCard section so the therapist can see the full snapshot. When unsigned, tap opens the SendForSignaturePanel for this specific client (pre-fill the client_id) so they can send the request in one tap.
+
+4. **Remove the pendingIntake conditional logic.** That tile was a temporary hack. Replace entirely with the Agreement tile which is always visible. If we later want an Intake-status tile, build it separately. Do not pile both into one slot.
+
+5. **Position in the strip.** Between the existing "Last seen" tile and any other always-visible tile. Permanent slot. Never hidden.
+
+**Files to touch.**
+- `src/components/ClientProfile/StatusStrip.jsx` (remove pendingIntake, add AgreementTile)
+- May need to expose `signed_at` / `signer_name` / `signed_text_snapshot` from the client row in `clients` table or via a separate fetch of the most-recent signed `agreement_send_requests` row for this client. Check what AgreementCard already does for this lookup and reuse.
+
+**Verification after build.**
+- Three test clients: (a) one with a signed agreement, (b) one with a sent-unsigned agreement, (c) one with no agreement at all.
+- For (a), tile shows signer name and date; tap scrolls to AgreementCard.
+- For (b) and (c), tile shows "Not on file Tap to send"; tap opens SendForSignaturePanel pre-filled.
+- StatusStrip layout does not break on mobile (375px wide).
+- No em dashes in any new text.
+
+**Estimate.** 75 minutes including the verification above. HK confirmed during deferral.
