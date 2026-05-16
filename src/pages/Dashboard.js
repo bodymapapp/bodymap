@@ -1746,6 +1746,11 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Inline-confirm state for the Stripe Disconnect button. When true,
+  // the disconnect button row swaps to a Keep it / Yes, disconnect
+  // pair. House rule: never window.confirm.
+  const [stripePendingDisconnect, setStripePendingDisconnect] = React.useState(false);
+
   // Which row in Settings is currently expanded. null = all collapsed.
   // Mobile-first: collapsed by default to kill the endless vertical scroll.
   const [openRow, setOpenRow] = React.useState(null);
@@ -3098,10 +3103,18 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           </div>
 
-          {/* Stripe panel — primary CTA */}
+          {/* Stripe panel - primary CTA.
+              Three states, decided by (stripe_account_id, stripe_account_connected):
+                (set, true)   = fully connected; show green panel + disconnect
+                (set, false)  = onboarding in progress; show Resume Stripe setup
+                                so the existing account is reused. Tapping
+                                the purple Connect Stripe in this state used
+                                to create a brand new Express account, leaving
+                                the half-finished one orphaned. HK May 15 2026.
+                (null, false) = brand new; show purple Connect Stripe */}
           {therapist?.stripe_account_connected ? (
             <div style={{ background:'#F0FDF4', border:'1.5px solid #86EFAC', borderRadius:10, padding:'10px 14px', marginBottom:10 }}>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:8 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span>✅</span>
                   <div>
@@ -3109,13 +3122,76 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, memberships, cards on file all enabled</div>
                   </div>
                 </div>
-                <button onClick={async () => {
-                  if (!window.confirm('Disconnect Stripe? Online deposits, card-on-file, and package purchases will stop until you reconnect.')) return;
-                  await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
-                }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
-                  Disconnect
-                </button>
+                {stripePendingDisconnect ? (
+                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                    <button
+                      onClick={() => setStripePendingDisconnect(false)}
+                      style={{ background:'#fff', border:'1.5px solid #D1D5DB', color:'#374151', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}
+                    >
+                      Keep it
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
+                        setStripePendingDisconnect(false);
+                      }}
+                      style={{ background:'#DC2626', border:'none', color:'#fff', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}
+                    >
+                      Yes, disconnect
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setStripePendingDisconnect(true)}
+                    style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}
+                  >
+                    Disconnect
+                  </button>
+                )}
               </div>
+              {stripePendingDisconnect && (
+                <div style={{ marginTop:8, fontSize:11, color:'#78350F', lineHeight:1.55, background:'#FFF8E7', border:'1px solid #F3D88E', borderRadius:8, padding:'8px 10px' }}>
+                  Disconnect Stripe? Online deposits, card-on-file, and package purchases will stop until you reconnect.
+                </div>
+              )}
+            </div>
+          ) : therapist?.stripe_account_id ? (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ background:'#FFF8E7', border:'1.5px solid #F3D88E', borderRadius:10, padding:'12px 14px', marginBottom: 10 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 16 }}>🔄</span>
+                  <div style={{ fontSize:'12px', fontWeight:'700', color:'#78350F' }}>Stripe setup not finished</div>
+                </div>
+                <div style={{ fontSize:'11px', color:'#92400E', lineHeight: 1.55 }}>
+                  You started connecting Stripe but a few items still need to be completed in their hosted onboarding. Resume below to finish where you left off. Stripe saves your progress.
+                </div>
+              </div>
+              <button onClick={async () => {
+                const { data: { session } } = await supabase.auth.getSession();
+                const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
+                  method:'POST',
+                  headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
+                  body: JSON.stringify({ action:'resume_onboarding', therapist_id: therapist.id }),
+                });
+                const data = await res.json();
+                if (data.url) {
+                  // Same-tab redirect so the hosted flow can take over.
+                  window.location.href = data.url;
+                } else {
+                  alert('Could not resume Stripe setup. ' + (data.error || 'Please try again.'));
+                }
+              }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'14px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow: '0 2px 8px rgba(99, 91, 255, 0.25)' }}>
+                Resume Stripe setup →
+              </button>
+              <button onClick={async () => {
+                // Escape hatch: cancel this in-progress account and
+                // start over with a fresh one. Clears stripe_account_id
+                // so the next 'Connect Stripe' creates a brand new
+                // Express account.
+                await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
+              }} style={{ marginTop: 8, background:'transparent', border:'none', color:'#6B7280', fontSize:'11px', fontWeight:'600', cursor:'pointer', textDecoration:'underline', padding:'4px 0', width:'100%' }}>
+                Start over with a fresh Stripe account
+              </button>
             </div>
           ) : (
             <div style={{ marginBottom: 10 }}>
@@ -3127,8 +3203,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
                 });
                 const data = await res.json();
-                if (data.url) window.open(data.url, '_blank');
-                else alert('Error: ' + JSON.stringify(data));
+                if (data.url) {
+                  // Same-tab redirect so the hosted flow can take over.
+                  // Previously opened in new tab, which caused
+                  // therapists to lose the flow when the tab closed.
+                  window.location.href = data.url;
+                } else {
+                  alert('Error: ' + JSON.stringify(data));
+                }
               }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'14px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow: '0 2px 8px rgba(99, 91, 255, 0.25)' }}>
                 💳 Connect Stripe · Recommended
               </button>

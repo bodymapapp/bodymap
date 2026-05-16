@@ -32,6 +32,109 @@ serve(async (req) => {
   try {
     const { action, code, therapist_id } = await req.json();
 
+    // Action: resume_onboarding
+    //
+    // Generates a fresh Account Link for the EXISTING stripe_account_id
+    // so the therapist can resume Stripe's hosted onboarding where
+    // they left off. CRITICAL: this does NOT create a new account.
+    //
+    // The old flow was: incomplete onboarding -> RefreshState ->
+    // 'Finish Stripe setup' button -> navigates back to Settings ->
+    // therapist taps 'Connect Stripe' purple button -> creates a
+    // BRAND NEW Express account, abandoning the in-progress one.
+    // Therapist could loop forever creating empty accounts. HK May
+    // 15 2026 hit this. Fix: resume on the same account ID.
+    if (action === 'resume_onboarding' && therapist_id) {
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+      const { data: therapistRow } = await supabase
+        .from('therapists')
+        .select('stripe_account_id')
+        .eq('id', therapist_id)
+        .maybeSingle();
+
+      if (!therapistRow?.stripe_account_id) {
+        return new Response(JSON.stringify({
+          error: 'No Stripe account on file. Start the connection flow from the beginning.',
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const linkRes = await fetch('https://api.stripe.com/v1/account_links', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${STRIPE_SECRET}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          account: therapistRow.stripe_account_id,
+          refresh_url: `https://www.mybodymap.app/dashboard/stripe-connect?refresh=true`,
+          return_url: `https://www.mybodymap.app/dashboard/stripe-connect?success=true&account_id=${therapistRow.stripe_account_id}&therapist_id=${therapist_id}`,
+          type: 'account_onboarding',
+        }).toString(),
+      });
+      const link = await linkRes.json();
+
+      if (!link.url) {
+        return new Response(JSON.stringify({
+          error: 'Could not generate resume link from Stripe',
+          stripe_response: link,
+        }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({ url: link.url, account_id: therapistRow.stripe_account_id }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: diagnose
+    //
+    // Returns the raw Stripe account state for the therapist so we
+    // (and the UI) can show exactly which requirements are pending.
+    // Used by the StripeConnect page RefreshState to display 'Stripe
+    // needs: [bank account, identity verification, business address]'
+    // instead of an opaque 'Setup not finished.'
+    if (action === 'diagnose' && therapist_id) {
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+      const { data: therapistRow } = await supabase
+        .from('therapists')
+        .select('stripe_account_id, stripe_account_connected')
+        .eq('id', therapist_id)
+        .maybeSingle();
+
+      if (!therapistRow?.stripe_account_id) {
+        return new Response(JSON.stringify({
+          status: 'no_account',
+          message: 'No Stripe account on file for this therapist.',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const acctRes = await fetch(`https://api.stripe.com/v1/accounts/${therapistRow.stripe_account_id}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      const acct = await acctRes.json();
+
+      if (!acctRes.ok || !acct.id) {
+        return new Response(JSON.stringify({
+          status: 'stripe_lookup_failed',
+          stripe_error: acct.error?.message || 'Could not fetch account from Stripe',
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({
+        status: 'ok',
+        account_id: acct.id,
+        charges_enabled: acct.charges_enabled,
+        payouts_enabled: acct.payouts_enabled,
+        details_submitted: acct.details_submitted,
+        requirements_currently_due: acct.requirements?.currently_due || [],
+        requirements_eventually_due: acct.requirements?.eventually_due || [],
+        requirements_past_due: acct.requirements?.past_due || [],
+        requirements_disabled_reason: acct.requirements?.disabled_reason || null,
+        connected_in_db: !!therapistRow.stripe_account_connected,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Action: get_oauth_url
     if (action === 'get_oauth_url') {
       const redirectUri = 'https://www.mybodymap.app/dashboard/stripe-connect';

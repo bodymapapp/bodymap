@@ -48,6 +48,8 @@ export default function StripeConnect() {
   const navigate = useNavigate();
 
   const [statusReason, setStatusReason] = useState(null);
+  const [missingRequirements, setMissingRequirements] = useState([]);
+  const [resuming, setResuming] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -82,6 +84,7 @@ export default function StripeConnect() {
       // common one: account exists but Stripe needs more info.
       if (data.status === 'onboarding_incomplete') {
         setStatusReason(data.error || 'Stripe needs more information.');
+        setMissingRequirements(data.requirements_currently_due || []);
         setStatus('refresh');
         return;
       }
@@ -90,6 +93,35 @@ export default function StripeConnect() {
     } catch (e) {
       setStatusReason(String(e?.message || e));
       setStatus('error');
+    }
+  };
+
+  // Generates a fresh Account Link for the EXISTING stripe_account_id
+  // and opens Stripe's hosted onboarding so the therapist can
+  // finish the missing steps. Does NOT create a new account.
+  const resumeOnboarding = async () => {
+    if (resuming) return;
+    setResuming(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: 'resume_onboarding', therapist_id: therapist?.id }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        // Redirect in the same tab so Stripe's hosted flow can take
+        // over fully. New-tab opens have caused therapists to lose
+        // the flow when the tab gets closed accidentally.
+        window.location.href = data.url;
+        return;
+      }
+      alert('Could not resume Stripe setup. ' + (data.error || 'Please try again.'));
+    } catch (e) {
+      alert('Could not resume Stripe setup. ' + String(e?.message || e));
+    } finally {
+      setResuming(false);
     }
   };
 
@@ -113,7 +145,15 @@ export default function StripeConnect() {
       }}>
         {status === 'connecting' && <ConnectingState />}
         {status === 'success' && <SuccessState navigate={navigate} />}
-        {status === 'refresh' && <RefreshState navigate={navigate} reason={statusReason} />}
+        {status === 'refresh' && (
+          <RefreshState
+            navigate={navigate}
+            reason={statusReason}
+            missingRequirements={missingRequirements}
+            onResume={resumeOnboarding}
+            resuming={resuming}
+          />
+        )}
         {status === 'error' && <ErrorState navigate={navigate} reason={statusReason} />}
       </div>
     </div>
@@ -250,7 +290,53 @@ function SuccessState({ navigate }) {
   );
 }
 
-function RefreshState({ navigate, reason }) {
+function RefreshState({ navigate, reason, missingRequirements = [], onResume, resuming = false }) {
+  // Translate Stripe's internal field names into plain English so
+  // the therapist understands what they still owe Stripe.
+  const friendlyName = (key) => {
+    const map = {
+      'business_profile.url': 'business website or social link',
+      'business_profile.mcc': 'business category code',
+      'business_profile.product_description': 'description of what you do',
+      'business_profile.support_phone': 'business support phone',
+      'business_profile.support_email': 'business support email',
+      'business_type': 'business type',
+      'company.address.city': 'business city',
+      'company.address.line1': 'business street address',
+      'company.address.postal_code': 'business zip code',
+      'company.address.state': 'business state',
+      'company.name': 'legal business name',
+      'company.phone': 'business phone number',
+      'company.tax_id': 'EIN or tax ID',
+      'external_account': 'bank account for payouts',
+      'individual.address.city': 'home city',
+      'individual.address.line1': 'home street address',
+      'individual.address.postal_code': 'home zip code',
+      'individual.address.state': 'home state',
+      'individual.dob.day': 'date of birth',
+      'individual.dob.month': 'date of birth',
+      'individual.dob.year': 'date of birth',
+      'individual.email': 'personal email',
+      'individual.first_name': 'first name',
+      'individual.last_name': 'last name',
+      'individual.phone': 'personal phone number',
+      'individual.ssn_last_4': 'last 4 digits of SSN',
+      'individual.id_number': 'full SSN or tax ID',
+      'individual.verification.document': 'photo ID upload',
+      'individual.verification.additional_document': 'additional ID document',
+      'tos_acceptance.date': 'Stripe terms acceptance',
+      'tos_acceptance.ip': 'Stripe terms acceptance',
+      'representative.first_name': 'representative first name',
+      'representative.last_name': 'representative last name',
+    };
+    return map[key] || key.replace(/\./g, ' ').replace(/_/g, ' ');
+  };
+
+  // Dedupe -- date of birth fields and address fields collapse into
+  // single bullets so the therapist doesn't see 3 separate 'date of
+  // birth' entries.
+  const friendlyList = Array.from(new Set(missingRequirements.map(friendlyName)));
+
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
@@ -264,38 +350,95 @@ function RefreshState({ navigate, reason }) {
           color: C.dark,
           margin: '0 0 8px',
         }}>
-          Setup not finished
+          A few more steps in Stripe
         </h1>
         <p style={{ fontSize: 14, color: C.gray, margin: 0, lineHeight: 1.6 }}>
-          {reason || 'Stripe needs a few more steps. Common reasons: identity verification incomplete, or bank account not linked yet.'}
+          Stripe needs the items below before they can activate your account. Resume below and Stripe will pick up where you left off.
         </p>
       </div>
 
+      {friendlyList.length > 0 && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1px solid #FCD34D',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 16,
+          fontSize: 13,
+          color: '#78350F',
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ display: 'block', marginBottom: 8 }}>Stripe still needs:</strong>
+          <ul style={{ margin: 0, paddingLeft: 20 }}>
+            {friendlyList.map((item, idx) => (
+              <li key={idx} style={{ marginBottom: 4 }}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {friendlyList.length === 0 && reason && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1px solid #FCD34D',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 16,
+          fontSize: 13,
+          color: '#78350F',
+          lineHeight: 1.6,
+        }}>
+          {reason}
+        </div>
+      )}
+
       <div style={{
-        background: '#FEF3C7',
-        border: '1px solid #FCD34D',
+        background: '#F0FDF4',
+        border: '1px solid #BBF7D0',
         borderRadius: 12,
-        padding: '14px 16px',
+        padding: '12px 14px',
         marginBottom: 22,
-        fontSize: 13,
-        color: '#78350F',
-        lineHeight: 1.6,
+        fontSize: 12,
+        color: '#065F46',
+        lineHeight: 1.55,
       }}>
-        <strong>What to do next:</strong> Click below to finish setup. Stripe will pick up where you left off. You should not have to redo anything you already completed.
+        <strong>Good news:</strong> The work you already finished is saved. Stripe will pick up where you left off; you do not have to start over.
       </div>
 
-      <button onClick={() => navigate('/dashboard/settings#payments')} style={{
-        background: C.forest,
-        color: '#fff',
-        border: 'none',
-        borderRadius: 12,
-        padding: '13px 20px',
-        fontSize: 14,
-        fontWeight: 700,
-        cursor: 'pointer',
-        width: '100%',
-      }}>
-        Finish Stripe setup →
+      <button
+        onClick={onResume}
+        disabled={resuming}
+        style={{
+          background: resuming ? '#9CA3AF' : C.forest,
+          color: '#fff',
+          border: 'none',
+          borderRadius: 12,
+          padding: '14px 20px',
+          fontSize: 14,
+          fontWeight: 700,
+          cursor: resuming ? 'wait' : 'pointer',
+          width: '100%',
+          marginBottom: 10,
+        }}
+      >
+        {resuming ? 'Opening Stripe...' : 'Resume Stripe setup →'}
+      </button>
+
+      <button
+        onClick={() => navigate('/dashboard/settings#payments')}
+        style={{
+          background: 'transparent',
+          color: C.gray,
+          border: 'none',
+          padding: '8px 16px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          width: '100%',
+          textDecoration: 'underline',
+        }}
+      >
+        Cancel and go back to Settings
       </button>
     </div>
   );
