@@ -16,11 +16,11 @@
     },
     {
       "source": "/s/:code",
-      "destination": "/api/agreement-preview"
+      "destination": "/api/agreement-preview?route=s&key=:code"
     },
     {
       "source": "/agreement-sign/:token",
-      "destination": "/api/agreement-preview"
+      "destination": "/api/agreement-preview?route=agreement-sign&key=:token"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ],

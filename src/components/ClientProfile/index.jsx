@@ -26,6 +26,7 @@ import PatternsCard from './PatternsCard';
 import PreferencesCard from './PreferencesCard';
 import MedicalCard from './MedicalCard';
 import MembershipCard from './MembershipCard';
+import AgreementCard from './AgreementCard';
 import Timeline from './Timeline';
 import SessionList from '../SessionList';
 
@@ -52,6 +53,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
     preferences: true,
     medical: true,
     membership: true,
+    agreement: true,
     timeline: true,
   });
   const toggle = (key) => setOpenSections(s => ({ ...s, [key]: !s[key] }));
@@ -319,8 +321,21 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
           </ProfileSection>
 
           <ProfileSection
-            accent="timeline"
+            accent="agreement"
             order={6}
+            title="Client agreement"
+            trailingLabel={client?.practice_agreement_signed_at
+              ? `Signed ${new Date(client.practice_agreement_signed_at).toLocaleDateString()}`
+              : 'No signature on file'}
+            isOpen={openSections.agreement}
+            onToggle={() => toggle('agreement')}
+          >
+            <AgreementCard client={client} therapist={therapist} />
+          </ProfileSection>
+
+          <ProfileSection
+            accent="timeline"
+            order={7}
             title="Timeline"
             trailingLabel={timelineCount > 0
               ? `${timelineCount} event${timelineCount === 1 ? '' : 's'}`

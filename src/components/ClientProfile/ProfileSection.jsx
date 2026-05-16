@@ -46,6 +46,7 @@ const ACCENTS = {
   preferences: { bar: C.sageBright, label: 'SETTINGS'      },
   medical:     { bar: C.rose,       label: 'MEDICAL'       },
   membership:  { bar: C.gold,       label: 'MEMBERSHIP'    },
+  agreement:   { bar: C.forest,     label: 'AGREEMENT'     },
   timeline:    { bar: C.forest,     label: 'ACTIVITY'      },
 };
 

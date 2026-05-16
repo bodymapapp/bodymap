@@ -43,14 +43,21 @@ function fallbackHtml() {
 }
 
 export default async function handler(req, res) {
-  const url = req.url || '';
-  // The rewrite passes the original path via the URL. Extract the
-  // last segment as the lookup key.
-  const pathOnly = url.split('?')[0];
-  const segments = pathOnly.split('/').filter(Boolean);
-  // segments[0] = 's' or 'agreement-sign', segments[1] = the code
-  const route = segments[0];
-  const key = segments[1];
+  // The Vercel rewrite passes the route + key as query params so we
+  // can read them reliably. req.query is provided by Vercel's
+  // serverless runtime.
+  const route = (req.query?.route || '').toString();
+  const key = (req.query?.key || '').toString();
+
+  // Reconstruct the original public path for the canonical link and
+  // the spa-redirect target. Need this so iMessage / Facebook /
+  // Slack stores the right URL in their preview cache, not
+  // /api/agreement-preview.
+  const originalPath = route === 's'
+    ? `/s/${key}`
+    : route === 'agreement-sign'
+      ? `/agreement-sign/${key}`
+      : '/';
 
   if (!key || (route !== 's' && route !== 'agreement-sign')) {
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -108,7 +115,7 @@ export default async function handler(req, res) {
   // Real users see a 0-second meta refresh to the same URL with a
   // ?spa=1 query param so the rewrite does not fire again. The SPA
   // ignores this param.
-  const spaUrl = `${pathOnly}?spa=1`;
+  const spaUrl = `${originalPath}?spa=1`;
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -123,7 +130,7 @@ export default async function handler(req, res) {
   <meta property="og:description" content="${escapeHtml(description)}">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://www.mybodymap.app/og-card-v3.png">
-  <meta property="og:url" content="https://www.mybodymap.app${escapeHtml(pathOnly)}">
+  <meta property="og:url" content="https://www.mybodymap.app${escapeHtml(originalPath)}">
   <meta property="og:site_name" content="MyBodyMap">
 
   <!-- Twitter -->
@@ -135,7 +142,7 @@ export default async function handler(req, res) {
   <!-- Send real human visitors through to the SPA. Crawlers ignore
        meta refresh, so they get the metadata above and move on. -->
   <meta http-equiv="refresh" content="0;url=${escapeHtml(spaUrl)}">
-  <link rel="canonical" href="https://www.mybodymap.app${escapeHtml(pathOnly)}">
+  <link rel="canonical" href="https://www.mybodymap.app${escapeHtml(originalPath)}">
 
   <style>
     body { font-family: Georgia, serif; background:#F5EFE0; color:#1F2937; padding:32px; text-align:center; }
