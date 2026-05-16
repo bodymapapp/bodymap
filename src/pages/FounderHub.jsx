@@ -34,7 +34,7 @@
 //   Founder Hub fetches them from GitHub raw on each page load.
 //   No build redeploy needed for content updates.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
@@ -87,6 +87,36 @@ const SECTIONS = [
     type: "markdown",
     path: "docs/BILLING_STRATEGY.md",
     backupKey: "03-billing-strategy",
+  },
+  {
+    id: "billing-rules-matrix",
+    number: 3.1,
+    title: "Billing & Cancellation Rules Matrix",
+    subtitle: "Every cancellation, no-show, reschedule combination and what should happen. Open questions for HK at the bottom. Read before any new rule executes.",
+    status: "live",
+    type: "html",
+    path: "docs/BILLING_RULES.html",
+    backupKey: "03b-billing-rules",
+  },
+  {
+    id: "notification-map",
+    number: 3.2,
+    title: "Notification Map",
+    subtitle: "Single source of truth for every notification MyBodyMap sends. C-series (client), T-series (therapist), E-series (exceptions). With retention math.",
+    status: "live",
+    type: "markdown",
+    path: "docs/NOTIFICATION_MAP.md",
+    backupKey: "03c-notification-map",
+  },
+  {
+    id: "design-principles",
+    number: 3.3,
+    title: "Design Principles",
+    subtitle: "Rules that exist because we broke them. Seven principles, each with an incident log. Read before adding any new section or template.",
+    status: "live",
+    type: "markdown",
+    path: "docs/DESIGN_PRINCIPLES.md",
+    backupKey: "03d-design-principles",
   },
   {
     id: "block-plan",
@@ -363,6 +393,17 @@ function SectionList({ sections, activeSection, onSelect }) {
       padding: 8,
       position: "sticky",
       top: 96,
+      // HK May 16 2026: scroll bubble fix. The left column needs to
+      // scroll internally when its content exceeds the viewport
+      // height. Without maxHeight + overflowY, the column was
+      // position:sticky but the inner content was hidden below the
+      // fold and any scroll attempt bubbled to the page, dragging
+      // the right column with it. We cap height at viewport minus
+      // top offset (96px sticky + ~24px breathing) and let the
+      // inner list scroll its own overflow.
+      maxHeight: "calc(100vh - 120px)",
+      overflowY: "auto",
+      overscrollBehavior: "contain",
       boxShadow: "0 4px 16px rgba(28, 43, 34, 0.05)",
     }}>
       <div style={{
@@ -501,6 +542,10 @@ function SectionContent({ section }) {
         <MarkdownContent path={section.path} />
       )}
 
+      {section.type === "html" && (
+        <HtmlDocContent path={section.path} />
+      )}
+
       {section.type === "iframe" && (
         <IframeContent src={section.iframeSrc} />
       )}
@@ -635,6 +680,118 @@ function IframeContent({ src }) {
           display: "block",
         }}
         allow="clipboard-read; clipboard-write; payment"
+      />
+    </div>
+  );
+}
+
+// Render an HTML document fetched from the GitHub raw URL inside a
+// sandboxed iframe via srcdoc. This is for standalone HTML docs like
+// BILLING_RULES.html that have their own embedded styles + structure
+// and would not survive being converted to markdown.
+//
+// Why srcdoc + sandbox: srcdoc lets us inject the HTML content
+// directly so the doc renders even though it's not served from a
+// public URL. Sandbox isolates the doc's styles from the parent
+// page so it can't accidentally restyle the Founder Hub itself.
+//
+// allow-same-origin is granted because the doc has no scripts and
+// no external resource loads; without it, anchor links within the
+// doc don't work for in-page scrolling.
+function HtmlDocContent({ path }) {
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (!path) return;
+    setLoading(true);
+    setError(null);
+    setContent(null);
+    fetch(`https://raw.githubusercontent.com/bodymapapp/bodymap/main/${path}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then((text) => {
+        setContent(text);
+        setLoading(false);
+      })
+      .catch((e) => {
+        setError(e.message || "Failed to load");
+        setLoading(false);
+      });
+  }, [path]);
+
+  if (loading) {
+    return (
+      <div style={{ padding: 40, textAlign: "center", color: C.gray, fontSize: 13 }}>
+        Loading from GitHub...
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div style={{
+        background: C.amberBg,
+        border: "1px solid #FCD34D",
+        borderRadius: 10,
+        padding: 20,
+        fontSize: 14,
+        color: C.amberInk,
+      }}>
+        Could not load {path}: {error}. Open it directly at{" "}
+        <a
+          href={`https://github.com/bodymapapp/bodymap/blob/main/${path}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: C.forest, fontWeight: 600 }}
+        >
+          GitHub
+        </a>.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{
+        background: C.cream,
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        padding: "8px 14px",
+        marginBottom: 12,
+        fontSize: 12,
+        color: C.gray,
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}>
+        <span style={{ fontStyle: "italic", fontFamily: "Georgia, serif" }}>
+          Live HTML document, embedded.
+        </span>
+        <a
+          href={`https://raw.githubusercontent.com/bodymapapp/bodymap/main/${path}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: C.forest, fontSize: 12, fontWeight: 600, textDecoration: "none" }}
+        >
+          Open standalone ↗
+        </a>
+      </div>
+      <iframe
+        title="HTML document"
+        srcDoc={content}
+        sandbox="allow-same-origin"
+        style={{
+          width: "100%",
+          height: "calc(100vh - 280px)",
+          minHeight: 600,
+          border: `1px solid ${C.border}`,
+          borderRadius: 10,
+          background: "#fff",
+          display: "block",
+        }}
       />
     </div>
   );
