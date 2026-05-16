@@ -108,6 +108,8 @@ ribbon's product area goes here.
 
 ### Ribbon 4: Day-of-Session (Smart Calendar)
 - **Smart Calendar SVG animation (~3 hr).** Three-act loop: empty Tuesday noon slot, platform surfaces the right lapsed regular, message draft appears, tap, slot fills. Soft sage and cream palette, mobile-safe SVG, no JS animation library. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session.
+- **Phase 9.1: Partial-day blocks (shipped May 16 evening, commit `401e1679`).** Candice asked for the ability to block a portion of a day without blocking the whole day. HK committed "tonight." Migration adds `start_time`/`end_time` columns to `blocked_days` (both NULL = full day, backward compatible). The Time off panel now has Full-day / Time-range mode pills. Booking page and BookingModal treat partial blocks as pseudo-bookings in the slot-generation pipeline so the existing conflict check handles them, no new logic needed. **Migration still needs to run in Supabase** before partial-block submits work in production.
+- **Phase 9.2: Calendar time-grid view + long-press (~6-8 hr, queued).** HK directive May 16 evening: long-press on a calendar slot to quick-create a block or event. ScheduleDashboard today is a list view, not a time-grid, so long-press has no anchor. Real fix is to build a proper week/day time-grid view that unlocks more than just blocks (drag-to-reschedule, drag-to-create, visual gaps). Schedule for the next dev session, not tonight.
 
 ### Ribbon 5: Relationships
 - **Daily Evening Digest (queued).** One daily email showing who reached out, who is due for outreach, lapsed clients by pattern. Per memory.
