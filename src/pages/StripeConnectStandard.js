@@ -326,6 +326,18 @@ function IncompleteState({ navigate, reason, missing }) {
 }
 
 function ErrorState({ navigate, reason }) {
+  // 'access_denied' means the therapist cancelled on Stripe's
+  // OAuth screen. Most common cause: they did not see their
+  // expected account in the Select account picker. That can
+  // happen if their existing Stripe account was created by
+  // another platform via Express (Stripe-Connect Express
+  // accounts are owned by the platform that created them, not
+  // listable in a Standard OAuth picker). The right answer for
+  // them is the Express path: have us create a new Stripe
+  // account under our platform.
+  const isCancelled = (reason || '').toLowerCase().includes('access_denied') ||
+                      (reason || '').toLowerCase().includes('cancelled') ||
+                      (reason || '').toLowerCase().includes('denied');
   return (
     <div>
       <div style={{ textAlign: 'center', marginBottom: 22 }}>
@@ -337,39 +349,76 @@ function ErrorState({ navigate, reason }) {
           color: C.dark,
           margin: '0 0 8px',
         }}>
-          Could not link Stripe
+          {isCancelled ? 'No account selected' : 'Could not link Stripe'}
         </h1>
         <p style={{ fontSize: 14, color: C.gray, margin: 0, lineHeight: 1.6 }}>
-          {reason || 'Something went wrong. Your account is safe, nothing has been charged.'}
+          {isCancelled
+            ? 'You cancelled or did not see your account in the Stripe selection screen. Most common reason: your existing Stripe account was created by another booking platform, in which case it will not appear here.'
+            : (reason || 'Something went wrong. Your account is safe, nothing has been charged.')}
         </p>
       </div>
 
-      <div style={{
-        background: '#FEE2E2',
-        border: '1px solid #FECACA',
-        borderRadius: 12,
-        padding: '14px 16px',
-        marginBottom: 22,
-        fontSize: 13,
-        color: '#7F1D1D',
-        lineHeight: 1.6,
-      }}>
-        <strong>What to try:</strong> Go back to Settings and try the connect flow again. If it keeps failing, email us at hello@mybodymap.app.
-      </div>
+      {isCancelled && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1px solid #FCD34D',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 16,
+          fontSize: 13,
+          color: '#78350F',
+          lineHeight: 1.6,
+        }}>
+          <strong style={{ display: 'block', marginBottom: 6 }}>Two ways forward:</strong>
+          <div style={{ marginBottom: 8 }}><strong>1.</strong> You expected to see your Stripe account but did not. This usually means it was created by another platform like MassageBook, Vagaro, Squarespace, or similar. Those accounts cannot be re-linked elsewhere by design. Solution: set up a fresh MyBodyMap Stripe account below.</div>
+          <div><strong>2.</strong> You changed your mind. Tap Try again to return to the linking screen.</div>
+        </div>
+      )}
+
+      {!isCancelled && (
+        <div style={{
+          background: '#FEE2E2',
+          border: '1px solid #FECACA',
+          borderRadius: 12,
+          padding: '14px 16px',
+          marginBottom: 22,
+          fontSize: 13,
+          color: '#7F1D1D',
+          lineHeight: 1.6,
+        }}>
+          <strong>What to try:</strong> Go back to Settings and try the connect flow again. If it keeps failing, email us at hello@mybodymap.app.
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button onClick={() => navigate('/dashboard/settings#payments')} style={{
-          background: C.forest,
-          color: '#fff',
-          border: 'none',
-          borderRadius: 12,
-          padding: '13px 20px',
-          fontSize: 14,
-          fontWeight: 700,
-          cursor: 'pointer',
-        }}>
-          Try again
-        </button>
+        {isCancelled && (
+          <button onClick={() => navigate('/dashboard/settings#payments')} style={{
+            background: C.forest,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            padding: '13px 20px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}>
+            Back to Settings to set up a new account
+          </button>
+        )}
+        {!isCancelled && (
+          <button onClick={() => navigate('/dashboard/settings#payments')} style={{
+            background: C.forest,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            padding: '13px 20px',
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}>
+            Try again
+          </button>
+        )}
         <a href="mailto:hello@mybodymap.app?subject=Stripe%20Connect%20issue" style={{
           background: 'transparent',
           color: C.forest,

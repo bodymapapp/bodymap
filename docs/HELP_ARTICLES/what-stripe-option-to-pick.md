@@ -43,6 +43,22 @@ By linking your existing account, all of that stays together.
 
 If you have ever sold anything online with credit cards in the last few years, you probably do. Try the recommended path first. When you tap Link your Stripe account, Stripe will ask you to sign in. If you have an account, your saved login or email will work. If you do not, Stripe will tell you and you can fall back to setting up a new one.
 
+## What if I have a Stripe account but it does not show up in the Select Account screen?
+
+This happens sometimes. The reason is technical but the fix is easy.
+
+Some platforms (Squarespace, Shopify, certain marketplaces, certain booking platforms) set up a special kind of Stripe account on your behalf called an Express account. Express accounts are owned by the platform that created them, not by you. They cannot be re-linked to other platforms like MyBodyMap.
+
+If you do not see your account in the Select Account screen, this is almost certainly the reason. The good news: it does not affect you in any practical way. Your money from that platform keeps flowing to your bank account exactly as before. Nothing changes there.
+
+For MyBodyMap, you have two clean options:
+
+1. **Tap "Set up a new Stripe account" below the link button.** We will help you create a fresh Stripe account specifically for MyBodyMap. Takes about five minutes. Bank account, identity verification, business details. After that, payments through MyBodyMap go to that account. Payments from your other platform continue to go to your other account.
+
+2. **Sign up at stripe.com directly first**, then come back to MyBodyMap and tap Link your Stripe account. The account you set up directly at Stripe will show up in the Select Account screen and link properly.
+
+Most therapists pick option 1 because it is fewer steps. Option 2 is for therapists who want to consolidate all their Stripe activity into one master account they fully own.
+
 ## Is one safer than the other?
 
 No. Both use the same Stripe infrastructure. Stripe handles all the card data, PCI compliance, fraud detection, dispute resolution. Your data is equally secure either way.
