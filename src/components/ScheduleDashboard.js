@@ -1340,7 +1340,11 @@ export default function ScheduleDashboard({ therapist }) {
   const [showBlockPanel, setShowBlockPanel] = useState(false);
   const [blockDate, setBlockDate] = useState('');
   const [blockNote, setBlockNote] = useState('');
+  const [blockStartTime, setBlockStartTime] = useState('');
+  const [blockEndTime, setBlockEndTime] = useState('');
+  const [blockMode, setBlockMode] = useState('full');  // 'full' or 'partial'
   const [blockSaving, setBlockSaving] = useState(false);
+  const [blockError, setBlockError] = useState('');
 
   useEffect(()=>{if(therapist?.id){ fetchBookings(); loadBlockedDays(); }},[therapist?.id]);
 
@@ -1354,12 +1358,46 @@ export default function ScheduleDashboard({ therapist }) {
 
   async function addBlockedDay() {
     if (!blockDate) return;
+    setBlockError('');
+
+    // Build the insert payload. Full-day blocks send NULL on both
+    // time columns (backward-compatible). Partial blocks send both,
+    // and the DB check constraint enforces end > start.
+    const payload = {
+      therapist_id: therapist.id,
+      date: blockDate,
+      note: blockNote.trim() || null,
+    };
+    if (blockMode === 'partial') {
+      if (!blockStartTime || !blockEndTime) {
+        setBlockError('Please set both a start and end time.');
+        return;
+      }
+      if (blockEndTime <= blockStartTime) {
+        setBlockError('End time must be after start time.');
+        return;
+      }
+      payload.start_time = blockStartTime;
+      payload.end_time = blockEndTime;
+    }
+
     setBlockSaving(true);
-    const { data } = await supabase.from('blocked_days')
-      .insert({ therapist_id: therapist.id, date: blockDate, note: blockNote.trim() || null })
+    const { data, error } = await supabase.from('blocked_days')
+      .insert(payload)
       .select().single();
-    if (data) setBlockedDays(prev => [...prev, data].sort((a,b)=>a.date.localeCompare(b.date)));
-    setBlockDate(''); setBlockNote(''); setBlockSaving(false);
+    if (error) {
+      setBlockError(error.message || 'Could not save the block.');
+      setBlockSaving(false);
+      return;
+    }
+    if (data) setBlockedDays(prev => [...prev, data].sort((a,b)=>{
+      const dc = a.date.localeCompare(b.date);
+      if (dc !== 0) return dc;
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    }));
+    setBlockDate(''); setBlockNote(''); setBlockStartTime(''); setBlockEndTime('');
+    setBlockMode('full');
+    setBlockSaving(false);
   }
 
   async function removeBlockedDay(id) {
@@ -1635,35 +1673,133 @@ export default function ScheduleDashboard({ therapist }) {
       {/* Block panel, expands below action row */}
       {showBlockPanel && (
         <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginBottom:12}}>
-          <div style={{display:'flex',gap:8,marginBottom:14,flexWrap:'wrap'}}>
-              <input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}
-                min={new Date().toISOString().slice(0,10)}
-                style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'1',minWidth:140}} />
-              <input type="text" value={blockNote} onChange={e=>setBlockNote(e.target.value)}
-                placeholder="Reason (vacation, personal day…)"
-                style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'2',minWidth:160}} />
-              <button onClick={addBlockedDay} disabled={!blockDate||blockSaving}
-                style={{background:blockDate?'#2A5741':'#D1D5DB',color:'#fff',border:'none',padding:'8px 16px',borderRadius:8,fontSize:13,fontWeight:700,cursor:blockDate?'pointer':'not-allowed',whiteSpace:'nowrap'}}>
-                {blockSaving ? '…' : '+ Block Day'}
-              </button>
+          {/* Mode toggle: full day vs partial. Inline, not a dropdown. */}
+          <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center'}}>
+            <span style={{fontSize:11,fontWeight:700,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginRight:4}}>Block</span>
+            <button
+              onClick={()=>{ setBlockMode('full'); setBlockStartTime(''); setBlockEndTime(''); setBlockError(''); }}
+              style={{
+                background: blockMode === 'full' ? '#2A5741' : '#F3F4F6',
+                color: blockMode === 'full' ? '#fff' : '#4B5563',
+                border:'none', borderRadius:20, padding:'6px 14px',
+                fontSize:12, fontWeight:700, cursor:'pointer',
+                WebkitTapHighlightColor:'transparent',
+              }}>
+              Full day
+            </button>
+            <button
+              onClick={()=>{ setBlockMode('partial'); setBlockError(''); }}
+              style={{
+                background: blockMode === 'partial' ? '#2A5741' : '#F3F4F6',
+                color: blockMode === 'partial' ? '#fff' : '#4B5563',
+                border:'none', borderRadius:20, padding:'6px 14px',
+                fontSize:12, fontWeight:700, cursor:'pointer',
+                WebkitTapHighlightColor:'transparent',
+              }}>
+              Time range
+            </button>
+          </div>
+
+          {/* Inputs row. Date is always shown. Time inputs appear only
+              in partial mode. Reason and Block button always shown. */}
+          <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap',alignItems:'center'}}>
+            <input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}
+              min={new Date().toISOString().slice(0,10)}
+              style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'1 1 140px',minWidth:140}} />
+
+            {blockMode === 'partial' && (
+              <>
+                <input
+                  type="time"
+                  value={blockStartTime}
+                  onChange={e=>{ setBlockStartTime(e.target.value); setBlockError(''); }}
+                  placeholder="Start"
+                  style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',width:115}} />
+                <span style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic',fontFamily:'Georgia,serif'}}>to</span>
+                <input
+                  type="time"
+                  value={blockEndTime}
+                  onChange={e=>{ setBlockEndTime(e.target.value); setBlockError(''); }}
+                  placeholder="End"
+                  style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',width:115}} />
+              </>
+            )}
+
+            <input type="text" value={blockNote} onChange={e=>setBlockNote(e.target.value)}
+              placeholder={blockMode === 'partial' ? "Reason (lunch, errand…)" : "Reason (vacation, personal day…)"}
+              style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'2 1 160px',minWidth:160}} />
+
+            <button onClick={addBlockedDay} disabled={!blockDate||blockSaving}
+              style={{background:blockDate?'#2A5741':'#D1D5DB',color:'#fff',border:'none',padding:'8px 16px',borderRadius:8,fontSize:13,fontWeight:700,cursor:blockDate?'pointer':'not-allowed',whiteSpace:'nowrap'}}>
+              {blockSaving ? '…' : (blockMode === 'partial' ? '+ Block Time' : '+ Block Day')}
+            </button>
+          </div>
+
+          {blockError && (
+            <div style={{
+              background:'#FEF2F2',border:'1px solid #FCA5A5',
+              color:'#991B1B',borderRadius:8,
+              padding:'8px 12px',fontSize:12,marginBottom:10,
+            }}>
+              {blockError}
             </div>
+          )}
+
             {blockedDays.length === 0
-              ? <div style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>No days blocked. Clients can book any available date up to a year out.</div>
+              ? <div style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>Nothing blocked. Clients can book any available date up to a year out.</div>
               : <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                  {blockedDays.map(d=>(
-                    <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#F9FAFB',borderRadius:8,padding:'8px 12px'}}>
-                      <div>
-                        <span style={{fontSize:13,fontWeight:700,color:'#1F2937'}}>
-                          {new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})}
-                        </span>
-                        {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8}}>,  {d.note}</span>}
+                  {blockedDays.map(d=>{
+                    const dateLabel = new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+                    const isPartial = d.start_time && d.end_time;
+                    // Format times like "1:00 PM", dropping seconds, in 12h.
+                    const fmtTime = t => {
+                      if (!t) return '';
+                      const [h, m] = t.split(':');
+                      const hh = parseInt(h, 10);
+                      const ampm = hh >= 12 ? 'PM' : 'AM';
+                      const hr = hh % 12 === 0 ? 12 : hh % 12;
+                      return `${hr}:${m} ${ampm}`;
+                    };
+                    return (
+                      <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#F9FAFB',borderRadius:8,padding:'8px 12px'}}>
+                        <div style={{minWidth:0,flex:1}}>
+                          <span style={{fontSize:13,fontWeight:700,color:'#1F2937'}}>{dateLabel}</span>
+                          {isPartial && (
+                            <span style={{
+                              fontSize:12,
+                              color:'#92400E',
+                              background:'#FEF3C7',
+                              border:'1px solid #FCD34D',
+                              borderRadius:999,
+                              padding:'1px 8px',
+                              marginLeft:8,
+                              fontWeight:600,
+                            }}>
+                              {fmtTime(d.start_time)} to {fmtTime(d.end_time)}
+                            </span>
+                          )}
+                          {!isPartial && (
+                            <span style={{
+                              fontSize:11,
+                              color:'#6B7280',
+                              background:'#E5E7EB',
+                              borderRadius:999,
+                              padding:'1px 8px',
+                              marginLeft:8,
+                              fontWeight:600,
+                            }}>
+                              All day
+                            </span>
+                          )}
+                          {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8,fontStyle:'italic'}}>{d.note}</span>}
+                        </div>
+                        <button onClick={()=>removeBlockedDay(d.id)}
+                          style={{background:'#FEE2E2',color:'#DC2626',border:'none',borderRadius:6,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}>
+                          Remove
+                        </button>
                       </div>
-                      <button onClick={()=>removeBlockedDay(d.id)}
-                        style={{background:'#FEE2E2',color:'#DC2626',border:'none',borderRadius:6,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer'}}>
-                        Remove
-                      </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
             }
           </div>

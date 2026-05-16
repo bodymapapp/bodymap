@@ -37,6 +37,7 @@ The list of things real people have asked for, by name and date.
 Tracked here so we can see when demand crosses a threshold for unblocking.
 
 ### From therapists
+- **Candice Peek (May 16 2026 evening)**: "Is there a way to block off sections of time in a day without blocking the full day? Or to change the time I'm available some days without changing business hours?" → HK committed "we will add that tonight." Shipping as Phase 9.1 (inline partial-day blocks) + Phase 9.2 (calendar time-grid with long-press).
 - **Ashley Scalzulli (May 12 2026)**: client login portal. → see [Macro #2: Optional client portal](#macro-2-optional-client-portal).
 - **HK (May 16 2026 morning)**: "When I got paid, I should have received an email." Plus on-platform + email + SMS for every payment, new client, and booking event. → see [Macro #1: Notification system](#macro-1-notification-system).
 - **HK (May 16 2026)**: Cancellation, reschedule, and one more similar workflow ("not sure if those workflows exist"). Audit result: cancel ✓, reschedule ✓, no-show was the missing third, shipped Phase 2.2.

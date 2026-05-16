@@ -75,6 +75,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [error,  setError]  = useState('');
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [blockedDates, setBlockedDates] = useState(new Set());
+  // Phase 9.1: partial-day blocks keyed by date string.
+  const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
 
   // Load services + availability + blocked days
   useEffect(() => {
@@ -82,11 +84,27 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       const [{ data: svcs }, { data: avail }, { data: blocked }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('price'),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
-        supabase.from('blocked_days').select('date').eq('therapist_id', therapist.id),
+        // Phase 9.1: fetch start_time/end_time so partial-day blocks
+        // are honored in the therapist's book-on-behalf flow too.
+        supabase.from('blocked_days').select('date, start_time, end_time').eq('therapist_id', therapist.id),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
-      setBlockedDates(new Set((blocked || []).map(b => b.date)));
+      // Split full-day vs partial. Full-day blocks the entire date in
+      // the calendar (blockedDates Set). Partial gets bucketed by date
+      // and used in slot generation as a pseudo-booking.
+      const fullDay = [];
+      const partial = {};
+      for (const b of (blocked || [])) {
+        if (b.start_time && b.end_time) {
+          if (!partial[b.date]) partial[b.date] = [];
+          partial[b.date].push({ start_time: b.start_time.slice(0,5), end_time: b.end_time.slice(0,5) });
+        } else {
+          fullDay.push(b.date);
+        }
+      }
+      setBlockedDates(new Set(fullDay));
+      setPartialBlocksByDate(partial);
       if (svcs?.length) {
         // Pre-select service if reschedule
         const existing = svcs.find(s => s.name === existingBooking?.service) || svcs[0];
@@ -126,6 +144,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       .neq('status', 'cancelled');
 
     const bookedFiltered = (booked || []).filter(b => isReschedule ? b.id !== existingBooking?.id : true);
+    // Phase 9.1: append partial-day blocks for this date as pseudo-
+    // bookings so the conflict check below treats them as occupied.
+    const partials = (partialBlocksByDate[date] || []).map(b => ({
+      start_time: b.start_time,
+      end_time: b.end_time,
+      id: `block-${b.start_time}`,
+    }));
+    const conflictPool = [...bookedFiltered, ...partials];
 
     const [sh, sm] = start.split(':').map(Number);
     const [eh, em] = end.split(':').map(Number);
@@ -139,7 +165,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       const slotStart = `${String(h).padStart(2,'0')}:${String(mn).padStart(2,'0')}`;
       const slotEnd   = addMins(slotStart, dur);
 
-      const conflict = bookedFiltered.some(b => {
+      const conflict = conflictPool.some(b => {
         const bs = parseInt(b.start_time) * 60 + parseInt(b.start_time.slice(3));
         const be = parseInt(b.end_time)   * 60 + parseInt(b.end_time.slice(3));
         const ss = m, se = m + dur;

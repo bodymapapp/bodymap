@@ -786,6 +786,10 @@ export default function BookingPage() {
   const [confirmed,setConfirmed]=useState(false);
   const [bookingId,setBookingId]=useState(null);
   const [blockedDates,setBlockedDates]=useState(new Set());
+  // Phase 9.1: partial-day blocks keyed by date string. Each value is
+  // an array of {start_time, end_time}. Treated as pseudo-bookings
+  // when generating bookable slots for that date.
+  const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
   // Approval flow: when therapist.require_approval is on AND this is a new
   // client (no prior booking match), the booking is created as
   // 'pending-approval' instead of 'confirmed'. Deposits are skipped at
@@ -1119,7 +1123,12 @@ export default function BookingPage() {
     const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
-      supabase.from('blocked_days').select('date').eq('therapist_id',t.id),
+      // Phase 9.1 (May 16 2026): fetch start_time and end_time so we
+      // can support partial-day blocks. Rows with both NULL are
+      // full-day blocks and land in blockedDates Set (today's
+      // behavior). Rows with both set are partial blocks and feed
+      // a separate map keyed by date.
+      supabase.from('blocked_days').select('date, start_time, end_time').eq('therapist_id',t.id),
       // Service add-ons. May fail silently with empty array if the schema
       // has not been applied yet — that is intentional, the booking flow
       // continues to work without add-ons.
@@ -1132,7 +1141,23 @@ export default function BookingPage() {
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
-    setBlockedDates(new Set((bd||[]).map(b=>b.date)));
+    // Split blocked_days into full-day (no times) and partial (both
+    // times set). Full-day continues to drive the calendar's disabled-
+    // date logic. Partial gets bucketed by date and turned into
+    // pseudo-bookings in the slot-generation step below so those
+    // hours simply don't show up as bookable.
+    const fullDayBlocks = [];
+    const partialByDate = {};
+    for (const b of (bd || [])) {
+      if (b.start_time && b.end_time) {
+        if (!partialByDate[b.date]) partialByDate[b.date] = [];
+        partialByDate[b.date].push({ start_time: b.start_time.slice(0,5), end_time: b.end_time.slice(0,5) });
+      } else {
+        fullDayBlocks.push(b.date);
+      }
+    }
+    setBlockedDates(new Set(fullDayBlocks));
+    setPartialBlocksByDate(partialByDate);
     setAvailableAddons(addons||[]);
     setPackagesList(pkgRes?.data || []);
     // Memberships render for therapists with EITHER processor connected.
@@ -1198,7 +1223,15 @@ export default function BookingPage() {
       const endStr = sameDay(e, dt) ? fmt(e) : '23:59';
       return { start_time: startStr, end_time: endStr };
     });
-    const booked=[...(existing||[]), ...externalBlocked];
+    // Phase 9.1: partial-day blocks the therapist set up in Schedule.
+    // Same shape as externalBlocked: each becomes a pseudo-booking that
+    // generateSlots treats as occupied, so no bookable slot lands
+    // inside the blocked window.
+    const partialBlocks = (partialBlocksByDate[date] || []).map(b => ({
+      start_time: b.start_time,
+      end_time: b.end_time,
+    }));
+    const booked=[...(existing||[]), ...externalBlocked, ...partialBlocks];
     setExistingBooked(booked);
 
     // Use time_blocks if available, else fall back to start/end
