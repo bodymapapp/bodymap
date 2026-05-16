@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
+import SmartCalendarAnimation from "../components/demos/SmartCalendarAnimation";
 
 const SUPABASE_URL = "https://rmnqfrljoknmellbnpiy.supabase.co";
 const C = {
@@ -1617,8 +1618,8 @@ export default function Features() {
         <div className="bm-feat-2col" style={{ maxWidth:1100, margin:"0 auto", display:"grid", gridTemplateColumns:"1fr 1fr", gap:80, alignItems:"center" }}>
           <FadeIn>
             <div>
-              <ScheduleDemo />
-              <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray }}>↑ Click tabs and appointments to explore</div>
+              <SmartCalendarAnimation />
+              <div style={{ textAlign:"center", marginTop:10, fontSize:12, color:C.gray, fontStyle:"italic", fontFamily:"Georgia, serif" }}>↑ A real moment, ten seconds at a time</div>
             </div>
           </FadeIn>
           <FadeIn delay={0.15}>

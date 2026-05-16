@@ -25,6 +25,7 @@ import BodyMapDemo from "../components/demos/BodyMapDemo";
 import PatternDemo from "../components/demos/PatternDemo";
 import ThreeDotDocumentDemo from "../components/demos/ThreeDotDocumentDemo";
 import ScheduleDemo from "../components/demos/ScheduleDemo";
+import SmartCalendarAnimation from "../components/demos/SmartCalendarAnimation";
 import BillingDemo from "../components/demos/BillingDemo";
 import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
@@ -136,7 +137,7 @@ const RIBBONS = [
     headline: "Smart Calendar",
     featured: true,
     tagline: "Your calendar quietly answers the questions you'd ask yourself if you had time.",
-    demos: [{ kind: "component", component: ScheduleDemo, label: "Smart Calendar" }],
+    demos: [{ kind: "component", component: SmartCalendarAnimation, label: "Smart Calendar" }],
     layout: "demo-left",
     subFeatures: [
       "Fill This Gap: a slot opens, your platform names the right lapsed client and drafts the text. One tap.",
