@@ -3171,36 +3171,66 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             </div>
           ) : (
             <div style={{ marginBottom: 10 }}>
+              {/* PRIMARY: Standard Connect.
+                  For therapists who already have a Stripe account,
+                  this is a 15-second OAuth click-through that links
+                  the existing account. Preserves transaction history,
+                  saved customer cards, subscriptions, 1099 reporting,
+                  everything. This is the path comparable SaaS use
+                  (MassageBook, Vagaro, Jane App, Calendly). */}
               <button onClick={async () => {
                 const { data: { session } } = await supabase.auth.getSession();
                 const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
                   method:'POST',
                   headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
-                  body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
+                  body: JSON.stringify({ action:'get_standard_oauth_url', therapist_id: therapist.id }),
                 });
                 const data = await res.json();
-                if (data.reused_existing) {
-                  // The edge function found an already-enabled Stripe
-                  // account under our platform matching this therapist's
-                  // email and reconnected to it. Reload to show the
-                  // green Connected panel.
-                  window.location.reload();
-                  return;
-                }
                 if (data.url) {
-                  // Same-tab redirect so the hosted flow can take over.
-                  // Previously opened in new tab, which caused
-                  // therapists to lose the flow when the tab closed.
                   window.location.href = data.url;
                 } else {
-                  alert('Error: ' + JSON.stringify(data));
+                  alert('Could not start Stripe link. ' + (data.error || JSON.stringify(data)));
                 }
               }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#635BFF', color:'#fff', border:'none', borderRadius:10, padding:'14px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', width:'100%', boxShadow: '0 2px 8px rgba(99, 91, 255, 0.25)' }}>
-                💳 Connect Stripe · Recommended
+                💳 Link your Stripe account · Recommended
               </button>
-              <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
-                Stripe is what unlocks online deposits, card-on-file, packages, and memberships. If you already have a Stripe account under this email, we will reconnect to it automatically. Two-minute connection.
+              <p style={{ fontSize: 11, color: '#374151', textAlign: 'center', margin: '8px 0 14px', lineHeight: 1.5 }}>
+                <strong style={{ color:'#1F3A2C' }}>Already use Stripe?</strong> 15-second link. Keeps your existing transactions, saved cards, and tax forms intact.
               </p>
+
+              {/* SECONDARY: Express fallback for therapists new to
+                  Stripe entirely. Hosted onboarding flow creates a
+                  fresh Express account under our platform. */}
+              <details style={{ marginTop: 6 }}>
+                <summary style={{ fontSize: 12, color: '#374151', cursor: 'pointer', fontWeight: 600, padding: '4px 0', listStyle: 'none' }}>
+                  New to Stripe? Set up a new account →
+                </summary>
+                <div style={{ marginTop: 10, padding: '12px 14px', background: '#FAFAFA', border: '1px solid #E5E7EB', borderRadius: 10 }}>
+                  <p style={{ fontSize: 11.5, color: '#374151', margin: '0 0 10px', lineHeight: 1.55 }}>
+                    If you do not have a Stripe account yet, we will help you create one. Takes about five minutes. You will fill in your business name, bank account, and identity verification in Stripe.
+                  </p>
+                  <button onClick={async () => {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const res = await fetch('https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/stripe-connect', {
+                      method:'POST',
+                      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session?.access_token}` },
+                      body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
+                    });
+                    const data = await res.json();
+                    if (data.reused_existing) {
+                      window.location.reload();
+                      return;
+                    }
+                    if (data.url) {
+                      window.location.href = data.url;
+                    } else {
+                      alert('Error: ' + JSON.stringify(data));
+                    }
+                  }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'transparent', color:'#1F3A2C', border:'1.5px solid #C7CDD6', borderRadius:10, padding:'10px 14px', fontSize:'12.5px', fontWeight:'700', cursor:'pointer', width:'100%' }}>
+                    Set up a new Stripe account →
+                  </button>
+                </div>
+              </details>
             </div>
           )}
 

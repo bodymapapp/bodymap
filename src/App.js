@@ -23,6 +23,7 @@ import PracticeAgreementPrint from './pages/PracticeAgreementPrint';
 import AgreementSign from './pages/AgreementSign';
 import CalConnect from './pages/CalConnect';
 import StripeConnect from './pages/StripeConnect';
+import StripeConnectStandard from './pages/StripeConnectStandard';
 import FounderHub from './pages/FounderHub';
 import Help from './pages/Help';
 import FounderRoute from './components/FounderRoute';
@@ -122,6 +123,7 @@ function App() {
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/dashboard/cal-connect" element={<ProtectedRoute><CalConnect /></ProtectedRoute>} />
           <Route path="/dashboard/stripe-connect" element={<ProtectedRoute><StripeConnect /></ProtectedRoute>} />
+          <Route path="/dashboard/stripe-connect-standard" element={<ProtectedRoute><StripeConnectStandard /></ProtectedRoute>} />
           <Route path="/book/:slug" element={<BookingPage />} />
           <Route path="/demo" element={<Demo />} />
           <Route path="/why-bodymap" element={<WhyBodyMap />} />

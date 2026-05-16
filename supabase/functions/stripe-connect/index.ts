@@ -221,6 +221,158 @@ serve(async (req) => {
       });
     }
 
+    // Action: get_standard_oauth_url
+    //
+    // Standard Connect path. Returns the URL the therapist visits
+    // to authorize MyBodyMap to act on their EXISTING Stripe
+    // account. No new account is created; they pick from accounts
+    // they already own when they hit Stripe's OAuth screen.
+    //
+    // Standard differs from Express:
+    //   - Therapist owns the Stripe account (we just get API
+    //     permission)
+    //   - They keep their existing transaction history, saved
+    //     customer cards, subscriptions
+    //   - One 1099 instead of two
+    //   - 15-second OAuth flow vs 5-10 minute hosted onboarding
+    //
+    // The OAuth callback lands at /dashboard/stripe-connect-standard
+    // which calls complete_standard_oauth below to exchange the code
+    // for a real account ID.
+    if (action === 'get_standard_oauth_url' && therapist_id) {
+      if (!STRIPE_CLIENT_ID || STRIPE_CLIENT_ID === 'ca_test') {
+        return new Response(JSON.stringify({
+          error: 'STRIPE_CLIENT_ID is not configured. Set it in Supabase edge function secrets before using Standard Connect.',
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+      const redirectUri = 'https://www.mybodymap.app/dashboard/stripe-connect-standard';
+      // state carries the therapist_id so the callback can attribute
+      // the code to the right therapist row. URL-safe.
+      const state = therapist_id;
+      const params = new URLSearchParams({
+        response_type: 'code',
+        client_id: STRIPE_CLIENT_ID,
+        scope: 'read_write',
+        redirect_uri: redirectUri,
+        state,
+        // suggested_capabilities surface only the capabilities we
+        // actually need so the therapist sees the right scopes during
+        // OAuth. card_payments and transfers cover our usage.
+        'suggested_capabilities[]': 'card_payments',
+      });
+      const url = `https://connect.stripe.com/oauth/authorize?${params.toString()}`;
+      return new Response(JSON.stringify({ url }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: complete_standard_oauth
+    //
+    // Called from /dashboard/stripe-connect-standard after Stripe
+    // redirects back with ?code=ac_xxx&state=therapist_id. We
+    // exchange the code for an access token + the therapist's real
+    // Stripe account ID, then stamp our row.
+    //
+    // We do NOT store the access token. We use OAuth only to learn
+    // the account ID, then make all future API calls using our
+    // platform secret + Stripe-Account: acct_xxx header. This is
+    // standard Stripe Connect pattern; access token is only needed
+    // if you want to make API calls AS that account (we do not).
+    if (action === 'complete_standard_oauth' && code && therapist_id) {
+      // Exchange the OAuth code for the connected account ID
+      const tokenRes = await fetch('https://connect.stripe.com/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_secret: STRIPE_SECRET,
+          code,
+          grant_type: 'authorization_code',
+        }).toString(),
+      });
+      const tokenData = await tokenRes.json();
+      if (!tokenRes.ok || !tokenData.stripe_user_id) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'oauth_exchange_failed',
+          error: tokenData.error_description || tokenData.error || 'Could not exchange OAuth code',
+          stripe: tokenData,
+        }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const connectedAccountId = tokenData.stripe_user_id;
+
+      // Verify the account is actually ready to charge. Standard
+      // accounts that the therapist already uses successfully will
+      // have charges_enabled=true. If somehow we land on an account
+      // missing requirements, surface the same shape as Express
+      // confirm_connected so the UI can use one code path.
+      const acctRes = await fetch(`https://api.stripe.com/v1/accounts/${connectedAccountId}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      const acct = await acctRes.json();
+      if (!acctRes.ok || !acct.id) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'stripe_lookup_failed',
+          error: acct.error?.message || 'Could not verify the connected account',
+        }), { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const ready = !!(acct.charges_enabled && acct.payouts_enabled && acct.details_submitted);
+
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+      const updatePayload: Record<string, any> = {
+        stripe_account_id: connectedAccountId,
+        stripe_account_type: 'standard',
+        stripe_account_connected: ready,
+      };
+      if (ready) updatePayload.stripe_account_ready_at = new Date().toISOString();
+
+      const { error: updErr } = await supabase
+        .from('therapists')
+        .update(updatePayload)
+        .eq('id', therapist_id);
+
+      if (updErr) {
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'db_update_failed',
+          error: 'Could not save the connection. ' + updErr.message,
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      if (!ready) {
+        // OAuth succeeded but the underlying account has requirements
+        // pending. Rare for Standard (the therapist already runs a
+        // Stripe account), but possible if they linked a fresh
+        // unverified account. Return the missing fields so the UI
+        // can prompt them to finish in Stripe directly.
+        const missing: string[] = [];
+        if (!acct.charges_enabled) missing.push('charges');
+        if (!acct.payouts_enabled) missing.push('payouts');
+        if (!acct.details_submitted) missing.push('business details');
+        return new Response(JSON.stringify({
+          success: false,
+          status: 'standard_account_incomplete',
+          error: `The account you linked still needs setup in Stripe: ${missing.join(', ')}.`,
+          missing,
+          requirements_currently_due: acct.requirements?.currently_due || [],
+          account_id: connectedAccountId,
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({
+        success: true,
+        status: 'connected',
+        account_id: connectedAccountId,
+        account_type: 'standard',
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Action: get_oauth_url
     //
     // HK May 15 2026 CRITICAL FIX: do NOT blindly create a new
