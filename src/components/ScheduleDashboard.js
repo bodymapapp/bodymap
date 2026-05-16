@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
+import InlineTimeInput from './InlineTimeInput';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -1995,138 +1996,377 @@ export default function ScheduleDashboard({ therapist }) {
 
       {/* Block panel, expands below action row */}
       {showBlockPanel && (
-        <div style={{background:'#fff',border:'1.5px solid #E8E4DC',borderRadius:12,padding:20,marginBottom:12}}>
-          {/* Mode toggle: full day vs partial. Inline, not a dropdown. */}
-          <div style={{display:'flex',gap:8,marginBottom:14,alignItems:'center'}}>
-            <span style={{fontSize:11,fontWeight:700,color:'#6B7280',letterSpacing:'0.06em',textTransform:'uppercase',marginRight:4}}>Block</span>
-            <button
-              onClick={()=>{ setBlockMode('full'); setBlockStartTime(''); setBlockEndTime(''); setBlockError(''); }}
-              style={{
-                background: blockMode === 'full' ? '#2A5741' : '#F3F4F6',
-                color: blockMode === 'full' ? '#fff' : '#4B5563',
-                border:'none', borderRadius:20, padding:'6px 14px',
-                fontSize:12, fontWeight:700, cursor:'pointer',
-                WebkitTapHighlightColor:'transparent',
-              }}>
-              Full day
-            </button>
-            <button
-              onClick={()=>{ setBlockMode('partial'); setBlockError(''); }}
-              style={{
-                background: blockMode === 'partial' ? '#2A5741' : '#F3F4F6',
-                color: blockMode === 'partial' ? '#fff' : '#4B5563',
-                border:'none', borderRadius:20, padding:'6px 14px',
-                fontSize:12, fontWeight:700, cursor:'pointer',
-                WebkitTapHighlightColor:'transparent',
-              }}>
-              Time range
-            </button>
+        <div style={{
+          background: 'linear-gradient(180deg, #FFFFFF 0%, #FBFAF4 100%)',
+          border: '1px solid #EAE5DA',
+          borderRadius: 16,
+          padding: '22px 24px',
+          marginBottom: 12,
+          boxShadow: '0 1px 3px rgba(31, 41, 55, 0.04)',
+        }}>
+          {/* Header row with title + mode pills, all on one line.
+              Replaces the awkward "BLOCK" label that read like a form
+              field label. Now it's a section heading with the choice
+              built into the same line. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            marginBottom: 18,
+            flexWrap: 'wrap',
+          }}>
+            <div style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 17,
+              fontWeight: 400,
+              color: '#1F4030',
+              letterSpacing: '-0.005em',
+            }}>
+              Block off time
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: 4,
+              background: '#F3F4F6',
+              borderRadius: 999,
+              padding: 3,
+            }}>
+              <button
+                onClick={() => { setBlockMode('full'); setBlockStartTime(''); setBlockEndTime(''); setBlockError(''); }}
+                style={{
+                  background: blockMode === 'full' ? '#fff' : 'transparent',
+                  color: blockMode === 'full' ? '#1F4030' : '#6B7280',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '5px 13px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: blockMode === 'full' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>
+                Full day
+              </button>
+              <button
+                onClick={() => { setBlockMode('partial'); setBlockError(''); }}
+                style={{
+                  background: blockMode === 'partial' ? '#fff' : 'transparent',
+                  color: blockMode === 'partial' ? '#1F4030' : '#6B7280',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '5px 13px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: blockMode === 'partial' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                  WebkitTapHighlightColor: 'transparent',
+                  transition: 'background 0.15s, color 0.15s',
+                }}>
+                Time range
+              </button>
+            </div>
           </div>
 
-          {/* Inputs row. Date is always shown. Time inputs appear only
-              in partial mode. Reason and Block button always shown. */}
-          <div style={{display:'flex',gap:8,marginBottom:10,flexWrap:'wrap',alignItems:'center'}}>
-            <input type="date" value={blockDate} onChange={e=>setBlockDate(e.target.value)}
-              min={new Date().toISOString().slice(0,10)}
-              style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'1 1 140px',minWidth:140}} />
-
+          {/* Inline composition row. Reads as a sentence:
+                "from [time] to [time] on [date] · [reason]    [Block]"
+              In full-day mode, the times collapse and it becomes:
+                "all of [date] · [reason]    [Block]"
+              Mobile reflow: each chunk wraps to its own line gracefully
+              with consistent vertical rhythm. */}
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 10,
+            alignItems: 'center',
+            marginBottom: blockError ? 12 : 6,
+          }}>
             {blockMode === 'partial' && (
               <>
-                <input
-                  type="time"
+                <span style={{
+                  fontFamily: 'Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: 14,
+                  color: '#6B7280',
+                }}>from</span>
+                <InlineTimeInput
                   value={blockStartTime}
-                  onChange={e=>{ setBlockStartTime(e.target.value); setBlockError(''); }}
+                  onChange={(t) => { setBlockStartTime(t); setBlockError(''); }}
                   placeholder="Start"
-                  style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',width:115}} />
-                <span style={{fontSize:13,color:'#9CA3AF',fontStyle:'italic',fontFamily:'Georgia,serif'}}>to</span>
-                <input
-                  type="time"
+                  ariaLabel="Start time of blocked window"
+                  width={108}
+                />
+                <span style={{
+                  fontFamily: 'Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: 14,
+                  color: '#6B7280',
+                }}>to</span>
+                <InlineTimeInput
                   value={blockEndTime}
-                  onChange={e=>{ setBlockEndTime(e.target.value); setBlockError(''); }}
+                  onChange={(t) => { setBlockEndTime(t); setBlockError(''); }}
                   placeholder="End"
-                  style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',width:115}} />
+                  ariaLabel="End time of blocked window"
+                  width={108}
+                />
               </>
             )}
+            {blockMode === 'full' && (
+              <span style={{
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                fontSize: 14,
+                color: '#6B7280',
+              }}>all of</span>
+            )}
+            <span style={{
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              fontSize: 14,
+              color: '#6B7280',
+            }}>on</span>
+            <input
+              type="date"
+              value={blockDate}
+              onChange={(e) => setBlockDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              aria-label="Date to block"
+              style={{
+                padding: '8px 12px',
+                border: `1.5px solid ${blockDate ? '#E8E4DC' : '#FCA5A5'}`,
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                color: '#1F4030',
+                outline: 'none',
+                background: '#FBFAF4',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                minWidth: 150,
+              }}
+            />
+          </div>
 
-            <input type="text" value={blockNote} onChange={e=>setBlockNote(e.target.value)}
-              placeholder={blockMode === 'partial' ? "Reason (lunch, errand…)" : "Reason (vacation, personal day…)"}
-              style={{padding:'8px 10px',border:'1.5px solid #E8E4DC',borderRadius:8,fontSize:13,outline:'none',flex:'2 1 160px',minWidth:160}} />
+          {/* Reason row, full width. Optional. Inline with the rest of
+              the composition but on its own line so longer reasons
+              don't crowd the time/date controls. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            marginBottom: 16,
+          }}>
+            <span style={{
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              fontSize: 14,
+              color: '#6B7280',
+              flexShrink: 0,
+            }}>because</span>
+            <input
+              type="text"
+              value={blockNote}
+              onChange={(e) => setBlockNote(e.target.value)}
+              placeholder={blockMode === 'partial' ? 'lunch, errand, school pickup' : 'vacation, personal day, conference'}
+              aria-label="Reason for blocking time (optional)"
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                border: '1.5px solid #E8E4DC',
+                borderRadius: 10,
+                fontSize: 14,
+                color: '#1F2937',
+                outline: 'none',
+                background: '#FBFAF4',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                fontStyle: 'italic',
+              }}
+              onFocus={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#2A5741'; }}
+              onBlur={(e) => { e.target.style.background = '#FBFAF4'; e.target.style.borderColor = '#E8E4DC'; }}
+            />
+          </div>
 
-            <button onClick={addBlockedDay} disabled={!blockDate||blockSaving}
-              style={{background:blockDate?'#2A5741':'#D1D5DB',color:'#fff',border:'none',padding:'8px 16px',borderRadius:8,fontSize:13,fontWeight:700,cursor:blockDate?'pointer':'not-allowed',whiteSpace:'nowrap'}}>
-              {blockSaving ? '…' : (blockMode === 'partial' ? '+ Block Time' : '+ Block Day')}
+          {/* Action row: error banner on the left if any, Block button
+              on the right. The button is sized confidently. */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            justifyContent: blockError ? 'space-between' : 'flex-end',
+            flexWrap: 'wrap',
+          }}>
+            {blockError && (
+              <div style={{
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                color: '#991B1B',
+                borderRadius: 10,
+                padding: '8px 14px',
+                fontSize: 13,
+                fontFamily: 'Georgia, serif',
+                fontStyle: 'italic',
+                flex: 1,
+                minWidth: 200,
+              }}>
+                {blockError}
+              </div>
+            )}
+            <button
+              onClick={addBlockedDay}
+              disabled={!blockDate || blockSaving}
+              style={{
+                background: !blockDate ? '#D1D5DB' : 'linear-gradient(135deg, #2A5741, #1F4030)',
+                color: '#fff',
+                border: 'none',
+                padding: '10px 22px',
+                borderRadius: 999,
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '0.01em',
+                cursor: blockDate ? 'pointer' : 'not-allowed',
+                whiteSpace: 'nowrap',
+                boxShadow: blockDate ? '0 2px 8px rgba(42, 87, 65, 0.22)' : 'none',
+                transition: 'transform 0.1s, box-shadow 0.15s',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              onMouseDown={(e) => { if (blockDate) e.currentTarget.style.transform = 'scale(0.97)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              {blockSaving ? 'Blocking…' : (blockMode === 'partial' ? 'Block this time' : 'Block this day')}
             </button>
           </div>
 
-          {blockError && (
+          {/* Existing blocks list. Polished entries that read clearly
+              and align cleanly. */}
+          {blockedDays.length > 0 && (
             <div style={{
-              background:'#FEF2F2',border:'1px solid #FCA5A5',
-              color:'#991B1B',borderRadius:8,
-              padding:'8px 12px',fontSize:12,marginBottom:10,
+              marginTop: 20,
+              paddingTop: 18,
+              borderTop: '1px solid #EAE5DA',
             }}>
-              {blockError}
+              <div style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: '#6B7280',
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                marginBottom: 10,
+              }}>
+                Currently blocked
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {blockedDays.map(d => {
+                  const dateLabel = new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                  });
+                  const isPartial = d.start_time && d.end_time;
+                  const fmtTime = (t) => {
+                    if (!t) return '';
+                    const [h, m] = t.split(':');
+                    const hh = parseInt(h, 10);
+                    const ampm = hh >= 12 ? 'PM' : 'AM';
+                    const hr = hh % 12 === 0 ? 12 : hh % 12;
+                    return `${hr}:${m} ${ampm}`;
+                  };
+                  const timeText = isPartial
+                    ? `${fmtTime(d.start_time)} to ${fmtTime(d.end_time)}`
+                    : 'all day';
+                  return (
+                    <div key={d.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#fff',
+                      border: '1px solid #EAE5DA',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      gap: 12,
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontFamily: 'Georgia, serif',
+                          fontSize: 14,
+                          fontWeight: 400,
+                          color: '#1F4030',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {dateLabel}
+                        </span>
+                        <span style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: isPartial ? '#92400E' : '#4B5563',
+                          background: isPartial ? '#FEF3C7' : '#F3F4F6',
+                          border: `1px solid ${isPartial ? '#FCD34D' : '#D1D5DB'}`,
+                          borderRadius: 999,
+                          padding: '2px 10px',
+                          whiteSpace: 'nowrap',
+                        }}>
+                          {timeText}
+                        </span>
+                        {d.note && (
+                          <span style={{
+                            fontSize: 13,
+                            color: '#6B7280',
+                            fontStyle: 'italic',
+                            fontFamily: 'Georgia, serif',
+                          }}>
+                            {d.note}
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeBlockedDay(d.id)}
+                        aria-label={`Remove block for ${dateLabel}`}
+                        style={{
+                          background: 'transparent',
+                          color: '#9CA3AF',
+                          border: '1px solid transparent',
+                          borderRadius: 8,
+                          padding: '4px 10px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          transition: 'color 0.15s, background 0.15s, border-color 0.15s',
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.color = '#DC2626';
+                          e.currentTarget.style.background = '#FEF2F2';
+                          e.currentTarget.style.borderColor = '#FCA5A5';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.color = '#9CA3AF';
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.borderColor = 'transparent';
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
-
-            {blockedDays.length === 0
-              ? <div style={{fontSize:12,color:'#9CA3AF',fontStyle:'italic'}}>Nothing blocked. Clients can book any available date up to a year out.</div>
-              : <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                  {blockedDays.map(d=>{
-                    const dateLabel = new Date(d.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-                    const isPartial = d.start_time && d.end_time;
-                    // Format times like "1:00 PM", dropping seconds, in 12h.
-                    const fmtTime = t => {
-                      if (!t) return '';
-                      const [h, m] = t.split(':');
-                      const hh = parseInt(h, 10);
-                      const ampm = hh >= 12 ? 'PM' : 'AM';
-                      const hr = hh % 12 === 0 ? 12 : hh % 12;
-                      return `${hr}:${m} ${ampm}`;
-                    };
-                    return (
-                      <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',background:'#F9FAFB',borderRadius:8,padding:'8px 12px'}}>
-                        <div style={{minWidth:0,flex:1}}>
-                          <span style={{fontSize:13,fontWeight:700,color:'#1F2937'}}>{dateLabel}</span>
-                          {isPartial && (
-                            <span style={{
-                              fontSize:12,
-                              color:'#92400E',
-                              background:'#FEF3C7',
-                              border:'1px solid #FCD34D',
-                              borderRadius:999,
-                              padding:'1px 8px',
-                              marginLeft:8,
-                              fontWeight:600,
-                            }}>
-                              {fmtTime(d.start_time)} to {fmtTime(d.end_time)}
-                            </span>
-                          )}
-                          {!isPartial && (
-                            <span style={{
-                              fontSize:11,
-                              color:'#6B7280',
-                              background:'#E5E7EB',
-                              borderRadius:999,
-                              padding:'1px 8px',
-                              marginLeft:8,
-                              fontWeight:600,
-                            }}>
-                              All day
-                            </span>
-                          )}
-                          {d.note && <span style={{fontSize:12,color:'#6B7280',marginLeft:8,fontStyle:'italic'}}>{d.note}</span>}
-                        </div>
-                        <button onClick={()=>removeBlockedDay(d.id)}
-                          style={{background:'#FEE2E2',color:'#DC2626',border:'none',borderRadius:6,padding:'3px 10px',fontSize:12,fontWeight:700,cursor:'pointer',flexShrink:0}}>
-                          Remove
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-            }
-          </div>
-        )}
+          {blockedDays.length === 0 && (
+            <div style={{
+              marginTop: 18,
+              paddingTop: 16,
+              borderTop: '1px solid #EAE5DA',
+              fontSize: 13,
+              color: '#9CA3AF',
+              fontStyle: 'italic',
+              fontFamily: 'Georgia, serif',
+              textAlign: 'center',
+            }}>
+              Nothing blocked yet. Clients can book any available slot up to a year out.
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Pending booking requests, only shown when therapist has approval
           required and at least one new-client request is waiting. */}
