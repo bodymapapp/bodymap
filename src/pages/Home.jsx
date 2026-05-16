@@ -133,13 +133,15 @@ const RIBBONS = [
   {
     id: "4",
     name: "Day-of-Session",
-    tagline: "Smart Booking. The right client. The right slot. One tap.",
-    demos: [{ kind: "component", component: ScheduleDemo, label: "Smart Booking" }],
+    headline: "Smart Calendar",
+    featured: true,
+    tagline: "Your calendar quietly answers the questions you'd ask yourself if you had time.",
+    demos: [{ kind: "component", component: ScheduleDemo, label: "Smart Calendar" }],
     layout: "demo-left",
     subFeatures: [
-      "Fill This Gap: a slot opens, your platform picks the right lapsed client and drafts the text",
-      "Up-Next Briefing: three things to remember about the next client, before she walks in",
-      "Body Load Awareness: avoid three deep tissue in a row, save your wrists",
+      "Fill This Gap: a slot opens, your platform names the right lapsed client and drafts the text. One tap.",
+      "Up-Next Briefing: three things to remember about your next client, pulled from her last session.",
+      "Body Load Awareness: three deep tissue back to back, your platform warns you before your wrists pay.",
       "Voice-to-text SOAP notes, ready in 30 seconds",
       "Quick client lookup by name, phone, or email",
     ],
@@ -441,14 +443,28 @@ function HomeRibbon({ ribbon, isMobile }) {
 
   return (
     <section
-      className={`bm-home-ribbon bm-home-ribbon--${layoutClass}`}
+      className={`bm-home-ribbon bm-home-ribbon--${layoutClass}${
+        ribbon.featured ? " bm-home-ribbon--featured" : ""
+      }`}
       id={`home-ribbon-${ribbon.id}`}
     >
+      {ribbon.featured && (
+        <div className="bm-home-ribbon__moat">★ The moat</div>
+      )}
       <div className="bm-home-ribbon__inner">
         {/* Copy / sub-feature column */}
         <div className="bm-home-ribbon__copy">
           <div className="bm-home-ribbon__num">{ribbon.id}</div>
-          <h3 className="bm-home-ribbon__title">{ribbon.name}</h3>
+          {ribbon.headline ? (
+            <>
+              <div className="bm-home-ribbon__cat">{ribbon.name}</div>
+              <h3 className="bm-home-ribbon__title bm-home-ribbon__title--featured">
+                {ribbon.headline}
+              </h3>
+            </>
+          ) : (
+            <h3 className="bm-home-ribbon__title">{ribbon.name}</h3>
+          )}
           <p className="bm-home-ribbon__tag">{ribbon.tagline}</p>
           <ul className="bm-home-ribbon__list">
             {ribbon.subFeatures.map((feat, i) => (
