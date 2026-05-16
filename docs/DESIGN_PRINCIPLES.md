@@ -133,6 +133,68 @@ Use exactly that phrase in commit messages and status reports.
 
 ---
 
+## 8. For money decisions: the therapist decides, the system notifies.
+
+**Rule.** When money could change hands on a booking, the platform
+must NEVER act automatically without a human tap. Instead:
+
+1. Show the therapist the situation: who, what, paid so far, card
+   on file, policy, timing. All facts on one screen.
+2. Suggest the action that follows from the therapist's own policy.
+3. Show 2-3 alternative actions (waive fee, custom amount, etc).
+4. Wait for one tap.
+5. Once tapped, execute the charge or refund AND fire all the
+   notifications AND attach the policy AND log the audit trail.
+   All of it automatic from that point.
+
+**The platform doesn't try to be smart about the therapist's
+business policy. It gives them the tools to be smart about it
+themselves, then handles the transparency for them.**
+
+**Incident: May 16 2026, Phase 7 billing matrix.**
+The first attempt at a billing rules doc had 28 automated rules
+across 6 scenarios with 7 open questions about edge cases. HK
+caught it: "This is the reason competitors don't do it well, or
+do it poorly. It opens us up for a lot of questions and back-and-
+forth on what is right versus wrong. How can we come up with a
+global design principle giving therapist the power to charge. We
+focus primarily on notifications so that there is full
+transparency."
+
+**Cost.** Phase 7.2 and Phase 7.3 (the matrix iterations) were
+~3 hours of work that produced a document HK had to push back on
+twice. Phase 8.2 collapsed all of it to one principle. The
+correct framing was hiding behind the wrong abstraction the whole
+time.
+
+**Test before shipping any money-touching feature.** Does the
+therapist see what they need to see and tap once? Or did we try
+to decide for them? If it's the second one, redesign.
+
+---
+
+## 9. The seven ribbons are the taxonomy. The user keeps growing the catalog within them.
+
+**Rule.** Every new feature, no matter how small, plugs into one
+of the existing seven ribbons (Find & Book, Know Your Client,
+Client Intelligence, Day-of-Session, Relationships, Money &
+Protection, On Your Phone). Sub-features get numbered (1.8, 2.6,
+etc). New ribbons require a unanimous reset of the marketing
+copy and SHOULD essentially never happen.
+
+**Incident: May 16 2026, Private Services request from Candice.**
+Candice asked for a service-level visibility toggle. The temptation
+was to invent a new product area for "service catalog management."
+The right answer was: this is sub-feature 1.X under Find & Book.
+Add a column, add a toggle, ship. Total: 4 hours including the
+backend migration.
+
+**Test before adding a product surface.** Does this fit inside
+one of the seven ribbons? If yes, what number? If no, you're
+proposing a new ribbon and you need to argue for it explicitly.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
@@ -141,6 +203,8 @@ Use exactly that phrase in commit messages and status reports.
 - **Before responding to a screenshot:** check rule #4.
 - **Before writing a status update:** check rule #6.
 - **Before saying "done":** check rule #7.
+- **Before automating a money decision:** check rule #8.
+- **Before adding a new product surface:** check rule #9.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The
