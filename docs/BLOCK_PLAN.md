@@ -1,19 +1,132 @@
 # BLOCK_PLAN.md
 
-Tasks that are blocked (need external setup, awaiting approval, or
-scheduled for a later session), with all the materials ready to
-execute when unblocked. Each block has:
+Working document for everything queued, blocked, deferred, or in-flight.
+Read the **Summary** below to know where things stand in five minutes.
+Read the **per-ribbon** sections to see what's coming on your platform.
+Drop into **Details** at the bottom only when you need execution-ready
+materials for a specific block.
 
-- **Why blocked**
-- **When to revisit**
-- **Materials** (anything pre-drafted so you do not start from zero)
-
-If a block becomes unblocked, move it into an active session and
-delete the entry from here after it ships.
-
-**Most recent session handover:** `docs/HANDOVER_2026-05-15.md` (Stripe Connect marathon, May 15-16 2026). Read that first if returning after a break.
+**Most recent session handover:** [`docs/HANDOVER_2026-05-15.md`](./HANDOVER_2026-05-15.md) (Stripe Connect marathon + Phase 1/2.1/2.2 work May 16 2026).
 
 ---
+
+## Summary
+
+**Currently active.** What is being worked or is ready to start the moment you OK it.
+1. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
+2. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
+3. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
+4. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
+
+**Externally blocked.** Waiting on something we don't control.
+- Google OAuth app verification (waiting on 5+ test therapists + reachable privacy/terms URLs)
+- Optional client portal (waiting on 3+ founding-therapist requests; currently 1)
+- Twilio onboarding friction (escalation tripwire: 3 handhold requests in one month)
+
+**Recently shipped (May 16 2026 session).**
+- Stripe Connect architectural fix + stale-customer recovery in `create-deposit` and `charge-cancellation-fee` (Phases 0 + 1)
+- Smart Booking standalone pillars removed from Home + Features; content lives only in Ribbon 4 + the WhyMyBodyMap differentiation list now (Phase 1)
+- Ribbon 4 promoted to a featured Smart Calendar variant: sage gradient, "The moat" badge, elevated demo frame, tightened tagline, reordered sub-features (Phase 2.1, commit `866e91b2`)
+- Mark No-Show button on past bookings, wired through `CancellationChargeModal` with `isNoShow: true` and a preserved `no_show` booking status distinct from `cancelled` (Phase 2.2, commit `85bab672`)
+
+---
+
+## Open asks
+
+The list of things real people have asked for, by name and date.
+Tracked here so we can see when demand crosses a threshold for unblocking.
+
+### From therapists
+- **Ashley Scalzulli (May 12 2026)**: client login portal. → see [Macro #2: Optional client portal](#macro-2-optional-client-portal).
+- **HK (May 16 2026 morning)**: "When I got paid, I should have received an email." Plus on-platform + email + SMS for every payment, new client, and booking event. → see [Macro #1: Notification system](#macro-1-notification-system).
+- **HK (May 16 2026)**: Cancellation, reschedule, and one more similar workflow ("not sure if those workflows exist"). Audit result: cancel ✓, reschedule ✓, no-show was the missing third, shipped Phase 2.2.
+- **Lindsey (May 10 2026)**: editable intake fields from SessionDetail. → mostly shipped; see [Detail §2](#2-lindsey-11--focus-distribution-commit-2-of-2-shipped-may-10-2026) for the deferred follow-ups.
+
+### From clients
+- None tracked currently. When a client request lands (via founding therapist relay or a support reply), append here with date.
+
+---
+
+## Macro platform improvements
+
+Platform-level work that doesn't belong to a single ribbon.
+
+### Macro #1: Notification system
+**Status:** queued, Phase 3 of the May 16 session, awaiting OK on scope.
+**Why now:** HK got a real Stripe payment on May 16 and received zero notification. Foundation is half-built (prefs JSON + log table + helpers) but no fire points for `payment_received` or `new_client_signup`, and no in-app bell/drawer surface. Defaults in `notification_prefs` already cover `new_booking`, `intake_filled`, `gift_purchased`, `daily_pulse` for the therapist; missing types: `payment_received`, `new_client_signup`, `booking_cancelled`, `booking_rescheduled`, `no_show_recorded`, `cancellation_fee_charged`, `refund_issued`.
+**Scope estimate:** Minimum viable 3 hrs (in-app table + helper + 2 fire points + bell drawer). Full coverage 6-10 hrs.
+**Plan:** new `in_app_notifications` table with `read_at` for unread state, new shared `notifyTherapist({ event, subject, body, payload })` helper that checks prefs, writes the row, sends Resend email, sends Twilio SMS, logs each to `notification_log`. Wire `payment_received` from `capture-saved-card`, `new_client_signup` from `send-welcome`, `booking_cancelled` + `no_show_recorded` from the cancel/no-show flows in `CancellationChargeModal`. Bell icon in therapist top nav with unread count, rose/cream drawer matching Gift Cards aesthetic.
+
+### Macro #2: Optional client portal
+**Status:** blocked, waiting on 3+ requests.
+**Current count:** 1 (Ashley Scalzulli, May 12 2026). Jiny, Terra, Kathy have not asked.
+**Why not yet:** the "no client login" stance is a marketing pillar codified in 3 places. Building this changes the framing. Build only when demand justifies it. See [Detail §6](#6-optional-client-portal-with-login).
+
+### Macro #3: Twilio onboarding friction (recurring)
+**Status:** below escalation threshold.
+**Tripwire:** 3 onboarding handholds in a single month, then build the in-app wizard immediately. Currently 2 (Candice, May 15). See [Detail §7](#7-twilio-onboarding-friction-recurring).
+
+### Macro #4: Google OAuth app verification
+**Status:** blocked, waiting on 5+ test therapists connecting cleanly + live privacy/terms URLs.
+**Effort to submit when unblocked:** ~45 min, all materials are pre-drafted. See [Detail §1](#1-google-oauth-app-verification).
+
+### Macro #5: Stripe promo code cleanup
+**Status:** queued.
+**What:** `BETASILVER` codes with underscores still have issues. New codes without underscores (`BETASILVER3M`, `BETASILVER12M`) need to be created. Old $24 payment links need deactivation. Per memory, not yet completed.
+**Scope:** ~30 min in Stripe Dashboard, no code.
+
+### Macro #6: Video pipeline (15 automated videos)
+**Status:** queued.
+**What:** Playwright + Remotion pipeline. Feature IDs match video IDs (1.1 to 7.4). BM-0.0 intro first (HK checkpoint required). Founder story BM-7.4 posts first on LinkedIn, TikTok, Reddit, HN before product videos.
+**Pending:** v3 doc with corrected IDs.
+
+### Macro #7: Body Map hero section on Features page
+**Status:** queued, marked "highest priority" in memory.
+**What:** front/back visual, focus/avoid, pressure, medical flags, longitudinal intelligence. Bronze=last 5 sessions, Silver=all sessions. This is the core moat and should be a hero section on the Features page.
+**Note:** with the Phase 2.1 Ribbon 4 promotion to "The moat" treatment, decide whether Body Map gets a parallel treatment in Ribbon 2 (Know Your Client) so the two moats are visually co-equal.
+
+---
+
+## Per-ribbon improvements
+
+Work mapped to the seven-ribbon taxonomy. Anything that lives inside a single
+ribbon's product area goes here.
+
+### Ribbon 1: Find & Book
+- **Card-on-file detection for returning clients (TOP PRIORITY, ~1.5 hr).** Real customer-facing bug. See [Detail §5](#5-card-on-file-not-detected-for-returning-clients).
+- **Buffer time between sessions (ID 1.8, queued).** Therapist sets X minutes post-booking; system excludes window from available slots. Settings toggle, OFF by default. Per memory.
+
+### Ribbon 2: Know Your Client
+- **StatusStrip Agreement tile (deferred from May 15-16, ~75 min).** All design decisions confirmed. See [Detail §8](#8-statusstrip-agreement-tile-deferred-from-may-15-16-session).
+- **Lindsey #11 deferred follow-ups.** Body SVG C/T badge rendering on SessionDetail; terms of service consent clause. Not blocking core behavior. See [Detail §2](#2-lindsey-11--focus-distribution-commit-2-of-2-shipped-may-10-2026).
+- **Slider redesign + intake auto-save (~4-6 hr).** HK rejected the May 10 design. Sliders next to body image with dotted connectors, editable percent numbers, back button on Preferences, localStorage draft auto-save. See [Detail §4](#4-slider-redesign--intake-flow-improvements-hk-may-10-2026-feedback).
+- **Medical history intake (ID 2.6, queued).** Pregnancy, medications, surgeries, conditions checklist, allergies, emergency contact, red-flag surfacing, smart pre-fill on returns. ~60s first time, ~30s returns. Separate build from waiver. Per memory.
+
+### Ribbon 3: Client Intelligence
+- **Edit button on SessionDetail not visible (diagnostic).** Code shipped May 10 but HK does not see the button. See [Detail §3](#3-edit-button-on-sessiondetail-not-visible-may-10-2026-commit-339cfcac).
+
+### Ribbon 4: Day-of-Session (Smart Calendar)
+- **Smart Calendar SVG animation (~3 hr).** Three-act loop: empty Tuesday noon slot, platform surfaces the right lapsed regular, message draft appears, tap, slot fills. Soft sage and cream palette, mobile-safe SVG, no JS animation library. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session.
+
+### Ribbon 5: Relationships
+- **Daily Evening Digest (queued).** One daily email showing who reached out, who is due for outreach, lapsed clients by pattern. Per memory.
+
+### Ribbon 6: Money & Protection
+- **Stripe Connect for billing data (ID 6.5, next active priority after Features page).** Wire in real billing data. Stripe Connect Express live mode already active. Per memory.
+- **Supabase cron for `daily-signups-digest`.** Scheduled at `0 12 * * *` (7am Central). HK to set up in Supabase Dashboard > Cron Jobs > Edge Function > POST. Per memory.
+
+### Ribbon 7: On Your Phone
+- **Instagram @mybodymap.app 7-day warmup (in progress).** Follow/like/save/comment, no posts. Hook formula: "5 [signs/things/mistakes] that [outcome]" with warning framing that outperforms. 7-sec video: Pexels stock + hook text whole time + "read description below" at 3s. Post 2x/day. HK executing.
+- **Reddit launch post.** Drafted, not yet published.
+- **Facebook restoration.** HK banned from Massage Therapy Business Builders for over-posting; working with admin to restore access.
+- **Image backlog (3 placeholders queued).** Specs: 543×464 JPEG, warm cream/sage palette, no text overlay. Gift cards Features hero, campaigns Features hero, cycle-aligned scheduling 1.2 hero. Batch image asks in groups of 10-20, never one at a time.
+
+---
+
+## Details
+
+All execution-ready materials. Each entry below is the original detailed block,
+preserved so you can drop in and run when an item becomes active.
 
 ## 1. Google OAuth app verification
 
