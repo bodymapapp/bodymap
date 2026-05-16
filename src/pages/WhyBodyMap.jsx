@@ -32,6 +32,7 @@ import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import Footer from "../components/Footer";
 import { photoForId } from "../data/featuresData";
+import SmartCalendarAnimation from "../components/demos/SmartCalendarAnimation";
 
 // ───────────────────────────────────────────────────────────────────────
 // PEACE-OF-MIND blocks (replaces "Time back in your hands")
@@ -262,6 +263,27 @@ export default function WhyBodyMap() {
           {PEACE_BLOCKS.map((block, i) => (
             <PeaceCard key={i} block={block} />
           ))}
+        </div>
+      </section>
+
+      {/* Smart Calendar spotlight: the moat, animated.
+          Three pillars of the Smart Calendar (Fill This Gap,
+          Up-Next Briefing, Body Load Awareness) cycle through
+          a 15s loop so visitors see what makes the platform
+          different in motion rather than as a bullet list.
+          Per HK directive May 16 2026. */}
+      <section className="bm-why-v2-spotlight">
+        <div className="bm-why-v2-spotlight__intro">
+          <p className="bm-why-v2-spotlight__eyebrow">★ The moat</p>
+          <h2 className="bm-why-v2-spotlight__title">
+            Your calendar quietly answers the questions <em>you'd ask yourself if you had time.</em>
+          </h2>
+          <p className="bm-why-v2-spotlight__sub">
+            Three differences from every other platform, woven directly into your Schedule. No new screens. No new logins for your clients. No data you have to enter twice.
+          </p>
+        </div>
+        <div className="bm-why-v2-spotlight__demo">
+          <SmartCalendarAnimation />
         </div>
       </section>
 

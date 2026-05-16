@@ -1,29 +1,42 @@
 // src/components/demos/SmartCalendarAnimation.jsx
 //
-// Ribbon 4 demo. Three-act loop that brings the left-column
-// Smart Calendar insights to life:
+// The Ribbon 4 / Features #schedule / WhyBodyMap moat demo.
 //
-//   Act 1 (0-3.5s)  An empty Tuesday noon slot appears,
-//                   marked CANCELLATION, drawing the eye.
-//   Act 2 (3.5-7s)  The intelligence panel surfaces ONE
-//                   lapsed regular (Maria L.) with three
-//                   specific reasons why she's the right fit
-//                   for that exact slot.
-//   Act 3 (7-11s)   A pre-drafted text fades in, the Send
-//                   button pulses once, then the gap fills
-//                   with Maria's avatar and a green check.
+// HK May 16 2026 brief: "show them on the left and then on
+// the right show the calendar... this is something people
+// look at all the time."
 //
-//   Act 4 (11-13s)  Brief settle pause, then the loop
-//                   restarts from Act 1.
+// Three pillars, each gets ~5s of stage time in a 15s loop:
 //
-// Implementation: pure CSS keyframes on inline SVG primitives.
-// No JS animation library, no requestAnimationFrame, no
-// timers. The browser handles everything on the GPU.
-// Respects prefers-reduced-motion: in that case we show the
-// final settled state (Maria in the slot) with no animation.
+//   Pillar 1: Fill This Gap (0-5s)
+//     LEFT  → Fill-This-Gap card is active. A cancellation toast,
+//             then Maria L. surfaces with three reasons, then a
+//             pre-drafted message and a Send button pulse.
+//     RIGHT → Calendar. Tuesday noon flashes amber, then turns
+//             rose-dashed "open," then fills with Maria L.
 //
-// HK May 16 2026: this is the moat demo. Lives only in
-// Ribbon 4 (Day-of-Session) per the 7-ribbon taxonomy.
+//   Pillar 2: Up-Next Briefing (5-10s)
+//     LEFT  → Up-Next card is active. Three "remember-this"
+//             bullets about the next client appear, pulled
+//             from her last session.
+//     RIGHT → Calendar. The 1:30 PM slot pulses, three small
+//             paper-note dots appear above it, and a briefing
+//             chip slides out beside it.
+//
+//   Pillar 3: Body Load Awareness (10-15s)
+//     LEFT  → Body-Load card is active. Warning copy: three
+//             deep tissue in a row, then a recovery suggestion.
+//     RIGHT → Calendar. Three appointments get a thicker red
+//             left-rail and a small intensity bar fills under
+//             them. An amber banner at the bottom flags the load.
+//
+// Implementation: pure CSS keyframes on one shared 15s loop.
+// Each element uses its own keyframe percentage windows to
+// enter/exit during its pillar's slot, so no JS timing logic.
+//
+// prefers-reduced-motion: collapse to the third pillar's
+// settled state (it's the most striking image) without any
+// animation.
 
 import React from 'react';
 
@@ -32,6 +45,7 @@ const C = {
   forest:     '#2A5741',
   sage:       '#6B9E80',
   sageSoft:   '#A8C8B0',
+  sageBg:     '#F0F7F2',
   cream:      '#FBFAF4',
   creamDeep:  '#F2EFE4',
   gold:       '#C9A84C',
@@ -39,266 +53,289 @@ const C = {
   roseSoft:   '#FDF2F4',
   amber:      '#D97706',
   amberSoft:  '#FEF3C7',
+  amberDeep:  '#92400E',
+  red:        '#DC2626',
+  redSoft:    '#FEF2F4',
   ink:        '#3F4F45',
   inkSoft:    '#6B7280',
   inkFade:    '#9CA3AF',
 };
 
-const LOOP_DURATION = 13; // seconds, the full loop
-
 export default function SmartCalendarAnimation() {
   return (
-    <div className="bm-smart-cal" style={{
-      maxWidth: 480, margin: '0 auto', background: '#fff',
+    <div className="bm-sc-root" style={{
+      maxWidth: 720, margin: '0 auto', background: '#fff',
       borderRadius: 20, overflow: 'hidden',
       boxShadow: '0 18px 48px rgba(42, 87, 65, 0.13), 0 2px 8px rgba(42, 87, 65, 0.06)',
-      border: `1px solid rgba(74, 107, 84, 0.10)`,
+      border: '1px solid rgba(74, 107, 84, 0.10)',
     }}>
       <style>{css}</style>
 
-      {/* ─── Header bar ──────────────────────────────────────── */}
-      <div style={{
-        background: `linear-gradient(135deg, ${C.forestDeep} 0%, ${C.forest} 100%)`,
-        padding: '14px 18px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-      }}>
+      {/* Header */}
+      <div className="bm-sc-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 16 }}>📅</span>
           <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Your Tuesday</span>
         </div>
-        <div className="bm-sc-time" style={{
-          fontFamily: 'Georgia, serif', fontStyle: 'italic',
-          fontSize: 12, color: 'rgba(255,255,255,0.85)',
-        }}>
-          11:47 AM
+        <div className="bm-sc-pulse">
+          <span className="bm-sc-pulse-dot" />
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+            live
+          </span>
         </div>
       </div>
 
-      {/* ─── Stage area ──────────────────────────────────────── */}
-      <div style={{ padding: '18px 18px 20px', minHeight: 460, position: 'relative' }}>
+      <div className="bm-sc-stage">
+        {/* LEFT: insight panel that cycles through 3 pillars */}
+        <div className="bm-sc-insights">
+          <PillarFill />
+          <PillarBriefing />
+          <PillarBodyLoad />
+        </div>
 
-        {/* ── Act 1 marker: cancellation toast ─────────────── */}
-        <div className="bm-sc-toast" style={{
-          background: C.amberSoft,
-          border: `1px solid ${C.amber}`,
-          borderRadius: 12,
-          padding: '10px 14px',
-          marginBottom: 14,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-        }}>
-          <div className="bm-sc-toast-dot" style={{
-            width: 8, height: 8, borderRadius: 4,
-            background: C.amber, flexShrink: 0,
-          }} />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#92400E' }}>
-              Cancellation just landed
-            </div>
-            <div style={{ fontSize: 11, color: '#B45309', marginTop: 1 }}>
-              Sarah M. moved her noon session
+        {/* RIGHT: calendar that responds to whichever pillar is active */}
+        <div className="bm-sc-calendar">
+          <CalendarBoard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── LEFT-COLUMN PILLAR CARDS ───────────────────────────────────
+
+function PillarFill() {
+  return (
+    <article className="bm-sc-card bm-sc-card--fill">
+      <div className="bm-sc-card-eyebrow" style={{ color: C.amberDeep }}>
+        ⚡ Fill this gap
+      </div>
+      <div className="bm-sc-card-title">
+        A slot opens. We name<br/>the one client to text.
+      </div>
+
+      <div className="bm-sc-card-body bm-sc-card-body--fill">
+        <div className="bm-sc-mini-row">
+          <Avatar initials="ML" size={28} />
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>Maria L.</div>
+            <div style={{ fontSize: 11, color: C.inkSoft, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+              14 sessions · regular since '24
             </div>
           </div>
         </div>
 
-        {/* ── Mini-calendar with the open slot ─────────────── */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '52px 1fr',
-          gap: 8,
-          marginBottom: 16,
-        }}>
-          {[
-            { time: '10:00', label: 'Jennifer K.', focus: 'Lower back', booked: true },
-            { time: '11:00', label: 'Buffer', focus: '', buffer: true },
-            { time: '12:00', label: '', focus: '', open: true, key: 'slot' },
-            { time: '1:30',  label: 'Amy W.', focus: 'Full body', booked: true },
-            { time: '3:00',  label: 'Rachel T.', focus: 'Neck + shoulders', booked: true },
-          ].map((row, i) => (
-            <React.Fragment key={i}>
-              <div style={{
-                fontSize: 11, fontWeight: 600, color: C.inkFade,
-                fontFamily: 'Georgia, serif', fontStyle: 'italic',
-                paddingTop: 8, textAlign: 'right',
-              }}>
-                {row.time}
-              </div>
-              {row.open ? (
-                <SlotBox />
-              ) : row.buffer ? (
-                <div style={{
-                  background: 'transparent',
-                  borderTop: `1px dashed ${C.creamDeep}`,
-                  borderBottom: `1px dashed ${C.creamDeep}`,
-                  padding: '4px 12px',
-                  fontSize: 10, color: C.inkFade,
-                  fontStyle: 'italic', fontFamily: 'Georgia, serif',
-                }}>
-                  ~ buffer ~
-                </div>
-              ) : (
-                <div style={{
-                  background: '#FAFAF7',
-                  border: `1px solid ${C.creamDeep}`,
-                  borderLeft: `3px solid ${C.sageSoft}`,
-                  borderRadius: 10,
-                  padding: '8px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: C.ink }}>{row.label}</div>
-                    <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 1 }}>{row.focus}</div>
-                  </div>
-                </div>
-              )}
-            </React.Fragment>
-          ))}
+        <div className="bm-sc-reasons">
+          <ReasonRow index={0} text="Books Tuesdays at noon" />
+          <ReasonRow index={1} text="6 weeks since her last visit" />
+          <ReasonRow index={2} text="Texted 'thinking of booking' last Friday" />
         </div>
 
-        {/* ── Act 2: intelligence card surfaces the right client ── */}
-        <div className="bm-sc-intel" style={{
-          background: `linear-gradient(180deg, ${C.cream} 0%, #fff 100%)`,
-          border: `1.5px solid ${C.sageSoft}`,
-          borderRadius: 14,
-          padding: '14px 16px',
-          boxShadow: '0 4px 14px rgba(74, 107, 84, 0.10)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          {/* Sage corner accent */}
-          <div style={{
-            position: 'absolute', top: 0, right: 0,
-            width: 80, height: 80,
-            background: `radial-gradient(circle at top right, ${C.sageSoft}33 0%, transparent 70%)`,
-            pointerEvents: 'none',
-          }} />
+        <div className="bm-sc-draft">
+          "Hi Maria, just had a noon spot open up Tuesday if you'd like it. Same focus as last time?"
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-              ⚡ Fill this gap
+        <button type="button" className="bm-sc-send">
+          <span>Send to Maria</span>
+          <span aria-hidden="true">→</span>
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function PillarBriefing() {
+  return (
+    <article className="bm-sc-card bm-sc-card--brief">
+      <div className="bm-sc-card-eyebrow" style={{ color: '#166534' }}>
+        📋 Up-next briefing
+      </div>
+      <div className="bm-sc-card-title">
+        Three things to remember<br/>before Amy walks in.
+      </div>
+
+      <div className="bm-sc-card-body bm-sc-card-body--brief">
+        <div className="bm-sc-mini-row">
+          <Avatar initials="AW" size={28} variant="brief" />
+          <div>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink }}>Amy W. · 1:30 PM</div>
+            <div style={{ fontSize: 11, color: C.inkSoft, fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+              From your last 3 sessions
+            </div>
+          </div>
+        </div>
+
+        <div className="bm-sc-notes">
+          <NoteRow index={0} icon="🎯" label="Focus" text="Left QL and right lower trap" />
+          <NoteRow index={1} icon="✋" label="Pressure" text="Firm, asked for deeper last time" />
+          <NoteRow index={2} icon="💬" label="Wants" text="Loves the warm towel finish" />
+        </div>
+
+        <div className="bm-sc-briefing-foot">
+          Reads in four seconds. Already on your screen.
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function PillarBodyLoad() {
+  return (
+    <article className="bm-sc-card bm-sc-card--load">
+      <div className="bm-sc-card-eyebrow" style={{ color: C.forest }}>
+        🌿 Body load awareness
+      </div>
+      <div className="bm-sc-card-title">
+        Three deep tissue back to back.<br/>Your wrists are about to know.
+      </div>
+
+      <div className="bm-sc-card-body bm-sc-card-body--load">
+        <div className="bm-sc-load-warn">
+          <span style={{ fontSize: 16, lineHeight: 1 }}>⚠️</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.amberDeep }}>
+              Heads up about today
+            </div>
+            <div style={{ fontSize: 11.5, color: C.amberDeep, marginTop: 2, lineHeight: 1.5 }}>
+              Three 90-min deep tissue in a row, no buffer to recover.
+            </div>
+          </div>
+        </div>
+
+        <div className="bm-sc-suggest">
+          <SuggestRow index={0} icon="💧" text="Hydrate now, before Jennifer's session" />
+          <SuggestRow index={1} icon="🤲" text="Take wrist breaks between Amy and Rachel" />
+          <SuggestRow index={2} icon="🛌" text="Skip strength training tonight, sleep early" />
+        </div>
+
+        <div className="bm-sc-load-foot">
+          Built for the long career, not the long week.
+        </div>
+      </div>
+    </article>
+  );
+}
+
+// ─── RIGHT-COLUMN CALENDAR ─────────────────────────────────────
+
+function CalendarBoard() {
+  const slots = [
+    { time: '10:00', client: 'Jennifer K.', focus: 'Lower back', service: 'Deep tissue 90', heavy: true,  key: 's1' },
+    { time: '11:30', client: null, focus: '', service: 'buffer', buffer: true, key: 'buf1' },
+    { time: '12:00', client: null, focus: '', service: '', open: true, key: 's2' },
+    { time: '1:30',  client: 'Amy W.', focus: 'Full body', service: 'Deep tissue 90', heavy: true, focused: true, key: 's3' },
+    { time: '3:30',  client: 'Rachel T.', focus: 'Neck + shoulders', service: 'Deep tissue 90', heavy: true, key: 's4' },
+  ];
+
+  return (
+    <div className="bm-sc-cal-board">
+      {/* Cancellation toast - pillar 1 */}
+      <div className="bm-sc-cal-toast bm-sc-cal-toast--fill">
+        <span style={{ fontSize: 12 }}>🌿</span>
+        <span>Cancellation, Sarah moved her noon</span>
+      </div>
+
+      {/* Briefing chip - pillar 2 */}
+      <div className="bm-sc-cal-toast bm-sc-cal-toast--brief">
+        <span style={{ fontSize: 12 }}>📋</span>
+        <span>Briefing ready for Amy W.</span>
+      </div>
+
+      {/* Body load banner - pillar 3 */}
+      <div className="bm-sc-cal-toast bm-sc-cal-toast--load">
+        <span style={{ fontSize: 12 }}>⚠️</span>
+        <span>Three deep tissue in a row today</span>
+      </div>
+
+      <div className="bm-sc-cal-grid">
+        {slots.map((s) => (
+          <CalendarRow key={s.key} slot={s} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CalendarRow({ slot }) {
+  // Three states for the noon slot: empty (pillar 1 first half),
+  // open-rose (pillar 1 mid), filled (pillar 1 end and onward).
+  // All other slots: static, but the 1:30 row gets a focus halo
+  // during pillar 2, and the three heavy rows get red rails +
+  // intensity bars during pillar 3.
+
+  if (slot.buffer) {
+    return (
+      <div className="bm-sc-cal-row bm-sc-cal-row--buffer">
+        <div className="bm-sc-cal-time">{slot.time}</div>
+        <div className="bm-sc-cal-buffer">~ buffer ~</div>
+      </div>
+    );
+  }
+
+  if (slot.open) {
+    return (
+      <div className="bm-sc-cal-row">
+        <div className="bm-sc-cal-time">{slot.time}</div>
+        <div className="bm-sc-cal-slot-host">
+          {/* Empty (before pillar 1 hits) */}
+          <div className="bm-sc-cal-empty">
+            <div style={{ height: 8, background: 'transparent' }} />
+          </div>
+          {/* Open + rose dashed during pillar 1 */}
+          <div className="bm-sc-cal-open">
+            <span style={{ fontSize: 13 }}>🌿</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: C.rose, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
+              Open · 60 min
             </span>
           </div>
-
-          {/* Client surfaced */}
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
-            <Avatar initials="ML" />
+          {/* Filled with Maria L. after pillar 1 */}
+          <div className="bm-sc-cal-filled">
+            <Avatar initials="ML" size={22} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 1 }}>
-                Maria L.
-              </div>
-              <div style={{ fontSize: 11, color: C.inkSoft, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
-                14 sessions · regular since '24
-              </div>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: C.forest }}>Maria L. · confirmed</div>
             </div>
+            <span style={{ fontSize: 13, color: C.sage }}>✓</span>
           </div>
-
-          {/* Three reasons, each staggered */}
-          <div className="bm-sc-reasons">
-            <Reason index={0} text="Books Tuesdays at noon" />
-            <Reason index={1} text="6 weeks since her last visit" />
-            <Reason index={2} text="Texted you 'thinking of booking' last Friday" />
-          </div>
-
-          {/* Act 3: drafted message + send button */}
-          <div className="bm-sc-draft" style={{
-            marginTop: 14,
-            background: '#fff',
-            border: `1px dashed ${C.sageSoft}`,
-            borderRadius: 10,
-            padding: '10px 12px',
-            fontSize: 11.5,
-            color: C.ink,
-            fontFamily: 'Georgia, serif',
-            fontStyle: 'italic',
-            lineHeight: 1.5,
-          }}>
-            "Hi Maria, just had a noon spot open up Tuesday if you'd like it. Same focus as last time?"
-          </div>
-
-          <button className="bm-sc-send" type="button" style={{
-            marginTop: 12,
-            width: '100%',
-            background: C.forest,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 10,
-            padding: '11px 14px',
-            fontSize: 13,
-            fontWeight: 700,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            cursor: 'default',
-          }}>
-            <span>Send to Maria</span>
-            <span aria-hidden="true">→</span>
-          </button>
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
-// ─── Sub-components ───────────────────────────────────────────
-
-function SlotBox() {
+  const heavyClass = slot.heavy ? ' is-heavy' : '';
+  const focusedClass = slot.focused ? ' is-focused' : '';
   return (
-    <div className="bm-sc-slot" style={{
-      borderRadius: 10, padding: '8px 12px',
-      display: 'flex', alignItems: 'center', gap: 10,
-      minHeight: 38,
-      position: 'relative',
-      overflow: 'hidden',
-    }}>
-      {/* Empty state (acts 1+2) */}
-      <div className="bm-sc-slot-empty" style={{
-        position: 'absolute', inset: 0,
-        borderRadius: 10,
-        background: C.roseSoft,
-        border: `1.5px dashed ${C.rose}`,
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 12px',
-      }}>
-        <span style={{ fontSize: 13 }}>🌿</span>
-        <span style={{ fontSize: 12, fontWeight: 600, color: C.rose, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
-          Open · 60 min
-        </span>
-      </div>
-      {/* Filled state (act 3 onward) */}
-      <div className="bm-sc-slot-filled" style={{
-        position: 'absolute', inset: 0,
-        borderRadius: 10,
-        background: '#F0F7F2',
-        border: `1.5px solid ${C.sage}`,
-        borderLeft: `3px solid ${C.sage}`,
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '8px 12px',
-      }}>
-        <Avatar initials="ML" size={24} />
+    <div className={`bm-sc-cal-row${heavyClass}${focusedClass}`}>
+      <div className="bm-sc-cal-time">{slot.time}</div>
+      <div className="bm-sc-cal-card">
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.forest }}>Maria L. · confirmed</div>
+          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.ink, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {slot.client}
+            {slot.focused && <span className="bm-sc-cal-notes">·  ·  ·</span>}
+          </div>
+          <div style={{ fontSize: 10, color: C.inkSoft, marginTop: 1 }}>
+            {slot.service}
+          </div>
         </div>
-        <span style={{ fontSize: 14, color: C.sage }}>✓</span>
+        {slot.heavy && <div className="bm-sc-cal-load-bar" />}
       </div>
     </div>
   );
 }
 
-function Avatar({ initials, size = 32 }) {
+// ─── Shared ─────────────────────────────────────────────────────
+
+function Avatar({ initials, size = 32, variant = 'fill' }) {
+  const gradient = variant === 'brief'
+    ? `linear-gradient(135deg, #166534 0%, #14532D 100%)`
+    : `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`;
   return (
     <div style={{
       width: size, height: size,
       borderRadius: size / 2,
-      background: `linear-gradient(135deg, ${C.sage} 0%, ${C.forest} 100%)`,
+      background: gradient,
       color: '#fff',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size === 32 ? 12 : 10,
+      fontSize: size <= 24 ? 10 : 11,
       fontWeight: 700,
       flexShrink: 0,
       boxShadow: '0 2px 6px rgba(42, 87, 65, 0.18)',
@@ -308,155 +345,506 @@ function Avatar({ initials, size = 32 }) {
   );
 }
 
-function Reason({ index, text }) {
+function ReasonRow({ index, text }) {
   return (
-    <div className="bm-sc-reason" style={{
-      '--bm-sc-reason-i': index,
-      display: 'flex', alignItems: 'center', gap: 8,
-      padding: '5px 0',
-      fontSize: 12,
-      color: C.ink,
-      lineHeight: 1.4,
-    }}>
-      <span style={{
-        fontSize: 10, color: C.sage, flexShrink: 0,
-        fontFamily: 'Georgia, serif', fontWeight: 700,
-      }}>
-        ✓
-      </span>
+    <div className="bm-sc-reason" style={{ '--bm-sc-r-i': index }}>
+      <span style={{ fontSize: 10, color: C.sage, fontWeight: 700, fontFamily: 'Georgia, serif' }}>✓</span>
       <span>{text}</span>
     </div>
   );
 }
 
-// ─── Keyframes ────────────────────────────────────────────────
-// One single 13-second loop driving everything. Each element
-// gets the same animation-duration and a different keyframe
-// percentage range, so the browser handles all timing.
-//
-// Loop map:
-//   0-8%      Act 1 enter: cancellation toast slides in,
-//             slot pulse begins
-//   8-27%     Act 1 hold + slot keeps pulsing
-//   27-35%    Act 2 enter: intelligence card slides up
-//   35-42%    Reasons stagger in
-//   42-54%    Act 2 hold
-//   54-58%    Draft message appears
-//   58-62%    Send button pulse
-//   62-67%    Slot transitions empty → filled
-//   67-92%    Settled hold (Maria is in the slot)
-//   92-100%   Soft fade back to start so loop restart is invisible
-const css = `
-@keyframes bm-sc-toast {
-  0%, 3% { opacity: 0; transform: translateY(-10px); }
-  6%, 90% { opacity: 1; transform: translateY(0); }
-  95%, 100% { opacity: 0; transform: translateY(-6px); }
-}
-@keyframes bm-sc-toast-dot {
-  0%, 8%, 16%, 24% { opacity: 1; }
-  4%, 12%, 20% { opacity: 0.3; }
-  25%, 100% { opacity: 1; }
-}
-@keyframes bm-sc-slot-empty {
-  0%, 60% { opacity: 1; }
-  65%, 100% { opacity: 0; }
-}
-@keyframes bm-sc-slot-empty-pulse {
-  0%, 60% { box-shadow: 0 0 0 0 rgba(199, 123, 138, 0.45); }
-  30% { box-shadow: 0 0 0 8px rgba(199, 123, 138, 0); }
-  60%, 100% { box-shadow: 0 0 0 0 rgba(199, 123, 138, 0); }
-}
-@keyframes bm-sc-slot-filled {
-  0%, 60% { opacity: 0; transform: scale(0.96); }
-  65% { opacity: 1; transform: scale(1.03); }
-  68%, 95% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0.6; transform: scale(1); }
-}
-@keyframes bm-sc-intel {
-  0%, 22% { opacity: 0; transform: translateY(16px); }
-  30%, 92% { opacity: 1; transform: translateY(0); }
-  98%, 100% { opacity: 0; transform: translateY(8px); }
-}
-@keyframes bm-sc-reason {
-  0%, 32% { opacity: 0; transform: translateX(-8px); }
-  /* stagger handled per element via --bm-sc-reason-i delay */
-  42%, 92% { opacity: 1; transform: translateX(0); }
-  98%, 100% { opacity: 0; }
-}
-@keyframes bm-sc-draft {
-  0%, 50% { opacity: 0; transform: translateY(6px); }
-  56%, 92% { opacity: 1; transform: translateY(0); }
-  98%, 100% { opacity: 0; }
-}
-@keyframes bm-sc-send {
-  0%, 54% { opacity: 0; transform: translateY(6px); }
-  58% { opacity: 1; transform: translateY(0) scale(1); }
-  61% { transform: translateY(0) scale(1.04); box-shadow: 0 0 0 6px rgba(42, 87, 65, 0.18); }
-  65%, 92% { opacity: 1; transform: translateY(0) scale(1); box-shadow: 0 0 0 0 rgba(42, 87, 65, 0); }
-  98%, 100% { opacity: 0; }
-}
-@keyframes bm-sc-time {
-  0% { opacity: 1; content: "11:47 AM"; }
-  60% { opacity: 1; }
-  62% { opacity: 0; }
-  64% { opacity: 1; }
-  100% { opacity: 1; }
+function NoteRow({ index, icon, label, text }) {
+  return (
+    <div className="bm-sc-note" style={{ '--bm-sc-n-i': index }}>
+      <span style={{ fontSize: 13 }}>{icon}</span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, color: '#166534', marginRight: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 11.5, color: C.ink }}>{text}</span>
+      </div>
+    </div>
+  );
 }
 
-.bm-smart-cal {
-  --d: ${LOOP_DURATION}s;
+function SuggestRow({ index, icon, text }) {
+  return (
+    <div className="bm-sc-suggest-row" style={{ '--bm-sc-s-i': index }}>
+      <span style={{ fontSize: 13 }}>{icon}</span>
+      <span style={{ fontSize: 11.5, color: C.ink, lineHeight: 1.45 }}>{text}</span>
+    </div>
+  );
 }
-.bm-sc-toast {
-  animation: bm-sc-toast var(--d) ease-in-out infinite;
-  will-change: opacity, transform;
+
+// ─── CSS keyframes ──────────────────────────────────────────────
+// One shared 15s loop. Pillar windows:
+//   Pillar 1 (Fill):     0% to 33%   (0 to 5s)
+//   Pillar 2 (Briefing): 33% to 66%   (5 to 10s)
+//   Pillar 3 (Body Load):66% to 100%  (10 to 15s)
+//
+// Card visibility, calendar toasts, and slot states all key
+// off these same windows. Reasons, notes, and suggestions
+// stagger within their pillar using a CSS-variable delay
+// (--bm-sc-r-i etc.) multiplied by 0.35s.
+const css = `
+.bm-sc-root { --d: 15s; }
+
+.bm-sc-header {
+  background: linear-gradient(135deg, ${C.forestDeep} 0%, ${C.forest} 100%);
+  padding: 14px 18px;
+  display: flex; align-items: center; justify-content: space-between;
 }
-.bm-sc-toast-dot {
-  animation: bm-sc-toast-dot var(--d) ease-in-out infinite;
+.bm-sc-pulse { display: flex; align-items: center; gap: 6px; }
+.bm-sc-pulse-dot {
+  width: 7px; height: 7px; border-radius: 4px;
+  background: ${C.sageSoft};
+  box-shadow: 0 0 0 0 ${C.sageSoft};
+  animation: bm-sc-pulse 1.6s ease-in-out infinite;
 }
-.bm-sc-slot-empty {
-  animation:
-    bm-sc-slot-empty var(--d) ease-in-out infinite,
-    bm-sc-slot-empty-pulse var(--d) ease-in-out infinite;
+@keyframes bm-sc-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 ${C.sageSoft}; }
+  50% { box-shadow: 0 0 0 6px rgba(168, 200, 176, 0); }
 }
-.bm-sc-slot-filled {
+
+/* Two-column stage. Mobile stacks. */
+.bm-sc-stage {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 460px;
+}
+@media (min-width: 720px) {
+  .bm-sc-stage {
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+}
+
+.bm-sc-insights {
+  position: relative;
+  padding: 18px 18px 14px;
+  background: ${C.cream};
+  min-height: 340px;
+  order: 2;
+}
+.bm-sc-calendar {
+  padding: 18px;
+  background: #fff;
+  order: 1;
+  border-bottom: 1px solid ${C.creamDeep};
+}
+@media (min-width: 720px) {
+  .bm-sc-insights { order: 1; min-height: 460px; }
+  .bm-sc-calendar { order: 2; border-bottom: none; border-left: 1px solid ${C.creamDeep}; }
+}
+
+/* ── Pillar card base. All three stack at the same spot.
+   Visibility cycles via the master loop. ──────────────── */
+.bm-sc-card {
+  position: absolute;
+  inset: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   opacity: 0;
-  animation: bm-sc-slot-filled var(--d) ease-in-out infinite;
+  transform: translateY(8px);
   will-change: opacity, transform;
+  animation: bm-sc-card-fill var(--d) ease-in-out infinite;
 }
-.bm-sc-intel {
-  opacity: 0;
-  animation: bm-sc-intel var(--d) ease-in-out infinite;
-  will-change: opacity, transform;
+.bm-sc-card--brief { animation-name: bm-sc-card-brief; }
+.bm-sc-card--load  { animation-name: bm-sc-card-load; }
+
+.bm-sc-card-eyebrow {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
 }
+.bm-sc-card-title {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: ${C.ink};
+  letter-spacing: -0.005em;
+}
+.bm-sc-card-body {
+  display: flex; flex-direction: column; gap: 10px;
+  flex: 1;
+}
+
+.bm-sc-mini-row {
+  display: flex; align-items: center; gap: 10px;
+}
+
+/* ── Pillar 1 inner: reasons + draft + send ─────────── */
+.bm-sc-reasons { display: flex; flex-direction: column; gap: 4px; }
 .bm-sc-reason {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: ${C.ink}; line-height: 1.4;
+  padding: 3px 0;
   opacity: 0;
-  animation: bm-sc-reason var(--d) ease-in-out infinite;
-  animation-delay: calc(var(--bm-sc-reason-i, 0) * 0.4s);
-  will-change: opacity, transform;
+  transform: translateX(-6px);
+  animation: bm-sc-reason var(--d) ease-out infinite;
+  animation-delay: calc(var(--bm-sc-r-i, 0) * 0.35s);
 }
 .bm-sc-draft {
+  background: #fff;
+  border: 1px dashed ${C.sageSoft};
+  border-radius: 10px;
+  padding: 9px 11px;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 11.5px;
+  color: ${C.ink};
+  line-height: 1.5;
   opacity: 0;
   animation: bm-sc-draft var(--d) ease-in-out infinite;
 }
 .bm-sc-send {
+  background: ${C.forest};
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: default;
   opacity: 0;
   animation: bm-sc-send var(--d) ease-in-out infinite;
 }
 
-/* Reduced motion: settled state only, no animation. */
+/* ── Pillar 2 inner: 3 briefing notes ───────────────── */
+.bm-sc-notes {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.bm-sc-note {
+  display: flex; align-items: flex-start; gap: 9px;
+  background: #fff;
+  border: 1px solid #BBF7D0;
+  border-radius: 10px;
+  padding: 8px 10px;
+  opacity: 0;
+  transform: translateX(-6px);
+  animation: bm-sc-note var(--d) ease-out infinite;
+  animation-delay: calc(var(--bm-sc-n-i, 0) * 0.35s);
+}
+.bm-sc-briefing-foot {
+  margin-top: auto;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 11px;
+  color: ${C.inkSoft};
+  text-align: center;
+  padding-top: 4px;
+  opacity: 0;
+  animation: bm-sc-brief-foot var(--d) ease-in-out infinite;
+}
+
+/* ── Pillar 3 inner: warning + 3 suggestions ────────── */
+.bm-sc-load-warn {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: ${C.amberSoft};
+  border: 1px solid ${C.amber};
+  border-radius: 10px;
+  padding: 10px 12px;
+  opacity: 0;
+  animation: bm-sc-load-warn var(--d) ease-in-out infinite;
+}
+.bm-sc-suggest {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.bm-sc-suggest-row {
+  display: flex; align-items: flex-start; gap: 9px;
+  padding: 4px 0;
+  opacity: 0;
+  transform: translateX(-6px);
+  animation: bm-sc-suggest var(--d) ease-out infinite;
+  animation-delay: calc(var(--bm-sc-s-i, 0) * 0.35s);
+}
+.bm-sc-load-foot {
+  margin-top: auto;
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 11px;
+  color: ${C.inkSoft};
+  text-align: center;
+  padding-top: 4px;
+  opacity: 0;
+  animation: bm-sc-load-foot var(--d) ease-in-out infinite;
+}
+
+/* ── Calendar board ─────────────────────────────────── */
+.bm-sc-cal-board { position: relative; }
+.bm-sc-cal-toast {
+  display: flex; align-items: center; gap: 8px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: 0;
+}
+.bm-sc-cal-toast--fill {
+  background: ${C.amberSoft};
+  border: 1px solid ${C.amber};
+  color: ${C.amberDeep};
+  animation: bm-sc-toast-fill var(--d) ease-in-out infinite;
+}
+.bm-sc-cal-toast--brief {
+  background: #F0FDF4;
+  border: 1px solid #86EFAC;
+  color: #166534;
+  position: absolute; top: 0; left: 0; right: 0;
+  margin-bottom: 0;
+  animation: bm-sc-toast-brief var(--d) ease-in-out infinite;
+}
+.bm-sc-cal-toast--load {
+  background: ${C.redSoft};
+  border: 1px solid ${C.rose};
+  color: ${C.red};
+  position: absolute; top: 0; left: 0; right: 0;
+  margin-bottom: 0;
+  animation: bm-sc-toast-load var(--d) ease-in-out infinite;
+}
+
+.bm-sc-cal-grid {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 6px 8px;
+  margin-top: 12px;
+}
+.bm-sc-cal-row {
+  display: contents;
+}
+.bm-sc-cal-time {
+  font-size: 11px; color: ${C.inkFade};
+  font-family: Georgia, serif; font-style: italic;
+  text-align: right;
+  padding-top: 9px;
+}
+.bm-sc-cal-card {
+  background: #FAFAF7;
+  border: 1px solid ${C.creamDeep};
+  border-left: 3px solid ${C.sageSoft};
+  border-radius: 10px;
+  padding: 8px 11px;
+  display: flex; align-items: center; gap: 10px;
+  position: relative;
+  min-height: 36px;
+}
+.bm-sc-cal-row--buffer .bm-sc-cal-buffer {
+  font-size: 10px;
+  color: ${C.inkFade};
+  font-family: Georgia, serif;
+  font-style: italic;
+  border-top: 1px dashed ${C.creamDeep};
+  border-bottom: 1px dashed ${C.creamDeep};
+  padding: 4px 12px;
+  text-align: center;
+}
+
+/* Heavy session: red-rose accent strengthens during pillar 3 */
+.bm-sc-cal-row.is-heavy .bm-sc-cal-card {
+  animation: bm-sc-heavy-rail var(--d) ease-in-out infinite;
+}
+.bm-sc-cal-load-bar {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 3px;
+  background: ${C.rose};
+  border-radius: 0 0 8px 8px;
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: bm-sc-load-bar var(--d) ease-out infinite;
+}
+
+/* Focused row (Amy W. for pillar 2) */
+.bm-sc-cal-row.is-focused .bm-sc-cal-card {
+  animation: bm-sc-focused var(--d) ease-in-out infinite;
+}
+.bm-sc-cal-notes {
+  display: inline-block;
+  color: #16A34A;
+  letter-spacing: 2px;
+  font-size: 10px;
+  opacity: 0;
+  animation: bm-sc-notes var(--d) ease-in-out infinite;
+}
+
+/* Slot host with three layered states (empty / open / filled) */
+.bm-sc-cal-slot-host {
+  position: relative;
+  min-height: 36px;
+}
+.bm-sc-cal-empty,
+.bm-sc-cal-open,
+.bm-sc-cal-filled {
+  position: absolute; inset: 0;
+  border-radius: 10px;
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 12px;
+}
+.bm-sc-cal-open {
+  background: ${C.roseSoft};
+  border: 1.5px dashed ${C.rose};
+  opacity: 0;
+  animation: bm-sc-slot-open var(--d) ease-in-out infinite;
+}
+.bm-sc-cal-filled {
+  background: ${C.sageBg};
+  border: 1.5px solid ${C.sage};
+  border-left: 3px solid ${C.sage};
+  opacity: 0;
+  animation: bm-sc-slot-filled var(--d) ease-in-out infinite;
+}
+
+/* ── Keyframes ─────────────────────────────────────────
+   Loop = 15s. Pillar windows on 0/33/66.
+   Plus a 2% fade between pillars so transitions feel
+   intentional. */
+
+/* LEFT card visibility */
+@keyframes bm-sc-card-fill {
+  0%, 1%  { opacity: 0; transform: translateY(8px); }
+  3%, 30% { opacity: 1; transform: translateY(0); }
+  33%     { opacity: 0; transform: translateY(-8px); }
+  100%    { opacity: 0; }
+}
+@keyframes bm-sc-card-brief {
+  0%, 33% { opacity: 0; transform: translateY(8px); }
+  36%, 63% { opacity: 1; transform: translateY(0); }
+  66%     { opacity: 0; transform: translateY(-8px); }
+  100%    { opacity: 0; }
+}
+@keyframes bm-sc-card-load {
+  0%, 66% { opacity: 0; transform: translateY(8px); }
+  69%, 96% { opacity: 1; transform: translateY(0); }
+  100%    { opacity: 0; transform: translateY(-4px); }
+}
+
+/* LEFT inner elements per pillar */
+@keyframes bm-sc-reason {
+  0%, 5%  { opacity: 0; transform: translateX(-6px); }
+  10%, 30% { opacity: 1; transform: translateX(0); }
+  33%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-draft {
+  0%, 18% { opacity: 0; transform: translateY(4px); }
+  22%, 30% { opacity: 1; transform: translateY(0); }
+  33%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-send {
+  0%, 23% { opacity: 0; transform: scale(0.96); }
+  26%     { opacity: 1; transform: scale(1.05); box-shadow: 0 0 0 5px rgba(42, 87, 65, 0.20); }
+  29%, 30% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 transparent; }
+  33%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-note {
+  0%, 38% { opacity: 0; transform: translateX(-6px); }
+  43%, 63% { opacity: 1; transform: translateX(0); }
+  66%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-brief-foot {
+  0%, 55% { opacity: 0; }
+  58%, 63% { opacity: 1; }
+  66%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-load-warn {
+  0%, 68% { opacity: 0; transform: scale(0.96); }
+  72%, 96% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; }
+}
+@keyframes bm-sc-suggest {
+  0%, 72% { opacity: 0; transform: translateX(-6px); }
+  78%, 96% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; }
+}
+@keyframes bm-sc-load-foot {
+  0%, 88% { opacity: 0; }
+  92%, 96% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* RIGHT calendar toasts per pillar */
+@keyframes bm-sc-toast-fill {
+  0%, 1%  { opacity: 0; transform: translateY(-6px); }
+  4%, 30% { opacity: 1; transform: translateY(0); }
+  33%, 100% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes bm-sc-toast-brief {
+  0%, 34% { opacity: 0; transform: translateY(-6px); }
+  38%, 63% { opacity: 1; transform: translateY(0); }
+  66%, 100% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes bm-sc-toast-load {
+  0%, 67% { opacity: 0; transform: translateY(-6px); }
+  71%, 96% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+
+/* RIGHT noon slot states */
+@keyframes bm-sc-slot-open {
+  0%, 4%   { opacity: 0; box-shadow: 0 0 0 0 rgba(199, 123, 138, 0); }
+  7%, 22%  { opacity: 1; box-shadow: 0 0 0 0 rgba(199, 123, 138, 0.4); }
+  14%      { box-shadow: 0 0 0 6px rgba(199, 123, 138, 0); }
+  25%, 100% { opacity: 0; }
+}
+@keyframes bm-sc-slot-filled {
+  0%, 25%  { opacity: 0; transform: scale(0.96); }
+  29%      { opacity: 1; transform: scale(1.03); }
+  31%, 100% { opacity: 1; transform: scale(1); }
+}
+
+/* RIGHT heavy rows: red-rose left rail during pillar 3 */
+@keyframes bm-sc-heavy-rail {
+  0%, 70% { border-left-color: ${C.sageSoft}; background: #FAFAF7; }
+  75%, 96% { border-left-color: ${C.rose}; background: ${C.redSoft}; }
+  100% { border-left-color: ${C.sageSoft}; background: #FAFAF7; }
+}
+@keyframes bm-sc-load-bar {
+  0%, 74% { transform: scaleX(0); }
+  80%, 96% { transform: scaleX(1); }
+  100% { transform: scaleX(0); }
+}
+
+/* RIGHT Amy row focus during pillar 2 */
+@keyframes bm-sc-focused {
+  0%, 37% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0); border-color: ${C.creamDeep}; }
+  42%, 60% { box-shadow: 0 0 0 3px rgba(22, 101, 52, 0.18); border-color: #BBF7D0; }
+  65%, 100% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0); border-color: ${C.creamDeep}; }
+}
+@keyframes bm-sc-notes {
+  0%, 42% { opacity: 0; }
+  47%, 60% { opacity: 1; }
+  65%, 100% { opacity: 0; }
+}
+
+/* ── Reduced motion ─────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  .bm-sc-toast,
-  .bm-sc-toast-dot,
-  .bm-sc-slot-empty,
-  .bm-sc-slot-filled,
-  .bm-sc-intel,
-  .bm-sc-reason,
-  .bm-sc-draft,
-  .bm-sc-send {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
+  .bm-sc-pulse-dot { animation: none; }
+  .bm-sc-card,
+  .bm-sc-reason, .bm-sc-draft, .bm-sc-send,
+  .bm-sc-note, .bm-sc-briefing-foot,
+  .bm-sc-load-warn, .bm-sc-suggest-row, .bm-sc-load-foot,
+  .bm-sc-cal-toast--fill, .bm-sc-cal-toast--brief, .bm-sc-cal-toast--load,
+  .bm-sc-cal-open, .bm-sc-cal-filled,
+  .bm-sc-cal-row.is-heavy .bm-sc-cal-card,
+  .bm-sc-cal-row.is-focused .bm-sc-cal-card,
+  .bm-sc-cal-notes,
+  .bm-sc-cal-load-bar
+  { animation: none !important; }
+  .bm-sc-card { opacity: 0; transform: none; }
+  .bm-sc-card--load { opacity: 1; }
+  .bm-sc-card--load .bm-sc-load-warn,
+  .bm-sc-card--load .bm-sc-suggest-row,
+  .bm-sc-card--load .bm-sc-load-foot { opacity: 1; transform: none; }
+  .bm-sc-cal-toast--load { opacity: 1; transform: none; }
+  .bm-sc-cal-filled { opacity: 1; transform: none; }
+  .bm-sc-cal-row.is-heavy .bm-sc-cal-card {
+    border-left-color: ${C.rose};
+    background: ${C.redSoft};
   }
-  .bm-sc-slot-empty { display: none !important; }
+  .bm-sc-cal-load-bar { transform: scaleX(1); }
 }
 `;
