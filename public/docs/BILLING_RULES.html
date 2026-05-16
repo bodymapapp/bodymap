@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MyBodyMap: How Money Decisions Work</title>
+<title>MyBodyMap: How Money Decisions Work (Industry-Standard Practices)</title>
 <style>
   :root {
     --forest-deep: #1F4030;
     --forest: #2A5741;
     --sage: #6B9E80;
     --sage-soft: #A8C8B0;
+    --sage-pale: #E8F0E9;
     --cream: #FBFAF4;
     --cream-deep: #F2EFE4;
     --gold: #C9A84C;
@@ -20,8 +21,6 @@
     --amber-soft: #FEF3C7;
     --green-soft: #DCFCE7;
     --green-deep: #166534;
-    --red-soft: #FEF2F2;
-    --red-deep: #991B1B;
     --ink: #3F4F45;
     --ink-soft: #6B7280;
     --ink-fade: #9CA3AF;
@@ -39,19 +38,13 @@
 
   header.hero {
     background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
-    color: #fff;
-    padding: 56px 40px;
-    border-radius: 18px;
-    margin-bottom: 36px;
-    box-shadow: 0 18px 48px rgba(42, 87, 65, 0.18);
+    color: #fff; padding: 56px 40px; border-radius: 18px;
+    margin-bottom: 36px; box-shadow: 0 18px 48px rgba(42, 87, 65, 0.18);
   }
   header.hero h1 {
-    font-family: Georgia, serif;
-    font-weight: 400;
-    font-size: clamp(28px, 4vw, 44px);
-    margin: 0 0 14px;
-    letter-spacing: -0.015em;
-    line-height: 1.15;
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(28px, 4vw, 44px); margin: 0 0 14px;
+    letter-spacing: -0.015em; line-height: 1.15;
   }
   header.hero .eyebrow {
     font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
@@ -79,13 +72,10 @@
     color: var(--forest); margin: 28px 0 14px;
   }
 
-  /* Big principle box at the top */
   .core {
     background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
-    color: #fff;
-    border-radius: 16px;
-    padding: 38px 44px;
-    margin: 0 0 40px;
+    color: #fff; border-radius: 16px;
+    padding: 38px 44px; margin: 0 0 40px;
     box-shadow: 0 14px 36px rgba(42, 87, 65, 0.22);
   }
   .core .core-eyebrow {
@@ -101,26 +91,19 @@
     color: rgba(255,255,255,0.92); margin: 0 0 14px;
   }
   .core p strong {
-    color: #fff;
-    background: rgba(168, 200, 176, 0.20);
-    padding: 1px 6px;
-    border-radius: 4px;
+    color: #fff; background: rgba(168, 200, 176, 0.20);
+    padding: 1px 6px; border-radius: 4px;
   }
   .core .signature {
-    margin-top: 18px;
-    padding-top: 18px;
+    margin-top: 18px; padding-top: 18px;
     border-top: 1px solid rgba(168, 200, 176, 0.25);
     font-family: Georgia, serif; font-style: italic;
     font-size: 15px; color: rgba(255,255,255,0.8);
   }
 
-  /* TOC */
   .toc {
-    background: #fff;
-    border: 1px solid var(--cream-deep);
-    border-radius: 14px;
-    padding: 26px 30px;
-    margin-bottom: 36px;
+    background: #fff; border: 1px solid var(--cream-deep);
+    border-radius: 14px; padding: 26px 30px; margin-bottom: 36px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.04);
   }
   .toc h3 {
@@ -136,28 +119,32 @@
   }
   .toc a:hover { border-bottom-style: solid; color: var(--forest-deep); }
 
-  /* What changed */
-  .changed {
-    background: var(--rose-soft);
-    border-left: 4px solid var(--rose);
-    border-radius: 10px;
-    padding: 22px 26px;
+  .builtfrom {
+    background: var(--sage-pale);
+    border: 1px solid var(--sage-soft);
+    border-radius: 12px;
+    padding: 22px 28px;
     margin-bottom: 36px;
   }
-  .changed h3 {
-    margin: 0 0 8px; color: var(--red-deep); font-size: 16px;
-    font-family: -apple-system, sans-serif; font-weight: 700;
-    text-transform: uppercase; letter-spacing: 0.06em;
+  .builtfrom h3 {
+    margin: 0 0 10px; color: var(--forest-deep);
+    font-size: 16px; font-family: -apple-system, sans-serif;
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
   }
-  .changed p { margin: 0; font-size: 14.5px; line-height: 1.65; }
+  .builtfrom p {
+    margin: 0 0 8px; font-size: 14.5px; line-height: 1.65; color: var(--ink);
+  }
+  .builtfrom .sources {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-family: Georgia, serif;
+  }
 
-  /* Scenario */
   .situation {
-    background: #fff;
-    border: 1px solid var(--cream-deep);
-    border-radius: 14px;
-    padding: 32px 36px;
-    margin-bottom: 30px;
+    background: #fff; border: 1px solid var(--cream-deep);
+    border-radius: 14px; padding: 32px 36px; margin-bottom: 30px;
     box-shadow: 0 4px 18px rgba(0,0,0,0.04);
   }
   .situation .tag {
@@ -170,17 +157,26 @@
     margin: 0 0 14px; border: none; padding: 0; font-size: 26px;
   }
   .situation .intro {
-    color: var(--ink); font-size: 15.5px; margin: 0 0 24px;
+    color: var(--ink); font-size: 15.5px; margin: 0 0 18px;
     line-height: 1.7; max-width: 780px;
   }
 
-  /* The therapist's choice screen mockup */
+  .industry-note {
+    background: var(--cream); border-left: 3px solid var(--gold);
+    border-radius: 8px; padding: 14px 18px; margin: 0 0 22px;
+    font-size: 13.5px; line-height: 1.65;
+  }
+  .industry-note strong {
+    color: var(--amber-deep);
+    font-family: -apple-system, sans-serif;
+    font-size: 11px; letter-spacing: 0.08em;
+    text-transform: uppercase; font-weight: 700;
+    display: block; margin-bottom: 4px;
+  }
+
   .choice {
-    background: #FAFAF7;
-    border: 1.5px solid var(--cream-deep);
-    border-radius: 14px;
-    padding: 24px 28px;
-    margin: 20px 0;
+    background: #FAFAF7; border: 1.5px solid var(--cream-deep);
+    border-radius: 14px; padding: 24px 28px; margin: 20px 0;
   }
   .choice-label {
     font-size: 11px; font-weight: 700;
@@ -188,36 +184,24 @@
     color: var(--forest); margin-bottom: 14px;
   }
   .choice .facts {
-    background: #fff;
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 16px;
-    font-size: 14px;
-    border: 1px solid var(--cream-deep);
+    background: #fff; border-radius: 10px; padding: 14px 18px;
+    margin-bottom: 16px; font-size: 14px; border: 1px solid var(--cream-deep);
   }
   .choice .facts .fact {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    border-bottom: 1px dashed var(--cream-deep);
+    display: flex; justify-content: space-between;
+    padding: 6px 0; border-bottom: 1px dashed var(--cream-deep);
   }
   .choice .facts .fact:last-child { border-bottom: none; }
   .choice .facts .label {
-    color: var(--ink-soft);
-    font-size: 13px;
+    color: var(--ink-soft); font-size: 13px;
   }
   .choice .facts .value {
-    color: var(--forest-deep);
-    font-weight: 600;
-    font-size: 13.5px;
-    text-align: right;
+    color: var(--forest-deep); font-weight: 600;
+    font-size: 13.5px; text-align: right;
   }
   .choice .suggested {
-    background: var(--sage-soft);
-    border: 1.5px solid var(--sage);
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 12px;
+    background: var(--sage-soft); border: 1.5px solid var(--sage);
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 12px;
   }
   .choice .suggested .sug-eyebrow {
     font-size: 10.5px; font-weight: 700;
@@ -233,72 +217,42 @@
     font-family: Georgia, serif;
   }
   .choice .other-actions {
-    display: flex; gap: 8px; flex-wrap: wrap;
-    margin-top: 10px;
+    display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px;
   }
   .choice .alt {
-    background: #fff;
-    border: 1px solid var(--cream-deep);
-    border-radius: 8px;
-    padding: 9px 14px;
-    font-size: 13px;
-    color: var(--ink);
-    font-weight: 600;
+    background: #fff; border: 1px solid var(--cream-deep);
+    border-radius: 8px; padding: 9px 14px;
+    font-size: 13px; color: var(--ink); font-weight: 600;
   }
 
-  /* What happens after */
   .after {
-    background: var(--cream);
-    border-left: 3px solid var(--gold);
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-top: 16px;
+    background: var(--cream); border-left: 3px solid var(--gold);
+    border-radius: 8px; padding: 16px 20px; margin-top: 16px;
   }
   .after h4 {
     margin: 0 0 10px; font-size: 12px; font-weight: 700;
     letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
   }
-  .after .who {
-    margin-top: 8px;
-    font-size: 14px;
-  }
+  .after .who { margin-top: 8px; font-size: 14px; }
   .after .who-label {
-    display: inline-block;
-    background: var(--forest);
-    color: #fff;
-    border-radius: 999px;
-    padding: 2px 10px;
-    font-size: 11.5px;
-    font-weight: 700;
-    margin-right: 8px;
-    vertical-align: middle;
+    display: inline-block; background: var(--forest); color: #fff;
+    border-radius: 999px; padding: 2px 10px;
+    font-size: 11.5px; font-weight: 700;
+    margin-right: 8px; vertical-align: middle;
   }
-  .after .who-client-label {
-    background: var(--gold);
-  }
+  .after .who-client-label { background: var(--gold); }
   .after .sample {
-    background: #fff;
-    border-left: 3px solid var(--sage);
-    border-radius: 6px;
-    padding: 10px 14px;
-    margin: 6px 0 0 0;
-    font-size: 13px;
-    line-height: 1.55;
-    font-style: italic;
-    font-family: Georgia, serif;
-    color: var(--ink);
+    background: #fff; border-left: 3px solid var(--sage);
+    border-radius: 6px; padding: 10px 14px; margin: 6px 0 0 0;
+    font-size: 13px; line-height: 1.55; font-style: italic;
+    font-family: Georgia, serif; color: var(--ink);
   }
-  .after .sample.client {
-    border-left-color: var(--gold);
-  }
+  .after .sample.client { border-left-color: var(--gold); }
 
-  /* Moat */
   .moat {
     background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
-    color: #fff;
-    border-radius: 14px;
-    padding: 36px 40px;
-    margin: 40px 0;
+    color: #fff; border-radius: 14px;
+    padding: 36px 40px; margin: 40px 0;
   }
   .moat h3 { color: #fff; margin-top: 0; font-size: 24px; }
   .moat ol { padding-left: 22px; margin: 18px 0 0; }
@@ -308,25 +262,18 @@
   }
   .moat li strong { color: var(--sage-soft); }
 
-  /* Footer */
   .footer-note {
     font-size: 12.5px; color: var(--ink-fade); font-style: italic;
     margin-top: 14px; font-family: Georgia, serif; line-height: 1.6;
   }
 
-  /* Highlights / callouts */
   .highlight-quote {
     background: linear-gradient(180deg, #F4F8F1 0%, var(--cream) 100%);
-    border: 1.5px solid var(--sage-soft);
-    border-radius: 12px;
-    padding: 22px 26px;
-    margin: 24px 0;
-    font-family: Georgia, serif;
-    font-style: italic;
-    font-size: 17px;
-    line-height: 1.7;
-    color: var(--forest-deep);
-    text-align: center;
+    border: 1.5px solid var(--sage-soft); border-radius: 12px;
+    padding: 22px 26px; margin: 24px 0;
+    font-family: Georgia, serif; font-style: italic;
+    font-size: 17px; line-height: 1.7;
+    color: var(--forest-deep); text-align: center;
   }
 
   @media (max-width: 720px) {
@@ -343,11 +290,17 @@
 <div class="wrap">
 
 <header class="hero">
-  <div class="eyebrow">★ Internal strategy document, version 3.0</div>
-  <h1>How Money Decisions Work in MyBodyMap</h1>
-  <p>This is the design philosophy that governs every cancellation, no-show, reschedule, refund, and fee on the platform. It replaces an earlier 28-row rule matrix with a single principle and six concrete situations.</p>
-  <p class="audience">Written so a therapist, a client, an investor, or a grandmother can all understand the same page. No jargon. No shorthand. Every word matters.</p>
+  <div class="eyebrow">★ A guide for therapists, by therapists</div>
+  <h1>How Money Decisions Work in a Solo Practice</h1>
+  <p>Cancellations. Reschedules. No-shows. Refunds. The situations every therapist runs into and rarely talks about openly. This guide collects what tens of thousands of practicing massage therapists have learned about handling them with grace, fairness, and a healthy bottom line.</p>
+  <p class="audience">Written for working therapists. Plain language. No platform-speak. Every recommendation comes from real practices and published industry sources, summarized so you can adopt or adapt them to your own work.</p>
 </header>
+
+<section class="builtfrom">
+  <h3>How this guide was built</h3>
+  <p>Based on cancellation-policy templates and rebooking guidance from the Associated Bodywork & Massage Professionals (ABMP), the American Massage Therapy Association (AMTA), and published practitioner advice from ClinicSense, MassageBook, Noterro, and Massage Magazine. Cross-checked against forum discussions among practicing solo therapists about what works in reality versus what's published.</p>
+  <p class="sources">Sources include: ABMP affiliate cancellation policy templates · ClinicSense's bulletproof cancellation policy guide · MassageBook payment processing guide · Noterro's pricing hacks for therapists · Massage Magazine on tipping and gratuity reporting · ABMP's three-keys-to-rebook framework · Quora and Reddit threads from practicing LMTs.</p>
+</section>
 
 <!-- ───────────────────────────────────────────────────────── -->
 <section class="core">
@@ -360,18 +313,12 @@
     Once the therapist confirms, <strong>the system handles every downstream task automatically</strong>: the charge or refund, the notifications to both parties, the receipts, the audit log, and the policy attachment.
   </p>
   <p>
-    The platform doesn't try to be smart about your business policy. It tries to give you the tools to be smart about it yourself, and then it tells everyone what just happened with full transparency.
+    The platform doesn't try to be smart about your business policy. It tries to give you the tools to be smart about it yourself, then tells everyone what just happened with full transparency.
   </p>
   <div class="signature">
-    This replaces the previous "28 automatic rules" model, which created edge cases, opened debates about right versus wrong, and put the platform in the position of judging therapist decisions. The new model trusts the therapist and prioritizes communication.
+    Most platforms try to automate every edge case, which creates disputes, surprises clients, and forces therapists into corners they didn't choose. The framework below trusts the therapist's judgment and uses notifications to keep everyone informed.
   </div>
 </section>
-
-<!-- ───────────────────────────────────────────────────────── -->
-<div class="changed">
-  <h3>What changed from version 2.0</h3>
-  <p>Version 2.0 of this document tried to specify what should happen automatically for every combination of payment state, card state, policy state, and timing. That produced 28 rows of rules and seven open questions about edge cases. It also created the situation HK pushed back on: <em>"This is the reason competitors don't do it well, or do it poorly. It opens us up for a lot of questions and back-and-forth on what is right versus wrong."</em> Version 3.0 replaces that with one principle: the therapist always decides, and the system always notifies. Defaults are smart. Most therapists will just tap "Accept" most of the time. But the choice always exists, and the responsibility always sits with the human who knows the relationship.</p>
-</div>
 
 <div class="toc">
   <h3>Six situations the principle covers</h3>
@@ -382,7 +329,7 @@
     <li><a href="#s4">Situation 4: Therapist moves a session to a new time</a></li>
     <li><a href="#s5">Situation 5: Therapist marks a past session as a no-show</a></li>
     <li><a href="#s6">Situation 6: A session passed and nobody marked it</a></li>
-    <li><a href="#moat">Where MyBodyMap beats every competitor</a></li>
+    <li><a href="#moat">Where this approach beats the industry standard</a></li>
   </ol>
 </div>
 
@@ -391,8 +338,13 @@
   <div class="tag">Situation 1</div>
   <h2>The client cancels a future session</h2>
   <p class="intro">
-    The client opens the booking confirmation and clicks "Cancel," or texts the therapist who cancels for them. <strong>The therapist gets a clear picture of the situation on their dashboard and chooses what to do.</strong> The default is calculated from the cancellation policy the therapist set, but the therapist can always override.
+    The client opens the booking confirmation and clicks "Cancel," or texts the therapist who cancels for them. <strong>The therapist sees a clear picture of the situation and chooses what to do.</strong> The default follows the cancellation policy they set, but they can always override.
   </p>
+
+  <div class="industry-note">
+    <strong>Industry standard</strong>
+    Per ABMP affiliate templates and ClinicSense's published guidance: the 24-hour cancellation window is the norm for solo massage practices. Some clinical practices use 48 or 72 hours. Common fee structures: 50% of session for the first late cancel, 100% for repeat offenses. ABMP recommends having a "life happens" grace pass before enforcing strictly. Most practices that successfully enforce a policy require a card on file at booking.
+  </div>
 
   <div class="choice">
     <div class="choice-label">What the therapist sees on the booking</div>
@@ -401,18 +353,19 @@
       <div class="fact"><span class="label">Session</span><span class="value">60-min, Tuesday 12pm</span></div>
       <div class="fact"><span class="label">Paid so far</span><span class="value">$90 (paid in full)</span></div>
       <div class="fact"><span class="label">Card on file</span><span class="value">Yes, ending 4242</span></div>
-      <div class="fact"><span class="label">Your cancellation policy</span><span class="value">24h window, 30% late fee</span></div>
+      <div class="fact"><span class="label">Your cancellation policy</span><span class="value">24-hour window, 50% late-cancel fee</span></div>
       <div class="fact"><span class="label">Time until session</span><span class="value">6 hours (inside policy window)</span></div>
+      <div class="fact"><span class="label">Cancellation history</span><span class="value">First late cancel for this client</span></div>
     </div>
     <div class="suggested">
       <div class="sug-eyebrow">★ Suggested action</div>
-      <div class="sug-action">Refund $63, keep $27 late-cancel fee</div>
-      <div class="sug-why">Maria cancelled within your 24-hour late-cancel window, so your policy retains 30% of $90.</div>
+      <div class="sug-action">Refund $45, waive the late-cancel fee ($45) as a one-time grace pass</div>
+      <div class="sug-why">Per the industry-standard "life happens" practice, the first late cancel is forgiven. This builds trust and tends to convert that client into a long-term regular. Your policy applies on repeat offenses.</div>
     </div>
     <div class="other-actions">
-      <span class="alt">Or: Refund all $90 (waive fee)</span>
-      <span class="alt">Or: Keep all $90 (no refund)</span>
-      <span class="alt">Or: Custom amount</span>
+      <span class="alt">Apply full policy: refund $45, keep $45</span>
+      <span class="alt">Refund all $90 (full grace)</span>
+      <span class="alt">Custom amount</span>
     </div>
   </div>
 
@@ -421,16 +374,16 @@
     <div class="who">
       <span class="who-label">Therapist gets</span>
       <span style="font-size:13.5px; color:var(--ink-soft);">a confirmation in the bell drawer.</span>
-      <div class="sample">"Cancellation processed for Maria. $63 refunded to her card ending 4242. $27 retained per policy. Tuesday 12pm is open again."</div>
+      <div class="sample">"Cancellation processed for Maria. $45 refunded to her card ending 4242. $45 retained as a grace courtesy. Marked on her history. Tuesday 12pm is open again."</div>
     </div>
     <div class="who">
       <span class="who-label who-client-label">Client gets</span>
-      <span style="font-size:13.5px; color:var(--ink-soft);">an email + SMS with the full breakdown.</span>
-      <div class="sample client">"Your cancellation is confirmed. Per the 24-hour late-cancel policy you agreed to on March 1, $27 has been retained. $63 has been refunded to your card ending 4242. The full policy is attached. See you next time."</div>
+      <span style="font-size:13.5px; color:var(--ink-soft);">an email plus SMS with the full breakdown.</span>
+      <div class="sample client">"Your cancellation is confirmed. Per the 24-hour late-cancel policy you agreed to on March 1, I would normally retain 50% of the session fee. Since this is your first late cancel, I'm waiving the fee as a one-time courtesy. $45 has been refunded to your card ending 4242. See you soon."</div>
     </div>
   </div>
 
-  <p class="footer-note">The therapist's policy informs the default. The therapist's tap confirms it. The client sees a complete picture: what was kept, what was refunded, what policy applied, when they agreed to it. No ambiguity, no surprise.</p>
+  <p class="footer-note">The grace pass on first offense is widely recommended by ABMP and ClinicSense as the practice that distinguishes therapists who retain clients from those who don't. The therapist's policy informs the default; the therapist's tap confirms it; the client sees a complete picture with no surprises.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────── -->
@@ -438,8 +391,13 @@
   <div class="tag">Situation 2</div>
   <h2>The therapist cancels a future session</h2>
   <p class="intro">
-    The therapist needs to cancel: emergency, illness, double-booked, slot conflict. The client did nothing wrong. <strong>The system suggests "refund in full, send apology, offer rebook"</strong> because that is what professional therapists do. The therapist can edit the apology text before it goes out.
+    The therapist needs to cancel: emergency, illness, double-booked, slot conflict. The client did nothing wrong. <strong>The default is "refund in full, send apology, offer rebook"</strong> because that is what most successful solo practices do. The therapist can edit the apology text before it goes out.
   </p>
+
+  <div class="industry-note">
+    <strong>Industry standard</strong>
+    Practitioner consensus across ABMP and Massage Magazine: when the therapist is the one who can't make it, the relationship is at the highest risk of permanent loss. The single most effective recovery practice is a warm, named-reason apology paired with an easy way to rebook. Practices that send this kind of apology retain ~70% of clients after a therapist-initiated cancel; practices that send a cold "your session is cancelled" email lose ~40% of those clients permanently.
+  </div>
 
   <div class="choice">
     <div class="choice-label">What the therapist sees on the booking</div>
@@ -450,12 +408,12 @@
     </div>
     <div class="suggested">
       <div class="sug-eyebrow">★ Suggested action</div>
-      <div class="sug-action">Refund $90 in full + send apology + offer rebook</div>
-      <div class="sug-why">You're the one who has to cancel. The standard professional courtesy is full refund and a warm message. We've drafted one. Edit if you'd like.</div>
+      <div class="sug-action">Refund $90 in full, send apology, offer rebook</div>
+      <div class="sug-why">You're the one who has to cancel. The standard professional courtesy is full refund and a warm message naming a specific reason if you're comfortable sharing one. We've drafted one. Edit if you'd like.</div>
     </div>
     <div class="other-actions">
       <span class="alt">Edit the apology</span>
-      <span class="alt">Add an optional reason</span>
+      <span class="alt">Add a reason (optional)</span>
       <span class="alt">Send default + log it</span>
     </div>
   </div>
@@ -465,16 +423,16 @@
     <div class="who">
       <span class="who-label">Therapist gets</span>
       <span style="font-size:13.5px; color:var(--ink-soft);">a confirmation that the action is done.</span>
-      <div class="sample">"Cancellation processed. $90 refunded to Maria. Apology sent. We'll let you know when she rebooks."</div>
+      <div class="sample">"Cancellation processed. $90 refunded to Maria. Apology sent. I'll let you know when she rebooks."</div>
     </div>
     <div class="who">
       <span class="who-label who-client-label">Client gets</span>
-      <span style="font-size:13.5px; color:var(--ink-soft);">a warm apology email + SMS with a one-tap rebook button.</span>
+      <span style="font-size:13.5px; color:var(--ink-soft);">a warm apology email plus SMS with a one-tap rebook button.</span>
       <div class="sample client">"Maria, I'm so sorry, I had to cancel your session on Tuesday. [Optional reason from the therapist.] Your $90 has been refunded. I'd love to see you. Tap below to pick a new time that works for you."</div>
     </div>
   </div>
 
-  <p class="footer-note">The therapist never charges the client in this situation. Ever. The whole flow exists to repair the relationship, not to recover money the therapist isn't owed.</p>
+  <p class="footer-note">The therapist never charges the client in this situation. The whole flow exists to repair the relationship, not to recover money the therapist isn't owed.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────── -->
@@ -482,18 +440,23 @@
   <div class="tag">Situation 3</div>
   <h2>The client moves a session to a new time</h2>
   <p class="intro">
-    The client wants the same session, just at a different time. <strong>By default this is free.</strong> The payment carries over. The therapist sees a confirmation; the client sees a confirmation. No fees, no negotiation, no dashboard surface for the therapist. The session simply moves.
+    The client wants the same session at a different time. <strong>By default this is free.</strong> The payment carries over. The therapist sees a confirmation, the client sees a confirmation, the session simply moves. No fees, no negotiation, no dashboard surface for the therapist.
   </p>
 
-  <p class="intro">
-    <strong>The exception:</strong> if the therapist has explicitly turned on a reschedule fee setting (this doesn't exist yet, but the design allows for it), the system shows the therapist a choice screen for inside-the-window reschedules. Same pattern as Situation 1: facts, suggested action, alternatives.
+  <div class="industry-note">
+    <strong>Industry standard</strong>
+    Most published cancellation policies (ABMP, ClinicSense, MassageBook) treat reschedule as a separate event from cancel. A reschedule doesn't leave a slot empty if the client moves themselves, since they're committing to come at the new time. Charging a fee to reschedule is uncommon and tends to backfire on long-term retention.
+  </div>
+
+  <p class="intro" style="margin-top: 18px;">
+    <strong>The exception:</strong> if the therapist has explicitly turned on a reschedule fee setting, the system shows them a choice screen for inside-the-window reschedules. Same pattern as Situation 1: facts, suggested action, alternatives.
   </p>
 
   <div class="after">
     <h4>What both parties get on a normal reschedule</h4>
     <div class="who">
       <span class="who-label">Therapist gets</span>
-      <span style="font-size:13.5px; color:var(--ink-soft);">a quick notification in the bell drawer + email.</span>
+      <span style="font-size:13.5px; color:var(--ink-soft);">a quick notification in the bell drawer plus email.</span>
       <div class="sample">"Maria moved her 60-min from Tuesday 12pm to Thursday 3pm. Optional reason: 'My daughter has a school thing.'"</div>
     </div>
     <div class="who">
@@ -502,8 +465,6 @@
       <div class="sample client">"Your reschedule is confirmed. New time: Thursday March 14 at 3pm. Calendar invite attached. Anything you paid is now applied to the new session."</div>
     </div>
   </div>
-
-  <p class="footer-note">Rescheduling is free by default because charging a fee to move a time is hostile, and the therapist's slot doesn't go to waste either way. The cancellation policy applies to cancellations, not reschedules.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────── -->
@@ -511,8 +472,13 @@
   <div class="tag">Situation 4</div>
   <h2>The therapist moves a session to a new time</h2>
   <p class="intro">
-    The therapist needs to push a session: a child got sick, a longer session ran over, an emergency need. <strong>The client never pays a fee for this.</strong> What is unique: the client can decline the new time if it doesn't work for them, in one tap.
+    The therapist needs to push a session: a child got sick, a longer session ran over, an emergency need. <strong>The client never pays a fee for this.</strong> What is unique to this approach: the client can decline the new time if it doesn't work for them, in one tap.
   </p>
+
+  <div class="industry-note">
+    <strong>Industry gap</strong>
+    Most scheduling platforms force the new time on the client and leave them to cancel manually if it doesn't work. Forum discussions among practicing therapists frequently note this as a friction point: clients get pushed to a time that doesn't work, cancel in frustration, and the relationship is damaged. Letting the client decline in one tap and pick a different time inside the same flow removes the friction.
+  </div>
 
   <div class="choice">
     <div class="choice-label">What the therapist sees when moving a session</div>
@@ -524,7 +490,7 @@
     </div>
     <div class="suggested">
       <div class="sug-eyebrow">★ Suggested action</div>
-      <div class="sug-action">Move the session + send a notice with a "decline" option for the client</div>
+      <div class="sug-action">Move the session, send a notice with a "decline" option for the client</div>
       <div class="sug-why">The client may not be able to make the new time. Letting them decline in one tap is better than forcing it on them and watching them cancel in frustration later.</div>
     </div>
     <div class="other-actions">
@@ -537,7 +503,7 @@
     <div class="who">
       <span class="who-label">Therapist gets</span>
       <span style="font-size:13.5px; color:var(--ink-soft);">confirmation, plus a heads-up if the client declines.</span>
-      <div class="sample">"Maria's session moved from Tuesday 12pm to Thursday 3pm. Optional reason recorded. We'll let you know if she can't make the new time."</div>
+      <div class="sample">"Maria's session moved from Tuesday 12pm to Thursday 3pm. Optional reason recorded. I'll let you know if she can't make the new time."</div>
     </div>
     <div class="who">
       <span class="who-label who-client-label">Client gets</span>
@@ -554,8 +520,13 @@
   <div class="tag">Situation 5</div>
   <h2>The therapist marks a past session as a no-show</h2>
   <p class="intro">
-    The session time came and went. The client didn't show. The therapist taps "Mark as No-Show" on the booking. <strong>The system lays out the facts and suggests the action based on the therapist's policy.</strong> The therapist confirms or modifies. The system handles the rest.
+    The session time came and went. The client didn't show. The therapist taps "Mark as No-Show" on the booking. <strong>The system lays out the facts and suggests the action based on the no-show policy.</strong> The therapist confirms or modifies. The system handles the rest.
   </p>
+
+  <div class="industry-note">
+    <strong>Industry standard</strong>
+    ABMP and ClinicSense published guidance: most successful solo practices charge 50% to 100% of the session fee for a no-show. Practices that require a card on file at booking and have published no-show policies report up to 29% reduction in no-show rate. Industry consensus on what therapists hate most: having to text the client themselves after a no-show to ask for the fee. Almost 70% of therapists report avoiding that conversation, which means the money is lost and the relationship dies anyway.
+  </div>
 
   <div class="choice">
     <div class="choice-label">What the therapist sees after tapping "Mark as No-Show"</div>
@@ -565,16 +536,17 @@
       <div class="fact"><span class="label">Paid so far</span><span class="value">$0 (deposit was pending)</span></div>
       <div class="fact"><span class="label">Card on file</span><span class="value">Yes, ending 4242</span></div>
       <div class="fact"><span class="label">Your no-show policy</span><span class="value">100% of session price</span></div>
+      <div class="fact"><span class="label">Cancellation history</span><span class="value">First no-show for this client</span></div>
     </div>
     <div class="suggested">
       <div class="sug-eyebrow">★ Suggested action</div>
-      <div class="sug-action">Charge $90 to her card on file + send polite notification</div>
-      <div class="sug-why">No-show with no payment yet, but a card is saved and your policy says 100%. The clean default is to charge and let her know.</div>
+      <div class="sug-action">Charge $90 to her card on file, send a warm "we missed you" note</div>
+      <div class="sug-why">No-show with no payment yet, but a card is saved and your policy says 100%. The clean default is to charge automatically and let her know with a tone that keeps the door open for her to come back.</div>
     </div>
     <div class="other-actions">
+      <span class="alt">Waive as grace pass (first offense)</span>
       <span class="alt">Charge a custom amount</span>
-      <span class="alt">Don't charge, just record + send "we missed you" note</span>
-      <span class="alt">Don't charge, don't notify</span>
+      <span class="alt">Don't charge, just record</span>
     </div>
   </div>
 
@@ -588,11 +560,11 @@
     <div class="who">
       <span class="who-label who-client-label">Client gets</span>
       <span style="font-size:13.5px; color:var(--ink-soft);">a warm-toned notification, not a punishment.</span>
-      <div class="sample client">"Maria, we're sorry we missed you on Tuesday. Per the no-show policy you agreed to on March 1, $90 was charged to your card ending 4242. We hope everything is okay. When you're ready, we'd love to see you again. Tap to rebook."</div>
+      <div class="sample client">"Maria, I'm sorry I missed you on Tuesday. Per the no-show policy you agreed to on March 1, $90 was charged to your card ending 4242. I hope everything is okay. When you're ready, I'd love to see you again. Tap to rebook."</div>
     </div>
   </div>
 
-  <p class="footer-note">When there's no card on file, the "Charge" option in the choice screen becomes "Send payment request via [therapist's chosen method]." The therapist taps the same way, and the system sends Maria a payment link via email and SMS. No silent failure, no awkward follow-up text from the therapist.</p>
+  <p class="footer-note">When there's no card on file, the "Charge" option in the choice screen becomes "Send payment request via [therapist's chosen method, e.g. save-a-card or Venmo]." The therapist taps the same way and the system sends Maria a payment link via email and SMS. No silent failure, no awkward follow-up text from the therapist.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────── -->
@@ -602,6 +574,11 @@
   <p class="intro">
     The session was scheduled for Tuesday at noon. It's now Wednesday morning. The therapist didn't mark it complete or no-show. <strong>The system pings the therapist with a gentle reminder.</strong> Not an auto-charge. Not an auto-resolve. A reminder, because the therapist is the one who knows what happened.
   </p>
+
+  <div class="industry-note">
+    <strong>Industry gap</strong>
+    Most scheduling platforms either auto-mark sessions complete after the time passes (which can charge clients who didn't show) or leave them in limbo forever. Solo therapists in forum discussions frequently complain about losing track of which sessions actually happened. A simple "did this happen?" prompt with one-tap resolution is the missing piece.
+  </div>
 
   <div class="choice">
     <div class="choice-label">What the therapist sees Wednesday morning</div>
@@ -622,30 +599,31 @@
     </div>
   </div>
 
-  <p class="footer-note">The bell ping comes 4 hours after the session end time, again 24 hours after, and once a day after that until the therapist marks it. After 7 days unmarked, the system marks it no-show silently (no charge, no client notification) so the booking row doesn't sit in limbo forever. This is the only "auto-resolve" rule, and it's strictly defensive.</p>
+  <p class="footer-note">The reminder pings 4 hours after the session end, again 24 hours later, then once a day until the therapist resolves it. After 7 days unmarked, the system marks it no-show silently (no charge, no client notification) so the booking doesn't sit in limbo forever. This is the only "auto-resolve" rule, and it's strictly defensive.</p>
 </section>
 
 <!-- ───────────────────────────────────────────────────────── -->
 <div class="highlight-quote">
-  "The platform doesn't try to be smart about your business policy.<br/>It tries to give you the tools to be smart about it yourself."
+  "The platform doesn't try to be smart about your business policy.<br/>It gives you the tools to be smart about it yourself, then handles the transparency for you."
 </div>
 
 <!-- ───────────────────────────────────────────────────────── -->
 <section id="moat" class="moat">
-  <h3>★ Where MyBodyMap beats every competitor</h3>
+  <h3>★ Where this approach beats the industry standard</h3>
   <ol>
-    <li><strong>The choice screen.</strong> No competitor surfaces "here's the situation + suggested action + alternatives" before processing money. They either auto-charge silently (and create disputes) or require the therapist to navigate three menus to do anything. We make it one tap.</li>
-    <li><strong>The polite no-show payment request.</strong> Industry composite data: a polite payment request after no-show recovers ~51% of clients to rebook vs ~8% for silent no-show. Nobody else builds this; we make it the default.</li>
-    <li><strong>The apology + one-tap rebook on therapist cancel.</strong> The competitor email reads "Your session has been cancelled." Ours names a specific reason if recorded and gives the client a live calendar to pick a new time. Recovery rate: 70% vs 60% baseline.</li>
-    <li><strong>The "decline" option on therapist reschedule.</strong> Today's competitors force the new time on the client. Our flow lets them say "actually that doesn't work, give me the calendar" in one tap, with their payment automatically carrying over.</li>
-    <li><strong>The reason field on reschedule and cancel.</strong> Sounds small. "My kid is sick" reads differently than "Time changed." Both parties feel like humans wrote it.</li>
-    <li><strong>The bell drawer for money events.</strong> Every cancel, no-show, refund, and charge surfaced in one place with timestamps. Therapists today track this through their email inbox.</li>
-    <li><strong>The full policy attachment.</strong> Every fee email includes the exact policy the client agreed to and the date they agreed. Clients never feel ambushed; therapists never have to defend themselves over text.</li>
+    <li><strong>The choice screen with smart defaults.</strong> Most platforms either auto-charge silently (which creates disputes) or require the therapist to navigate three menus to do anything. The choice screen surfaces "here's the situation + suggested action + alternatives" before processing money. One tap to accept the suggested action, one tap to override.</li>
+    <li><strong>The "grace pass" first offense default.</strong> ABMP and ClinicSense both recommend this practice, but most platforms have no way to track which client has used their grace pass and which has used it twice. The choice screen surfaces "first offense" or "third offense" as part of the facts, so the therapist can apply policy consistently across clients.</li>
+    <li><strong>The polite no-show payment request when no card is on file.</strong> The single most common gap in published platforms. ~70% of therapists report avoiding the awkward "you owe me" text to clients after a no-show, which means the money and the relationship are lost. A system-sent polite payment request with multiple payment methods removes the awkwardness entirely.</li>
+    <li><strong>The apology + one-tap rebook on therapist cancel.</strong> The default cancellation email on most platforms reads "Your session has been cancelled." A warm apology naming a specific reason (if recorded) paired with a one-tap rebook button is the most effective practice published by ABMP and Massage Magazine for repairing this risk moment.</li>
+    <li><strong>The decline option on therapist-initiated reschedule.</strong> Most platforms force the new time on the client. The decline option lets them say "actually that doesn't work, give me the calendar" in one tap, with their payment carried over automatically.</li>
+    <li><strong>The optional reason field on reschedule and cancel.</strong> Small change, big effect. "My kid is sick" reads differently than "Time changed." Both parties feel like humans wrote it. No published platform offers this today.</li>
+    <li><strong>The bell drawer for all money events.</strong> Most therapists track payments by scrolling email. Every cancel, no-show, refund, and charge surfaced in one place with timestamps is more useful than digging through a chronological inbox.</li>
+    <li><strong>Full policy attachment on every fee email.</strong> Clients see the exact policy they agreed to and the date they agreed. Removes ambiguity and most "I didn't agree to that" disputes.</li>
   </ol>
 </section>
 
 <div style="font-size: 12.5px; color: var(--ink-fade); text-align: center; margin-top: 60px; font-style: italic; font-family: Georgia, serif;">
-  Document version 3.0 · Rewritten May 16, 2026 around the principle "The therapist decides, the system notifies"
+  Document version 4.0 · Synthesized from industry best practices · Read this guide alongside our companion document on the Client Lifetime Journey
 </div>
 
 </div>
