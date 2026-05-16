@@ -259,7 +259,11 @@ function ServicesAndAvailability({ therapist }) {
 
   async function load() {
     const [{ data: svcs }, { data: avail }] = await Promise.all([
-      supabase.from('services').select('*').eq('therapist_id', therapist.id).order('duration'),
+      // is_('archived_at', null) filters out soft-deleted services so
+      // they don't reappear in the management list after Remove. The
+      // archived rows still exist for FK integrity but the therapist
+      // never sees them again.
+      supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('duration'),
       supabase.from('availability').select('*').eq('therapist_id', therapist.id),
     ]);
     setServices(svcs || []);
@@ -308,7 +312,45 @@ function ServicesAndAvailability({ therapist }) {
   }
 
   async function deleteService(id) {
-    await supabase.from('services').delete().eq('id', id);
+    // HK May 16 2026: Candice reported services come back after Remove.
+    // Root cause: hard DELETE fails silently when bookings/packages/gift
+    // cards reference the service via FK. The old code swallowed the
+    // error and updated local state anyway, so the row vanished from
+    // the UI but persisted in the database.
+    //
+    // Fix: try hard delete first. If it succeeds, great. If it fails
+    // (almost always FK constraint), soft-delete by setting archived_at
+    // so the booking history stays intact but the service disappears
+    // from every list.
+    const svc = services.find(s => s.id === id);
+    if (!svc) return;
+
+    const { error: deleteError } = await supabase.from('services').delete().eq('id', id);
+
+    if (!deleteError) {
+      // Hard delete worked: service had no historical references.
+      setServices(s => s.filter(x => x.id !== id));
+      return;
+    }
+
+    // Hard delete failed (likely FK constraint). Soft-delete instead so
+    // the service disappears from all lists while preserving the booking
+    // history that references it.
+    const { error: archiveError } = await supabase
+      .from('services')
+      .update({ archived_at: new Date().toISOString(), active: false })
+      .eq('id', id);
+
+    if (archiveError) {
+      console.error('deleteService: both delete and archive failed', { deleteError, archiveError });
+      alert(`Could not remove "${svc.name}". ${archiveError.message || 'Please refresh and try again.'}`);
+      return;
+    }
+
+    // Soft-delete succeeded: filter the row out of local state. The
+    // database row still exists but archived_at is now set, so the
+    // services list query (with archived_at IS NULL filter) will
+    // not return it on next load.
     setServices(s => s.filter(x => x.id !== id));
   }
 

@@ -80,7 +80,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   useEffect(() => {
     async function load() {
       const [{ data: svcs }, { data: avail }, { data: blocked }] = await Promise.all([
-        supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).order('price'),
+        supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('price'),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         supabase.from('blocked_days').select('date').eq('therapist_id', therapist.id),
       ]);
@@ -269,7 +269,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                     style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${serviceId === s.id ? C.forest : C.border}`,
                       background: serviceId === s.id ? '#F0FDF4' : '#fff', cursor: 'pointer',
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: serviceId === s.id ? C.forest : C.dark }}>{s.name}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: serviceId === s.id ? C.forest : C.dark, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {s.visibility === 'private' && (
+                        <span title="Private service: hidden from your public booking page. Only you can schedule it." style={{ fontSize: 12 }}>🔒</span>
+                      )}
+                      {s.name}
+                    </span>
                     <span style={{ fontSize: 13, color: C.gray }}>{s.duration} min · ${s.price}</span>
                   </button>
                 ))}
