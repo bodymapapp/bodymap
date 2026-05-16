@@ -211,6 +211,10 @@ function ServicesAndAvailability({ therapist }) {
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  // Track which service the therapist is being asked to confirm
+  // deletion for. null = no confirm pending. Inline-confirm pattern,
+  // not a modal or window.confirm (per house rules + 70yo persona).
+  const [pendingDeleteId, setPendingDeleteId] = React.useState(null);
   // Disclosure-row pattern for the "What I offer -> Services & hours"
   // panel (HK May 10 2026). Only one sub-row open at a time keeps the
   // Settings page short. Default 'services' since that's the daily-edit
@@ -430,8 +434,86 @@ function ServicesAndAvailability({ therapist }) {
                   <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                     {svc.active ? 'On' : 'Off'}
                   </button>
-                  <button onClick={() => deleteService(svc.id)} style={{ background:'none', border:'none', color:'#EF4444', cursor:'pointer', fontSize:15, padding:'2px 4px', flexShrink:0, lineHeight:1 }}>×</button>
+                  {pendingDeleteId !== svc.id && (
+                    <button
+                      onClick={() => setPendingDeleteId(svc.id)}
+                      style={{
+                        background:'transparent',
+                        border:`1px solid ${C2.lightGray}`,
+                        color:C2.gray,
+                        borderRadius:8,
+                        padding:'4px 10px',
+                        fontSize:11,
+                        fontWeight:600,
+                        cursor:'pointer',
+                        flexShrink:0,
+                        whiteSpace:'nowrap',
+                      }}
+                      aria-label={`Remove ${svc.name}`}
+                    >
+                      Remove
+                    </button>
+                  )}
                 </div>
+
+                {/* Inline confirm bar. Replaces the row's normal
+                    bottom area when the therapist has tapped Remove
+                    but not yet confirmed. Soft amber, plain English,
+                    two clear buttons. Cancel is the larger of the
+                    two so an accidental tap defaults to keeping the
+                    service. */}
+                {pendingDeleteId === svc.id && (
+                  <div style={{
+                    marginTop:10,
+                    background:'#FFF8E7',
+                    border:'1px solid #F3D88E',
+                    borderRadius:10,
+                    padding:'10px 12px',
+                    display:'flex',
+                    alignItems:'center',
+                    gap:10,
+                    flexWrap:'wrap',
+                  }}>
+                    <div style={{ flex:1, minWidth:0, fontSize:12.5, color:'#78350F', lineHeight:1.5 }}>
+                      Remove <strong>{svc.name}</strong>? Clients will not be able to book it any more. You can always add it back later.
+                    </div>
+                    <button
+                      onClick={() => setPendingDeleteId(null)}
+                      style={{
+                        background:'#fff',
+                        border:`1.5px solid ${C2.lightGray}`,
+                        color:C2.darkGray,
+                        borderRadius:8,
+                        padding:'7px 14px',
+                        fontSize:12.5,
+                        fontWeight:700,
+                        cursor:'pointer',
+                        whiteSpace:'nowrap',
+                      }}
+                    >
+                      Keep it
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteService(svc.id);
+                        setPendingDeleteId(null);
+                      }}
+                      style={{
+                        background:'#DC2626',
+                        color:'#fff',
+                        border:'none',
+                        borderRadius:8,
+                        padding:'7px 14px',
+                        fontSize:12.5,
+                        fontWeight:700,
+                        cursor:'pointer',
+                        whiteSpace:'nowrap',
+                      }}
+                    >
+                      Yes, remove
+                    </button>
+                  </div>
+                )}
                 <div style={{ marginTop:6 }}>
                   <InlineEditDescription
                     value={svc.description}
