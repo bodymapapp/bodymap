@@ -37,6 +37,30 @@ const THERAPIST_NOTIFICATIONS = [
     channels: ['email', 'app_alert', 'sms'],
   },
   {
+    key: 'payment_received',
+    name: 'Payment received',
+    desc: 'A deposit or session payment landed on your card on file.',
+    channels: ['email', 'app_alert', 'sms'],
+  },
+  {
+    key: 'new_client_signup',
+    name: 'New client signed up',
+    desc: 'A brand-new client just booked their first session with you.',
+    channels: ['email', 'app_alert', 'sms'],
+  },
+  {
+    key: 'booking_cancelled',
+    name: 'Booking cancelled',
+    desc: 'A client (or you) cancelled an upcoming session.',
+    channels: ['email', 'app_alert', 'sms'],
+  },
+  {
+    key: 'no_show_recorded',
+    name: 'No-show recorded',
+    desc: 'A past booking was marked as a no-show.',
+    channels: ['email', 'app_alert', 'sms'],
+  },
+  {
     key: 'intake_filled',
     name: 'Client filled their intake',
     desc: 'So you know they\'re ready.',
@@ -71,15 +95,35 @@ const DEFAULT_PREFS = {
     rebooking_nudge:      { email: false, sms: false },
   },
   therapist: {
-    new_booking:    { email: true, app_alert: true, sms: false },
-    intake_filled:  { email: true, app_alert: true, sms: false },
-    gift_purchased: { email: true, app_alert: true, sms: false },
-    daily_pulse:    { email: true },
+    new_booking:        { email: true, app_alert: true, sms: false },
+    payment_received:   { email: true, app_alert: true, sms: false },
+    new_client_signup:  { email: true, app_alert: true, sms: false },
+    booking_cancelled:  { email: true, app_alert: true, sms: false },
+    no_show_recorded:   { email: true, app_alert: true, sms: false },
+    intake_filled:      { email: true, app_alert: true, sms: false },
+    gift_purchased:     { email: true, app_alert: true, sms: false },
+    daily_pulse:        { email: true },
   },
 };
 
+// Deep-merge stored prefs with DEFAULT_PREFS so newly-added event
+// types render with their default values for therapists whose
+// notification_prefs JSON predates the new events. Stored values
+// always win for keys they explicitly set.
+function mergePrefs(stored) {
+  if (!stored || typeof stored !== 'object') return JSON.parse(JSON.stringify(DEFAULT_PREFS));
+  const out = JSON.parse(JSON.stringify(DEFAULT_PREFS));
+  for (const audience of ['client', 'therapist']) {
+    if (!stored[audience]) continue;
+    for (const key of Object.keys(stored[audience] || {})) {
+      out[audience][key] = { ...(out[audience][key] || {}), ...(stored[audience][key] || {}) };
+    }
+  }
+  return out;
+}
+
 export default function NotificationPrefsCard({ therapist, C2 }) {
-  const [prefs, setPrefs] = React.useState(therapist?.notification_prefs || DEFAULT_PREFS);
+  const [prefs, setPrefs] = React.useState(() => mergePrefs(therapist?.notification_prefs));
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(false);
 
