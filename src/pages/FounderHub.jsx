@@ -109,6 +109,16 @@ const SECTIONS = [
     backupKey: "03c-notification-map",
   },
   {
+    id: "client-lifetime-journey",
+    number: 3.25,
+    title: "Client Lifetime Journey",
+    subtitle: "Visual timeline. Every notification plotted from first contact through return-or-goodbye, with the retention math at the end. The strategic companion to the Notification Map.",
+    status: "live",
+    type: "html",
+    path: "public/docs/CLIENT_LIFETIME_JOURNEY.html",
+    backupKey: "03e-client-lifetime-journey",
+  },
+  {
     id: "design-principles",
     number: 3.3,
     title: "Design Principles",

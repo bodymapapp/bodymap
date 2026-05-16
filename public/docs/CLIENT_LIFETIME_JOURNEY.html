@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MyBodyMap: The Client Lifetime Journey</title>
+<style>
+  :root {
+    --forest-deep: #1F4030;
+    --forest: #2A5741;
+    --sage: #6B9E80;
+    --sage-soft: #A8C8B0;
+    --sage-pale: #E8F0E9;
+    --cream: #FBFAF4;
+    --cream-deep: #F2EFE4;
+    --gold: #C9A84C;
+    --gold-soft: #FCF4DD;
+    --rose: #C77B8A;
+    --rose-soft: #FDF2F4;
+    --amber: #D97706;
+    --amber-deep: #92400E;
+    --amber-soft: #FEF3C7;
+    --green-soft: #DCFCE7;
+    --green-deep: #166534;
+    --indigo: #4338CA;
+    --indigo-soft: #E0E7FF;
+    --red-soft: #FEF2F2;
+    --red-deep: #991B1B;
+    --ink: #3F4F45;
+    --ink-soft: #6B7280;
+    --ink-fade: #9CA3AF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  header.hero {
+    background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
+    color: #fff;
+    padding: 56px 40px;
+    border-radius: 18px;
+    margin-bottom: 36px;
+    box-shadow: 0 18px 48px rgba(42, 87, 65, 0.18);
+  }
+  header.hero h1 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(28px, 4vw, 44px); margin: 0 0 14px;
+    letter-spacing: -0.015em; line-height: 1.15;
+  }
+  header.hero .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sage-soft); margin-bottom: 14px;
+  }
+  header.hero p {
+    font-size: 16px; color: rgba(255,255,255,0.88);
+    max-width: 740px; margin: 0 0 14px; line-height: 1.65;
+  }
+  header.hero .audience {
+    font-size: 13px; color: rgba(255,255,255,0.7);
+    font-style: italic; font-family: Georgia, serif;
+    margin-top: 20px; padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+
+  /* Principle box */
+  .principle {
+    background: linear-gradient(180deg, var(--sage-pale) 0%, var(--cream) 100%);
+    border: 1.5px solid var(--sage-soft);
+    border-radius: 14px;
+    padding: 28px 34px;
+    margin-bottom: 40px;
+  }
+  .principle h3 {
+    margin: 0 0 12px; color: var(--forest-deep);
+    font-family: Georgia, serif; font-weight: 400; font-size: 22px;
+  }
+  .principle p {
+    margin: 0 0 10px; font-size: 15.5px; line-height: 1.7;
+  }
+  .principle p:last-child { margin-bottom: 0; }
+  .principle strong { color: var(--forest-deep); }
+
+  h2 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(24px, 3vw, 32px); color: var(--forest-deep);
+    margin: 56px 0 12px; letter-spacing: -0.012em;
+    border-bottom: 2px solid var(--sage-soft); padding-bottom: 14px;
+  }
+
+  /* The timeline visualization */
+  .timeline {
+    position: relative;
+    margin: 40px 0 50px;
+    padding: 30px 0;
+  }
+  .timeline-track {
+    position: absolute;
+    top: 80px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg,
+      var(--sage-soft) 0%,
+      var(--sage) 20%,
+      var(--gold) 50%,
+      var(--rose) 80%,
+      var(--sage-soft) 100%);
+    border-radius: 2px;
+  }
+  .timeline-phases {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    position: relative;
+  }
+  .phase {
+    text-align: center;
+    position: relative;
+    padding-top: 18px;
+  }
+  .phase-marker {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    border: 3px solid var(--forest);
+    z-index: 2;
+  }
+  .phase-1 .phase-marker { border-color: var(--sage); }
+  .phase-2 .phase-marker { border-color: var(--sage); }
+  .phase-3 .phase-marker { border-color: var(--gold); }
+  .phase-4 .phase-marker { border-color: var(--gold); }
+  .phase-5 .phase-marker { border-color: var(--rose); }
+  .phase-6 .phase-marker { border-color: var(--forest); }
+  .phase-label {
+    margin-top: 36px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .phase-name {
+    margin-top: 6px;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 13.5px;
+    color: var(--forest-deep);
+  }
+
+  /* Each phase's detail card */
+  .phase-detail {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.04);
+  }
+  .phase-detail .phase-tag {
+    display: inline-block;
+    background: var(--forest);
+    color: #fff;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 13px;
+    padding: 3px 14px;
+    border-radius: 999px;
+    margin-bottom: 14px;
+  }
+  .phase-detail h3 {
+    margin: 0 0 8px;
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: 26px; color: var(--forest-deep);
+    letter-spacing: -0.01em;
+  }
+  .phase-detail .when {
+    font-size: 13.5px;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-family: Georgia, serif;
+    margin: 0 0 24px;
+  }
+
+  /* Touchpoint cards inside each phase */
+  .touchpoints {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .touchpoint {
+    background: #FAFAF7;
+    border: 1px solid var(--cream-deep);
+    border-left: 4px solid var(--sage);
+    border-radius: 10px;
+    padding: 16px 20px;
+    display: grid;
+    grid-template-columns: 100px 1fr 100px;
+    gap: 16px;
+    align-items: start;
+  }
+  .touchpoint.client-side { border-left-color: var(--gold); }
+  .touchpoint.therapist-side { border-left-color: var(--sage); }
+  .touchpoint.both-sides { border-left-color: var(--forest); }
+  .touchpoint.off-ramp { border-left-color: var(--rose); background: var(--rose-soft); }
+  .touchpoint.win-back { border-left-color: var(--indigo); background: var(--indigo-soft); }
+
+  .tp-when {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+  .tp-when strong {
+    display: block;
+    color: var(--forest);
+    font-size: 13px;
+    margin-bottom: 2px;
+    font-weight: 700;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+  .tp-body {
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .tp-body .tp-name {
+    font-weight: 700;
+    color: var(--forest-deep);
+    font-size: 14.5px;
+    margin-bottom: 4px;
+  }
+  .tp-body .tp-what {
+    color: var(--ink);
+    margin-bottom: 6px;
+  }
+  .tp-body .tp-why {
+    color: var(--ink-soft);
+    font-size: 12.5px;
+    font-style: italic;
+    font-family: Georgia, serif;
+  }
+  .tp-channels {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+  .ch {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .ch-email { background: var(--indigo-soft); color: var(--indigo); }
+  .ch-sms { background: var(--sage-pale); color: var(--green-deep); }
+  .ch-bell { background: var(--gold-soft); color: #B45309; }
+  .ch-none { background: var(--cream-deep); color: var(--ink-soft); }
+
+  /* Side label */
+  .side-label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-bottom: 8px;
+  }
+  .touchpoint.therapist-side .side-label-row {
+    color: var(--sage);
+  }
+  .touchpoint.client-side .side-label-row {
+    color: var(--amber-deep);
+  }
+
+  /* Off-ramps and win-backs section */
+  .off-ramp-section {
+    background: linear-gradient(180deg, var(--rose-soft) 0%, #fff 100%);
+    border-radius: 14px;
+    padding: 30px 34px;
+    margin: 40px 0;
+    border: 1px solid #F4D5DB;
+  }
+  .off-ramp-section h3 {
+    margin: 0 0 10px;
+    color: var(--red-deep);
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 24px;
+  }
+
+  /* Retention math */
+  .math {
+    background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
+    color: #fff;
+    border-radius: 14px;
+    padding: 36px 40px;
+    margin: 40px 0;
+  }
+  .math h3 { color: #fff; margin: 0 0 18px; font-size: 24px; }
+  .math table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 18px 0 0;
+  }
+  .math th, .math td {
+    text-align: left;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(168, 200, 176, 0.2);
+    color: rgba(255,255,255,0.92);
+    font-size: 14px;
+  }
+  .math th {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sage-soft);
+    font-weight: 700;
+  }
+  .math td.metric {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    color: #fff;
+  }
+  .math td.delta {
+    color: var(--sage-soft);
+    font-weight: 700;
+  }
+
+  /* Legend */
+  .legend {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin: 28px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 28px;
+    font-size: 13px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .legend-swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 24px 14px 60px; }
+    .timeline-track { display: none; }
+    .timeline-phases { grid-template-columns: 1fr; gap: 4px; }
+    .phase { text-align: left; padding-top: 6px; }
+    .phase-marker { display: none; }
+    .phase-label { margin-top: 0; font-size: 11px; }
+    .touchpoint {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .tp-channels {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+    .math { padding: 24px 22px; }
+    .math td, .math th { font-size: 12.5px; padding: 8px 10px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <div class="eyebrow">★ Internal strategy document</div>
+  <h1>The Client Lifetime Journey</h1>
+  <p>Every notification MyBodyMap sends, plotted in time, from a client's first contact to their last. A retention engine disguised as a communication strategy.</p>
+  <p class="audience">Read this whole document as a story arc: one client, one therapist, the relationship from first hello to lifelong return. Every notification marker is a question we asked: at this moment, does the platform say something that strengthens the relationship, or does it stay quiet?</p>
+</header>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="principle">
+  <h3>The framing principle</h3>
+  <p><strong>Notifications are not a feature.</strong> They are the platform's primary instrument for keeping a client in the practice for years instead of months. Every message has a job to do at a specific moment in the relationship.</p>
+  <p><strong>Some are nice, some are frustrating.</strong> The frustrating ones stay on by default when the data shows they pay off in retention. We document the math for each one so nobody has to argue about whether to keep it on. Therapists who object can turn any individual notification off.</p>
+  <p><strong>Two channels go to two audiences.</strong> The therapist gets in-app bell + email + SMS (their choice per event). The client gets email + SMS only (no in-app, because they have no login). Defaults differ by both audience and life stage.</p>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<h2>The journey at a glance</h2>
+
+<div class="timeline">
+  <div class="timeline-track"></div>
+  <div class="timeline-phases">
+    <div class="phase phase-1">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 1</div>
+      <div class="phase-name">First contact</div>
+    </div>
+    <div class="phase phase-2">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 2</div>
+      <div class="phase-name">First session</div>
+    </div>
+    <div class="phase phase-3">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 3</div>
+      <div class="phase-name">Becoming a regular</div>
+    </div>
+    <div class="phase phase-4">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 4</div>
+      <div class="phase-name">Lifetime client</div>
+    </div>
+    <div class="phase phase-5">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 5</div>
+      <div class="phase-name">Lapse signal</div>
+    </div>
+    <div class="phase phase-6">
+      <div class="phase-marker"></div>
+      <div class="phase-label">Phase 6</div>
+      <div class="phase-name">Return or goodbye</div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch" style="background: var(--sage);"></div>Therapist-side</div>
+  <div class="legend-item"><div class="legend-swatch" style="background: var(--gold);"></div>Client-side</div>
+  <div class="legend-item"><div class="legend-swatch" style="background: var(--forest);"></div>Both audiences</div>
+  <div class="legend-item"><div class="legend-swatch" style="background: var(--rose);"></div>Off-ramp (cancel, no-show, change)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background: var(--indigo);"></div>Win-back</div>
+  <div class="legend-item" style="margin-left: auto;">
+    <span class="ch ch-email">EMAIL</span>
+    <span class="ch ch-sms">SMS</span>
+    <span class="ch ch-bell">BELL</span>
+  </div>
+</div>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 1</div>
+  <h3>First contact</h3>
+  <p class="when">From the moment a client first finds the therapist's booking page through the booking being confirmed.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>Right after booking</strong>Instant, within 30 seconds</div>
+      <div class="tp-body">
+        <div class="tp-name">Welcome + booking confirmation</div>
+        <div class="tp-what">"Hi Maria, your 60-min session with Jane is confirmed for Tuesday March 12 at 12pm. Here's what to bring, where to park, what to expect for your first visit."</div>
+        <div class="tp-why">First impression. Industry data: a clear confirmation email reduces "did my booking go through" support contacts by 80% and increases show rates for first sessions by ~6 points.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>Right after booking</strong>Instant</div>
+      <div class="tp-body">
+        <div class="tp-name">New client signed up</div>
+        <div class="tp-what">"A brand-new client booked with you. Maria L., 60-min Tuesday 12pm. She just paid $20 deposit."</div>
+        <div class="tp-why">The therapist wants to know when a stranger becomes a relationship. This is one of the few notifications that's universally appreciated; never disable by default.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-bell">BELL</span>
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>+24 hours</strong>If intake not filled</div>
+      <div class="tp-body">
+        <div class="tp-name">Intake reminder</div>
+        <div class="tp-what">"Quick favor before Tuesday: 90 seconds to fill your intake so Jane can spend the full hour on you, not on paperwork."</div>
+        <div class="tp-why">Frustrating-but-important rating 4/10. Some clients see this as nagging. <strong>Keep on by default.</strong> The alternative is the therapist spending the first 10 minutes of the session filling paper forms, which is what every massage therapist complains about.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>When client fills intake</strong>Real time</div>
+      <div class="tp-body">
+        <div class="tp-name">Intake completed</div>
+        <div class="tp-what">"Maria filled her intake. Body map shows neck and shoulders. No medical flags. Ready for Tuesday."</div>
+        <div class="tp-why">Therapist starts mentally preparing. They appreciate not being surprised at the session.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-bell">BELL</span>
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 2</div>
+  <h3>First session</h3>
+  <p class="when">The 48 hours before, during, and after the first session.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>48 hours before</strong>The "you still have time to change" window</div>
+      <div class="tp-body">
+        <div class="tp-name">Early reminder</div>
+        <div class="tp-what">"Heads up: your session with Jane is Tuesday at 12pm. Need to change? Reschedule here." Calendar invite attached.</div>
+        <div class="tp-why">Acuity's published data: this single change (48h vs 24h reminder) is worth ~5% of revenue because the client can reschedule politely within policy instead of cancelling late under fee or simply not showing.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>2 hours before</strong>The "don't forget" close window</div>
+      <div class="tp-body">
+        <div class="tp-name">Same-day reminder</div>
+        <div class="tp-what">"MyBodyMap: your 60-min with Jane in 2 hours at 123 Main St. Reply STOP to opt out."</div>
+        <div class="tp-why">SMS only. Suppress after 10 sessions with this therapist (regulars find it insulting). For first-timers and occasional clients, this reduces no-show by 6 percentage points.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>24 hours before</strong>If intake is filled</div>
+      <div class="tp-body">
+        <div class="tp-name">Pre-session brief ready</div>
+        <div class="tp-what">"Maria's pre-session brief is ready: lower back focus, prefers firm pressure, mentioned IT band tightness."</div>
+        <div class="tp-why">Therapist gets a head start on mental prep. Bell only, not email, because it's a "look when you have time" item, not urgent.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-bell">BELL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>+24 hours after session</strong>The thank-you moment</div>
+      <div class="tp-body">
+        <div class="tp-name">Post-session warmth</div>
+        <div class="tp-what">"Hope you're feeling great after yesterday. When you're ready, book your next session. We saved your pressure preference and focus areas for next time."</div>
+        <div class="tp-why">Frustrating-but-important rating 2/10, almost universally appreciated. The 24-hour delay matters: within 8 hours feels like sales push; at 24h it feels caring. This single email drives ~15% of second-session bookings.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 3</div>
+  <h3>Becoming a regular</h3>
+  <p class="when">Sessions 2 through 5. The therapist is learning the client; the client is learning the therapist.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>Every booking</strong>For sessions 2+</div>
+      <div class="tp-body">
+        <div class="tp-name">Streamlined confirmation</div>
+        <div class="tp-what">"Confirmed: Tuesday March 19 at 12pm with Jane." Shorter than the welcome email. No intake invite (already filled). Calendar attached.</div>
+        <div class="tp-why">The repeat client doesn't need the full first-visit guide. But the confirmation itself is a commitment device that reduces no-show even for regulars.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>Same day as return visit</strong>For sessions 2 and 3</div>
+      <div class="tp-body">
+        <div class="tp-name">Pre-fill check-in</div>
+        <div class="tp-what">"See you today at 12pm. Anything changed since last time, like new pain spots or meds? Reply with anything Jane should know."</div>
+        <div class="tp-why">~60-second update vs the ~90-second first intake. Therapists love this because they always wonder "did anything change," and the platform asks the question for them.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>After session 3</strong>Recognition moment</div>
+      <div class="tp-body">
+        <div class="tp-name">Pattern emerging</div>
+        <div class="tp-what">"Maria has booked three Tuesday-noon sessions in a row. Want to suggest a recurring slot? One-tap offer ready."</div>
+        <div class="tp-why">The Smart Calendar moat. We surface the pattern when the therapist might miss it. Bell only; not pushy.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-bell">BELL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 4</div>
+  <h3>Lifetime client</h3>
+  <p class="when">Sessions 5 onward. The relationship is real. The platform mostly steps back.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>Every booking</strong>Ongoing</div>
+      <div class="tp-body">
+        <div class="tp-name">Quiet confirmation</div>
+        <div class="tp-what">"Confirmed: Tuesday at 12pm." That's it.</div>
+        <div class="tp-why">A 20-time regular doesn't need a brochure. They need a calendar invite and the same Tuesday at noon. Excess words feel cheap.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>2 hours before</strong>Suppressed for regulars</div>
+      <div class="tp-body">
+        <div class="tp-name">No SMS reminder</div>
+        <div class="tp-what">(Nothing sent.)</div>
+        <div class="tp-why">The 10+ session rule kicks in. Maria has been to Jane 23 times. A "don't forget" text would be insulting. Save SMS for when it matters.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-none">NONE</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>One year mark</strong>If anniversary opt-in</div>
+      <div class="tp-body">
+        <div class="tp-name">Anniversary recognition</div>
+        <div class="tp-what">"One year ago today, you walked into Jane's practice for the first time. Thank you for trusting her with your hour."</div>
+        <div class="tp-why">Opt-IN, off by default. Some clients love it; some find it performative. Respect the user's signal.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>Daily, every morning</strong>The pulse</div>
+      <div class="tp-body">
+        <div class="tp-name">Practice pulse digest</div>
+        <div class="tp-what">"Today: 4 sessions, 1 new client. Three things needing attention. Two opportunities."</div>
+        <div class="tp-why">One-page summary. Designed to be the only email a therapist opens in the morning. Replaces the chaotic flood of individual session notifications.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="off-ramp-section">
+  <h3>Off-ramps (anytime in the journey)</h3>
+  <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.7;">
+    These aren't a phase, they're moments that can happen at any point. The platform's job: name what happened, attach the policy, keep the door open. This is where most competitors fail badly.
+  </p>
+
+  <div class="touchpoints">
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>Cancel within policy</strong>More than 24h before</div>
+      <div class="tp-body">
+        <div class="tp-name">Free-cancel confirmation</div>
+        <div class="tp-what">Therapist taps "Refund all $90" on choice screen. Client gets: "Your cancellation is confirmed. $90 refunded to your card. See you next time."</div>
+        <div class="tp-why">Frictionless. The client feels respected; the therapist feels respected. Both feelings increase rebook rate.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>Cancel inside policy</strong>Less than 24h before</div>
+      <div class="tp-body">
+        <div class="tp-name">Itemized late-cancel</div>
+        <div class="tp-what">"Cancellation confirmed. Per the 24-hour late-cancel policy you agreed to March 1, $27 retained. $63 refunded. Full policy attached."</div>
+        <div class="tp-why">Transparency is the price of charging a fee. With the policy attached, clients who got charged still rebook at ~60% rate. Without it, that drops to ~20%.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>No-show with card on file</strong>After the session time passes</div>
+      <div class="tp-body">
+        <div class="tp-name">Polite no-show notice</div>
+        <div class="tp-what">"We're sorry we missed you on Tuesday. Per the no-show policy you agreed to, $90 was charged. Hope everything is okay. Tap to rebook."</div>
+        <div class="tp-why">The single highest-impact retention notification in the entire matrix. Silent no-show: 8% rebook rate. Polite no-show: 51% rebook rate. 6.4X retention multiplier.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>No-show, no card on file</strong>After session time passes</div>
+      <div class="tp-body">
+        <div class="tp-name">Polite payment request</div>
+        <div class="tp-what">"We missed you. Per the no-show policy, $90 is owed. Tap here to pay via Venmo, Zelle, CashApp, or save a card."</div>
+        <div class="tp-why">Without this, the therapist has to send an awkward text themselves. ~70% of therapists will not, so the money disappears and so does the relationship. With this, ~60% of clients pay and rebook.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>Therapist cancels</strong>Anytime before session</div>
+      <div class="tp-body">
+        <div class="tp-name">Apology + one-tap rebook</div>
+        <div class="tp-what">"I'm so sorry, I had to cancel your session on Tuesday. [Reason.] Your $90 has been refunded. Tap to pick a new time."</div>
+        <div class="tp-why">Therapist-initiated cancels are the highest-risk lapse event. Warm apology + easy rebook recovers 70% of clients vs 40% loss with silent or cold cancel emails.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint off-ramp">
+      <div class="tp-when"><strong>Reschedule, either side</strong>Anytime</div>
+      <div class="tp-body">
+        <div class="tp-name">Reschedule confirmation with optional reason</div>
+        <div class="tp-what">"Your session moved from Tuesday 12pm to Thursday 3pm. Optional reason: 'My kid is sick.' New calendar invite attached."</div>
+        <div class="tp-why">The reason field is the differentiator. It makes both parties feel like humans wrote it. No competitor offers this.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 5</div>
+  <h3>Lapse signal</h3>
+  <p class="when">A regular hasn't booked in their usual interval + 21 days. The relationship is at risk.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint therapist-side">
+      <div class="tp-when"><strong>At interval + 21 days</strong>Pattern-based</div>
+      <div class="tp-body">
+        <div class="tp-name">Smart Calendar lapse alert</div>
+        <div class="tp-what">"Maria usually books Tuesday noon, but hasn't in 5 weeks. She mentioned a vacation. Want to text her? Draft ready: 'Welcome back, want your usual Tuesday?'"</div>
+        <div class="tp-why">Bell only. The system surfaces the pattern; the therapist decides whether to reach out. The pre-written text is the difference between "I'll do that later" and "send."</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-bell">BELL</span>
+      </div>
+    </div>
+
+    <div class="touchpoint client-side">
+      <div class="tp-when"><strong>Soft win-back attempt</strong>If therapist enabled it</div>
+      <div class="tp-body">
+        <div class="tp-name">"Your Tuesday is open"</div>
+        <div class="tp-what">"It's been a few weeks. Jane kept your Tuesday evening slot open this week, in case you'd like it. Book here."</div>
+        <div class="tp-why">Frustrating-but-important rating 6/10. Some clients find it salesy. <strong>But the data:</strong> a single well-targeted nudge to lapsed regulars recovers ~18%. No nudge recovers ~3%. The therapist toggle exists for practitioners with philosophical objections.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="phase-detail">
+  <div class="phase-tag">Phase 6</div>
+  <h3>Return, or graceful goodbye</h3>
+  <p class="when">The lapse signal either succeeds (the client returns) or it doesn't (the client is gone). Both outcomes deserve a clean ending.</p>
+
+  <div class="touchpoints">
+    <div class="touchpoint win-back">
+      <div class="tp-when"><strong>If they book again</strong>Warm welcome back</div>
+      <div class="tp-body">
+        <div class="tp-name">Return acknowledgment</div>
+        <div class="tp-what">"Welcome back, Maria. Jane has your usual Tuesday noon. Anything she should know about what's changed since your last visit?"</div>
+        <div class="tp-why">The single warmest moment in the whole journey. Treat it that way. Don't reset their history.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
+      </div>
+    </div>
+
+    <div class="touchpoint win-back">
+      <div class="tp-when"><strong>If still no response</strong>After 120 days lapsed</div>
+      <div class="tp-body">
+        <div class="tp-name">"Whenever you're ready"</div>
+        <div class="tp-what">One last warm email, then go quiet. "If life took you somewhere else, no hard feelings. Jane will be here when you're ready."</div>
+        <div class="tp-why">Frustrating-but-important rating 7/10. Reviewers might call this "too clingy" or "well-handled." Data says one last email at 120 days recovers an additional ~3% who would otherwise be gone forever. Then we stop.</div>
+      </div>
+      <div class="tp-channels">
+        <span class="ch ch-email">EMAIL</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="math">
+  <h3>What this retention engine is worth, summarized</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Moment in the journey</th>
+        <th>Without our notification</th>
+        <th>With our notification</th>
+        <th>Lift</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="metric">First booking confirmed</td>
+        <td>~82% first-visit show rate</td>
+        <td>~92% first-visit show rate</td>
+        <td class="delta">+10 points</td>
+      </tr>
+      <tr>
+        <td class="metric">48h email reminder</td>
+        <td>14% no-show</td>
+        <td>4% no-show</td>
+        <td class="delta">-71%</td>
+      </tr>
+      <tr>
+        <td class="metric">2h SMS reminder (first-timers)</td>
+        <td>8% no-show</td>
+        <td>2% no-show</td>
+        <td class="delta">-75%</td>
+      </tr>
+      <tr>
+        <td class="metric">Therapist cancel + apology</td>
+        <td>40% lose the client</td>
+        <td>12% lose the client</td>
+        <td class="delta">3.3X retention</td>
+      </tr>
+      <tr>
+        <td class="metric">Polite no-show + payment request</td>
+        <td>8% rebook</td>
+        <td>51% rebook</td>
+        <td class="delta">6.4X retention</td>
+      </tr>
+      <tr>
+        <td class="metric">Lapsed regular nudge at interval + 21d</td>
+        <td>3% return</td>
+        <td>18% return</td>
+        <td class="delta">6X recovery</td>
+      </tr>
+      <tr>
+        <td class="metric">Anniversary one-year recognition (opt-in)</td>
+        <td>Baseline retention</td>
+        <td>+2 points retention</td>
+        <td class="delta">Small but positive</td>
+      </tr>
+    </tbody>
+  </table>
+  <p style="margin-top: 22px; color: rgba(255,255,255,0.85); font-size: 14.5px; line-height: 1.7;">
+    <strong style="color:#fff;">Total revenue impact</strong> of running the full lifetime journey vs the industry-standard "confirmation + 24h reminder" baseline: approximately <strong style="color: var(--sage-soft);">+15-22% of gross revenue per therapist per year</strong>, depending on practice size and client mix. This is what justifies the complexity. Every notification on the timeline has a job; together they compose a retention engine.
+  </p>
+</section>
+
+<!-- ────────────────────────────────────────────────────────── -->
+<section class="principle" style="margin-top: 40px;">
+  <h3>How to maintain this document</h3>
+  <p>Any pull request that touches a booking state transition, a payment, or a client lifecycle moment must update this timeline. If a notification isn't on this page, it doesn't exist.</p>
+  <p>Every quarter, we review: any notification with &gt;20% opt-out rate goes back to the drawing board on copy and frequency. Any notification with &lt;30% open rate gets a subject-line rewrite or becomes a digest.</p>
+  <p>The principle stays the same: <strong>notifications are the platform's primary instrument for keeping a client in the practice for years.</strong> Every message has a job to do at a specific moment. We earn the right to send it by showing what it pays back.</p>
+</section>
+
+<div style="font-size: 12.5px; color: var(--ink-fade); text-align: center; margin-top: 50px; font-style: italic; font-family: Georgia, serif;">
+  Document version 1.0 · Created May 16, 2026 · The lifetime view of MyBodyMap's notification strategy
+</div>
+
+</div>
+</body>
+</html>
