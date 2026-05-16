@@ -101,6 +101,7 @@ function App() {
           <Route path="/dashboard/intake/edit" element={<ProtectedRoute><IntakeEditor /></ProtectedRoute>} />
           <Route path="/dashboard/practice-agreement/print" element={<ProtectedRoute><PracticeAgreementPrint /></ProtectedRoute>} />
           <Route path="/agreement-sign/:token" element={<AgreementSign />} />
+          <Route path="/s/:code" element={<AgreementSign />} />
           <Route path="/dashboard/gifts" element={<ProtectedRoute><Dashboard view="gifts" /></ProtectedRoute>} />
           <Route path="/dashboard/outreach" element={<ProtectedRoute><Dashboard view="outreach" /></ProtectedRoute>} />
           <Route path="/dashboard/schedule" element={<ProtectedRoute><Dashboard view="schedule" /></ProtectedRoute>} />

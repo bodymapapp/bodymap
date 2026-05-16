@@ -39,7 +39,12 @@ const C = {
 };
 
 export default function AgreementSign() {
-  const { token } = useParams();
+  // The route can come in as /agreement-sign/:token (the long
+  // backward-compat path) OR /s/:code (the short friendly path).
+  // useParams returns whichever is matched.
+  const { token, code } = useParams();
+  const lookupKey = token || code;
+  const lookupColumn = token ? 'token' : 'short_code';
   const [loading, setLoading] = useState(true);
   const [request, setRequest] = useState(null);
   const [therapist, setTherapist] = useState(null);
@@ -52,11 +57,12 @@ export default function AgreementSign() {
     let mounted = true;
     (async () => {
       try {
-        // Look up the send request by token
+        // Look up the send request by whichever identifier the
+        // URL provided. Both columns are unique-indexed.
         const { data: reqData, error: reqErr } = await supabase
           .from('agreement_send_requests')
           .select('*')
-          .eq('token', token)
+          .eq(lookupColumn, lookupKey)
           .single();
         if (reqErr || !reqData) {
           if (mounted) setError('This signature link is invalid or has expired.');
@@ -89,7 +95,7 @@ export default function AgreementSign() {
       }
     })();
     return () => { mounted = false; };
-  }, [token]);
+  }, [lookupKey, lookupColumn]);
 
   async function submit() {
     if (!typedName.trim() || !request || !therapist) return;
@@ -103,7 +109,8 @@ export default function AgreementSign() {
         therapist
       );
 
-      // Mark the request signed
+      // Mark the request signed. Use the row id (always present)
+      // instead of token (only present in one of the two URL shapes).
       await supabase
         .from('agreement_send_requests')
         .update({
@@ -112,7 +119,7 @@ export default function AgreementSign() {
           signed_text_snapshot: resolved,
           signed_user_agent: (navigator.userAgent || '').slice(0, 300),
         })
-        .eq('token', token);
+        .eq('id', request.id);
 
       // If a client_id is attached, stamp the signature on that client
       // record so future bookings know they've signed.
@@ -123,6 +130,18 @@ export default function AgreementSign() {
           practice_agreement_text_snapshot: resolved,
         }).eq('id', request.client_id);
       }
+
+      // Notify therapist that the client signed. Fire-and-forget; the
+      // signature is already recorded, the email is purely a
+      // courtesy notification.
+      supabase.functions.invoke('notify-agreement-signed', {
+        body: {
+          send_request_id: request.id,
+          therapist_id: therapist.id,
+          signer_name: typedName.trim(),
+          signed_at: nowIso,
+        },
+      }).catch(e => console.error('[notify-agreement-signed] threw:', e));
 
       setSubmitted(true);
     } catch (e) {

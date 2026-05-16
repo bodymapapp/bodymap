@@ -977,6 +977,7 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
   const [manualPhone, setManualPhone] = useState('');
   const [sending, setSending] = useState(false);
   const [sentLink, setSentLink] = useState(null);
+  const [editableMessage, setEditableMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
 
@@ -1018,12 +1019,25 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
     setSending(true);
     setError(null);
     try {
+      // Full security token (48 hex chars). This is what the signing
+      // page validates against. Long and unguessable.
       const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
 
+      // Human-friendly short slug for the URL. 7 chars from a 32-char
+      // unambiguous alphabet (no 0/O/1/I/l) so it reads cleanly when
+      // shared in an SMS or read out loud. Routes via /s/{code} which
+      // resolves the matching row and forwards to the signing page.
+      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
+      const shortCode = Array.from(codeBytes)
+        .map(b => alphabet[b % alphabet.length])
+        .join('');
+
       const payload = {
         token,
+        short_code: shortCode,
         therapist_id: therapist.id,
         client_id: pickedClient?.id || null,
         client_name: pickedClient?.name || manualName.trim() || null,
@@ -1035,8 +1049,38 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
         .insert(payload);
       if (insErr) throw insErr;
 
-      const link = `${window.location.origin}/agreement-sign/${token}`;
+      const link = `${window.location.origin}/s/${shortCode}`;
       setSentLink(link);
+
+      // Seed the editable message with a sensible default. Therapist
+      // can edit before sending. Format adapts based on whether we
+      // have phone (SMS-friendly short form) or just email.
+      const businessNameLocal = therapist?.business_name || therapist?.full_name || 'your therapist';
+      const recipientName = pickedClient?.name || manualName.trim() || '';
+      const firstNameLocal = recipientName.split(/\s+/)[0] || 'there';
+      const defaultMessage = `Hi ${firstNameLocal}, this is ${businessNameLocal}. Please take a couple minutes to read and sign our client agreement before your next session. Open the link below to read it and sign on your phone or computer. Reply to this message if anything is unclear. Thanks.\n\n${link}`;
+      setEditableMessage(defaultMessage);
+
+      // Fire-and-forget: trigger the send-agreement-email edge function
+      // so the client receives the link automatically. Therapist also
+      // gets a BCC copy as a paper trail. Failure is non-blocking; the
+      // therapist can still copy/SMS the link manually.
+      const clientEmail = pickedClient?.email || manualEmail.trim();
+      if (clientEmail) {
+        supabase.functions.invoke('send-agreement-email', {
+          body: {
+            short_code: shortCode,
+            therapist_id: therapist.id,
+            client_email: clientEmail,
+            client_name: pickedClient?.name || manualName.trim() || null,
+            link,
+          },
+        }).then(({ error: fnErr }) => {
+          if (fnErr) console.error('[send-agreement-email] failed:', fnErr);
+        }).catch(e => {
+          console.error('[send-agreement-email] threw:', e);
+        });
+      }
     } catch (e) {
       console.error('[SendForSignature] failed:', e);
       setError('Could not create the signing link. Please try again, or check your network and refresh.');
@@ -1045,9 +1089,9 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
     }
   }
 
-  function copyLink() {
-    if (!sentLink) return;
-    navigator.clipboard.writeText(sentLink).then(() => {
+  function copyMessage() {
+    if (!editableMessage) return;
+    navigator.clipboard.writeText(editableMessage).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -1055,6 +1099,7 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
 
   function reset() {
     setSentLink(null);
+    setEditableMessage('');
     setPickedClientId('');
     setShowNewContact(false);
     setManualName('');
@@ -1072,13 +1117,12 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
     return colors[Math.abs(hash) % colors.length];
   };
 
-  // SMS body and mailto body construction
+  // Recipient + subject for the SMS/mailto fallback handoffs.
+  // The body that gets sent is editableMessage so the therapist can
+  // tweak the wording before tapping a channel.
   const recipient = pickedClient || { name: manualName, email: manualEmail, phone: manualPhone };
-  const recipientFirst = (recipient.name || '').split(/\s+/)[0] || 'there';
   const businessName = therapist?.business_name || therapist?.full_name || 'your therapist';
-  const smsBody = sentLink ? `Hi ${recipientFirst}, here's the client agreement from ${businessName} for you to read and sign: ${sentLink}` : '';
-  const emailBody = sentLink ? `Hi ${recipientFirst},\n\nPlease take a few minutes to read and sign the client agreement before our next session:\n\n${sentLink}\n\nThank you,\n${businessName}` : '';
-  const emailSubject = `Client agreement to sign · ${businessName}`;
+  const emailSubject = `Client agreement to sign \u00b7 ${businessName}`;
 
   return (
     <div style={{
@@ -1097,7 +1141,7 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
           </div>
           <div style={{ fontSize: 12, color: C.gray, marginTop: 2, lineHeight: 1.5 }}>
             {sentLink
-              ? `Send this link to ${recipientFirst}. When they sign, the signature is recorded on their client profile.`
+              ? `Send this link to ${(recipient.name || '').split(/\s+/)[0] || 'your client'}. When they sign, the signature is recorded on their client profile.`
               : 'Pick a client below. A signing link is created. You share it however works best, text, email, or copy/paste.'}
           </div>
         </div>
@@ -1325,28 +1369,97 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
         </>
       ) : (
         <>
-          {/* Result: link ready */}
+          {/* Email-sent confirmation banner. Shown when we automatically
+              emailed the client. */}
+          {(recipient.email) && (
+            <div style={{
+              background: '#F0FDF4',
+              border: '1px solid #BBF7D0',
+              borderRadius: 10,
+              padding: '10px 12px',
+              marginBottom: 12,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              fontSize: 12,
+              color: '#065F46',
+              lineHeight: 1.5,
+            }}>
+              <span style={{ fontSize: 14, marginTop: 1 }}>✓</span>
+              <div style={{ flex: 1 }}>
+                <strong>Email sent to {recipient.email}</strong>
+                <div style={{ marginTop: 2, color: '#047857' }}>
+                  We sent the agreement link automatically. You will also get a copy at your email so you have a record. You can still text or share the message below.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* The signing URL, shown prominently. Short and presentable. */}
           <div style={{
             background: '#FAF6EE',
             border: `1px solid ${C.amberLine}`,
             borderRadius: 10,
             padding: '10px 12px',
-            fontSize: 11.5,
+            fontSize: 12.5,
             color: C.ink,
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
             wordBreak: 'break-all',
             marginBottom: 12,
             lineHeight: 1.5,
+            textAlign: 'center',
+            fontWeight: 600,
           }}>
             {sentLink}
           </div>
+
+          {/* Editable message preview. This is what gets copied or
+              sent via SMS. Therapist can edit before sending. */}
+          <div style={{ marginBottom: 10 }}>
+            <label style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: C.gray,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              display: 'block',
+              marginBottom: 6,
+            }}>
+              Message to send
+            </label>
+            <textarea
+              value={editableMessage}
+              onChange={e => setEditableMessage(e.target.value)}
+              rows={6}
+              style={{
+                width: '100%',
+                padding: '11px 13px',
+                border: `1.5px solid ${C.line}`,
+                borderRadius: 10,
+                fontSize: 13,
+                lineHeight: 1.55,
+                color: C.ink,
+                fontFamily: 'system-ui, sans-serif',
+                resize: 'vertical',
+                boxSizing: 'border-box',
+                outline: 'none',
+                minHeight: 130,
+              }}
+              onFocus={e => { e.target.style.borderColor = C.forest; }}
+              onBlur={e => { e.target.style.borderColor = C.line; }}
+            />
+            <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
+              Edit the message before you send. The link is already at the bottom of it.
+            </div>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <button onClick={copyLink} style={{ width: '100%', background: copied ? C.saved : C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '11px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              {copied ? '✓ Copied to clipboard' : '📋 Copy link'}
+            <button onClick={copyMessage} style={{ width: '100%', background: copied ? C.saved : C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '12px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer' }}>
+              {copied ? '✓ Copied to clipboard' : '📋 Copy message'}
             </button>
             {recipient.phone && (
               <a
-                href={`sms:${(recipient.phone || '').replace(/\D/g, '')}?body=${encodeURIComponent(smsBody)}`}
+                href={`sms:${(recipient.phone || '').replace(/\D/g, '')}?body=${encodeURIComponent(editableMessage)}`}
                 style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
               >
                 💬 Open in Messages
@@ -1354,7 +1467,7 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
             )}
             {recipient.email && (
               <a
-                href={`mailto:${recipient.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`}
+                href={`mailto:${recipient.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(editableMessage)}`}
                 style={{ display: 'block', textAlign: 'center', background: '#fff', border: `1.5px solid ${C.line}`, color: C.ink, borderRadius: 10, padding: '10px', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
               >
                 ✉ Open in Email

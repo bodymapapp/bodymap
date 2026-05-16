@@ -4,6 +4,24 @@
   "installCommand": "npm install",
   "framework": "create-react-app",
   "rewrites": [
+    {
+      "source": "/s/:code",
+      "has": [{ "type": "query", "key": "spa", "value": "1" }],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/agreement-sign/:token",
+      "has": [{ "type": "query", "key": "spa", "value": "1" }],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/s/:code",
+      "destination": "/api/agreement-preview"
+    },
+    {
+      "source": "/agreement-sign/:token",
+      "destination": "/api/agreement-preview"
+    },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [

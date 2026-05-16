@@ -699,3 +699,75 @@ is the option." Not "all clients must create accounts."
   for this feature, to start tracking demand signal.
 
 
+
+## 7. Twilio onboarding friction (recurring)
+
+**Status (May 15 2026).** Candice was the second therapist this month
+who needed me to walk her through Twilio signup. The MyBodyMap side
+is fine (Settings 4.4 has clear instructions, Save & Connect works),
+but Twilio's own onboarding has frictions we can not control from our
+side:
+
+1. **Trial mode trap.** New Twilio accounts can only send SMS to
+   numbers verified inside Twilio. Therapists do not read this in
+   the signup flow, then send a campaign to 80 clients, see 79
+   delivery failures.
+2. **10-DLC registration (US carrier requirement).** Since 2023
+   carriers require A2P (application-to-person) registration for
+   any SMS sender. Twilio handles this in a separate flow that
+   most therapists do not find. Unregistered messages get filtered.
+3. **$15 trial credit ends fast.** A handful of outreach campaigns
+   plus reminders burns through in a week. Then sends silently fail.
+4. **Three credentials to copy.** Account SID, Auth Token, phone
+   number. The Auth Token is hidden behind a "View" click. Easy to
+   paste the wrong field or fat-finger the SID.
+
+**Why blocked.** Twilio is good-enough-for-now. The real fix is
+either to:
+
+- (a) Switch to a managed SMS layer (Telnyx, Plivo, or Twilio's
+  managed A2P flow). Removes per-therapist setup entirely. Bigger
+  build, ~12-15 hours, and changes our pricing model since we
+  would have to bundle the SMS cost.
+- (b) Add an in-app Twilio onboarding wizard that walks the
+  therapist through signup with screenshots of each Twilio
+  screen, plus a built-in test-send. ~3 hours. Does not solve
+  trial-mode or 10-DLC but reduces the support load per therapist.
+
+Neither is urgent at our current scale (<10 therapists using
+SMS), but the issue compounds linearly with each new SMS-using
+therapist.
+
+**When to revisit.** When ANY of these is true:
+
+- A third therapist in the same month needs Twilio handholding
+- A therapist abandons MyBodyMap because SMS setup was too hard
+- We add a paid tier that includes SMS as a bundled feature
+- The 10-DLC enforcement tightens (carriers start blocking
+  unregistered traffic more aggressively, observable by spike in
+  failed deliveries from our Twilio relay edge function logs)
+
+**Materials.** Per-therapist Twilio walkthrough script (used for
+Candice on May 15 2026, reusable for the next two before we are
+forced to build the wizard):
+
+```
+1. Sign up at twilio.com. Verify your real phone.
+2. Pick SMS / Notify customers / With code.
+3. Buy a number, local area code, ~$1.15/mo.
+4. Console → Account Info: copy SID, Auth Token, number.
+5. MyBodyMap Settings → How I plug in → Custom SMS sender (Twilio)
+   → paste all three → Save & Connect.
+6. Upgrade Twilio: add credit card, buy $20 in credit. Trial mode
+   only sends to verified-in-Twilio numbers; upgraded mode sends
+   to anyone.
+7. Optional but recommended: register A2P 10-DLC brand and
+   campaign in Twilio. Required for US carriers to deliver
+   reliably. Twilio has a guided flow under Messaging → Regulatory
+   Compliance.
+```
+
+**Note on tone of escalation.** If we hit 3 onboarding pings in a
+single month, build (b) immediately. The cost of HK handholding
+each new therapist through Twilio is higher than building the
+wizard once.
