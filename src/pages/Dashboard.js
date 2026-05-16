@@ -279,7 +279,7 @@ function ServicesAndAvailability({ therapist }) {
   async function addService() {
     if (!draft.name.trim()) return;
     setSaving('add');
-    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true, is_couples: draft.is_couples || false }).select().single();
+    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true, visibility: 'public', is_couples: draft.is_couples || false }).select().single();
     setServices(s => [...s, data]);
     setDraft({ preset:'', name:'', duration:60, price:85 });
     setSaving(false);
@@ -295,6 +295,16 @@ function ServicesAndAvailability({ therapist }) {
   async function toggleService(svc) {
     await supabase.from('services').update({ active: !svc.active }).eq('id', svc.id);
     setServices(s => s.map(x => x.id === svc.id ? { ...x, active: !x.active } : x));
+  }
+
+  // Visibility toggle for the Private flag.
+  // public  → shown on public booking page + therapist book-on-behalf
+  // private → therapist book-on-behalf only (hidden from public)
+  // Backward compatible: legacy rows without the column default to 'public'.
+  async function toggleServiceVisibility(svc) {
+    const next = (svc.visibility === 'private') ? 'public' : 'private';
+    await supabase.from('services').update({ visibility: next }).eq('id', svc.id);
+    setServices(s => s.map(x => x.id === svc.id ? { ...x, visibility: next } : x));
   }
 
   async function deleteService(id) {
@@ -435,6 +445,36 @@ function ServicesAndAvailability({ therapist }) {
                   <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                     {svc.active ? 'On' : 'Off'}
                   </button>
+                  {/* Private/Public toggle. Only meaningful when active=true;
+                      hidden when service is off so the row stays clean.
+                      Private hides this service from the public booking
+                      page but keeps it bookable by the therapist (for
+                      gift card legacy services, friends-and-family
+                      discount tiers, etc). */}
+                  {svc.active && (
+                    <button
+                      onClick={() => toggleServiceVisibility(svc)}
+                      title={svc.visibility === 'private'
+                        ? 'Only you can schedule this service. Tap to make public.'
+                        : 'Anyone can book this on your public booking page. Tap to make private.'}
+                      style={{
+                        background: svc.visibility === 'private' ? '#FEF3C7' : '#E0E7FF',
+                        color: svc.visibility === 'private' ? '#92400E' : '#3730A3',
+                        border: 'none',
+                        borderRadius: 20,
+                        padding: '3px 10px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                      }}
+                    >
+                      {svc.visibility === 'private' ? '🔒 Private' : '🌐 Public'}
+                    </button>
+                  )}
                   {pendingDeleteId !== svc.id && (
                     <button
                       onClick={() => setPendingDeleteId(svc.id)}

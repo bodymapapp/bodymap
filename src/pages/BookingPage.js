@@ -1117,7 +1117,7 @@ export default function BookingPage() {
     }
 
     const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes]=await Promise.all([
-      supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).order('price'),
+      supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).neq('visibility','private').order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       supabase.from('blocked_days').select('date').eq('therapist_id',t.id),
       // Service add-ons. May fail silently with empty array if the schema
