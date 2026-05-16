@@ -3203,6 +3203,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   body: JSON.stringify({ action:'get_oauth_url', therapist_id: therapist.id }),
                 });
                 const data = await res.json();
+                if (data.reused_existing) {
+                  // The edge function found an already-enabled Stripe
+                  // account under our platform matching this therapist's
+                  // email and reconnected to it. Reload to show the
+                  // green Connected panel.
+                  window.location.reload();
+                  return;
+                }
                 if (data.url) {
                   // Same-tab redirect so the hosted flow can take over.
                   // Previously opened in new tab, which caused
@@ -3215,7 +3223,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 💳 Connect Stripe · Recommended
               </button>
               <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
-                Stripe is what unlocks online deposits, card-on-file, packages, and memberships. Two-minute connection.
+                Stripe is what unlocks online deposits, card-on-file, packages, and memberships. If you already have a Stripe account under this email, we will reconnect to it automatically. Two-minute connection.
               </p>
             </div>
           )}

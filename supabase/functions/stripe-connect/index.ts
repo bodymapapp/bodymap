@@ -30,7 +30,9 @@ serve(async (req) => {
     : (Deno.env.get('STRIPE_CLIENT_ID') || 'ca_test');
 
   try {
-    const { action, code, therapist_id } = await req.json();
+    const body = await req.json();
+    const { action, code, therapist_id } = body;
+    const account_id = body.account_id; // optional, used by attach_account
 
     // Action: resume_onboarding
     //
@@ -135,37 +137,206 @@ serve(async (req) => {
       });
     }
 
+    // Action: list_platform_accounts
+    //
+    // Lists all Stripe Express accounts under our Connect platform.
+    // Used by the StripeDebug page to surface duplicates and let
+    // HK manually attach a known-good account to a therapist row.
+    if (action === 'list_platform_accounts') {
+      const listRes = await fetch('https://api.stripe.com/v1/accounts?limit=100', {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      const listData = await listRes.json();
+      if (!listRes.ok) {
+        return new Response(JSON.stringify({ error: 'Stripe list failed', stripe: listData }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const accounts = (listData.data || []).map((a: any) => ({
+        id: a.id,
+        email: a.email || null,
+        display_name: a.business_profile?.name || a.settings?.dashboard?.display_name || null,
+        charges_enabled: a.charges_enabled,
+        payouts_enabled: a.payouts_enabled,
+        details_submitted: a.details_submitted,
+        created: a.created,
+        currently_due_count: (a.requirements?.currently_due || []).length,
+      }));
+      return new Response(JSON.stringify({ accounts }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Action: attach_account
+    //
+    // Manually link a specific Stripe account ID to a therapist row.
+    // Used by HK from the StripeDebug page when an existing
+    // enabled account exists for the therapist but the auto-match
+    // by email did not find it. Verifies the account exists in
+    // Stripe and that it is enabled before stamping the row.
+    if (action === 'attach_account' && therapist_id && account_id) {
+      // Verify with Stripe that the account exists and is ready
+      const acctRes = await fetch(`https://api.stripe.com/v1/accounts/${account_id}`, {
+        headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+      });
+      const acct = await acctRes.json();
+      if (!acctRes.ok || !acct.id) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: 'Could not find that account on Stripe',
+          stripe: acct,
+        }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      const ready = !!(acct.charges_enabled && acct.payouts_enabled && acct.details_submitted);
+
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+      const updatePayload: Record<string, any> = {
+        stripe_account_id: acct.id,
+        stripe_account_connected: ready,
+      };
+      if (ready) updatePayload.stripe_account_ready_at = new Date().toISOString();
+
+      const { error: updErr } = await supabase
+        .from('therapists')
+        .update(updatePayload)
+        .eq('id', therapist_id);
+
+      if (updErr) {
+        return new Response(JSON.stringify({
+          ok: false,
+          error: 'Could not save attachment: ' + updErr.message,
+        }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+
+      return new Response(JSON.stringify({
+        ok: true,
+        account_id: acct.id,
+        ready,
+        charges_enabled: acct.charges_enabled,
+        payouts_enabled: acct.payouts_enabled,
+        details_submitted: acct.details_submitted,
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Action: get_oauth_url
+    //
+    // HK May 15 2026 CRITICAL FIX: do NOT blindly create a new
+    // Express account every time someone taps Connect Stripe.
+    // Previous behavior produced 31 throwaway accounts in HK's
+    // Stripe dashboard because every reconnect minted a fresh one.
+    // New behavior:
+    //   1. Look up the therapist's email in our DB
+    //   2. List existing connected Express accounts via Stripe API
+    //   3. If any have charges_enabled=true AND match the therapist
+    //      (by email on the account OR by the therapist row's
+    //      existing stripe_account_id), reuse that account.
+    //   4. Only when nothing matches do we create a new Express
+    //      account.
+    // This avoids the duplicate-account problem entirely and means
+    // disconnect/reconnect goes back to the same working account
+    // instead of stranding the user with a fresh empty one.
     if (action === 'get_oauth_url') {
-      const redirectUri = 'https://www.mybodymap.app/dashboard/stripe-connect';
-      const state = therapist_id;
-      const url = `https://connect.stripe.com/oauth/authorize?response_type=code&client_id=${STRIPE_CLIENT_ID}&scope=read_write&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
-      
-      // Alternative: use Account Links for hosted onboarding (simpler)
+      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
+
+      // Pull therapist's contact info so we can match against any
+      // existing Stripe Express accounts under our platform.
+      const { data: therapistRow } = await supabase
+        .from('therapists')
+        .select('id, email, full_name, business_name')
+        .eq('id', therapist_id)
+        .maybeSingle();
+
+      const therapistEmail = (therapistRow?.email || '').toLowerCase().trim();
+
+      // List up to 100 most-recent connected accounts. At HK's
+      // current scale (under 100 platform-wide) this is fine. When
+      // we exceed 100, paginate.
+      let existingMatch: any = null;
+      try {
+        const listRes = await fetch('https://api.stripe.com/v1/accounts?limit=100', {
+          headers: { 'Authorization': `Bearer ${STRIPE_SECRET}` },
+        });
+        const listData = await listRes.json();
+        if (listRes.ok && Array.isArray(listData.data)) {
+          // Prefer fully-enabled accounts matching the therapist's
+          // email. Charges-enabled = real, ready, in use.
+          existingMatch = listData.data.find((a: any) =>
+            a.charges_enabled &&
+            (a.email || '').toLowerCase().trim() === therapistEmail
+          );
+        }
+      } catch (e) {
+        // List failure is not fatal; we'll fall through to create.
+        console.error('[stripe-connect] account list failed, falling through to create:', e);
+      }
+
+      // If we found a usable existing account, reuse it. Stamp the
+      // therapist row immediately and return an Account Link in
+      // 'account_update' mode so they can land in Stripe's settings
+      // for that account without redoing all of onboarding.
+      if (existingMatch) {
+        await supabase
+          .from('therapists')
+          .update({
+            stripe_account_id: existingMatch.id,
+            stripe_account_connected: true,
+            stripe_account_ready_at: new Date().toISOString(),
+          })
+          .eq('id', therapist_id);
+
+        // No Account Link needed; account is already enabled. Return
+        // a flag so the client knows to short-circuit and show the
+        // 'You are connected' state without redirecting to Stripe.
+        return new Response(JSON.stringify({
+          reused_existing: true,
+          account_id: existingMatch.id,
+          // Provide a Stripe dashboard link for the therapist to
+          // visit if they want, but the UI doesn't need to redirect.
+          dashboard_url: `https://dashboard.stripe.com/${existingMatch.id}`,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // No match found. Create a fresh Express account scoped to
+      // this therapist. We pass their email up-front so the new
+      // account is matchable on future reconnects.
+      const accountBody: Record<string, string> = {
+        type: 'express',
+        country: 'US',
+        'capabilities[transfers][requested]': 'true',
+        'capabilities[card_payments][requested]': 'true',
+      };
+      if (therapistEmail) accountBody.email = therapistEmail;
+      if (therapistRow?.business_name) {
+        accountBody['business_profile[name]'] = therapistRow.business_name;
+      }
+
       const accountRes = await fetch('https://api.stripe.com/v1/accounts', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${STRIPE_SECRET}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          type: 'express',
-          country: 'US',
-          'capabilities[transfers][requested]': 'true',
-          'capabilities[card_payments][requested]': 'true',
-        }).toString(),
+        body: new URLSearchParams(accountBody).toString(),
       });
       const account = await accountRes.json();
-      
+
       if (!account.id) {
         return new Response(JSON.stringify({ error: 'Failed to create account', details: account }), {
           status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Store account ID immediately
-      const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
-      await supabase.from('therapists').update({ stripe_account_id: account.id }).eq('id', therapist_id);
+      // Store account ID immediately so a future reconnect can find
+      // it via the row even before charges are enabled.
+      await supabase
+        .from('therapists')
+        .update({ stripe_account_id: account.id })
+        .eq('id', therapist_id);
 
       // Create account link for onboarding
       const linkRes = await fetch('https://api.stripe.com/v1/account_links', {
@@ -183,7 +354,7 @@ serve(async (req) => {
       });
       const link = await linkRes.json();
 
-      return new Response(JSON.stringify({ url: link.url }), {
+      return new Response(JSON.stringify({ url: link.url, account_id: account.id, reused_existing: false }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

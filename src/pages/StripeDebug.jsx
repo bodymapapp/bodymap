@@ -47,6 +47,8 @@ export default function StripeDebug() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionPending, setActionPending] = useState(null);
+  const [platformAccounts, setPlatformAccounts] = useState(null);
+  const [loadingPlatform, setLoadingPlatform] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -67,6 +69,52 @@ export default function StripeDebug() {
       setError(String(e?.message || e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadPlatformAccounts() {
+    setLoadingPlatform(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: 'list_platform_accounts', therapist_id: therapist?.id }),
+      });
+      const data = await res.json();
+      setPlatformAccounts(data.accounts || []);
+    } catch (e) {
+      alert('Could not load platform accounts: ' + String(e?.message || e));
+    } finally {
+      setLoadingPlatform(false);
+    }
+  }
+
+  async function attachAccount(targetAccountId) {
+    if (!window.confirm(`Attach ${targetAccountId} to your therapist row? This replaces your current stripe_account_id.`)) return;
+    setActionPending('attach:' + targetAccountId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({
+          action: 'attach_account',
+          therapist_id: therapist?.id,
+          account_id: targetAccountId,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        alert(`Attached. Ready: ${data.ready ? 'YES' : 'NO'} (charges=${data.charges_enabled}, payouts=${data.payouts_enabled}, details=${data.details_submitted})`);
+        load();
+      } else {
+        alert('Attach failed: ' + (data.error || JSON.stringify(data)));
+      }
+    } catch (e) {
+      alert('Attach error: ' + String(e?.message || e));
+    } finally {
+      setActionPending(null);
     }
   }
 
@@ -244,6 +292,83 @@ export default function StripeDebug() {
             </div>
           </>
         )}
+
+        {/* Platform accounts: list ALL Stripe accounts under our
+            Connect platform so HK can manually attach a specific
+            one to the current therapist. Helpful when the email
+            auto-match in get_oauth_url did not catch the right
+            account, OR when HK is fixing a different therapist's
+            connection by impersonation. */}
+        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.amber }}>
+              Platform accounts (manual attach)
+            </div>
+            <button onClick={loadPlatformAccounts} disabled={loadingPlatform} style={btnStyle()}>
+              {loadingPlatform ? 'Loading...' : (platformAccounts ? 'Refresh list' : 'Load list')}
+            </button>
+          </div>
+          {!platformAccounts && (
+            <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
+              Click Load list to see every Express account under the MyBodyMap platform. You can attach any of them to your current therapist row with one click. Useful when an Enabled account exists in Stripe but the wrong account got attached.
+            </div>
+          )}
+          {platformAccounts && (
+            <div style={{ maxHeight: 360, overflowY: 'auto', borderRadius: 8 }}>
+              {platformAccounts.length === 0 ? (
+                <div style={{ fontSize: 12, color: C.inkSoft }}>No accounts on the platform.</div>
+              ) : (
+                <table style={{ width: '100%', fontSize: 11, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: C.panelAlt, color: C.inkSoft }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px' }}>Account ID</th>
+                      <th style={{ textAlign: 'left', padding: '6px 8px' }}>Display Name</th>
+                      <th style={{ textAlign: 'left', padding: '6px 8px' }}>Email</th>
+                      <th style={{ textAlign: 'center', padding: '6px 8px' }}>Ready</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px' }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {platformAccounts.map((a) => {
+                      const isCurrent = a.id === diag?.account_id;
+                      const ready = a.charges_enabled && a.payouts_enabled && a.details_submitted;
+                      return (
+                        <tr key={a.id} style={{ background: isCurrent ? '#0F2018' : 'transparent', borderTop: `1px solid ${C.border}` }}>
+                          <td style={{ padding: '6px 8px', color: C.ink, wordBreak: 'break-all' }}>
+                            {a.id}
+                            {isCurrent && <span style={{ marginLeft: 6, color: C.amber, fontWeight: 700 }}>← current</span>}
+                          </td>
+                          <td style={{ padding: '6px 8px', color: C.ink }}>{a.display_name || '(none)'}</td>
+                          <td style={{ padding: '6px 8px', color: C.inkSoft }}>{a.email || '(none)'}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                            <span style={{ color: ready ? C.green : C.red, fontWeight: 700 }}>
+                              {ready ? '✓' : '✗'}
+                            </span>
+                          </td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right' }}>
+                            <button
+                              onClick={() => attachAccount(a.id)}
+                              disabled={isCurrent || actionPending === 'attach:' + a.id}
+                              style={{
+                                ...btnStyle(ready ? 'primary' : undefined),
+                                fontSize: 10,
+                                padding: '4px 8px',
+                                opacity: isCurrent ? 0.5 : 1,
+                                cursor: isCurrent ? 'default' : 'pointer',
+                              }}
+                            >
+                              {actionPending === 'attach:' + a.id ? '...' : (isCurrent ? 'Current' : 'Attach')}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
 
         {diag && (
           <details style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
