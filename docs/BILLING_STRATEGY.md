@@ -471,4 +471,116 @@ Not on roadmap. Trigger to scope: when first international therapist asks.
 
 ---
 
+---
+
+## Stripe Connect architecture (added May 16 2026)
+
+This section documents the Stripe Connect implementation in full so any future engineer (or future Claude) can understand the system without reverse-engineering it. The implementation evolved through several painful debugging sessions; this is the authoritative current state.
+
+### Two account types we support
+
+We offer therapists two ways to connect Stripe:
+
+**1. Standard Connect (primary, recommended for most therapists).**
+Therapist links their EXISTING Stripe account via OAuth. They keep ownership, their transaction history, their saved customer cards, their tax forms. We get API permission to charge/refund/payout on their behalf using the Stripe-Account header. This is the path comparable SaaS (MassageBook, Vagaro, Jane App, Calendly) use.
+
+**2. Express Connect (fallback, for therapists with no Stripe account).**
+Stripe Connect creates a NEW Express account that lives partly under our platform. Therapist completes Stripe's hosted onboarding (5-10 minutes). The account is owned by our platform; therapist gets a limited Express dashboard view. They can charge and receive payouts but the account is not portable to other platforms.
+
+### When each is used
+
+Settings page Payments section shows BOTH paths visible from the start. No disclosure-hidden choice. Primary purple button is Standard. Below an OR divider is the Express button. The Express explainer line is crucial:
+
+> Pick this if you are new to Stripe, OR if your existing Stripe account was set up by another booking platform and you do not see it in the screen above. Five-minute setup.
+
+The "set up by another booking platform" line addresses the edge case where a therapist has an Express account from MassageBook or similar that will not appear in our Standard OAuth picker (Express accounts are owned by the platform that created them and not listable elsewhere).
+
+### Database schema
+
+```
+therapists.stripe_account_id        text        ID of the Stripe account (acct_xxx)
+therapists.stripe_account_connected boolean     True when account is fully ready
+therapists.stripe_account_ready_at  timestamptz Stamped when all readiness checks pass
+therapists.stripe_account_type      text        'express' or 'standard'
+```
+
+The downstream code (charge-card, create-deposit, refund flows, all subscription/membership/package logic) is account-type AGNOSTIC. It uses `Stripe-Account: ${stripe_account_id}` header for every Stripe API call. Stripe processes the call identically whether the underlying account is Express or Standard. The type matters only at the connection / management flow level.
+
+### Edge function: supabase/functions/stripe-connect/index.ts
+
+This is the central edge function for Stripe Connect operations. Actions:
+
+- `get_oauth_url`: Express flow. Creates a brand new Express account ONLY if no enabled matching account exists for this therapist's email under our platform. If a match exists, reuses it (returns `reused_existing: true`). New accounts are tagged with the therapist's email so future reconnects can match them.
+- `get_standard_oauth_url`: Returns the Stripe OAuth authorize URL for Standard Connect. Requires `STRIPE_CLIENT_ID` to be set to a valid platform OAuth client ID.
+- `complete_standard_oauth`: Exchanges OAuth code for the connected account ID. Stamps the therapist row with type='standard' and the account ID. Returns success or 'standard_account_incomplete' status.
+- `resume_onboarding`: Generates a fresh Account Link for an existing Express account so the therapist can resume hosted onboarding where they left off. CRITICAL: does not create a new account. Fixes the disconnect-reconnect orphan-account loop.
+- `confirm_connected`: Called by Express callback. Verifies charges_enabled / payouts_enabled / details_submitted via Stripe API. Flips connected flag based on actual Stripe state, not a guess from query params.
+- `diagnose`: Returns the raw Stripe account state including requirements_currently_due, requirements_past_due, disabled_reason. Used by /founder Stripe Debug page.
+- `list_platform_accounts`: Lists every Express account under our Connect platform (cap 100). Used by /founder Stripe Debug.
+- `attach_account`: Manually link a specific Stripe account ID to a therapist row, used as escape hatch from /founder Stripe Debug.
+- `get_transactions`: Returns real transaction history for a therapist's connected account.
+
+### Critical environment variables
+
+```
+STRIPE_SECRET_KEY            Live mode secret key (sk_live_xxx)
+STRIPE_TEST_SECRET_KEY       Test mode secret key (sk_test_xxx) - only used if PAYMENT_MODE=test
+STRIPE_CLIENT_ID             Live Connect platform OAuth client ID (ca_xxx)
+STRIPE_TEST_CLIENT_ID        Test Connect platform OAuth client ID (ca_xxx) - test only
+PAYMENT_MODE                 'live' (default) or 'test'
+```
+
+The Standard Connect OAuth requires STRIPE_CLIENT_ID to be set to a non-placeholder value. Test mode and live mode have SEPARATE Client IDs registered in Stripe Connect settings. Mixing them produces the symptom 'select an account screen does not show my expected accounts' (you would see only test-mode accounts when live mode was expected, or vice versa).
+
+### Stripe Connect settings requirements
+
+These must be configured in the Stripe Dashboard at `https://dashboard.stripe.com/settings/connect` for everything to work:
+
+1. Enable OAuth (toggle, defaults off for new platforms)
+2. Add redirect URIs:
+   - `https://www.mybodymap.app/dashboard/stripe-connect` (Express callback)
+   - `https://www.mybodymap.app/dashboard/stripe-connect-standard` (Standard OAuth callback)
+3. The Client ID shown on that page goes into `STRIPE_CLIENT_ID` env var in Supabase edge function secrets
+4. If using both test and live: the test Client ID and live Client ID are different. The Stripe dashboard mode toggle (top-left) switches which one is displayed. Use the live Client ID for `STRIPE_CLIENT_ID` and the test Client ID for `STRIPE_TEST_CLIENT_ID`.
+
+### Test mode vs live mode awareness
+
+Stripe Dashboard has a mode toggle in the top-left. EVERY view, EVERY page, EVERY data set in the Stripe Dashboard is scoped to whichever mode you are currently in. Accounts created in test mode are not visible in live mode and vice versa.
+
+When opening `dashboard.stripe.com`, you land in whichever mode you were last in. If you tested OAuth in test mode and then look for "your accounts" in live mode, you will not see them.
+
+Symptom: 'select an account screen does not show my expected accounts' often means mode mismatch.
+
+Best practice: when grabbing the Client ID for `STRIPE_CLIENT_ID`, FLIP TO LIVE MODE in Stripe Dashboard first. That ensures you copy the live Client ID and not the test one.
+
+### Recovery flows
+
+Two main recovery surfaces, both in /founder Stripe Debug:
+
+**Account stuck in onboarding_incomplete** (Express path that did not finish):
+- Tap Resume Onboarding
+- Stripe shows the remaining required fields
+- Complete them
+- Stripe redirects back, connected
+
+**Therapist has multiple Express accounts under our platform** (the "31 orphaned accounts" problem):
+- Tap Load list in Platform accounts panel
+- Find the row with the verified Enabled status that matches the therapist
+- Tap Attach
+- Row stamped with that account ID, connected flag flipped if account is ready
+
+**Force-set connected** (when Stripe says ready but DB says false):
+- Tap Force-set connected button (only appears in this exact disagreement case)
+- Updates the DB to match Stripe reality
+
+### Why we have 31 orphan Express accounts in the Connect dashboard
+
+Earlier versions of the Connect button created a brand new Express account on every tap, with no check for existing accounts. Disconnect/reconnect produced this proliferation. The architectural fix (May 15 2026) added a pre-check that searches existing accounts by email before creating, so the count stops growing. The 30 historical orphans are inert; they cannot accidentally receive a charge because none are attached to a therapist row. Stripe lets you remove them via the Connect dashboard UI if desired (manual, account by account). Not urgent.
+
+### The "Joy persona" lesson
+
+Earlier code shipped user-facing text like "Email Joy at hello@mybodymap.app" across multiple surfaces (HelpWidget, StripeConnect error page, Help.jsx, FounderDashboard templates). This violated the founding principle: the public persona is "MyBodyMap" / "we" / "the team," never a fictional individual. Joy was purged from all user-facing surfaces in commit `57395d3a`. Demo content with fictional therapist names "Joy" and "Lindsey" stays since those are sample therapist personas, not our brand voice.
+
+**End of Stripe Connect architecture section.**
+
 **End of billing strategy doc.**

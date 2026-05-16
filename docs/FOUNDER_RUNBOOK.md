@@ -553,12 +553,163 @@ The most important files to know:
 - **"The seven categories" / "the taxonomy":** The seven product ribbons. Source of truth for everything.
 - **"Cream frame":** The pale cream-colored container that wraps every demo on the Home page. A design principle, not a tunable parameter.
 - **"Money & Protection" / "ribbon 6":** Same thing. The billing + legal + security category.
-- **"Joy":** The persona name signed on all customer-facing communications. Not HK.
-- **"BodyMap" / "MyBodyMap":** "MyBodyMap" in user-facing text. "BodyMap" only acceptable in legal entity names (BodyMap LLC).
+- **"BodyMap" / "MyBodyMap":** "MyBodyMap" in user-facing text. "BodyMap" only acceptable in legal entity names (BodyMap LLC). Public voice is always "MyBodyMap" or "we" or "the team," never a fictional individual person.
 - **"The persona":** A 70-year-old female LMT, 25 years in practice, primary user we design for.
 - **"Triple-checked":** HK's standard before any new feature is promoted into marketing materials. Means: tested in dev, tested with at least one founding therapist, observed in production for 7+ days.
 
 ---
+
+---
+
+## Stripe Connect operations and recovery (added May 16 2026)
+
+This section is your runbook when Stripe behaves unexpectedly. Read in order; most issues are resolved within the first two procedures.
+
+### Quick diagnostic: where is the truth?
+
+Two sources of truth:
+
+1. **Stripe Dashboard** (`dashboard.stripe.com`) is what Stripe believes. Critical: check the **mode toggle** in top-left. Test mode and live mode show different data, different accounts, different transactions. **A common false-alarm:** "I do not see my transactions" almost always means you are in test mode looking at live transactions, or vice versa.
+
+2. **MyBodyMap database** is what we believe. Check it at /founder Stripe Debug. Shows the therapist's stripe_account_id, connected flag, type, and the live Stripe API verification.
+
+When the two disagree, /founder Stripe Debug has tools to reconcile. Never edit Stripe Dashboard manually except for redirect URIs.
+
+### Procedure 1: A therapist reports payments not working
+
+Symptoms: client at booking sees "payment processor not configured" or similar; deposits do not capture; refund button fails.
+
+Step 1: Confirm therapist row state. Either:
+- Open Supabase SQL Editor, run: `SELECT email, stripe_account_id, stripe_account_connected, stripe_account_type, stripe_account_ready_at FROM therapists WHERE email = '<their_email>';`
+- Or: open /founder Stripe Debug while temporarily impersonating their therapist row (NOT YET BUILT - see "Impersonation" below)
+
+Step 2: Three possible states:
+  (a) `stripe_account_connected = true, stripe_account_id` set: should be working. Real issue is downstream. Check edge function logs in Supabase. Most likely: their Stripe account is now disabled or restricted (Stripe revoked it for compliance). Email them.
+  (b) `stripe_account_connected = false, stripe_account_id` set: incomplete onboarding. Send them this message: "Go to Settings, Payments. You will see a 'Stripe setup not finished' panel with a Resume Stripe setup button. Tap it and complete the remaining fields Stripe asks for."
+  (c) `stripe_account_id IS NULL`: never connected. Send them this: "Go to Settings, Payments, and tap Connect Stripe."
+
+Step 3: If state (b) and they swear they completed setup, the architectural fix from May 15 2026 means tapping Connect Stripe again will auto-find their account. Have them try.
+
+Step 4: If still stuck, use /founder Stripe Debug. Load list of platform accounts. Find a matching Enabled account by email. Tap Attach. This bypasses everything and stamps their row manually.
+
+### Procedure 2: HK's own Stripe broke after disconnect/reconnect
+
+This happened May 15-16 2026 and is the reason for procedure 1 step 4 existing.
+
+Symptoms: you tapped Disconnect, tried to reconnect, ended up with a new empty Express account while your real verified account sits orphaned.
+
+Recovery (do this in order):
+  Step 1: /founder Stripe Debug
+  Step 2: Tap Load list under Platform accounts
+  Step 3: Find your verified Enabled Daya Gupta account. Should be `acct_1TNMhqBx320pMuYl` from 4/18 or `acct_1TXWhfQvokGFD9FY` from 5/16 (verified after manual attach)
+  Step 4: Tap Attach
+  Step 5: Reload your dashboard, verify green Connected panel
+
+### Procedure 3: The orphan 30 Express accounts
+
+You will see ~30 Restricted Express accounts in your Stripe Connect dashboard from before the May 15 2026 architectural fix. These are inert. They are not attached to any therapist row, cannot accidentally receive charges, and do not affect functionality.
+
+If you want to clean them up: log into Stripe Connect dashboard, click each Restricted account, tap "Reject" (Stripe will refuse to let you delete the Daya Gupta or Candice ones because they have transactions or are Enabled). Manual, account-by-account. Optional, not urgent.
+
+### Procedure 4: "Manage in Stripe" takes me to sandbox
+
+The Settings page connected panel has a "Manage in Stripe →" link that opens `dashboard.stripe.com`. Stripe always lands you in whichever mode (test or live) you were LAST signed into. If you tested OAuth in test mode at any point, your next visit defaults to test mode.
+
+Fix: in Stripe Dashboard top-left, flip the test/live toggle to live mode. Your real transactions are in live mode. The link does not control this; Stripe's own session does.
+
+### Procedure 5: A therapist did real transactions but does not see them
+
+Same root cause as procedure 4. They are in test mode in Stripe Dashboard.
+
+Walk them through: "Look at the top-left of your Stripe dashboard. There should be a toggle that says 'Test mode'. If the toggle is on (showing yellow or amber), tap it to turn it off. You will then see your real transactions in live mode."
+
+### Procedure 6: Standard OAuth shows wrong / missing accounts
+
+Symptoms: therapist taps Link your Stripe account, lands in Stripe OAuth picker, does not see their expected account.
+
+Three causes:
+  (a) Stripe is in test mode. The OAuth picker only shows accounts that match the current mode. Have them flip to live mode in Stripe Dashboard first.
+  (b) Their existing Stripe account is an Express account created by another platform (MassageBook, Vagaro, Squarespace, etc). Express accounts are owned by the platform that created them and are not listable in a different platform's Standard OAuth picker. Solution: have them set up a new MyBodyMap-owned Stripe account via the Express fallback button (visible below the Standard button in Settings).
+  (c) STRIPE_CLIENT_ID in Supabase is a test Client ID but PAYMENT_MODE is live (or vice versa). Mismatch. Check the env vars match the mode you want.
+
+### Procedure 7: Force-set a therapist as connected (manual override)
+
+When you know a therapist's Stripe is genuinely working but the DB flag is wrong (rare but possible after a Stripe API hiccup):
+
+SQL:
+```sql
+UPDATE therapists
+SET stripe_account_connected = true,
+    stripe_account_ready_at = NOW()
+WHERE id = '<therapist_uuid>';
+```
+
+Or via /founder Stripe Debug: load the diagnostic, if Stripe says all three booleans are TRUE but DB says false, the "Force-set connected" button appears. Tap it.
+
+### Procedure 8: Wipe a stuck connection and start over
+
+When everything is broken and you just want to reset:
+
+/founder Stripe Debug -> "Wipe Stripe Account ID" button. This clears stripe_account_id and stripe_account_connected. The Stripe-side account itself stays on Stripe's books, just disconnected from MyBodyMap.
+
+Then go to Settings, Payments. The fresh two-path UI shows. Connect again from a clean state.
+
+### Stripe Dashboard configuration (canonical state)
+
+If you ever need to restore Stripe Dashboard settings to working state:
+
+URL: `https://dashboard.stripe.com/settings/connect`
+
+Required state:
+- Mode: live (top-left toggle off)
+- OAuth: enabled
+- Redirect URIs configured:
+  - `https://www.mybodymap.app/dashboard/stripe-connect`
+  - `https://www.mybodymap.app/dashboard/stripe-connect-standard`
+- Client ID: the live `ca_xxx` shown on this page. Copy it (or click reveal) and store in Supabase as `STRIPE_CLIENT_ID`.
+
+If you also configured test mode:
+- Flip Stripe Dashboard to test mode (toggle on)
+- Same page, same OAuth + redirects (test versions of the URLs if any)
+- Test Client ID also `ca_xxx` but DIFFERENT from live. Store in Supabase as `STRIPE_TEST_CLIENT_ID`.
+
+### Critical Supabase env vars
+
+In Supabase Project Settings -> Edge Function Secrets:
+
+```
+STRIPE_SECRET_KEY        sk_live_xxx (live mode)
+STRIPE_CLIENT_ID         ca_xxx (live OAuth client ID from Stripe Connect settings)
+STRIPE_TEST_SECRET_KEY   sk_test_xxx (only if using test mode for QA)
+STRIPE_TEST_CLIENT_ID    ca_xxx (test OAuth client ID; different from live)
+PAYMENT_MODE             'live' (default) or 'test'
+RESEND_API_KEY           For email sends
+SUPABASE_URL             Auto-set
+SUPABASE_SERVICE_ROLE_KEY Auto-set
+```
+
+All four Stripe env vars should be set even if PAYMENT_MODE=live, so test-mode QA does not require redeployment. Missing test keys when PAYMENT_MODE=test produces immediate errors at first request (intentional, no silent fallback).
+
+### Where Stripe Connect lives in the code
+
+- Edge function: `supabase/functions/stripe-connect/index.ts` (single file, all actions)
+- Express callback page: `src/pages/StripeConnect.js`
+- Standard callback page: `src/pages/StripeConnectStandard.js`
+- Settings UI (two-path Connect): `src/pages/Dashboard.js` inside SettingsPanel, section 4.2 "Payments"
+- Debug surface: `src/pages/StripeDebug.jsx` (founder-only, embedded in /founder section 8)
+- Schema migrations:
+  - `supabase/migrations/stripe_account_ready_at.sql`
+  - `supabase/migrations/stripe_account_type.sql`
+
+### When to call in expert help
+
+If after running the above procedures the system is still misbehaving, two escalation paths:
+
+1. Stripe Support: `support.stripe.com`. They can see things we cannot (account-level disablement, payout holds, compliance flags). Mention you are a Connect platform with both Express and Standard.
+
+2. Read the Stripe Connect docs at `stripe.com/docs/connect`. The "Account Links," "OAuth," and "Account types" pages are the relevant ones.
+
+**End of Stripe Connect operations section.**
 
 **End of runbook.**
 
