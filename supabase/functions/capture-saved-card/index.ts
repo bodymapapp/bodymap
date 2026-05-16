@@ -24,6 +24,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getStripeSecret } from "../_shared/paymentMode.ts";
+import { notifyTherapist } from "../_shared/notifications.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -39,7 +40,7 @@ serve(async (req) => {
   });
 
   try {
-    const { payment_intent_id, stripe_account_id, client_id, therapist_id } = await req.json();
+    const { payment_intent_id, stripe_account_id, client_id, therapist_id, booking_id } = await req.json();
 
     if (!payment_intent_id || !stripe_account_id || !client_id) {
       return respond({ error: 'Missing required fields' }, 400);
@@ -106,6 +107,84 @@ serve(async (req) => {
       return respond({
         error: `DB update failed: ${updErr.message}`,
       }, 500);
+    }
+
+    // ─── Fire payment_received notification to the therapist ─────
+    //
+    // Fan-out to in-app drawer, email, and SMS based on the
+    // therapist's notification_prefs. Non-blocking: any channel
+    // failure here is logged but does not affect the success
+    // response to the client (the payment has succeeded; the
+    // notification is observability for the therapist).
+    if (therapist_id) {
+      try {
+        const { data: therapist } = await supabase
+          .from('therapists')
+          .select('id, email, phone, full_name, business_name, notification_prefs, twilio_account_sid, twilio_auth_token, twilio_phone_number')
+          .eq('id', therapist_id)
+          .maybeSingle();
+
+        if (therapist) {
+          const { data: client } = await supabase
+            .from('clients')
+            .select('name, email')
+            .eq('id', client_id)
+            .maybeSingle();
+
+          // Amount comes from the PaymentIntent itself, which is
+          // already loaded above as `pi` (server-validated; never
+          // trust the frontend).
+          const amountCents = Number(pi.amount || 0);
+          const dollars = (amountCents / 100).toFixed(2);
+          const clientName = client?.name || 'a client';
+          const firstName = clientName.split(' ')[0];
+
+          const title = `${clientName} paid $${dollars}`;
+          const summary = booking_id
+            ? `Deposit captured for the upcoming session. The card is now on file for future bookings.`
+            : `Payment captured. The card is now on file for future bookings.`;
+
+          const emailHtml = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6B9E80;margin-bottom:8px;">💚 Payment received</div>
+      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;">$${dollars} from ${firstName}</h1>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 22px;line-height:1.6;">${summary}</p>
+      <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Billing</a>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
+        You are getting this because "Payment received" is on in your notification settings. You can turn this off any time from Settings.
+      </div>
+    </div>
+  </div>
+</body></html>`;
+
+          await notifyTherapist({
+            supabase, therapist,
+            eventType: 'payment_received',
+            title,
+            body: summary,
+            icon: '💚',
+            linkUrl: '/dashboard/billing',
+            payload: {
+              amount_cents: amountCents,
+              currency: pi.currency || 'usd',
+              client_id,
+              booking_id: booking_id || null,
+              payment_intent_id,
+            },
+            emailSubject: `Payment received: $${dollars} from ${firstName}`,
+            emailHtml,
+            smsText: `MyBodyMap: $${dollars} from ${firstName}. Card now on file.`,
+            bookingId: booking_id || null,
+            clientId: client_id,
+          });
+        }
+      } catch (notifyErr) {
+        console.warn('[capture-saved-card] notify failed (non-blocking):', notifyErr);
+      }
     }
 
     return respond({

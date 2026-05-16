@@ -177,6 +177,27 @@ export default function CancellationChargeModal({
     try {
       const newStatus = isNoShow ? 'no_show' : 'cancelled';
       await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+
+      // Notify the therapist that the booking was cancelled / marked
+      // no-show. Non-blocking: the booking is already cancelled, so
+      // we don't want a notification hiccup to surface to the UI.
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: booking.id,
+            event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
+          }),
+        }).catch(() => { /* non-blocking */ });
+      } catch (_notifyErr) { /* non-blocking */ }
+
       setBusy(false);
       onCancelled?.();
       onClose();

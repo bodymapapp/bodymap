@@ -1924,6 +1924,7 @@ export default function BookingPage() {
               stripe_account_id: depositAccountId,
               client_id: depositResolvedClientId,
               therapist_id: therapist.id,
+              booking_id: bookingId,
             }),
           }
         );

@@ -19,6 +19,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { notifyTherapist } from "../_shared/notifications.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -443,6 +444,70 @@ serve(async (req) => {
           booking_id: booking.id,
         }).then((r: any) => { if (r.error) console.error("[log] insert failed", r.error); });
       }
+    }
+
+    // ─── 3. THERAPIST "NEW CLIENT SIGNUP" NOTIFICATION ──────────────
+    //
+    // Fire only when this booking represents a brand-new client
+    // identity (no prior bookings under the same email+therapist).
+    // Repeat clients booking again should NOT trigger this.
+    //
+    // Definition: count all bookings for this therapist with the
+    // same client_email (case-insensitive). If count is exactly 1,
+    // this is the first one, and we treat the client as new.
+    // Pending-approval bookings count because they represent the
+    // first contact regardless of approval outcome.
+    try {
+      const normalizedEmail = (booking.client_email || "").trim().toLowerCase();
+      if (normalizedEmail) {
+        const { count } = await supabase
+          .from("bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("therapist_id", therapist.id)
+          .ilike("client_email", normalizedEmail);
+
+        if (count === 1) {
+          const title = `New client: ${clientName}`;
+          const summary = `${clientName} just booked their first session with you (${serviceName} on ${apt.date}).`;
+          const emailHtml = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6B9E80;margin-bottom:8px;">✨ First-time client</div>
+      <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;">${escapeHtml(clientName)}</h1>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 18px;line-height:1.6;">${summary}</p>
+      <a href="https://mybodymap.app/dashboard/clients" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Clients</a>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
+        You are getting this because "New client signup" is on in your notification settings.
+      </div>
+    </div>
+  </div>
+</body></html>`;
+          await notifyTherapist({
+            supabase, therapist,
+            eventType: "new_client_signup",
+            title,
+            body: summary,
+            icon: "✨",
+            linkUrl: "/dashboard/clients",
+            payload: {
+              client_name: clientName,
+              client_email: clientEmail,
+              booking_id: booking.id,
+              service_name: serviceName,
+            },
+            emailSubject: `New client: ${clientName} just booked you`,
+            emailHtml,
+            smsText: `MyBodyMap: ${clientName} booked their first session with you (${serviceName} on ${apt.date}).`,
+            bookingId: booking.id,
+          });
+          debug.fired_new_client_signup = true;
+        }
+      }
+    } catch (newClientErr) {
+      console.warn("[new_client_signup] non-blocking error:", newClientErr);
     }
 
     console.log("[done] returning ok", { results, debug });

@@ -23,6 +23,7 @@ import {
   corsHeaders, respond, getSupabaseClient, loadTherapist,
   ProviderError,
 } from '../_shared/payment-provider.ts';
+import { notifyTherapist } from '../_shared/notifications.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -259,6 +260,75 @@ serve(async (req) => {
       booking_id, processor, payment_ref_id: chargeResult.paymentRefId,
       amount_cents: chargeResult.amountCents,
     });
+
+    // ─── Notify therapist: booking_cancelled or no_show_recorded ────
+    //
+    // The notification reflects what just happened from the therapist's
+    // perspective (a cancel or a no-show), not what we did with the fee.
+    // The fee amount is embedded in the body so they see the money side
+    // in the same message.
+    //
+    // Non-blocking: any notification failure is logged but never
+    // propagated, because the charge already succeeded and the response
+    // to the UI must not be derailed by an email hiccup.
+    try {
+      const isNoShow = reason === 'no_show';
+      const eventType = isNoShow ? 'no_show_recorded' : 'booking_cancelled';
+      const clientName = (client.name || 'Client').toString();
+      const firstName = clientName.split(' ')[0];
+      const feeUsd = ((chargeResult.amountCents || 0) / 100).toFixed(2);
+      const startDt = booking.start_at ? new Date(booking.start_at) : null;
+      const whenStr = startDt
+        ? startDt.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+        : '';
+
+      const title = isNoShow
+        ? `${firstName} marked no-show, $${feeUsd} charged`
+        : `${firstName} cancelled, $${feeUsd} charged`;
+      const summary = isNoShow
+        ? `${clientName} did not show up for ${whenStr}. Your no-show policy fee of $${feeUsd} was charged to the card on file.`
+        : `${clientName}'s session for ${whenStr} was cancelled. Your late-cancel policy fee of $${feeUsd} was charged to the card on file.`;
+
+      const emailHtml = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#F5F0E8;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#0D1F17;">
+  <div style="max-width:520px;margin:0 auto;padding:32px 16px;">
+    <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${isNoShow ? '#92400E' : '#DC2626'};margin-bottom:8px;">${isNoShow ? '🚫 No-show recorded' : '🗑 Booking cancelled'}</div>
+      <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:0 0 6px;">${title}</h1>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 18px;line-height:1.6;">${summary}</p>
+      <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Billing</a>
+      <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
+        You are getting this because "${isNoShow ? 'No-show recorded' : 'Booking cancelled'}" is on in your notification settings.
+      </div>
+    </div>
+  </div>
+</body></html>`;
+
+      await notifyTherapist({
+        supabase, therapist,
+        eventType,
+        title,
+        body: summary,
+        icon: isNoShow ? '🚫' : '🗑',
+        linkUrl: '/dashboard/billing',
+        payload: {
+          booking_id,
+          client_id: client.id,
+          fee_cents: chargeResult.amountCents,
+          payment_ref_id: chargeResult.paymentRefId,
+          reason,
+        },
+        emailSubject: title,
+        emailHtml,
+        smsText: `MyBodyMap: ${isNoShow ? 'No-show' : 'Cancellation'} for ${firstName} on ${whenStr}. $${feeUsd} charged.`,
+        bookingId: booking_id,
+        clientId: client.id,
+      });
+    } catch (notifyErr) {
+      console.warn('[charge-cancellation-fee] notify failed (non-blocking):', notifyErr);
+    }
 
     return respond({
       ok: true,

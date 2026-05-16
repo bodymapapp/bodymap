@@ -62,6 +62,24 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   async function cancelAppointment() {
     setCancelling(true);
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', appt.id);
+
+    // Notify the therapist (non-blocking). This is the legacy
+    // inline confirm path that only fires when the full booking
+    // row could not be loaded for the policy-aware modal.
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ booking_id: appt.id, event_type: 'booking_cancelled' }),
+      }).catch(() => { /* non-blocking */ });
+    } catch (_notifyErr) { /* non-blocking */ }
+
     setCancelling(false);
     onCancelled?.();
     onClose();

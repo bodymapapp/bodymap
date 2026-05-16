@@ -11,6 +11,7 @@ import SessionDetail from '../components/SessionDetail';
 import ScheduleDashboard from '../components/ScheduleDashboard';
 import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
+import NotificationsBell from '../components/NotificationsBell';
 import GiftCertificates from '../components/GiftCertificates';
 import PackagesCard from '../components/PackagesCard';
 import MembershipsCard from '../components/MembershipsCard';
@@ -3970,6 +3971,7 @@ export default function Dashboard({ view }) {
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <NotificationsBell therapistId={therapist?.id} isMobile={isMobile} />
           <span style={{ fontSize: '10px', fontWeight: '700', color: C.forest, background: '#F0FDF4', border: '1px solid #86EFAC', padding: '3px 8px', borderRadius: '20px', whiteSpace: 'nowrap' }}>
             🌿 Silver · Free
           </span>
