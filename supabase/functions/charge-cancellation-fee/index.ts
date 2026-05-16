@@ -36,7 +36,7 @@ serve(async (req) => {
       // recomputing here so the therapist sees exactly what they're
       // agreeing to charge.
       fee_amount_cents,
-      // 'late_cancel' | 'reschedule' | 'no_show' — written to audit row
+      // 'late_cancel' | 'reschedule' | 'no_show', written to audit row
       reason,
       // Snapshot of the policy at cancellation time, for audit
       policy_snapshot,
@@ -163,14 +163,66 @@ serve(async (req) => {
     } catch (chargeErr) {
       // Update the pending row to 'failed' for audit
       const errMsg = chargeErr instanceof Error ? chargeErr.message : String(chargeErr);
+
+      // ─── Stale customer / payment_method recovery ────────────────
+      //
+      // Stripe scopes Customers and PaymentMethods per connected
+      // account. If a therapist's row was ever moved between Stripe
+      // accounts (Express account switch, May 15 2026 architectural
+      // migration to verified Daya Gupta), the IDs we cached on the
+      // client row no longer exist in the current account's
+      // namespace. Symptom: ProviderError code='resource_missing'
+      // with a message mentioning 'customer' or 'payment_method'.
+      //
+      // Recovery differs from create-deposit because the client is
+      // not present to re-enter a card. So we cannot auto-retry the
+      // charge. What we CAN do, defensively:
+      //   1. Clear the stale Stripe IDs from the client row so the
+      //      next time the client books, save-card-on-booking
+      //      naturally creates fresh IDs on the current account.
+      //   2. Mark this cancellation charge failed with a specific
+      //      'stripe_resource_orphan' marker for ops + audit.
+      //   3. Return a friendlier code so callers can show the
+      //      therapist a clear explanation rather than a raw
+      //      Stripe error.
+      const isStaleResource =
+        processor === 'stripe' &&
+        chargeErr instanceof ProviderError &&
+        chargeErr.code === 'resource_missing' &&
+        /customer|payment_method|cus_|pm_/i.test(chargeErr.message || '');
+
+      if (isStaleResource) {
+        console.warn(`[charge-cancellation-fee] Stale Stripe resource for client ${client.id} on therapist ${therapist_id}; clearing cached IDs.`);
+        try {
+          await supabase
+            .from('clients')
+            .update({
+              stripe_customer_id: null,
+              stripe_payment_method_id: null,
+              card_saved_at: null,
+            })
+            .eq('id', client.id);
+        } catch (cleanupErr) {
+          console.warn('[charge-cancellation-fee] cleanup failed', cleanupErr);
+        }
+      }
+
       await supabase
         .from('cancellation_charges')
         .update({
           status: 'failed',
           failed_at: new Date().toISOString(),
-          error_message: errMsg.slice(0, 500),
+          error_message: (isStaleResource ? '[stripe_resource_orphan] ' : '') + errMsg.slice(0, 480),
         })
         .eq('id', pendingRow?.id);
+
+      if (isStaleResource) {
+        return respond({
+          error: 'The card on file for this client was set up before a Stripe account migration and no longer exists on the current account. We have cleared the stale reference; the client will be asked to save a fresh card on their next booking. No fee was charged.',
+          code: 'stripe_resource_orphan',
+          charge_id: pendingRow?.id,
+        }, 400);
+      }
 
       if (chargeErr instanceof ProviderError) {
         return respond({ error: chargeErr.message, code: chargeErr.code, charge_id: pendingRow?.id }, 400);
