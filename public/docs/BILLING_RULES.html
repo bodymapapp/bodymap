@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MyBodyMap: Billing & Cancellation Rules Matrix</title>
+<title>MyBodyMap: How Cancellations, Reschedules, and No-Shows Work</title>
 <style>
   :root {
     --forest-deep: #1F4030;
@@ -32,314 +32,241 @@
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--cream);
     color: var(--ink);
-    line-height: 1.55;
+    line-height: 1.65;
+    font-size: 15px;
   }
-  .wrap {
-    max-width: 1180px;
-    margin: 0 auto;
-    padding: 40px 24px 80px;
-  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
   header.hero {
     background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
     color: #fff;
-    padding: 48px 24px;
+    padding: 52px 36px;
     border-radius: 18px;
-    margin-bottom: 40px;
+    margin-bottom: 36px;
     box-shadow: 0 18px 48px rgba(42, 87, 65, 0.18);
   }
   header.hero h1 {
     font-family: Georgia, serif;
     font-weight: 400;
-    font-size: clamp(28px, 4vw, 44px);
-    margin: 0 0 12px;
+    font-size: clamp(28px, 4vw, 42px);
+    margin: 0 0 14px;
     letter-spacing: -0.015em;
-  }
-  header.hero p {
-    font-size: 16px;
-    color: rgba(255,255,255,0.85);
-    max-width: 720px;
-    margin: 0;
+    line-height: 1.15;
   }
   header.hero .eyebrow {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--sage-soft);
-    margin-bottom: 12px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sage-soft); margin-bottom: 14px;
+  }
+  header.hero p {
+    font-size: 16px; color: rgba(255,255,255,0.85);
+    max-width: 700px; margin: 0 0 12px; line-height: 1.6;
+  }
+  header.hero .audience {
+    font-size: 13px; color: rgba(255,255,255,0.7);
+    font-style: italic; font-family: Georgia, serif;
+    margin-top: 18px; padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,0.15);
   }
 
   h2 {
-    font-family: Georgia, serif;
-    font-weight: 400;
-    font-size: clamp(22px, 2.8vw, 30px);
-    color: var(--forest-deep);
-    margin: 56px 0 18px;
-    letter-spacing: -0.012em;
-    border-bottom: 2px solid var(--sage-soft);
-    padding-bottom: 12px;
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(22px, 2.8vw, 30px); color: var(--forest-deep);
+    margin: 56px 0 16px; letter-spacing: -0.012em;
+    border-bottom: 2px solid var(--sage-soft); padding-bottom: 12px;
   }
   h3 {
-    font-family: Georgia, serif;
-    font-weight: 400;
-    font-size: 20px;
-    color: var(--forest);
-    margin: 32px 0 14px;
+    font-family: Georgia, serif; font-weight: 400; font-size: 20px;
+    color: var(--forest); margin: 28px 0 12px;
   }
 
   .toc {
-    background: #fff;
-    border: 1px solid var(--cream-deep);
-    border-radius: 14px;
-    padding: 24px 28px;
-    margin-bottom: 40px;
+    background: #fff; border: 1px solid var(--cream-deep);
+    border-radius: 14px; padding: 24px 28px; margin-bottom: 36px;
     box-shadow: 0 4px 14px rgba(0,0,0,0.04);
   }
   .toc h3 {
-    margin: 0 0 12px;
-    color: var(--forest-deep);
-    font-size: 16px;
-    font-family: -apple-system, sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+    margin: 0 0 14px; color: var(--forest-deep); font-size: 14px;
+    font-family: -apple-system, sans-serif; font-weight: 700;
+    letter-spacing: 0.06em; text-transform: uppercase;
   }
-  .toc ol {
-    margin: 0;
-    padding-left: 22px;
-    columns: 2;
-    column-gap: 30px;
-  }
-  .toc li {
-    margin-bottom: 6px;
-    font-size: 14px;
-  }
+  .toc ol { margin: 0; padding-left: 22px; columns: 2; column-gap: 30px; }
+  .toc li { margin-bottom: 8px; font-size: 14.5px; }
   .toc a {
-    color: var(--forest);
-    text-decoration: none;
+    color: var(--forest); text-decoration: none;
     border-bottom: 1px dotted rgba(42, 87, 65, 0.3);
   }
-  .toc a:hover {
-    border-bottom-style: solid;
-    color: var(--forest-deep);
-  }
-
-  .glossary {
-    background: var(--rose-soft);
-    border: 1px solid #F4D5DB;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin-bottom: 40px;
-  }
-  .glossary h3 {
-    margin: 0 0 12px;
-    color: var(--red-deep);
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-family: -apple-system, sans-serif;
-    font-weight: 700;
-  }
-  .glossary-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 10px 24px;
-    font-size: 13.5px;
-  }
-  .glossary-grid code {
-    background: #fff;
-    border: 1px solid #F4D5DB;
-    padding: 1px 7px;
-    border-radius: 5px;
-    font-family: 'SF Mono', Monaco, Consolas, monospace;
-    font-size: 12px;
-    color: var(--red-deep);
-    margin-right: 8px;
-    font-weight: 600;
-  }
-
-  .scenario {
-    background: #fff;
-    border: 1px solid var(--cream-deep);
-    border-radius: 14px;
-    padding: 28px 30px;
-    margin-bottom: 32px;
-    box-shadow: 0 4px 18px rgba(0,0,0,0.04);
-  }
-  .scenario header.scenario-head {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
-  }
-  .scenario-id {
-    display: inline-block;
-    background: var(--forest);
-    color: #fff;
-    font-family: Georgia, serif;
-    font-style: italic;
-    font-size: 14px;
-    padding: 3px 12px;
-    border-radius: 999px;
-    font-weight: 400;
-  }
-  .scenario h2 {
-    margin: 0;
-    border: none;
-    padding: 0;
-    font-size: 24px;
-  }
-  .scenario .summary {
-    color: var(--ink-soft);
-    font-size: 14.5px;
-    margin: 6px 0 24px;
-    font-style: italic;
-    font-family: Georgia, serif;
-  }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 13.5px;
-    margin: 14px 0;
-    background: #fff;
-  }
-  th, td {
-    text-align: left;
-    padding: 11px 12px;
-    border: 1px solid var(--cream-deep);
-    vertical-align: top;
-  }
-  th {
-    background: var(--cream);
-    font-weight: 700;
-    color: var(--forest-deep);
-    font-size: 12px;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  tr:nth-child(even) td {
-    background: #FAFAF7;
-  }
-  td.input {
-    font-family: 'SF Mono', Monaco, Consolas, monospace;
-    font-size: 11.5px;
-    color: var(--ink-soft);
-    white-space: nowrap;
-    background: var(--cream-deep) !important;
-  }
-  td.action {
-    font-weight: 600;
-    color: var(--forest);
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-right: 4px;
-    margin-bottom: 3px;
-  }
-  .badge-charge { background: var(--green-soft); color: var(--green-deep); }
-  .badge-refund { background: var(--rose-soft); color: var(--red-deep); }
-  .badge-manual { background: var(--amber-soft); color: var(--amber-deep); }
-  .badge-none   { background: var(--cream-deep); color: var(--ink-soft); }
-  .badge-notif  { background: #E0E7FF; color: #3730A3; font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 10.5px; }
+  .toc a:hover { border-bottom-style: solid; color: var(--forest-deep); }
 
   .principles {
     background: linear-gradient(180deg, #F4F8F1 0%, var(--cream) 100%);
-    border: 1.5px solid var(--sage-soft);
-    border-radius: 14px;
-    padding: 28px 32px;
-    margin: 40px 0;
+    border: 1.5px solid var(--sage-soft); border-radius: 14px;
+    padding: 28px 34px; margin: 36px 0;
   }
-  .principles h3 {
-    margin-top: 0;
-    color: var(--forest-deep);
-  }
-  .principles ol {
-    margin: 0;
-    padding-left: 22px;
-  }
-  .principles li {
-    margin-bottom: 12px;
-    font-size: 14.5px;
-    line-height: 1.65;
-  }
-  .principles strong {
-    color: var(--forest-deep);
-  }
+  .principles ol { margin: 0; padding-left: 22px; }
+  .principles li { margin-bottom: 14px; font-size: 15px; line-height: 1.65; }
+  .principles li:last-child { margin-bottom: 0; }
+  .principles strong { color: var(--forest-deep); }
 
-  .competitor-table th {
-    font-size: 11px;
+  .scenario {
+    background: #fff; border: 1px solid var(--cream-deep);
+    border-radius: 14px; padding: 32px 36px; margin-bottom: 32px;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.04);
   }
-  .competitor-table td {
-    font-size: 12.5px;
+  .scenario-tag {
+    display: inline-block; background: var(--forest); color: #fff;
+    font-family: Georgia, serif; font-style: italic; font-size: 13px;
+    padding: 3px 14px; border-radius: 999px; font-weight: 400;
+    margin-bottom: 10px;
+  }
+  .scenario h2 {
+    margin: 0 0 10px; border: none; padding: 0; font-size: 26px;
+  }
+  .scenario .intro {
+    color: var(--ink-soft); font-size: 15.5px; margin: 0 0 24px;
+    line-height: 1.65; max-width: 760px;
+  }
+  .scenario .intro strong { color: var(--ink); }
+
+  .matrix {
+    width: 100%; border-collapse: collapse; margin: 18px 0 24px; font-size: 14px;
+  }
+  .matrix th, .matrix td {
+    text-align: left; padding: 14px 16px;
+    border: 1px solid var(--cream-deep); vertical-align: top;
+  }
+  .matrix th {
+    background: var(--forest-deep); color: #fff; font-weight: 700;
+    font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+    line-height: 1.3;
+  }
+  .matrix td.situation {
+    background: var(--cream); font-weight: 600;
+    color: var(--forest-deep); width: 30%;
+  }
+  .matrix td.action { width: 28%; }
+  .matrix td.therapist, .matrix td.client { width: 21%; font-size: 13.5px; }
+  .matrix tr:nth-child(even) td:not(.situation) { background: #FAFAF7; }
+
+  .pill {
+    display: inline-block; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 700; margin-bottom: 6px; letter-spacing: 0.02em;
+  }
+  .pill-auto { background: var(--green-soft); color: var(--green-deep); }
+  .pill-refund { background: var(--rose-soft); color: var(--red-deep); }
+  .pill-manual { background: var(--amber-soft); color: var(--amber-deep); }
+  .pill-none { background: var(--cream-deep); color: var(--ink-soft); }
+
+  .sample {
+    background: var(--cream); border-left: 3px solid var(--sage);
+    padding: 10px 14px; border-radius: 6px; margin-top: 8px;
+    font-size: 13px; line-height: 1.55; font-style: italic;
+    font-family: Georgia, serif; color: var(--ink);
+  }
+  .sample.client-sample { border-left-color: var(--gold); }
+
+  .q-ref {
+    display: inline-block; background: var(--amber-soft); color: var(--amber-deep);
+    border: 1px solid #FCD34D; border-radius: 999px;
+    padding: 1px 9px; font-size: 11px; font-weight: 700;
+    margin-left: 6px; text-decoration: none; vertical-align: middle;
+  }
+  .q-ref:hover { background: #FCD34D; }
+
+  .competitor-table {
+    width: 100%; border-collapse: collapse; font-size: 13.5px; margin: 20px 0;
+  }
+  .competitor-table th, .competitor-table td {
+    text-align: left; padding: 11px 14px; border: 1px solid var(--cream-deep);
+  }
+  .competitor-table th {
+    background: var(--forest-deep); color: #fff; font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.06em;
   }
   .competitor-table .platform {
-    font-weight: 700;
-    color: var(--forest);
+    font-weight: 700; color: var(--forest); background: var(--cream); width: 26%;
   }
   .competitor-table .win {
-    background: var(--green-soft) !important;
-    color: var(--green-deep);
-    font-weight: 600;
+    background: var(--green-soft) !important; color: var(--green-deep); font-weight: 600;
   }
   .competitor-table .lose {
-    background: var(--rose-soft) !important;
-    color: var(--red-deep);
+    background: var(--rose-soft) !important; color: var(--red-deep);
   }
 
   .moat {
     background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
-    color: #fff;
-    border-radius: 14px;
-    padding: 32px 36px;
-    margin: 40px 0;
+    color: #fff; border-radius: 14px; padding: 36px 40px; margin: 40px 0;
   }
-  .moat h3 {
-    color: #fff;
-    margin-top: 0;
-  }
-  .moat ol {
-    padding-left: 22px;
-  }
+  .moat h3 { color: #fff; margin-top: 0; font-size: 24px; }
+  .moat ol { padding-left: 22px; margin: 18px 0 0; }
   .moat li {
-    margin-bottom: 10px;
-    font-size: 14.5px;
-    color: rgba(255,255,255,0.9);
+    margin-bottom: 14px; font-size: 15px; color: rgba(255,255,255,0.9); line-height: 1.65;
   }
-  .moat li strong {
-    color: var(--sage-soft);
+  .moat li strong { color: var(--sage-soft); }
+
+  .questions {
+    background: var(--amber-soft); border: 1.5px solid var(--amber);
+    border-radius: 14px; padding: 36px 40px; margin: 50px 0;
+  }
+  .questions h2 {
+    color: var(--amber-deep); border-bottom-color: var(--amber); margin-top: 0;
+  }
+  .questions .question {
+    background: #fff; border-radius: 12px; padding: 22px 26px;
+    margin-bottom: 18px; box-shadow: 0 4px 12px rgba(146, 64, 14, 0.08);
+  }
+  .questions .question:last-child { margin-bottom: 0; }
+  .questions .qnum {
+    display: inline-block; background: var(--amber); color: #fff;
+    font-family: Georgia, serif; font-style: italic; font-size: 13px;
+    padding: 2px 11px; border-radius: 999px; margin-bottom: 10px; font-weight: 400;
+  }
+  .questions .qtitle {
+    font-family: Georgia, serif; font-weight: 400; font-size: 19px;
+    color: var(--amber-deep); margin: 4px 0 12px; line-height: 1.4;
+  }
+  .questions .qcontext {
+    font-size: 14px; color: var(--ink); line-height: 1.65; margin-bottom: 14px;
+  }
+  .questions .options { list-style: none; padding: 0; margin: 0; }
+  .questions .options li {
+    background: var(--cream); border: 1px solid var(--cream-deep);
+    border-radius: 8px; padding: 10px 14px; margin-bottom: 8px;
+    font-size: 14px; line-height: 1.55;
+  }
+  .questions .options li strong {
+    color: var(--forest-deep); display: block; margin-bottom: 4px;
+  }
+  .questions .scenario-ref {
+    font-size: 12px; color: var(--ink-soft); margin-top: 12px;
+    padding-top: 12px; border-top: 1px dashed var(--cream-deep);
+    font-style: italic; font-family: Georgia, serif;
   }
 
   .footnote {
-    font-size: 12px;
-    color: var(--ink-fade);
-    font-style: italic;
-    margin-top: 10px;
-    font-family: Georgia, serif;
+    font-size: 12.5px; color: var(--ink-fade); font-style: italic;
+    margin-top: 14px; font-family: Georgia, serif; line-height: 1.6;
   }
 
-  .open-q {
-    background: var(--amber-soft);
-    border-left: 4px solid var(--amber);
-    padding: 16px 20px;
-    margin: 20px 0;
-    border-radius: 8px;
-    font-size: 14px;
-  }
-  .open-q strong {
-    color: var(--amber-deep);
-  }
-
-  @media print {
-    body { background: #fff; }
-    header.hero, .scenario, .moat, .principles {
-      page-break-inside: avoid;
-      box-shadow: none;
+  @media (max-width: 720px) {
+    .matrix, .matrix tbody, .matrix tr, .matrix td {
+      display: block; width: 100% !important;
     }
+    .matrix thead { display: none; }
+    .matrix tr {
+      border: 1px solid var(--cream-deep); border-radius: 10px;
+      margin-bottom: 14px; padding: 8px;
+    }
+    .matrix td { border: none; border-bottom: 1px dashed var(--cream-deep); }
+    .matrix td.situation {
+      background: var(--forest-deep) !important; color: #fff;
+      border-radius: 8px; margin-bottom: 6px; font-size: 13px;
+    }
+    .matrix td::before {
+      content: attr(data-label); display: block;
+      font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px;
+    }
+    .matrix td.situation::before { color: rgba(255,255,255,0.7); }
   }
 </style>
 </head>
@@ -348,354 +275,493 @@
 
 <header class="hero">
   <div class="eyebrow">★ Internal strategy document</div>
-  <h1>Billing & Cancellation Rules Matrix</h1>
-  <p>Every input combination that touches a booking's money, and what should happen for each one. Built from competitor research across the 8 closest peers and 4 best-in-class consumer apps. Read this before any rule executes in code.</p>
+  <h1>How Cancellations, Reschedules, and No-Shows Work</h1>
+  <p>This document explains exactly what happens to a booking's money and what messages get sent, for every situation we can think of. Read it before any rule executes in code.</p>
+  <p class="audience">Written so a therapist, a client, an investor, or a grandmother can all understand the same page. No jargon. No shorthand. Every word matters.</p>
 </header>
 
 <div class="toc">
   <h3>What's in this document</h3>
   <ol>
-    <li><a href="#legend">Legend & input shorthand</a></li>
-    <li><a href="#principles">Six guiding principles</a></li>
-    <li><a href="#s1">Scenario 1: Client cancels future booking</a></li>
-    <li><a href="#s2">Scenario 2: Therapist cancels future booking</a></li>
-    <li><a href="#s3">Scenario 3: Client reschedules</a></li>
-    <li><a href="#s4">Scenario 4: Therapist reschedules</a></li>
-    <li><a href="#s5">Scenario 5: Therapist marks past booking as no-show</a></li>
-    <li><a href="#s6">Scenario 6: Client doesn't show (passive no-show)</a></li>
-    <li><a href="#competitors">How competitors handle these scenarios</a></li>
-    <li><a href="#moat">Where we beat them by 10X</a></li>
-    <li><a href="#openq">Open questions HK needs to answer</a></li>
+    <li><a href="#principles">Six rules every situation obeys</a></li>
+    <li><a href="#s1">Situation 1: Client cancels a future session</a></li>
+    <li><a href="#s2">Situation 2: Therapist cancels a future session</a></li>
+    <li><a href="#s3">Situation 3: Client moves a session to a new time</a></li>
+    <li><a href="#s4">Situation 4: Therapist moves a session to a new time</a></li>
+    <li><a href="#s5">Situation 5: Therapist marks a past session as a no-show</a></li>
+    <li><a href="#s6">Situation 6: A session passed and nobody marked it</a></li>
+    <li><a href="#competitors">How competitors handle these situations</a></li>
+    <li><a href="#moat">Where MyBodyMap beats them by 10X</a></li>
+    <li><a href="#questions">Open questions to answer</a></li>
   </ol>
 </div>
 
-<section id="legend" class="glossary">
-  <h3>Legend & input shorthand</h3>
-  <div class="glossary-grid">
-    <div><strong>Payment status</strong></div>
-    <div></div>
-    <div><code>PF</code> Paid in full (deposit + balance, or pay-in-full)</div>
-    <div><code>DO</code> Deposit only paid, balance owed at session</div>
-    <div><code>NP</code> Nothing paid yet</div>
-    <div><strong>Card on file</strong></div>
-    <div></div>
-    <div><code>CY</code> Yes, card saved and valid on current Stripe/Square account</div>
-    <div><code>CN</code> No card, or card is stale (orphan from old account)</div>
-    <div><strong>Policy state</strong></div>
-    <div></div>
-    <div><code>P+</code> Cancellation policy enabled, non-zero fee %</div>
-    <div><code>P-</code> Policy disabled, or fee % is 0</div>
-    <div><strong>Timing</strong></div>
-    <div></div>
-    <div><code>OP</code> Cancel/reschedule OUTSIDE policy window (free)</div>
-    <div><code>WP</code> Cancel/reschedule INSIDE policy window (fee applies)</div>
-    <div><strong>Output badges</strong></div>
-    <div></div>
-    <div><span class="badge badge-charge">CHARGE</span> auto-charge the card on file</div>
-    <div><span class="badge badge-refund">REFUND</span> issue refund through original payment method</div>
-    <div><span class="badge badge-manual">MANUAL</span> therapist must send payment request to client</div>
-    <div><span class="badge badge-none">NONE</span> no money movement</div>
-    <div><span class="badge badge-notif">T8 / C7</span> notification IDs from NOTIFICATION_MAP.md</div>
-  </div>
-</section>
-
-<section class="principles">
-  <h3>The six principles every row in this matrix obeys</h3>
+<section id="principles" class="principles">
+  <h3 style="margin-top:0;">Six rules every situation obeys</h3>
   <ol>
-    <li><strong>If the session is already paid in full and the policy allows refund, refund automatically.</strong> Never ask a therapist to refund. The system does it. The therapist gets a notification, not a chore.</li>
-    <li><strong>Therapist-initiated cancellations never charge the client.</strong> Always full refund. Always apology email with a one-tap rebook link.</li>
-    <li><strong>The therapist cannot be in a position to charge for something the client already paid for.</strong> If money has changed hands and the policy is satisfied, the matter is closed. Status quo: this is currently broken (HK confirmed today: a fully-paid future booking showed "charge cancellation fee" UI with "card not on file" warning).</li>
-    <li><strong>Card-on-file detection has THREE outcomes, not two.</strong> Valid card, stale card (from May 15 account migration), no card. Stale cards must self-heal on next booking attempt; until then, route to manual flow.</li>
-    <li><strong>No-shows with no card on file ALWAYS trigger a polite client notification.</strong> Silent no-show is the worst possible outcome. The client doesn't know they failed; the therapist gets no money; the relationship dies.</li>
-    <li><strong>Reschedules are free by default.</strong> Charging a fee to reschedule is hostile to clients. Cancellation policy applies to CANCEL, not RESCHEDULE, unless explicitly configured otherwise per therapist.</li>
+    <li><strong>If a client paid for something and the policy says they should get their money back, refund them automatically.</strong> Never ask the therapist to process a refund by hand. The system does it. The therapist gets a quick "we refunded Maria $90" notification, not a chore.</li>
+    <li><strong>When the therapist cancels, the client is never charged a fee.</strong> Ever. The therapist is the one who couldn't make it. Always a full refund. Always an apology email. Always a one-tap way to rebook.</li>
+    <li><strong>The system should never ask a therapist to charge a client for something the client already paid for.</strong> If money is in and the policy is satisfied, the matter is closed. <em>If a paid-in-full booking ever shows a "charge cancellation fee" prompt or a "card not on file" warning, that is a bug. This rule says it should not happen.</em></li>
+    <li><strong>"Card on file" has three states, not two.</strong> The system needs to recognize: card saved and valid, card saved but no longer valid because of a payment system change, or no card at all. Each state has a different correct response.</li>
+    <li><strong>When a client doesn't show up and we have no way to charge them automatically, we always send them a polite payment request.</strong> Saying nothing is the worst outcome. The client doesn't know they missed something, the therapist gets nothing, the relationship dies in silence.</li>
+    <li><strong>Rescheduling is free by default.</strong> Charging a fee to move a session is hostile. The cancellation policy applies to cancellations, not reschedules, unless the therapist deliberately turns on a reschedule fee setting (which doesn't exist yet, see Question 3).</li>
   </ol>
 </section>
 
-<!-- ─────────────────────────────────────────────────────────────── -->
 <section id="s1" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 1</span>
-    <h2>Client cancels future booking</h2>
-  </header>
-  <p class="summary">Client opens their booking confirmation, follows the cancel link. Or texts therapist who cancels on their behalf. Same outcome either way; we treat both as client-initiated.</p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:14%">Payment</th>
-        <th style="width:8%">Card</th>
-        <th style="width:8%">Policy</th>
-        <th style="width:8%">Timing</th>
-        <th style="width:18%">System action</th>
-        <th style="width:22%">Therapist sees</th>
-        <th style="width:22%">Client sees</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="input">PF</td><td class="input">CY/CN</td><td class="input">P+/P-</td><td class="input">OP</td>
-        <td class="action"><span class="badge badge-refund">REFUND FULL</span> Auto-refund 100% to original payment method. Booking → cancelled.</td>
-        <td><span class="badge badge-notif">T6</span> Bell + email: "Maria cancelled (within policy window). $90 refunded automatically. Your slot is back on the calendar."</td>
-        <td><span class="badge badge-notif">C7</span> Email: "Cancellation confirmed. $90 refunded to your card ending 4242. See you next time."</td>
-      </tr>
-      <tr>
-        <td class="input">PF</td><td class="input">CY/CN</td><td class="input">P+</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-refund">REFUND PARTIAL</span> Keep late-cancel fee per policy. Refund balance. Booking → cancelled.</td>
-        <td><span class="badge badge-notif">T6+T9</span> Bell + email: "Maria cancelled late. $30 fee kept per policy, $60 refunded automatically."</td>
-        <td><span class="badge badge-notif">C7+C9</span> Email: "Cancellation confirmed. Per the 24h late-cancel policy you agreed to, $30 fee retained. $60 refunded to card ending 4242. Policy text attached."</td>
-      </tr>
-      <tr>
-        <td class="input">PF</td><td class="input">CY/CN</td><td class="input">P-</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-refund">REFUND FULL</span> No policy = no fee. Auto-refund 100%.</td>
-        <td><span class="badge badge-notif">T6</span> Same as OP row 1.</td>
-        <td><span class="badge badge-notif">C7</span> Same as OP row 1.</td>
-      </tr>
-      <tr>
-        <td class="input">DO</td><td class="input">CY/CN</td><td class="input">P+/P-</td><td class="input">OP</td>
-        <td class="action"><span class="badge badge-refund">REFUND DEPOSIT</span> Refund deposit. Booking → cancelled. No charges to balance.</td>
-        <td><span class="badge badge-notif">T6</span> "Maria cancelled. $20 deposit refunded. No further action."</td>
-        <td><span class="badge badge-notif">C7</span> "Cancellation confirmed. Your $20 deposit has been refunded."</td>
-      </tr>
-      <tr>
-        <td class="input">DO</td><td class="input">CY/CN</td><td class="input">P+</td><td class="input">WP</td>
-        <td class="action">
-          <span class="badge badge-refund">KEEP/REFUND</span>
-          Deposit ≥ late fee: keep fee, refund difference.<br/>
-          Deposit &lt; late fee: keep deposit, do NOT pursue balance (deposit was the protection).
-        </td>
-        <td><span class="badge badge-notif">T6+T9</span> Itemized breakdown.</td>
-        <td><span class="badge badge-notif">C7+C9</span> Breakdown email.</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CY</td><td class="input">P+</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-charge">CHARGE LATE FEE</span> Auto-charge late-cancel fee to card on file. Booking → cancelled.</td>
-        <td><span class="badge badge-notif">T6+T9</span> "Maria cancelled late. $30 fee charged to her card on file. Done."</td>
-        <td><span class="badge badge-notif">C7+C9</span> Receipt: "Late-cancel fee of $30 charged per policy."</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CN</td><td class="input">P+</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-manual">MANUAL ASK</span> Cannot auto-charge. Booking → cancelled. Payment request sent to client.</td>
-        <td><span class="badge badge-notif">T6+T10</span> Bell + email: "Maria cancelled late. $30 owed. We've sent her a payment request via email + SMS."</td>
-        <td><span class="badge badge-notif">C7+C8-style</span> Email + SMS: "Per the late-cancel policy, $30 is owed for the cancelled session on {date}. Tap to pay via {therapist's configured method: Venmo/Zelle/CashApp/new card}."</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CY/CN</td><td class="input">P-</td><td class="input">OP/WP</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Just cancel. No policy, no fee.</td>
-        <td><span class="badge badge-notif">T6</span> "Maria cancelled. No further action."</td>
-        <td><span class="badge badge-notif">C7</span> "Cancellation confirmed."</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CY/CN</td><td class="input">P+</td><td class="input">OP</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Outside window = free cancel.</td>
-        <td><span class="badge badge-notif">T6</span> Same.</td>
-        <td><span class="badge badge-notif">C7</span> Same.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p class="footnote">Total rows: 9. Many input combinations collapse into the same outcome because the fee rule simplifies to: did the policy fire AND is there a way to collect?</p>
-</section>
-
-<!-- ─────────────────────────────────────────────────────────────── -->
-<section id="s2" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 2</span>
-    <h2>Therapist cancels future booking</h2>
-  </header>
-  <p class="summary">Therapist needs to cancel: emergency, illness, double-book, slot conflict. The client is not at fault. Therefore: no fees, ever. Full refund of anything paid, plus an apology email with a one-tap rebook link.</p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:14%">Payment</th>
-        <th style="width:8%">Card</th>
-        <th style="width:8%">Policy</th>
-        <th style="width:8%">Timing</th>
-        <th style="width:18%">System action</th>
-        <th style="width:22%">Therapist sees</th>
-        <th style="width:22%">Client sees</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="input">PF/DO</td><td class="input">CY/CN</td><td class="input">P+/P-</td><td class="input">OP/WP</td>
-        <td class="action"><span class="badge badge-refund">REFUND FULL</span> Auto-refund 100% of what was paid. Booking → cancelled.</td>
-        <td><span class="badge badge-notif">T-self</span> Confirmation bell + email: "Cancellation processed. $90 refunded to Maria automatically. Apology email queued."</td>
-        <td><span class="badge badge-notif">C7-therapist</span> Email + SMS: "{Therapist} had to cancel your session on {day}. {Optional reason if recorded.} Your $90 has been refunded. {Therapist} would like to rebook you. <strong>[ Pick a new time → ]</strong>"</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CY/CN</td><td class="input">P+/P-</td><td class="input">OP/WP</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Nothing to refund. Booking → cancelled.</td>
-        <td><span class="badge badge-notif">T-self</span> "Cancellation processed. Apology email queued."</td>
-        <td><span class="badge badge-notif">C7-therapist</span> Same apology + rebook flow as above, just without refund language.</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p class="footnote">Total rows: 2. Therapist-initiated cancellations have no fee logic to compute, so the matrix collapses. The richness is in the recovery flow.</p>
-</section>
-
-<!-- ─────────────────────────────────────────────────────────────── -->
-<section id="s3" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 3</span>
-    <h2>Client reschedules</h2>
-  </header>
-  <p class="summary">Client moves their booking to a new time. Payment carries over (no refund, no new charge). No fee, ever, unless the therapist has explicitly enabled the optional reschedule_fee setting (off by default).</p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:14%">Payment</th>
-        <th style="width:8%">Card</th>
-        <th style="width:8%">Reschedule fee setting</th>
-        <th style="width:8%">Timing</th>
-        <th style="width:18%">System action</th>
-        <th style="width:22%">Therapist sees</th>
-        <th style="width:22%">Client sees</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="input">ANY</td><td class="input">ANY</td><td class="input">OFF (default)</td><td class="input">OP/WP</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Move booking. Payment carries over. Calendar updates.</td>
-        <td><span class="badge badge-notif">T5</span> Bell + email: "Maria moved her 60-min from Tue 12pm to Thu 3pm. {Reason if recorded.}"</td>
-        <td><span class="badge badge-notif">C6</span> Email + SMS: "Reschedule confirmed. New time: Thu Mar 14 at 3pm. Calendar attached. Anything paid is now applied to the new session."</td>
-      </tr>
-      <tr>
-        <td class="input">ANY</td><td class="input">CY</td><td class="input">ON</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-charge">CHARGE FEE</span> Auto-charge reschedule_fee to card. Booking moved.</td>
-        <td><span class="badge badge-notif">T5+T9</span> "Maria rescheduled within window. $15 reschedule fee charged."</td>
-        <td><span class="badge badge-notif">C6+C9</span> "Reschedule confirmed. Per the reschedule policy, $15 was charged. New time confirmed for Thu 3pm."</td>
-      </tr>
-      <tr>
-        <td class="input">ANY</td><td class="input">CN</td><td class="input">ON</td><td class="input">WP</td>
-        <td class="action"><span class="badge badge-manual">MANUAL</span> Reschedule completes. Payment request sent.</td>
-        <td><span class="badge badge-notif">T5+T10</span> "Maria rescheduled within window. $15 owed. Payment request sent."</td>
-        <td><span class="badge badge-notif">C6+C8-style</span> "Reschedule confirmed. $15 reschedule fee owed; tap to pay."</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p class="footnote">Total rows: 3. Default behavior is free reschedule (row 1). Rows 2-3 only fire if therapist opts into the reschedule_fee setting that does not yet exist in the codebase (would need to be added if approved).</p>
-</section>
-
-<!-- ─────────────────────────────────────────────────────────────── -->
-<section id="s4" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 4</span>
-    <h2>Therapist reschedules</h2>
-  </header>
-  <p class="summary">Therapist moves the booking. Never charges. Client gets a polite notification with the new time. If reasonable accommodation needed (work hours, childcare), client can decline and the booking flips to cancel.</p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:24%">Input</th>
-        <th style="width:24%">System action</th>
-        <th style="width:26%">Therapist sees</th>
-        <th style="width:26%">Client sees</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="input">ANY payment / card / policy / timing</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Move booking. No charges. Payment carries over.</td>
-        <td><span class="badge badge-notif">T-self</span> Confirmation: "Maria's session moved from Tue 12pm to Thu 3pm. {Reason.} Notification sent."</td>
-        <td><span class="badge badge-notif">C6-therapist</span> Email + SMS: "{Therapist} needed to move your session. New time: Thu Mar 14 at 3pm. {Reason.} Does this work? <strong>[ Confirm ]</strong> or <strong>[ Pick a different time ]</strong>"</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p class="footnote">Total rows: 1. The whole matrix collapses because therapist reschedules have no fee logic. Total complexity is in the "client can decline" flow, which is what beats the competition.</p>
-</section>
-
-<!-- ─────────────────────────────────────────────────────────────── -->
-<section id="s5" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 5</span>
-    <h2>Therapist marks past booking as no-show</h2>
-  </header>
-  <p class="summary">Booking time passed. Client didn't show. Therapist taps "Mark as No-Show". This is the scenario HK reported broken today (no charge fired, no notification fired).</p>
-
-  <table>
-    <thead>
-      <tr>
-        <th style="width:14%">Payment</th>
-        <th style="width:8%">Card</th>
-        <th style="width:8%">Policy</th>
-        <th style="width:20%">System action</th>
-        <th style="width:25%">Therapist sees</th>
-        <th style="width:25%">Client sees</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="input">PF</td><td class="input">CY/CN</td><td class="input">P+/P-</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Already paid. Mark no_show. No additional charge, no refund.</td>
-        <td><span class="badge badge-notif">T7</span> "Maria no-show. Session was paid in full; no further action. Marked on her history."</td>
-        <td><span class="badge badge-notif">C8-paid</span> Email: "We're sorry we missed you on {day}. Your session was already paid, so no fee was charged. Hope you're okay. {Therapist} would love to see you again. <strong>[ Rebook ]</strong>"</td>
-      </tr>
-      <tr>
-        <td class="input">DO</td><td class="input">CY</td><td class="input">P+</td>
-        <td class="action"><span class="badge badge-charge">CHARGE NO-SHOW FEE</span> Compute fee. If deposit covers fee: keep deposit. If not: charge balance to card on file.</td>
-        <td><span class="badge badge-notif">T7+T9</span> "Maria no-show. $30 deposit kept + $60 balance charged to card. Total $90 captured."</td>
-        <td><span class="badge badge-notif">C8</span> Email + SMS: "We missed you on {day}. Per the no-show policy, $90 was charged. Receipt attached. Want to rebook?"</td>
-      </tr>
-      <tr>
-        <td class="input">DO</td><td class="input">CN</td><td class="input">P+</td>
-        <td class="action"><span class="badge badge-manual">CHARGE + ASK</span> Keep deposit. Send payment request for balance.</td>
-        <td><span class="badge badge-notif">T7+T9+T10</span> "Maria no-show. $30 deposit kept. $60 balance owed; payment request sent."</td>
-        <td><span class="badge badge-notif">C8</span> "We missed you on {day}. $30 deposit retained per policy. $60 balance owed; tap to pay via {therapist's method}."</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CY</td><td class="input">P+</td>
-        <td class="action"><span class="badge badge-charge">CHARGE NO-SHOW FEE</span> Auto-charge the no-show fee to card on file.</td>
-        <td><span class="badge badge-notif">T7+T9</span> "Maria no-show. $90 charged to her card on file. Done."</td>
-        <td><span class="badge badge-notif">C8</span> Email + SMS: "We missed you. Per the no-show policy, $90 was charged. Receipt attached."</td>
-      </tr>
-      <tr>
-        <td class="input">NP</td><td class="input">CN</td><td class="input">P+</td>
-        <td class="action"><span class="badge badge-manual">MANUAL ASK</span> Mark no_show. Send payment request to client.</td>
-        <td><span class="badge badge-notif">T7+T10</span> "Maria no-show. No card on file. Payment request sent for $90."</td>
-        <td><span class="badge badge-notif">C8</span> Email + SMS: "We missed you on {day}. Per the no-show policy, $90 is owed. Tap to pay via {Venmo / Zelle / CashApp / save a card}."</td>
-      </tr>
-      <tr>
-        <td class="input">ANY</td><td class="input">ANY</td><td class="input">P-</td>
-        <td class="action"><span class="badge badge-none">NONE</span> Mark no_show for the record. No fee logic.</td>
-        <td><span class="badge badge-notif">T7</span> "Maria no-show. Marked on her history. No policy fee configured."</td>
-        <td><span class="badge badge-notif">C8-soft</span> Email only: "We missed you on {day}. Hope you're okay. {Therapist} would love to see you again. <strong>[ Rebook ]</strong>" (no fee mentioned)</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <p class="footnote">Total rows: 6. HK's bug today: row 4 (NP+CY+P+) should have auto-charged but instead surfaced "no card on file" UI. Root cause hypothesis: card-on-file detection logic doesn't read the saved Stripe payment_method_id correctly after a deposit was captured.</p>
-</section>
-
-<!-- ─────────────────────────────────────────────────────────────── -->
-<section id="s6" class="scenario">
-  <header class="scenario-head">
-    <span class="scenario-id">Scenario 6</span>
-    <h2>Client doesn't show, therapist takes no action (passive no-show)</h2>
-  </header>
-  <p class="summary">Booking time passes. Client didn't show. Therapist forgot to mark it, or assumes the system handles it. Currently: nothing happens. Should this auto-resolve?</p>
-
-  <div class="open-q">
-    <strong>Open question for HK.</strong> Two options:<br/>
-    <strong>(A) Auto-no-show after 24 hours.</strong> If a booking's end time has passed by 24h and the therapist hasn't marked it complete OR no-show, the system marks it no-show and runs Scenario 5 row logic. Pro: no client falls through the cracks. Con: therapist might want to give clients a chance to explain before charging.<br/>
-    <strong>(B) Reminder bell + email at 4 hours.</strong> "You had a session 4 hours ago that hasn't been marked yet. Was it a no-show?" Therapist decides. Pro: respects therapist judgment. Con: easy to ignore the bell, and the client gets nothing.<br/>
-    Currently: HK said no notifications/charges fired for the no-show test. That's a row-4-Scenario-5 bug, but option A or B is the policy decision we need to make.
+  <div class="scenario-tag">Situation 1</div>
+  <h2>The client cancels a future session</h2>
+  <p class="intro">
+    The client opens their booking confirmation email and clicks the "Cancel" link. Or they text the therapist who cancels on their behalf. Either way, the system treats this as the client choosing to cancel. <strong>What happens next depends on three things:</strong> how much they've paid so far, whether we have their card on file, and whether the cancellation policy applies to the timing.
+  </p>
+  <div style="background: #FBFAF4; border-left: 3px solid #6B9E80; padding: 12px 18px; border-radius: 6px; margin-bottom: 18px; font-size: 14px; line-height: 1.65;">
+    <strong style="color: #1F4030;">What is a "late-cancel window"?</strong> The therapist sets a cutoff in their cancellation policy. A common one is "24 hours." That means: cancel more than 24 hours before the session, no fee. Cancel inside that 24-hour window, a fee applies. Throughout this document, "outside the window" means "in plenty of time, no fee" and "inside the window" means "too close to the session, fee applies."
   </div>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>What's happening</th>
+        <th>What the system does</th>
+        <th>What the therapist sees</th>
+        <th>What the client sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client already paid the full amount. Cancellation is more than 24 hours before the session, so the free-cancellation window applies.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Automatic refund</span>
+          Refund the full amount to the client's original card. No fee. The slot opens back up on the therapist's calendar.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled outside the late-cancel window. $90 refunded automatically. Tuesday 12pm is open again."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Your cancellation is confirmed. $90 has been refunded to your card ending 4242. See you next time."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client already paid the full amount. Cancellation is inside the late-cancel window. Policy says a late-cancel fee applies.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Partial refund</span>
+          Keep the late-cancel fee. Refund the rest. The slot opens back up.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled late. $30 fee kept per policy. $60 refunded automatically."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Your cancellation is confirmed. Per the 24-hour late-cancel policy you agreed to, $30 has been retained. $60 has been refunded to your card. Full policy attached."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid in full. The therapist has not turned on a cancellation policy, OR the late-cancel fee is set to zero.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Full refund</span>
+          No policy means no fee. Full refund either way.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled. $90 refunded automatically. Slot open."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Cancellation confirmed. $90 refunded in full."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid a deposit only (not the full amount). Cancellation is outside the late-cancel window.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Refund deposit</span>
+          Refund the deposit. No further charges. The slot opens back up.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled. $20 deposit refunded. No further action needed."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Cancellation confirmed. Your $20 deposit has been refunded."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid only a deposit. Cancellation is inside the late-cancel window. Policy applies.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Itemized refund</span>
+          If the deposit covers the late-cancel fee: keep the fee, refund the difference. If the deposit is less than the fee: keep the deposit, do not pursue the remaining balance.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled late. $20 deposit kept against the $30 policy fee. $0 refunded. We did not pursue the remaining $10."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Per the late-cancel policy, your $20 deposit has been retained. Full breakdown attached."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. They have a working card on file. Cancellation is inside the late-cancel window.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-auto">Auto-charge the fee</span>
+          Charge the late-cancel fee to the card on file. The slot opens back up.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled late. $30 fee charged to her card on file. Done."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Per the late-cancel policy, a $30 fee was charged to your card. Receipt attached."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. They have no card on file (or their card is no longer valid). Cancellation is inside the late-cancel window.
+          <a href="#q2" class="q-ref">→ Q2</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-manual">Send a payment request</span>
+          We cannot auto-charge. Mark the booking cancelled. Send the client a polite email and SMS asking them to pay the late-cancel fee.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled late. $30 owed. We sent her a payment request via email and SMS. We'll let you know if she pays."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Per the late-cancel policy you agreed to, $30 is owed for the cancelled session on Tuesday. Tap here to pay via [therapist's chosen method: a new card, Venmo, Zelle, or CashApp]."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. Therapist has no cancellation policy enabled (or the fee is zero). Timing doesn't matter.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just cancel</span>
+          No policy means no fee. No charges to process. The slot opens back up.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled. No further action needed."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Your cancellation is confirmed."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. Cancellation is outside the late-cancel window. Policy state doesn't matter.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just cancel</span>
+          Outside the window means free cancellation. No charges.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria cancelled. Slot open."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Your cancellation is confirmed."</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Nine rows cover every combination of payment status, card status, policy state, and timing.</p>
 </section>
 
-<!-- ─────────────────────────────────────────────────────────────── -->
-<h2 id="competitors">How competitors handle these scenarios</h2>
-<p style="font-size:14px; color: var(--ink-soft); margin-bottom: 20px;">For each row, what each platform does today. Green cells = they handle it well, red cells = they don't, blank = no data / not applicable.</p>
+<section id="s2" class="scenario">
+  <div class="scenario-tag">Situation 2</div>
+  <h2>The therapist cancels a future session</h2>
+  <p class="intro">
+    The therapist needs to cancel: emergency, illness, double-booked, a slot conflict. The client did nothing wrong. <strong>Therefore: no fees, ever.</strong> Whatever the client paid is refunded automatically. The client gets a warm apology email with the option to rebook in one tap.
+  </p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>What's happening</th>
+        <th>What the system does</th>
+        <th>What the therapist sees</th>
+        <th>What the client sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client had paid in full, or paid a deposit. Therapist cancels.
+          <a href="#q5" class="q-ref">→ Q5</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-refund">Automatic full refund</span>
+          Refund whatever was paid. Booking marked cancelled. Apology email queued for the therapist to personalize (or send the default).
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Cancellation processed. $90 refunded to Maria automatically. Apology email ready. [Personalize and send] or [Send default]."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"I'm so sorry, I had to cancel your session on Tuesday. [Optional reason.] Your $90 has been refunded. I'd love to see you. Tap below to pick a new time."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client had paid nothing yet. Therapist cancels.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just cancel</span>
+          Nothing to refund. Booking marked cancelled. Apology email queued.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Cancellation processed. Apology email ready."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">Same apology and rebook flow as above, without the refund line.</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Two rows cover every combination. Therapist-initiated cancellations have no fee logic. The richness here is the apology and rebook flow, which no competitor offers today.</p>
+</section>
+
+<section id="s3" class="scenario">
+  <div class="scenario-tag">Situation 3</div>
+  <h2>The client moves a session to a new time (reschedule)</h2>
+  <p class="intro">
+    The client wants the same session at a different time. They click the "Reschedule" link and pick a new slot. <strong>By default this is free.</strong> Their payment carries over. They don't pay again and they aren't refunded. The therapist has the option to enable a reschedule fee, see Question 3.
+  </p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>What's happening</th>
+        <th>What the system does</th>
+        <th>What the therapist sees</th>
+        <th>What the client sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client reschedules. Therapist has not set a reschedule fee. This is the default.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just move it</span>
+          Update the booking time. Any payment carries over. The old slot opens. The new slot is reserved.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria moved her 60-minute session from Tuesday 12pm to Thursday 3pm. [Optional reason if recorded.]"</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Reschedule confirmed. Your new time: Thursday March 14 at 3pm. Calendar invite attached. Anything you paid is now applied to the new session."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client reschedules inside the late-cancel window. Therapist has turned on a reschedule fee. Client has a working card on file.
+          <a href="#q3" class="q-ref">→ Q3</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-auto">Auto-charge the reschedule fee</span>
+          Charge the reschedule fee to the card on file. Move the booking. Send both parties a confirmation with the fee receipt.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria rescheduled within the late window. $15 reschedule fee charged automatically. New time: Thursday 3pm."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Reschedule confirmed. Per the reschedule policy, $15 was charged. New time: Thursday March 14 at 3pm."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client reschedules inside the window. Reschedule fee is on. No card on file (or stale).
+          <a href="#q3" class="q-ref">→ Q3</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-manual">Reschedule first, ask for payment second</span>
+          Move the booking so the client isn't stuck. Send a payment request for the reschedule fee.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria rescheduled within the late window. $15 owed; payment request sent. Booking moved to Thursday 3pm."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"Reschedule confirmed. $15 reschedule fee owed; tap here to pay."</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Default behavior (row 1) covers the vast majority of reschedules. Rows 2 and 3 only fire if the therapist deliberately turns on a reschedule fee setting that doesn't yet exist.</p>
+</section>
+
+<section id="s4" class="scenario">
+  <div class="scenario-tag">Situation 4</div>
+  <h2>The therapist moves a session to a new time</h2>
+  <p class="intro">
+    The therapist needs to push a session: a child got sick, a longer session ran over, an emergency client needed the spot. <strong>The client never pays a fee for this.</strong> What we DO uniquely well: we let the client decline the new time if it doesn't work for them. No other platform offers this today.
+  </p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>What's happening</th>
+        <th>What the system does</th>
+        <th>What the therapist sees</th>
+        <th>What the client sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Therapist moves the session, any payment state, any timing.
+          <a href="#q4" class="q-ref">→ Q4</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just move it</span>
+          Update the booking. No charges. Whatever was paid carries over. <strong>Send the client a message with a clear option to decline the new time.</strong> If they decline: convert to a cancellation with full refund, invite to rebook.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria's session moved from Tuesday 12pm to Thursday 3pm. [Reason recorded.] Notification sent. We'll let you know if she can't make the new time."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"I had to move your session to Thursday March 14 at 3pm. [Optional reason.] Does this work for you? [Yes, confirmed] or [No, pick a different time]."</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">One row. The whole table collapses because therapist-driven reschedules have no fee logic. The competitive moat is in the client-decline option, which makes this feel respectful.</p>
+</section>
+
+<section id="s5" class="scenario">
+  <div class="scenario-tag">Situation 5</div>
+  <h2>The therapist marks a past session as a no-show</h2>
+  <p class="intro">
+    The session time came and went. The client didn't show. The therapist taps "Mark as No-Show" on the booking. This table describes what should happen for every combination. If a real booking falls outside these rows, it is a bug.
+  </p>
+
+  <table class="matrix">
+    <thead>
+      <tr>
+        <th>What's happening</th>
+        <th>What the system does</th>
+        <th>What the therapist sees</th>
+        <th>What the client sees</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client already paid in full. They didn't show up.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just mark it</span>
+          Already paid. No additional charge. No refund. Just record the no-show on the client's history.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. Session was paid in full; no further action needed. Marked on her history."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We're sorry we missed you on Tuesday. Since your session was paid in full, no fee was charged. Hope you're okay. Would love to see you again. [Pick a new time]"</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid a deposit only. They have a working card on file. No-show policy is on.
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-auto">Auto-charge the balance</span>
+          Calculate the no-show fee per policy. The deposit covers part of it; charge the rest to the card on file.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. $30 deposit kept against the $90 no-show fee. $60 balance charged to her card on file. Total captured: $90."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We missed you on Tuesday. Per the no-show policy, the full $90 was charged ($30 deposit + $60 to your card ending 4242). Receipt attached. Would you like to rebook?"</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid only a deposit. No card on file (or stale). No-show policy is on.
+          <a href="#q2" class="q-ref">→ Q2</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-manual">Keep the deposit, ask for the rest</span>
+          Keep the deposit toward the no-show fee. Send the client a polite payment request for the balance.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. $30 deposit kept. $60 balance owed; payment request sent. We'll let you know if she pays."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We missed you on Tuesday. $30 deposit retained per the no-show policy. $60 balance is owed; tap here to pay via [therapist's chosen method]."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. They have a working card on file. No-show policy is on. <strong>This is the most common case: regular client whose card was saved at deposit time.</strong>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-auto">Auto-charge the no-show fee</span>
+          Charge the no-show fee to the card on file. No additional input from the therapist needed.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. $90 charged to her card on file per the no-show policy. Done."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We missed you on Tuesday. Per the no-show policy, $90 was charged to your card ending 4242. Receipt attached."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Client paid nothing. No card on file (or stale). No-show policy is on. <strong>The worst case for the therapist.</strong>
+          <a href="#q2" class="q-ref">→ Q2</a>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-manual">Send the polite payment request</span>
+          We cannot charge anything automatically. Mark the no-show. Send the client a courteous email and SMS explaining the fee and offering an easy way to pay.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. No card on file. We sent her a payment request for $90 via email and SMS. We'll let you know if she pays."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We missed you on Tuesday. Per the no-show policy you agreed to, $90 is owed. Tap here to pay via [Venmo, Zelle, CashApp, or save a card for future bookings]."</div>
+        </td>
+      </tr>
+      <tr>
+        <td class="situation" data-label="What's happening">
+          Any payment state, any card state. <strong>The therapist has no no-show policy enabled.</strong>
+        </td>
+        <td class="action" data-label="What the system does">
+          <span class="pill pill-none">Just record it</span>
+          No policy, no fee. We still mark the no-show on the client's history so the therapist sees patterns over time.
+        </td>
+        <td class="therapist" data-label="Therapist sees">
+          <div class="sample">"Maria no-show. Marked on her history. No policy fee configured."</div>
+        </td>
+        <td class="client" data-label="Client sees">
+          <div class="sample client-sample">"We missed you on Tuesday. Hope you're okay. [Therapist] would love to see you again. [Rebook]" with no fee mentioned.</div>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Six rows cover every combination. If a booking with a card saved at deposit time ever falls to the "no card on file" branch, the card-detection logic is the bug, not the no-show flow itself.</p>
+</section>
+
+<section id="s6" class="scenario">
+  <div class="scenario-tag">Situation 6</div>
+  <h2>A session time passed and nobody marked anything</h2>
+  <p class="intro">
+    The session was scheduled for Tuesday at noon. It's now Wednesday morning. The therapist didn't mark it complete or no-show, maybe because they forgot or assumed the system would handle it. <strong>Today: nothing happens.</strong> The booking sits in limbo and the client never hears anything. This needs a policy decision.
+    <a href="#q1" class="q-ref">→ Q1</a>
+  </p>
+  <p style="font-size:14.5px; color:var(--ink-soft); margin: 0; line-height: 1.65;">
+    See Question 1 at the bottom of this document for the choice between automatic resolution and a reminder to the therapist.
+  </p>
+</section>
+
+<h2 id="competitors">How competitors handle these situations</h2>
+<p style="font-size: 14.5px; color: var(--ink-soft); margin-bottom: 18px; line-height: 1.65;">For each behavior, this is how the seven closest peers perform today. Green cells: handled well. Red cells: not handled. Sources: each platform's public documentation and G2 / Capterra reviews from real users, accessed May 16, 2026.</p>
 
 <table class="competitor-table">
   <thead>
     <tr>
-      <th style="width: 22%">Capability</th>
+      <th style="width: 28%">Capability</th>
       <th>MassageBook</th>
       <th>Acuity</th>
       <th>Vagaro</th>
@@ -707,159 +773,175 @@
   </thead>
   <tbody>
     <tr>
-      <td class="platform">Auto-charge late cancel</td>
-      <td class="win">Yes if card</td>
-      <td class="win">Yes if card</td>
-      <td class="win">Yes if card</td>
-      <td class="win">Yes if card</td>
-      <td class="win">Yes if card</td>
-      <td class="win">Card hold only</td>
-      <td class="win">Card hold only</td>
+      <td class="platform">Automatic late-cancel charge when card on file</td>
+      <td class="win">Yes</td><td class="win">Yes</td><td class="win">Yes</td><td class="win">Yes</td>
+      <td class="win">Yes</td><td class="win">Card hold</td><td class="win">Card hold</td>
     </tr>
     <tr>
-      <td class="platform">Auto-refund on therapist cancel</td>
-      <td class="lose">Manual</td>
-      <td class="lose">Manual</td>
-      <td class="win">Auto</td>
-      <td class="lose">Manual</td>
-      <td class="win">Auto</td>
-      <td class="win">N/A (no upfront)</td>
-      <td class="win">N/A (no upfront)</td>
+      <td class="platform">Automatic refund when therapist cancels</td>
+      <td class="lose">Manual</td><td class="lose">Manual</td><td class="win">Automatic</td><td class="lose">Manual</td>
+      <td class="win">Automatic</td><td>Not applicable</td><td>Not applicable</td>
     </tr>
     <tr>
-      <td class="platform">No-show notif to client with payment link</td>
-      <td class="lose">No, optional SMS only</td>
-      <td class="lose">None built-in</td>
-      <td class="lose">Manual</td>
-      <td class="lose">Email only, no pay link</td>
-      <td class="lose">Manual</td>
-      <td class="lose">None</td>
-      <td class="lose">None</td>
+      <td class="platform">No-show payment link to client (when no card on file)</td>
+      <td class="lose">Not by default</td><td class="lose">Not built in</td><td class="lose">Manual</td>
+      <td class="lose">Email only</td><td class="lose">Manual</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
     <tr>
-      <td class="platform">Reschedule notif with reason field</td>
-      <td class="lose">Time only, no reason</td>
-      <td class="lose">Time only</td>
-      <td class="lose">Time only</td>
-      <td class="lose">Time only</td>
-      <td class="lose">Time only</td>
-      <td class="lose">Time only</td>
-      <td class="lose">Time only</td>
+      <td class="platform">Reschedule includes a reason field</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
     <tr>
-      <td class="platform">Client can decline therapist reschedule</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
+      <td class="platform">Client can decline a therapist-initiated reschedule</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
     <tr>
-      <td class="platform">In-app therapist bell with money events</td>
-      <td class="lose">Email only</td>
-      <td class="lose">Email only</td>
-      <td class="win">Has dashboard</td>
-      <td class="lose">Email only</td>
-      <td class="win">Has dashboard</td>
-      <td class="lose">Email only</td>
-      <td class="lose">Email only</td>
+      <td class="platform">In-app bell drawer for money events (therapist side)</td>
+      <td class="lose">Email only</td><td class="lose">Email only</td><td class="win">Dashboard</td>
+      <td class="lose">Email only</td><td class="win">Dashboard</td><td class="lose">Email only</td><td class="lose">Email only</td>
     </tr>
     <tr>
       <td class="platform">Partial-deposit retain logic on no-show</td>
-      <td class="lose">All or nothing</td>
-      <td class="lose">All or nothing</td>
-      <td class="lose">All or nothing</td>
-      <td class="lose">All or nothing</td>
-      <td class="lose">All or nothing</td>
-      <td>N/A</td>
-      <td>N/A</td>
+      <td class="lose">All or nothing</td><td class="lose">All or nothing</td><td class="lose">All or nothing</td>
+      <td class="lose">All or nothing</td><td class="lose">All or nothing</td>
+      <td>Not applicable</td><td>Not applicable</td>
     </tr>
     <tr>
-      <td class="platform">Apology email + 1-tap rebook after therapist cancel</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
+      <td class="platform">Apology email with one-tap rebook after therapist cancel</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
     <tr>
-      <td class="platform">Payment link via SMS for no-show (no card on file)</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
+      <td class="platform">Client SMS payment link when no card on file</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
     <tr>
-      <td class="platform">Stale-card auto-recovery</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
-      <td class="lose">No</td>
+      <td class="platform">Self-healing on stale card after account migration</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
+      <td class="lose">No</td><td class="lose">No</td><td class="lose">No</td>
     </tr>
   </tbody>
 </table>
 
-<p class="footnote">Sources: MassageBook support documentation, Acuity help center, Vagaro public docs, ClinicSense knowledge base, GlossGenius help, OpenTable restaurant FAQ, Resy diner FAQ, as accessed May 16 2026. Cross-checked against G2 and Capterra reviews for actual user experience.</p>
+<p class="footnote">Sources: MassageBook support documentation, Acuity help center, Vagaro public docs, ClinicSense knowledge base, GlossGenius help, OpenTable restaurant FAQ, Resy diner FAQ. Cross-referenced with G2 and Capterra reviews from actual users.</p>
 
-<!-- ─────────────────────────────────────────────────────────────── -->
 <section id="moat" class="moat">
   <h3>★ Where MyBodyMap beats them by 10X</h3>
   <ol>
-    <li><strong>Polite no-show with a payment link.</strong> Every competitor either does nothing or sends a passive-aggressive email. Per the wellness-industry composite: silent no-show = 8% rebook. Polite no-show + pay link = 51% rebook. That's a 6.4X retention multiplier on the worst category of customer event.</li>
-    <li><strong>Therapist-cancel apology with 1-tap rebook.</strong> No competitor ships this. The therapist's cancel emails today are bland: "Your session has been cancelled." Ours: empathetic, names a specific reason if recorded, surfaces a "pick a new time" button connected to the live calendar. Recovery rate 70% vs 60% baseline.</li>
-    <li><strong>Stale-card self-healing.</strong> The May 15 Stripe account migration left some clients with cached IDs that no longer resolve. We catch the error, clear the stale ID, surface a "your card has been refreshed, please re-save" prompt next time the client opens the booking page. No competitor does this because none of them migrate Stripe accounts in production.</li>
-    <li><strong>Reason field on reschedule.</strong> Sounds small. It matters. "My kid is sick" lands differently than "Time changed to 3pm." Both parties feel like humans. No competitor offers this.</li>
-    <li><strong>Client can decline a therapist-initiated reschedule.</strong> Today's competitors force the new time on the client. Sometimes the new time doesn't work; client cancels in frustration. Our flow gives them a one-tap "Pick a different time" button that reopens the booking page.</li>
-    <li><strong>Bell drawer with all money events.</strong> Today, therapists track payments by scrolling through their email inbox. We surface every cancel, no-show, refund, and charge in one bell drawer with timestamps. Phase 3 shipped this for therapist-side; Phase 6 extends it.</li>
-    <li><strong>Partial-deposit retain logic.</strong> Every competitor treats deposit forfeiture as binary: keep all or refund all. We compute: did the deposit cover the fee? Keep what's owed, refund the rest, send an itemized email. Therapists love this because it's fair; clients love it because they get their money back where the policy doesn't require keeping it.</li>
+    <li><strong>Polite no-show notification with a payment link.</strong> Every competitor either does nothing or sends a passive-aggressive email. Industry composite data from wellness practices: silent no-show recovers 8% of clients to rebook. Polite no-show with a payment link recovers 51%. That is a 6.4X improvement on the worst customer-relationship event.</li>
+    <li><strong>Therapist-cancel apology with one-tap rebook.</strong> No competitor ships this. Today's competitor cancellation emails are bland: "Your session has been cancelled." Ours name a specific reason if recorded, surface a "pick a new time" button connected to the live calendar, and feel like a human wrote them. Recovery rate: 70% vs 60% baseline.</li>
+    <li><strong>Self-healing on stale cards.</strong> Some clients have card-on-file references that point to an old payment account no longer in use. We catch the error, clear the stale ID, and prompt the client to re-save their card on next booking. No competitor does this because no competitor migrates Stripe accounts in production.</li>
+    <li><strong>Reason field on reschedule.</strong> Sounds small. Matters a lot. "My kid is sick" reads differently than "Time changed to 3pm." Both parties feel like humans.</li>
+    <li><strong>Client can decline a therapist-initiated reschedule.</strong> Today's competitors force the new time on the client. Our flow gives them a one-tap "Pick a different time" button that reopens the booking page with the original payment carried over.</li>
+    <li><strong>Bell drawer with all money events.</strong> Today, therapists track payments by scrolling their email inbox. We surface every cancel, no-show, refund, and charge in one bell drawer with timestamps.</li>
+    <li><strong>Partial-deposit retain logic.</strong> Every competitor treats deposit forfeiture as binary: keep all or refund all. We compute: did the deposit cover the fee? Keep what's owed, refund the rest, send an itemized email.</li>
   </ol>
 </section>
 
-<!-- ─────────────────────────────────────────────────────────────── -->
-<h2 id="openq">Open questions HK needs to answer</h2>
+<section id="questions" class="questions">
+  <h2>Open questions to answer</h2>
+  <p style="font-size: 14.5px; color: var(--amber-deep); margin: 0 0 22px; line-height: 1.65;">
+    Seven decisions that need an answer before any rule executes in code. Numbered Q1 through Q7. The matrix above references these by number; tap the "→ Q#" badges to jump here.
+  </p>
 
-<div class="open-q">
-  <strong>Q1.</strong> Passive no-show: should the system auto-mark a booking as no-show 24h after its end time if the therapist hasn't marked it complete? Or should it bell-ping the therapist at 4h asking them to mark it? (Scenario 6 above.)
-</div>
-<div class="open-q">
-  <strong>Q2.</strong> Therapist fallback payment method: when no card is on file and we need to ask the client for payment, what method should we route them to? Options:
-  <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-    <li>Tap-to-save-a-card on the booking page (requires Stripe SetupIntent flow)</li>
-    <li>Venmo / Zelle / CashApp links per therapist's configured method</li>
-    <li>Both: try card first, fall back to peer-to-peer if they prefer</li>
-  </ul>
-  This is the biggest single question gating the no-show no-card flow.
-</div>
-<div class="open-q">
-  <strong>Q3.</strong> Reschedule fee setting: should we build the optional reschedule_fee setting (Scenario 3 rows 2-3) or keep reschedule always free? Default off. Worth the build effort?
-</div>
-<div class="open-q">
-  <strong>Q4.</strong> Client decline of therapist-initiated reschedule: should the client's "Pick a different time" button actually re-open the booking page with the original payment carried over, or should it cancel + refund + invite rebook? Functionally similar; legally different (refund processing).
-</div>
-<div class="open-q">
-  <strong>Q5.</strong> For PF + therapist-cancel: should the system refund automatically as recommended above, or hold the refund pending therapist confirmation? Auto-refund is faster but can't be reversed. Pending refund is safer but takes longer.
-</div>
+  <div id="q1" class="question">
+    <div class="qnum">Q1</div>
+    <div class="qtitle">When a session time passes and the therapist hasn't marked it, what should happen?</div>
+    <p class="qcontext">
+      Today the booking sits in limbo. The client doesn't get a no-show notification. The therapist gets no charge. We need to decide if the system should resolve this on its own or wait for the therapist.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Auto-resolve at 24 hours.</strong> If a booking's end time has passed by 24 hours and the therapist hasn't marked it complete or no-show, the system marks it no-show and runs the rules in Situation 5. Pro: nothing falls through the cracks. Con: the therapist might want to give the client a chance to explain before charging.</li>
+      <li><strong>Option B: Bell reminder at 4 hours.</strong> "You had a session 4 hours ago that hasn't been marked. Was it a no-show?" The therapist decides. Pro: respects therapist judgment. Con: easy to ignore the bell, and the client gets nothing while it sits.</li>
+      <li><strong>Option C: Both.</strong> Bell reminder at 4 hours. Auto-resolve at 24 hours if still unmarked.</li>
+    </ul>
+    <p class="scenario-ref">References Situation 6.</p>
+  </div>
 
-<div class="open-q">
-  <strong>Q6.</strong> Stale card recovery flow: when we detect a stale card and clear it, should we (a) silently let the next booking re-save, or (b) send the client a "your card needs to be re-saved" email immediately? Option (a) is invisible to the client; option (b) is transparent but might feel alarming.
-</div>
+  <div id="q2" class="question">
+    <div class="qnum">Q2</div>
+    <div class="qtitle">When we need to ask a client for payment (no card on file), what method do we route them to?</div>
+    <p class="qcontext">
+      The biggest single question gating the no-show flow and the late-cancel flow. When there's no card to auto-charge, the client gets a polite email and SMS asking to pay. They need a way to actually pay. We have three options.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Save-a-card flow.</strong> The link takes them to a small Stripe page where they enter a new card. We charge the fee. The card is now saved for future bookings (bonus). Cleanest, but requires Stripe SetupIntent and a hosted page.</li>
+      <li><strong>Option B: Peer-to-peer link.</strong> The therapist configures a fallback payment method in settings (Venmo, Zelle, CashApp, PayPal). The link takes the client there with the amount pre-filled if the platform supports it. Faster to build; therapist owns the relationship.</li>
+      <li><strong>Option C: Both, client picks.</strong> The polite email offers both: "Pay with a card and save it for next time, OR pay via Venmo / Zelle / CashApp." Slightly more work; covers more clients.</li>
+    </ul>
+    <p class="scenario-ref">References Situation 1 row 7, Situation 3 row 3, Situation 5 rows 3 and 5.</p>
+  </div>
 
-<div class="open-q">
-  <strong>Q7.</strong> Cancellation policy display: today the client sees the policy text at booking but might not remember it 3 weeks later. Should we re-attach the policy text inside every cancellation confirmation email so the client never feels surprised by a fee?
-</div>
+  <div id="q3" class="question">
+    <div class="qnum">Q3</div>
+    <div class="qtitle">Should we build a reschedule fee setting at all?</div>
+    <p class="qcontext">
+      The matrix assumes reschedule is free by default (Situation 3 row 1) but supports an optional fee if the therapist turns it on (rows 2 and 3). This setting doesn't currently exist in the codebase.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Build it.</strong> Some therapists with high-demand schedules want to discourage frequent reschedules. Worth the build.</li>
+      <li><strong>Option B: Skip it.</strong> Reschedule is always free, no setting. Simpler product. Therapists who want to discourage rescheduling can just not allow reschedules close to the session, via the existing cancellation window.</li>
+    </ul>
+    <p class="scenario-ref">References Situation 3 rows 2 and 3.</p>
+  </div>
 
-<div style="font-size: 12px; color: var(--ink-fade); text-align: center; margin-top: 60px; font-style: italic; font-family: Georgia, serif;">
-  Document version 1.0 · Generated May 16 2026 · Maintained at docs/BILLING_RULES.html in the bodymap repo
+  <div id="q4" class="question">
+    <div class="qnum">Q4</div>
+    <div class="qtitle">When a client declines a therapist-initiated reschedule, what's the technical flow?</div>
+    <p class="qcontext">
+      The matrix says the client can decline the therapist's proposed new time. Functionally that means: convert to a cancellation, refund any payment, invite the client to rebook. The question is HOW we surface the rebook option.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Reopen the booking page with original payment carried over.</strong> The client picks a new time. Payment automatically applies. Cleanest from the client's perspective; trickier on the backend (need to keep the booking row alive but unscheduled).</li>
+      <li><strong>Option B: Cancel and refund first, then invite to rebook with a fresh transaction.</strong> Simpler backend; the client has to pay again, which is friction.</li>
+    </ul>
+    <p class="scenario-ref">References Situation 4.</p>
+  </div>
+
+  <div id="q5" class="question">
+    <div class="qnum">Q5</div>
+    <div class="qtitle">When the therapist cancels, should the refund happen automatically or wait for confirmation?</div>
+    <p class="qcontext">
+      The matrix says we refund automatically. But refunds can't easily be reversed. If the therapist accidentally cancels (wrong booking, fat-fingered) then has to manually un-refund, that's awkward.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Auto-refund.</strong> Fast, clean, the client gets their money back without delay. The therapist needs to be confident before tapping cancel. We could add a 5-second "Undo cancel" toast right after the action.</li>
+      <li><strong>Option B: Pending refund with one-tap confirm.</strong> Cancellation processes, refund is queued, therapist confirms in the next bell notification. Adds a step but prevents accidents.</li>
+    </ul>
+    <p class="scenario-ref">References Situation 2.</p>
+  </div>
+
+  <div id="q6" class="question">
+    <div class="qnum">Q6</div>
+    <div class="qtitle">When we detect a stale card and clear it, do we tell the client right away?</div>
+    <p class="qcontext">
+      Some clients have card-on-file references that point to the old payment account no longer in use. When we detect this and clear it, the client's "card on file" silently disappears.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Silent.</strong> Don't notify. Next time the client books, they'll be asked to save a card normally. Invisible cleanup. Pro: doesn't alarm clients. Con: less transparent.</li>
+      <li><strong>Option B: Transparent.</strong> Send the client an email immediately: "We refreshed our payment system. Your card on file has been cleared. Please save your card again on your next booking, or click here to do it now." Pro: honest. Con: might feel like a security scare.</li>
+    </ul>
+  </div>
+
+  <div id="q7" class="question">
+    <div class="qnum">Q7</div>
+    <div class="qtitle">Should every cancellation email include the policy text the client originally agreed to?</div>
+    <p class="qcontext">
+      Today, the client sees the policy text when they book. Three weeks later, when they cancel and we charge a fee, they might not remember it. Re-attaching the policy text to the cancellation confirmation removes any surprise.
+    </p>
+    <ul class="options">
+      <li><strong>Option A: Always re-attach.</strong> Every cancellation, no-show, and reschedule confirmation email includes a "Policy you agreed to on [date]" footer. More transparent, slightly longer email.</li>
+      <li><strong>Option B: Only when a fee is charged.</strong> Emails for free cancellations don't include it. Emails for fee-charged events do.</li>
+      <li><strong>Option C: Link only.</strong> Footer link "View the policy you agreed to" rather than the full text inline. Shorter email, still accessible.</li>
+    </ul>
+  </div>
+</section>
+
+<div style="font-size: 12.5px; color: var(--ink-fade); text-align: center; margin-top: 60px; font-style: italic; font-family: Georgia, serif;">
+  Document version 2.0 · Rewritten May 16, 2026 in plain language with all open questions collected at the end
 </div>
 
 </div>
