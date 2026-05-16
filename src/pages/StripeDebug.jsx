@@ -41,6 +41,17 @@ const C = {
 };
 
 export default function StripeDebug() {
+  return <StripeDebugInner embedded={false} />;
+}
+
+// Embeddable variant. The FounderHub page uses this so the debug
+// surface lives alongside the rest of the founder operating system
+// instead of being a separate route.
+export function StripeDebugEmbedded() {
+  return <StripeDebugInner embedded={true} />;
+}
+
+function StripeDebugInner({ embedded = false }) {
   const { user, therapist } = useAuth();
   const navigate = useNavigate();
   const [diag, setDiag] = useState(null);
@@ -57,19 +68,12 @@ export default function StripeDebug() {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session?.access_token}`,
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
         body: JSON.stringify({ action: 'diagnose', therapist_id: therapist?.id }),
       });
-      const data = await res.json();
-      setDiag(data);
-    } catch (e) {
-      setError(String(e?.message || e));
-    } finally {
-      setLoading(false);
-    }
+      setDiag(await res.json());
+    } catch (e) { setError(String(e?.message || e)); }
+    finally { setLoading(false); }
   }
 
   async function loadPlatformAccounts() {
@@ -83,11 +87,8 @@ export default function StripeDebug() {
       });
       const data = await res.json();
       setPlatformAccounts(data.accounts || []);
-    } catch (e) {
-      alert('Could not load platform accounts: ' + String(e?.message || e));
-    } finally {
-      setLoadingPlatform(false);
-    }
+    } catch (e) { alert('Could not load platform accounts: ' + String(e?.message || e)); }
+    finally { setLoadingPlatform(false); }
   }
 
   async function attachAccount(targetAccountId) {
@@ -98,62 +99,42 @@ export default function StripeDebug() {
       const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
-        body: JSON.stringify({
-          action: 'attach_account',
-          therapist_id: therapist?.id,
-          account_id: targetAccountId,
-        }),
+        body: JSON.stringify({ action: 'attach_account', therapist_id: therapist?.id, account_id: targetAccountId }),
       });
       const data = await res.json();
       if (data.ok) {
-        alert(`Attached. Ready: ${data.ready ? 'YES' : 'NO'} (charges=${data.charges_enabled}, payouts=${data.payouts_enabled}, details=${data.details_submitted})`);
+        alert(`Attached. Ready: ${data.ready ? 'YES' : 'NO'}`);
         load();
       } else {
         alert('Attach failed: ' + (data.error || JSON.stringify(data)));
       }
-    } catch (e) {
-      alert('Attach error: ' + String(e?.message || e));
-    } finally {
-      setActionPending(null);
-    }
+    } catch (e) { alert('Attach error: ' + String(e?.message || e)); }
+    finally { setActionPending(null); }
   }
-
-  useEffect(() => {
-    if (therapist?.id) load();
-  }, [therapist?.id]);
 
   async function forceMarkConnected() {
     if (!diag?.account_id) return;
     setActionPending('force_connect');
     const { error: e } = await supabase
       .from('therapists')
-      .update({
-        stripe_account_connected: true,
-        stripe_account_ready_at: new Date().toISOString(),
-      })
+      .update({ stripe_account_connected: true, stripe_account_ready_at: new Date().toISOString() })
       .eq('id', therapist.id);
     setActionPending(null);
-    if (e) {
-      alert('Failed: ' + e.message);
-      return;
-    }
-    alert('Force-set stripe_account_connected = true. Reload the dashboard to verify the UI.');
+    if (e) { alert('Failed: ' + e.message); return; }
+    alert('Force-set stripe_account_connected = true.');
     load();
   }
 
   async function wipeAccount() {
-    if (!window.confirm('This will clear stripe_account_id and orphan the current Stripe account on Stripe\'s side. The current account in your Stripe dashboard remains but MyBodyMap will create a new one when you tap Connect Stripe again. Continue?')) return;
+    if (!window.confirm('This will clear stripe_account_id. The Stripe-side account remains but MyBodyMap will create a new one when you tap Connect Stripe again. Continue?')) return;
     setActionPending('wipe');
     const { error: e } = await supabase
       .from('therapists')
       .update({ stripe_account_id: null, stripe_account_connected: false })
       .eq('id', therapist.id);
     setActionPending(null);
-    if (e) {
-      alert('Failed: ' + e.message);
-      return;
-    }
-    alert('Cleared. Reload and start fresh.');
+    if (e) { alert('Failed: ' + e.message); return; }
+    alert('Cleared.');
     load();
   }
 
@@ -167,36 +148,62 @@ export default function StripeDebug() {
         body: JSON.stringify({ action: 'resume_onboarding', therapist_id: therapist?.id }),
       });
       const data = await res.json();
-      if (data.url) {
-        window.location.href = data.url;
-        return;
-      }
+      if (data.url) { window.location.href = data.url; return; }
       alert('Could not resume: ' + (data.error || JSON.stringify(data)));
-    } catch (e) {
-      alert('Resume failed: ' + String(e?.message || e));
-    } finally {
-      setActionPending(null);
-    }
+    } catch (e) { alert('Resume failed: ' + String(e?.message || e)); }
+    finally { setActionPending(null); }
   }
 
-  return (
-    <div style={{ minHeight: '100vh', background: C.bg, color: C.ink, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', padding: '32px 20px' }}>
-      <div style={{ maxWidth: 820, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 700, margin: 0, color: C.ink }}>
-            Stripe Debug
-          </h1>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={load} style={btnStyle()}>
-              Refresh
-            </button>
-            <button onClick={() => navigate('/dashboard')} style={btnStyle()}>
-              Back to Dashboard
-            </button>
-          </div>
-        </div>
+  useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
 
-        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
+  return <StripeDebugBody
+    user={user}
+    therapist={therapist}
+    diag={diag}
+    loading={loading}
+    error={error}
+    actionPending={actionPending}
+    platformAccounts={platformAccounts}
+    loadingPlatform={loadingPlatform}
+    load={load}
+    loadPlatformAccounts={loadPlatformAccounts}
+    attachAccount={attachAccount}
+    forceMarkConnected={forceMarkConnected}
+    wipeAccount={wipeAccount}
+    resumeOnboarding={resumeOnboarding}
+    onBack={() => navigate('/dashboard')}
+    standalone={!embedded}
+  />;
+}
+
+function StripeDebugBody({
+  user, therapist, diag, loading, error, actionPending,
+  platformAccounts, loadingPlatform,
+  load, loadPlatformAccounts, attachAccount,
+  forceMarkConnected, wipeAccount, resumeOnboarding,
+  onBack, standalone,
+}) {
+  return (
+    <div style={{ minHeight: standalone ? '100vh' : 0, background: standalone ? C.bg : 'transparent', color: C.ink, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', padding: standalone ? '32px 20px' : 0 }}>
+      <div style={{ maxWidth: standalone ? 820 : '100%', margin: '0 auto' }}>
+        {standalone && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 700, margin: 0, color: C.ink }}>
+              Stripe Debug
+            </h1>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={load} style={btnStyle()}>Refresh</button>
+              <button onClick={onBack} style={btnStyle()}>Back to Dashboard</button>
+            </div>
+          </div>
+        )}
+        {!standalone && (
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+            <button onClick={load} style={btnStyle()}>Refresh</button>
+          </div>
+        )}
+
+        <div style={{ background: standalone ? C.panel : '#0F2018', border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, marginBottom: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.amber, marginBottom: 10 }}>
             Your auth context
           </div>

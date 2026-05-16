@@ -1746,11 +1746,6 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Inline-confirm state for the Stripe Disconnect button. When true,
-  // the disconnect button row swaps to a Keep it / Yes, disconnect
-  // pair. House rule: never window.confirm.
-  const [stripePendingDisconnect, setStripePendingDisconnect] = React.useState(false);
-
   // Which row in Settings is currently expanded. null = all collapsed.
   // Mobile-first: collapsed by default to kill the endless vertical scroll.
   const [openRow, setOpenRow] = React.useState(null);
@@ -3122,38 +3117,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, memberships, cards on file all enabled</div>
                   </div>
                 </div>
-                {stripePendingDisconnect ? (
-                  <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-                    <button
-                      onClick={() => setStripePendingDisconnect(false)}
-                      style={{ background:'#fff', border:'1.5px solid #D1D5DB', color:'#374151', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}
-                    >
-                      Keep it
-                    </button>
-                    <button
-                      onClick={async () => {
-                        await updateProfile({ stripe_account_id: null, stripe_account_connected: false });
-                        setStripePendingDisconnect(false);
-                      }}
-                      style={{ background:'#DC2626', border:'none', color:'#fff', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}
-                    >
-                      Yes, disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setStripePendingDisconnect(true)}
-                    style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}
-                  >
-                    Disconnect
-                  </button>
-                )}
+                <a
+                  href="https://dashboard.stripe.com/"
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ background:'transparent', border:'1px solid #BBF7D0', color:'#065F46', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer', textDecoration:'none', whiteSpace:'nowrap' }}
+                  title="Open your Stripe dashboard in a new tab"
+                >
+                  Manage in Stripe →
+                </a>
               </div>
-              {stripePendingDisconnect && (
-                <div style={{ marginTop:8, fontSize:11, color:'#78350F', lineHeight:1.55, background:'#FFF8E7', border:'1px solid #F3D88E', borderRadius:8, padding:'8px 10px' }}>
-                  Disconnect Stripe? Online deposits, card-on-file, and package purchases will stop until you reconnect.
-                </div>
-              )}
+              <div style={{ marginTop:8, fontSize:10.5, color:'#6B7280', lineHeight:1.55 }}>
+                To change your payout bank or update business info, manage your account directly in Stripe. To switch to a different Stripe account, contact us at hello@mybodymap.app.
+              </div>
             </div>
           ) : therapist?.stripe_account_id ? (
             <div style={{ marginBottom: 10 }}>

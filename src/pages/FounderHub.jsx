@@ -38,6 +38,7 @@ import React, { useState } from "react";
 import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
+import { StripeDebugEmbedded } from "./StripeDebug";
 
 const C = {
   forest: "#2A5741",
@@ -126,10 +127,19 @@ const SECTIONS = [
     iframeSrc: "/admin/emails",
   },
   {
-    id: "other-docs",
+    id: "stripe-debug",
     number: 8,
+    title: "Stripe Debug",
+    subtitle: "Live diagnostics for your Stripe Connect Express account. List every platform account, attach the right one to your therapist row, resume onboarding, or force-set the connected flag. Founder-only escape hatch when a therapist's payments break.",
+    status: "live",
+    type: "component",
+    component: "stripe-debug",
+  },
+  {
+    id: "other-docs",
+    number: 9,
     title: "Other Documentation",
-    subtitle: "Catch-all for anything that does not fit the other nine sections.",
+    subtitle: "Catch-all for anything that does not fit the other ten sections.",
     status: "live",
     type: "markdown",
     path: "docs/OTHER_NOTES.md",
@@ -137,7 +147,7 @@ const SECTIONS = [
   },
   {
     id: "runbook",
-    number: 9,
+    number: 10,
     title: "Founder Runbook",
     subtitle: "If Claude is unavailable tomorrow, this is the handoff for a human team.",
     status: "live",
@@ -147,7 +157,7 @@ const SECTIONS = [
   },
   {
     id: "chat",
-    number: 10,
+    number: 11,
     title: "Ask Anything",
     subtitle: "Future: chat interface that uses all the documents above as the corpus.",
     status: "future",
@@ -493,6 +503,10 @@ function SectionContent({ section }) {
 
       {section.type === "iframe" && (
         <IframeContent src={section.iframeSrc} />
+      )}
+
+      {section.type === "component" && section.component === "stripe-debug" && (
+        <StripeDebugEmbedded />
       )}
 
       {section.type === "future" && (
