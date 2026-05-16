@@ -239,7 +239,7 @@ function Header({ query, setQuery, activeCategory, setActiveCategory, searchRef,
         maxWidth: 600,
         lineHeight: 1.6,
       }}>
-        Search articles below, or email Joy directly if you cannot find what you need.
+        Search articles below, or email us directly if you cannot find what you need.
       </p>
 
       <div style={{ position: "relative", marginBottom: 16 }}>
@@ -344,7 +344,7 @@ function ArticleList({ articlesByCategory, activeId, setActiveId, query }) {
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
           No articles match {query ? `"${query}"` : "this filter"}.
           <br /><br />
-          Try a different search term, or email Joy directly:
+          Try a different search term, or email us directly:
           <br />
           <a
             href="mailto:hello@mybodymap.app?subject=Help%20question"
@@ -512,7 +512,7 @@ function ArticleFooter({ setActiveId }) {
       gap: 14,
     }}>
       <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
-        Did this answer your question? If not, email Joy directly. We respond within 24 hours.
+        Did this answer your question? If not, email us directly. We respond within 24 hours.
       </div>
       <a
         href="mailto:hello@mybodymap.app?subject=Help%20question"
@@ -528,7 +528,7 @@ function ArticleFooter({ setActiveId }) {
           textDecoration: "none",
         }}
       >
-        ✉ Email Joy
+        ✉ Email us
       </a>
     </div>
   );
@@ -561,7 +561,7 @@ function FooterCTA() {
         maxWidth: 540,
         margin: "0 auto 14px",
       }}>
-        If your question is not in the articles above, send Joy an email. She is the friendly face of MyBodyMap support and responds personally to every question within 24 hours.
+        If your question is not in the articles above, send us an email. We respond personally to every question within 24 hours.
       </div>
       <a
         href="mailto:hello@mybodymap.app?subject=Help%20question%20from%20mybodymap.app"
@@ -576,7 +576,7 @@ function FooterCTA() {
           textDecoration: "none",
         }}
       >
-        ✉ Email Joy at hello@mybodymap.app
+        ✉ Email us at hello@mybodymap.app
       </a>
     </div>
   );

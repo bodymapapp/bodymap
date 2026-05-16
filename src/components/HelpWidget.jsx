@@ -1,7 +1,7 @@
 // src/components/HelpWidget.jsx
 //
 // Floating help widget that lives bottom-right on public marketing
-// pages. Two actions: "Search help" (opens /help) and "Email Joy"
+// pages. Two actions: "Search help" (opens /help) and "Email us"
 // (mailto with pre-filled context).
 //
 // Per HK direction:
@@ -48,7 +48,7 @@ export default function HelpWidget() {
     const subject = encodeURIComponent("Question about MyBodyMap");
     const pageContext = typeof window !== "undefined" ? window.location.href : "";
     const body = encodeURIComponent(
-      `Hi Joy,\n\n[Your question here]\n\n` +
+      `Hi MyBodyMap team,\n\n[Your question here]\n\n` +
       `---\n` +
       `Sent from: ${pageContext}\n`
     );
@@ -175,7 +175,7 @@ function Panel({ onSearchHelp, mailto, onClose }) {
         >
           <ActionButton
             icon="✉"
-            title="Email Joy"
+            title="Email us"
             subtitle="Personal reply within 24 hours"
             asLink
           />
@@ -190,7 +190,7 @@ function Panel({ onSearchHelp, mailto, onClose }) {
         lineHeight: 1.5,
         textAlign: "center",
       }}>
-        Joy is the friendly face of MyBodyMap support. She is real, she reads every email, and she replies personally.
+        We read every email and reply personally. Usually within 24 hours during business days.
       </div>
     </div>
   );

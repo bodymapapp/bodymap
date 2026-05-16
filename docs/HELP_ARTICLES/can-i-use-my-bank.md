@@ -25,7 +25,7 @@ ACH is technically supported by our processors (Stripe has Plaid integration), b
 2. Most clients do not want to type bank routing numbers on their phone for a hundred-dollar massage.
 3. The fee savings on a hundred-dollar transaction is about $2.50, which is real but not life-changing.
 
-We may add ACH as an option in the future. If this matters a lot to you, send Joy an email at hello@mybodymap.app and tell us. We track demand.
+We may add ACH as an option in the future. If this matters a lot to you, send us an email at hello@mybodymap.app and tell us. We track demand.
 
 ## What about Zelle, Venmo, Cash App?
 

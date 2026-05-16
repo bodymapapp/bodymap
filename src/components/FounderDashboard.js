@@ -889,7 +889,7 @@ function buildActionFor(actionType, t) {
       body: [
         `Hi ${name},`,
         ``,
-        `Joy from MyBodyMap. Quick note about your account.`,
+        `The MyBodyMap team here. Quick note about your account.`,
         ``,
         `We made setup easier this week. Services, hours, and packages are already in your dashboard. Edit anything in seconds.`,
         ``,
@@ -900,8 +900,7 @@ function buildActionFor(actionType, t) {
         `https://mybodymap.app/dashboard`,
         ``,
         `With care,`,
-        `Joy`,
-        `MyBodyMap Team`,
+        `The MyBodyMap team`,
       ].join("\n"),
     }),
   };

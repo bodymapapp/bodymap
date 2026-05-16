@@ -58,13 +58,54 @@ export default function StripeConnect() {
     const accountId = params.get('account_id');
     const therapistId = params.get('therapist_id');
 
-    if (refresh) { setStatus('refresh'); return; }
+    if (refresh) {
+      // Stripe sends users here via refresh_url when their Account
+      // Link session has expired or Stripe wants to interrupt the
+      // flow (SMS verification, additional document upload, etc).
+      // The correct response per Stripe docs is to immediately
+      // generate a fresh Account Link and send them back. NOT to
+      // show a UI page. Showing a UI here was the source of the
+      // 'it takes me back here every time' loop reported by HK and
+      // Candice on May 15 2026.
+      autoResume(therapist?.id);
+      return;
+    }
     if (success && accountId) {
       confirmConnection(therapistId || therapist?.id);
     } else {
       setStatus('error');
     }
   }, [therapist]);
+
+  // Generates a new Account Link for the existing account and
+  // redirects in the same tab. Used both for the user-visible
+  // 'Resume' button on RefreshState and as the automatic handler
+  // when Stripe hits our refresh_url.
+  const autoResume = async (tid) => {
+    if (!tid) {
+      setStatusReason('Could not identify your therapist account.');
+      setStatus('error');
+      return;
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/stripe-connect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token}` },
+        body: JSON.stringify({ action: 'resume_onboarding', therapist_id: tid }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      setStatusReason(data.error || 'Could not resume Stripe setup.');
+      setStatus('refresh');
+    } catch (e) {
+      setStatusReason(String(e?.message || e));
+      setStatus('refresh');
+    }
+  };
 
   const confirmConnection = async (tid) => {
     try {
@@ -475,7 +516,7 @@ function ErrorState({ navigate, reason }) {
         color: '#7F1D1D',
         lineHeight: 1.6,
       }}>
-        <strong>What to try:</strong> Go back to Settings and try Connect Stripe again. If the problem keeps happening, email Joy at hello@mybodymap.app and we will help.
+        <strong>What to try:</strong> Go back to Settings and try Connect Stripe again. If the problem keeps happening, email us at hello@mybodymap.app and we will help.
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -502,7 +543,7 @@ function ErrorState({ navigate, reason }) {
           textDecoration: 'none',
           textAlign: 'center',
         }}>
-          Email Joy for help
+          Email us for help
         </a>
       </div>
     </div>

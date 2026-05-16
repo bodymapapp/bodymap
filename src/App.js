@@ -49,6 +49,7 @@ import PostSessionBrief from './pages/PostSessionBrief';
 import PostSessionSummary from './pages/PostSessionSummary';
 import IntakeBrief from './pages/IntakeBrief';
 import FounderSeedDemo from './pages/FounderSeedDemo';
+import StripeDebug from './pages/StripeDebug';
 import GiftCardPrint from './pages/GiftCardPrint';
 import Unsubscribe from './pages/Unsubscribe';
 import Onboarding from './pages/Onboarding';
@@ -82,6 +83,7 @@ function App() {
               to /dashboard. */}
           <Route path="/founder" element={<FounderRoute><FounderHub /></FounderRoute>} />
           <Route path="/founder/seed-demo" element={<FounderRoute><FounderSeedDemo /></FounderRoute>} />
+          <Route path="/founder/stripe-debug" element={<FounderRoute><StripeDebug /></FounderRoute>} />
           <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
