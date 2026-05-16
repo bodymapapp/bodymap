@@ -377,9 +377,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock }) {
   const [selected,setSelected] = useState(null);
   const [showLegend,setShowLegend] = useState(false);
+  // Phase 9.2 long-press → create block. Tracking the active press and
+  // the resulting draft block being confirmed in a sheet.
+  const longPressTimerRef = useRef(null);
+  const longPressOriginRef = useRef(null);
+  const [pendingBlock, setPendingBlock] = useState(null);  // {date, startTime, endTime, note}
+  const [blockSheetSaving, setBlockSheetSaving] = useState(false);
+  const [blockSheetError, setBlockSheetError] = useState('');
   const scrollRef = useRef(null);
   const isMobile = window.innerWidth < 900;
   const now = new Date();
@@ -443,6 +450,127 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     if (offset === -1) return 'Yesterday';
     if (offset === 1) return 'Tomorrow';
     return d.toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' });
+  };
+
+  // Phase 9.2: long-press to create a block.
+  //
+  // The TimelineView canvas is a pixel-based positional layout where
+  // y-coordinate maps linearly to a minute-of-day via TL_START + (y/PX).
+  // To convert a press location into a sensible block: take that
+  // minute, snap to the nearest 15-min boundary, default to a 60-min
+  // duration, surface a confirm sheet so the therapist can tweak the
+  // end time and add a reason before saving.
+  //
+  // Long-press timing: 500ms. Cancelled on pointermove >10px (so a
+  // scroll gesture doesn't accidentally create a block) or on pointerup
+  // before the timer fires.
+
+  const viewDateStr = (() => {
+    const d = addDays(today, dayOffset);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  })();
+
+  // Partial blocks for THIS day, drawn onto the canvas as amber
+  // stripes so the therapist sees their own blocks in context with
+  // bookings. Full-day blocks are not drawn here (the whole canvas
+  // would be amber).
+  const myBlocksToday = (blockedDays || []).filter(b => {
+    if (b.date !== viewDateStr) return false;
+    return b.start_time && b.end_time;
+  });
+
+  const snapTo15 = (mins) => Math.round(mins / 15) * 15;
+
+  const minutesToTimeStr = (mins) => {
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  };
+
+  const fmtTime12 = (timeStr) => {
+    if (!timeStr) return '';
+    const [h, m] = timeStr.split(':');
+    const hh = parseInt(h, 10);
+    const ampm = hh >= 12 ? 'PM' : 'AM';
+    const hr = hh % 12 === 0 ? 12 : hh % 12;
+    return `${hr}:${m} ${ampm}`;
+  };
+
+  const startLongPress = (e) => {
+    // Don't long-press on past days: blocking the past is meaningless.
+    if (dayOffset < 0) return;
+    // Don't long-press if no onCreateBlock callback wired in. Defensive.
+    if (!onCreateBlock) return;
+    // Don't trigger if the press landed on an interactive child (a
+    // booking card, a refresh button, etc). React's synthetic event
+    // bubbles up, so check the original target's element chain.
+    const target = e.target;
+    if (target.closest('[data-appt-card="1"]')) return;
+    if (target.closest('button')) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clientY = e.clientY != null ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+    if (clientY == null) return;
+    const y = clientY - rect.top;
+    longPressOriginRef.current = { x: e.clientX, y: clientY };
+
+    longPressTimerRef.current = setTimeout(() => {
+      const minsRaw = TL_START + (y / PX);
+      // Clamp inside the visible window.
+      const minsClamped = Math.max(TL_START, Math.min(TL_END - 60, minsRaw));
+      const startMins = snapTo15(minsClamped);
+      const endMins = Math.min(startMins + 60, TL_END);
+      setBlockSheetError('');
+      setPendingBlock({
+        date: viewDateStr,
+        startTime: minutesToTimeStr(startMins),
+        endTime: minutesToTimeStr(endMins),
+        note: '',
+      });
+      longPressTimerRef.current = null;
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressOriginRef.current = null;
+  };
+
+  const onPressMove = (e) => {
+    // Cancel the pending long-press if the user scrolls/drags.
+    if (!longPressOriginRef.current) return;
+    const clientY = e.clientY != null ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : null);
+    if (clientY == null) return;
+    if (Math.abs(clientY - longPressOriginRef.current.y) > 10) {
+      cancelLongPress();
+    }
+  };
+
+  const confirmPendingBlock = async () => {
+    if (!pendingBlock) return;
+    if (!onCreateBlock) {
+      setBlockSheetError('Cannot save: handler missing.');
+      return;
+    }
+    setBlockSheetSaving(true);
+    setBlockSheetError('');
+    const result = await onCreateBlock({
+      date: pendingBlock.date,
+      startTime: pendingBlock.startTime,
+      endTime: pendingBlock.endTime,
+      note: pendingBlock.note,
+    });
+    setBlockSheetSaving(false);
+    if (result) {
+      setPendingBlock(null);
+      // Trigger a fetch so the canvas redraws with the new block.
+      if (onRefresh) onRefresh();
+    } else {
+      setBlockSheetError('Could not save the block. Please check the times and try again.');
+    }
   };
 
   return (
@@ -521,35 +649,98 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
       </div>
 
       <div style={{background:'#FBF8F1',borderRadius:16,padding:'16px 14px 20px',border:'1px solid #EEF2F7'}}>
-        {dayAppts.length===0 ? (
-          <div style={{textAlign:'center',padding:'32px 0'}}>
-            <div style={{fontSize:32,marginBottom:10}}>🌿</div>
-            <div style={{fontSize:15,fontWeight:600,color:'#1F2937',marginBottom:6}}>No sessions {dayOffset===0?'today':'this day'}</div>
-            <div style={{fontSize:13,color:'#9CA3AF'}}>Share your booking link to fill your schedule.</div>
-          </div>
-        ) : (
-          <div style={{position:'relative',height:H,marginLeft:GUTTER}}>
-            {hourNums.map(h=>{
-              const y=(h*60-TL_START)*PX;
-              const label=h===12?'12 PM':h<12?`${h} AM`:`${h-12} PM`;
-              return (
-                <div key={h}>
-                  <div style={{position:'absolute',top:y,left:-GUTTER,width:GUTTER-6,textAlign:'right',fontSize:10,fontWeight:600,color:'#9CA3AF',transform:'translateY(-50%)',userSelect:'none'}}>{label}</div>
-                  <div style={{position:'absolute',top:y,left:0,right:0,borderTop:'1px solid #F3F4F6'}}/>
+        <div
+          onPointerDown={startLongPress}
+          onPointerUp={cancelLongPress}
+          onPointerLeave={cancelLongPress}
+          onPointerCancel={cancelLongPress}
+          onPointerMove={onPressMove}
+          style={{position:'relative',height:H,marginLeft:GUTTER,touchAction:'pan-y',userSelect:'none',WebkitUserSelect:'none'}}
+        >
+          {hourNums.map(h=>{
+            const y=(h*60-TL_START)*PX;
+            const label=h===12?'12 PM':h<12?`${h} AM`:`${h-12} PM`;
+            return (
+              <div key={h}>
+                <div style={{position:'absolute',top:y,left:-GUTTER,width:GUTTER-6,textAlign:'right',fontSize:10,fontWeight:600,color:'#9CA3AF',transform:'translateY(-50%)',userSelect:'none'}}>{label}</div>
+                <div style={{position:'absolute',top:y,left:0,right:0,borderTop:'1px solid #F3F4F6'}}/>
+              </div>
+            );
+          })}
+
+          {/* Phase 9.2: render the therapist's own partial-day blocks
+              as amber-tinted bands. They sit underneath bookings (which
+              shouldn't overlap them anyway, but defensive). */}
+          {myBlocksToday.map(b => {
+            const [sh, sm] = b.start_time.slice(0,5).split(':').map(Number);
+            const [eh, em] = b.end_time.slice(0,5).split(':').map(Number);
+            const startMin = sh * 60 + sm;
+            const endMin = eh * 60 + em;
+            const y = (startMin - TL_START) * PX;
+            const bh = (endMin - startMin) * PX;
+            return (
+              <div
+                key={`my-block-${b.id}`}
+                data-appt-card="1"
+                style={{
+                  position: 'absolute',
+                  top: y,
+                  left: 0,
+                  right: 0,
+                  height: bh,
+                  background: 'repeating-linear-gradient(45deg, rgba(217,119,6,0.08), rgba(217,119,6,0.08) 6px, rgba(217,119,6,0.18) 6px, rgba(217,119,6,0.18) 12px)',
+                  border: '1.5px solid rgba(217,119,6,0.45)',
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  paddingLeft: 14,
+                  pointerEvents: 'none',
+                }}
+              >
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#92400E', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  🌿 Blocked {fmtTime12(b.start_time.slice(0,5))} to {fmtTime12(b.end_time.slice(0,5))}
+                  {b.note ? <span style={{ marginLeft: 8, fontStyle: 'italic', fontWeight: 500, textTransform: 'none', letterSpacing: 0, color:'#9A3412' }}>· {b.note}</span> : null}
                 </div>
-              );
-            })}
-            {gaps.map((g,i)=>{
-              const y=(g.start-TL_START)*PX;
-              const gh=g.mins*PX;
-              const hrs=Math.floor(g.mins/60), mins=g.mins%60;
-              // Two visual treatments by length:
-              //   <= 90 min: amber stripes + 'book here' urgency (real fillable gap)
-              //   > 90 min: soft amber tint + 'Open · Nh available' (general open time)
-              // Either way the eye sees the schedule has space.
-              const isShortGap = g.mins <= 90;
-              const lbl=hrs>0?(mins>0?`${hrs}h ${mins}m`:`${hrs}h`):`${mins}m`;
-              return (
+              </div>
+            );
+          })}
+
+          {/* Hint pill for empty days: stays inside the canvas so the
+              long-press surface is preserved. */}
+          {dayAppts.length === 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              padding: '20px 28px',
+              pointerEvents: 'none',
+              maxWidth: 320,
+            }}>
+              <div style={{fontSize:28,marginBottom:8}}>🌿</div>
+              <div style={{fontSize:14,fontWeight:600,color:'#1F2937',marginBottom:4}}>
+                No sessions {dayOffset===0?'today':'this day'}
+              </div>
+              <div style={{fontSize:12,color:'#9CA3AF',lineHeight:1.5}}>
+                {dayOffset >= 0
+                  ? 'Long-press anywhere on this column to block off time, or share your booking link to fill your schedule.'
+                  : 'Past day. No sessions on the books.'}
+              </div>
+            </div>
+          )}
+
+          {gaps.map((g,i)=>{
+            const y=(g.start-TL_START)*PX;
+            const gh=g.mins*PX;
+            const hrs=Math.floor(g.mins/60), mins=g.mins%60;
+            // Two visual treatments by length:
+            //   <= 90 min: amber stripes + 'book here' urgency (real fillable gap)
+            //   > 90 min: soft amber tint + 'Open · Nh available' (general open time)
+            // Either way the eye sees the schedule has space.
+            const isShortGap = g.mins <= 90;
+            const lbl=hrs>0?(mins>0?`${hrs}h ${mins}m`:`${hrs}h`):`${mins}m`;
+            return (
                 <div key={i} style={{
                   position:'absolute',
                   top:y,
@@ -593,7 +784,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               const isSel=selected?.id===appt.id;
               const isPast=dayOffset===0&&t2m(appt.time)+appt.duration<nowMin;
               return (
-                <div key={appt.id} onClick={()=>setSelected(isSel?null:appt)}
+                <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(isSel?null:appt)}
                   style={{position:'absolute',top:y,left:2,right:2,height:bh,
                     background:appt.preview?'#F9FAFB':(appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':'#FEF3C7'),
                     border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':st.dot}`,
@@ -629,8 +820,112 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               );
             })}
           </div>
-        )}
       </div>
+
+      {/* Phase 9.2: long-press confirm sheet. Centered modal with the
+          proposed time, an editable end time, an optional reason, and
+          a Block button. Pre-filled with a 60-min window snapped to
+          the nearest 15-min boundary from where the user pressed. */}
+      {pendingBlock && (
+        <>
+          <div
+            onClick={()=>!blockSheetSaving && setPendingBlock(null)}
+            style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',zIndex:300,backdropFilter:'blur(2px)'}}
+          />
+          <div style={{
+            position:'fixed',
+            top:'50%',
+            left:'50%',
+            transform:'translate(-50%, -50%)',
+            background:'#fff',
+            borderRadius:14,
+            padding:'24px 26px',
+            boxShadow:'0 20px 60px rgba(0,0,0,0.25)',
+            zIndex:301,
+            width:'min(420px, calc(100vw - 32px))',
+            maxWidth:420,
+          }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+              <div style={{ fontSize:24 }}>🌿</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>Block this time?</div>
+                <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>
+                  {new Date(pendingBlock.date+'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+                </div>
+              </div>
+              <button
+                onClick={()=>!blockSheetSaving && setPendingBlock(null)}
+                style={{ background:'transparent', border:'none', fontSize:22, cursor:'pointer', color:'#9CA3AF', padding:0, lineHeight:1 }}
+              >×</button>
+            </div>
+
+            <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
+              <div style={{ fontSize:11, fontWeight:700, color:'#92400E', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
+                Block window
+              </div>
+              <div style={{ fontSize:15, fontWeight:700, color:'#92400E' }}>
+                {fmtTime12(pendingBlock.startTime)} to {fmtTime12(pendingBlock.endTime)}
+              </div>
+            </div>
+
+            <div style={{ display:'flex', gap:8, marginBottom:12, alignItems:'center', flexWrap:'wrap' }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0 }}>Adjust end</label>
+              <input
+                type="time"
+                value={pendingBlock.endTime}
+                onChange={e=>setPendingBlock(prev => prev ? { ...prev, endTime: e.target.value } : prev)}
+                disabled={blockSheetSaving}
+                style={{ padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:13, outline:'none', flex:1, minWidth:100 }}
+              />
+            </div>
+
+            <div style={{ marginBottom:14 }}>
+              <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+                Reason (optional)
+              </label>
+              <input
+                type="text"
+                value={pendingBlock.note}
+                onChange={e=>setPendingBlock(prev => prev ? { ...prev, note: e.target.value } : prev)}
+                placeholder="Lunch, errand, personal time…"
+                disabled={blockSheetSaving}
+                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box' }}
+              />
+            </div>
+
+            {blockSheetError && (
+              <div style={{ background:'#FEF2F2', border:'1px solid #FCA5A5', color:'#991B1B', borderRadius:8, padding:'8px 12px', fontSize:12, marginBottom:12 }}>
+                {blockSheetError}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:10 }}>
+              <button
+                onClick={()=>setPendingBlock(null)}
+                disabled={blockSheetSaving}
+                style={{ flex:1, background:'#F3F4F6', color:'#4B5563', border:'none', padding:'12px', borderRadius:10, fontSize:14, fontWeight:700, cursor:blockSheetSaving?'not-allowed':'pointer' }}
+              >Cancel</button>
+              <button
+                onClick={confirmPendingBlock}
+                disabled={blockSheetSaving || pendingBlock.endTime <= pendingBlock.startTime}
+                style={{
+                  flex:2,
+                  background: (blockSheetSaving || pendingBlock.endTime <= pendingBlock.startTime) ? '#D1D5DB' : '#2A5741',
+                  color:'#fff', border:'none', padding:'12px', borderRadius:10,
+                  fontSize:14, fontWeight:700,
+                  cursor:(blockSheetSaving || pendingBlock.endTime <= pendingBlock.startTime) ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {blockSheetSaving ? 'Saving…' : 'Block this time'}
+              </button>
+            </div>
+
+            <div style={{ fontSize:11, color:'#9CA3AF', textAlign:'center', marginTop:12, fontStyle:'italic', fontFamily:'Georgia,serif', lineHeight:1.5 }}>
+              Clients cannot book during this window. You'll still see existing bookings in this range if any overlap.
+            </div>
+          </div>
+        </>
+      )}
 
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
@@ -1356,29 +1651,54 @@ export default function ScheduleDashboard({ therapist }) {
     setBlockedDays(data || []);
   }
 
-  async function addBlockedDay() {
-    if (!blockDate) return;
+  async function addBlockedDay(args) {
+    // Two call shapes supported:
+    //   (1) addBlockedDay(): uses the inline-form state at the top
+    //                          of Schedule (blockDate, blockMode, etc).
+    //   (2) addBlockedDay({date, startTime, endTime, note}): used by
+    //                          long-press in TimelineView (Phase 9.2).
+    //                          Bypasses the inline form entirely.
     setBlockError('');
 
-    // Build the insert payload. Full-day blocks send NULL on both
-    // time columns (backward-compatible). Partial blocks send both,
-    // and the DB check constraint enforces end > start.
-    const payload = {
-      therapist_id: therapist.id,
-      date: blockDate,
-      note: blockNote.trim() || null,
-    };
-    if (blockMode === 'partial') {
-      if (!blockStartTime || !blockEndTime) {
+    const useArgs = args && typeof args === 'object' && args.date;
+    const payload = useArgs
+      ? {
+          therapist_id: therapist.id,
+          date: args.date,
+          note: (args.note || '').trim() || null,
+        }
+      : {
+          therapist_id: therapist.id,
+          date: blockDate,
+          note: blockNote.trim() || null,
+        };
+
+    if (useArgs) {
+      // Long-press path is always partial. Validate.
+      if (!args.startTime || !args.endTime) {
         setBlockError('Please set both a start and end time.');
-        return;
+        return null;
       }
-      if (blockEndTime <= blockStartTime) {
+      if (args.endTime <= args.startTime) {
         setBlockError('End time must be after start time.');
-        return;
+        return null;
       }
-      payload.start_time = blockStartTime;
-      payload.end_time = blockEndTime;
+      payload.start_time = args.startTime;
+      payload.end_time = args.endTime;
+    } else {
+      if (!blockDate) return null;
+      if (blockMode === 'partial') {
+        if (!blockStartTime || !blockEndTime) {
+          setBlockError('Please set both a start and end time.');
+          return null;
+        }
+        if (blockEndTime <= blockStartTime) {
+          setBlockError('End time must be after start time.');
+          return null;
+        }
+        payload.start_time = blockStartTime;
+        payload.end_time = blockEndTime;
+      }
     }
 
     setBlockSaving(true);
@@ -1388,16 +1708,19 @@ export default function ScheduleDashboard({ therapist }) {
     if (error) {
       setBlockError(error.message || 'Could not save the block.');
       setBlockSaving(false);
-      return;
+      return null;
     }
     if (data) setBlockedDays(prev => [...prev, data].sort((a,b)=>{
       const dc = a.date.localeCompare(b.date);
       if (dc !== 0) return dc;
       return (a.start_time || '').localeCompare(b.start_time || '');
     }));
-    setBlockDate(''); setBlockNote(''); setBlockStartTime(''); setBlockEndTime('');
-    setBlockMode('full');
+    if (!useArgs) {
+      setBlockDate(''); setBlockNote(''); setBlockStartTime(''); setBlockEndTime('');
+      setBlockMode('full');
+    }
     setBlockSaving(false);
+    return data;
   }
 
   async function removeBlockedDay(id) {
@@ -1947,7 +2270,7 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay}/>}
               {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
               {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}
