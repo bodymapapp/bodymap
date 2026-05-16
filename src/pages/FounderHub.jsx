@@ -34,7 +34,7 @@
 //   Founder Hub fetches them from GitHub raw on each page load.
 //   No build redeploy needed for content updates.
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
@@ -95,7 +95,7 @@ const SECTIONS = [
     subtitle: "Every cancellation, no-show, reschedule combination and what should happen. Open questions for HK at the bottom. Read before any new rule executes.",
     status: "live",
     type: "html",
-    path: "docs/BILLING_RULES.html",
+    path: "public/docs/BILLING_RULES.html",
     backupKey: "03b-billing-rules",
   },
   {
@@ -685,114 +685,122 @@ function IframeContent({ src }) {
   );
 }
 
-// Render an HTML document fetched from the GitHub raw URL inside a
-// sandboxed iframe via srcdoc. This is for standalone HTML docs like
-// BILLING_RULES.html that have their own embedded styles + structure
-// and would not survive being converted to markdown.
+// HTML documents are too dense to render inside a sub-iframe with
+// the Founder Hub chrome around them. HK May 16 2026: 'Very hard
+// to read. Standalone did not work which is needed given the
+// depth here.' So instead of an embed: a hero card with a
+// prominent 'Open in new tab' button.
 //
-// Why srcdoc + sandbox: srcdoc lets us inject the HTML content
-// directly so the doc renders even though it's not served from a
-// public URL. Sandbox isolates the doc's styles from the parent
-// page so it can't accidentally restyle the Founder Hub itself.
+// The 'Standalone did not work' part: the previous build linked
+// to raw.githubusercontent.com, which serves HTML as text/plain.
+// The browser showed the source code, not the rendered doc. Fix:
+// the HTML file now lives at public/docs/{file}.html so Vercel
+// serves it with Content-Type: text/html, and the link targets
+// the live site path (e.g. /docs/BILLING_RULES.html).
 //
-// allow-same-origin is granted because the doc has no scripts and
-// no external resource loads; without it, anchor links within the
-// doc don't work for in-page scrolling.
+// Tradeoff: anything in public/ is technically accessible to
+// anyone who guesses the URL. The doc itself is labeled internal;
+// it's not linked from any public surface, not in sitemap.xml,
+// not in robots. If HK wants stronger gating later, we can build
+// an authenticated /api/founder-doc proxy.
 function HtmlDocContent({ path }) {
-  const [content, setContent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    if (!path) return;
-    setLoading(true);
-    setError(null);
-    setContent(null);
-    fetch(`https://raw.githubusercontent.com/bodymapapp/bodymap/main/${path}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.text();
-      })
-      .then((text) => {
-        setContent(text);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(e.message || "Failed to load");
-        setLoading(false);
-      });
-  }, [path]);
-
-  if (loading) {
-    return (
-      <div style={{ padding: 40, textAlign: "center", color: C.gray, fontSize: 13 }}>
-        Loading from GitHub...
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div style={{
-        background: C.amberBg,
-        border: "1px solid #FCD34D",
-        borderRadius: 10,
-        padding: 20,
-        fontSize: 14,
-        color: C.amberInk,
-      }}>
-        Could not load {path}: {error}. Open it directly at{" "}
-        <a
-          href={`https://github.com/bodymapapp/bodymap/blob/main/${path}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: C.forest, fontWeight: 600 }}
-        >
-          GitHub
-        </a>.
-      </div>
-    );
-  }
+  // Strip 'public/' prefix to get the live URL on the deployed site.
+  // E.g. 'public/docs/BILLING_RULES.html' → '/docs/BILLING_RULES.html'
+  const liveUrl = path.startsWith("public/")
+    ? "/" + path.slice("public/".length)
+    : "/" + path;
+  const filename = path.split("/").pop();
 
   return (
-    <div>
+    <div style={{
+      background: `linear-gradient(180deg, ${C.cream} 0%, #FBFAF4 100%)`,
+      border: `1.5px solid ${C.sageBorder || "#A8C8B0"}`,
+      borderRadius: 14,
+      padding: "36px 32px",
+      textAlign: "center",
+      boxShadow: "0 6px 18px rgba(74, 107, 84, 0.10)",
+    }}>
       <div style={{
-        background: C.cream,
-        border: `1px solid ${C.border}`,
-        borderRadius: 8,
-        padding: "8px 14px",
+        fontSize: 11, fontWeight: 700,
+        color: C.sage,
+        letterSpacing: "0.14em",
+        textTransform: "uppercase",
         marginBottom: 12,
+      }}>
+        ★ Standalone HTML document
+      </div>
+      <h3 style={{
+        fontFamily: "Georgia, serif",
+        fontWeight: 400,
+        fontSize: 22,
+        color: C.forest,
+        margin: "0 0 14px",
+      }}>
+        This document is best read in its own tab.
+      </h3>
+      <p style={{
+        fontSize: 14,
+        color: C.gray,
+        lineHeight: 1.65,
+        maxWidth: 520,
+        margin: "0 auto 24px",
+      }}>
+        It uses its own typography, table layouts, and anchor navigation that
+        do not survive being embedded inside another page. Open the standalone
+        version below to read it properly.
+      </p>
+      <a
+        href={liveUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 10,
+          background: C.forest,
+          color: "#fff",
+          padding: "14px 28px",
+          borderRadius: 10,
+          fontSize: 15,
+          fontWeight: 700,
+          textDecoration: "none",
+          boxShadow: "0 4px 14px rgba(42, 87, 65, 0.22)",
+          marginBottom: 14,
+        }}
+      >
+        <span>Open {filename}</span>
+        <span aria-hidden="true">↗</span>
+      </a>
+      <div style={{
         fontSize: 12,
         color: C.gray,
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        fontStyle: "italic",
+        fontFamily: "Georgia, serif",
+        marginTop: 8,
       }}>
-        <span style={{ fontStyle: "italic", fontFamily: "Georgia, serif" }}>
-          Live HTML document, embedded.
-        </span>
-        <a
-          href={`https://raw.githubusercontent.com/bodymapapp/bodymap/main/${path}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ color: C.forest, fontSize: 12, fontWeight: 600, textDecoration: "none" }}
-        >
-          Open standalone ↗
-        </a>
+        Tip: bookmark the URL after it opens. You can come back without going
+        through Founder Hub.
       </div>
-      <iframe
-        title="HTML document"
-        srcDoc={content}
-        sandbox="allow-same-origin"
-        style={{
-          width: "100%",
-          height: "calc(100vh - 280px)",
-          minHeight: 600,
-          border: `1px solid ${C.border}`,
-          borderRadius: 10,
-          background: "#fff",
-          display: "block",
-        }}
-      />
+      <div style={{
+        marginTop: 28,
+        padding: "14px 18px",
+        background: "#fff",
+        border: `1px solid ${C.border}`,
+        borderRadius: 10,
+        fontSize: 12,
+        color: C.gray,
+        textAlign: "left",
+        maxWidth: 520,
+        margin: "28px auto 0",
+      }}>
+        <div style={{ fontWeight: 700, color: C.forest, marginBottom: 6 }}>
+          Direct URLs
+        </div>
+        <div style={{ fontFamily: "SF Mono, Consolas, monospace", fontSize: 11.5, lineHeight: 1.8 }}>
+          <div>Live: <a href={liveUrl} target="_blank" rel="noopener noreferrer" style={{ color: C.forest }}>{liveUrl}</a></div>
+          <div>Source: <a href={`https://github.com/bodymapapp/bodymap/blob/main/${path}`} target="_blank" rel="noopener noreferrer" style={{ color: C.forest }}>github.com/.../{filename}</a></div>
+        </div>
+      </div>
     </div>
   );
 }
