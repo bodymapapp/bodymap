@@ -157,8 +157,11 @@ export default function CancellationChargeModal({
         setBusy(false);
         return;
       }
-      // Now cancel the booking
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+      // Now mark the booking. No-show preserves the distinction
+      // from a cancellation; Timeline + reporting already recognise
+      // 'no_show' as a separate status.
+      const newStatus = isNoShow ? 'no_show' : 'cancelled';
+      await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
       setChargeResult(data);
       setStep('done');
       setBusy(false);
@@ -172,7 +175,8 @@ export default function CancellationChargeModal({
   async function skipAndCancel() {
     setBusy(true);
     try {
-      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', booking.id);
+      const newStatus = isNoShow ? 'no_show' : 'cancelled';
+      await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
       setBusy(false);
       onCancelled?.();
       onClose();

@@ -73,10 +73,30 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // options: charge fee + cancel, skip fee + cancel, or don't
   // cancel. Loads the booking's full client row + booking row so
   // the modal can inspect card-on-file across both processors.
+  //
+  // Called with { isNoShow: true } from the Mark No-Show button on
+  // past bookings. The modal then computes the fee using the
+  // therapist's policy.no_show_percent rather than the time-tier.
   const [showChargeModal, setShowChargeModal] = useState(false);
   const [chargeContext, setChargeContext] = useState(null);
 
-  async function openCancelFlow() {
+  // A booking counts as past once its scheduled END time has passed.
+  // appt.date is set to that day at 00:00 local; appt.time is a 12h
+  // string like '9:00 AM'. Add minutes-since-midnight + duration to
+  // the day's midnight to get the end-time epoch.
+  const apptDayMs = appt?.date instanceof Date ? appt.date.getTime() : null;
+  const apptEndMs = apptDayMs != null
+    ? apptDayMs + (t2m(appt.time) + (appt.duration || 60)) * 60 * 1000
+    : null;
+  const isPastBooking = apptEndMs != null && apptEndMs < Date.now();
+  // Only offer no-show on past bookings that have not already been
+  // cancelled or completed. External Google events never reach here.
+  const canMarkNoShow = isPastBooking
+    && !appt.preview
+    && appt.status !== 'cancelled'
+    && appt.status !== 'complete';
+
+  async function openCancelFlow({ isNoShow = false } = {}) {
     // Load full booking + client to know about card-on-file
     const { data: bookingRow } = await supabase
       .from('bookings').select('*').eq('id', appt.id).single();
@@ -94,7 +114,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     // Compute session price from the appointment data we have, or
     // fall back to therapist's default service price.
     const sessionPriceCents = Math.round((appt.priceUsd || appt.price || 0) * 100);
-    setChargeContext({ booking: bookingRow, client: clientRow, sessionPriceCents });
+    setChargeContext({ booking: bookingRow, client: clientRow, sessionPriceCents, isNoShow });
     setShowChargeModal(true);
   }
 
@@ -285,8 +305,14 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 📅 Reschedule
               </button>
             )}
+            {canMarkNoShow && !confirmCancel && (
+              <button onClick={() => openCancelFlow({ isNoShow: true })}
+                style={{background:'transparent',color:'#92400E',border:'1.5px solid #FCD34D',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
+                🚫 Mark as No-Show
+              </button>
+            )}
             {!appt.preview && !confirmCancel && (
-              <button onClick={openCancelFlow}
+              <button onClick={() => openCancelFlow()}
                 style={{background:'transparent',color:'#DC2626',border:'1.5px solid #FECACA',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
                 🗑 Cancel Appointment
               </button>
@@ -320,7 +346,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           client={chargeContext.client}
           therapist={therapist}
           sessionPriceCents={chargeContext.sessionPriceCents}
-          isNoShow={false}
+          isNoShow={!!chargeContext.isNoShow}
           onClose={() => setShowChargeModal(false)}
           onCancelled={() => {
             setShowChargeModal(false);
