@@ -184,7 +184,7 @@ serve(async (req) => {
       piParams['setup_future_usage'] = 'off_session';
     }
 
-    const res = await fetch('https://api.stripe.com/v1/payment_intents', {
+    let res = await fetch('https://api.stripe.com/v1/payment_intents', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${STRIPE_SECRET}`,
@@ -194,7 +194,73 @@ serve(async (req) => {
       body: new URLSearchParams(piParams),
     });
 
-    const pi = await res.json();
+    let pi = await res.json();
+
+    // ─── Step 2b: handle stale stripe_customer_id ────────────────
+    //
+    // The stripe_customer_id stored on the clients row is scoped to
+    // the Stripe connected account it was created against. If we
+    // have ever moved a therapist between connected accounts
+    // (Express account switch, account migration, the May 15 2026
+    // architectural fix that reattached therapists to verified
+    // accounts), the old customer IDs no longer exist in the new
+    // account's namespace.
+    //
+    // Symptom: 'No such customer: cus_xxx' from Stripe.
+    //
+    // Recovery: drop the stale customer ID, create a fresh Customer
+    // in the current connected account, save the new ID over the old
+    // one, retry the PaymentIntent. The client experiences a one-time
+    // re-save of their card on this booking; future bookings work
+    // normally.
+    if (!res.ok && pi.error?.code === 'resource_missing' &&
+        (pi.error?.message || '').includes('customer') &&
+        stripeCustomerId && client_email) {
+      console.warn(`[create-deposit] Stale customer ${stripeCustomerId} for client ${resolvedClientId}; recreating in account ${stripe_account_id}`);
+
+      // Create a fresh Customer in the current connected account
+      const custBody = new URLSearchParams({ email: client_email });
+      if (client_name) custBody.append('name', client_name);
+      if (client_phone) custBody.append('phone', client_phone);
+
+      const custRes = await fetch('https://api.stripe.com/v1/customers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${STRIPE_SECRET}`,
+          'Stripe-Account': stripe_account_id,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: custBody,
+      });
+      const cust = await custRes.json();
+
+      if (custRes.ok && cust.id) {
+        // Overwrite the stale ID on the client row, AND clear any
+        // saved payment_method_id since that was scoped to the old
+        // customer / account too.
+        if (resolvedClientId && supabase) {
+          await supabase.from('clients').update({
+            stripe_customer_id: cust.id,
+            stripe_payment_method_id: null,
+            card_saved_at: null,
+          }).eq('id', resolvedClientId);
+        }
+
+        // Retry the PaymentIntent with the new customer
+        piParams['customer'] = cust.id;
+        res = await fetch('https://api.stripe.com/v1/payment_intents', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${STRIPE_SECRET}`,
+            'Stripe-Account': stripe_account_id,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams(piParams),
+        });
+        pi = await res.json();
+        stripeCustomerId = cust.id;
+      }
+    }
 
     if (!res.ok) {
       return respond({ error: `Stripe: ${pi.error?.message || JSON.stringify(pi.error)}` });
