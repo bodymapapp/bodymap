@@ -10,7 +10,7 @@
 //   a client_secret to the frontend. That flow is Stripe-specific.
 //   This endpoint receives a token from EITHER processor's frontend
 //   SDK (after the SDK has already tokenized the card client-side)
-//   and just attaches it. Symmetric — works for both.
+//   and just attaches it. Symmetric: works for both.
 //
 // Both endpoints can coexist; the frontend picks based on which
 // processor the therapist uses for card-on-file.
@@ -30,7 +30,7 @@ serve(async (req) => {
       client_id,
       customer_id,
       payment_token,
-      processor,    // 'stripe' | 'square' — used to force the provider
+      processor,    // 'stripe' | 'square': used to force the provider
     } = await req.json();
 
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
@@ -90,7 +90,7 @@ serve(async (req) => {
       updates.square_card_id = result.providerCardId;
     } else {
       updates.stripe_customer_id = result.providerCustomerId;
-      updates.stripe_payment_method_id = result.providerCardId;
+      updates.payment_method_id = result.providerCardId;
     }
     updates.card_last4 = result.last4;
     updates.card_brand = result.brand;

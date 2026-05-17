@@ -67,16 +67,57 @@ serve(async (req) => {
     const session = event.data?.object;
     const metadata = session?.metadata || {};
     const sessionPaymentId = metadata.session_payment_id;
+    const cancellationChargeId = metadata.cancellation_charge_id;
     const bookingId = metadata.booking_id;
 
-    if (!sessionPaymentId) {
-      console.warn('[stripe-payment-link-webhook] no session_payment_id in metadata, ignoring', metadata);
+    if (!sessionPaymentId && !cancellationChargeId) {
+      console.warn('[stripe-payment-link-webhook] no session_payment_id or cancellation_charge_id in metadata, ignoring', metadata);
       return new Response(JSON.stringify({ received: true, ignored: 'no_metadata' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+
+    // Phase 13.6 (HK May 17 2026): branch by metadata kind. Cancellation
+    // fee link payments update cancellation_charges; regular session
+    // payments update session_payments. Same Stripe webhook handles both.
+    if (cancellationChargeId) {
+      const { data: chargeRow } = await supabase
+        .from('cancellation_charges')
+        .select('id, status')
+        .eq('id', cancellationChargeId)
+        .single();
+
+      if (!chargeRow) {
+        console.warn('[stripe-payment-link-webhook] cancellation_charges row not found', cancellationChargeId);
+        return new Response(JSON.stringify({ received: true, ignored: 'cc_row_not_found' }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (chargeRow.status === 'succeeded') {
+        return new Response(JSON.stringify({ received: true, already_processed: true }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const paymentIntentId = session.payment_intent;
+      await supabase
+        .from('cancellation_charges')
+        .update({
+          status: 'succeeded',
+          succeeded_at: new Date().toISOString(),
+          payment_intent_id: paymentIntentId || null,
+        })
+        .eq('id', cancellationChargeId);
+
+      return new Response(JSON.stringify({ received: true, kind: 'cancellation_fee', charge_id: cancellationChargeId }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Session payment branch below (unchanged).
 
     // Pull the existing row to compute the card detail
     const { data: paymentRow } = await supabase

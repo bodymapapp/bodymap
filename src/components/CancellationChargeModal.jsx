@@ -20,8 +20,9 @@
 //   - If within fee window: default action is "Charge", but the
 //     therapist can switch to skip (waive) explicitly
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getStripePublishableKey } from '../lib/paymentMode';
 
 const C = {
   forest: '#2A5741',
@@ -98,14 +99,18 @@ export default function CancellationChargeModal({
   client,            // client row (for card-on-file inspection)
   therapist,         // therapist row (policy, processor)
   sessionPriceCents, // numeric, in cents
-  isNoShow,          // bool — if true, treat as no-show vs late cancel
+  isNoShow,          // bool: if true, treat as no-show vs late cancel
   onClose,
   onCancelled,       // called after booking marked cancelled (regardless of charge)
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
-  const [step, setStep] = useState('confirm'); // 'confirm' | 'charging' | 'done'
+  // step: 'confirm' | 'charging' | 'done' | 'enter_card' | 'link_sent'
+  const [step, setStep] = useState('confirm');
   const [chargeResult, setChargeResult] = useState(null);
+  // Phase 13.6 (HK May 17 2026): payment link state when therapist
+  // chooses "Send payment link" instead of charging on card or skipping.
+  const [paymentLinkUrl, setPaymentLinkUrl] = useState(null);
 
   const policy = therapist?.cancellation_policy || {};
   const startAt = booking?.start_at ? new Date(booking.start_at) : null;
@@ -118,8 +123,13 @@ export default function CancellationChargeModal({
     [policy, sessionPriceCents, hoursBefore, isNoShow]
   );
 
-  // Detect card-on-file across both processors
-  const hasStripeCard = !!(client?.stripe_customer_id && client?.stripe_payment_method_id);
+  // Detect card-on-file across both processors.
+  // Phase 13.6 fix (HK May 17 2026): the previous check looked for
+  // client.stripe_payment_method_id which is not the schema column
+  // name. The actual column is just payment_method_id (set on the
+  // clients table by save-card). card_last4 has to also be present
+  // for the UI to show 'Visa 4242' style detail; we require both.
+  const hasStripeCard = !!(client?.stripe_customer_id && client?.payment_method_id && client?.card_last4);
   const hasSquareCard = !!(client?.square_customer_id && client?.square_card_id);
   const hasCardOnFile = hasStripeCard || hasSquareCard;
   const cardProcessor = hasStripeCard ? 'stripe' : (hasSquareCard ? 'square' : null);
@@ -127,6 +137,58 @@ export default function CancellationChargeModal({
   const cardBrand = client?.card_brand || 'card';
 
   const canCharge = fee.feeCents > 0 && hasCardOnFile && policy.enabled;
+
+  // Phase 13.6 (HK May 17 2026): Stripe Elements for the mini card-entry
+  // form (used when no card on file but therapist wants to charge now).
+  const stripeRef = useRef(null);
+  const elementsRef = useRef(null);
+  const cardElRef = useRef(null);
+  const cardDivRef = useRef(null);
+  const [stripeReady, setStripeReady] = useState(false);
+
+  useEffect(() => {
+    if (step !== 'enter_card') return;
+    let alive = true;
+    const init = async () => {
+      if (!window.Stripe) {
+        await new Promise(resolve => {
+          const s = document.createElement('script');
+          s.src = 'https://js.stripe.com/v3/';
+          s.onload = resolve;
+          document.head.appendChild(s);
+        });
+      }
+      if (!alive || !cardDivRef.current) return;
+      const stripeAccountId = therapist?.stripe_account_id;
+      stripeRef.current = window.Stripe(
+        getStripePublishableKey(),
+        stripeAccountId ? { stripeAccount: stripeAccountId } : {}
+      );
+      elementsRef.current = stripeRef.current.elements();
+      cardElRef.current = elementsRef.current.create('card', {
+        hidePostalCode: true,
+        disableLink: true,
+        style: {
+          base: {
+            fontSize: '16px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            color: C.text,
+            iconColor: C.forest,
+            '::placeholder': { color: C.muted },
+          },
+          invalid: { color: C.red, iconColor: C.red },
+        },
+      });
+      cardElRef.current.on('ready', () => { if (alive) setStripeReady(true); });
+      cardElRef.current.mount(cardDivRef.current);
+    };
+    init();
+    return () => {
+      alive = false;
+      try { if (cardElRef.current) cardElRef.current.destroy(); } catch (_e) {}
+      setStripeReady(false);
+    };
+  }, [step, therapist?.stripe_account_id]);
 
   async function chargeAndCancel() {
     setBusy(true);
@@ -168,6 +230,176 @@ export default function CancellationChargeModal({
     } catch (e) {
       setError(`Charge failed: ${String(e)}. Booking was NOT cancelled.`);
       setStep('confirm');
+      setBusy(false);
+    }
+  }
+
+  // Phase 13.6 (HK May 17 2026): generate a Stripe payment link the
+  // therapist can text/email to the client. Creates a pending
+  // cancellation_charges row immediately so the dashboard shows it
+  // as "fee owed." Marks the booking as no_show/cancelled. When
+  // the client pays the link, the webhook flips the row to succeeded.
+  async function sendPaymentLink() {
+    setBusy(true);
+    setError(null);
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-cancellation-fee-link`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          booking_id: booking.id,
+          client_id: booking.client_id || client?.id,
+          amount_cents: fee.feeCents,
+          trigger_event: isNoShow ? 'no_show' : 'cancel',
+          policy_percent: fee.percent,
+          session_price_cents: sessionPriceCents,
+          hours_before_appointment: hoursBefore,
+          policy_snapshot: { ...policy, computed: fee },
+        }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setError(`Could not create payment link: ${data.error}. Booking was NOT marked.`);
+        setBusy(false);
+        return;
+      }
+
+      // Mark the booking. Even though the fee is unpaid (pending), the
+      // booking event happened. Recording it lets the schedule reflect
+      // reality immediately.
+      const newStatus = isNoShow ? 'no_show' : 'cancelled';
+      await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+
+      setPaymentLinkUrl(data.payment_link_url);
+      setStep('link_sent');
+      setBusy(false);
+    } catch (e) {
+      setError(`Could not create payment link: ${String(e)}. Booking was NOT marked.`);
+      setBusy(false);
+    }
+  }
+
+  // Phase 13.6 (HK May 17 2026): inline card entry path. Used when
+  // no card is on file but the therapist has the client's card in
+  // hand (rare but real). Flow:
+  //   1. Insert pending cancellation_charges row
+  //   2. save-card: find-or-create Stripe customer, get SetupIntent
+  //   3. confirmCardSetup: attach card, get payment_method_id
+  //   4. charge-cancellation-fee: charge the saved card
+  //   5. Mark the booking
+  async function chargeWithNewCard() {
+    if (!stripeRef.current || !cardElRef.current) {
+      setError('Card form not ready. Please wait.');
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+
+      // Step 1: ensure client_id is set so save-card has somewhere to
+      // attach the Stripe customer.
+      const clientIdForSave = booking.client_id || client?.id;
+      if (!clientIdForSave) throw new Error('Client record missing on this booking.');
+
+      // Step 2: save-card to get SetupIntent.
+      const saveCardRes = await fetch(`${supabaseUrl}/functions/v1/save-card`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          stripe_account_id: therapist.stripe_account_id,
+          client_id: clientIdForSave,
+          client_email: client?.email || booking.client_email,
+          client_name: client?.name || booking.client_name,
+          therapist_id: therapist.id,
+        }),
+      });
+      const saveCardData = await saveCardRes.json();
+      if (saveCardData.error) throw new Error(saveCardData.error);
+      const { client_secret, customer_id } = saveCardData;
+      if (!client_secret || !customer_id) throw new Error('Card setup did not initialize.');
+
+      // Step 3: confirmCardSetup to attach the card to the customer.
+      const { error: setupErr, setupIntent } = await stripeRef.current.confirmCardSetup(client_secret, {
+        payment_method: { card: cardElRef.current },
+      });
+      if (setupErr) throw new Error(setupErr.message);
+      if (setupIntent?.status !== 'succeeded') throw new Error('Card setup did not complete.');
+      const paymentMethodId = setupIntent.payment_method;
+
+      // Step 4: fetch card details via the get-payment-method edge function
+      // (same as the CheckoutModal pattern) and persist on clients.
+      try {
+        const pmRes = await fetch(`${supabaseUrl}/functions/v1/get-payment-method`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            stripe_account_id: therapist.stripe_account_id,
+            payment_method_id: paymentMethodId,
+          }),
+        });
+        const pmDetails = await pmRes.json().catch(() => null);
+        await supabase.from('clients').update({
+          stripe_customer_id: customer_id,
+          payment_method_id: paymentMethodId,
+          card_last4: pmDetails?.last4 || null,
+          card_brand: pmDetails?.brand || null,
+          card_saved_at: new Date().toISOString(),
+        }).eq('id', clientIdForSave);
+      } catch (_e) {
+        // Non-blocking: still proceed with the charge. The card will
+        // self-heal on next CheckoutModal load if details missing.
+      }
+
+      // Step 5: charge-cancellation-fee. This writes the
+      // cancellation_charges row itself.
+      const chargeRes = await fetch(`${supabaseUrl}/functions/v1/charge-cancellation-fee`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          booking_id: booking.id,
+          therapist_id: therapist.id,
+          fee_amount_cents: fee.feeCents,
+          reason: isNoShow ? 'no_show' : 'cancel',
+          policy_snapshot: { ...policy, computed: fee },
+        }),
+      });
+      const chargeData = await chargeRes.json();
+      if (chargeData.error) {
+        setError(`Charge failed: ${chargeData.error}. Booking was NOT marked.`);
+        setBusy(false);
+        return;
+      }
+
+      // Step 6: mark the booking
+      const newStatus = isNoShow ? 'no_show' : 'cancelled';
+      await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+
+      setChargeResult(chargeData);
+      setStep('done');
+      setBusy(false);
+    } catch (e) {
+      setError(`Charge failed: ${String(e?.message || e)}. Booking was NOT marked.`);
       setBusy(false);
     }
   }
@@ -230,7 +462,9 @@ export default function CancellationChargeModal({
                 {isNoShow ? 'No-show' : 'Cancel booking'}
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif' }}>
-                {fee.feeCents > 0 ? 'Charge a cancellation fee?' : 'Cancel this booking'}
+                {fee.feeCents > 0
+                  ? (isNoShow ? 'Charge a no-show fee?' : 'Charge a cancellation fee?')
+                  : (isNoShow ? 'Mark this booking as no-show' : 'Cancel this booking')}
               </div>
               {startAt && !isNoShow && (
                 <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
@@ -280,7 +514,7 @@ export default function CancellationChargeModal({
                   borderRadius: 10, padding: '10px 12px', marginBottom: 14,
                   fontSize: 12, color: C.amberDark, lineHeight: 1.5,
                 }}>
-                  This client does not have a card on file, so the fee cannot be charged automatically. You can still cancel the booking.
+                  This client does not have a card on file. Choose how to collect the {formatPrice(fee.feeCents)} fee:
                 </div>
               )}
 
@@ -300,7 +534,10 @@ export default function CancellationChargeModal({
                 </div>
               )}
 
-              {/* Action buttons */}
+              {/* Action buttons. Phase 13.6 (HK May 17 2026): three
+                  charge paths now. When card-on-file: existing charge
+                  flow. When no card BUT fee due: offer send-link AND
+                  inline card entry. When no fee: just mark/skip. */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {canCharge && (
                   <button onClick={chargeAndCancel} disabled={busy}
@@ -309,9 +546,32 @@ export default function CancellationChargeModal({
                       borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
                       cursor: busy ? 'wait' : 'pointer',
                     }}>
-                    Charge {formatPrice(fee.feeCents)} + Cancel
+                    Charge {formatPrice(fee.feeCents)} + {isNoShow ? 'Mark no-show' : 'Cancel'}
                   </button>
                 )}
+
+                {fee.feeCents > 0 && !hasCardOnFile && policy.enabled && (
+                  <>
+                    <button onClick={sendPaymentLink} disabled={busy}
+                      style={{
+                        background: C.forest, color: '#fff', border: 'none',
+                        borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                        cursor: busy ? 'wait' : 'pointer',
+                      }}>
+                      Send payment link for {formatPrice(fee.feeCents)}
+                    </button>
+                    <button onClick={() => { setError(null); setStep('enter_card'); }} disabled={busy}
+                      style={{
+                        background: '#fff', color: C.forest,
+                        border: `1.5px solid ${C.forest}`,
+                        borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                        cursor: busy ? 'wait' : 'pointer',
+                      }}>
+                      Enter card now
+                    </button>
+                  </>
+                )}
+
                 <button onClick={skipAndCancel} disabled={busy}
                   style={{
                     background: '#fff', color: C.text,
@@ -319,7 +579,9 @@ export default function CancellationChargeModal({
                     borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
                     cursor: busy ? 'wait' : 'pointer',
                   }}>
-                  {canCharge ? 'Skip fee + Cancel' : 'Cancel booking'}
+                  {fee.feeCents > 0
+                    ? (isNoShow ? 'Skip fee + Mark no-show' : 'Skip fee + Cancel')
+                    : (isNoShow ? 'Mark no-show' : 'Cancel booking')}
                 </button>
                 <button onClick={onClose} disabled={busy}
                   style={{
@@ -327,7 +589,128 @@ export default function CancellationChargeModal({
                     border: 'none', padding: '8px 16px', fontSize: 12, fontWeight: 600,
                     cursor: busy ? 'wait' : 'pointer',
                   }}>
-                  Don't cancel
+                  {isNoShow ? 'Don\'t mark' : 'Don\'t cancel'}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Phase 13.6: inline card entry view. Reached via 'Enter card now'. */}
+        {step === 'enter_card' && (
+          <>
+            <div style={{ padding: '20px 22px 14px', borderBottom: `1px solid ${C.light}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+                {isNoShow ? 'No-show' : 'Cancel'} · Enter card
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif' }}>
+                Charge {formatPrice(fee.feeCents)} on a new card
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+                The card will also be saved for future visits.
+              </div>
+            </div>
+            <div style={{ padding: '18px 22px' }}>
+              <div ref={cardDivRef}
+                style={{
+                  background: '#fff', border: `1.5px solid ${C.light}`,
+                  borderRadius: 10, padding: '14px 12px', marginBottom: 14,
+                  minHeight: 46,
+                }} />
+              {error && (
+                <div style={{
+                  background: '#FEE2E2', border: `1px solid #FCA5A5`,
+                  borderRadius: 8, padding: '8px 10px', marginBottom: 12,
+                  fontSize: 12, color: C.redDark, lineHeight: 1.5,
+                }}>
+                  {error}
+                </div>
+              )}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <button onClick={chargeWithNewCard} disabled={busy || !stripeReady}
+                  style={{
+                    background: stripeReady ? C.forest : C.muted,
+                    color: '#fff', border: 'none',
+                    borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                    cursor: (busy || !stripeReady) ? 'wait' : 'pointer',
+                  }}>
+                  {busy ? 'Charging…' : `Charge ${formatPrice(fee.feeCents)}`}
+                </button>
+                <button onClick={() => { setError(null); setStep('confirm'); }} disabled={busy}
+                  style={{
+                    background: 'transparent', color: C.muted,
+                    border: 'none', padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                    cursor: busy ? 'wait' : 'pointer',
+                  }}>
+                  Back
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Phase 13.6: link-sent view. After 'Send payment link' succeeds,
+            show the URL plus sms:/mailto: buttons so the therapist can
+            deliver it. Booking is already marked at this point. */}
+        {step === 'link_sent' && (
+          <>
+            <div style={{ padding: '20px 22px 14px', borderBottom: `1px solid ${C.light}` }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.sage, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 4 }}>
+                {isNoShow ? 'No-show' : 'Cancel'} · Payment link
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif' }}>
+                Link created. Send it now.
+              </div>
+              <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+                Booking marked. Fee status: pending until paid.
+              </div>
+            </div>
+            <div style={{ padding: '18px 22px' }}>
+              <div style={{
+                background: C.cream, border: `1px solid ${C.light}`,
+                borderRadius: 8, padding: '10px 12px', marginBottom: 14,
+                fontSize: 12, color: C.text, wordBreak: 'break-all',
+              }}>
+                {paymentLinkUrl}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {(client?.phone || booking?.client_phone) && (
+                  <a href={`sms:${client?.phone || booking?.client_phone}?body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
+                    style={{
+                      background: C.forest, color: '#fff',
+                      textDecoration: 'none', textAlign: 'center',
+                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
+                    }}>
+                    Send via SMS
+                  </a>
+                )}
+                {(client?.email || booking?.client_email) && (
+                  <a href={`mailto:${client?.email || booking?.client_email}?subject=${encodeURIComponent(`Payment for ${isNoShow ? 'no-show' : 'cancellation'} fee`)}&body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
+                    style={{
+                      background: '#fff', color: C.forest,
+                      border: `1.5px solid ${C.forest}`,
+                      textDecoration: 'none', textAlign: 'center',
+                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                    }}>
+                    Send via email
+                  </a>
+                )}
+                <button onClick={() => { navigator.clipboard.writeText(paymentLinkUrl); }}
+                  style={{
+                    background: '#fff', color: C.text,
+                    border: `1.5px solid ${C.light}`,
+                    borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}>
+                  Copy link
+                </button>
+                <button onClick={() => { onCancelled?.(); onClose(); }}
+                  style={{
+                    background: 'transparent', color: C.muted,
+                    border: 'none', padding: '8px 16px', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}>
+                  Done
                 </button>
               </div>
             </div>
@@ -358,7 +741,10 @@ export default function CancellationChargeModal({
               Charged {formatPrice(chargeResult.amount_cents)}
             </div>
             <div style={{ fontSize: 12, color: C.muted, marginBottom: 18, lineHeight: 1.5 }}>
-              Booking cancelled. The client will see the charge on their {cardBrand.toUpperCase()} ending in {cardLast4}.
+              {isNoShow ? 'No-show recorded.' : 'Booking cancelled.'}
+              {chargeResult.last4
+                ? ` The client will see the charge on their ${(chargeResult.brand || 'card').toUpperCase()} ending in ${chargeResult.last4}.`
+                : ' Charge captured.'}
             </div>
             <button onClick={handleDone}
               style={{

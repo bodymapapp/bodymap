@@ -89,15 +89,15 @@ serve(async (req) => {
     // Determine which processor saved the card. Prefer Stripe if both
     // exist (matches the auto-policy elsewhere). The clients row
     // populates one of these pairs at save-card time:
-    //   stripe_customer_id + stripe_payment_method_id
-    //   square_customer_id + square_card_id
+    //   stripe_customer_id + payment_method_id (Stripe)
+    //   square_customer_id + square_card_id   (Square)
     let processor: 'stripe' | 'square';
     let providerCustomerId: string | null;
     let providerCardId: string | null;
-    if (client.stripe_customer_id && client.stripe_payment_method_id) {
+    if (client.stripe_customer_id && client.payment_method_id) {
       processor = 'stripe';
       providerCustomerId = client.stripe_customer_id;
-      providerCardId = client.stripe_payment_method_id;
+      providerCardId = client.payment_method_id;
     } else if (client.square_customer_id && client.square_card_id) {
       processor = 'square';
       providerCustomerId = client.square_customer_id;
@@ -199,7 +199,7 @@ serve(async (req) => {
             .from('clients')
             .update({
               stripe_customer_id: null,
-              stripe_payment_method_id: null,
+              payment_method_id: null,
               card_saved_at: null,
             })
             .eq('id', client.id);

@@ -241,7 +241,7 @@ serve(async (req) => {
         if (resolvedClientId && supabase) {
           await supabase.from('clients').update({
             stripe_customer_id: cust.id,
-            stripe_payment_method_id: null,
+            payment_method_id: null,
             card_saved_at: null,
           }).eq('id', resolvedClientId);
         }
