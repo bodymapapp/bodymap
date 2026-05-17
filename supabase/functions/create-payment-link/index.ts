@@ -69,7 +69,7 @@ serve(async (req) => {
     // Load booking to confirm it belongs to this therapist
     const { data: booking, error: bErr } = await supabase
       .from('bookings')
-      .select('id, therapist_id, client_id, name, email')
+      .select('id, therapist_id, client_id, client_name, client_email')
       .eq('id', booking_id)
       .single();
     if (bErr || !booking) return respond({ error: 'booking_not_found' }, 404);

@@ -126,6 +126,26 @@ export default function CancellationChargeModal({
     [policy, sessionPriceCents, hoursBefore, isNoShow]
   );
 
+  // Phase 13.8 (HK May 17 2026): the fee amount is editable. fee.feeCents
+  // is the calculated default from policy; overrideFeeDollars is what
+  // the therapist actually wants to charge. Initialized from fee.feeCents
+  // on first compute, then independent. effectiveFeeCents is what's
+  // actually used in charge / link / button copy.
+  const [overrideFeeDollars, setOverrideFeeDollars] = useState('');
+  useEffect(() => {
+    // Initialize override to the calculated fee whenever the calculated
+    // fee changes (e.g. policy change). Empty string means 'not yet
+    // touched', use the calculated value.
+    if (overrideFeeDollars === '' && fee.feeCents > 0) {
+      setOverrideFeeDollars((fee.feeCents / 100).toFixed(2));
+    }
+  }, [fee.feeCents, overrideFeeDollars]);
+  const effectiveFeeCents = useMemo(() => {
+    const parsed = parseFloat(overrideFeeDollars);
+    if (isNaN(parsed) || parsed <= 0) return 0;
+    return Math.round(parsed * 100);
+  }, [overrideFeeDollars]);
+
   // Detect card-on-file across both processors.
   // Phase 13.6 fix (HK May 17 2026): the previous check looked for
   // client.stripe_payment_method_id which is not the schema column
@@ -139,7 +159,7 @@ export default function CancellationChargeModal({
   const cardLast4 = client?.card_last4 || '????';
   const cardBrand = client?.card_brand || 'card';
 
-  const canCharge = fee.feeCents > 0 && hasCardOnFile && policy.enabled;
+  const canCharge = effectiveFeeCents > 0 && hasCardOnFile && policy.enabled;
 
   // Phase 13.7 (HK May 17 2026): smart default for link delivery
   // channel. Prefer SMS when phone exists, else email. If neither
@@ -221,7 +241,7 @@ export default function CancellationChargeModal({
         body: JSON.stringify({
           booking_id: booking.id,
           therapist_id: therapist.id,
-          fee_amount_cents: fee.feeCents,
+          fee_amount_cents: effectiveFeeCents,
           reason: isNoShow ? 'no_show' : 'cancel',
           policy_snapshot: { ...policy, computed: fee },
         }),
@@ -270,7 +290,7 @@ export default function CancellationChargeModal({
           therapist_id: therapist.id,
           booking_id: booking.id,
           client_id: booking.client_id || client?.id,
-          amount_cents: fee.feeCents,
+          amount_cents: effectiveFeeCents,
           trigger_event: isNoShow ? 'no_show' : 'cancel',
           policy_percent: fee.percent,
           session_price_cents: sessionPriceCents,
@@ -393,7 +413,7 @@ export default function CancellationChargeModal({
         body: JSON.stringify({
           booking_id: booking.id,
           therapist_id: therapist.id,
-          fee_amount_cents: fee.feeCents,
+          fee_amount_cents: effectiveFeeCents,
           reason: isNoShow ? 'no_show' : 'cancel',
           policy_snapshot: { ...policy, computed: fee },
         }),
@@ -492,7 +512,7 @@ export default function CancellationChargeModal({
               {policy.enabled && fee.feeCents > 0 && (
                 <div style={{
                   background: C.cream, border: `1px solid ${C.light}`,
-                  borderRadius: 10, padding: '12px 14px', marginBottom: 14, fontSize: 12,
+                  borderRadius: 10, padding: '12px 14px', marginBottom: 6, fontSize: 12,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ color: C.muted }}>Session price</span>
@@ -506,12 +526,47 @@ export default function CancellationChargeModal({
                   </div>
                   <div style={{
                     display: 'flex', justifyContent: 'space-between',
+                    alignItems: 'center',
                     paddingTop: 8, borderTop: `1px dashed ${C.light}`,
                     fontSize: 14,
                   }}>
                     <span style={{ color: C.text, fontWeight: 700 }}>Fee</span>
-                    <span style={{ color: C.forest, fontWeight: 800 }}>{formatPrice(fee.feeCents)}</span>
+                    {/* Phase 13.8 (HK May 17 2026): editable fee field.
+                        Default value matches the computed policy fee.
+                        Therapist can override to any non-negative amount. */}
+                    <div style={{
+                      display: 'flex', alignItems: 'center', gap: 4,
+                      background: '#fff', border: `1.5px solid ${C.light}`,
+                      borderRadius: 8, padding: '4px 8px',
+                    }}>
+                      <span style={{ color: C.muted, fontSize: 14 }}>$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={overrideFeeDollars}
+                        onChange={e => setOverrideFeeDollars(e.target.value.replace(/[^\d.]/g, ''))}
+                        onFocus={e => e.target.select()}
+                        style={{
+                          width: 64, border: 'none', outline: 'none',
+                          fontSize: 16, fontWeight: 800, color: C.forest,
+                          textAlign: 'right', background: 'transparent',
+                        }}
+                      />
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Phase 13.8: industry best practice tip. Stays small,
+                  appears under the fee block when the therapist's fee
+                  differs from common practice or when the policy could
+                  be more clearly framed. */}
+              {policy.enabled && fee.feeCents > 0 && (
+                <div style={{
+                  fontSize: 11, color: C.muted, marginBottom: 14,
+                  fontStyle: 'italic', lineHeight: 1.5, padding: '0 4px',
+                }}>
+                  Industry standard: {isNoShow ? '100% of session price for no-shows' : '50% within 24 hours, 100% within 2 hours'}.
                 </div>
               )}
 
@@ -528,7 +583,7 @@ export default function CancellationChargeModal({
                   borderRadius: 10, padding: '10px 12px', marginBottom: 14,
                   fontSize: 12, color: C.amberDark, lineHeight: 1.5,
                 }}>
-                  This client does not have a card on file. Choose how to collect the {formatPrice(fee.feeCents)} fee:
+                  This client does not have a card on file. Choose how to collect the {formatPrice(effectiveFeeCents)} fee:
                 </div>
               )}
 
@@ -560,7 +615,7 @@ export default function CancellationChargeModal({
                       borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
                       cursor: busy ? 'wait' : 'pointer',
                     }}>
-                    Charge {formatPrice(fee.feeCents)} + {isNoShow ? 'Mark no-show' : 'Cancel'}
+                    Charge {formatPrice(effectiveFeeCents)} + {isNoShow ? 'Mark no-show' : 'Cancel'}
                   </button>
                 )}
 
@@ -572,7 +627,7 @@ export default function CancellationChargeModal({
                         borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
                         cursor: busy ? 'wait' : 'pointer',
                       }}>
-                      Send payment link for {formatPrice(fee.feeCents)}
+                      Send payment link for {formatPrice(effectiveFeeCents)}
                     </button>
                     <button onClick={() => { setError(null); setStep('enter_card'); }} disabled={busy}
                       style={{
@@ -618,7 +673,7 @@ export default function CancellationChargeModal({
                 {isNoShow ? 'No-show' : 'Cancel'} · Enter card
               </div>
               <div style={{ fontSize: 18, fontWeight: 700, color: C.forest, fontFamily: 'Georgia, serif' }}>
-                Charge {formatPrice(fee.feeCents)} on a new card
+                Charge {formatPrice(effectiveFeeCents)} on a new card
               </div>
               <div style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
                 The card will also be saved for future visits.
@@ -648,7 +703,7 @@ export default function CancellationChargeModal({
                     borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
                     cursor: (busy || !stripeReady) ? 'wait' : 'pointer',
                   }}>
-                  {busy ? 'Charging…' : `Charge ${formatPrice(fee.feeCents)}`}
+                  {busy ? 'Charging…' : `Charge ${formatPrice(effectiveFeeCents)}`}
                 </button>
                 <button onClick={() => { setError(null); setStep('confirm'); }} disabled={busy}
                   style={{
@@ -782,7 +837,7 @@ export default function CancellationChargeModal({
           <div style={{ padding: '40px 24px', textAlign: 'center' }}>
             <div style={{ fontSize: 32, marginBottom: 12 }}>⏳</div>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 6 }}>
-              Charging {formatPrice(fee.feeCents)}…
+              Charging {formatPrice(effectiveFeeCents)}…
             </div>
             <div style={{ fontSize: 12, color: C.muted }}>
               Please don't close this window.

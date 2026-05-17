@@ -450,13 +450,20 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     </div>
                   </div>
                 ) : (
-                  /* UNPAID STATE: the hero. Forest gradient Checkout pill
-                      with subtle glow + Mark as paid as paired text below. */
+                  /* UNPAID STATE. Phase 13.8 (HK May 17 2026):
+                      Checkout (primary, filled) and Mark paid (secondary,
+                      outlined) as two stacked peer buttons. Previously
+                      Mark paid was hidden as italic text below the
+                      Checkout button which read as a decorative label
+                      rather than a tappable action. */
                   <div style={{
                     background:'linear-gradient(180deg, #FCFAF5 0%, #F7F3EA 100%)',
                     border:'1.5px solid #E8DFC9',
                     borderRadius:16,
-                    padding:'18px 16px 14px',
+                    padding:'14px 14px',
+                    display:'flex',
+                    flexDirection:'column',
+                    gap:8,
                   }}>
                     <button onClick={()=>setShowCheckout(true)}
                       style={{
@@ -464,36 +471,31 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         background:'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)',
                         color:'#fff',
                         border:'none',
-                        borderRadius:14,
-                        padding:'16px 20px',
-                        fontSize:16,
-                        fontWeight:600,
+                        borderRadius:12,
+                        padding:'14px 18px',
+                        fontSize:15,
+                        fontWeight:700,
                         cursor:'pointer',
                         boxShadow:'0 4px 14px rgba(31,64,48,0.28), 0 1px 0 rgba(255,255,255,0.15) inset',
-                        display:'flex',
-                        alignItems:'center',
-                        justifyContent:'center',
-                        gap:8,
                         letterSpacing:'0.01em',
                       }}>
                       Checkout
                     </button>
-                    <div style={{display:'flex',justifyContent:'center',marginTop:10}}>
-                      <button onClick={()=>setShowMarkPaid(true)}
-                        style={{
-                          background:'transparent',
-                          color:'#6B7551',
-                          border:'none',
-                          padding:'6px 12px',
-                          fontSize:13,
-                          fontWeight:500,
-                          cursor:'pointer',
-                          fontFamily:'Georgia, serif',
-                          fontStyle:'italic',
-                        }}>
-                        or mark as paid
-                      </button>
-                    </div>
+                    <button onClick={()=>setShowMarkPaid(true)}
+                      style={{
+                        width:'100%',
+                        background:'#fff',
+                        color:'#2A5741',
+                        border:'1.5px solid #2A5741',
+                        borderRadius:12,
+                        padding:'12px 18px',
+                        fontSize:15,
+                        fontWeight:600,
+                        cursor:'pointer',
+                        letterSpacing:'0.01em',
+                      }}>
+                      Mark as paid
+                    </button>
                   </div>
                 )}
               </>

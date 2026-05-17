@@ -664,13 +664,18 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
   const amountNum = parseFloat(amount) || 0;
   const tipNum = parseFloat(tip) || 0;
   const currentPercent = amountNum > 0 ? Math.round((tipNum / amountNum) * 100) : null;
+  // Phase 13.8 (HK May 17 2026): Custom chip focuses the tip field.
+  // Custom is "active" when there's a tip > 0 that doesn't match any
+  // preset percent, so the visual selection matches the actual state.
+  const isCustomActive = tipNum > 0 && !tipPresets.includes(currentPercent);
+  const tipInputRef = useRef(null);
 
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 18 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
         <Field label="Amount" value={amount} setValue={setAmount} prefix="$" />
         {acceptTips && (
-          <Field label="Tip (optional)" value={tip} setValue={setTip} prefix="$" />
+          <Field label="Tip (optional)" value={tip} setValue={setTip} prefix="$" inputRef={tipInputRef} />
         )}
       </div>
 
@@ -706,20 +711,31 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
           })}
           <button
             type="button"
-            onClick={() => setTip('0.00')}
+            onClick={() => {
+              // Clear the tip and focus the input so therapist can type
+              // a custom amount immediately.
+              setTip('');
+              setTimeout(() => tipInputRef.current?.focus(), 0);
+            }}
             style={{
               flex: 1,
               minWidth: 64,
-              background: tipNum === 0 ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
-              color: tipNum === 0 ? '#fff' : C.inkSoft,
-              border: tipNum === 0 ? 'none' : `1.5px solid ${C.border}`,
+              background: isCustomActive ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
+              color: isCustomActive ? '#fff' : C.forestDeep,
+              border: isCustomActive ? 'none' : `1.5px solid ${C.border}`,
               borderRadius: 10,
               padding: '8px 10px',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
+              boxShadow: isCustomActive ? '0 2px 8px rgba(42,87,65,0.18)' : 'none',
             }}>
-            No tip
+            Custom
+            {isCustomActive && (
+              <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, marginTop: 2 }}>
+                ${tipNum.toFixed(2)}
+              </div>
+            )}
           </button>
         </div>
       )}
@@ -732,13 +748,14 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
   );
 }
 
-function Field({ label, value, setValue, prefix }) {
+function Field({ label, value, setValue, prefix, inputRef }) {
   return (
     <div style={{ flex: 1 }}>
       <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
       <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: `1.5px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
         {prefix && <span style={{ color: C.inkSoft, fontSize: 16, marginRight: 4 }}>{prefix}</span>}
         <input
+          ref={inputRef}
           type="text"
           inputMode="decimal"
           value={value}
