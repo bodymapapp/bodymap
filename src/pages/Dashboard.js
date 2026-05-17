@@ -4284,7 +4284,7 @@ export default function Dashboard({ view }) {
       </div>
       {(view === 'clients' || view === 'sessions' || view === 'session-detail') && (
         <button onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
-          style={{ position: 'fixed', bottom: isMobile ? '80px' : '32px', right: isMobile ? '16px' : '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? '14px' : '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999 }}>
+          style={{ position: 'fixed', bottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : '32px', right: isMobile ? '16px' : '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? '14px' : '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999 }}>
           🔗 Share booking link
         </button>
       )}
