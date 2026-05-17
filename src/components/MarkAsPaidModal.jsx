@@ -261,6 +261,7 @@ function Field({ label, value, setValue }) {
           inputMode="decimal"
           value={value}
           onChange={e => setValue(e.target.value.replace(/[^\d.]/g, ''))}
+          onFocus={e => e.target.select()}
           placeholder="0.00"
           style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, fontWeight: 600, color: C.ink, background: 'transparent', width: '100%', minWidth: 0 }}
         />

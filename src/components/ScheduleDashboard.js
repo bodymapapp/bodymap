@@ -2039,6 +2039,11 @@ export default function ScheduleDashboard({ therapist }) {
           service: b.services?.name || 'Session',
           notes: b.notes || '',
           price: b.services?.price || 85,
+          // Phase 13.7 (HK May 17 2026): expose cents form for the
+          // Checkout + MarkAsPaid modals, which read service_price_cents
+          // as the defaultAmountCents. Without this, the modals
+          // opened at $0.00.
+          service_price_cents: Math.round((b.services?.price || 85) * 100),
           focus: [],
           preview: false,
           reminder_sent: !!b.reminder_sent_at,

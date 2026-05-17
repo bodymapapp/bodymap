@@ -111,6 +111,9 @@ export default function CancellationChargeModal({
   // Phase 13.6 (HK May 17 2026): payment link state when therapist
   // chooses "Send payment link" instead of charging on card or skipping.
   const [paymentLinkUrl, setPaymentLinkUrl] = useState(null);
+  // Phase 13.7 (HK May 17 2026): delivery picker: SMS / Email / Both.
+  // Default to whichever channel the client actually has.
+  const [linkDelivery, setLinkDelivery] = useState('sms');
 
   const policy = therapist?.cancellation_policy || {};
   const startAt = booking?.start_at ? new Date(booking.start_at) : null;
@@ -137,6 +140,17 @@ export default function CancellationChargeModal({
   const cardBrand = client?.card_brand || 'card';
 
   const canCharge = fee.feeCents > 0 && hasCardOnFile && policy.enabled;
+
+  // Phase 13.7 (HK May 17 2026): smart default for link delivery
+  // channel. Prefer SMS when phone exists, else email. If neither
+  // is present we still default to SMS (the UI will hide buttons
+  // for channels the client doesn't have).
+  const clientPhone = client?.phone || booking?.client_phone;
+  const clientEmail = client?.email || booking?.client_email;
+  useEffect(() => {
+    if (clientPhone) setLinkDelivery('sms');
+    else if (clientEmail) setLinkDelivery('email');
+  }, [clientPhone, clientEmail]);
 
   // Phase 13.6 (HK May 17 2026): Stripe Elements for the mini card-entry
   // form (used when no card on file but therapist wants to charge now).
@@ -673,26 +687,73 @@ export default function CancellationChargeModal({
               }}>
                 {paymentLinkUrl}
               </div>
+
+              {/* Phase 13.7: SMS / Email / Both segmented picker.
+                  Only options the client has contact info for are
+                  enabled. Selecting one updates which Send button(s)
+                  appear below. */}
+              {(clientPhone || clientEmail) && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 6,
+                  background: '#fff',
+                  border: `1.5px solid ${C.light}`,
+                  borderRadius: 10,
+                  padding: 4,
+                  marginBottom: 14,
+                }}>
+                  {[
+                    { id: 'sms',   label: 'SMS',   available: !!clientPhone },
+                    { id: 'email', label: 'Email', available: !!clientEmail },
+                    { id: 'both',  label: 'Both',  available: !!(clientPhone && clientEmail) },
+                  ].map(opt => {
+                    const isActive = linkDelivery === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        disabled={!opt.available}
+                        onClick={() => setLinkDelivery(opt.id)}
+                        style={{
+                          background: isActive ? C.forest : 'transparent',
+                          color: !opt.available ? C.muted : isActive ? '#fff' : C.text,
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          fontSize: 13,
+                          fontWeight: 700,
+                          cursor: opt.available ? 'pointer' : 'not-allowed',
+                          opacity: opt.available ? 1 : 0.4,
+                        }}>
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(client?.phone || booking?.client_phone) && (
-                  <a href={`sms:${client?.phone || booking?.client_phone}?body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
+                {(linkDelivery === 'sms' || linkDelivery === 'both') && clientPhone && (
+                  <a href={`sms:${clientPhone}?body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
                     style={{
                       background: C.forest, color: '#fff',
                       textDecoration: 'none', textAlign: 'center',
                       borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 700,
                     }}>
-                    Send via SMS
+                    Open SMS to send
                   </a>
                 )}
-                {(client?.email || booking?.client_email) && (
-                  <a href={`mailto:${client?.email || booking?.client_email}?subject=${encodeURIComponent(`Payment for ${isNoShow ? 'no-show' : 'cancellation'} fee`)}&body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
+                {(linkDelivery === 'email' || linkDelivery === 'both') && clientEmail && (
+                  <a href={`mailto:${clientEmail}?subject=${encodeURIComponent(`Payment for ${isNoShow ? 'no-show' : 'cancellation'} fee`)}&body=${encodeURIComponent(`Hi, here's the link to pay your ${isNoShow ? 'no-show' : 'cancellation'} fee: ${paymentLinkUrl}`)}`}
                     style={{
-                      background: '#fff', color: C.forest,
-                      border: `1.5px solid ${C.forest}`,
+                      background: linkDelivery === 'both' ? '#fff' : C.forest,
+                      color: linkDelivery === 'both' ? C.forest : '#fff',
+                      border: linkDelivery === 'both' ? `1.5px solid ${C.forest}` : 'none',
                       textDecoration: 'none', textAlign: 'center',
-                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: 600,
+                      borderRadius: 10, padding: '12px 16px', fontSize: 14, fontWeight: linkDelivery === 'both' ? 600 : 700,
                     }}>
-                    Send via email
+                    Open email to send
                   </a>
                 )}
                 <button onClick={() => { navigator.clipboard.writeText(paymentLinkUrl); }}

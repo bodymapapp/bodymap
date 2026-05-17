@@ -578,7 +578,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
 
             {/* Scrollable body */}
             <div style={bodyStyle}>
-              <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} />
+              <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} therapist={therapist} />
 
               {step === 'method' && (
                 <MethodPicker
@@ -650,13 +650,80 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
 
 // ─── Sub-components ───────────────────────────────────────────────
 
-function AmountRow({ amount, setAmount, tip, setTip, totalCents }) {
+function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
+  // Phase 13.7 (HK May 17 2026): respect therapist.accept_tips toggle.
+  // When false, the tip field + chips are hidden entirely. The amount
+  // field expands to fill the row.
+  const acceptTips = therapist?.accept_tips !== false;
+  const tipPresets = [
+    Number(therapist?.tip_preset_1 ?? 15),
+    Number(therapist?.tip_preset_2 ?? 18),
+    Number(therapist?.tip_preset_3 ?? 20),
+  ];
+
+  const amountNum = parseFloat(amount) || 0;
+  const tipNum = parseFloat(tip) || 0;
+  const currentPercent = amountNum > 0 ? Math.round((tipNum / amountNum) * 100) : null;
+
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 18 }}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
         <Field label="Amount" value={amount} setValue={setAmount} prefix="$" />
-        <Field label="Tip (optional)" value={tip} setValue={setTip} prefix="$" />
+        {acceptTips && (
+          <Field label="Tip (optional)" value={tip} setValue={setTip} prefix="$" />
+        )}
       </div>
+
+      {acceptTips && amountNum > 0 && (
+        <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
+          {tipPresets.map((pct) => {
+            const isActive = currentPercent === pct;
+            const tipAmount = (amountNum * pct / 100).toFixed(2);
+            return (
+              <button
+                key={pct}
+                type="button"
+                onClick={() => setTip(tipAmount)}
+                style={{
+                  flex: 1,
+                  minWidth: 64,
+                  background: isActive ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
+                  color: isActive ? '#fff' : C.forestDeep,
+                  border: isActive ? 'none' : `1.5px solid ${C.border}`,
+                  borderRadius: 10,
+                  padding: '8px 10px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: isActive ? '0 2px 8px rgba(42,87,65,0.18)' : 'none',
+                }}>
+                {pct}%
+                <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, marginTop: 2 }}>
+                  ${tipAmount}
+                </div>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setTip('0.00')}
+            style={{
+              flex: 1,
+              minWidth: 64,
+              background: tipNum === 0 ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
+              color: tipNum === 0 ? '#fff' : C.inkSoft,
+              border: tipNum === 0 ? 'none' : `1.5px solid ${C.border}`,
+              borderRadius: 10,
+              padding: '8px 10px',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}>
+            No tip
+          </button>
+        </div>
+      )}
+
       <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
         <div style={{ fontSize: 12, color: C.inkSoft, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>Total</div>
         <div style={{ fontSize: 20, fontWeight: 700, color: C.forestDeep }}>${(totalCents / 100).toFixed(2)}</div>
@@ -676,6 +743,7 @@ function Field({ label, value, setValue, prefix }) {
           inputMode="decimal"
           value={value}
           onChange={e => setValue(e.target.value.replace(/[^\d.]/g, ''))}
+          onFocus={e => e.target.select()}
           placeholder="0.00"
           style={{ flex: 1, border: 'none', outline: 'none', fontSize: 16, fontWeight: 600, color: C.ink, background: 'transparent', width: '100%', minWidth: 0 }}
         />
