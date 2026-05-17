@@ -138,14 +138,14 @@ serve(async (req) => {
       // source of truth and may have more up-to-date contact info.
       const { data: client } = await supabase
         .from('clients')
-        .select('id, full_name, email, phone')
+        .select('id, name, email, phone')
         .eq('id', booking.client_id)
         .maybeSingle();
 
       // Use client table if available, fall back to booking copy
       const clientForFanOut = client || {
         id: booking.client_id,
-        full_name: booking.client_name,
+        name: booking.client_name,
         email: booking.client_email,
         phone: booking.client_phone,
       };
@@ -157,7 +157,7 @@ serve(async (req) => {
         : 'https://mybodymap.app/book';
 
       // SMS: short, warm, one tap to rebook. ~150 chars target.
-      const smsText = `Hi ${(clientForFanOut.full_name || '').split(' ')[0] || 'there'}, ${therapistFirstName} missed you${whenStr ? ' on ' + whenStr : ''}. Hope everything's okay. Whenever you're ready: ${rebookUrl}`;
+      const smsText = `Hi ${(clientForFanOut.name || '').split(' ')[0] || 'there'}, ${therapistFirstName} missed you${whenStr ? ' on ' + whenStr : ''}. Hope everything's okay. Whenever you're ready: ${rebookUrl}`;
 
       // Email: longer, warmer, includes business name and rebook button.
       // No payment request in this code path (no_fee = true).
@@ -170,7 +170,7 @@ serve(async (req) => {
     <div style="background:#fff;border-radius:16px;padding:36px 30px;box-shadow:0 4px 20px rgba(0,0,0,0.04);border:1px solid #F2EFE4;">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:#6B9E80;margin-bottom:10px;">A note from ${therapistDisplayName}</div>
       <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:400;color:#1F4030;margin:0 0 16px;letter-spacing:-0.012em;">We missed you${whenStr ? ' on ' + whenStr : ''}.</h1>
-      <p style="font-size:15px;color:#1F2937;margin:0 0 14px;line-height:1.7;">Hi ${(clientForFanOut.full_name || '').split(' ')[0] || 'there'},</p>
+      <p style="font-size:15px;color:#1F2937;margin:0 0 14px;line-height:1.7;">Hi ${(clientForFanOut.name || '').split(' ')[0] || 'there'},</p>
       <p style="font-size:15px;color:#1F2937;margin:0 0 14px;line-height:1.7;">${therapistFirstName} noticed you weren't able to make it to your session${whenStr ? ' on ' + whenStr : ''}. No fee, no fuss. Life happens.</p>
       <p style="font-size:15px;color:#1F2937;margin:0 0 24px;line-height:1.7;">Whenever you're ready to come back, the calendar is open.</p>
       <a href="${rebookUrl}" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:13px 28px;border-radius:999px;font-size:14px;font-weight:700;letter-spacing:0.02em;">Book another session →</a>
