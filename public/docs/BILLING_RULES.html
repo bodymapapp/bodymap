@@ -61,6 +61,96 @@
     border-top: 1px solid rgba(255,255,255,0.15);
   }
 
+  /* Big one-word display title above the hero, like a magazine
+     section name. Sets the tone before the reader even reaches
+     the longer subtitle. */
+  .display-title {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(72px, 12vw, 140px);
+    line-height: 0.95;
+    color: var(--forest-deep);
+    letter-spacing: -0.04em;
+    margin: 0 0 8px;
+    text-align: left;
+  }
+  .display-deck {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 28px;
+  }
+
+  /* Five-point summary at the top, the "design principles" of the
+     playbook so a reader sees the takeaways before deciding to
+     read the whole thing. */
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-left: 6px solid var(--sage);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin: 0 0 36px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .tldr-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 14px;
+  }
+  .tldr h3 {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--forest-deep);
+    margin: 0 0 18px;
+    letter-spacing: -0.012em;
+  }
+  .tldr ol {
+    margin: 0;
+    padding-left: 22px;
+    counter-reset: tldr-item;
+    list-style: none;
+  }
+  .tldr ol li {
+    position: relative;
+    padding: 10px 0 10px 32px;
+    border-bottom: 1px dashed var(--cream-deep);
+    counter-increment: tldr-item;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .tldr ol li:last-child { border-bottom: none; }
+  .tldr ol li::before {
+    content: counter(tldr-item);
+    position: absolute;
+    left: -8px;
+    top: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    color: var(--forest-deep);
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--sage-soft);
+  }
+  .tldr ol li strong {
+    color: var(--forest-deep);
+    font-weight: 700;
+  }
+
   h2 {
     font-family: Georgia, serif; font-weight: 400;
     font-size: clamp(24px, 3vw, 32px); color: var(--forest-deep);
@@ -288,6 +378,21 @@
 </head>
 <body>
 <div class="wrap">
+
+<div class="display-deck">★ Playbook · Solo therapist edition</div>
+<h1 class="display-title">Money.</h1>
+
+<div class="tldr">
+  <div class="tldr-eyebrow">The five things to remember</div>
+  <h3>Design principles for handling money in a solo practice</h3>
+  <ol>
+    <li><strong>The therapist decides. The system notifies.</strong> Every money moment shows the facts on screen with a suggested action and one tap to accept. Never automate a decision the human should own.</li>
+    <li><strong>Card on file at booking is what makes a policy real.</strong> Without it, the policy is a wish. With it, late cancels and no-shows are handled cleanly without an awkward text exchange.</li>
+    <li><strong>First offense gets a grace pass.</strong> Industry-standard practice across ABMP and ClinicSense. The first late cancel or no-show is waived as a one-time courtesy. The policy applies on repeat offenses. This single move retains clients who would otherwise leave from a single bad day.</li>
+    <li><strong>Refund automatically when the therapist cancels.</strong> The client did nothing wrong. Pair the refund with a warm apology and a one-tap rebook link. This is the highest-risk lapse moment in the whole relationship.</li>
+    <li><strong>When you can't auto-charge, the platform sends the awkward text for you.</strong> A polite payment request with a one-tap pay link recovers about half of no-show clients. Silence loses almost all of them.</li>
+  </ol>
+</div>
 
 <header class="hero">
   <div class="eyebrow">★ A guide for therapists, by therapists</div>

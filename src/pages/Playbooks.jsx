@@ -42,7 +42,8 @@ const C = {
 const PLAYBOOKS = [
   {
     id: "money-decisions",
-    title: "How Money Decisions Work in a Solo Practice",
+    title: "Money",
+    subtitle: "How money decisions work in a solo practice",
     eyebrow: "Cancellations, no-shows, reschedules, refunds",
     blurb:
       "The situations every therapist runs into and rarely talks about openly. A working framework for cancellation policy, no-show recovery, refund timing, and the choice screens that make every money decision feel fair to both parties.",
@@ -54,8 +55,9 @@ const PLAYBOOKS = [
   },
   {
     id: "client-lifetime-journey",
-    title: "The Client Lifetime Journey",
-    eyebrow: "From first contact to lifelong client",
+    title: "Journey",
+    subtitle: "The client relationship from first contact to lifelong client",
+    eyebrow: "Reminders, check-ins, win-backs, the messages that keep clients loyal",
     blurb:
       "Every meaningful moment in a client's relationship with a solo therapist, plotted in time. The check-ins, the reminders, the apologies, the gentle nudges. A working playbook for the messages that turn first-time clients into lifelong regulars.",
     sources:
@@ -63,6 +65,19 @@ const PLAYBOOKS = [
     href: "/docs/CLIENT_LIFETIME_JOURNEY.html",
     readTime: "15 minute read",
     badge: null,
+  },
+  {
+    id: "notifications-architecture",
+    title: "Notifications",
+    subtitle: "How to build the notification engine without losing your mind",
+    eyebrow: "Engineering playbook · build once, extend forever",
+    blurb:
+      "A practical architecture for the notification system behind a platform like MyBodyMap. Designed to be built once, deployed quickly, and extended without ceremony. The companion playbook to Money and Journey, for the founder anxious about how many moving parts notifications appear to have.",
+    sources:
+      "Lessons from notification systems at scale: shop-bought systems (Twilio, Resend, Postmark), event-driven architectures, and the test pyramid as it applies to messaging infrastructure.",
+    href: "/docs/NOTIFICATIONS_ARCHITECTURE.html",
+    readTime: "10 minute read",
+    badge: "Engineering",
   },
 ];
 
@@ -270,14 +285,26 @@ function PlaybookCard({ playbook }) {
       <h3 style={{
         fontFamily: "Georgia, serif",
         fontWeight: 400,
-        fontSize: 24,
+        fontSize: 64,
         color: C.forestDeep,
-        margin: "0 0 14px",
-        letterSpacing: "-0.012em",
-        lineHeight: 1.25,
+        margin: "0 0 6px",
+        letterSpacing: "-0.03em",
+        lineHeight: 1,
       }}>
-        {playbook.title}
+        {playbook.title}.
       </h3>
+
+      <div style={{
+        fontSize: 15,
+        fontWeight: 600,
+        color: C.forest,
+        margin: "0 0 16px",
+        fontFamily: "Georgia, serif",
+        fontStyle: "italic",
+        lineHeight: 1.4,
+      }}>
+        {playbook.subtitle}
+      </div>
 
       <p style={{ fontSize: 14.5, lineHeight: 1.65, color: C.ink, margin: "0 0 18px" }}>
         {playbook.blurb}

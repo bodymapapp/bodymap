@@ -67,6 +67,96 @@
     border-top: 1px solid rgba(255,255,255,0.15);
   }
 
+  /* Big one-word display title above the hero, like a magazine
+     section name. Sets the tone before the reader even reaches
+     the longer subtitle. */
+  .display-title {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(72px, 12vw, 140px);
+    line-height: 0.95;
+    color: var(--forest-deep);
+    letter-spacing: -0.04em;
+    margin: 0 0 8px;
+    text-align: left;
+  }
+  .display-deck {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 28px;
+  }
+
+  /* Five-point summary at the top, the "design principles" of the
+     playbook so a reader sees the takeaways before deciding to
+     read the whole thing. */
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-left: 6px solid var(--sage);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin: 0 0 36px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .tldr-eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 14px;
+  }
+  .tldr h3 {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 22px;
+    color: var(--forest-deep);
+    margin: 0 0 18px;
+    letter-spacing: -0.012em;
+  }
+  .tldr ol {
+    margin: 0;
+    padding-left: 22px;
+    counter-reset: tldr-item;
+    list-style: none;
+  }
+  .tldr ol li {
+    position: relative;
+    padding: 10px 0 10px 32px;
+    border-bottom: 1px dashed var(--cream-deep);
+    counter-increment: tldr-item;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--ink);
+  }
+  .tldr ol li:last-child { border-bottom: none; }
+  .tldr ol li::before {
+    content: counter(tldr-item);
+    position: absolute;
+    left: -8px;
+    top: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--sage-pale);
+    color: var(--forest-deep);
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--sage-soft);
+  }
+  .tldr ol li strong {
+    color: var(--forest-deep);
+    font-weight: 700;
+  }
+
   .principle {
     background: linear-gradient(180deg, var(--sage-pale) 0%, var(--cream) 100%);
     border: 1.5px solid var(--sage-soft);
@@ -429,6 +519,21 @@
 <body>
 <div class="wrap">
 
+<div class="display-deck">★ Playbook · Solo therapist edition</div>
+<h1 class="display-title">Journey.</h1>
+
+<div class="tldr">
+  <div class="tldr-eyebrow">The five things to remember</div>
+  <h3>Design principles for the client relationship</h3>
+  <ol>
+    <li><strong>Communication is the relationship.</strong> Outside the hour on the table, every message is a touchpoint that shapes how the client feels about the practice. There are no "automations," only conversations the platform sends on your behalf.</li>
+    <li><strong>Text first. Email when there's more to say.</strong> Most clients now treat email as a place receipts get archived. Texts get read. Reminders, time changes, and lapse nudges go by text. Receipts, policies, and longer messages go by email.</li>
+    <li><strong>The same hours, more loyal clients.</strong> This playbook is not about working more. Massage is physical work and most solo therapists are already at their sustainable limit. The lever is depth and length of relationship, which compounds into rate-increase tolerance and word-of-mouth referrals.</li>
+    <li><strong>Different stages, different defaults.</strong> A nervous first-timer needs the 48-hour reminder and the 2-hour text. A five-year regular needs the calendar invite and silence. Over-messaging your loyal clients signals you're treating them like strangers.</li>
+    <li><strong>The platform sends the awkward messages so you don't have to.</strong> The polite payment request after a no-show. The warm apology when you cancel. Most therapists avoid these and lose clients permanently. The platform handles them with the right tone, so the client comes back instead of disappearing.</li>
+  </ol>
+</div>
+
 <header class="hero">
   <div class="eyebrow">★ A guide for therapists, by therapists</div>
   <h1>The Client Lifetime Journey</h1>
@@ -446,7 +551,8 @@
 <section class="principle">
   <h3>How to think about notifications in a solo practice</h3>
   <p><strong>Communication is the relationship.</strong> Outside the hour on the table, every interaction a client has with their therapist is a message. A clear booking confirmation, a warm thank-you, a respectful cancellation note. These are not "automations." They are the relationship.</p>
-  <p><strong>Two channels, two audiences, with care.</strong> The therapist receives in-app, email, and text alerts on their schedule. The client receives email and text only. Defaults differ by where the client is in their journey: a five-year regular needs fewer messages, not more, because over-messaging signals you're treating them like a stranger.</p>
+  <p><strong>Text first. Email when there's more to say.</strong> Most clients now treat email as a place receipts go to be archived. Texts get read. So the playbook below sends a short text as the primary message at every important moment, and uses email only when the message has substance worth keeping (a receipt, an attached policy, a multi-paragraph apology). For nervous first-timers and lapsed regulars especially, the text is the message that actually gets seen.</p>
+  <p><strong>Two channels, two audiences, with care.</strong> The therapist receives in-app, email, and text alerts on their schedule (their choice per event). The client receives text and email, in that order of importance. Defaults differ by where the client is in their journey: a five-year regular needs fewer messages, not more, because over-messaging signals you're treating them like a stranger.</p>
   <p><strong>Some messages are uncomfortable to send.</strong> The payment request after a no-show. The apology when you have to cancel last-minute. Most therapists avoid these and lose the client. The playbook below is built so the platform handles these moments for you with the right tone, so the client comes back instead of disappearing.</p>
 </section>
 
@@ -495,8 +601,8 @@
   <div class="legend-item"><div class="legend-swatch" style="background: var(--rose);"></div>Off-ramp (cancel, no-show, change)</div>
   <div class="legend-item"><div class="legend-swatch" style="background: var(--indigo);"></div>Win-back</div>
   <div class="legend-item" style="margin-left: auto;">
-    <span class="ch ch-email">EMAIL</span>
     <span class="ch ch-sms">SMS</span>
+    <span class="ch ch-email">EMAIL</span>
     <span class="ch ch-bell">BELL</span>
   </div>
 </div>
@@ -521,8 +627,8 @@
         <div class="tp-why">Industry consensus: a clear confirmation reduces first-visit no-shows because it answers every question that would otherwise nag at the client between booking and arrival.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -543,10 +649,11 @@
       <div class="tp-when"><strong>+24 hours</strong>If intake not filled</div>
       <div class="tp-body">
         <div class="tp-name">Intake reminder</div>
-        <div class="tp-what">"Quick favor before Tuesday: 90 seconds to fill your intake so Jane can spend the full hour on you, not on paperwork."</div>
-        <div class="tp-why">Sometimes feels like nagging. Kept on by default because therapists overwhelmingly cite "spending the first 10 minutes filling out paper forms" as their top frustration with how scheduling platforms work.</div>
+        <div class="tp-what">SMS: "Quick favor before Tuesday with Jane: 90 sec to fill your intake → [link]. Means you get the full hour on the table, not on paperwork."</div>
+        <div class="tp-why">Sent as a text because the action is small and time-bound. Email follow-up the next morning if still not filled. Kept on by default because therapists overwhelmingly cite "spending the first 10 minutes filling out paper forms" as their top frustration with how scheduling platforms work.</div>
       </div>
       <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
         <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
@@ -582,10 +689,11 @@
       <div class="tp-when"><strong>48 hours before</strong>The "you still have time to change" window</div>
       <div class="tp-body">
         <div class="tp-name">Early reminder</div>
-        <div class="tp-what">"Heads up: your session with Jane is Tuesday at 12pm. Need to change? Reschedule here." Calendar invite attached.</div>
-        <div class="tp-why">The 48-hour reminder gives the client time to reschedule politely within most policy windows. A common ABMP-aligned policy uses 24 hours for the fee window, so a reminder one full day before that gives the client a fair chance to act.</div>
+        <div class="tp-what">SMS: "Heads up: your session with Jane is Tue 12pm. Need to change? Tap here [link]." Email also goes out with the calendar invite attached.</div>
+        <div class="tp-why">SMS is the channel that actually gets seen 48 hours before. The email is the keepable artifact with the calendar invite. Both together give the client a fair chance to reschedule politely within most policy windows. A common ABMP-aligned policy uses 24 hours for the fee window, so a reminder one full day before that gives them time to act.</div>
       </div>
       <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
         <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
@@ -644,10 +752,11 @@
       <div class="tp-when"><strong>Every booking</strong>For sessions 2+</div>
       <div class="tp-body">
         <div class="tp-name">Streamlined confirmation</div>
-        <div class="tp-what">"Confirmed: Tuesday March 19 at 12pm with Jane." Shorter than the welcome email. No intake invite (already filled). Calendar attached.</div>
-        <div class="tp-why">The repeat client doesn't need the full first-visit guide. But the confirmation itself is a commitment device that reduces no-show even for regulars.</div>
+        <div class="tp-what">SMS: "Confirmed: Tue Mar 19, 12pm with Jane." That's it. Email follows with the calendar invite for clients who use one.</div>
+        <div class="tp-why">The repeat client doesn't need the full first-visit guide. They get a one-line text that's the actual commitment device. The email becomes a quiet backup for whoever still puts events on their calendar through Outlook or Gmail.</div>
       </div>
       <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
         <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
@@ -694,11 +803,11 @@
       <div class="tp-when"><strong>Every booking</strong>Ongoing</div>
       <div class="tp-body">
         <div class="tp-name">Quiet confirmation</div>
-        <div class="tp-what">"Confirmed: Tuesday at 12pm." That's it.</div>
-        <div class="tp-why">A 20-time regular doesn't need a brochure. They need a calendar invite and the same Tuesday at noon. Excess words feel cheap.</div>
+        <div class="tp-what">SMS: "Confirmed: Tue 12pm." That's it. No email.</div>
+        <div class="tp-why">A 20-time regular doesn't need a brochure. They need a calendar invite and the same Tuesday at noon. Excess words feel cheap. Email is suppressed entirely at this point because the relationship has earned the trust that the text is enough.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
       </div>
     </div>
 
@@ -756,8 +865,8 @@
         <div class="tp-why">Frictionless. Both parties feel respected, which is what increases rebook rate over time.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -769,8 +878,8 @@
         <div class="tp-why">Transparency is the price of charging a fee. ABMP-aligned practices include the policy text and the date the client agreed to it; clients rarely dispute when they see what they actually signed.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -782,8 +891,8 @@
         <div class="tp-why">The warm-toned no-show recovery is the most important retention notification on the entire timeline. Industry forum discussions consistently identify this as the moment that decides whether the client comes back at all.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -795,8 +904,8 @@
         <div class="tp-why">Without this, the therapist has to send an awkward text themselves. Most won't, so the money disappears and so does the relationship. With this, the platform handles the awkward conversation.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -808,8 +917,8 @@
         <div class="tp-why">Therapist-initiated cancels are the highest-risk lapse event. ABMP and Massage Magazine both note that warm apology paired with easy rebook is the practice that distinguishes therapists who recover from those who don't.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -821,8 +930,8 @@
         <div class="tp-why">The optional reason field is the differentiator. It makes both parties feel like humans wrote it. Forum discussions among therapists frequently note this as the missing piece in every published platform.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
   </div>
@@ -856,11 +965,11 @@
       <div class="tp-when"><strong>Soft win-back attempt</strong>If therapist enabled it</div>
       <div class="tp-body">
         <div class="tp-name">"Your Tuesday is open"</div>
-        <div class="tp-what">"It's been a few weeks. Jane kept your Tuesday evening slot open this week, in case you'd like it. Book here."</div>
-        <div class="tp-why">Sometimes feels salesy. But industry data: a single well-targeted nudge recovers a meaningful percentage of lapsed regulars. The therapist toggle exists for practitioners with philosophical objections to any outbound nudge.</div>
+        <div class="tp-what">SMS: "Hi Maria, Jane held your Tuesday evening slot this week in case you'd like it. Tap to book: [link]" Sent only if the therapist enabled outbound win-back on this client.</div>
+        <div class="tp-why">SMS is critical here, not optional. A lapsed client who already isn't engaging is not opening marketing email. Industry data: a single well-targeted text recovers a meaningful percentage of lapsed regulars; the same message via email recovers a fraction of that. The therapist toggle exists for practitioners with philosophical objections to any outbound nudge, but the default channel for the nudge that does happen is text.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
+        <span class="ch ch-sms">SMS</span>
       </div>
     </div>
   </div>
@@ -886,8 +995,8 @@
         <div class="tp-why">The single warmest moment in the whole journey. Treat it that way. Don't reset their history; pick up where you left off.</div>
       </div>
       <div class="tp-channels">
-        <span class="ch ch-email">EMAIL</span>
         <span class="ch ch-sms">SMS</span>
+        <span class="ch ch-email">EMAIL</span>
       </div>
     </div>
 
@@ -895,10 +1004,11 @@
       <div class="tp-when"><strong>If still no response</strong>After 120 days lapsed</div>
       <div class="tp-body">
         <div class="tp-name">"Whenever you're ready"</div>
-        <div class="tp-what">One last warm email, then go quiet. "If life took you somewhere else, no hard feelings. Jane will be here when you're ready."</div>
-        <div class="tp-why">Some therapists call this "too clingy"; others call it "well-handled." Industry data: one last email at 120 days recovers an additional small percentage of clients who would otherwise be gone forever. Then we stop. No further outreach unless the client initiates.</div>
+        <div class="tp-what">SMS: "Hi Maria, just thinking of you. If life took you somewhere else, no hard feelings. Jane will be here when you're ready. Tap to book whenever." Email backup with same warmth.</div>
+        <div class="tp-why">Both channels because this is the last touch. Some therapists call this "too clingy"; others call it "well-handled." Industry data: one last message at 120 days recovers an additional small percentage of clients who would otherwise be gone forever. Then we stop. No further outreach unless the client initiates.</div>
       </div>
       <div class="tp-channels">
+        <span class="ch ch-sms">SMS</span>
         <span class="ch ch-email">EMAIL</span>
       </div>
     </div>

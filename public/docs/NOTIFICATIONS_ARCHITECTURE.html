@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MyBodyMap: Notifications (Architecture Playbook)</title>
+<style>
+  :root {
+    --forest-deep: #1F4030;
+    --forest: #2A5741;
+    --sage: #6B9E80;
+    --sage-soft: #A8C8B0;
+    --sage-pale: #E8F0E9;
+    --cream: #FBFAF4;
+    --cream-deep: #F2EFE4;
+    --gold: #C9A84C;
+    --gold-soft: #FCF4DD;
+    --rose: #C77B8A;
+    --rose-soft: #FDF2F4;
+    --amber: #D97706;
+    --amber-deep: #92400E;
+    --amber-soft: #FEF3C7;
+    --indigo: #4338CA;
+    --indigo-soft: #E0E7FF;
+    --ink: #1F2937;
+    --ink-soft: #6B7280;
+    --ink-fade: #9CA3AF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 40px 24px 80px; }
+
+  .display-deck {
+    font-size: 14px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--sage); margin-bottom: 28px;
+  }
+  .display-title {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(72px, 12vw, 140px); line-height: 0.95;
+    color: var(--forest-deep); letter-spacing: -0.04em;
+    margin: 0 0 8px;
+  }
+
+  .tldr {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-left: 6px solid var(--sage);
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin: 0 0 36px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+  .tldr-eyebrow {
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--sage); margin-bottom: 14px;
+  }
+  .tldr h3 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: 22px; color: var(--forest-deep);
+    margin: 0 0 18px; letter-spacing: -0.012em;
+  }
+  .tldr ol {
+    margin: 0; padding-left: 22px;
+    counter-reset: tldr-item; list-style: none;
+  }
+  .tldr ol li {
+    position: relative;
+    padding: 10px 0 10px 32px;
+    border-bottom: 1px dashed var(--cream-deep);
+    counter-increment: tldr-item;
+    font-size: 15px; line-height: 1.6; color: var(--ink);
+  }
+  .tldr ol li:last-child { border-bottom: none; }
+  .tldr ol li::before {
+    content: counter(tldr-item);
+    position: absolute; left: -8px; top: 10px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--sage-pale); color: var(--forest-deep);
+    font-family: Georgia, serif; font-style: italic;
+    font-size: 14px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    border: 1.5px solid var(--sage-soft);
+  }
+  .tldr ol li strong { color: var(--forest-deep); font-weight: 700; }
+
+  header.hero {
+    background: linear-gradient(135deg, var(--forest-deep) 0%, var(--forest) 100%);
+    color: #fff; padding: 52px 40px; border-radius: 18px;
+    margin-bottom: 36px; box-shadow: 0 18px 48px rgba(42, 87, 65, 0.18);
+  }
+  header.hero h1 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(28px, 4vw, 40px); margin: 0 0 14px;
+    letter-spacing: -0.015em; line-height: 1.15;
+  }
+  header.hero .eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--sage-soft); margin-bottom: 14px;
+  }
+  header.hero p {
+    font-size: 16px; color: rgba(255,255,255,0.88);
+    max-width: 740px; margin: 0 0 14px; line-height: 1.65;
+  }
+  header.hero .audience {
+    font-size: 13px; color: rgba(255,255,255,0.7);
+    font-style: italic; font-family: Georgia, serif;
+    margin-top: 20px; padding-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.15);
+  }
+
+  h2 {
+    font-family: Georgia, serif; font-weight: 400;
+    font-size: clamp(24px, 3vw, 32px); color: var(--forest-deep);
+    margin: 56px 0 18px; letter-spacing: -0.012em;
+    border-bottom: 2px solid var(--sage-soft); padding-bottom: 14px;
+  }
+  h3 {
+    font-family: Georgia, serif; font-weight: 400; font-size: 22px;
+    color: var(--forest); margin: 28px 0 14px;
+  }
+
+  .section {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-radius: 14px;
+    padding: 32px 36px;
+    margin-bottom: 26px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
+  }
+
+  .anxiety-card {
+    background: linear-gradient(180deg, #FEF3C7 0%, var(--cream) 100%);
+    border: 1.5px solid #FCD34D;
+    border-radius: 14px;
+    padding: 28px 32px;
+    margin: 0 0 36px;
+  }
+  .anxiety-card h3 {
+    margin: 0 0 12px;
+    color: var(--amber-deep);
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 22px;
+    font-style: italic;
+  }
+  .anxiety-card p {
+    margin: 0 0 12px;
+    line-height: 1.7;
+    color: var(--ink);
+  }
+  .anxiety-card p:last-child { margin-bottom: 0; }
+  .anxiety-card strong { color: var(--amber-deep); }
+
+  /* Engine diagram */
+  .engine-diagram {
+    background: var(--forest-deep);
+    color: #fff;
+    border-radius: 14px;
+    padding: 32px;
+    margin: 24px 0;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    overflow-x: auto;
+  }
+  .engine-diagram .label {
+    color: var(--sage-soft);
+    font-weight: 700;
+    letter-spacing: 0.05em;
+  }
+  .engine-diagram .comment {
+    color: var(--ink-fade);
+    font-style: italic;
+  }
+  .engine-diagram .arrow {
+    color: var(--gold);
+    font-weight: 700;
+  }
+
+  /* Component cards */
+  .component {
+    background: #FAFAF7;
+    border: 1px solid var(--cream-deep);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin-bottom: 14px;
+  }
+  .component .num {
+    display: inline-block;
+    background: var(--sage-pale);
+    color: var(--forest-deep);
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 14px;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 28px;
+    margin-right: 10px;
+    font-weight: 700;
+    border: 1.5px solid var(--sage-soft);
+  }
+  .component .name {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 19px;
+    color: var(--forest-deep);
+    margin: 0 0 6px;
+    display: inline-block;
+  }
+  .component .role {
+    font-size: 12px;
+    color: var(--ink-soft);
+    font-style: italic;
+    font-family: Georgia, serif;
+    margin-bottom: 12px;
+  }
+  .component .body {
+    font-size: 14.5px;
+    line-height: 1.65;
+  }
+  .component code {
+    background: var(--cream-deep);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    color: var(--forest-deep);
+  }
+
+  /* Test pyramid */
+  .pyramid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin: 22px 0;
+  }
+  .pyramid-cell {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-radius: 12px;
+    padding: 22px 22px;
+    text-align: center;
+  }
+  .pyramid-cell .layer {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 8px;
+  }
+  .pyramid-cell .what {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 17px;
+    color: var(--forest-deep);
+    margin-bottom: 10px;
+    line-height: 1.35;
+  }
+  .pyramid-cell .count {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 36px;
+    color: var(--forest-deep);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .pyramid-cell .effort {
+    font-size: 12px;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  .pyramid-cell.engine { background: linear-gradient(180deg, var(--sage-pale) 0%, #fff 100%); border-color: var(--sage-soft); }
+  .pyramid-cell.template { background: linear-gradient(180deg, var(--gold-soft) 0%, #fff 100%); border-color: #E8D17D; }
+  .pyramid-cell.smoke { background: #fff; }
+
+  /* Phases */
+  .phase-card {
+    background: #fff;
+    border: 1px solid var(--cream-deep);
+    border-radius: 12px;
+    padding: 22px 26px;
+    margin-bottom: 12px;
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+  }
+  .phase-card .order {
+    background: var(--forest-deep);
+    color: #fff;
+    font-family: Georgia, serif;
+    font-style: italic;
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 17px; font-weight: 700;
+    flex-shrink: 0;
+  }
+  .phase-card .what {
+    font-family: Georgia, serif;
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--forest-deep);
+    margin: 0 0 4px;
+  }
+  .phase-card .hours {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 8px;
+  }
+  .phase-card .body {
+    font-size: 14px;
+    color: var(--ink);
+    line-height: 1.6;
+  }
+
+  /* Foot */
+  .footer-note {
+    font-size: 12.5px; color: var(--ink-fade); font-style: italic;
+    margin-top: 14px; font-family: Georgia, serif; line-height: 1.6;
+  }
+
+  @media (max-width: 720px) {
+    .pyramid { grid-template-columns: 1fr; }
+    .engine-diagram { font-size: 11px; padding: 20px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="display-deck">★ Playbook · Engineering edition</div>
+<h1 class="display-title">Notifications.</h1>
+
+<div class="tldr">
+  <div class="tldr-eyebrow">The five things to remember</div>
+  <h3>Design principles for the notification engine</h3>
+  <ol>
+    <li><strong>One engine, many templates.</strong> Every notification on the platform flows through a single delivery engine. Adding a new notification means writing a template, not a new code path. This is the discipline that prevents the 100-tests-per-notification trap.</li>
+    <li><strong>Test the engine once, then trust it.</strong> The engine is the only thing that needs heavy testing. Once the delivery pipeline works for receipts, it works for reminders, lapse nudges, and apology emails. Per-notification testing is reduced to "does this template render with this data?"</li>
+    <li><strong>Templates are content, not code.</strong> Every notification is defined as a row in a database table: event name, channels, conditions, and the text of the message. Adding a notification or changing copy is a content edit, not an engineering ticket.</li>
+    <li><strong>Channels are pluggable.</strong> SMS via Twilio, email via Resend, in-app via the bell drawer. Each one is a separate adapter. When SMS goes down, the engine logs the failure and tries email as a fallback (per the channel-priority field on the template).</li>
+    <li><strong>Every send is observable.</strong> Single events table logs who got what, when, on which channel, and whether delivery succeeded. One dashboard surfaces deliverability problems before clients call.</li>
+  </ol>
+</div>
+
+<header class="hero">
+  <div class="eyebrow">★ A guide for building, not buying</div>
+  <h1>How to build the notification engine without losing your mind</h1>
+  <p>A practical architecture for the notification system behind a platform like MyBodyMap. Designed to be built once, deployed quickly, and extended without ceremony. Written for the solo founder who is anxious about how many moving parts notifications appear to have.</p>
+  <p class="audience">Companion to the Money and Journey playbooks. Those describe what notifications should say and when they should fire. This one describes how to build the machine that does it.</p>
+</header>
+
+<section class="anxiety-card">
+  <h3>Why this playbook exists</h3>
+  <p>If you read Money and Journey, you saw a couple of dozen specific notifications, each with channel rules, suppression conditions, copy variants, and personality-of-the-relationship tuning. The natural fear: "I have to build and test each of these as a separate feature."</p>
+  <p>You don't. <strong>You build one notification engine, and every notification becomes a configuration of that engine.</strong> The first notification takes a long time to ship because you're building the engine. Notifications two through fifty take an hour each because you're filling out a template.</p>
+  <p>This playbook is the design of that engine, the order to build it in, and the test pyramid that keeps you sane.</p>
+</section>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2>The architecture in one diagram</h2>
+
+<div class="engine-diagram">
+<span class="comment">┌───────────────────────────────────────────────────────────┐</span>
+<span class="comment">│                        APP CODE                            │</span>
+<span class="comment">│   "client just no-showed" → emit('booking.no_show', ctx)  │</span>
+<span class="comment">└───────────────────────────────────────────────────────────┘</span>
+                              <span class="arrow">↓</span>
+<span class="comment">┌───────────────────────────────────────────────────────────┐</span>
+<span class="comment">│                  NOTIFICATION ENGINE                       │</span>
+<span class="comment">│                                                            │</span>
+<span class="comment">│  1. Look up all templates where event = 'booking.no_show' │</span>
+<span class="comment">│  2. For each template, check audience + conditions        │</span>
+<span class="comment">│  3. Resolve channel(s) and recipient(s)                   │</span>
+<span class="comment">│  4. Render template with context (Maria, $90, Tuesday)    │</span>
+<span class="comment">│  5. Hand off to channel adapter (SMS / email / bell)      │</span>
+<span class="comment">│  6. Log every attempt to notification_events table        │</span>
+<span class="comment">└───────────────────────────────────────────────────────────┘</span>
+                              <span class="arrow">↓</span>
+<span class="comment">┌──────────────┬──────────────┬──────────────────────────┐</span>
+<span class="comment">│  SMS adapter │ EMAIL adapter│  BELL adapter            │</span>
+<span class="comment">│  (Twilio)    │   (Resend)   │  (in-app, postgres)      │</span>
+<span class="comment">└──────────────┴──────────────┴──────────────────────────┘</span>
+</div>
+
+<p style="font-size: 14.5px; color: var(--ink-soft); line-height: 1.7;">
+  The shape that makes this manageable: <strong style="color: var(--forest-deep);">the app code only ever emits events.</strong> It never knows what notification will fire, who will receive it, or how. All of that is configuration in the engine. The same line of code that fires the no-show notification today will fire the new "we miss you" follow-up message we add next month, without a code change.
+</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2>The six pieces of the engine</h2>
+
+<div class="component">
+  <div><span class="num">1</span><span class="name">Events table</span></div>
+  <div class="role">The vocabulary the app code uses to describe what happened.</div>
+  <div class="body">A small enum-like set of event names: <code>booking.created</code>, <code>booking.confirmed</code>, <code>booking.no_show</code>, <code>booking.therapist_cancelled</code>, <code>client.lapsed</code>, etc. Every part of the app emits one of these when something happens. The engine subscribes; nothing else.</div>
+</div>
+
+<div class="component">
+  <div><span class="num">2</span><span class="name">Templates table</span></div>
+  <div class="role">Where every notification lives. The content, not the code.</div>
+  <div class="body">One row per notification. Columns: event name, audience (therapist or client), channels (SMS, email, bell, in any combination), conditions (e.g. "only if client has fewer than 10 sessions"), subject line if email, body template with handlebars-style placeholders. Adding a notification is an INSERT, not a code change. Editing copy is an UPDATE.</div>
+</div>
+
+<div class="component">
+  <div><span class="num">3</span><span class="name">Renderer</span></div>
+  <div class="role">Turns a template + context into actual text.</div>
+  <div class="body">Takes the template body ("Hi {{client.first_name}}, we missed you on {{session.day}}") and the context object ({client: {first_name: 'Maria'}, session: {day: 'Tuesday'}}) and produces the final string. Same renderer for SMS and email. Plain-text rendering is trivial. HTML email rendering uses a layout template that wraps the body.</div>
+</div>
+
+<div class="component">
+  <div><span class="num">4</span><span class="name">Channel adapters</span></div>
+  <div class="role">Three thin wrappers around Twilio, Resend, and the bell table.</div>
+  <div class="body">Each adapter accepts a rendered message and a recipient identifier (phone number for SMS, email for email, user_id for bell). It returns success or a structured error. The engine doesn't know how Twilio works; the SMS adapter does. New channels (WhatsApp, push, etc.) are just new adapters.</div>
+</div>
+
+<div class="component">
+  <div><span class="num">5</span><span class="name">Events log</span></div>
+  <div class="role">One table, every notification ever sent. The audit trail and the debugging surface.</div>
+  <div class="body">Columns: event name, template id, recipient, channel, status, attempted_at, delivered_at, error if any. When Candice texts "Maria didn't get her reminder," you query this table by phone number and see exactly what fired and what happened.</div>
+</div>
+
+<div class="component">
+  <div><span class="num">6</span><span class="name">Suppression rules</span></div>
+  <div class="role">The guardrails. What we never send.</div>
+  <div class="body">Quiet hours (no SMS between 9pm and 8am client local time). Unsubscribed clients (one row per client per category). Bounce-then-block (3 hard bounces in a row → suppress that channel for this recipient). Rate limit (no more than 3 notifications to one client per day). These rules apply before the channel adapter runs.</div>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2>The test pyramid that keeps you sane</h2>
+
+<p style="font-size: 15px; line-height: 1.7; max-width: 720px;">
+  The whole fear of "100 tests per notification" comes from imagining each notification as its own feature with its own integration test. Replace that mental model with three layers:
+</p>
+
+<div class="pyramid">
+  <div class="pyramid-cell engine">
+    <div class="layer">Layer 1</div>
+    <div class="what">Engine integration tests</div>
+    <div class="count">~30</div>
+    <div class="effort">Heavy. Covers the engine end-to-end: event in, message rendered, channel adapter called, log row created. Once these pass, you trust the engine. You write these once and rarely touch them.</div>
+  </div>
+  <div class="pyramid-cell template">
+    <div class="layer">Layer 2</div>
+    <div class="what">Template render checks</div>
+    <div class="count">~5 per template</div>
+    <div class="effort">Light. Did the template render? Are all placeholders filled? Is the SMS under 160 chars? Does the email subject have nothing weird? Snapshot tests per template, auto-generated.</div>
+  </div>
+  <div class="pyramid-cell smoke">
+    <div class="layer">Layer 3</div>
+    <div class="what">Manual smoke test in staging</div>
+    <div class="count">1 per template</div>
+    <div class="effort">Send the notification to your own phone and inbox in staging. Read it. Does it sound like a human wrote it? Ship if yes. This takes 2 minutes per template.</div>
+  </div>
+</div>
+
+<p style="font-size: 14.5px; color: var(--ink-soft); line-height: 1.7; max-width: 720px;">
+  Math: engine integration tests take a week of work, once. Per-template work is roughly 15 minutes (writing the template) plus 5 minutes (smoke test). <strong style="color: var(--forest-deep);">For 25 notifications across both playbooks, the total per-template effort is about 8 hours of work spread across days as the product matures.</strong> Not 100s of hours. Not anxiety-inducing.
+</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2>The order to build it in</h2>
+
+<div class="phase-card">
+  <div class="order">1</div>
+  <div>
+    <div class="hours">~2 days · highest leverage</div>
+    <div class="what">The events table and the events log table</div>
+    <div class="body">Both can be added to the schema in a single migration. The events log is just a postgres table. The events table is more of a TypeScript const than a database object, but documenting the vocabulary somewhere is critical. Without this, the rest of the engine has nothing to subscribe to.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">2</div>
+  <div>
+    <div class="hours">~2 days</div>
+    <div class="what">One channel adapter (start with SMS via Twilio)</div>
+    <div class="body">Wire Twilio with a simple send function and a delivery webhook. Get it logging into the events log. This is the smallest end-to-end that proves the architecture: app emits event → adapter sends SMS → log records it.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">3</div>
+  <div>
+    <div class="hours">~1 day</div>
+    <div class="what">The renderer</div>
+    <div class="body">Handlebars or any simple template library. Don't get fancy. Plain string templates with {{placeholders}} cover 95% of what we need. The other 5% (conditional content, pluralization) can be solved later.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">4</div>
+  <div>
+    <div class="hours">~2 days</div>
+    <div class="what">The templates table + the first three notifications</div>
+    <div class="body">Build the table, build the admin UI to edit templates (later, when you have time; for v1, edit by SQL), and ship the first three notifications: booking confirmation, 48-hour reminder, post-session thank-you. Each one validates a different shape: instant, scheduled, and event-triggered-with-delay.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">5</div>
+  <div>
+    <div class="hours">~1 day</div>
+    <div class="what">Email adapter</div>
+    <div class="body">Wire Resend. Same shape as the SMS adapter. The renderer already works; email is just a second output channel.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">6</div>
+  <div>
+    <div class="hours">~1 day</div>
+    <div class="what">The bell adapter (in-app)</div>
+    <div class="body">Just a row in a notifications table the therapist's UI subscribes to. No external service. The simplest of the three adapters.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">7</div>
+  <div>
+    <div class="hours">~1 day</div>
+    <div class="what">Suppression rules</div>
+    <div class="body">Quiet hours, unsubscribes, rate limits. These can be hard-coded constants for v1. Move them to a settings table later when therapists ask to customize.</div>
+  </div>
+</div>
+
+<div class="phase-card">
+  <div class="order">8</div>
+  <div>
+    <div class="hours">ongoing · small per template</div>
+    <div class="what">Add every other notification, one at a time</div>
+    <div class="body">15 minutes per template. 5-minute smoke test. Ship. The engine is done; everything from here is just content.</div>
+  </div>
+</div>
+
+<p style="font-size: 14.5px; color: var(--ink); line-height: 1.7; margin-top: 30px;">
+  Total engine build time: roughly <strong style="color: var(--forest-deep);">9-10 days of focused work for one developer.</strong> After that, adding a notification is a copy-and-paste operation that takes an afternoon for a batch of five.
+</p>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<h2>The mental model</h2>
+
+<div class="section">
+  <h3>The platform is a vocabulary, not a list of features</h3>
+  <p>The deepest mistake in building notification systems is treating each notification as a feature. The 48-hour reminder is a feature. The lapse nudge is a feature. The post-session thank-you is a feature. Under that mental model, you have 25 features to build, test, and maintain.</p>
+  <p>Replace it: <strong>the platform is a vocabulary of events the app emits, and a library of templates that respond to events.</strong> Adding a notification is adding a row to the library. It is not building, testing, or maintaining a feature.</p>
+  <p>Once this model lands, the anxiety lifts. The work in front of you is not 25 features. It is one engine and 25 content rows. The first half takes weeks; the second half takes hours.</p>
+</div>
+
+<div class="section">
+  <h3>You can ship one notification per day for a month and still have a moat</h3>
+  <p>Once the engine is real, the cadence to follow is one or two notifications per day. Not all at once. Smoke-test each, get one therapist to vet the copy, ship, watch the events log, move on.</p>
+  <p>By the end of one month: 25 notifications shipped, each tested in real practice, copy iterated based on actual client reactions. Far ahead of any competitor who only built the basics.</p>
+</div>
+
+<div class="section">
+  <h3>The hardest part is writing the copy, not the code</h3>
+  <p>The engine is 9 days of focused work. Once it exists, the differentiation is in the copy itself: tone, warmth, voice, timing. The two playbooks (Money and Journey) already define the framework for the copy. The work of writing each template is roughly 30 minutes of editorial effort per notification, multiplied by 25 notifications, which is 12.5 hours of work that happens over weeks, not a sprint.</p>
+  <p>This is the work that no competitor will do well. Most send technically-correct but emotionally-cold notifications. The opportunity is in the warmth of the copy, not the sophistication of the engine.</p>
+</div>
+
+<!-- ─────────────────────────────────────────────────────────── -->
+<div style="margin-top: 50px; padding-top: 24px; border-top: 1px solid var(--cream-deep); font-size: 12.5px; color: var(--ink-fade); font-style: italic; font-family: Georgia, serif; text-align: center;">
+  Document version 1.0 · Companion to the Money and Journey playbooks · The architecture beneath the playbooks
+</div>
+
+</div>
+</body>
+</html>
