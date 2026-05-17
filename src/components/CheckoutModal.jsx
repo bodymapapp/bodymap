@@ -674,6 +674,14 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
   // preset percent, so the visual selection matches the actual state.
   const isCustomActive = tipNum > 0 && !tipPresets.includes(currentPercent);
   const tipInputRef = useRef(null);
+  const customPercentRef = useRef(null);
+  // Phase 13.8.3 (HK May 17 2026): Custom chip becomes an inline percent
+  // input on tap. customEditing controls whether the chip shows just
+  // "Custom" label or the editable percent field. While editing, the
+  // chip is always treated as active (even if the percent is 0). Other
+  // chip taps exit edit mode.
+  const [customEditing, setCustomEditing] = useState(false);
+  const customDisplay = isCustomActive ? currentPercent : (customEditing ? 0 : null);
 
   return (
     <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 18 }}>
@@ -687,13 +695,16 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
       {acceptTips && amountNum > 0 && (
         <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap' }}>
           {tipPresets.map((pct) => {
-            const isActive = currentPercent === pct;
+            const isActive = currentPercent === pct && !customEditing;
             const tipAmount = (amountNum * pct / 100).toFixed(2);
             return (
               <button
                 key={pct}
                 type="button"
-                onClick={() => setTip(tipAmount)}
+                onClick={() => {
+                  setCustomEditing(false);
+                  setTip(tipAmount);
+                }}
                 style={{
                   flex: 1,
                   minWidth: 64,
@@ -714,34 +725,88 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
               </button>
             );
           })}
-          <button
-            type="button"
+
+          {/* Phase 13.8.3 (HK May 17 2026): Custom chip toggles between
+              a 'Custom' label and an inline percent input. Tapping the
+              label switches to edit mode with the input focused.
+              Typing a percent updates the tip dollars via setTip.
+              Tip $ field stays editable too; both stay in sync because
+              the chip's displayed percent is derived from tip/amount. */}
+          <div
             onClick={() => {
-              // Clear the tip and focus the input so therapist can type
-              // a custom amount immediately.
-              setTip('');
-              setTimeout(() => tipInputRef.current?.focus(), 0);
+              if (!customEditing) {
+                setCustomEditing(true);
+                // Clear tip if currently on a preset; keep tip if user
+                // already had a custom amount from typing in $ field.
+                if (!isCustomActive) setTip('');
+                setTimeout(() => customPercentRef.current?.focus(), 0);
+              }
             }}
             style={{
               flex: 1,
               minWidth: 64,
-              background: isCustomActive ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
-              color: isCustomActive ? '#fff' : C.forestDeep,
-              border: isCustomActive ? 'none' : `1.5px solid ${C.border}`,
+              background: (isCustomActive || customEditing) ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
+              color: (isCustomActive || customEditing) ? '#fff' : C.forestDeep,
+              border: (isCustomActive || customEditing) ? 'none' : `1.5px solid ${C.border}`,
               borderRadius: 10,
               padding: '8px 10px',
               fontSize: 13,
               fontWeight: 700,
               cursor: 'pointer',
-              boxShadow: isCustomActive ? '0 2px 8px rgba(42,87,65,0.18)' : 'none',
+              boxShadow: (isCustomActive || customEditing) ? '0 2px 8px rgba(42,87,65,0.18)' : 'none',
+              textAlign: 'center',
             }}>
-            Custom
-            {isCustomActive && (
-              <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, marginTop: 2 }}>
-                ${tipNum.toFixed(2)}
-              </div>
+            {customEditing ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
+                  <input
+                    ref={customPercentRef}
+                    type="text"
+                    inputMode="numeric"
+                    value={customDisplay === null ? '' : String(customDisplay)}
+                    onChange={(e) => {
+                      const pct = parseInt(e.target.value.replace(/\D/g, ''), 10);
+                      if (isNaN(pct) || pct < 0) { setTip(''); return; }
+                      const cappedPct = Math.min(pct, 999);
+                      setTip((amountNum * cappedPct / 100).toFixed(2));
+                    }}
+                    onFocus={(e) => e.target.select()}
+                    onBlur={() => {
+                      // Keep edit mode if a value is present; exit if
+                      // user blurred without entering anything.
+                      if (!isCustomActive) setCustomEditing(false);
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    placeholder="0"
+                    style={{
+                      width: 32,
+                      border: 'none',
+                      outline: 'none',
+                      background: 'transparent',
+                      color: 'inherit',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      textAlign: 'right',
+                      padding: 0,
+                    }}
+                  />
+                  <span>%</span>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, marginTop: 2 }}>
+                  ${tipNum.toFixed(2)}
+                </div>
+              </>
+            ) : isCustomActive ? (
+              <>
+                {currentPercent}%
+                <div style={{ fontSize: 10, fontWeight: 600, opacity: 0.8, marginTop: 2 }}>
+                  ${tipNum.toFixed(2)}
+                </div>
+              </>
+            ) : (
+              'Custom'
             )}
-          </button>
+          </div>
         </div>
       )}
 
