@@ -5,6 +5,8 @@ import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
 import InlineTimeInput from './InlineTimeInput';
 import CloseButton from './CloseButton';
+import CheckoutModal from './CheckoutModal';
+import MarkAsPaidModal from './MarkAsPaidModal';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -45,8 +47,59 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
   const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
   const [savingTime, setSavingTime] = useState(false);
+  // Phase 12: Checkout + Mark as paid modals
+  const [showCheckout, setShowCheckout] = useState(false);
+  const [showMarkPaid, setShowMarkPaid] = useState(false);
+  const [paymentRows, setPaymentRows] = useState([]);
+  const [paymentsLoading, setPaymentsLoading] = useState(true);
+  const [clientRow, setClientRow] = useState(null);
   const firstName = appt.client?.split(' ')[0];
   const intakeLink = `${intakeUrl}?name=${encodeURIComponent(appt.client)}&email=${encodeURIComponent(appt.email)}&booking_id=${appt.id}`;
+
+  // Load existing payments for this booking + the client row (for
+  // card-on-file and id passing to the modals).
+  useEffect(() => {
+    if (!appt?.id || appt?.preview) { setPaymentsLoading(false); return; }
+    let alive = true;
+    (async () => {
+      const { data: payments } = await supabase
+        .from('session_payments')
+        .select('id, amount_cents, tip_cents, payment_method, payment_method_detail, status, paid_at')
+        .eq('booking_id', appt.id)
+        .order('created_at', { ascending: true });
+      if (!alive) return;
+      setPaymentRows(payments || []);
+      setPaymentsLoading(false);
+      if (appt.clientId) {
+        const { data: c } = await supabase.from('clients').select('*').eq('id', appt.clientId).single();
+        if (alive) setClientRow(c);
+      }
+    })();
+    return () => { alive = false; };
+  }, [appt?.id, appt?.clientId, appt?.preview]);
+
+  // Refresh payments after a successful checkout / mark-as-paid
+  async function refreshPayments() {
+    const { data } = await supabase
+      .from('session_payments')
+      .select('id, amount_cents, tip_cents, payment_method, payment_method_detail, status, paid_at')
+      .eq('booking_id', appt.id)
+      .order('created_at', { ascending: true });
+    setPaymentRows(data || []);
+  }
+
+  // Total paid + pending for this booking
+  const paidTotalCents = paymentRows
+    .filter(p => p.status === 'succeeded')
+    .reduce((sum, p) => sum + (p.amount_cents || 0) + (p.tip_cents || 0), 0);
+  const pendingTotalCents = paymentRows
+    .filter(p => p.status === 'pending')
+    .reduce((sum, p) => sum + (p.amount_cents || 0) + (p.tip_cents || 0), 0);
+
+  // Default amount for the checkout modal: service price if known, else 0.
+  // We pull this from the appt row's service.price field, threaded via the
+  // booking page. If unavailable, leave it blank for the therapist to type.
+  const defaultAmountCents = appt?.service_price_cents || 0;
 
   async function saveEndTime() {
     setSavingTime(true);
@@ -319,6 +372,58 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 💑 Copy {appt.partner_name.split(' ')[0]}'s Intake Link
               </button>
             )}
+            {/* Phase 12: Checkout + Mark as paid block. Mirrors GlossGenius
+                position above destructive actions. Status banner shown when
+                payments exist; otherwise the two action buttons are shown. */}
+            {!appt.preview && appt.status !== 'cancelled' && !paymentsLoading && (
+              <>
+                {paidTotalCents > 0 && (
+                  <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:18}}>✓</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:'#15803D'}}>Paid ${(paidTotalCents/100).toFixed(2)}</div>
+                      <div style={{fontSize:11,color:'#16A34A',marginTop:2}}>
+                        {paymentRows.filter(p=>p.status==='succeeded').map(p => {
+                          const m = p.payment_method;
+                          if (m === 'stripe_card_on_file' || m === 'stripe_card_new') return p.payment_method_detail || 'Card';
+                          if (m === 'stripe_payment_link') return 'Pay link';
+                          if (m === 'cash') return 'Cash';
+                          if (m === 'venmo') return 'Venmo';
+                          if (m === 'zelle') return 'Zelle';
+                          if (m === 'cashapp') return 'Cash App';
+                          if (m === 'check') return 'Check';
+                          return 'Other';
+                        }).join(', ')}
+                      </div>
+                    </div>
+                    <button onClick={()=>setShowCheckout(true)} style={{background:'transparent',color:'#15803D',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',fontStyle:'italic',fontFamily:'Georgia, serif',textDecoration:'underline'}}>
+                      Add another
+                    </button>
+                  </div>
+                )}
+                {pendingTotalCents > 0 && (
+                  <div style={{background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
+                    <span style={{fontSize:18}}>📲</span>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:13,fontWeight:700,color:'#92400E'}}>Pay link sent · ${(pendingTotalCents/100).toFixed(2)}</div>
+                      <div style={{fontSize:11,color:'#B45309',marginTop:2}}>Awaiting client payment</div>
+                    </div>
+                  </div>
+                )}
+                {paidTotalCents === 0 && (
+                  <>
+                    <button onClick={()=>setShowCheckout(true)}
+                      style={{background:'linear-gradient(135deg, #1F4030, #2A5741)',color:'#fff',border:'none',borderRadius:12,padding:'14px 18px',fontSize:15,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 10px rgba(42,87,65,0.2)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                      💳 Checkout
+                    </button>
+                    <button onClick={()=>setShowMarkPaid(true)}
+                      style={{background:'transparent',color:'#2A5741',border:'none',padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'center',fontStyle:'italic',fontFamily:'Georgia, serif',textDecoration:'underline'}}>
+                      Mark as paid
+                    </button>
+                  </>
+                )}
+              </>
+            )}
             {!appt.preview && (
               <button onClick={() => onReschedule(appt)}
                 style={{background:'transparent',color:'#7C3AED',border:'1.5px solid #C4B5FD',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
@@ -373,6 +478,26 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             onCancelled?.();
             onClose();
           }}
+        />
+      )}
+      {showCheckout && (
+        <CheckoutModal
+          appt={appt}
+          therapist={therapist}
+          client={clientRow}
+          defaultAmountCents={defaultAmountCents}
+          onClose={() => setShowCheckout(false)}
+          onPaid={() => { refreshPayments(); }}
+        />
+      )}
+      {showMarkPaid && (
+        <MarkAsPaidModal
+          appt={appt}
+          therapist={therapist}
+          client={clientRow}
+          defaultAmountCents={defaultAmountCents}
+          onClose={() => setShowMarkPaid(false)}
+          onPaid={() => { refreshPayments(); }}
         />
       )}
     </>
