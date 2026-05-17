@@ -5,6 +5,7 @@ import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import CloseButton from '../components/CloseButton';
 import { PolicyDisplay } from '../components/BookingPolicies';
+import ClientPushCTA from '../components/booking/ClientPushCTA';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444', amber:'#F59E0B' };
 
@@ -2037,6 +2038,11 @@ export default function BookingPage() {
             Fill My Intake Form →
           </a>
         </div>
+        <ClientPushCTA
+          therapistId={therapist?.id}
+          clientEmail={form.email}
+          therapistFirstName={therapist?.full_name?.split(' ')[0]}
+        />
         <p style={{fontSize:11,color:C.gray,textAlign:'center',margin:0}}>Confirmation sent to {form.email}</p>
       </div>
     </div>
