@@ -121,6 +121,44 @@ Platform-level work that doesn't belong to a single ribbon.
 **Design principle this honors:** #10 "Industrialize the test, not the tester." Manual click-through doesn't scale to 28 touchpoints, let alone 50 when we add more. Auto-fire + bulk-confirm makes the dashboard true to its principle.
 **Companion change:** the dashboard should refresh from log table every few seconds automatically while the auto-fire is running, so HK watches cells light up in real time rather than clicking refresh.
 
+### Macro #11: Twilio A2P 10DLC registration unblock (PRODUCTION CRITICAL)
+**Status:** stuck "in review" with TCR, blocking all SMS delivery to US numbers.
+**What this is:** The Campaign Registry (TCR) approval that long-code SMS senders must complete since 2023. Without it, every SMS Twilio API "sends" gets silently dropped by carriers. Twilio API returns success (status=sent in notification_log), but no carrier ever delivers the message. Discovered May 17 2026 via the Notification Compliance Dashboard auto-fire: all 19 SMS attempts reported sent, zero arrived.
+**Why this matters far beyond MyBodyMap's own number:** every therapist BYO-Twilio onboarding will hit this same wall. A2P approval can take 1-7 business days when smooth, weeks when stuck. We can't ship SMS to real therapists without solving this for them too, not just for the MyBodyMap +15136133033 sender.
+**Tasks:**
+  1. Tomorrow (HK): Twilio Console → Trust Hub → find specific reason MyBodyMap Brand registration is stalled. Common reasons: business name doesn't match EIN exactly, business website lacks privacy policy / opt-in language, vertical/industry mismatch. Fix the gap, resubmit. If no specific reason visible, file Twilio support ticket to escalate.
+  2. Once approved: register a Campaign under the Brand. Use case = Mixed (covers transactional + occasional marketing). Submit sample messages that match the actual spec (booking confirmation, reminder, no-show notice).
+  3. Wire the Messaging Service SID into therapists.twilio_messaging_service_sid for any therapist that wants to use platform-approved messaging (vs their own BYO).
+  4. Build the BYO-Twilio onboarding wizard (a separate macro, but related): when a therapist connects their own Twilio, the wizard must walk them through their own A2P registration with sample messages, opt-in language, and a "What's TCR?" explainer. Without this, every therapist will get stuck like HK did.
+**Compliance gap exposed by this work:** the SMS sender code does NOT currently append STOP/HELP opt-out language to messages. TCR requires this for campaign approval. See Macro #12 below.
+
+### Macro #12: SMS opt-out compliance (STOP/HELP language)
+**Status:** queued, ~1 hour. Required for Macro #11 campaign approval and for FCC/CTIA compliance regardless.
+**Discovered:** May 17 2026, during A2P registration prep. Grep of `_shared/notifications.ts` for "STOP" returned zero hits.
+**What's required:**
+  - Every message sent to a client must include "Reply STOP to opt out" at the first touchpoint, and at minimum periodically thereafter
+  - STOP keyword must be honored: when a client texts STOP, mark `clients.sms_opted_out_at` and skip them in future SMS sends
+  - HELP keyword must return contact info (the therapist's email or a brand support email)
+**What:**
+  1. Add `sms_opted_out_at timestamptz` column to `clients` table
+  2. In `_shared/notifications.ts` SMS code path, check `client.sms_opted_out_at` before sending. If set, log as `status: 'skipped', error_message: 'client_opted_out'` and don't send.
+  3. Append `Reply STOP to opt out.` to every C-SMS message body when client.sms_opted_out_at is null AND the message doesn't already contain "STOP" in caps
+  4. Build a Twilio webhook receiver edge function `sms-inbound` that handles STOP/HELP keywords. Twilio messaging services already handle STOP/HELP by default, but we need the database side to know about opt-outs so we don't waste API calls trying to send to opted-out users.
+**Cost of not doing this:** A2P campaign rejection, FCC fines if reported, real harm to clients who can't opt out of unwanted texts.
+
+### Macro #13: Twilio status callbacks for true SMS delivery state
+**Status:** queued, ~30-45 min. Surfaced by Macro #10 (compliance dashboard) revealing the silent-drop problem.
+**Discovered:** May 17 2026. The notification_log status=sent only reflects Twilio API acceptance, not carrier delivery. A2P-blocked sends report sent but never arrive. The dashboard's matrix shows yellow cells that are lying.
+**What:**
+  1. Add `status_callback` URL parameter to every Twilio send in `sendSmsViaTwilio` in `_shared/notifications.ts`. URL: `${SUPABASE_URL}/functions/v1/twilio-status-callback`
+  2. Add `delivery_status` and `delivery_status_updated_at` columns to notification_log
+  3. New edge function `twilio-status-callback`: Twilio POSTs to this URL when message state changes (queued → sent → delivered, or queued → undelivered → failed). Function looks up the notification_log row by provider_id (Twilio message SID) and updates delivery_status.
+  4. Update compliance dashboard to render cells based on delivery_status when available, falling back to status when Twilio hasn't called back yet. Color logic:
+     - Green = delivered (real success)
+     - Yellow = sent (Twilio accepted, awaiting carrier callback, typically <30 sec)
+     - Red = undelivered or failed (carrier dropped, real failure)
+**Why this matters:** without this, the matrix shows green when carriers are silently dropping every message. With this, HK sees red the moment a delivery actually fails, with the Twilio error code attached.
+
 ---
 
 ## Per-ribbon improvements
@@ -137,6 +175,7 @@ ribbon's product area goes here.
 - **Lindsey #11 deferred follow-ups.** Body SVG C/T badge rendering on SessionDetail; terms of service consent clause. Not blocking core behavior. See [Detail §2](#2-lindsey-11--focus-distribution-commit-2-of-2-shipped-may-10-2026).
 - **Slider redesign + intake auto-save (~4-6 hr).** HK rejected the May 10 design. Sliders next to body image with dotted connectors, editable percent numbers, back button on Preferences, localStorage draft auto-save. See [Detail §4](#4-slider-redesign--intake-flow-improvements-hk-may-10-2026-feedback).
 - **Medical history intake (ID 2.6, queued).** Pregnancy, medications, surgeries, conditions checklist, allergies, emergency contact, red-flag surfacing, smart pre-fill on returns. ~60s first time, ~30s returns. Separate build from waiver. Per memory.
+- **Duplicate client row investigation (queued, ~1 hr).** Discovered May 17 2026 during Notification Compliance testing: two `clients` rows existed for the same (therapist_id, email) pair under Joy Therapist's account. One created May 16 with phone +13462426904, one created May 17 with phone (513) 909-9004. The auto-fire targeted the newer row (513) when we expected the older row (346). Booking page logic likely creates a new client row when (email lookup misses) OR (some race condition during checkout). Tasks: (a) reproduce by booking twice with same email through `/book/healinghands`, observe whether second booking creates a new client row or updates the existing, (b) add a unique constraint on `(therapist_id, lower(email))` after deduping production data, (c) write a `merge_duplicate_clients(target_id, source_id)` SQL function that consolidates bookings + sessions + push subs + notification logs onto the target row before deleting source. Until this is fixed, all per-therapist client lookups risk targeting the wrong row.
 
 ### Ribbon 3: Client Intelligence
 - **Edit button on SessionDetail not visible (diagnostic).** Code shipped May 10 but HK does not see the button. See [Detail §3](#3-edit-button-on-sessiondetail-not-visible-may-10-2026-commit-339cfcac).
