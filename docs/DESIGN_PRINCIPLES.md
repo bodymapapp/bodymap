@@ -195,6 +195,50 @@ proposing a new ribbon and you need to argue for it explicitly.
 
 ---
 
+## 10. Industrialize the test, not the tester.
+
+When validating a system with N permutations, build the matrix
+once and let the system color itself based on observable evidence.
+Never ask a human to click through N permutations by hand.
+
+The cost of building the matrix is paid once. The cost of clicking
+through it manually is paid every release, every notification copy
+change, every new touchpoint. The cost compounds.
+
+This applies to:
+
+- **Notification compliance:** dashboard showing every touchpoint x
+  every channel, colored by `notification_log` status. Founder
+  fires one real event; rows light up across all expected channels;
+  red cells are real gaps.
+- **Feature parity audits:** matrix of features x plans, colored
+  by what the code actually checks vs what marketing claims.
+- **Customer support readiness:** matrix of customer issues x
+  resolution paths, colored by whether the resolution actually
+  exists in product.
+- **Email/SMS deliverability:** matrix of message templates x
+  recipient types, colored by sender reputation and bounce rate.
+
+**The rule:** if you find yourself instructing a human to follow
+a checklist with more than ~5 items, the checklist should be a
+dashboard. The dashboard reads the same data the human would
+read, so the human stops being the integration test.
+
+**The exception:** brand-new features in their first week of
+production sometimes warrant a manual smoke test the first few
+times, before there's enough data to populate a dashboard. The
+exception applies until the dashboard exists. Then it ends.
+
+**Why this matters:** founders who manually test scale to
+exactly one customer. Founders who industrialize testing scale to
+the team they'll someday hire.
+
+**Test before adding a test surface.** Will this be done more
+than three times? If yes, build the matrix. If no, do it manually
+once and move on.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
@@ -205,6 +249,7 @@ proposing a new ribbon and you need to argue for it explicitly.
 - **Before saying "done":** check rule #7.
 - **Before automating a money decision:** check rule #8.
 - **Before adding a new product surface:** check rule #9.
+- **Before instructing a human to run a checklist:** check rule #10.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The
