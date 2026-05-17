@@ -66,19 +66,6 @@ const PLAYBOOKS = [
     readTime: "15 minute read",
     badge: null,
   },
-  {
-    id: "notifications-architecture",
-    title: "Notifications",
-    subtitle: "How to build the notification engine without losing your mind",
-    eyebrow: "Engineering playbook · build once, extend forever",
-    blurb:
-      "A practical architecture for the notification system behind a platform like MyBodyMap. Designed to be built once, deployed quickly, and extended without ceremony. The companion playbook to Money and Journey, for the founder anxious about how many moving parts notifications appear to have.",
-    sources:
-      "Lessons from notification systems at scale: shop-bought systems (Twilio, Resend, Postmark), event-driven architectures, and the test pyramid as it applies to messaging infrastructure.",
-    href: "/docs/NOTIFICATIONS_ARCHITECTURE.html",
-    readTime: "10 minute read",
-    badge: "Engineering",
-  },
 ];
 
 export default function Playbooks() {
