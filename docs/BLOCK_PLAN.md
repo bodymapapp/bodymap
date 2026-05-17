@@ -43,6 +43,11 @@ Tracked here so we can see when demand crosses a threshold for unblocking.
 - **HK (May 16 2026)**: Cancellation, reschedule, and one more similar workflow ("not sure if those workflows exist"). Audit result: cancel ✓, reschedule ✓, no-show was the missing third, shipped Phase 2.2.
 - **Lindsey (May 10 2026)**: editable intake fields from SessionDetail. → mostly shipped; see [Detail §2](#2-lindsey-11--focus-distribution-commit-2-of-2-shipped-may-10-2026) for the deferred follow-ups.
 
+### Found-during-testing (May 17 2026 ~5am)
+- **Duplicate client rows for same email.** Bodymap01@gmail.com has two client rows under the same therapist (Joy I, Mybodymap Demo) with different phone numbers and creation dates. **Why this matters:** the Body Map longitudinal pattern intelligence (the moat) requires session history to live on ONE client record per person, not split across duplicates. When a returning client books with the same email, the booking flow must find the existing client by email-match, not create a new row. Queued for investigation.
+- **Verify cron schedules for `send-reminders` and `send-post-session`.** The functions are written for cron but the audit couldn't confirm the cron jobs are actually scheduled in Supabase Dashboard. If empty, client SMS reminders never fire automatically. Quick check, queued.
+
+
 ### From clients
 - None tracked currently. When a client request lands (via founding therapist relay or a support reply), append here with date.
 
