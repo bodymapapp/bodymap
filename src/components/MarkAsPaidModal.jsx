@@ -48,15 +48,48 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
   const totalCents = amountCents + tipCents;
   const validAmount = amountCents > 0;
 
+  // ── Helper: resolve to a real client row (find-or-create by email) ──
+  // Matches CheckoutModal pattern. Many bookings have client_email but
+  // no session yet, so client.id may be null. We still want to attach
+  // the payment record to a real clients row for accurate longitudinal
+  // tracking.
+  async function resolveClientRow() {
+    if (client?.id) return client;
+    const email = (appt?.email || '').toLowerCase().trim();
+    if (!email) return null;
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('therapist_id', therapist.id)
+      .ilike('email', email)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (existing) return existing;
+    const { data: created, error: insErr } = await supabase
+      .from('clients')
+      .insert({
+        therapist_id: therapist.id,
+        name: appt?.client || 'Client',
+        email,
+        phone: appt?.phone || null,
+      })
+      .select('*')
+      .single();
+    if (insErr) throw new Error(`Could not create client record: ${insErr.message}`);
+    return created;
+  }
+
   async function save() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     setSaving(true);
     setErrorMsg(null);
     try {
+      const resolvedClient = await resolveClientRow();
       const { error } = await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
-        client_id: client?.id || null,
+        client_id: resolvedClient?.id || null,
         amount_cents: amountCents,
         tip_cents: tipCents,
         payment_method: method,
