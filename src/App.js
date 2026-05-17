@@ -57,6 +57,7 @@ import Onboarding from './pages/Onboarding';
 import FounderDashboard from './components/FounderDashboard';
 import EmailReview from './components/EmailReview';
 import VerifyPhone from './pages/VerifyPhone';
+import Playbooks from './pages/Playbooks';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -91,6 +92,8 @@ function App() {
           <Route path="/comparison/printable" element={<ComparisonPrintable />} />
           <Route path="/atlas" element={<Navigate to="/" replace />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/playbooks" element={<Playbooks />} />
+          <Route path="/research" element={<Navigate to="/playbooks" replace />} />
           <Route path="/contact" element={<Navigate to="/help#contact-and-enterprise" replace />} />
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/security" element={<Security />} />

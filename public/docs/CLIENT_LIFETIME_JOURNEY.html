@@ -316,6 +316,85 @@
     font-family: Georgia, serif; line-height: 1.6;
   }
 
+  /* The sustainability framing block at top of the math section */
+  .sustainability {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(168, 200, 176, 0.25);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 0 0 24px;
+  }
+  .sustainability strong {
+    color: var(--sage-soft);
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 17px;
+  }
+  .sustainability p {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 14.5px;
+    line-height: 1.7;
+    margin: 0 0 10px;
+  }
+  .sustainability p:last-child { margin-bottom: 0; }
+
+  /* Two-outcome card: client experience + revenue effect */
+  .outcome-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(168, 200, 176, 0.2);
+    border-radius: 12px;
+    padding: 24px 26px;
+    margin-bottom: 14px;
+  }
+  .outcome-card .moment {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 17px;
+    color: #fff;
+    margin-bottom: 18px;
+    line-height: 1.45;
+  }
+  .outcome-grid {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 18px;
+    align-items: stretch;
+  }
+  .outcome-cell {
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid rgba(168, 200, 176, 0.15);
+  }
+  .outcome-cell.experience {
+    border-left: 3px solid var(--sage-soft);
+  }
+  .outcome-cell.revenue {
+    border-left: 3px solid var(--gold);
+  }
+  .outcome-cell .eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .outcome-cell.experience .eyebrow { color: var(--sage-soft); }
+  .outcome-cell.revenue .eyebrow { color: var(--gold); }
+  .outcome-cell .body {
+    color: rgba(255, 255, 255, 0.92);
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+  .outcome-cell .body strong {
+    color: #fff;
+    font-weight: 700;
+  }
+
+  @media (max-width: 720px) {
+    .outcome-grid { grid-template-columns: 1fr; gap: 12px; }
+  }
   .legend {
     background: #fff; border: 1px solid var(--cream-deep);
     border-radius: 12px; padding: 18px 22px; margin: 28px 0;
@@ -358,16 +437,17 @@
 </header>
 
 <section class="builtfrom">
-  <h3>How this guide was built</h3>
-  <p>Synthesized from rebooking and retention guidance published by the Associated Bodywork & Massage Professionals (ABMP), the American Massage Therapy Association (AMTA), and working playbooks from ClinicSense, MassageBook, Noterro, Massage Magazine, Massage Warehouse, and Vagaro. Cross-referenced with forum discussions among practicing solo therapists about what they wish their scheduling software actually did.</p>
-  <p class="sources">Sources include: ABMP's "3 Keys to Successfully Rebook Clients" and "3 Tips for Retaining Clients" · ClinicSense's "8 Retention Strategies" and "How to Manage Client Relationships" · Vagaro's "10 Client Retention Strategies" · Massage Warehouse's "Ultimate Guide to Rebooking" · Massage Magazine Insurance Group's "Client Retention Strategies" · Noterro's "How to Keep Clients Coming Back" and "Pricing Hacks" · MassageBook's payment guides · Quora and Reddit discussions from practicing LMTs.</p>
+  <h3>What this playbook is for</h3>
+  <p>Massage is physical work. Most solo therapists already work as many hours as their body can sustainably handle. So this guide isn't about cramming more clients into a week. It's about <strong>making each client relationship deeper, longer, and more valuable</strong>, so the same number of hours produces more income over time.</p>
+  <p>The mechanisms below are about <strong>client experience first, revenue second</strong>. A client who feels genuinely cared for stays loyal for years, refers friends quietly, and accepts thoughtful rate increases without flinching. Those are the outcomes worth designing for.</p>
+  <p class="sources">Published guidance referenced throughout: ABMP's "3 Keys to Successfully Rebook Clients" and "3 Tips for Retaining Clients" · ClinicSense's "8 Retention Strategies" and "How to Manage Client Relationships" · Vagaro's "10 Client Retention Strategies" · Massage Warehouse's "Ultimate Guide to Rebooking" · Massage Magazine Insurance Group's "Client Retention Strategies" · Noterro's "How to Keep Clients Coming Back" · MassageBook's payment guides · Quora and Reddit discussions from working LMTs.</p>
 </section>
 
 <section class="principle">
-  <h3>The framing principle</h3>
-  <p><strong>Notifications are not a feature.</strong> They are the primary instrument a solo practice has for keeping clients for years instead of months. Every message has a job to do at a specific moment in the relationship.</p>
-  <p><strong>Some are pleasant, some are awkward.</strong> The awkward ones stay on by default when industry data shows they pay off in retention. We document the reasoning for each one so nobody has to argue about whether to keep it on.</p>
-  <p><strong>Two channels go to two audiences.</strong> The therapist gets in-app, email, and text (their choice per event). The client gets email and text (no in-app, because they have no login). Defaults differ by both audience and where the client is in their journey.</p>
+  <h3>How to think about notifications in a solo practice</h3>
+  <p><strong>Communication is the relationship.</strong> Outside the hour on the table, every interaction a client has with their therapist is a message. A clear booking confirmation, a warm thank-you, a respectful cancellation note. These are not "automations." They are the relationship.</p>
+  <p><strong>Two channels, two audiences, with care.</strong> The therapist receives in-app, email, and text alerts on their schedule. The client receives email and text only. Defaults differ by where the client is in their journey: a five-year regular needs fewer messages, not more, because over-messaging signals you're treating them like a stranger.</p>
+  <p><strong>Some messages are uncomfortable to send.</strong> The payment request after a no-show. The apology when you have to cancel last-minute. Most therapists avoid these and lose the client. The playbook below is built so the platform handles these moments for you with the right tone, so the client comes back instead of disappearing.</p>
 </section>
 
 <h2>The journey at a glance</h2>
@@ -827,113 +907,107 @@
 
 <!-- ───────────────────────────────────────────────────────── -->
 <section class="math">
-  <h3>What this retention engine is worth, in plain language</h3>
+  <h3>What this playbook is worth, in plain language</h3>
   <p class="math-intro">
-    The notifications above aren't decoration. Each one comes from published industry research showing that practices using them retain more clients than practices that don't. Here's what that looks like in stories, not statistics.
+    Each touchpoint above does two things: it deepens the client's experience of the practice, and as a quiet side effect, it makes the practice more sustainable financially. Both matter. Client experience matters more, because a client who feels cared for is the foundation of every other outcome here.
   </p>
 
-  <div class="math-card">
-    <div class="moment">When a brand-new client books and gets a clear welcome email</div>
-    <div class="compare">
-      <div class="before">
-        Without the welcome
-        <strong>About 4 in 5 first-timers show up</strong>
-      </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        With the welcome
-        <strong>More than 9 in 10 show up</strong>
-      </div>
-    </div>
-    <div class="takeaway">A clear "here's where to park, here's what to bring" email answers the questions that would otherwise make a nervous first-timer cancel quietly.</div>
+  <div class="sustainability">
+    <p><strong>This playbook isn't about working more hours.</strong></p>
+    <p>Massage is physical work. Most solo therapists already work as many hours as their body can sustainably handle. The goal of the touchpoints in this guide is to <em>make each client relationship deeper and longer</em>, so the same hours produce more income over time. None of these mechanisms add sessions to your week.</p>
+    <p>The most powerful lever is the one published research keeps confirming: <em>clients who feel genuinely cared for accept thoughtful rate increases without flinching</em>. The cards below show the human outcomes first, and the business effect they make possible.</p>
   </div>
 
-  <div class="math-card">
-    <div class="moment">When a client gets a reminder 48 hours before their session</div>
-    <div class="compare">
-      <div class="before">
-        Without the reminder
-        <strong>About 1 in 7 don't show</strong>
+  <div class="outcome-card">
+    <div class="moment">When a brand-new client books and receives a clear welcome message</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">The client knows what to bring, where to park, and what the first visit will be like. <strong>They feel taken care of before they walk in the door.</strong> That feeling sets the tone for the entire relationship.</div>
       </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        With the reminder
-        <strong>About 1 in 25 don't show</strong>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">First-visit no-shows drop noticeably (industry composite shows roughly 4 in 5 first-timers show up baseline; 9 in 10 with a clear welcome). <strong>You don't lose the slot or the rebook chance.</strong></div>
       </div>
     </div>
-    <div class="takeaway">Two days out gives the client time to reschedule politely if they need to. They were going to cancel anyway; the reminder lets them do it inside the policy window instead of disappearing.</div>
   </div>
 
-  <div class="math-card">
-    <div class="moment">When a first-timer gets a text 2 hours before their session</div>
-    <div class="compare">
-      <div class="before">
-        Without the text
-        <strong>About 1 in 12 don't show</strong>
+  <div class="outcome-card">
+    <div class="moment">When a client receives a friendly reminder 48 hours before their session</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">If life got in the way, the client can reschedule politely within your policy window, no awkward last-minute texts. <strong>They feel respected, not policed.</strong></div>
       </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        With the text
-        <strong>About 1 in 50 don't show</strong>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">Late cancels and no-shows become rescheduled sessions instead of lost revenue. <strong>The slot stays full</strong> because the client moves it rather than ghosting it.</div>
       </div>
     </div>
-    <div class="takeaway">Same-day text catches the "I'm just walking out the door and totally forgot" moment. We turn it off for regulars who'd find it patronizing.</div>
   </div>
 
-  <div class="math-card">
-    <div class="moment">When the therapist has to cancel and sends a warm apology with a rebook link</div>
-    <div class="compare">
-      <div class="before">
-        Cold cancel email
-        <strong>About 4 in 10 clients gone for good</strong>
+  <div class="outcome-card">
+    <div class="moment">When a first-timer receives a text reminder a few hours before the session</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">The kind of light touch a thoughtful friend would give. <strong>Nervous first-timers feel held</strong>, not nagged. The text disappears once the client becomes a regular, so it never becomes patronizing.</div>
       </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        Warm apology, rebook link
-        <strong>About 1 in 10 gone for good</strong>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">Same-day no-shows for new clients become rare (roughly 1 in 12 down to 1 in 50). <strong>The most expensive empty-slot scenario is also the easiest to prevent.</strong></div>
       </div>
     </div>
-    <div class="takeaway">Therapist-initiated cancels are the highest-risk moment in the whole relationship. A few honest words and a one-tap rebook button keeps most clients in the practice.</div>
   </div>
 
-  <div class="math-card">
-    <div class="moment">When a no-show client gets a polite payment request instead of silence</div>
-    <div class="compare">
-      <div class="before">
-        Silent, just gone
-        <strong>Less than 1 in 10 ever rebook</strong>
+  <div class="outcome-card">
+    <div class="moment">When you have to cancel and the client gets a warm apology with a rebook link</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">A real apology, a named reason if you choose to share one, and a one-tap way to find a new time. <strong>The client feels like a person, not a calendar slot.</strong> Many become more loyal after this moment, not less.</div>
       </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        Polite payment request
-        <strong>About 5 in 10 rebook</strong>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">Therapist-cancellations are the highest-risk lapse moment in the whole relationship. A warm handoff keeps roughly 9 in 10 clients in the practice; a cold cancel email loses 4 in 10 permanently.</div>
       </div>
     </div>
-    <div class="takeaway">This is the single biggest swing in the whole document. A no-show client who hears nothing assumes the therapist is angry with them and never comes back. A no-show client who hears "we missed you, here's how to settle up" usually does.</div>
   </div>
 
-  <div class="math-card">
-    <div class="moment">When a regular goes quiet and gets one warm check-in three weeks later</div>
-    <div class="compare">
-      <div class="before">
-        No check-in
-        <strong>About 3 in 100 return on their own</strong>
+  <div class="outcome-card">
+    <div class="moment">When a client no-shows and receives a polite payment request, not silence</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">A warm-toned message acknowledging that life happens, the policy they agreed to, and an easy way to settle up. <strong>The client doesn't have to guess if you're angry.</strong> Most are embarrassed and grateful for the clean path back.</div>
       </div>
-      <div class="arrow">→</div>
-      <div class="after">
-        One warm check-in
-        <strong>About 1 in 5 return</strong>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">The single biggest swing in the playbook. Silent no-shows recover roughly 1 in 12 clients. Warm payment requests recover about half. <strong>The session you already worked produces revenue instead of disappearing.</strong></div>
       </div>
     </div>
-    <div class="takeaway">Life gets in the way of regular massage more than any other commitment. A short, human check-in at the 3-week-late mark is what gets them back on the table.</div>
+  </div>
+
+  <div class="outcome-card">
+    <div class="moment">When a regular goes quiet and receives one thoughtful check-in three weeks later</div>
+    <div class="outcome-grid">
+      <div class="outcome-cell experience">
+        <div class="eyebrow">Client experience</div>
+        <div class="body">A check-in that reads like a friend wondering how they've been, not a sales pitch. <strong>The client remembers why they chose this therapist in the first place.</strong> Many return for reasons unrelated to the original lapse.</div>
+      </div>
+      <div class="outcome-cell revenue">
+        <div class="eyebrow">Business effect</div>
+        <div class="body">Lapsed regulars who hear nothing recover at about 3 in 100. Lapsed regulars who get one well-timed check-in recover at roughly 1 in 5. <strong>The relationships you've already built keep producing.</strong></div>
+      </div>
+    </div>
   </div>
 
   <div class="summary-bow">
-    Add up all the moments above and most solo practices that run this full playbook see <strong>roughly one in five additional dollars compared to running just confirmations and 24-hour reminders.</strong> That's not a guarantee, and the exact number depends on the practice. But across every published source we can find, the pattern is consistent: <em>the difference between a good year and a great year is the quality of communication at the moments most therapists let slide.</em>
+    Add all six together and the pattern is consistent across every published source: <strong>practices that run this full playbook see roughly one in five additional dollars per year</strong> compared to practices running just confirmations and 24-hour reminders. None of that comes from working more hours. All of it comes from <em>the same client base, treated with more care, staying longer and being more willing to accept a thoughtful rate increase when the time comes.</em>
   </div>
 
   <p class="math-disclaimer">
-    Numbers in the cards above are rounded approximations drawn from published industry sources (ABMP, ClinicSense, Vagaro, MassageBook, OpenTable's published research on reservation reminders, and forum discussions among practicing solo therapists). Your practice's exact numbers will vary based on client mix, location, services offered, and how consistently the playbook is followed. The point is the direction, not the decimal point.
+    Numbers in the cards above are rounded approximations drawn from published industry sources (ABMP, ClinicSense, Vagaro, MassageBook, OpenTable's research on reservation reminders, and forum discussions among practicing solo therapists). Your practice's exact numbers will vary based on client mix, location, services offered, and how consistently the playbook is followed. The point is the direction, not the decimal point. The client experience effects matter independently of the business effects, and we believe they matter more.
   </p>
 </section>
 

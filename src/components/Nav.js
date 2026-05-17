@@ -16,6 +16,7 @@ export default function Nav() {
     { to: "/why-bodymap", label: "Why MyBodyMap" },
     { to: "/comparison", label: "Comparison" },
     { to: "/pricing", label: "Pricing" },
+    { to: "/playbooks", label: "Playbooks" },
     { to: "/help", label: "Help" },
   ];
 
