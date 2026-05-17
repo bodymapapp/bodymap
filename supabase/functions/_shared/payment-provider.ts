@@ -171,10 +171,7 @@ export type SaveCardResult = {
 export type ChargeArgs = {
   therapist: Therapist;
   // The provider customer + card ids (returned earlier from saveCardOnFile).
-  // providerCustomerId is OPTIONAL as of Phase 12 (May 2026): when omitted,
-  // the charge is a one-shot against a fresh PaymentMethod (no customer
-  // record needed, e.g. Checkout > Enter new card).
-  providerCustomerId?: string;
+  providerCustomerId: string;
   providerCardId: string;
   amountCents: number;
   // Use this for idempotency. Recommended: a stable id like

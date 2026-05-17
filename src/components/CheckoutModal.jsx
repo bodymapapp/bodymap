@@ -208,28 +208,89 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   }
 
   // ── Action: Enter new card now ──────────────────────────────────
+  //
+  // ARCHITECTURE NOTE (Phase 12.4, May 17 2026):
+  // This path does NOT take shortcuts. It mirrors what the booking page
+  // does when a client saves a card, then immediately charges it. End
+  // state: one Stripe customer per real client (linked via
+  // clients.stripe_customer_id), the new PaymentMethod attached to that
+  // customer, clients.payment_method_id + card_last4 + card_brand
+  // updated so the next visit shows card-on-file automatically.
+  //
+  // Flow:
+  //   1. Call save-card edge function (find-or-create Stripe customer,
+  //      return SetupIntent client_secret + customer_id).
+  //   2. Stripe.confirmCardSetup against the SetupIntent (this attaches
+  //      the card to the customer, returns payment_method_id).
+  //   3. Persist payment_method_id + card_last4 + card_brand on the
+  //      clients row so it appears as card-on-file next time.
+  //   4. Call charge-card with the real customer_id + payment_method_id
+  //      (uses off_session because the card is now saved).
+  //   5. Write session_payments row.
   async function chargeNewCard() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     if (!stripeRef.current || !cardElRef.current) { setErrorMsg('Card form not ready.'); return; }
+    if (!client?.id) { setErrorMsg('No client record for this booking.'); return; }
     setProcessing(true);
     setErrorMsg(null);
     try {
-      // Create PaymentIntent on server. Reuse the charge-card edge
-      // function by first creating a one-time PaymentMethod from the
-      // card element, then charging it without saving.
-      const { paymentMethod, error: pmErr } = await stripeRef.current.createPaymentMethod({
-        type: 'card',
-        card: cardElRef.current,
-      });
-      if (pmErr) throw new Error(pmErr.message);
-
-      // Use charge-card with a one-time payment_method_id. The customer
-      // is created fresh in Stripe for this charge but not associated
-      // back to clients.payment_method_id (we don't want to overwrite
-      // an existing saved card).
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-      const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
+
+      // Step 1: find-or-create Stripe customer + get a SetupIntent.
+      const saveCardRes = await fetch(`${supabaseUrl}/functions/v1/save-card`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          stripe_account_id: therapist.stripe_account_id,
+          client_id: client.id,
+          client_email: client.email || appt?.email,
+          client_name: client.name || appt?.client,
+          therapist_id: therapist.id,
+        }),
+      });
+      const saveCardData = await saveCardRes.json();
+      if (saveCardData.error) throw new Error(saveCardData.error);
+      const { client_secret, customer_id } = saveCardData;
+      if (!client_secret || !customer_id) throw new Error('Card setup did not initialize.');
+
+      // Step 2: confirm card setup. Attaches the card to the customer
+      // and returns a usable payment_method_id.
+      const { error: setupErr, setupIntent } = await stripeRef.current.confirmCardSetup(client_secret, {
+        payment_method: { card: cardElRef.current },
+      });
+      if (setupErr) throw new Error(setupErr.message);
+      if (setupIntent?.status !== 'succeeded') throw new Error('Card setup did not complete.');
+      const paymentMethodId = setupIntent.payment_method;
+
+      // Step 3: pull PaymentMethod details for card_last4 + card_brand.
+      // We use Stripe's API directly through the publishable key context
+      // already established on stripeRef.
+      const pmDetails = await fetch(`https://api.stripe.com/v1/payment_methods/${paymentMethodId}`, {
+        headers: {
+          'Authorization': `Bearer ${getStripePublishableKey()}`,
+          'Stripe-Account': therapist.stripe_account_id,
+        },
+      }).then(r => r.json()).catch(() => null);
+      const cardLast4 = pmDetails?.card?.last4 || null;
+      const cardBrand = pmDetails?.card?.brand || null;
+
+      // Persist on clients row so next visit shows card-on-file.
+      await supabase.from('clients').update({
+        stripe_customer_id: customer_id,
+        payment_method_id: paymentMethodId,
+        card_last4: cardLast4,
+        card_brand: cardBrand,
+        card_saved_at: new Date().toISOString(),
+      }).eq('id', client.id);
+
+      // Step 4: charge the now-saved card via charge-card with real
+      // customer_id. Same path as 'Card on file' would take.
+      const chargeRes = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -238,8 +299,8 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         },
         body: JSON.stringify({
           therapist_id: therapist.id,
-          customer_id: cardOnFile?.stripe_customer_id || null,
-          payment_method_id: paymentMethod.id,
+          customer_id: customer_id,
+          payment_method_id: paymentMethodId,
           amount_cents: amountCents,
           tip_cents: tipCents,
           description: `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`,
@@ -247,21 +308,26 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
           send_receipt: true,
         }),
       });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      if (!data.success) throw new Error('Charge did not succeed');
+      const chargeData = await chargeRes.json();
+      if (chargeData.error) throw new Error(chargeData.error);
+      if (!chargeData.success) throw new Error('Charge did not succeed');
 
-      const cardDetail = `${paymentMethod.card?.brand?.[0]?.toUpperCase() || ''}${paymentMethod.card?.brand?.slice(1) || ''} ${paymentMethod.card?.last4 || ''}`.trim() || 'Card';
+      const cardDetail = cardBrand && cardLast4
+        ? `${cardBrand[0].toUpperCase()}${cardBrand.slice(1)} ${cardLast4}`
+        : 'Card';
 
+      // Step 5: session_payments row, payment_method = stripe_card_new
+      // since this is the 'entered fresh at checkout' code path even
+      // though the card was also saved for future use.
       await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
-        client_id: client?.id || null,
+        client_id: client.id,
         amount_cents: amountCents,
         tip_cents: tipCents,
         payment_method: 'stripe_card_new',
         payment_method_detail: cardDetail,
-        stripe_payment_intent_id: data.payment_intent_id || null,
+        stripe_payment_intent_id: chargeData.payment_intent_id || null,
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
