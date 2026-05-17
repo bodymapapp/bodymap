@@ -184,16 +184,208 @@ function SampleDataBanner() {
   );
 }
 
+// Phase 14.2 (HK May 17 2026): the Smart Billing hero card. Same
+// component used at the top of Daily, Weekly, Monthly, Yearly views.
+// Takes a sessions slice (already filtered to a period) plus a prior
+// slice for comparison, plus a label. Renders:
+//   1. Big "collected" number with method breakdown chips
+//   2. Comparison vs prior period
+//   3. Expected vs Actual line with leakage callout if any
+//   4. Tappable leakage detail (expands inline, lists unpaid sessions)
+function HeroPayCard({ sessions, prevSessions, periodLabel }) {
+  const [leakageOpen, setLeakageOpen] = useState(false);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+
+  // Collected = sum of actuals for 'paid' sessions only.
+  // Leakage = sessions with status='outstanding' (completed bookings,
+  // no payment row). These represent services rendered but money not
+  // yet captured.
+  const paid = sessions.filter(s => s.status === 'paid');
+  const collected = paid.reduce((t, s) => t + (s.actual || 0), 0);
+
+  // Expected = rate sum across ALL real sessions (paid + outstanding).
+  // We don't include 'pending' or sample/unknown because expected revenue
+  // is the value of services actually rendered or due.
+  const realSessions = sessions.filter(s => s.status === 'paid' || s.status === 'outstanding');
+  const expected = realSessions.reduce((t, s) => t + (s.rate || 0), 0);
+
+  const leakage = sessions.filter(s => s.status === 'outstanding');
+  const leakageAmt = leakage.reduce((t, s) => t + (s.rate || 0), 0);
+
+  // Method breakdown chips. Group by payment_method, sum cents.
+  // Display order: card-like first (most common), then cash, then digital wallets.
+  const methodOrder = ['card', 'cash', 'venmo', 'zelle', 'cashapp', 'check', 'other'];
+  const byMethod = {};
+  paid.forEach(s => {
+    const key = (s.method || '').startsWith('stripe_') ? 'card' : (s.method || 'other');
+    byMethod[key] = (byMethod[key] || 0) + (s.actual || 0);
+  });
+  const methodChips = methodOrder
+    .filter(m => byMethod[m] > 0)
+    .map(m => ({ method: m, total: byMethod[m] }));
+
+  // Comparison vs prior period. Only meaningful if prevSessions has data.
+  const prevCollected = (prevSessions || [])
+    .filter(s => s.status === 'paid')
+    .reduce((t, s) => t + (s.actual || 0), 0);
+  const hasComparison = (prevSessions || []).length > 0 || prevCollected > 0;
+  const delta = collected - prevCollected;
+  const deltaPct = prevCollected > 0 ? Math.round((delta / prevCollected) * 100) : null;
+
+  const METHOD_LABEL = {
+    card: 'Card', cash: 'Cash', venmo: 'Venmo', zelle: 'Zelle',
+    cashapp: 'Cash App', check: 'Check', other: 'Other',
+  };
+
+  return (
+    <div style={{
+      background: '#FAF8F3', // warm cream
+      borderRadius: 16,
+      padding: isMobile ? '20px 18px' : '28px 28px',
+      marginBottom: 20,
+      boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+      border: '1px solid #EDE6D6',
+    }}>
+      {/* Label row: period name */}
+      <div style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: '#6B7280',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        marginBottom: 8,
+      }}>
+        Collected {periodLabel}
+      </div>
+
+      {/* Big number */}
+      <div style={{
+        fontSize: isMobile ? 40 : 48,
+        fontWeight: 700,
+        color: '#2A5741',
+        fontFamily: 'Georgia, serif',
+        lineHeight: 1,
+        marginBottom: 12,
+      }}>
+        {currency(collected)}
+      </div>
+
+      {/* Comparison vs prior period */}
+      {hasComparison && (
+        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 16 }}>
+          {delta >= 0 ? '↑' : '↓'} {currency(Math.abs(delta))}
+          {deltaPct !== null && ` (${delta >= 0 ? '+' : ''}${deltaPct}%)`}
+          {' '}vs prior {periodLabel}
+        </div>
+      )}
+
+      {/* Method breakdown chips */}
+      {methodChips.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+          {methodChips.map(({ method, total }) => (
+            <div key={method} style={{
+              background: '#FFFFFF',
+              border: '1px solid #EDE6D6',
+              borderRadius: 999,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#1F2937',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}>
+              <span style={{ color: '#6B7280' }}>{METHOD_LABEL[method] || method}</span>
+              <span style={{ color: '#2A5741', fontWeight: 700 }}>{currency(total)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Expected vs Actual + leakage */}
+      <div style={{
+        paddingTop: 14,
+        borderTop: '1px solid #EDE6D6',
+        display: 'flex',
+        flexDirection: isMobile ? 'column' : 'row',
+        gap: isMobile ? 8 : 16,
+        alignItems: isMobile ? 'flex-start' : 'center',
+        justifyContent: 'space-between',
+      }}>
+        <div style={{ fontSize: 13, color: '#6B7280' }}>
+          Expected <strong style={{ color: '#1F2937', fontWeight: 700 }}>{currency(expected)}</strong>
+          {' '}from {realSessions.length} session{realSessions.length !== 1 ? 's' : ''}
+        </div>
+        {leakage.length > 0 && (
+          <button
+            onClick={() => setLeakageOpen(!leakageOpen)}
+            style={{
+              background: '#FEF2F2',
+              border: '1px solid #FECACA',
+              borderRadius: 8,
+              padding: '6px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#DC2626',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            {leakage.length} unpaid: {currency(leakageAmt)}
+            <span style={{ fontSize: 10, opacity: 0.7 }}>{leakageOpen ? '▾' : '▸'}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Leakage detail expands inline */}
+      {leakageOpen && leakage.length > 0 && (
+        <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {leakage.map(s => (
+            <div key={s.id} style={{
+              background: '#FFFFFF',
+              border: '1px solid #FECACA',
+              borderRadius: 8,
+              padding: '8px 12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: 13,
+            }}>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1F2937' }}>{s.client}</div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>
+                  {fmtShort(s.date)}{s.service ? ` · ${s.service}` : ''}
+                </div>
+              </div>
+              <div style={{ fontWeight: 700, color: '#DC2626' }}>{currency(s.rate)}</div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DailyView({ sessions }) {
   const [dayOffset, setDayOffset] = useState(0);
   const days = [-2,-1,0,1,2].map(n=>addDays(TODAY,n));
   const selectedDate = addDays(TODAY, dayOffset - 2);
   const daySessions = sessions.filter(s => sameDay(s.date, selectedDate));
+  const prevDay = addDays(selectedDate, -1);
+  const prevDaySessions = sessions.filter(s => sameDay(s.date, prevDay));
   const expected = daySessions.reduce((s,x)=>s+x.rate,0);
   const actual = daySessions.reduce((s,x)=>s+(x.actual||0),0);
   const pending = daySessions.filter(s=>s.status==='pending'||s.status==='outstanding').length;
+  // Period label for hero card: "today", "yesterday", or specific date
+  const periodLabel = sameDay(selectedDate, TODAY) ? 'today'
+    : sameDay(selectedDate, addDays(TODAY,-1)) ? 'yesterday'
+    : sameDay(selectedDate, addDays(TODAY,1)) ? 'tomorrow'
+    : fmtShort(selectedDate);
   return (
     <div>
+      <HeroPayCard sessions={daySessions} prevSessions={prevDaySessions} periodLabel={periodLabel} />
       <StatRow>
         <StatCard label="Expected Revenue" value={currency(expected)} sub={`${daySessions.length} sessions`} color="#2A5741" />
         <StatCard label="Actual Collected" value={currency(actual)} sub="confirmed payments" color="#16A34A" />
@@ -231,11 +423,15 @@ function WeeklyView({ sessions }) {
   const weekDays = [0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
   const weekSessions = sessions.filter(s=>s.date>=weekStart&&s.date<addDays(weekStart,7));
+  const prevWeekStart = addDays(weekStart, -7);
+  const prevWeekSessions = sessions.filter(s=>s.date>=prevWeekStart&&s.date<weekStart);
   const expected = weekSessions.reduce((s,x)=>s+x.rate,0);
   const actual = weekSessions.reduce((s,x)=>s+(x.actual||0),0);
   const maxDay = Math.max(...weekDays.map(d=>sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0)),1);
+  const periodLabel = weekOffset===0?'this week':weekOffset===-1?'last week':weekOffset===1?'next week':`week of ${fmtShort(weekStart)}`;
   return (
     <div>
+      <HeroPayCard sessions={weekSessions} prevSessions={prevWeekSessions} periodLabel={periodLabel} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <button onClick={()=>setWeekOffset(weekOffset-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← Prev</button>
         <div style={{ textAlign:'center' }}>
@@ -297,11 +493,16 @@ function MonthlyView({ sessions }) {
   for(let i=0;i<startOffset;i++) calDays.push(null);
   for(let i=1;i<=daysInMonth;i++) calDays.push(new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i));
   const monthSessions = sessions.filter(s=>s.date.getMonth()===viewMonth.getMonth()&&s.date.getFullYear()===viewMonth.getFullYear());
+  const prevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
+  const prevMonthSessions = sessions.filter(s=>s.date.getMonth()===prevMonth.getMonth()&&s.date.getFullYear()===prevMonth.getFullYear());
   const monthExpected = monthSessions.reduce((t,x)=>t+x.rate,0);
   const monthActual = monthSessions.reduce((t,x)=>t+(x.actual||0),0);
   const selectedDaySessions = sessions.filter(s=>sameDay(s.date,selectedDate));
+  const isCurrentMonth = viewMonth.getMonth()===TODAY.getMonth() && viewMonth.getFullYear()===TODAY.getFullYear();
+  const periodLabel = isCurrentMonth ? 'this month' : fmtMonth(viewMonth).toLowerCase();
   return (
     <div>
+      <HeroPayCard sessions={monthSessions} prevSessions={prevMonthSessions} periodLabel={periodLabel} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <button onClick={()=>setMonthOffset(monthOffset-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← Prev</button>
         <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{fmtMonth(viewMonth)}</div>
@@ -355,8 +556,13 @@ function YearlyView({ sessions }) {
   const yearExpected = monthData.reduce((t,m)=>t+m.expected,0);
   const yearActual = monthData.reduce((t,m)=>t+m.actual,0);
   const yearSessions = monthData.reduce((t,m)=>t+m.count,0);
+  const yearSessionsSlice = sessions.filter(s=>s.date.getFullYear()===year);
+  const prevYearSessions = sessions.filter(s=>s.date.getFullYear()===year-1);
+  const isCurrentYear = year===TODAY.getFullYear();
+  const periodLabel = isCurrentYear ? 'this year' : `in ${year}`;
   return (
     <div>
+      <HeroPayCard sessions={yearSessionsSlice} prevSessions={prevYearSessions} periodLabel={periodLabel} />
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:20 }}>
         <button onClick={()=>setYear(year-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← {year-1}</button>
         <div style={{ fontSize:16, fontWeight:700, color:'#1F2937' }}>{year}</div>
@@ -480,54 +686,123 @@ export default function BillingDashboard({ therapist }) {
 
   useEffect(() => {
     if (!therapist?.id) return;
-    import('../lib/supabase').then(({ supabase }) => {
-      supabase
+    import('../lib/supabase').then(async ({ supabase }) => {
+      // Step 1: therapist config (processor connection flags, session rate)
+      const { data } = await supabase
         .from('therapists')
         .select('stripe_account_id, stripe_account_connected, square_access_token, square_connected, session_rate')
         .eq('id', therapist.id)
-        .single()
-        .then(async ({ data }) => {
-          const stripeOk = !!(data?.stripe_account_id && data?.stripe_account_connected);
-          const squareOk = !!(data?.square_access_token && data?.square_connected);
-          setStripeConnected(stripeOk);
-          setSquareConnected(squareOk);
-          if (data?.session_rate && data.session_rate > 0) setSessionRate(data.session_rate);
+        .single();
+      const stripeOk = !!(data?.stripe_account_id && data?.stripe_account_connected);
+      const squareOk = !!(data?.square_access_token && data?.square_connected);
+      setStripeConnected(stripeOk);
+      setSquareConnected(squareOk);
+      if (data?.session_rate && data.session_rate > 0) setSessionRate(data.session_rate);
 
-          if (!stripeOk && !squareOk) {
-            // Neither connected. Leave realTransactions null so the
-            // sample-data banner shows.
-            return;
-          }
+      if (!stripeOk && !squareOk) {
+        // Neither connected. Leave realTransactions null so the
+        // sample-data banner shows.
+        return;
+      }
 
-          // Fetch from both processors in parallel. Each is allowed to
-          // fail independently; we surface whatever came back.
-          const fetches = [];
-          if (stripeOk) {
-            fetches.push(
-              supabase.functions
-                .invoke('stripe-connect', { body: { action: 'get_transactions', therapist_id: therapist.id } })
-                .then(r => (r.error || !r.data?.transactions ? [] : r.data.transactions.map(t => ({ ...t, processor: 'stripe' }))))
-                .catch(() => [])
-            );
-          }
-          if (squareOk) {
-            fetches.push(
-              supabase.functions
-                .invoke('square-list-transactions', { body: {} })
-                .then(r => (r.error || !r.data?.transactions ? [] : r.data.transactions))
-                .catch(() => [])
-            );
-          }
-          const results = await Promise.all(fetches);
-          const combined = results.flat();
-          // Sort newest-first across both processors
-          combined.sort((a, b) => {
-            const ta = a.created ? new Date(a.created).getTime() : 0;
-            const tb = b.created ? new Date(b.created).getTime() : 0;
-            return tb - ta;
-          });
-          setRealTransactions(combined);
+      // Phase 14.1 (HK May 17 2026): primary data source is session_payments,
+      // not Stripe Connect API. session_payments is BodyMap's own table,
+      // one row per real payment (Stripe or offline cash/Venmo/Zelle).
+      // Includes refunds, tips, payment_method breakdown. Joined with
+      // bookings for service name and completed-but-unpaid leakage view.
+      //
+      // We deliberately exclude bookings with imported=true from the
+      // "expected revenue" calc, because CSV imports are historical
+      // backfill data, not real money in the pipeline.
+      const { data: payments } = await supabase
+        .from('session_payments')
+        .select('id, booking_id, client_id, amount_cents, tip_cents, payment_method, payment_method_detail, status, paid_at, created_at')
+        .eq('therapist_id', therapist.id)
+        .order('paid_at', { ascending: false })
+        .limit(500);
+
+      // Bookings for the same therapist, recent + upcoming. Joined to
+      // services for price + duration. Filtered to exclude imports.
+      // We need both completed (to compute expected) and unpaid-but-
+      // completed (leakage), so we fetch all confirmed/completed in
+      // the recent window.
+      const horizonStart = new Date();
+      horizonStart.setDate(horizonStart.getDate() - 400);
+      const { data: bookings } = await supabase
+        .from('bookings')
+        .select('id, client_id, client_name, client_email, booking_date, start_time, end_time, status, imported, services(name, price, duration)')
+        .eq('therapist_id', therapist.id)
+        .gte('booking_date', horizonStart.toISOString().slice(0, 10))
+        .neq('imported', true)
+        .order('booking_date', { ascending: false })
+        .limit(500);
+
+      // Map payments + bookings into the session shape the existing
+      // tab views expect. Each session_payments row becomes a session.
+      // Bookings with no payment row become 'outstanding' / 'pending'.
+      const bookingsById = {};
+      (bookings || []).forEach(b => { bookingsById[b.id] = b; });
+
+      const paidBookingIds = new Set();
+      const paymentSessions = (payments || [])
+        .filter(p => p.status === 'succeeded')
+        .map((p, i) => {
+          const b = bookingsById[p.booking_id];
+          if (p.booking_id) paidBookingIds.add(p.booking_id);
+          const dateObj = p.paid_at ? new Date(p.paid_at) : new Date(p.created_at);
+          const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
+          const actualCents = (p.amount_cents || 0) + (p.tip_cents || 0);
+          return {
+            id: `pay-${p.id}`,
+            client: b?.client_name || 'Client',
+            date: dateObj,
+            time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            duration: b?.services?.duration || 60,
+            rate: expected,
+            actual: actualCents / 100,
+            base: (p.amount_cents || 0) / 100,
+            tip: (p.tip_cents || 0) / 100,
+            status: 'paid',
+            method: p.payment_method,
+            methodDetail: p.payment_method_detail,
+            service: b?.services?.name || null,
+            bookingId: p.booking_id,
+            paymentId: p.id,
+            source: 'payment',
+          };
         });
+
+      // Add 'outstanding' / 'pending' synthetic sessions for completed
+      // bookings with no corresponding session_payments row. This is
+      // the leakage view: services rendered, money not yet captured.
+      const leakageSessions = (bookings || [])
+        .filter(b => b.status === 'completed' && !paidBookingIds.has(b.id))
+        .map(b => {
+          const dateObj = new Date((b.booking_date || '') + 'T' + (b.start_time || '12:00:00'));
+          const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
+          return {
+            id: `unpaid-${b.id}`,
+            client: b.client_name || 'Client',
+            date: dateObj,
+            time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            duration: b?.services?.duration || 60,
+            rate: expected,
+            actual: 0,
+            base: 0,
+            tip: 0,
+            status: 'outstanding',
+            method: null,
+            methodDetail: null,
+            service: b?.services?.name || null,
+            bookingId: b.id,
+            paymentId: null,
+            source: 'booking_no_payment',
+          };
+        });
+
+      const combined = [...paymentSessions, ...leakageSessions];
+      combined.sort((a, b) => b.date.getTime() - a.date.getTime());
+      setRealTransactions(combined);
     });
   }, [therapist]);
 
@@ -539,26 +814,10 @@ export default function BillingDashboard({ therapist }) {
 
   const sessions = useMemo(() => {
     if (anyConnected && realTransactions && realTransactions.length > 0) {
-      // Map real transactions (Stripe + Square) to session format.
-      // Stripe shape: created = epoch seconds, amount = cents
-      // Square shape: created = ISO string, amount = dollars (normalized
-      //   in the square-list-transactions edge function)
-      return realTransactions.map((t, i) => {
-        const isSquare = t.processor === 'square';
-        const dateObj = isSquare ? new Date(t.created) : new Date(t.created * 1000);
-        const dollars = isSquare ? t.amount : t.amount / 100;
-        return {
-          id: i + 1,
-          client: t.client_name || t.description || 'Client',
-          date: dateObj,
-          time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-          duration: 60,
-          rate: sessionRate,
-          actual: dollars,
-          status: t.status === 'succeeded' ? 'paid' : 'pending',
-          processor: t.processor || 'stripe',
-        };
-      });
+      // Phase 14.1: realTransactions is already in session shape, mapped
+      // from session_payments + bookings in the effect above. No further
+      // transformation needed.
+      return realTransactions;
     }
     // Not connected - show sample data with live session rate applied
     return SAMPLE_SESSIONS.map(s => ({
@@ -606,7 +865,7 @@ export default function BillingDashboard({ therapist }) {
       {/* Processor connected with real transactions */}
       {anyConnected && realTransactions && realTransactions.length > 0 && (
         <div style={{ background:'#DCFCE7', border:'1px solid #86EFAC', borderRadius:10, padding:'10px 16px', marginBottom:20, fontSize:13, color:'#16A34A', display:'flex', alignItems:'center', gap:8 }}>
-          ✅ <strong>Connected.</strong>&nbsp;Showing real payment data from {stripeConnected && squareConnected ? 'Stripe and Square' : stripeConnected ? 'Stripe' : 'Square'}.
+          ✅ <strong>Connected.</strong>&nbsp;Showing all payments captured through MyBodyMap.
         </div>
       )}
 
