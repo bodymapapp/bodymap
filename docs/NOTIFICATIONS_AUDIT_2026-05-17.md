@@ -20,17 +20,25 @@ This is the verified setup for end-to-end notification testing.
 
 ### Client account
 
+### Phone numbers in play
+
+| Number | What it is | Role |
+|---|---|---|
+| `+15136133033` | Twilio platform number | THE SENDER. Founder outreach to therapists in production. Doubles as Joy Therapist's simulated BYO Twilio in testing. |
+| `(513) 909-9004` | Google Voice (HK MacBook) | A receiving number HK controls from MacBook Messages app. Convenient for testing because messages land on the dev machine. |
+| `(346) 242-6904` | Google Fi (physical phone) | A receiving number on a real phone. Higher delivery reliability for testing if Google Voice drops messages. |
+
+**On Google Voice and A2P 10DLC:** Twilio sending to Google Voice numbers usually works, but Google Voice silently drops roughly 5% of messages from A2P 10DLC-registered Twilio numbers. For tests where MacBook visibility matters, use Google Voice and verify via `notification_log`. For high-stakes tests where every message must land, use Google Fi.
+
+### Client account
+
 - **Login email:** `bodymap01@gmail.com`
-- **Two client rows exist for this email** (duplicate-row bug, queued in BLOCK_PLAN > Open asks > Found-during-testing):
-
-  | Client id | Name | Phone | Phone type | Created |
-  |---|---|---|---|---|
-  | ce205279-3800-4335-b1c7-0b5ad1092a14 | Joy I | (346) 242-6904 | Google Fi | 2026-05-16 |
-  | d38ce2b4-09d5-40cd-9959-0f31b652301c | Mybodymap Demo | 5136133033 | Google Voice | 2026-05-05 |
-
-- **Both phones operational** and verified to receive Twilio SMS.
-- **Both client rows linked to** therapist_id `2a2886c3-00f2-4c6f-aaec-4b8150c61fcf`.
-- **When booking via mybodymap.app/book/healinghands with email `bodymap01@gmail.com`**, the booking flow's email-match logic will pick one of these rows. Which one wins is the duplicate-client bug we still need to investigate.
+- **Canonical client row (after May 17 cleanup):**
+  - `id` = `ce205279-3800-4335-b1c7-0b5ad1092a14`
+  - `name` = `Joy Client`
+  - `phone` = `+15139099004` (Google Voice on HK MacBook)
+- **Older duplicate row (DELETED May 17):** id `d38ce2b4-09d5-40cd-9959-0f31b652301c`, name was "Mybodymap Demo", phone was incorrectly set to the Twilio sender number `5136133033`. Removed because sending to the Twilio sender from itself would fail with "From and To cannot match." Reference for forensics only.
+- Linked to therapist_id `2a2886c3-00f2-4c6f-aaec-4b8150c61fcf`.
 
 ### Seed SQL for notification_prefs
 
