@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
+import CloseButton from '../components/CloseButton';
 import { PolicyDisplay } from '../components/BookingPolicies';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', danger:'#EF4444', amber:'#F59E0B' };
@@ -2949,7 +2950,7 @@ export default function BookingPage() {
                     <div style={{fontSize:13,fontWeight:700,color:'#16A34A'}}>🎁 Gift certificate applied!</div>
                     <div style={{fontSize:12,color:'#374151'}}>${giftCert.remaining?.toFixed(0)} credit · Code: {giftCert.code}</div>
                   </div>
-                  <button onClick={()=>{setGiftCert(null);setGiftCode('');}} style={{background:'transparent',border:'none',color:C.gray,cursor:'pointer',fontSize:16}}>×</button>
+                  <button onClick={()=>{setGiftCert(null);setGiftCode('');}} aria-label="Remove gift certificate" style={{background:'transparent',border:'1px solid transparent',color:C.gray,cursor:'pointer',fontSize:11,fontWeight:700,padding:'4px 10px',borderRadius:999,transition:'all 0.15s'}} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Remove</button>
                 </div>
               )}
             </div>
@@ -3710,28 +3711,9 @@ export default function BookingPage() {
             {/* Explicit close button. Sits in the top-right corner.
                 Disabled while the request is in flight to prevent
                 race conditions. */}
-            <button
-              onClick={() => !offerLoading && setOfferModal(null)}
-              disabled={offerLoading}
-              aria-label="Close"
-              style={{
-                position: 'absolute',
-                top: 14,
-                right: 14,
-                background: '#F3F4F6',
-                border: 'none',
-                width: 32,
-                height: 32,
-                borderRadius: '50%',
-                fontSize: 18,
-                fontWeight: 700,
-                color: C.gray,
-                cursor: offerLoading ? 'default' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-              }}>×</button>
+            <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
+              <CloseButton onClick={() => !offerLoading && setOfferModal(null)} label="Close" disabled={offerLoading} />
+            </div>
 
             <div style={{ marginBottom: 16, paddingRight: 36 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
@@ -3853,16 +3835,9 @@ export default function BookingPage() {
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
-            <button
-              onClick={() => setCartOpen(false)}
-              aria-label="Close cart"
-              style={{
-                position: 'absolute', top: 14, right: 14,
-                background: '#F3F4F6', border: 'none',
-                width: 32, height: 32, borderRadius: '50%',
-                fontSize: 18, fontWeight: 700, color: C.gray, cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-              }}>×</button>
+            <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
+              <CloseButton onClick={() => setCartOpen(false)} label="Close" />
+            </div>
 
             <div style={{ marginBottom: 16, paddingRight: 36 }}>
               <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: '0 0 4px' }}>
@@ -3894,10 +3869,13 @@ export default function BookingPage() {
                     onClick={() => removeFromCart(idx)}
                     aria-label="Remove from cart"
                     style={{
-                      background: 'transparent', border: 'none',
-                      color: '#DC2626', fontSize: 18, fontWeight: 700,
-                      cursor: 'pointer', padding: '4px 8px',
-                    }}>×</button>
+                      background: 'transparent', border: '1px solid transparent',
+                      color: '#DC2626', fontSize: 11, fontWeight: 700,
+                      cursor: 'pointer', padding: '4px 10px',
+                      borderRadius: 999, transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.borderColor='#FCA5A5';}}
+                    onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
                 </div>
               ))}
             </div>
@@ -3976,18 +3954,9 @@ export default function BookingPage() {
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
-            <button
-              onClick={() => !cartCheckoutLoading && setCartCheckoutModal(false)}
-              disabled={cartCheckoutLoading}
-              aria-label="Close"
-              style={{
-                position: 'absolute', top: 14, right: 14,
-                background: '#F3F4F6', border: 'none',
-                width: 32, height: 32, borderRadius: '50%',
-                fontSize: 18, fontWeight: 700, color: C.gray,
-                cursor: cartCheckoutLoading ? 'default' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-              }}>×</button>
+            <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
+              <CloseButton onClick={() => !cartCheckoutLoading && setCartCheckoutModal(false)} label="Cancel" disabled={cartCheckoutLoading} />
+            </div>
             <div style={{ marginBottom: 16, paddingRight: 36 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
                 Checkout
@@ -4099,7 +4068,7 @@ export default function BookingPage() {
                 : 'Your monthly credits are loaded. Pick a service below.'}
             </div>
           </div>
-          <span style={{ fontSize: 18, color: '#14532D' }}>×</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#14532D', letterSpacing: '0.04em' }}>Dismiss</span>
         </div>
       )}
 

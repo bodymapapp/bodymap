@@ -21,6 +21,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import CloseButton from '../components/CloseButton';
 import {
   DEFAULT_SCHEMA,
   effectiveSchema,
@@ -310,11 +311,14 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
                 onSave={(label) => updateOption(idx, { label })}
                 style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
               />
-              <button onClick={() => removeOption(idx)} style={{
-                background: 'transparent', border: 'none',
+              <button onClick={() => removeOption(idx)} aria-label="Remove option" style={{
+                background: 'transparent', border: '1px solid transparent',
                 color: C.gray, cursor: 'pointer',
-                fontSize: 12, lineHeight: 1, padding: '0 2px',
-              }}>×</button>
+                fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                borderRadius: 999, transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}}
+              onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Remove</button>
             </div>
           ))}
           <button onClick={addOption} style={{
@@ -348,11 +352,14 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
                 onSave={(label) => updateOption(idx, { label })}
                 style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
               />
-              <button onClick={() => removeOption(idx)} style={{
-                background: 'transparent', border: 'none',
+              <button onClick={() => removeOption(idx)} aria-label="Remove option" style={{
+                background: 'transparent', border: '1px solid transparent',
                 color: C.gray, cursor: 'pointer',
-                fontSize: 12, lineHeight: 1, padding: '0 2px',
-              }}>×</button>
+                fontSize: 10, fontWeight: 700, padding: '2px 8px',
+                borderRadius: 999, transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}}
+              onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Remove</button>
             </div>
           ))}
           <button onClick={addOption} style={{
@@ -393,11 +400,14 @@ function FieldCard({ field, onPatch, onDelete, isHidden, onToggleHidden }) {
                   style={{ fontSize: 11, fontWeight: 500, color: C.ink, padding: '0 2px' }}
                 />
               </div>
-              <button onClick={() => removeOption(idx)} style={{
-                background: 'transparent', border: 'none',
+              <button onClick={() => removeOption(idx)} aria-label="Remove option" style={{
+                background: 'transparent', border: '1px solid transparent',
                 color: C.gray, cursor: 'pointer',
-                fontSize: 13, lineHeight: 1, padding: '0 4px',
-              }}>×</button>
+                fontSize: 11, fontWeight: 700, padding: '3px 10px',
+                borderRadius: 999, transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}}
+              onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Remove</button>
             </div>
           ))}
           <button onClick={addOption} style={{
@@ -491,10 +501,13 @@ function DeleteAffordance({ confirming, onClick, onConfirm, onCancel }) {
     return (
       <button onClick={onClick} aria-label="Remove" style={{
         background: 'transparent', color: C.red,
-        border: 'none', cursor: 'pointer',
-        fontSize: 16, lineHeight: 1, padding: '0 4px',
-        flexShrink: 0,
-      }}>×</button>
+        border: '1px solid transparent', cursor: 'pointer',
+        fontSize: 11, fontWeight: 700, padding: '4px 10px',
+        borderRadius: 999, flexShrink: 0,
+        transition: 'all 0.15s',
+      }}
+      onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.borderColor='#FCA5A5';}}
+      onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
     );
   }
   return (
@@ -580,7 +593,7 @@ function AddQuestionModal({ open, onClose, onPick }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, margin: 0 }}>Add a question</h3>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: C.gray, fontSize: 22, cursor: 'pointer', padding: 0 }}>×</button>
+          <CloseButton onClick={onClose} label="Cancel" />
         </div>
         <p style={{ fontSize: 13, color: C.gray, margin: '0 0 14px' }}>Pick the type that fits what you want to ask:</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

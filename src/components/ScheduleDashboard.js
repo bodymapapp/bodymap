@@ -4,6 +4,7 @@ import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
 import InlineTimeInput from './InlineTimeInput';
+import CloseButton from './CloseButton';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -162,7 +163,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 {appt.client || 'Calendar event'}
               </div>
             </div>
-            <button onClick={onClose} style={{ background:'transparent', border:'none', fontSize:22, cursor:'pointer', color:'#9CA3AF', padding:0, lineHeight:1 }}>×</button>
+            <CloseButton onClick={onClose} label="Close" />
           </div>
           <div style={{
             background:'#F8F7FB', border:'1px solid #E1DEEF', borderRadius:10,
@@ -210,7 +211,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               )}
               <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
             </div>
-            <button onClick={onClose} style={{background:'#F3F4F6',border:'none',borderRadius:'50%',width:32,height:32,cursor:'pointer',fontSize:16,color:'#6B7280',flexShrink:0}}>✕</button>
+            <CloseButton onClick={onClose} label="Close" />
           </div>
           {/* Time + status row */}
           <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>

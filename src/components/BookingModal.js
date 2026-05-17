@@ -3,6 +3,7 @@
 // mode: 'create' | 'reschedule' | 'rebook'
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import CloseButton from './CloseButton';
 
 const C = {
   forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8',
@@ -243,7 +244,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         <div style={{ padding: '24px 24px 16px', borderBottom: `1px solid ${C.border}`, position: 'sticky', top: 0, background: '#fff', zIndex: 1 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: 0 }}>{title}</h3>
-            <button onClick={onClose} style={{ background: '#F3F4F6', border: 'none', borderRadius: '50%', width: 32, height: 32, cursor: 'pointer', fontSize: 16, color: C.gray }}>✕</button>
+            <CloseButton onClick={onClose} label="Cancel" />
           </div>
         </div>
 

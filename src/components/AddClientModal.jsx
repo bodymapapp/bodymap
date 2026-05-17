@@ -13,6 +13,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
+import CloseButton from "./CloseButton";
 
 const C = {
   cream: "#FAF4E8",
@@ -353,7 +354,7 @@ export default function AddClientModal({ therapist, onClose, onSaved }) {
                 {step === 3 && "Tap their focus areas. Or skip and fill in later."}
               </p>
             </div>
-            <button onClick={handleClose} disabled={saving} style={{ background: "transparent", border: "none", fontSize: 20, color: C.gray, cursor: "pointer", lineHeight: 1, padding: 4 }}>×</button>
+            <CloseButton onClick={handleClose} label="Cancel" disabled={saving} />
           </div>
 
           {/* Step indicator dots */}

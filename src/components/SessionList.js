@@ -1074,26 +1074,31 @@ function SessionRow({ session, onSelect, onDelete }) {
           }}>
             {session.completed ? "✅ Complete" : "🧭 Intake Done"}
           </span>
-          {/* × delete button. On click, opens the inline confirm pill
-              instead of deleting immediately or popping a modal. */}
+          {/* Hover-reveal Delete button. On click, opens the inline
+              confirm pill instead of deleting immediately or popping
+              a modal. Per HK May 16 2026: the bare × glyph is not
+              understood by older personas; the word "Delete" is. */}
           {onDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); setConfirming(true); }}
+              aria-label={session.completed ? "Delete this completed session" : "Delete this incomplete intake"}
               title={session.completed ? "Delete this completed session" : "Delete this incomplete intake"}
               style={{
                 background: hovered ? "#FEF2F2" : "transparent",
                 border: hovered ? "1px solid #FECACA" : "1px solid transparent",
                 color: hovered ? "#DC2626" : "transparent",
-                width: 28, height: 28,
-                borderRadius: "50%",
+                minHeight: 32,
+                padding: "4px 12px",
+                borderRadius: 999,
                 cursor: "pointer",
-                fontSize: 14,
+                fontSize: 12,
                 fontWeight: 700,
-                padding: 0,
+                letterSpacing: '0.02em',
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.15s",
+                fontFamily: 'system-ui, -apple-system, sans-serif',
               }}
-            >×</button>
+            >Delete</button>
           )}
           <span style={{ color: hovered ? "#6B9E80" : "#E8E4DC", fontSize: "20px", transition: "color 0.15s" }}>›</span>
         </>

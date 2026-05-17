@@ -212,7 +212,7 @@ export default function PackagesCard({ therapist }) {
                     <button onClick={() => togglePackage(p)} style={{ background:p.active?'#fff':C.sage, color:p.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {p.active ? 'Hide' : 'Show'}
                     </button>
-                    <button onClick={() => deletePackage(p.id)} style={{ background:'transparent', color:C.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }}>×</button>
+                    <button onClick={() => deletePackage(p.id)} aria-label={`Delete ${p.name || 'this package'}`} style={{ background:'transparent', color:C.gray, border:'1px solid transparent', fontSize:12, fontWeight:700, cursor:'pointer', padding:'4px 12px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Delete</button>
                   </div>
                 </div>
               ))}

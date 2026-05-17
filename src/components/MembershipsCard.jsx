@@ -222,7 +222,7 @@ export default function MembershipsCard({ therapist }) {
                     <button onClick={() => toggleMembership(m)} style={{ background:m.active?'#fff':C.sage, color:m.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {m.active ? 'Hide' : 'Show'}
                     </button>
-                    <button onClick={() => deleteMembership(m.id)} style={{ background:'transparent', color:C.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }}>×</button>
+                    <button onClick={() => deleteMembership(m.id)} aria-label={`Delete ${m.name || 'this membership'}`} style={{ background:'transparent', color:C.gray, border:'1px solid transparent', fontSize:12, fontWeight:700, cursor:'pointer', padding:'4px 12px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Delete</button>
                   </div>
                 </div>
               ))}

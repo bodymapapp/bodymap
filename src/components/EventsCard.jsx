@@ -215,7 +215,7 @@ export default function EventsCard({ therapist }) {
                           Cancel
                         </button>
                       )}
-                      <button onClick={() => deleteEvent(e.id)} style={{ background:'transparent', color:C.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }}>×</button>
+                      <button onClick={() => deleteEvent(e.id)} aria-label={`Delete ${e.name || 'this event'}`} style={{ background:'transparent', color:C.gray, border:'1px solid transparent', fontSize:12, fontWeight:700, cursor:'pointer', padding:'4px 12px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(ev)=>{ev.currentTarget.style.background='#FEF2F2';ev.currentTarget.style.color='#DC2626';ev.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(ev)=>{ev.currentTarget.style.background='transparent';ev.currentTarget.style.color=C.gray;ev.currentTarget.style.borderColor='transparent';}}>Delete</button>
                     </div>
                   </div>
                 );

@@ -209,7 +209,7 @@ function FeedbackModal({ open, onClose, prefillFeature = null, prefillCategory =
                 <h3 style={{ fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700, color: C.forestInk, margin: "0 0 6px" }}>Help keep this honest</h3>
                 <p style={{ fontSize: 13.5, color: C.inkSoft, margin: 0, lineHeight: 1.5 }}>Spotted an inaccuracy or want to suggest a feature? Tell us. We review every note.</p>
               </div>
-              <button onClick={reset} disabled={submitting} style={{ background: "none", border: "none", fontSize: 24, color: C.inkSofter, cursor: submitting ? "not-allowed" : "pointer", padding: 0, lineHeight: 1 }}>×</button>
+              <button onClick={reset} disabled={submitting} aria-label="Start over" style={{ background: "transparent", border: `1px solid ${C.inkSofter}`, fontSize: 12, fontWeight: 700, color: C.inkSoft, cursor: submitting ? "not-allowed" : "pointer", padding: "6px 14px", borderRadius: 999, transition: 'all 0.15s' }} onMouseEnter={(e)=>{ if(!submitting) { e.currentTarget.style.background='#F3F4F6'; e.currentTarget.style.color=C.forestInk; }}} onMouseLeave={(e)=>{ e.currentTarget.style.background='transparent'; e.currentTarget.style.color=C.inkSoft; }}>Start over</button>
             </div>
             <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: C.inkSoft, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 6 }}>What kind of feedback?</label>
             <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>

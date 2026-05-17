@@ -218,12 +218,17 @@ function DeleteAffordance({ onDelete, C2 }) {
 
   if (!confirming) {
     return (
-      <button onClick={() => setConfirming(true)} aria-label="Remove" style={{
+      <button onClick={() => setConfirming(true)} aria-label="Remove this QR code" style={{
         background: 'transparent', color: C2.gray,
-        border: 'none', cursor: 'pointer',
-        fontSize: 16, lineHeight: 1, padding: '0 4px',
+        border: '1px solid transparent', cursor: 'pointer',
+        fontSize: 11, fontWeight: 700,
+        padding: '4px 10px',
+        borderRadius: 999,
         flexShrink: 0,
-      }}>×</button>
+        transition: 'all 0.15s',
+      }}
+      onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}}
+      onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C2.gray;e.currentTarget.style.borderColor='transparent';}}>Remove</button>
     );
   }
   return (

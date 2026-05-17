@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, supabase } from '../lib/supabase';
 import QuickSendBlocks from './QuickSendBlocks';
+import CloseButton from './CloseButton';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -517,7 +518,10 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
                   style={{ width:70, padding:'7px 8px', border:`1.5px solid ${C.light}`, borderRadius:8, fontSize:13, outline:'none', textAlign:'center' }} />
                 {conditions.length > 1 && (
                   <button onClick={() => setConditions(cs => cs.filter((_,j) => j!==i))}
-                    style={{ background:'transparent', border:'none', color:'#EF4444', cursor:'pointer', fontSize:18, lineHeight:1 }}>×</button>
+                    aria-label="Remove this condition"
+                    style={{ background:'transparent', border:'1px solid transparent', color:'#EF4444', cursor:'pointer', fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:999, transition:'all 0.15s' }}
+                    onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.borderColor='#FCA5A5';}}
+                    onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
                 )}
               </div>
             ))}
@@ -590,8 +594,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
                 <h3 style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ Campaign starter</h3>
                 <p style={{ fontSize:13, color:C.gray, margin:0, lineHeight:1.5 }}>Pick a topic. The platform will draft an email{channel==='email'?' (subject + body)':' message'} in your voice. You can edit before sending.</p>
               </div>
-              <button onClick={() => !aiDrafting && setAiStarterOpen(false)} disabled={aiDrafting}
-                style={{ background:'none', border:'none', fontSize:22, color:C.gray, cursor:aiDrafting?'not-allowed':'pointer', padding:0, lineHeight:1 }}>×</button>
+              <CloseButton onClick={() => setAiStarterOpen(false)} label="Cancel" disabled={aiDrafting} />
             </div>
 
             {!aiStarterCategory ? (

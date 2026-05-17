@@ -98,7 +98,7 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
               <p style={{ fontSize: "14px", fontWeight: "700", color: "#92400E", margin: "0 0 2px 0" }}>🍂 {lapsedClients.length} client{lapsedClients.length > 1 ? "s" : ""} haven't visited in {lapsedDays}+ days</p>
               <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>Tap to send a quick check-in message</p>
             </div>
-            <button onClick={() => setNudgeDismissed(true)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#B45309", padding: "4px" }}>✕</button>
+            <button onClick={() => setNudgeDismissed(true)} aria-label="Dismiss this reminder" style={{ background: "transparent", border: "1px solid transparent", fontSize: "12px", fontWeight: 700, cursor: "pointer", color: "#B45309", padding: "4px 12px", borderRadius: 999, transition: 'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF3C7';e.currentTarget.style.borderColor='#FCD34D';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Dismiss</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {lapsedClients.slice(0, 3).map(client => (
@@ -343,7 +343,7 @@ export default function ClientList({ therapistId, therapist, onSelectClient, pla
               <p style={{ fontSize: "14px", fontWeight: "700", color: "#92400E", margin: "0 0 2px 0" }}>🍂 {lapsedClients.length} client{lapsedClients.length > 1 ? "s" : ""} haven't visited in {lapsedDays}+ days</p>
               <p style={{ fontSize: "12px", color: "#B45309", margin: 0 }}>Send a quick check-in to bring them back</p>
             </div>
-            <button onClick={() => setNudgeDismissed(true)} style={{ background: "none", border: "none", fontSize: "18px", cursor: "pointer", color: "#B45309", padding: "4px" }}>✕</button>
+            <button onClick={() => setNudgeDismissed(true)} aria-label="Dismiss this reminder" style={{ background: "transparent", border: "1px solid transparent", fontSize: "12px", fontWeight: 700, cursor: "pointer", color: "#B45309", padding: "4px 12px", borderRadius: 999, transition: 'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF3C7';e.currentTarget.style.borderColor='#FCD34D';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Dismiss</button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {lapsedClients.slice(0, 3).map(client => (

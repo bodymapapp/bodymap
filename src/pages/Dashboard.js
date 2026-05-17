@@ -44,6 +44,7 @@ import QRCodesCard from '../components/QRCodesCard';
 import CancellationPolicy from '../components/CancellationPolicy';
 import BookingPolicies from '../components/BookingPolicies';
 import PracticeAgreement from '../components/PracticeAgreement';
+import CloseButton from '../components/CloseButton';
 
 // Soft banner shown on the dashboard for therapists who pre-date the
 // phone verification feature (created before PHONE_GATE_FROM). Encourages
@@ -1264,12 +1265,16 @@ function ServicesAndAvailability({ therapist }) {
                             }}/>
                           {blocks.length > 1 && (
                             <button onClick={() => removeBlock(avail, idx)}
+                              aria-label="Remove this time block"
                               style={{
-                                background: 'transparent', border: 'none',
+                                background: 'transparent', border: '1px solid transparent',
                                 color: '#EF4444', cursor: 'pointer',
-                                fontSize: 14, padding: '0 2px',
-                                lineHeight: 1, flexShrink: 0,
-                              }}>×</button>
+                                fontSize: 11, fontWeight: 700, padding: '4px 10px',
+                                borderRadius: 999, flexShrink: 0,
+                                transition: 'all 0.15s',
+                              }}
+                              onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.borderColor='#FCA5A5';}}
+                              onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
                           )}
                         </div>
                       ))}
@@ -1498,7 +1503,7 @@ function ServiceAddonsCard({ therapist }) {
                     <button onClick={() => toggleAddon(a)} style={{ background:a.active?'#fff':C2.sage, color:a.active?C2.gray:'#fff', border:`1px solid ${C2.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {a.active ? 'Hide' : 'Show'}
                     </button>
-                    <button onClick={() => deleteAddon(a.id)} style={{ background:'transparent', color:C2.gray, border:'none', fontSize:18, cursor:'pointer', padding:'2px 6px' }} aria-label="Delete">×</button>
+                    <button onClick={() => deleteAddon(a.id)} aria-label={`Delete ${a.name || 'this add-on'}`} style={{ background:'transparent', color:C2.gray, border:'1px solid transparent', fontSize:11, fontWeight:700, cursor:'pointer', padding:'4px 10px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C2.gray;e.currentTarget.style.borderColor='transparent';}}>Delete</button>
                   </div>
                   <div style={{ marginTop:6 }}>
                     <InlineEditDescription
@@ -4298,7 +4303,7 @@ export default function Dashboard({ view }) {
                 <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '700', color: '#1A1A2E', margin: '0 0 4px 0' }}>🔗 Share your booking link</h2>
                 <p style={{ fontSize: '13px', color: '#6B7280', margin: 0 }}>Includes intake automatically. Client books and fills intake in one flow.</p>
               </div>
-              <button onClick={() => setShowSendModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#9CA3AF', padding: '4px' }}>✕</button>
+              <CloseButton onClick={() => setShowSendModal(false)} label="Close" />
             </div>
             <div style={{ background: '#F5F0E8', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px' }}>
               <p style={{ fontSize: '11px', fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px', margin: '0 0 4px 0' }}>Your booking link</p>

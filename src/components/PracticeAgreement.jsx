@@ -35,6 +35,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { DEFAULT_PRACTICE_AGREEMENT, renderAgreementForClient } from '../lib/practiceAgreement';
+import CloseButton from './CloseButton';
 
 // Resolve dynamic tokens like {cancel_under_24h} to live percentage
 // values from the therapist's cancellation_policy. Used at DISPLAY
@@ -1145,11 +1146,7 @@ function SendForSignaturePanel({ therapist, onClose, C }) {
               : 'Pick a client below. A signing link is created. You share it however works best, text, email, or copy/paste.'}
           </div>
         </div>
-        <button
-          onClick={onClose}
-          style={{ background: 'transparent', border: 'none', color: C.gray, fontSize: 20, cursor: 'pointer', lineHeight: 1, padding: 2, flexShrink: 0 }}
-          aria-label="Close"
-        >×</button>
+        <CloseButton onClick={onClose} label="Close" />
       </div>
 
       {!sentLink ? (

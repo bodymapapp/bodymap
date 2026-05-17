@@ -23,6 +23,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { renderTokens, AUDIENCE_LABELS } from '../lib/outreachQuicksend';
+import CloseButton from './CloseButton';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', success:'#10B981' };
 
@@ -150,10 +151,7 @@ export default function QuickSendModal({ template, therapist, recipients: passed
               Audience: {AUDIENCE_LABELS[template.audience_preset] || template.audience_preset}
             </div>
           </div>
-          <button onClick={handleClose} disabled={sending} style={{
-            background:'transparent', border:'none', fontSize:24, color:C.gray,
-            cursor: sending ? 'not-allowed' : 'pointer', padding:'0 6px', lineHeight:1,
-          }} aria-label="Close">×</button>
+          <CloseButton onClick={handleClose} label="Cancel" disabled={sending} />
         </div>
 
         {result ? (

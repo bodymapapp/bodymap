@@ -147,7 +147,10 @@ export function BookingLinkNudge({ therapist, bookings }) {
           🔗 Share your booking link
         </div>
         <button onClick={() => { setDismissed(true); localStorage.setItem('bm_booking_nudge_dismissed','1'); }}
-          style={{ background:'transparent', border:'none', color:C.gray, fontSize:16, cursor:'pointer', lineHeight:1 }}>×</button>
+          aria-label="Dismiss this reminder"
+          style={{ background:'transparent', border:'1px solid transparent', color:C.gray, fontSize:11, fontWeight:700, cursor:'pointer', padding:'4px 10px', borderRadius:999, transition:'all 0.15s' }}
+          onMouseEnter={(e)=>{e.currentTarget.style.background='#F3F4F6';e.currentTarget.style.borderColor='#D1D5DB';}}
+          onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Dismiss</button>
       </div>
       <div style={{ fontSize:12, color:C.gray, marginBottom:12, lineHeight:1.5 }}>
         Send this to clients. They book a session and fill intake in one flow. No calls, no texts back and forth.
