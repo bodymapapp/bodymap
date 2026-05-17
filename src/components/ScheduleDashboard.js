@@ -307,140 +307,218 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           )}
         </div>
         <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:14}}>
-          {!appt.preview && appt.deposit_required && (
-            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.deposit_paid?'#F0FDF4':'#FEF3C7',borderRadius:10,border:`1px solid ${appt.deposit_paid?'#86EFAC':'#FCD34D'}`}}>
-              <span style={{fontSize:16}}>{appt.deposit_paid?'💳':'⏳'}</span>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:appt.deposit_paid?'#16A34A':'#D97706'}}>{appt.deposit_paid?'Deposit paid':'Deposit pending'}</div>
-                <div style={{fontSize:11,color:'#9CA3AF'}}>${((appt.deposit_amount||0)/100).toFixed(0)} deposit · new client</div>
-              </div>
+          {/* Status chips row: deposit + reminder + notes
+              Collapsed from heavyweight cards into inline horizontal chips
+              so they don't compete with the action buttons below. */}
+          {!appt.preview && (appt.deposit_required || true) && (
+            <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
+              {appt.deposit_required && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:appt.deposit_paid?'#F0FDF4':'#FEF3C7',color:appt.deposit_paid?'#15803D':'#92400E',fontSize:11,fontWeight:600,border:`1px solid ${appt.deposit_paid?'#BBF7D0':'#FDE68A'}`}}>
+                  <span style={{fontSize:11}}>{appt.deposit_paid?'✓':'⏳'}</span>
+                  {appt.deposit_paid?`Deposit paid · $${((appt.deposit_amount||0)/100).toFixed(0)}`:`Deposit pending · $${((appt.deposit_amount||0)/100).toFixed(0)}`}
+                </span>
+              )}
+              <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:appt.reminder_sent?'#F0FDF4':'#F3F4F6',color:appt.reminder_sent?'#15803D':'#6B7280',fontSize:11,fontWeight:600,border:`1px solid ${appt.reminder_sent?'#BBF7D0':'#E5E7EB'}`}}>
+                <span style={{fontSize:11}}>{appt.reminder_sent?'✓':'⏱'}</span>
+                {appt.reminder_sent?'Reminder sent':'Reminder pending'}
+              </span>
             </div>
           )}
-          {!appt.preview && (
-            <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 14px',background:appt.reminder_sent?'#F0FDF4':'#F9FAFB',borderRadius:10,border:`1px solid ${appt.reminder_sent?'#86EFAC':'#E5E7EB'}`}}>
-              <span style={{fontSize:16}}>{appt.reminder_sent?'📧':'⏳'}</span>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:appt.reminder_sent?'#16A34A':'#6B7280'}}>{appt.reminder_sent?'Reminder sent':'Reminder pending'}</div>
-                <div style={{fontSize:11,color:'#9CA3AF'}}>{appt.reminder_sent?'Client received email 24h before session':'Sends automatically 24h before session'}</div>
-              </div>
-            </div>
-          )}
-          {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5}}>📝 {appt.notes}</div>}
-          <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5,fontFamily:'Georgia, serif',fontStyle:'italic'}}>{appt.notes}</div>}
+          <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            {/* Intake-done state: Open Session Record (primary teal/forest)
+                + Open Pre-Session Brief (sage ghost). Vertically stacked
+                because both are equally legitimate next steps. */}
             {appt.status==='intake-done' && appt.sessionId && appt.clientId && (
               <a href={`/dashboard/clients/${appt.clientId}/sessions/${appt.sessionId}`}
-                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
-                📋 Open Session Record
+                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:12,padding:'13px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center',letterSpacing:'0.01em'}}>
+                Open Session Record
               </a>
             )}
             {appt.status==='intake-done' && appt.sessionId && appt.clientId && therapist?.ai_enabled !== false && (
               <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
-                style={{display:'block',background:'transparent',color:'#2A5741',border:'1.5px solid #2A5741',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center'}}>
-                🧭 Open Pre-Session Brief
+                style={{display:'block',background:'transparent',color:'#2A5741',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center'}}>
+                Open Pre-Session Brief
               </a>
             )}
+            {/* Pending-intake state: Send Intake (sage tone, NOT solid forest
+                so it doesn't compete with Checkout below). Paired with Copy Link
+                in a horizontal row for compactness. */}
             {appt.status==='pending-intake' && !appt.preview && (
-              <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`} style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:10,padding:'13px 16px',fontSize:14,fontWeight:700,textDecoration:'none',textAlign:'center'}}>💬 Send Intake via SMS</a>
+              <div style={{display:'flex',gap:8}}>
+                <a href={`sms:&body=${encodeURIComponent(`Hi ${firstName}! Please fill your intake form before your session: ${intakeLink}`)}`}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#F4F6F2',color:'#2A5741',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,textDecoration:'none',border:'1.5px solid #D6E0D4'}}>
+                  <span style={{fontSize:13}}>💬</span> Send intake
+                </a>
+                <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
+                  style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#fff',color:'#6B9E80',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                  <span style={{fontSize:13}}>🔗</span> {copied?'Copied':'Copy link'}
+                </button>
+              </div>
             )}
-            <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}} style={{background:'transparent',color:'#6B9E80',border:'1.5px solid #6B9E80',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-              {copied?'✓ Copied!':'📋 Copy Intake Link'}
-            </button>
+            {/* For intake-done state, Copy Intake Link is much less needed,
+                so don't show it. For other states (e.g. no status), still
+                show a single Copy Link button. */}
+            {appt.status !== 'pending-intake' && appt.status !== 'intake-done' && (
+              <button onClick={()=>{navigator.clipboard.writeText(intakeLink);setCopied(true);setTimeout(()=>setCopied(false),2000);}}
+                style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,background:'#fff',color:'#6B9E80',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 14px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
+                <span style={{fontSize:13}}>🔗</span> {copied?'Copied':'Copy intake link'}
+              </button>
+            )}
             {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (() => {
               const partnerLink = `${intakeUrl}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
               return (
-                <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'12px 14px'}}>
-                  <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:8}}>💑 Partner: {appt.partner_name}</div>
+                <div style={{background:'#F4F6F2',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'12px 14px'}}>
+                  <div style={{fontSize:11,fontWeight:600,color:'#2A5741',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.05em'}}>Partner · {appt.partner_name}</div>
                   <div style={{display:'flex',gap:8}}>
                     <a href={`sms:&body=${encodeURIComponent(`Hi ${appt.partner_name.split(' ')[0]}! Please fill your intake form: ${partnerLink}`)}`}
-                      style={{flex:1,display:'block',background:'#2A5741',color:'#fff',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
-                      💬 SMS Partner
+                      style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:5,background:'#2A5741',color:'#fff',borderRadius:8,padding:'8px 10px',fontSize:12,fontWeight:600,textDecoration:'none'}}>
+                      <span>💬</span> SMS
                     </a>
                     <button onClick={()=>{navigator.clipboard.writeText(partnerLink);}}
-                      style={{flex:1,background:'transparent',color:'#2A5741',border:'1.5px solid #2A5741',borderRadius:8,padding:'9px 12px',fontSize:13,fontWeight:600,cursor:'pointer'}}>
-                      📋 Copy Partner Link
+                      style={{flex:1,display:'flex',alignItems:'center',justifyContent:'center',gap:5,background:'#fff',color:'#2A5741',border:'1.5px solid #D6E0D4',borderRadius:8,padding:'8px 10px',fontSize:12,fontWeight:600,cursor:'pointer'}}>
+                      <span>🔗</span> Copy
                     </button>
                   </div>
                 </div>
               );
             })()}
-            {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && (
+            {appt.is_couples && appt.partner_name && appt.partner_email && !appt.preview && false && (
               <button onClick={()=>{
                 const partnerLink=`${window.location.origin}/${therapist?.custom_url}?name=${encodeURIComponent(appt.partner_name)}&email=${encodeURIComponent(appt.partner_email)}&booking_id=${appt.id}`;
                 navigator.clipboard.writeText(partnerLink);
                 setCopied(true); setTimeout(()=>setCopied(false),2000);
               }} style={{background:'#F0FDF4',color:'#2A5741',border:'1.5px solid #86EFAC',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-                💑 Copy {appt.partner_name.split(' ')[0]}'s Intake Link
+                Copy {appt.partner_name.split(' ')[0]}'s Intake Link
               </button>
             )}
-            {/* Phase 12: Checkout + Mark as paid block. Mirrors GlossGenius
-                position above destructive actions. Status banner shown when
-                payments exist; otherwise the two action buttons are shown. */}
+
+            {/* ─────────── PAYMENT BLOCK ─────────── */}
+            {/* The hero of the slide-over. Checkout is the moment of joy at
+                the end of a session, presented as a single composed card
+                with the action sized appropriately. Mark as paid lives
+                inside the same card as a paired link, not floating below. */}
             {!appt.preview && appt.status !== 'cancelled' && !paymentsLoading && (
               <>
-                {paidTotalCents > 0 && (
-                  <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
-                    <span style={{fontSize:18}}>✓</span>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:700,color:'#15803D'}}>Paid ${(paidTotalCents/100).toFixed(2)}</div>
-                      <div style={{fontSize:11,color:'#16A34A',marginTop:2}}>
-                        {paymentRows.filter(p=>p.status==='succeeded').map(p => {
-                          const m = p.payment_method;
-                          if (m === 'stripe_card_on_file' || m === 'stripe_card_new') return p.payment_method_detail || 'Card';
-                          if (m === 'stripe_payment_link') return 'Pay link';
-                          if (m === 'cash') return 'Cash';
-                          if (m === 'venmo') return 'Venmo';
-                          if (m === 'zelle') return 'Zelle';
-                          if (m === 'cashapp') return 'Cash App';
-                          if (m === 'check') return 'Check';
-                          return 'Other';
-                        }).join(', ')}
+                {paidTotalCents > 0 ? (
+                  /* PAID STATE: warm sage receipt card. Calm, finished, complete. */
+                  <div style={{
+                    background:'linear-gradient(180deg, #F0F6EE 0%, #E8F1E5 100%)',
+                    border:'1.5px solid #B7D1AB',
+                    borderRadius:16,
+                    padding:'18px 18px 14px',
+                    boxShadow:'0 1px 0 rgba(255,255,255,0.6) inset',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:8}}>
+                      <span style={{display:'inline-flex',alignItems:'center',justifyContent:'center',width:28,height:28,borderRadius:999,background:'#2A5741',color:'#fff',fontSize:15,fontWeight:700}}>✓</span>
+                      <div style={{fontFamily:'Georgia, serif',fontSize:20,fontWeight:400,color:'#1F4030',letterSpacing:'-0.01em'}}>
+                        Paid <span style={{fontWeight:600}}>${(paidTotalCents/100).toFixed(2)}</span>
                       </div>
                     </div>
-                    <button onClick={()=>setShowCheckout(true)} style={{background:'transparent',color:'#15803D',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',fontStyle:'italic',fontFamily:'Georgia, serif',textDecoration:'underline'}}>
-                      Add another
+                    <div style={{fontSize:12,color:'#5B7551',marginLeft:38,fontFamily:'Georgia, serif',fontStyle:'italic',marginBottom:10}}>
+                      {paymentRows.filter(p=>p.status==='succeeded').map(p => {
+                        const m = p.payment_method;
+                        if (m === 'stripe_card_on_file' || m === 'stripe_card_new') return p.payment_method_detail || 'Card';
+                        if (m === 'stripe_payment_link') return 'Pay link';
+                        if (m === 'cash') return 'Cash';
+                        if (m === 'venmo') return 'Venmo';
+                        if (m === 'zelle') return 'Zelle';
+                        if (m === 'cashapp') return 'Cash App';
+                        if (m === 'check') return 'Check';
+                        return 'Other';
+                      }).join(' · ')}
+                    </div>
+                    <button onClick={()=>setShowCheckout(true)}
+                      style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',marginLeft:38,padding:0}}>
+                      + Add another payment
                     </button>
                   </div>
-                )}
-                {pendingTotalCents > 0 && (
-                  <div style={{background:'#FEF3C7',border:'1.5px solid #FCD34D',borderRadius:10,padding:'12px 14px',display:'flex',alignItems:'center',gap:10}}>
-                    <span style={{fontSize:18}}>📲</span>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:13,fontWeight:700,color:'#92400E'}}>Pay link sent · ${(pendingTotalCents/100).toFixed(2)}</div>
-                      <div style={{fontSize:11,color:'#B45309',marginTop:2}}>Awaiting client payment</div>
+                ) : pendingTotalCents > 0 ? (
+                  /* PENDING STATE: link sent, waiting */
+                  <div style={{
+                    background:'linear-gradient(180deg, #FFFBEB 0%, #FEF3C7 100%)',
+                    border:'1.5px solid #FCD34D',
+                    borderRadius:16,
+                    padding:'16px 18px',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',gap:10}}>
+                      <span style={{fontSize:20}}>📲</span>
+                      <div style={{flex:1}}>
+                        <div style={{fontFamily:'Georgia, serif',fontSize:16,fontWeight:600,color:'#78350F'}}>Pay link sent · ${(pendingTotalCents/100).toFixed(2)}</div>
+                        <div style={{fontSize:12,color:'#92400E',marginTop:2,fontStyle:'italic',fontFamily:'Georgia, serif'}}>Awaiting client payment</div>
+                      </div>
                     </div>
                   </div>
-                )}
-                {paidTotalCents === 0 && (
-                  <>
+                ) : (
+                  /* UNPAID STATE: the hero. Forest gradient Checkout pill
+                      with subtle glow + Mark as paid as paired text below. */
+                  <div style={{
+                    background:'linear-gradient(180deg, #FCFAF5 0%, #F7F3EA 100%)',
+                    border:'1.5px solid #E8DFC9',
+                    borderRadius:16,
+                    padding:'18px 16px 14px',
+                  }}>
                     <button onClick={()=>setShowCheckout(true)}
-                      style={{background:'linear-gradient(135deg, #1F4030, #2A5741)',color:'#fff',border:'none',borderRadius:12,padding:'14px 18px',fontSize:15,fontWeight:700,cursor:'pointer',boxShadow:'0 2px 10px rgba(42,87,65,0.2)',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                      💳 Checkout
+                      style={{
+                        width:'100%',
+                        background:'linear-gradient(135deg, #2A5741 0%, #1F4030 100%)',
+                        color:'#fff',
+                        border:'none',
+                        borderRadius:14,
+                        padding:'16px 20px',
+                        fontSize:16,
+                        fontWeight:600,
+                        cursor:'pointer',
+                        boxShadow:'0 4px 14px rgba(31,64,48,0.28), 0 1px 0 rgba(255,255,255,0.15) inset',
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'center',
+                        gap:8,
+                        letterSpacing:'0.01em',
+                      }}>
+                      Checkout
                     </button>
-                    <button onClick={()=>setShowMarkPaid(true)}
-                      style={{background:'transparent',color:'#2A5741',border:'none',padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',textAlign:'center',fontStyle:'italic',fontFamily:'Georgia, serif',textDecoration:'underline'}}>
-                      Mark as paid
-                    </button>
-                  </>
+                    <div style={{display:'flex',justifyContent:'center',marginTop:10}}>
+                      <button onClick={()=>setShowMarkPaid(true)}
+                        style={{
+                          background:'transparent',
+                          color:'#6B7551',
+                          border:'none',
+                          padding:'6px 12px',
+                          fontSize:13,
+                          fontWeight:500,
+                          cursor:'pointer',
+                          fontFamily:'Georgia, serif',
+                          fontStyle:'italic',
+                        }}>
+                        or mark as paid
+                      </button>
+                    </div>
+                  </div>
                 )}
               </>
             )}
-            {!appt.preview && (
-              <button onClick={() => onReschedule(appt)}
-                style={{background:'transparent',color:'#7C3AED',border:'1.5px solid #C4B5FD',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-                📅 Reschedule
-              </button>
-            )}
-            {canMarkNoShow && !confirmCancel && (
-              <button onClick={() => openCancelFlow({ isNoShow: true })}
-                style={{background:'transparent',color:'#92400E',border:'1.5px solid #FCD34D',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-                🚫 Mark as No-Show
-              </button>
-            )}
+
+            {/* ─────────── QUIET ACTIONS CLUSTER ───────────
+                Reschedule, No-Show, Cancel: small ghost buttons in a row.
+                Lower visual weight than Checkout, but still accessible. */}
             {!appt.preview && !confirmCancel && (
-              <button onClick={() => openCancelFlow()}
-                style={{background:'transparent',color:'#DC2626',border:'1.5px solid #FECACA',borderRadius:10,padding:'11px 16px',fontSize:14,fontWeight:600,cursor:'pointer'}}>
-                🗑 Cancel Appointment
-              </button>
+              <div style={{display:'flex',gap:6,marginTop:4,paddingTop:14,borderTop:'1px solid #F0EDE5'}}>
+                <button onClick={() => onReschedule(appt)}
+                  style={{flex:1,background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  <span style={{fontSize:12}}>📅</span> Reschedule
+                </button>
+                {canMarkNoShow && (
+                  <button onClick={() => openCancelFlow({ isNoShow: true })}
+                    style={{flex:1,background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                    <span style={{fontSize:12}}>🚫</span> No-show
+                  </button>
+                )}
+                <button onClick={() => openCancelFlow()}
+                  style={{flex:1,background:'transparent',color:'#9CA3AF',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  <span style={{fontSize:12}}>✕</span> Cancel
+                </button>
+              </div>
             )}
             {!appt.preview && confirmCancel && (
               <div style={{background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px 16px'}}>
