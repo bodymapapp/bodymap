@@ -481,6 +481,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   const overlayStyle = {
     position: 'fixed',
     inset: 0,
+    height: '100dvh',
     background: 'rgba(15, 30, 25, 0.55)',
     backdropFilter: 'blur(6px)',
     WebkitBackdropFilter: 'blur(6px)',
@@ -497,10 +498,13 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         // Full-screen takeover on mobile. No rounded corners because
         // it's edge-to-edge. Flex column with fixed header, scrollable
         // middle, fixed footer.
+        // Phase 13.8.2 (HK May 17 2026): 100dvh for iOS Safari, which
+        // measures plain '100%' against the layout viewport and pushes
+        // the footer below the visible area. dvh tracks visible viewport.
         background: '#fff',
         width: '100%',
-        height: '100%',
-        maxHeight: '100%',
+        height: '100dvh',
+        maxHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: 'none',

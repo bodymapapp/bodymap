@@ -86,6 +86,7 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
   const overlayStyle = {
     position: 'fixed',
     inset: 0,
+    height: '100dvh',
     background: 'rgba(15, 30, 25, 0.55)',
     backdropFilter: 'blur(6px)',
     WebkitBackdropFilter: 'blur(6px)',
@@ -99,10 +100,17 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
   };
   const sheetStyle = isMobileViewport
     ? {
+        // Phase 13.8.2 (HK May 17 2026): iOS Safari measures '100%'
+        // against the layout viewport rather than the visible viewport.
+        // The footer was rendering at the bottom of the LAYOUT viewport,
+        // which sat below where the user could see on iPhone. Switch
+        // to 100dvh (dynamic viewport height) which tracks the visible
+        // viewport. Modern Safari/Chrome support this; older browsers
+        // would fall back to 100vh via the override below.
         background: '#fff',
         width: '100%',
-        height: '100%',
-        maxHeight: '100%',
+        height: '100dvh',
+        maxHeight: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: 'none',
