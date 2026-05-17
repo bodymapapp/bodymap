@@ -412,55 +412,82 @@ export async function notifyClient({
   }
 
   // ─── Channel 3: Client push notification (PWA) ─────────────────
-  // Calls send-push-client edge function. Active subscriptions live
-  // in client_push_subscriptions (separate table from therapist's
-  // push_subscriptions). Push is best-effort; we fire if the client
-  // has ever subscribed via the booking-confirmed page banner. No
-  // per-event opt-in on the client side, just one global subscribe.
+  // Short-circuit: if the client has no active push subscriptions,
+  // skip the network call entirely and log as 'skipped'. This
+  // matters because (a) client push is currently tabled pending
+  // client login (see CLIENT_PUSH_STATUS in src/lib/notificationSpec.js),
+  // so most clients will have zero subscriptions, and (b) hitting
+  // send-push-client just to get back {sent: 0} wastes a request
+  // and risks false-failed log rows if the function isn't deployed
+  // or returns an error.
   if (client.id) {
-    try {
-      const supabaseUrl = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_URL') : '';
-      const serviceKey = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') : '';
-      const pushUrl = `${supabaseUrl}/functions/v1/send-push-client`;
-      const pushTitle = emailSubject || smsText?.slice(0, 60) || `Update from ${therapist.business_name || therapist.full_name || 'your therapist'}`;
-      const pushBody = smsText || (emailHtml ? emailHtml.replace(/<[^>]+>/g, '').slice(0, 140) : '');
-      const pushRes = await fetch(pushUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${serviceKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          client_id: client.id,
-          title: pushTitle,
-          body: pushBody,
-          url: therapist.custom_url ? `/${therapist.custom_url}` : '/',
-          tag: eventType,
-        }),
+    const { count: subCount } = await supabase
+      .from('client_push_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('client_id', client.id)
+      .is('unsubscribed_at', null);
+
+    if (!subCount || subCount === 0) {
+      result.push = { ok: true, skipped: 'no_active_subscriptions' };
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: bookingId || null,
+        client_id: client.id || null,
+        session_id: sessionId || null,
+        notification_type: eventType,
+        audience: 'client',
+        channel: 'push',
+        recipient: client.id,
+        status: 'skipped',
+        provider_id: null,
+        body_snippet: (smsText || emailSubject || '').slice(0, 200),
+        error_message: 'no_active_subscriptions',
       });
-      const pushData = await pushRes.json();
-      if (pushRes.ok) {
-        result.push = { ok: true, sent: pushData.sent || 0, removed: pushData.removed || 0 };
-      } else {
-        result.push = { ok: false, error: pushData.error || 'push_send_failed' };
+    } else {
+      try {
+        const supabaseUrl = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_URL') : '';
+        const serviceKey = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') : '';
+        const pushUrl = `${supabaseUrl}/functions/v1/send-push-client`;
+        const pushTitle = emailSubject || smsText?.slice(0, 60) || `Update from ${therapist.business_name || therapist.full_name || 'your therapist'}`;
+        const pushBody = smsText || (emailHtml ? emailHtml.replace(/<[^>]+>/g, '').slice(0, 140) : '');
+        const pushRes = await fetch(pushUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${serviceKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            client_id: client.id,
+            title: pushTitle,
+            body: pushBody,
+            url: therapist.custom_url ? `/${therapist.custom_url}` : '/',
+            tag: eventType,
+          }),
+        });
+        const pushData = await pushRes.json();
+        if (pushRes.ok) {
+          result.push = { ok: true, sent: pushData.sent || 0, removed: pushData.removed || 0 };
+        } else {
+          result.push = { ok: false, error: pushData.error || 'push_send_failed' };
+        }
+      } catch (e) {
+        result.push = { ok: false, error: String(e?.message || e) };
       }
-    } catch (e) {
-      result.push = { ok: false, error: String(e?.message || e) };
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: bookingId || null,
+        client_id: client.id || null,
+        session_id: sessionId || null,
+        notification_type: eventType,
+        audience: 'client',
+        channel: 'push',
+        recipient: client.id,
+        status: result.push?.ok && result.push?.sent > 0 ? 'sent' : (result.push?.ok ? 'skipped' : 'failed'),
+        provider_id: null,
+        body_snippet: (smsText || emailSubject || '').slice(0, 200),
+        error_message: result.push?.error || (result.push?.ok && result.push?.sent === 0 ? 'no_active_subscriptions' : null),
+      });
     }
-    await logNotification(supabase, {
-      therapist_id: therapist.id,
-      booking_id: bookingId || null,
-      client_id: client.id || null,
-      session_id: sessionId || null,
-      notification_type: eventType,
-      audience: 'client',
-      channel: 'push',
-      recipient: client.id,
-      status: result.push?.ok && result.push?.sent > 0 ? 'sent' : (result.push?.ok ? 'skipped' : 'failed'),
-      provider_id: null,
-      body_snippet: (smsText || emailSubject || '').slice(0, 200),
-      error_message: result.push?.error || (result.push?.ok && result.push?.sent === 0 ? 'no_active_subscriptions' : null),
-    });
   } else {
     result.push = { ok: true, skipped: 'no_client_id' };
   }
