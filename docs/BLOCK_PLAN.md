@@ -97,6 +97,21 @@ Platform-level work that doesn't belong to a single ribbon.
 **Files touched (18):** BookingModal, AddClientModal, WaitlistModal, QuickSendModal, ScheduleDashboard (2 modals), PracticeAgreement, SessionList, MembershipsCard, EventsCard, PackagesCard, ClientList (2 nudges), MarketingNudges, Outreach (2 places), QRCodesCard, Comparison, IntakeEditor (5 places), Dashboard (3 places), BookingPage (6 places).
 **Pattern documented for future modals:** use `CloseButton` from `src/components/CloseButton.jsx` for any modal/sheet/drawer close affordance. For inline list-row deletes, use a small `Delete` / `Remove` / `Dismiss` pill with red hover state. No bare × glyphs anywhere going forward.
 
+### Macro #9: Push as a first-class notification channel
+**Status:** queued, ~2 hours.
+**Why:** HK May 17 2026 ~6am, after seeing the Notification Compliance Dashboard: "What about notifications on both therapist and client phones that pop up on the mobile? Shouldn't that be added as another communication mechanism." Correct, it should. The PWA push pipeline (`supabase/functions/send-push/`, `usePushNotifications` hook, `push_subscriptions` table) exists but is wired as a side path, not as a unified channel in `notifyTherapist` / `notifyClient` / the notification spec.
+**What:** (1) add `push` as a channel to `ALL_CHANNELS_BY_AUDIENCE` in `src/lib/notificationSpec.js` for both therapist and client. (2) extend `notifyTherapist` and `notifyClient` in `supabase/functions/_shared/notifications.ts` to call `send-push` when the channel is enabled in prefs. (3) log push attempts to `notification_log` with `channel='push'`. (4) update the dashboard matrix to render 7 columns instead of 5.
+**Why HK pointed this out:** "How did you forget about it and what can we do so that you stay strategically and technologically as world's best?" Lesson learned: when designing the spec, grep for every existing mechanism that sends a message to a human. Don't trust the existing docs to be complete, they reflect what was in the engine at the time. Adding it to the design principles as a "before designing a notification spec" check.
+
+### Macro #10: Notification Compliance auto-fire + bulk-confirm
+**Status:** queued, ~3.5 hours.
+**Why:** HK May 17 2026 ~6am, principle violation flagged: "I thought I wont have to create an event and book a session. If we upload a CSV file or another way in which the system can do it vs. myself? This was the whole scalability discussion earlier. If I will need to replicate 28 events, we will be here all day."
+**What:** the dashboard at `/founder/notifications` shipped in Phase 11.2 makes gaps visible but still requires manual event triggering and per-cell confirmation. Two additions:
+  - **"Run full compliance test" button** that synthetically fires every touchpoint in the spec for the test therapist+client pair. Each touchpoint gets a `test_mode` flag passed in so the firing function knows it's a synthetic event (skip Stripe charges, use stub data for missing context like booking_id). Total fire time should be under 90 seconds for all 28 touchpoints.
+  - **Bulk-confirm by column.** Instead of 28 individual cell ticks, 7 column headers each get a "Confirm all yellow cells in this column" button. After running the auto-fire, HK confirms by channel: "Got all my T-Bell pings? ✓. Got all my T-Email? ✓." Five clicks (or seven, once Push is a channel), not 28.
+**Design principle this honors:** #10 "Industrialize the test, not the tester." Manual click-through doesn't scale to 28 touchpoints, let alone 50 when we add more. Auto-fire + bulk-confirm makes the dashboard true to its principle.
+**Companion change:** the dashboard should refresh from log table every few seconds automatically while the auto-fire is running, so HK watches cells light up in real time rather than clicking refresh.
+
 ---
 
 ## Per-ribbon improvements
