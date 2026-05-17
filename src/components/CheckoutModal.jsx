@@ -74,8 +74,46 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       .select('payment_method_id, card_last4, card_brand, stripe_customer_id')
       .eq('id', client.id)
       .single()
-      .then(({ data }) => {
-        if (data?.payment_method_id && data?.card_last4) {
+      .then(async ({ data }) => {
+        if (!data?.payment_method_id) return;
+
+        // Phase 13.5 followup (HK May 17 2026): self-heal rows where
+        // payment_method_id is set but card_last4 is null (a bug in
+        // earlier card-save flows where the publishable-key fetch
+        // silently failed). Call get-payment-method edge function,
+        // populate the missing fields, then show card-on-file.
+        if (!data.card_last4 && therapist?.stripe_account_id) {
+          try {
+            const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+            const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+            const res = await fetch(`${supabaseUrl}/functions/v1/get-payment-method`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${anonKey}`,
+                'apikey': anonKey,
+              },
+              body: JSON.stringify({
+                stripe_account_id: therapist.stripe_account_id,
+                payment_method_id: data.payment_method_id,
+              }),
+            });
+            const fixed = await res.json();
+            if (fixed?.last4) {
+              await supabase.from('clients').update({
+                card_last4: fixed.last4,
+                card_brand: fixed.brand,
+              }).eq('id', client.id);
+              data.card_last4 = fixed.last4;
+              data.card_brand = fixed.brand;
+            }
+          } catch (e) {
+            // Silent fail: show 'Enter new card' instead of card-on-file.
+            // Not a user-blocking error.
+          }
+        }
+
+        if (data.payment_method_id && data.card_last4) {
           setCardOnFile({
             payment_method_id: data.payment_method_id,
             last4: data.card_last4,
@@ -84,7 +122,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
           });
         }
       });
-  }, [client?.id]);
+  }, [client?.id, therapist?.stripe_account_id]);
 
   // Smart default for link delivery: SMS if client has phone AND therapist has twilio configured
   useEffect(() => {
@@ -274,16 +312,25 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       const paymentMethodId = setupIntent.payment_method;
 
       // Step 3: pull PaymentMethod details for card_last4 + card_brand.
-      // We use Stripe's API directly through the publishable key context
-      // already established on stripeRef.
-      const pmDetails = await fetch(`https://api.stripe.com/v1/payment_methods/${paymentMethodId}`, {
+      // Phase 13.5 followup (HK May 17 2026): cannot use Stripe's API
+      // directly from the browser with the publishable key (Stripe
+      // blocks reads of PaymentMethod objects without a secret key).
+      // Call our get-payment-method edge function instead.
+      const pmRes = await fetch(`${supabaseUrl}/functions/v1/get-payment-method`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${getStripePublishableKey()}`,
-          'Stripe-Account': therapist.stripe_account_id,
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
         },
-      }).then(r => r.json()).catch(() => null);
-      const cardLast4 = pmDetails?.card?.last4 || null;
-      const cardBrand = pmDetails?.card?.brand || null;
+        body: JSON.stringify({
+          stripe_account_id: therapist.stripe_account_id,
+          payment_method_id: paymentMethodId,
+        }),
+      });
+      const pmDetails = await pmRes.json().catch(() => null);
+      const cardLast4 = pmDetails?.last4 || null;
+      const cardBrand = pmDetails?.brand || null;
 
       // Persist on clients row so next visit shows card-on-file.
       await supabase.from('clients').update({
