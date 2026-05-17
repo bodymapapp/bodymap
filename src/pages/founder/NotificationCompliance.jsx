@@ -298,10 +298,42 @@ export default function NotificationCompliance() {
             Every touchpoint from <strong>docs/NOTIFICATION_MAP.md</strong> mapped to every channel (Bell, Push, Email, SMS for therapist; Email, SMS, Push for client). Color reflects the latest notification_log row + your confirmation status. Tap "Run full compliance test" below to fire every touchpoint at once.
           </p>
           {therapist && (
-            <div style={{ fontSize: 12, color: COLORS.inkSoft, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
-              Therapist: <strong>{therapist.full_name || therapist.email}</strong> (<code>{therapist.id.slice(0, 8)}</code>)
-              {therapist.twilio_phone_number ? ` · Twilio: ${therapist.twilio_phone_number}` : ' · Twilio NOT configured'}
-              {client ? ` · Client: ${client.name} (${client.phone || 'no phone'})` : ' · Client not loaded'}
+            <div style={{
+              background: '#fff',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 12,
+              padding: '14px 18px',
+              marginTop: 4,
+              fontSize: 12,
+            }}>
+              <div style={{ fontWeight: 700, color: COLORS.forestDeep, marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase', fontSize: 10 }}>
+                Sender & destinations
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', rowGap: 4, columnGap: 12 }}>
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>Twilio sender:</div>
+                <div style={{ color: COLORS.ink }}><code>{therapist.twilio_phone_number || '(not configured)'}</code> <span style={{ color: COLORS.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>(platform "From" number, never receives)</span></div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600, paddingTop: 6, borderTop: `1px solid ${COLORS.border}`, marginTop: 4 }}>T-SMS to:</div>
+                <div style={{ color: COLORS.ink, paddingTop: 6, borderTop: `1px solid ${COLORS.border}`, marginTop: 4 }}><code>{therapist.phone || '(not set)'}</code> <span style={{ color: COLORS.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>(Joy Therapist's personal phone, where platform alerts land)</span></div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>T-Email to:</div>
+                <div style={{ color: COLORS.ink }}><code>{therapist.email}</code></div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>T-Bell to:</div>
+                <div style={{ color: COLORS.ink }}>bell drawer on Joy Therapist dashboard</div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>T-Push to:</div>
+                <div style={{ color: COLORS.ink }}>devices subscribed via dashboard Settings</div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600, paddingTop: 6, borderTop: `1px solid ${COLORS.border}`, marginTop: 4 }}>C-SMS to:</div>
+                <div style={{ color: COLORS.ink, paddingTop: 6, borderTop: `1px solid ${COLORS.border}`, marginTop: 4 }}><code>{client?.phone || '(client not loaded)'}</code> <span style={{ color: COLORS.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>(Joy Client's phone)</span></div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>C-Email to:</div>
+                <div style={{ color: COLORS.ink }}><code>{client?.email || '(client not loaded)'}</code></div>
+
+                <div style={{ color: COLORS.inkSoft, fontWeight: 600 }}>C-Push:</div>
+                <div style={{ color: COLORS.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>queued (requires client login, see BLOCK_PLAN Macro #2)</div>
+              </div>
             </div>
           )}
 
@@ -419,6 +451,23 @@ export default function NotificationCompliance() {
                     const log = logsByKey[key];
                     return (log?.status === 'sent' && !log?.confirmed_at) ? n + 1 : n;
                   }, 0);
+                  // Compute destination for this column so HK can see at a glance
+                  // where messages land. T-SMS goes to therapist.phone (not the
+                  // Twilio sender), T-Email to therapist.email, T-Bell to the
+                  // bell drawer (no external destination), T-Push to whichever
+                  // device(s) the therapist has subscribed for PWA push. Client
+                  // columns follow the same logic for the client side.
+                  let destination = null;
+                  if (col.audience === 'therapist') {
+                    if (col.channel === 'app_alert') destination = 'bell drawer';
+                    else if (col.channel === 'email') destination = therapist?.email || null;
+                    else if (col.channel === 'sms') destination = therapist?.phone || '(not set)';
+                    else if (col.channel === 'push') destination = 'subscribed devices';
+                  } else if (col.audience === 'client') {
+                    if (col.channel === 'email') destination = client?.email || null;
+                    else if (col.channel === 'sms') destination = client?.phone || '(not set)';
+                    else if (col.channel === 'push') destination = 'queued';
+                  }
                   return (
                     <th key={`${col.audience}-${col.channel}`} style={{
                       padding: '10px 6px 8px',
@@ -426,7 +475,7 @@ export default function NotificationCompliance() {
                       borderLeft: isClientBoundary ? `2px solid ${COLORS.border}` : 'none',
                       background: COLORS.cream,
                       textAlign: 'center',
-                      minWidth: 90,
+                      minWidth: 100,
                       verticalAlign: 'top',
                     }}>
                       <div style={{
@@ -434,10 +483,25 @@ export default function NotificationCompliance() {
                         fontWeight: 700,
                         letterSpacing: '0.05em',
                         color: col.audience === 'therapist' ? COLORS.forest : COLORS.sage,
-                        marginBottom: 6,
+                        marginBottom: 2,
                       }}>
                         {col.short}
                       </div>
+                      {destination && (
+                        <div title={`Destination for ${col.short}: ${destination}`} style={{
+                          fontSize: 9,
+                          fontStyle: 'italic',
+                          fontFamily: 'Georgia, serif',
+                          color: COLORS.inkFade,
+                          marginBottom: 5,
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          maxWidth: 120,
+                        }}>
+                          → {destination}
+                        </div>
+                      )}
                       <button
                         type="button"
                         onClick={() => bulkConfirmColumn(col)}
