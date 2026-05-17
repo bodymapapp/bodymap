@@ -333,116 +333,188 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
     }
   }
 
+  // Detect mobile so we can take over the full screen.
+  // Below 600px = mobile = full takeover. Above = centered bottom sheet.
+  const [isMobileViewport, setIsMobileViewport] = useState(typeof window !== 'undefined' && window.innerWidth < 600);
+  useEffect(() => {
+    const onResize = () => setIsMobileViewport(window.innerWidth < 600);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // Lock body scroll while modal is open so the page underneath
+  // can't scroll behind the sheet. Restore on unmount.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    // Note: per HK's iOS Safari rule, avoid setting body.overflow=hidden
+    // directly. Use position:fixed lock pattern instead, but for this
+    // modal we can rely on the overlay catching scroll. Skipping lock.
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   const overlayStyle = {
     position: 'fixed',
     inset: 0,
     background: 'rgba(15, 30, 25, 0.55)',
-    backdropFilter: 'blur(4px)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: isMobileViewport ? 'stretch' : 'center',
     justifyContent: 'center',
     zIndex: 1000,
     padding: 0,
   };
 
-  const sheetStyle = {
+  const sheetStyle = isMobileViewport
+    ? {
+        // Full-screen takeover on mobile. No rounded corners because
+        // it's edge-to-edge. Flex column with fixed header, scrollable
+        // middle, fixed footer.
+        background: '#fff',
+        width: '100%',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: 'none',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }
+    : {
+        // Centered card on tablet/desktop, capped width.
+        background: '#fff',
+        borderRadius: 20,
+        width: '100%',
+        maxWidth: 540,
+        maxHeight: '88vh',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        margin: 16,
+      };
+
+  // Fixed header at top: title + close. Doesn't scroll.
+  const headerStyle = {
+    flex: '0 0 auto',
+    padding: isMobileViewport ? '18px 20px 14px' : '20px 24px 14px',
+    borderBottom: `1px solid ${C.border}`,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
     background: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    width: '100%',
-    maxWidth: 520,
-    maxHeight: '92vh',
+    // Safe-area padding for iOS notch
+    paddingTop: isMobileViewport ? 'max(18px, env(safe-area-inset-top))' : 20,
+  };
+
+  // Scrollable middle: form content.
+  const bodyStyle = {
+    flex: '1 1 auto',
     overflowY: 'auto',
-    padding: '24px 22px 32px',
-    boxShadow: '0 -12px 48px rgba(0,0,0,0.18)',
-    fontFamily: 'system-ui, sans-serif',
+    WebkitOverflowScrolling: 'touch',
+    padding: isMobileViewport ? '20px 20px 24px' : '20px 24px 24px',
   };
 
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
-        {/* Drag handle */}
-        <div style={{ width: 40, height: 4, background: C.border, borderRadius: 999, margin: '0 auto 16px' }} />
-
         {step === 'success' ? (
-          <SuccessView detail={successDetail} onClose={onClose} linkUrl={linkUrl} linkDelivery={linkDelivery} clientPhone={client?.phone || appt?.phone} clientEmail={client?.email || appt?.email} therapistName={therapist?.business_name || therapist?.full_name} />
+          <>
+            <div style={headerStyle}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em' }}>
+                  Payment
+                </div>
+                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {appt?.client || client?.name}
+                </div>
+              </div>
+              <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 26, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto' }}>×</button>
+            </div>
+            <div style={bodyStyle}>
+              <SuccessView detail={successDetail} onClose={onClose} linkUrl={linkUrl} linkDelivery={linkDelivery} clientPhone={client?.phone || appt?.phone} clientEmail={client?.email || appt?.email} therapistName={therapist?.business_name || therapist?.full_name} />
+            </div>
+          </>
         ) : (
           <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-              <div>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep }}>
-                  {step === 'method' ? 'Checkout' : 'Checkout'}
+            {/* Fixed header: title + subtitle + close. */}
+            <div style={headerStyle}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                  Checkout
                 </div>
-                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
+                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {appt?.client || client?.name} · {appt?.service || 'Session'}
                 </div>
               </div>
-              <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 20, color: C.inkFade, cursor: 'pointer', padding: 4 }}>×</button>
+              <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 28, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto', marginTop: -2 }}>×</button>
             </div>
 
-            {/* Amount row, always visible */}
-            <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} />
+            {/* Scrollable body */}
+            <div style={bodyStyle}>
+              <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} />
 
-            {step === 'method' && (
-              <MethodPicker
-                cardOnFile={cardOnFile}
-                onCardOnFile={() => setStep('card_on_file')}
-                onCardNew={() => setStep('card_new')}
-                onSendLink={() => setStep('send_link')}
-                validAmount={validAmount}
-              />
-            )}
+              {step === 'method' && (
+                <MethodPicker
+                  cardOnFile={cardOnFile}
+                  onCardOnFile={() => setStep('card_on_file')}
+                  onCardNew={() => setStep('card_new')}
+                  onSendLink={() => setStep('send_link')}
+                  validAmount={validAmount}
+                />
+              )}
 
-            {step === 'card_on_file' && (
-              <ConfirmCardOnFile
-                cardOnFile={cardOnFile}
-                totalCents={totalCents}
-                onConfirm={chargeCardOnFile}
-                onBack={() => setStep('method')}
-                processing={processing}
-              />
-            )}
+              {step === 'card_on_file' && (
+                <ConfirmCardOnFile
+                  cardOnFile={cardOnFile}
+                  totalCents={totalCents}
+                  onConfirm={chargeCardOnFile}
+                  onBack={() => setStep('method')}
+                  processing={processing}
+                />
+              )}
 
-            {step === 'card_new' && (
-              <NewCardForm
-                cardDivRef={cardDivRef}
-                ready={stripeReady}
-                totalCents={totalCents}
-                onConfirm={chargeNewCard}
-                onBack={() => setStep('method')}
-                processing={processing}
-              />
-            )}
+              {step === 'card_new' && (
+                <NewCardForm
+                  cardDivRef={cardDivRef}
+                  ready={stripeReady}
+                  totalCents={totalCents}
+                  onConfirm={chargeNewCard}
+                  onBack={() => setStep('method')}
+                  processing={processing}
+                />
+              )}
 
-            {step === 'send_link' && (
-              <SendLinkForm
-                client={client}
-                appt={appt}
-                therapist={therapist}
-                linkDelivery={linkDelivery}
-                setLinkDelivery={setLinkDelivery}
-                totalCents={totalCents}
-                onConfirm={sendPayLink}
-                onBack={() => setStep('method')}
-                processing={processing}
-              />
-            )}
+              {step === 'send_link' && (
+                <SendLinkForm
+                  client={client}
+                  appt={appt}
+                  therapist={therapist}
+                  linkDelivery={linkDelivery}
+                  setLinkDelivery={setLinkDelivery}
+                  totalCents={totalCents}
+                  onConfirm={sendPayLink}
+                  onBack={() => setStep('method')}
+                  processing={processing}
+                />
+              )}
 
-            {errorMsg && (
-              <div style={{
-                marginTop: 14,
-                background: C.redSoft,
-                border: `1.5px solid #FCA5A5`,
-                borderRadius: 10,
-                padding: '10px 14px',
-                fontSize: 13,
-                color: '#991B1B',
-                fontStyle: 'italic',
-                fontFamily: 'Georgia, serif',
-              }}>
-                {errorMsg}
-              </div>
-            )}
+              {errorMsg && (
+                <div style={{
+                  marginTop: 14,
+                  background: C.redSoft,
+                  border: `1.5px solid #FCA5A5`,
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  color: '#991B1B',
+                  fontStyle: 'italic',
+                  fontFamily: 'Georgia, serif',
+                }}>
+                  {errorMsg}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>

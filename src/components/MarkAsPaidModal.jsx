@@ -10,7 +10,7 @@
 // Per GlossGenius pattern: 'Mark as paid' is a quieter secondary
 // button below 'Checkout' on the calendar slide-over.
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 
 const C = {
@@ -73,102 +73,156 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
     }
   }
 
+  const [isMobileViewport, setIsMobileViewport] = useState(typeof window !== 'undefined' && window.innerWidth < 600);
+  useEffect(() => {
+    const onResize = () => setIsMobileViewport(window.innerWidth < 600);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
   const overlayStyle = {
     position: 'fixed',
     inset: 0,
     background: 'rgba(15, 30, 25, 0.55)',
-    backdropFilter: 'blur(4px)',
+    backdropFilter: 'blur(6px)',
+    WebkitBackdropFilter: 'blur(6px)',
     display: 'flex',
-    alignItems: 'flex-end',
+    alignItems: isMobileViewport ? 'stretch' : 'center',
     justifyContent: 'center',
     zIndex: 1000,
   };
-  const sheetStyle = {
+  const sheetStyle = isMobileViewport
+    ? {
+        background: '#fff',
+        width: '100%',
+        height: '100%',
+        maxHeight: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: 'none',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }
+    : {
+        background: '#fff',
+        borderRadius: 20,
+        width: '100%',
+        maxWidth: 540,
+        maxHeight: '88vh',
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        margin: 16,
+      };
+
+  const headerStyle = {
+    flex: '0 0 auto',
+    padding: isMobileViewport ? '18px 20px 14px' : '20px 24px 14px',
+    borderBottom: `1px solid ${C.border}`,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
     background: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    width: '100%',
-    maxWidth: 520,
-    maxHeight: '88vh',
+    paddingTop: isMobileViewport ? 'max(18px, env(safe-area-inset-top))' : 20,
+  };
+  const bodyStyle = {
+    flex: '1 1 auto',
     overflowY: 'auto',
-    padding: '24px 22px 32px',
-    boxShadow: '0 -12px 48px rgba(0,0,0,0.18)',
-    fontFamily: 'system-ui, sans-serif',
+    WebkitOverflowScrolling: 'touch',
+    padding: isMobileViewport ? '20px 20px 12px' : '20px 24px 16px',
+  };
+  const footerStyle = {
+    flex: '0 0 auto',
+    padding: isMobileViewport ? '12px 20px max(16px, env(safe-area-inset-bottom))' : '16px 24px 20px',
+    borderTop: `1px solid ${C.border}`,
+    background: '#fff',
+    display: 'flex',
+    gap: 10,
   };
 
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
-        <div style={{ width: 40, height: 4, background: C.border, borderRadius: 999, margin: '0 auto 16px' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
-          <div>
-            <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep }}>Mark as paid</div>
-            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>Record a payment you took outside the app.</div>
+        <div style={headerStyle}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Mark as paid</div>
+            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>Record a payment you took outside the app.</div>
           </div>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', fontSize: 20, color: C.inkFade, cursor: 'pointer', padding: 4 }}>×</button>
+          <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 28, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto', marginTop: -2 }}>×</button>
         </div>
 
-        {/* Amount + tip */}
-        <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 16 }}>
-          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
-            <Field label="Amount" value={amount} setValue={setAmount} />
-            <Field label="Tip (optional)" value={tip} setValue={setTip} />
+        <div style={bodyStyle}>
+          {/* Amount + tip */}
+          <div style={{ background: C.cream, border: `1px solid ${C.border}`, borderRadius: 14, padding: '16px 18px', marginBottom: 18 }}>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'flex-end' }}>
+              <Field label="Amount" value={amount} setValue={setAmount} />
+              <Field label="Tip (optional)" value={tip} setValue={setTip} />
+            </div>
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
+              <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: C.forestDeep, fontFamily: 'Georgia, serif' }}>${(totalCents / 100).toFixed(2)}</div>
+            </div>
           </div>
-          <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderTop: `1px dashed ${C.border}`, paddingTop: 10 }}>
-            <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total</div>
-            <div style={{ fontSize: 20, fontWeight: 700, color: C.forestDeep }}>${(totalCents / 100).toFixed(2)}</div>
+
+          {/* Method picker */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Payment method</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {METHODS.map(m => (
+                <button key={m.value} type="button" onClick={() => setMethod(m.value)} style={{
+                  background: method === m.value ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
+                  color: method === m.value ? '#fff' : C.ink,
+                  border: method === m.value ? 'none' : `1.5px solid ${C.border}`,
+                  borderRadius: 12,
+                  padding: '14px 8px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: 6,
+                  boxShadow: method === m.value ? '0 2px 8px rgba(42,87,65,0.18)' : 'none',
+                }}>
+                  <span style={{ fontSize: 18 }}>{m.icon}</span>
+                  {m.label}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Note */}
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Note (optional)</div>
+            <input
+              type="text"
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              placeholder="e.g. Venmo @sarah-foo, check #1234"
+              style={{
+                width: '100%',
+                border: `1.5px solid ${C.border}`,
+                borderRadius: 10,
+                padding: '11px 14px',
+                fontSize: 14,
+                color: C.ink,
+                background: '#fff',
+                boxSizing: 'border-box',
+                outline: 'none',
+                fontFamily: 'system-ui, sans-serif',
+              }} />
+          </div>
+
+          {errorMsg && (
+            <div style={{ marginTop: 14, background: C.redSoft, border: `1.5px solid #FCA5A5`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#991B1B', fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
+              {errorMsg}
+            </div>
+          )}
         </div>
 
-        {/* Method picker */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Payment method</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {METHODS.map(m => (
-              <button key={m.value} type="button" onClick={() => setMethod(m.value)} style={{
-                background: method === m.value ? `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})` : '#fff',
-                color: method === m.value ? '#fff' : C.ink,
-                border: method === m.value ? 'none' : `1.5px solid ${C.border}`,
-                borderRadius: 12,
-                padding: '12px 8px',
-                fontSize: 13,
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-              }}>
-                <span style={{ fontSize: 18 }}>{m.icon}</span>
-                {m.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Note */}
-        <div style={{ marginBottom: 18 }}>
-          <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>Note (optional)</div>
-          <input
-            type="text"
-            value={note}
-            onChange={e => setNote(e.target.value)}
-            placeholder="e.g. Venmo @sarah-foo, check #1234"
-            style={{
-              width: '100%',
-              border: `1.5px solid ${C.border}`,
-              borderRadius: 10,
-              padding: '10px 14px',
-              fontSize: 14,
-              color: C.ink,
-              background: '#fff',
-              boxSizing: 'border-box',
-              outline: 'none',
-            }} />
-        </div>
-
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button type="button" onClick={onClose} disabled={saving} style={{ flex: '0 0 90px', background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+        <div style={footerStyle}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ flex: '0 0 100px', background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '13px 16px', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             Cancel
           </button>
           <button type="button" onClick={save} disabled={saving || !validAmount} style={{
@@ -177,21 +231,17 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
             color: '#fff',
             border: 'none',
             borderRadius: 12,
-            padding: '12px 18px',
+            padding: '13px 18px',
             fontSize: 15,
-            fontWeight: 700,
+            fontWeight: 600,
             cursor: (saving || !validAmount) ? 'wait' : 'pointer',
             opacity: validAmount ? 1 : 0.5,
+            boxShadow: saving ? 'none' : '0 4px 14px rgba(31,64,48,0.25)',
+            letterSpacing: '0.01em',
           }}>
             {saving ? 'Saving…' : `Record $${(totalCents / 100).toFixed(2)}`}
           </button>
         </div>
-
-        {errorMsg && (
-          <div style={{ marginTop: 14, background: C.redSoft, border: `1.5px solid #FCA5A5`, borderRadius: 10, padding: '10px 14px', fontSize: 13, color: '#991B1B', fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
-            {errorMsg}
-          </div>
-        )}
       </div>
     </div>
   );
