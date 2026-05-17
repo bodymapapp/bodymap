@@ -481,12 +481,14 @@ export default function CancellationChargeModal({
   return (
     <>
       <div onClick={busy ? undefined : onClose} style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 400,
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
+        // Phase 13.8.1 (HK May 17 2026): above MobileBottomNav (z=1000).
+        zIndex: 1100,
       }} />
       <div style={{
         position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
         width: 'min(440px, 92vw)', maxHeight: '88vh', overflowY: 'auto',
-        background: '#fff', borderRadius: 16, zIndex: 401,
+        background: '#fff', borderRadius: 16, zIndex: 1101,
         boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
       }}>
         {step === 'confirm' && (

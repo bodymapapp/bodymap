@@ -487,7 +487,8 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
     display: 'flex',
     alignItems: isMobileViewport ? 'stretch' : 'center',
     justifyContent: 'center',
-    zIndex: 1000,
+    // Phase 13.8.1 (HK May 17 2026): above MobileBottomNav (z=1000).
+    zIndex: 1100,
     padding: 0,
   };
 

@@ -92,7 +92,10 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
     display: 'flex',
     alignItems: isMobileViewport ? 'stretch' : 'center',
     justifyContent: 'center',
-    zIndex: 1000,
+    // Phase 13.8.1 (HK May 17 2026): MobileBottomNav is at zIndex 1000.
+    // Modal overlay must be above so its pinned footer (Confirm button)
+    // isn't visually clipped by the nav.
+    zIndex: 1100,
   };
   const sheetStyle = isMobileViewport
     ? {
@@ -225,7 +228,7 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
         </div>
 
         <div style={footerStyle}>
-          <button type="button" onClick={onClose} disabled={saving} style={{ flex: '0 0 100px', background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '13px 16px', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ flex: '0 0 100px', background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '15px 16px', fontSize: 14, fontWeight: 600, cursor: saving ? 'wait' : 'pointer' }}>
             Cancel
           </button>
           <button type="button" onClick={save} disabled={saving || !validAmount} style={{
@@ -234,15 +237,15 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
             color: '#fff',
             border: 'none',
             borderRadius: 12,
-            padding: '13px 18px',
-            fontSize: 15,
-            fontWeight: 600,
+            padding: '15px 18px',
+            fontSize: 16,
+            fontWeight: 700,
             cursor: (saving || !validAmount) ? 'wait' : 'pointer',
             opacity: validAmount ? 1 : 0.5,
             boxShadow: saving ? 'none' : '0 4px 14px rgba(31,64,48,0.25)',
             letterSpacing: '0.01em',
           }}>
-            {saving ? 'Saving…' : `Record $${(totalCents / 100).toFixed(2)}`}
+            {saving ? 'Saving…' : `Confirm $${(totalCents / 100).toFixed(2)} paid`}
           </button>
         </div>
       </div>
