@@ -10,6 +10,14 @@ const fmtShort = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month:
 const fmtMonth = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 const currency = (n) => `$${Number(n).toFixed(0)}`;
 
+// Phase 14.3 (HK May 17 2026): legacy tab visualizations (StatCards,
+// bar charts, calendars, session lists) operate on session-revenue
+// rows only. Cancel fees, refunds, and no-shows are surfaced on the
+// HeroPayCard separately and would double-count if included here.
+// Sample data rows have no 'source' tag, so they pass through.
+const isRevenueSession = (s) =>
+  s.source === 'payment' || s.source === 'booking_no_payment' || s.source === undefined;
+
 const DEFAULT_RATE = 85;
 
 const SAMPLE_SESSIONS = [
@@ -184,39 +192,52 @@ function SampleDataBanner() {
   );
 }
 
-// Phase 14.2 (HK May 17 2026): the Smart Billing hero card. Same
-// component used at the top of Daily, Weekly, Monthly, Yearly views.
+// Phase 14.2 + 14.3 (HK May 17 2026): the Smart Billing hero card.
+// Same component used at the top of Daily, Weekly, Monthly, Yearly.
 // Takes a sessions slice (already filtered to a period) plus a prior
 // slice for comparison, plus a label. Renders:
-//   1. Big "collected" number with method breakdown chips
+//   1. Big "collected" number (session revenue only)
 //   2. Comparison vs prior period
-//   3. Expected vs Actual line with leakage callout if any
-//   4. Tappable leakage detail (expands inline, lists unpaid sessions)
+//   3. Method breakdown chips (sessions only, not cancel fees)
+//   4. Cancellation fee revenue as a separate line
+//   5. Refunds as a small subtractive line
+//   6. No-shows count line
+//   7. Expected vs Actual with leakage callout
+//   8. Tappable leakage detail (expands inline)
 function HeroPayCard({ sessions, prevSessions, periodLabel }) {
   const [leakageOpen, setLeakageOpen] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
-  // Collected = sum of actuals for 'paid' sessions only.
-  // Leakage = sessions with status='outstanding' (completed bookings,
-  // no payment row). These represent services rendered but money not
-  // yet captured.
-  const paid = sessions.filter(s => s.status === 'paid');
-  const collected = paid.reduce((t, s) => t + (s.actual || 0), 0);
-
-  // Expected = rate sum across ALL real sessions (paid + outstanding).
-  // We don't include 'pending' or sample/unknown because expected revenue
-  // is the value of services actually rendered or due.
-  const realSessions = sessions.filter(s => s.status === 'paid' || s.status === 'outstanding');
-  const expected = realSessions.reduce((t, s) => t + (s.rate || 0), 0);
-
+  // Partition by source. Session revenue is the headline number;
+  // cancellation fees + refunds + no-shows show separately so they
+  // don't conflate the therapist's mental model of "what I earned
+  // from doing massages."
+  const sessionRevenueRows = sessions.filter(
+    s => s.status === 'paid' && s.source !== 'cancellation_fee'
+  );
+  const cancelFeeRows = sessions.filter(s => s.source === 'cancellation_fee');
+  const refundRows = sessions.filter(s => s.source === 'refund');
+  const noShowRows = sessions.filter(s => s.source === 'no_show');
   const leakage = sessions.filter(s => s.status === 'outstanding');
+
+  const collected = sessionRevenueRows.reduce((t, s) => t + (s.actual || 0), 0);
+  const cancelFeeTotal = cancelFeeRows.reduce((t, s) => t + (s.actual || 0), 0);
+  const refundTotal = refundRows.reduce((t, s) => t + (s.actual || 0), 0);
   const leakageAmt = leakage.reduce((t, s) => t + (s.rate || 0), 0);
 
-  // Method breakdown chips. Group by payment_method, sum cents.
-  // Display order: card-like first (most common), then cash, then digital wallets.
+  // Expected = rate sum across paid sessions (excluding cancel fees) + outstanding.
+  // Represents the value of services actually rendered or due. Cancel
+  // fees aren't services, so they don't count toward expected revenue.
+  const expectedRows = sessions.filter(
+    s => (s.status === 'paid' && s.source !== 'cancellation_fee') || s.status === 'outstanding'
+  );
+  const expected = expectedRows.reduce((t, s) => t + (s.rate || 0), 0);
+
+  // Method chips: sessions revenue only. Cancel fees rolled into their
+  // own line so they don't pad the card chip count.
   const methodOrder = ['card', 'cash', 'venmo', 'zelle', 'cashapp', 'check', 'other'];
   const byMethod = {};
-  paid.forEach(s => {
+  sessionRevenueRows.forEach(s => {
     const key = (s.method || '').startsWith('stripe_') ? 'card' : (s.method || 'other');
     byMethod[key] = (byMethod[key] || 0) + (s.actual || 0);
   });
@@ -224,9 +245,10 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
     .filter(m => byMethod[m] > 0)
     .map(m => ({ method: m, total: byMethod[m] }));
 
-  // Comparison vs prior period. Only meaningful if prevSessions has data.
+  // Comparison: session revenue this period vs session revenue prior
+  // period. Apples to apples (excludes cancel fees + refunds both sides).
   const prevCollected = (prevSessions || [])
-    .filter(s => s.status === 'paid')
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee')
     .reduce((t, s) => t + (s.actual || 0), 0);
   const hasComparison = (prevSessions || []).length > 0 || prevCollected > 0;
   const delta = collected - prevCollected;
@@ -302,6 +324,38 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
         </div>
       )}
 
+      {/* Phase 14.3: cancel fees / refunds / no-shows lines. Only render
+          when non-zero so the card doesn't fill with empty rows. */}
+      {(cancelFeeTotal > 0 || refundTotal > 0 || noShowRows.length > 0) && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 6,
+          marginBottom: 16,
+          paddingTop: 12,
+          borderTop: '1px solid #EDE6D6',
+        }}>
+          {cancelFeeTotal > 0 && (
+            <div style={{ fontSize: 13, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#2A5741', fontWeight: 700 }}>+ {currency(cancelFeeTotal)}</span>
+              <span>cancellation fees from {cancelFeeRows.length} booking{cancelFeeRows.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {refundTotal > 0 && (
+            <div style={{ fontSize: 13, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#DC2626', fontWeight: 700 }}>- {currency(refundTotal)}</span>
+              <span>refunded across {refundRows.length} payment{refundRows.length !== 1 ? 's' : ''}</span>
+            </div>
+          )}
+          {noShowRows.length > 0 && (
+            <div style={{ fontSize: 13, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#D97706', fontWeight: 700 }}>○ {noShowRows.length}</span>
+              <span>no-show{noShowRows.length !== 1 ? 's' : ''} this period</span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Expected vs Actual + leakage */}
       <div style={{
         paddingTop: 14,
@@ -314,7 +368,7 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
       }}>
         <div style={{ fontSize: 13, color: '#6B7280' }}>
           Expected <strong style={{ color: '#1F2937', fontWeight: 700 }}>{currency(expected)}</strong>
-          {' '}from {realSessions.length} session{realSessions.length !== 1 ? 's' : ''}
+          {' '}from {expectedRows.length} session{expectedRows.length !== 1 ? 's' : ''}
         </div>
         {leakage.length > 0 && (
           <button
@@ -372,12 +426,17 @@ function DailyView({ sessions }) {
   const [dayOffset, setDayOffset] = useState(0);
   const days = [-2,-1,0,1,2].map(n=>addDays(TODAY,n));
   const selectedDate = addDays(TODAY, dayOffset - 2);
+  // Phase 14.3: hero gets full session set (so it can break out cancel
+  // fees, refunds, no-shows). The legacy StatCards + day-chip counts +
+  // SessionRow list stay focused on session revenue only via the
+  // isRevenueSession filter.
   const daySessions = sessions.filter(s => sameDay(s.date, selectedDate));
   const prevDay = addDays(selectedDate, -1);
   const prevDaySessions = sessions.filter(s => sameDay(s.date, prevDay));
-  const expected = daySessions.reduce((s,x)=>s+x.rate,0);
-  const actual = daySessions.reduce((s,x)=>s+(x.actual||0),0);
-  const pending = daySessions.filter(s=>s.status==='pending'||s.status==='outstanding').length;
+  const daySessionsRevenueOnly = daySessions.filter(isRevenueSession);
+  const expected = daySessionsRevenueOnly.reduce((s,x)=>s+x.rate,0);
+  const actual = daySessionsRevenueOnly.reduce((s,x)=>s+(x.actual||0),0);
+  const pending = daySessionsRevenueOnly.filter(s=>s.status==='pending'||s.status==='outstanding').length;
   // Period label for hero card: "today", "yesterday", or specific date
   const periodLabel = sameDay(selectedDate, TODAY) ? 'today'
     : sameDay(selectedDate, addDays(TODAY,-1)) ? 'yesterday'
@@ -395,7 +454,7 @@ function DailyView({ sessions }) {
       <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
         {days.map((d,i) => {
           const isSel = i === dayOffset;
-          const count = sessions.filter(s=>sameDay(s.date,d)).length;
+          const count = sessions.filter(s=>sameDay(s.date,d) && isRevenueSession(s)).length;
           const label = sameDay(d,TODAY)?'Today':sameDay(d,addDays(TODAY,-1))?'Yesterday':sameDay(d,addDays(TODAY,1))?'Tomorrow':fmtShort(d);
           return (
             <button key={i} onClick={()=>setDayOffset(i)} style={{ background:isSel?'#2A5741':'#FFFFFF', color:isSel?'#FFFFFF':'#1F2937', border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`, borderRadius:10, padding:'10px 18px', fontSize:13, fontWeight:600, cursor:'pointer' }}>
@@ -406,11 +465,11 @@ function DailyView({ sessions }) {
         })}
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>
-        {fmtShort(selectedDate)} - {daySessions.length} session{daySessions.length!==1?'s':''}
+        {fmtShort(selectedDate)} - {daySessionsRevenueOnly.length} session{daySessionsRevenueOnly.length!==1?'s':''}
       </div>
-      {daySessions.length === 0
+      {daySessionsRevenueOnly.length === 0
         ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions on this day.</div>
-        : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessions.map(s=><SessionRow key={s.id} s={s} />)}</div>
+        : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessionsRevenueOnly.map(s=><SessionRow key={s.id} s={s} />)}</div>
       }
     </div>
   );
@@ -422,12 +481,14 @@ function WeeklyView({ sessions }) {
   const weekStart = addDays(getMonday(TODAY), weekOffset*7);
   const weekDays = [0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
   const DAY_NAMES = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  // Phase 14.3: hero takes the full set; the rest filters to revenue rows.
   const weekSessions = sessions.filter(s=>s.date>=weekStart&&s.date<addDays(weekStart,7));
   const prevWeekStart = addDays(weekStart, -7);
   const prevWeekSessions = sessions.filter(s=>s.date>=prevWeekStart&&s.date<weekStart);
-  const expected = weekSessions.reduce((s,x)=>s+x.rate,0);
-  const actual = weekSessions.reduce((s,x)=>s+(x.actual||0),0);
-  const maxDay = Math.max(...weekDays.map(d=>sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0)),1);
+  const weekRevenue = weekSessions.filter(isRevenueSession);
+  const expected = weekRevenue.reduce((s,x)=>s+x.rate,0);
+  const actual = weekRevenue.reduce((s,x)=>s+(x.actual||0),0);
+  const maxDay = Math.max(...weekDays.map(d=>sessions.filter(s=>sameDay(s.date,d)&&isRevenueSession(s)).reduce((t,x)=>t+x.rate,0)),1);
   const periodLabel = weekOffset===0?'this week':weekOffset===-1?'last week':weekOffset===1?'next week':`week of ${fmtShort(weekStart)}`;
   return (
     <div>
@@ -436,15 +497,15 @@ function WeeklyView({ sessions }) {
         <button onClick={()=>setWeekOffset(weekOffset-1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>← Prev</button>
         <div style={{ textAlign:'center' }}>
           <div style={{ fontSize:15, fontWeight:700, color:'#1F2937' }}>{weekOffset===0?'This Week':weekOffset===-1?'Last Week':weekOffset===1?'Next Week':fmtShort(weekStart)}</div>
-          <div style={{ fontSize:12, color:'#6B7280' }}>{weekSessions.length} sessions</div>
+          <div style={{ fontSize:12, color:'#6B7280' }}>{weekRevenue.length} sessions</div>
         </div>
         <button onClick={()=>setWeekOffset(weekOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
       </div>
       <StatRow>
         <StatCard label="Expected" value={currency(expected)} sub="this week" color="#2A5741" />
         <StatCard label="Collected" value={currency(actual)} sub="confirmed" color="#16A34A" />
-        <StatCard label="Sessions" value={weekSessions.length} sub="total" color="#6B9E80" />
-        <StatCard label="Avg/Session" value={weekSessions.length>0?currency(actual/weekSessions.length):'-'} sub="collected" color="#C9A84C" small />
+        <StatCard label="Sessions" value={weekRevenue.length} sub="total" color="#6B9E80" />
+        <StatCard label="Avg/Session" value={weekRevenue.length>0?currency(actual/weekRevenue.length):'-'} sub="collected" color="#C9A84C" small />
       </StatRow>
       <style>{`
         @media (max-width: 420px) {
@@ -453,8 +514,8 @@ function WeeklyView({ sessions }) {
       `}</style>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:8, marginBottom:24 }}>
         {weekDays.map((d,i) => {
-          const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
-          const dayExp = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
+          const dayRev = sessions.filter(s=>sameDay(s.date,d)&&isRevenueSession(s)).reduce((t,x)=>t+(x.actual||0),0);
+          const dayExp = sessions.filter(s=>sameDay(s.date,d)&&isRevenueSession(s)).reduce((t,x)=>t+x.rate,0);
           const isToday = sameDay(d,TODAY);
           const barH = Math.max((dayExp/maxDay)*100,dayExp>0?6:0);
           const actH = dayExp>0?Math.max((dayRev/dayExp)*barH,0):0;
@@ -477,7 +538,7 @@ function WeeklyView({ sessions }) {
         <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:12, height:12, background:'#2A5741', borderRadius:2 }}/><span style={{ color:'#6B7280' }}>Collected</span></div>
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>All Sessions This Week</div>
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekSessions.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekSessions.map(s=><SessionRow key={s.id} s={s} />)}</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekRevenue.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekRevenue.map(s=><SessionRow key={s.id} s={s} />)}</div>
     </div>
   );
 }
@@ -492,12 +553,14 @@ function MonthlyView({ sessions }) {
   const calDays = [];
   for(let i=0;i<startOffset;i++) calDays.push(null);
   for(let i=1;i<=daysInMonth;i++) calDays.push(new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i));
+  // Phase 14.3: hero gets full set; visualizations filter to revenue rows.
   const monthSessions = sessions.filter(s=>s.date.getMonth()===viewMonth.getMonth()&&s.date.getFullYear()===viewMonth.getFullYear());
   const prevMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth()-1, 1);
   const prevMonthSessions = sessions.filter(s=>s.date.getMonth()===prevMonth.getMonth()&&s.date.getFullYear()===prevMonth.getFullYear());
-  const monthExpected = monthSessions.reduce((t,x)=>t+x.rate,0);
-  const monthActual = monthSessions.reduce((t,x)=>t+(x.actual||0),0);
-  const selectedDaySessions = sessions.filter(s=>sameDay(s.date,selectedDate));
+  const monthRevenue = monthSessions.filter(isRevenueSession);
+  const monthExpected = monthRevenue.reduce((t,x)=>t+x.rate,0);
+  const monthActual = monthRevenue.reduce((t,x)=>t+(x.actual||0),0);
+  const selectedDaySessions = sessions.filter(s=>sameDay(s.date,selectedDate)&&isRevenueSession(s));
   const isCurrentMonth = viewMonth.getMonth()===TODAY.getMonth() && viewMonth.getFullYear()===TODAY.getFullYear();
   const periodLabel = isCurrentMonth ? 'this month' : fmtMonth(viewMonth).toLowerCase();
   return (
@@ -509,7 +572,7 @@ function MonthlyView({ sessions }) {
         <button onClick={()=>setMonthOffset(monthOffset+1)} style={{ background:'#FFFFFF', border:'1.5px solid #E5E7EB', borderRadius:8, padding:'8px 16px', fontSize:13, fontWeight:600, cursor:'pointer', color:'#1F2937' }}>Next →</button>
       </div>
       <StatRow>
-        <StatCard label="Monthly Expected" value={currency(monthExpected)} sub={`${monthSessions.length} sessions`} color="#2A5741" />
+        <StatCard label="Monthly Expected" value={currency(monthExpected)} sub={`${monthRevenue.length} sessions`} color="#2A5741" />
         <StatCard label="Monthly Collected" value={currency(monthActual)} sub="confirmed payments" color="#16A34A" />
         <StatCard label="Collection Rate" value={monthExpected>0?`${Math.round((monthActual/monthExpected)*100)}%`:'-'} sub="actual vs expected" color="#6B9E80" />
       </StatRow>
@@ -521,8 +584,8 @@ function MonthlyView({ sessions }) {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', gap:4, marginBottom:20 }}>
         {calDays.map((d,i)=>{
           if(!d) return <div key={i}/>;
-          const dayRev = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+(x.actual||0),0);
-          const dayExp = sessions.filter(s=>sameDay(s.date,d)).reduce((t,x)=>t+x.rate,0);
+          const dayRev = sessions.filter(s=>sameDay(s.date,d)&&isRevenueSession(s)).reduce((t,x)=>t+(x.actual||0),0);
+          const dayExp = sessions.filter(s=>sameDay(s.date,d)&&isRevenueSession(s)).reduce((t,x)=>t+x.rate,0);
           const isToday = sameDay(d,TODAY);
           const isSel = sameDay(d,selectedDate);
           return (
@@ -548,14 +611,16 @@ function MonthlyView({ sessions }) {
 function YearlyView({ sessions }) {
   const [year, setYear] = useState(TODAY.getFullYear());
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  // Phase 14.3: monthData and StatCards use revenue rows only.
   const monthData = MONTH_NAMES.map((name,i)=>{
-    const ms = sessions.filter(s=>s.date.getFullYear()===year&&s.date.getMonth()===i);
+    const ms = sessions.filter(s=>s.date.getFullYear()===year&&s.date.getMonth()===i&&isRevenueSession(s));
     return { name, expected:ms.reduce((t,x)=>t+x.rate,0), actual:ms.reduce((t,x)=>t+(x.actual||0),0), count:ms.length };
   });
   const maxVal = Math.max(...monthData.map(m=>m.expected),1);
   const yearExpected = monthData.reduce((t,m)=>t+m.expected,0);
   const yearActual = monthData.reduce((t,m)=>t+m.actual,0);
   const yearSessions = monthData.reduce((t,m)=>t+m.count,0);
+  // Hero gets the full set so it can break out cancel fees / refunds / no-shows.
   const yearSessionsSlice = sessions.filter(s=>s.date.getFullYear()===year);
   const prevYearSessions = sessions.filter(s=>s.date.getFullYear()===year-1);
   const isCurrentYear = year===TODAY.getFullYear();
@@ -737,6 +802,19 @@ export default function BillingDashboard({ therapist }) {
         .order('booking_date', { ascending: false })
         .limit(500);
 
+      // Phase 14.3 (HK May 17 2026): pull cancellation_charges too.
+      // Captures cancel + reschedule + no-show fees. We surface these
+      // as a separate revenue stream from session payments because the
+      // therapist's mental model is "session revenue + cancellation
+      // revenue" not one combined number.
+      const { data: cancellationCharges } = await supabase
+        .from('cancellation_charges')
+        .select('id, booking_id, client_id, amount_cents, trigger_event, status, payment_intent_id, fired_at, succeeded_at, refunded_at, refund_amount_cents')
+        .eq('therapist_id', therapist.id)
+        .gte('fired_at', horizonStart.toISOString())
+        .order('fired_at', { ascending: false })
+        .limit(200);
+
       // Map payments + bookings into the session shape the existing
       // tab views expect. Each session_payments row becomes a session.
       // Bookings with no payment row become 'outstanding' / 'pending'.
@@ -744,31 +822,98 @@ export default function BillingDashboard({ therapist }) {
       (bookings || []).forEach(b => { bookingsById[b.id] = b; });
 
       const paidBookingIds = new Set();
-      const paymentSessions = (payments || [])
-        .filter(p => p.status === 'succeeded')
-        .map((p, i) => {
-          const b = bookingsById[p.booking_id];
+      // Phase 14.3: session payments split by status. 'succeeded' becomes
+      // paid sessions (counted toward collected). 'refunded' becomes a
+      // separate row tagged source='refund' so the hero can show a
+      // 'refunds: $X' line without including them in the big number.
+      const paymentSessions = [];
+      const refundSessions = [];
+      (payments || []).forEach((p) => {
+        const b = bookingsById[p.booking_id];
+        const dateObj = p.paid_at ? new Date(p.paid_at) : new Date(p.created_at);
+        const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
+        const actualCents = (p.amount_cents || 0) + (p.tip_cents || 0);
+        const base = {
+          id: `pay-${p.id}`,
+          client: b?.client_name || 'Client',
+          date: dateObj,
+          time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          duration: b?.services?.duration || 60,
+          rate: expected,
+          actual: actualCents / 100,
+          base: (p.amount_cents || 0) / 100,
+          tip: (p.tip_cents || 0) / 100,
+          method: p.payment_method,
+          methodDetail: p.payment_method_detail,
+          service: b?.services?.name || null,
+          bookingId: p.booking_id,
+          paymentId: p.id,
+        };
+        if (p.status === 'succeeded') {
           if (p.booking_id) paidBookingIds.add(p.booking_id);
-          const dateObj = p.paid_at ? new Date(p.paid_at) : new Date(p.created_at);
-          const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
-          const actualCents = (p.amount_cents || 0) + (p.tip_cents || 0);
+          paymentSessions.push({ ...base, status: 'paid', source: 'payment' });
+        } else if (p.status === 'refunded') {
+          refundSessions.push({ ...base, status: 'refunded', source: 'refund' });
+        }
+        // 'pending', 'voided', 'failed' are not counted in either bucket.
+      });
+
+      // Cancellation charge sessions. status='succeeded' rows are real
+      // money in the therapist's pocket. Tagged source='cancellation_fee'
+      // so the hero can show them as a separate number.
+      const cancellationSessions = (cancellationCharges || [])
+        .filter(c => c.status === 'succeeded')
+        .map((c) => {
+          const b = bookingsById[c.booking_id];
+          const dateObj = c.succeeded_at ? new Date(c.succeeded_at) : new Date(c.fired_at);
+          const TRIGGER_LABEL = { cancel: 'Cancellation fee', reschedule: 'Reschedule fee', no_show: 'No-show fee' };
           return {
-            id: `pay-${p.id}`,
+            id: `cancel-${c.id}`,
             client: b?.client_name || 'Client',
             date: dateObj,
             time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
             duration: b?.services?.duration || 60,
+            rate: (c.amount_cents || 0) / 100,
+            actual: (c.amount_cents || 0) / 100,
+            base: (c.amount_cents || 0) / 100,
+            tip: 0,
+            status: 'paid', // it IS paid, just a different source
+            method: 'card', // cancellation charges always go through Stripe
+            methodDetail: TRIGGER_LABEL[c.trigger_event] || 'Fee',
+            service: TRIGGER_LABEL[c.trigger_event] || 'Fee',
+            bookingId: c.booking_id,
+            paymentId: null,
+            cancellationId: c.id,
+            triggerEvent: c.trigger_event,
+            source: 'cancellation_fee',
+          };
+        });
+
+      // Phase 14.3: no-show bookings surfaced as count-only rows. Tagged
+      // source='no_show' so the hero can show a 'No-shows: N' line. They
+      // don't count toward collected or expected revenue.
+      const noShowSessions = (bookings || [])
+        .filter(b => b.status === 'no_show')
+        .map((b) => {
+          const dateObj = new Date((b.booking_date || '') + 'T' + (b.start_time || '12:00:00'));
+          const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
+          return {
+            id: `noshow-${b.id}`,
+            client: b.client_name || 'Client',
+            date: dateObj,
+            time: dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+            duration: b?.services?.duration || 60,
             rate: expected,
-            actual: actualCents / 100,
-            base: (p.amount_cents || 0) / 100,
-            tip: (p.tip_cents || 0) / 100,
-            status: 'paid',
-            method: p.payment_method,
-            methodDetail: p.payment_method_detail,
+            actual: 0,
+            base: 0,
+            tip: 0,
+            status: 'no_show',
+            method: null,
+            methodDetail: null,
             service: b?.services?.name || null,
-            bookingId: p.booking_id,
-            paymentId: p.id,
-            source: 'payment',
+            bookingId: b.id,
+            paymentId: null,
+            source: 'no_show',
           };
         });
 
@@ -800,7 +945,13 @@ export default function BillingDashboard({ therapist }) {
           };
         });
 
-      const combined = [...paymentSessions, ...leakageSessions];
+      const combined = [
+        ...paymentSessions,
+        ...cancellationSessions,
+        ...refundSessions,
+        ...noShowSessions,
+        ...leakageSessions,
+      ];
       combined.sort((a, b) => b.date.getTime() - a.date.getTime());
       setRealTransactions(combined);
     });
