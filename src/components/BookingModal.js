@@ -3,6 +3,7 @@
 // mode: 'create' | 'reschedule' | 'rebook'
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
 
 const C = {
@@ -196,9 +197,18 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       } else {
         // Insert new booking
         const svc = services.find(s => s.id === serviceId);
+        // Phase 13.2 (HK May 17 2026): every booking carries a client_id.
+        const clientIdForBooking = await findOrCreateClient({
+          supabase,
+          therapist_id: therapist.id,
+          name,
+          email,
+          phone,
+        });
         const { error: e } = await supabase.from('bookings').insert({
           therapist_id:  therapist.id,
           service_id:    serviceId,
+          client_id:     clientIdForBooking,
           client_name:   name.trim(),
           client_email:  email.trim().toLowerCase(),
           client_phone:  phone.trim(),

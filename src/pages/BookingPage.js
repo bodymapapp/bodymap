@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
+import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
 import { PolicyDisplay } from '../components/BookingPolicies';
 // ClientPushCTA removed May 17 2026: client push tabled until client
@@ -1600,8 +1601,24 @@ export default function BookingPage() {
     const addonTotalPrice = chosenAddons.reduce((s,a)=>s+Number(a.price||0), 0);
     const addonExtraMinutes = chosenAddons.reduce((s,a)=>s+Number(a.extra_minutes||0), 0);
 
+    // Phase 13.2 (HK May 17 2026): every booking carries a client_id from
+    // the moment it is created. cardSavedClientId is already populated if
+    // the client saved a card during this booking flow; otherwise call
+    // findOrCreateClient to resolve or create the clients row by email.
+    let clientIdForBooking = cardSavedClientId || null;
+    if (!clientIdForBooking) {
+      clientIdForBooking = await findOrCreateClient({
+        supabase,
+        therapist_id: therapist.id,
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+      });
+    }
+
     const {data:newBooking,error}=await supabase.from('bookings').insert({
       therapist_id:therapist.id, service_id:svc.id,
+      client_id: clientIdForBooking,
       client_name:form.name.trim(), client_email:form.email.trim().toLowerCase(),
       client_phone:form.phone, booking_date:date,
       sms_opted_in: !!form.sms_opted_in && !!form.phone,
