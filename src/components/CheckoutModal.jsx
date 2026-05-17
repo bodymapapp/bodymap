@@ -147,57 +147,14 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   const totalCents = amountCents + tipCents;
   const validAmount = amountCents > 0;
 
-  // ── Helper: resolve to a real client row ─────────────────────────
-  //
-  // Many bookings don't yet have a clients-table row attached
-  // (sessionInfo.client_id is null until intake creates a session).
-  // But every booking has client_email + client_name. We need a clients
-  // row to attach the Stripe customer to, so:
-  //   1. If we already have client.id, use it.
-  //   2. Else, try to find an existing client by (therapist_id, lower(email)).
-  //      Reuses the same row across multiple bookings.
-  //   3. Else, create a new clients row with the booking's name + email.
-  // Returns the resolved clients row, or null if no email exists to look up.
-  async function resolveClientRow() {
-    if (client?.id) return client;
-
-    const email = (appt?.email || '').toLowerCase().trim();
-    if (!email) return null;
-
-    // Find existing
-    const { data: existing } = await supabase
-      .from('clients')
-      .select('*')
-      .eq('therapist_id', therapist.id)
-      .ilike('email', email)
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    if (existing) return existing;
-
-    // Create
-    const { data: created, error: insErr } = await supabase
-      .from('clients')
-      .insert({
-        therapist_id: therapist.id,
-        name: appt?.client || 'Client',
-        email,
-        phone: appt?.phone || null,
-      })
-      .select('*')
-      .single();
-    if (insErr) throw new Error(`Could not create client record: ${insErr.message}`);
-    return created;
-  }
-
   // ── Action: Card on file ────────────────────────────────────────
   async function chargeCardOnFile() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     if (!cardOnFile) { setErrorMsg('No card on file.'); return; }
+    if (!client?.id) { setErrorMsg('Client record missing on this booking.'); return; }
     setProcessing(true);
     setErrorMsg(null);
     try {
-      const resolvedClient = await resolveClientRow();
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
       const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
@@ -214,7 +171,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
           amount_cents: amountCents,
           tip_cents: tipCents,
           description: `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`,
-          client_email: resolvedClient?.email || appt?.email,
+          client_email: client.email || appt?.email,
           send_receipt: true,
         }),
       });
@@ -226,7 +183,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
-        client_id: resolvedClient?.id || null,
+        client_id: client.id,
         amount_cents: amountCents,
         tip_cents: tipCents,
         payment_method: 'stripe_card_on_file',
@@ -277,12 +234,11 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
     setProcessing(true);
     setErrorMsg(null);
     try {
-      // Resolve to a real client row (find-or-create by email if needed).
-      // Required because the booking may not have a session_id yet (pre-
-      // intake state), so client.id may be null even though the booking
-      // has client_name + client_email.
-      const resolvedClient = await resolveClientRow();
-      if (!resolvedClient?.id) throw new Error('Could not find or create a client record for this booking.');
+      // Phase 13.4 (HK May 17 2026): bookings.client_id is now always
+      // populated (Phase 13.2 wires it at booking creation, Phase 13.3
+      // backfilled history, Phase 13.3.1 added the FK and fixed orphans).
+      // So client.id is always present here. Hard-guard for safety.
+      if (!client?.id) throw new Error('Client record missing on this booking.');
 
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -297,9 +253,9 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         },
         body: JSON.stringify({
           stripe_account_id: therapist.stripe_account_id,
-          client_id: resolvedClient.id,
-          client_email: resolvedClient.email || appt?.email,
-          client_name: resolvedClient.name || appt?.client,
+          client_id: client.id,
+          client_email: client.email || appt?.email,
+          client_name: client.name || appt?.client,
           therapist_id: therapist.id,
         }),
       });
@@ -336,7 +292,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         card_last4: cardLast4,
         card_brand: cardBrand,
         card_saved_at: new Date().toISOString(),
-      }).eq('id', resolvedClient.id);
+      }).eq('id', client.id);
 
       // Step 4: charge the now-saved card via charge-card with real
       // customer_id. Same path as 'Card on file' would take.
@@ -354,7 +310,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
           amount_cents: amountCents,
           tip_cents: tipCents,
           description: `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`,
-          client_email: resolvedClient.email || appt?.email,
+          client_email: client.email || appt?.email,
           send_receipt: true,
         }),
       });
@@ -372,7 +328,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
-        client_id: resolvedClient.id,
+        client_id: client.id,
         amount_cents: amountCents,
         tip_cents: tipCents,
         payment_method: 'stripe_card_new',

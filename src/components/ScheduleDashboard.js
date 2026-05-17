@@ -2013,7 +2013,11 @@ export default function ScheduleDashboard({ therapist }) {
         const [h, m] = (b.start_time || '00:00').slice(0,5).split(':').map(Number);
         const sessionInfo = sessionMap[b.id] || null;
         const sessionId = sessionInfo?.id || null;
-        const clientId = sessionInfo?.client_id || null;
+        // Phase 13.4 (HK May 17 2026): prefer bookings.client_id (now
+        // always populated post-Phase 13.3 backfill + FK constraint).
+        // Fall back to sessionInfo.client_id only for legacy rows that
+        // somehow predate the backfill.
+        const clientId = b.client_id || sessionInfo?.client_id || null;
 
         // Single condition for complete: bookings.status === 'completed'
         // That is the only field the UI updates when marking a session done.
