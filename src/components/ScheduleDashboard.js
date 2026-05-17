@@ -846,7 +846,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
             width:'min(420px, calc(100vw - 32px))',
             maxWidth:420,
           }}>
-            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
               <div style={{ fontSize:24 }}>🌿</div>
               <div style={{ flex:1 }}>
                 <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>Block this time?</div>
@@ -854,30 +854,42 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                   {new Date(pendingBlock.date+'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
                 </div>
               </div>
-              <button
-                onClick={()=>!blockSheetSaving && setPendingBlock(null)}
-                style={{ background:'transparent', border:'none', fontSize:22, cursor:'pointer', color:'#9CA3AF', padding:0, lineHeight:1 }}
-              >×</button>
             </div>
 
-            <div style={{ background:'#FEF3C7', border:'1px solid #FCD34D', borderRadius:10, padding:'10px 14px', marginBottom:14 }}>
-              <div style={{ fontSize:11, fontWeight:700, color:'#92400E', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:4 }}>
-                Block window
+            {/* Two editable time fields, side by side. Both use the
+                InlineTimeInput component so they accept typed values
+                like "10am" or "2:30pm" instead of relying on the
+                native browser time dropdown. Placeholders show a
+                realistic time example so older users see the expected
+                format including AM/PM. */}
+            <div style={{ display:'flex', alignItems:'flex-end', gap:12, marginBottom:14, flexWrap:'wrap' }}>
+              <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+                  Start
+                </label>
+                <InlineTimeInput
+                  value={pendingBlock.startTime}
+                  onChange={(t) => setPendingBlock(prev => prev ? { ...prev, startTime: t } : prev)}
+                  placeholder="10:00 AM"
+                  ariaLabel="Start time of blocked window"
+                  width="100%"
+                  disabled={blockSheetSaving}
+                />
               </div>
-              <div style={{ fontSize:15, fontWeight:700, color:'#92400E' }}>
-                {fmtTime12(pendingBlock.startTime)} to {fmtTime12(pendingBlock.endTime)}
+              <div style={{ paddingBottom: 10, fontFamily:'Georgia,serif', fontStyle:'italic', fontSize:14, color:'#6B7280' }}>to</div>
+              <div style={{ flex:'1 1 130px', minWidth:120 }}>
+                <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:6 }}>
+                  End
+                </label>
+                <InlineTimeInput
+                  value={pendingBlock.endTime}
+                  onChange={(t) => setPendingBlock(prev => prev ? { ...prev, endTime: t } : prev)}
+                  placeholder="2:00 PM"
+                  ariaLabel="End time of blocked window"
+                  width="100%"
+                  disabled={blockSheetSaving}
+                />
               </div>
-            </div>
-
-            <div style={{ display:'flex', gap:8, marginBottom:12, alignItems:'center', flexWrap:'wrap' }}>
-              <label style={{ fontSize:11, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', flexShrink:0 }}>Adjust end</label>
-              <input
-                type="time"
-                value={pendingBlock.endTime}
-                onChange={e=>setPendingBlock(prev => prev ? { ...prev, endTime: e.target.value } : prev)}
-                disabled={blockSheetSaving}
-                style={{ padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:13, outline:'none', flex:1, minWidth:100 }}
-              />
             </div>
 
             <div style={{ marginBottom:14 }}>
@@ -888,9 +900,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                 type="text"
                 value={pendingBlock.note}
                 onChange={e=>setPendingBlock(prev => prev ? { ...prev, note: e.target.value } : prev)}
-                placeholder="Lunch, errand, personal time…"
+                placeholder="Lunch, errand, personal time"
                 disabled={blockSheetSaving}
-                style={{ width:'100%', padding:'8px 10px', border:'1.5px solid #E8E4DC', borderRadius:8, fontSize:13, outline:'none', boxSizing:'border-box' }}
+                style={{ width:'100%', padding:'10px 12px', border:'1.5px solid #E8E4DC', borderRadius:10, fontSize:14, outline:'none', boxSizing:'border-box', background:'#FBFAF4', fontStyle:'italic', fontFamily:'system-ui, -apple-system, sans-serif' }}
               />
             </div>
 
@@ -2092,7 +2104,7 @@ export default function ScheduleDashboard({ therapist }) {
                 <InlineTimeInput
                   value={blockStartTime}
                   onChange={(t) => { setBlockStartTime(t); setBlockError(''); }}
-                  placeholder="Start"
+                  placeholder="10:00 AM"
                   ariaLabel="Start time of blocked window"
                   width={108}
                 />
@@ -2105,7 +2117,7 @@ export default function ScheduleDashboard({ therapist }) {
                 <InlineTimeInput
                   value={blockEndTime}
                   onChange={(t) => { setBlockEndTime(t); setBlockError(''); }}
-                  placeholder="End"
+                  placeholder="2:00 PM"
                   ariaLabel="End time of blocked window"
                   width={108}
                 />

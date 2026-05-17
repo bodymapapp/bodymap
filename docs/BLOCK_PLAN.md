@@ -86,6 +86,16 @@ Platform-level work that doesn't belong to a single ribbon.
 **What:** front/back visual, focus/avoid, pressure, medical flags, longitudinal intelligence. Bronze=last 5 sessions, Silver=all sessions. This is the core moat and should be a hero section on the Features page.
 **Note:** with the Phase 2.1 Ribbon 4 promotion to "The moat" treatment, decide whether Body Map gets a parallel treatment in Ribbon 2 (Know Your Client) so the two moats are visually co-equal.
 
+### Macro #8: Close-button audit and standardization
+**Status:** queued for later refinement.
+**Why:** HK May 16 2026 night, after spotting a × close button on the long-press confirm sheet: "The cross or close button on top right is not user friendly. Add to the block plan to check if there are any small crosses for closing a modal or screen and change it to user friendly standard version across the platform."
+**What:** sweep every modal, drawer, sheet, panel, and overlay across the platform. For each one that has a small × (multiplication sign or unicode close glyph) in the corner:
+  1. Decide if the close affordance is necessary at all. Many modals have a Cancel button at the bottom plus backdrop-tap-to-close, in which case the × is redundant clutter.
+  2. If a corner close is genuinely needed, replace the bare × with a clearly-labeled "Close" or "Cancel" pill button, sized for an older user's thumb (44x44 target minimum).
+  3. Document the chosen pattern in a single place so future modals follow it without HK having to catch each one.
+**Why this matters:** older personas don't reliably interpret × as "close." A labeled button is universally understood. Also, the small × button often becomes the smallest tap target on a screen, which is a usability failure.
+**Scope:** initial grep found 18 files using a × close glyph: BookingModal, Outreach, AddClientModal, SessionList, ClientList, MembershipsCard, PracticeAgreement, EventsCard, ScheduleDashboard (already partially cleaned in Phase 9.5), PackagesCard, MarketingNudges, QRCodesCard, QuickSendModal, WaitlistModal, IntakeEditor, Comparison, Dashboard, BookingPage. Estimated 2 hours including discovery, decisions, and consistent replacement.
+
 ---
 
 ## Per-ribbon improvements
