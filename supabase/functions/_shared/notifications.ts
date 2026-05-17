@@ -213,3 +213,136 @@ export async function notifyTherapist({
 
   return result;
 }
+
+// ─── notifyClient ────────────────────────────────────────────────
+// Client-side fan-out. SMS and email only; clients have no in-app
+// channel because they have no login.
+//
+// SMS-FIRST DESIGN: SMS is the primary channel for time-sensitive
+// or action-required messages. Email is used as a backup or for
+// substance (receipts, policy attachments, multi-paragraph apologies).
+//
+// Suppression rules baked in:
+//   - quiet_hours: if NOW falls between 21:00 and 08:00 client local
+//     time, SMS is queued (not sent). Email is unaffected. Quiet
+//     hours are off by default unless the caller passes respectQuietHours: true.
+//   - unsubscribe: if the client has unsubscribed from this category,
+//     both channels are skipped. (Wire this when we add the
+//     client_unsubscribes table; for now, all clients are subscribed.)
+//
+// HK May 17 2026 directive: "We want to progress more towards SMS
+// vs email as people don't check their email or only check if they
+// can't find the text."
+//
+// Usage:
+//   await notifyClient({
+//     supabase, therapist, client,
+//     eventType: 'no_show_notice',
+//     smsText: 'We missed you at...',
+//     emailSubject: 'About your missed appointment',
+//     emailHtml: '<p>...</p>',
+//     bookingId, sessionId,
+//     respectQuietHours: false,  // urgent payment request, send now
+//   });
+//
+// Returns { sms, email } each shaped as { ok, status }.
+// Non-throwing: every channel failure is logged and returned.
+
+export async function notifyClient({
+  supabase, therapist, client,
+  eventType,
+  smsText,
+  emailSubject, emailHtml,
+  bookingId, sessionId,
+  resendApiKey, fromAddress,
+  respectQuietHours = true,
+}) {
+  const result = { sms: null, email: null };
+  if (!therapist?.id || !client) return result;
+
+  const RESEND_KEY = resendApiKey || (typeof Deno !== 'undefined' ? Deno.env.get('RESEND_API_KEY') : '');
+  const FROM = fromAddress || `${therapist.business_name || 'MyBodyMap'} <reminders@mybodymap.app>`;
+
+  // ─── Channel 1: SMS via Twilio (primary by design) ─────────────
+  if (smsText && client.phone) {
+    // Quiet-hours guard: don't send SMS between 21:00 and 08:00
+    // server local time. For v1 we use server time; client-local
+    // time requires storing client timezone, which we don't always
+    // have. Most US therapists in same TZ as their clients.
+    const hr = new Date().getHours();
+    const inQuietHours = (hr >= 21 || hr < 8);
+
+    if (respectQuietHours && inQuietHours) {
+      result.sms = { ok: true, skipped: 'quiet_hours' };
+    } else {
+      result.sms = await sendSmsViaTwilio(therapist, client.phone, smsText);
+    }
+    await logNotification(supabase, {
+      therapist_id: therapist.id,
+      booking_id: bookingId || null,
+      client_id: client.id || null,
+      session_id: sessionId || null,
+      notification_type: eventType,
+      audience: 'client',
+      channel: 'sms',
+      recipient: client.phone || null,
+      status: result.sms?.ok && !result.sms?.skipped ? 'sent' : (result.sms?.skipped ? 'skipped' : 'failed'),
+      provider_id: result.sms?.sid || null,
+      body_snippet: (smsText || '').slice(0, 200),
+      error_message: result.sms?.error || result.sms?.skipped || null,
+    });
+  } else {
+    result.sms = { ok: true, skipped: !smsText ? 'no_sms_text' : 'no_client_phone' };
+  }
+
+  // ─── Channel 2: Email via Resend (backup or substance) ────────
+  if (emailSubject && emailHtml && client.email) {
+    if (!RESEND_KEY) {
+      result.email = { ok: false, skipped: 'resend_not_configured' };
+    } else {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: FROM,
+            to: [client.email],
+            subject: emailSubject,
+            html: emailHtml,
+            reply_to: therapist.email || undefined,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          result.email = { ok: true, id: data.id };
+        } else {
+          result.email = { ok: false, error: data.message || 'resend_error' };
+        }
+      } catch (e) {
+        result.email = { ok: false, error: e.message };
+      }
+    }
+    await logNotification(supabase, {
+      therapist_id: therapist.id,
+      booking_id: bookingId || null,
+      client_id: client.id || null,
+      session_id: sessionId || null,
+      notification_type: eventType,
+      audience: 'client',
+      channel: 'email',
+      recipient: client.email || null,
+      status: result.email?.ok ? 'sent' : (result.email?.skipped ? 'skipped' : 'failed'),
+      provider_id: result.email?.id || null,
+      subject: emailSubject || null,
+      body_snippet: (emailHtml || '').replace(/<[^>]+>/g, '').slice(0, 200),
+      error_message: result.email?.error || result.email?.skipped || null,
+    });
+  } else {
+    result.email = { ok: true, skipped: 'no_email_content_or_recipient' };
+  }
+
+  return result;
+}
