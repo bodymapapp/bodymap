@@ -30,6 +30,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   NOTIFICATION_SPEC,
   ALL_CHANNELS_BY_AUDIENCE,
+  CLIENT_PUSH_STATUS,
   cellState,
 } from '../../lib/notificationSpec';
 
@@ -66,9 +67,13 @@ export default function NotificationCompliance() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [therapist, setTherapist] = useState(null);
+  const [client, setClient] = useState(null);
   const [logsByKey, setLogsByKey] = useState({});  // key: `${eventType}__${audience}__${channel}` → latest log row
   const [loading, setLoading] = useState(true);
   const [selectedCell, setSelectedCell] = useState(null);
+  const [firing, setFiring] = useState(false);
+  const [fireResult, setFireResult] = useState(null);
+  const [bulkConfirming, setBulkConfirming] = useState(null);  // tracks which column is being bulk-confirmed
 
   // ─── Resolve "Joy Therapist" since this dashboard is keyed to a
   // specific therapist for testing. Defaults to the logged-in
@@ -83,6 +88,17 @@ export default function NotificationCompliance() {
         .eq('email', 'bodymapdemo@gmail.com')
         .maybeSingle();
       if (!cancelled) setTherapist(data || null);
+
+      // Also load the canonical Joy Client row (one with phone set)
+      const { data: c } = await supabase
+        .from('clients')
+        .select('id, name, email, phone')
+        .eq('email', 'bodymap01@gmail.com')
+        .not('phone', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!cancelled) setClient(c || null);
     }
     load();
     return () => { cancelled = true; };
@@ -150,6 +166,88 @@ export default function NotificationCompliance() {
     await refreshLogs();
   }
 
+  // ─── Auto-fire all touchpoints via the founder edge function ───
+  async function fireAll() {
+    if (!therapist?.id || !client?.id) {
+      alert('Therapist or client account not loaded. Cannot run auto-fire.');
+      return;
+    }
+    if (!window.confirm(`Fire all ${NOTIFICATION_SPEC.length} test notifications for ${therapist.full_name} to ${client.name}? You'll receive a flood of test messages on every channel.`)) {
+      return;
+    }
+    setFiring(true);
+    setFireResult(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        alert('No auth token. Re-login and retry.');
+        setFiring(false);
+        return;
+      }
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
+      const res = await fetch(`${supabaseUrl}/functions/v1/founder-fire-all-notifications`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          client_id: client.id,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Auto-fire failed: ${data.error || 'unknown'}`);
+        setFiring(false);
+        return;
+      }
+      setFireResult(data);
+      // Poll for log updates over the next 10 seconds while sends complete
+      for (let i = 0; i < 10; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        await refreshLogs();
+      }
+    } catch (e) {
+      alert(`Auto-fire error: ${e.message}`);
+    } finally {
+      setFiring(false);
+    }
+  }
+
+  // ─── Bulk-confirm all yellow cells in a column ─────────────────
+  async function bulkConfirmColumn(col) {
+    // Find every log row matching this audience+channel where
+    // status='sent' AND confirmed_at IS NULL
+    const matchingLogs = Object.values(logsByKey).filter(log =>
+      log.audience === col.audience &&
+      log.channel === col.channel &&
+      log.status === 'sent' &&
+      !log.confirmed_at
+    );
+    if (matchingLogs.length === 0) {
+      alert(`No yellow cells to confirm in ${col.short}.`);
+      return;
+    }
+    if (!window.confirm(`Mark ${matchingLogs.length} ${col.short} notifications as received? You can untick individual cells afterward.`)) {
+      return;
+    }
+    setBulkConfirming(`${col.audience}-${col.channel}`);
+    const now = new Date().toISOString();
+    const ids = matchingLogs.map(l => l.id);
+    const { error } = await supabase
+      .from('notification_log')
+      .update({ confirmed_at: now, confirmed_by: user?.id || null })
+      .in('id', ids);
+    setBulkConfirming(null);
+    if (error) {
+      alert(`Bulk confirm failed: ${error.message}`);
+      return;
+    }
+    await refreshLogs();
+  }
+
   // ─── Render ───────────────────────────────────────────────────
   if (!user) {
     return <div style={{ padding: 40 }}>Sign in first.</div>;
@@ -197,14 +295,51 @@ export default function NotificationCompliance() {
             Notification Compliance
           </h1>
           <p style={{ fontSize: 14, color: COLORS.inkSoft, lineHeight: 1.65, margin: '0 0 12px', maxWidth: 760 }}>
-            Every touchpoint from <strong>docs/NOTIFICATION_MAP.md</strong> mapped to every channel. Color reflects the latest notification_log row + your confirmation status. The matrix industrializes the test: fire one real event, watch every cell that should fire light up, tick confirmed when you actually receive the message.
+            Every touchpoint from <strong>docs/NOTIFICATION_MAP.md</strong> mapped to every channel (Bell, Push, Email, SMS for therapist; Email, SMS, Push for client). Color reflects the latest notification_log row + your confirmation status. Tap "Run full compliance test" below to fire every touchpoint at once.
           </p>
           {therapist && (
             <div style={{ fontSize: 12, color: COLORS.inkSoft, fontStyle: 'italic', fontFamily: 'Georgia, serif' }}>
-              Showing data for <strong>{therapist.full_name || therapist.email}</strong> (<code>{therapist.id}</code>)
-              {therapist.twilio_phone_number ? ` · Twilio sender: ${therapist.twilio_phone_number}` : ' · Twilio sender NOT configured'}
+              Therapist: <strong>{therapist.full_name || therapist.email}</strong> (<code>{therapist.id.slice(0, 8)}</code>)
+              {therapist.twilio_phone_number ? ` · Twilio: ${therapist.twilio_phone_number}` : ' · Twilio NOT configured'}
+              {client ? ` · Client: ${client.name} (${client.phone || 'no phone'})` : ' · Client not loaded'}
             </div>
           )}
+
+          {/* Auto-fire CTA */}
+          <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={fireAll}
+              disabled={firing || !therapist || !client}
+              style={{
+                background: firing ? COLORS.inkSoft : (therapist && client ? `linear-gradient(135deg, ${COLORS.forestDeep}, ${COLORS.forest})` : '#D1D5DB'),
+                color: '#fff',
+                border: 'none',
+                borderRadius: 999,
+                padding: '12px 22px',
+                fontSize: 13,
+                fontWeight: 700,
+                letterSpacing: '0.02em',
+                cursor: (firing || !therapist || !client) ? 'not-allowed' : 'pointer',
+                boxShadow: (therapist && client && !firing) ? '0 2px 8px rgba(42, 87, 65, 0.22)' : 'none',
+              }}>
+              {firing ? 'Firing all 28 touchpoints…' : '🧪 Run full compliance test'}
+            </button>
+            {fireResult && (
+              <div style={{
+                fontSize: 12,
+                color: COLORS.ink,
+                background: COLORS.greenSoft,
+                border: `1px solid ${COLORS.green}`,
+                borderRadius: 999,
+                padding: '6px 14px',
+                fontWeight: 600,
+              }}>
+                ✓ Fired {fireResult.fired_count} of {fireResult.total}
+                {fireResult.error_count > 0 && `, ${fireResult.error_count} errors`}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Legend */}
@@ -273,22 +408,57 @@ export default function NotificationCompliance() {
                 <th style={{ textAlign: 'left', padding: '14px 16px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontWeight: 700, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: COLORS.inkSoft, position: 'sticky', left: 0 }}>
                   Touchpoint
                 </th>
-                {COLS.map((col, idx) => (
-                  <th key={`${col.audience}-${col.channel}`} style={{
-                    padding: '14px 8px',
-                    borderBottom: `2px solid ${COLORS.border}`,
-                    borderLeft: idx === 3 ? `2px solid ${COLORS.border}` : 'none',
-                    background: COLORS.cream,
-                    fontWeight: 700,
-                    fontSize: 11,
-                    letterSpacing: '0.05em',
-                    color: col.audience === 'therapist' ? COLORS.forest : COLORS.sage,
-                    textAlign: 'center',
-                    minWidth: 80,
-                  }}>
-                    {col.short}
-                  </th>
-                ))}
+                {COLS.map((col, idx) => {
+                  const firstClient = ALL_CHANNELS_BY_AUDIENCE.client[0].channel;
+                  const isClientBoundary = col.audience === 'client' && col.channel === firstClient;
+                  // Count yellow (sent, unconfirmed) cells in this column
+                  const yellowCount = NOTIFICATION_SPEC.reduce((n, spec) => {
+                    if (spec.audience !== col.audience) return n;
+                    if (!spec.channels.includes(col.channel)) return n;
+                    const key = `${spec.eventType}__${col.audience}__${col.channel}`;
+                    const log = logsByKey[key];
+                    return (log?.status === 'sent' && !log?.confirmed_at) ? n + 1 : n;
+                  }, 0);
+                  return (
+                    <th key={`${col.audience}-${col.channel}`} style={{
+                      padding: '10px 6px 8px',
+                      borderBottom: `2px solid ${COLORS.border}`,
+                      borderLeft: isClientBoundary ? `2px solid ${COLORS.border}` : 'none',
+                      background: COLORS.cream,
+                      textAlign: 'center',
+                      minWidth: 90,
+                      verticalAlign: 'top',
+                    }}>
+                      <div style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: '0.05em',
+                        color: col.audience === 'therapist' ? COLORS.forest : COLORS.sage,
+                        marginBottom: 6,
+                      }}>
+                        {col.short}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => bulkConfirmColumn(col)}
+                        disabled={yellowCount === 0 || bulkConfirming}
+                        title={yellowCount > 0 ? `Confirm all ${yellowCount} yellow cell${yellowCount === 1 ? '' : 's'} in this column` : 'No yellow cells to confirm'}
+                        style={{
+                          background: yellowCount > 0 ? COLORS.green : '#F3F4F6',
+                          color: yellowCount > 0 ? '#fff' : COLORS.inkFade,
+                          border: 'none',
+                          borderRadius: 999,
+                          padding: '3px 9px',
+                          fontSize: 10,
+                          fontWeight: 700,
+                          cursor: yellowCount > 0 ? 'pointer' : 'not-allowed',
+                          letterSpacing: '0.02em',
+                        }}>
+                        {yellowCount > 0 ? `✓ ${yellowCount}` : '-'}
+                      </button>
+                    </th>
+                  );
+                })}
               </tr>
             </thead>
             <tbody>
@@ -323,12 +493,43 @@ export default function NotificationCompliance() {
                       }
                       const key = `${spec.eventType}__${col.audience}__${col.channel}`;
                       const latestLog = logsByKey[key] || null;
+
+                      // Special case: C-Push is queued (not yet built).
+                      // Render as dimmed "queued" badge instead of a fired cell.
+                      const isClientPush = col.audience === 'client' && col.channel === 'push' && CLIENT_PUSH_STATUS === 'queued';
+                      if (isClientPush) {
+                        return (
+                          <td key={`${spec.id}-${col.audience}-${col.channel}`} style={{
+                            padding: '8px',
+                            borderBottom: `1px solid ${COLORS.border}`,
+                            borderLeft: col.audience === 'client' && col.channel === ALL_CHANNELS_BY_AUDIENCE.client[0].channel ? `2px solid ${COLORS.border}` : 'none',
+                            textAlign: 'center',
+                          }}>
+                            <span
+                              title="Client push notifications require a separate booking-page PWA subscription flow. Queued in BLOCK_PLAN."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                width: 38, height: 38,
+                                border: `1.5px dashed ${COLORS.inkFade}`,
+                                borderRadius: 8,
+                                background: '#F9FAFB',
+                                color: COLORS.inkFade,
+                                fontSize: 10,
+                                fontWeight: 700,
+                                letterSpacing: '0.04em',
+                              }}>queued</span>
+                          </td>
+                        );
+                      }
+
                       const state = cellState({
                         latestLog,
                         anyConfirmed: !!latestLog?.confirmed_at,
                       });
                       const cellColor = CELL_COLORS[state.color] || CELL_COLORS.red;
-                      const isSelected = selectedCell?.specId === spec.id && selectedCell?.col === `${col.audience}-${col.channel}`;
+                      const isSelected = selectedCell?.specId === spec.id && selectedCell?.colKey === `${col.audience}-${col.channel}`;
                       return (
                         <td key={`${spec.id}-${col.audience}-${col.channel}`} style={{
                           padding: '8px',
@@ -340,7 +541,7 @@ export default function NotificationCompliance() {
                             type="button"
                             onClick={() => setSelectedCell({
                               specId: spec.id,
-                              col: `${col.audience}-${col.channel}`,
+                              colKey: `${col.audience}-${col.channel}`,
                               spec, col, latestLog, state,
                             })}
                             title={state.tooltip}

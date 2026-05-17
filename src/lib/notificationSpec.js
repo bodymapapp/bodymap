@@ -24,7 +24,16 @@ export const CHANNEL_LABELS = {
   app_alert: 'Bell',
   email: 'Email',
   sms: 'SMS',
+  push: 'Push',
 };
+
+// Client push is intentionally deferred. Clients have no login,
+// so a PWA subscription requires a different flow: prompt at the
+// confirmed-booking page to "Install this app and get session
+// reminders right on your home screen." That's a real feature
+// build, not a checkbox. Queued in BLOCK_PLAN Macro #9 follow-up.
+// For now, the matrix renders a 'queued' state for C-Push cells.
+export const CLIENT_PUSH_STATUS = 'queued';
 
 // Every touchpoint that should fire across the platform.
 // Sorted by the C-series, T-series, E-series convention from
@@ -189,7 +198,7 @@ export const NOTIFICATION_SPEC = [
     title: 'New booking from a client',
     when: 'Client books a session',
     audience: 'therapist',
-    channels: ['app_alert', 'email', 'sms'],
+    channels: ['app_alert', 'push', 'email', 'sms'],
     series: 'T',
   },
   {
@@ -198,7 +207,7 @@ export const NOTIFICATION_SPEC = [
     title: 'New client signed up',
     when: 'First-ever booking from a new email',
     audience: 'therapist',
-    channels: ['app_alert', 'email', 'sms'],
+    channels: ['app_alert', 'push', 'email', 'sms'],
     series: 'T',
   },
   {
@@ -207,7 +216,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Intake submitted',
     when: 'Client completes intake form',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -216,7 +225,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Payment received',
     when: 'Any deposit, prepayment, or post-session charge succeeds',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -225,7 +234,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Booking cancelled (client side)',
     when: 'Client cancels via booking page or therapist cancels for them',
     audience: 'therapist',
-    channels: ['app_alert', 'email', 'sms'],
+    channels: ['app_alert', 'push', 'email', 'sms'],
     series: 'T',
   },
   {
@@ -234,7 +243,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Booking rescheduled',
     when: 'Either side reschedules',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -243,7 +252,7 @@ export const NOTIFICATION_SPEC = [
     title: 'No-show recorded',
     when: 'Therapist marks a booking as no-show',
     audience: 'therapist',
-    channels: ['app_alert', 'email', 'sms'],
+    channels: ['app_alert', 'push', 'email', 'sms'],
     series: 'T',
   },
   {
@@ -252,7 +261,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Practice agreement signed',
     when: 'Client signs the waiver',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -261,7 +270,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Gift certificate purchased',
     when: 'Someone buys a gift card on the booking page',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -270,7 +279,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Regular client going quiet',
     when: 'A regular has not booked in their usual cadence',
     audience: 'therapist',
-    channels: ['app_alert'],
+    channels: ['app_alert', 'push'],
     series: 'T',
   },
   {
@@ -288,7 +297,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Cancellation fee charged',
     when: 'Late-cancel or no-show triggers a card charge',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
   {
@@ -297,7 +306,7 @@ export const NOTIFICATION_SPEC = [
     title: 'System failure notification',
     when: 'A notification or critical edge function fails repeatedly',
     audience: 'therapist',
-    channels: ['app_alert', 'email'],
+    channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
 ];
@@ -308,12 +317,14 @@ export const NOTIFICATION_SPEC = [
 export const ALL_CHANNELS_BY_AUDIENCE = {
   therapist: [
     { channel: 'app_alert', label: 'Bell', short: 'T-Bell' },
+    { channel: 'push',      label: 'Push', short: 'T-Push' },
     { channel: 'email',     label: 'Email', short: 'T-Email' },
     { channel: 'sms',       label: 'SMS', short: 'T-SMS' },
   ],
   client: [
     { channel: 'email',     label: 'Email', short: 'C-Email' },
     { channel: 'sms',       label: 'SMS', short: 'C-SMS' },
+    { channel: 'push',      label: 'Push', short: 'C-Push' },
   ],
 };
 

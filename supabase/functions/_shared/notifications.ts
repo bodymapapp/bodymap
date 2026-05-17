@@ -90,7 +90,7 @@ export async function notifyTherapist({
   bookingId, clientId, sessionId,
   resendApiKey, fromAddress,
 }) {
-  const result = { app_alert: null, email: null, sms: null };
+  const result = { app_alert: null, email: null, sms: null, push: null };
   if (!therapist?.id) return result;
 
   const RESEND_KEY = resendApiKey || (typeof Deno !== 'undefined' ? Deno.env.get('RESEND_API_KEY') : '');
@@ -209,6 +209,60 @@ export async function notifyTherapist({
     });
   } else {
     result.sms = { ok: true, skipped: 'pref_off' };
+  }
+
+  // ─── Channel 4: Push notification (PWA) ────────────────────────
+  // Calls send-push edge function which fans out to all of the
+  // therapist's registered push_subscriptions. Push is gated by
+  // notification_prefs.therapist[eventType].push (defaults false
+  // until user opts in via the bell drawer settings).
+  //
+  // The send-push function also checks therapists.push_notifications_enabled
+  // globally, so this is a two-layer opt-in (global + per-event).
+  if (shouldSend(therapist, 'therapist', eventType, 'push')) {
+    try {
+      const supabaseUrl = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_URL') : '';
+      const serviceKey = typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') : '';
+      const pushUrl = `${supabaseUrl}/functions/v1/send-push`;
+      const pushRes = await fetch(pushUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          therapist_id: therapist.id,
+          title: title || eventType,
+          body: body || '',
+          url: linkUrl || '/dashboard',
+          tag: eventType,
+        }),
+      });
+      const pushData = await pushRes.json();
+      if (pushRes.ok) {
+        result.push = { ok: true, sent: pushData.sent || 0, removed: pushData.removed || 0 };
+      } else {
+        result.push = { ok: false, error: pushData.error || 'push_send_failed' };
+      }
+    } catch (e) {
+      result.push = { ok: false, error: String(e?.message || e) };
+    }
+    await logNotification(supabase, {
+      therapist_id: therapist.id,
+      booking_id: bookingId || null,
+      client_id: clientId || null,
+      session_id: sessionId || null,
+      notification_type: eventType,
+      audience: 'therapist',
+      channel: 'push',
+      recipient: therapist.id,  // push subscriptions are keyed to user, not address
+      status: result.push?.ok ? 'sent' : 'failed',
+      provider_id: null,
+      body_snippet: (body || title || '').slice(0, 200),
+      error_message: result.push?.error || null,
+    });
+  } else {
+    result.push = { ok: true, skipped: 'pref_off' };
   }
 
   return result;
