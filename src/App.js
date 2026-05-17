@@ -58,6 +58,7 @@ import FounderDashboard from './components/FounderDashboard';
 import EmailReview from './components/EmailReview';
 import VerifyPhone from './pages/VerifyPhone';
 import Playbooks from './pages/Playbooks';
+import NotificationCompliance from './pages/founder/NotificationCompliance';
 
 posthog.init('phc_qmIcERdaYLksKAU1Sa4wYht7ngmk5wP5JKyCHrWiw1H', { api_host: 'https://us.i.posthog.com' });
 
@@ -86,6 +87,7 @@ function App() {
           <Route path="/founder" element={<FounderRoute><FounderHub /></FounderRoute>} />
           <Route path="/founder/seed-demo" element={<FounderRoute><FounderSeedDemo /></FounderRoute>} />
           <Route path="/founder/stripe-debug" element={<FounderRoute><StripeDebug /></FounderRoute>} />
+          <Route path="/founder/notifications" element={<FounderRoute><NotificationCompliance /></FounderRoute>} />
           <Route path="/help" element={<Help />} />
           <Route path="/campaigns" element={<Campaigns />} />
           <Route path="/comparison" element={<Comparison />} />
