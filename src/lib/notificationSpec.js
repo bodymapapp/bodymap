@@ -27,12 +27,22 @@ export const CHANNEL_LABELS = {
   push: 'Push',
 };
 
-// Client push shipped May 17 2026 via the booking-confirmed page
-// banner + client_push_subscriptions table. The dashboard renders
-// C-Push cells as real cells (no queued state). Cells will be
-// orange (skipped/no_active_subscriptions) for clients who haven't
-// opted in via the booking-confirmed CTA.
-export const CLIENT_PUSH_STATUS = 'live';
+// Client push is tabled until the client portal exists.
+//
+// HK May 17 2026 ~7am, after architectural debate: 'If client does
+// not have a dedicated PWA with their own login, chances are that
+// they dont have anything opened or installed or PWA, so there can
+// not be any push to clients until we have a client side login.'
+//
+// The push infrastructure shipped in Phase 11.4 (table, hook, edge
+// function, fan-out) is dormant but reusable. When client login is
+// built (BLOCK_PLAN Macro #2: Optional client portal), flipping
+// this back to 'live' and re-adding push to the C-series specs
+// turns it back on with no other code changes needed.
+//
+// Until then, the dashboard renders C-Push cells as dimmed
+// 'queued' badges so the dependency is visible in the matrix.
+export const CLIENT_PUSH_STATUS = 'queued';
 
 // Every touchpoint that should fire across the platform.
 // Sorted by the C-series, T-series, E-series convention from
@@ -65,7 +75,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Intake reminder',
     when: '+24h after booking if intake pending AND session ≥48h away',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'Action-required, no substance. SMS gets read, email is backup.',
     series: 'C',
   },
@@ -75,7 +85,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Early reminder',
     when: '48 hours before session',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'Time-sensitive. SMS primary, email backup with calendar invite.',
     series: 'C',
   },
@@ -85,7 +95,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Same-day text (first-timers only)',
     when: '2 hours before session for clients with <10 sessions',
     audience: 'client',
-    channels: ['sms', 'push'],
+    channels: ['sms'],
     smsRationale: 'SMS only by design. Suppressed for 10+-session regulars (becomes patronizing).',
     series: 'C',
   },
@@ -105,7 +115,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Free-cancel confirmation',
     when: 'Client cancels within policy window',
     audience: 'client',
-    channels: ['email', 'sms', 'push'],
+    channels: ['email', 'sms'],
     smsRationale: 'Receipt-shaped, brief.',
     series: 'C',
   },
@@ -115,7 +125,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Itemized late-cancel',
     when: 'Client cancels inside policy, fee charged',
     audience: 'client',
-    channels: ['email', 'sms', 'push'],
+    channels: ['email', 'sms'],
     smsRationale: 'Has substance (fee breakdown). Email primary, SMS notice that email arrived.',
     series: 'C',
   },
@@ -125,7 +135,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Polite no-show notice (no fee)',
     when: 'Therapist marks no-show, no card on file or no fee path',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'SMS-first. The "we missed you" warm tap-to-rebook. SHIPPED Phase 11.1.',
     series: 'C',
   },
@@ -135,7 +145,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Polite no-show notice (charged)',
     when: 'Therapist marks no-show, fee auto-charged to card',
     audience: 'client',
-    channels: ['email', 'sms', 'push'],
+    channels: ['email', 'sms'],
     smsRationale: 'Has substance (receipt). Email primary, SMS notice.',
     series: 'C',
   },
@@ -145,7 +155,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Polite payment request (no-show, no card)',
     when: 'Therapist marks no-show, no card on file',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'The single biggest revenue lever. SMS first with payment link, email backup.',
     series: 'C',
   },
@@ -155,7 +165,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Therapist-cancel apology + rebook',
     when: 'Therapist cancels a confirmed booking',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'High-risk lapse moment. SMS first with rebook link.',
     series: 'C',
   },
@@ -165,7 +175,7 @@ export const NOTIFICATION_SPEC = [
     title: 'Reschedule confirmation',
     when: 'Either side reschedules',
     audience: 'client',
-    channels: ['email', 'sms', 'push'],
+    channels: ['email', 'sms'],
     smsRationale: 'Time-sensitive new time. SMS first, email with calendar.',
     series: 'C',
   },
@@ -175,7 +185,7 @@ export const NOTIFICATION_SPEC = [
     title: '"Your Tuesday is open"',
     when: 'Client lapses ~5 weeks (toggle, opt-in)',
     audience: 'client',
-    channels: ['sms', 'push'],
+    channels: ['sms'],
     smsRationale: 'SMS only per Journey playbook. Lapsed clients are not reading marketing email.',
     series: 'C',
   },
@@ -185,7 +195,7 @@ export const NOTIFICATION_SPEC = [
     title: '"Whenever you\'re ready"',
     when: '120 days, last touch',
     audience: 'client',
-    channels: ['sms', 'email', 'push'],
+    channels: ['sms', 'email'],
     smsRationale: 'Last chance. Both channels.',
     series: 'C',
   },

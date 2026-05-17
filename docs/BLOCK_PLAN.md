@@ -67,6 +67,7 @@ Platform-level work that doesn't belong to a single ribbon.
 **Status:** blocked, waiting on 3+ requests.
 **Current count:** 1 (Ashley Scalzulli, May 12 2026). Jiny, Terra, Kathy have not asked.
 **Why not yet:** the "no client login" stance is a marketing pillar codified in 3 places. Building this changes the framing. Build only when demand justifies it. See [Detail §6](#6-optional-client-portal-with-login).
+**Related dormant infrastructure (May 17 2026):** Phase 11.4 shipped the client push infrastructure (client_push_subscriptions table, useClientPushNotifications hook, ClientPushCTA component, send-push-client edge function, notifyClient push fan-out branch). All reusable when client login exists. The booking-page banner was removed and CLIENT_PUSH_STATUS flipped back to 'queued' after we realized clients have nothing installed to receive push to. When the portal ships: flip status to 'live', re-add 'push' to the relevant C-series channel arrays in notificationSpec.js, re-import ClientPushCTA on BookingPage.js OR move the install prompt into the client portal post-login.
 
 ### Macro #3: Twilio onboarding friction (recurring)
 **Status:** below escalation threshold.
@@ -98,10 +99,18 @@ Platform-level work that doesn't belong to a single ribbon.
 **Pattern documented for future modals:** use `CloseButton` from `src/components/CloseButton.jsx` for any modal/sheet/drawer close affordance. For inline list-row deletes, use a small `Delete` / `Remove` / `Dismiss` pill with red hover state. No bare × glyphs anywhere going forward.
 
 ### Macro #9: Push as a first-class notification channel
-**Status:** queued, ~2 hours.
-**Why:** HK May 17 2026 ~6am, after seeing the Notification Compliance Dashboard: "What about notifications on both therapist and client phones that pop up on the mobile? Shouldn't that be added as another communication mechanism." Correct, it should. The PWA push pipeline (`supabase/functions/send-push/`, `usePushNotifications` hook, `push_subscriptions` table) exists but is wired as a side path, not as a unified channel in `notifyTherapist` / `notifyClient` / the notification spec.
-**What:** (1) add `push` as a channel to `ALL_CHANNELS_BY_AUDIENCE` in `src/lib/notificationSpec.js` for both therapist and client. (2) extend `notifyTherapist` and `notifyClient` in `supabase/functions/_shared/notifications.ts` to call `send-push` when the channel is enabled in prefs. (3) log push attempts to `notification_log` with `channel='push'`. (4) update the dashboard matrix to render 7 columns instead of 5.
-**Why HK pointed this out:** "How did you forget about it and what can we do so that you stay strategically and technologically as world's best?" Lesson learned: when designing the spec, grep for every existing mechanism that sends a message to a human. Don't trust the existing docs to be complete, they reflect what was in the engine at the time. Adding it to the design principles as a "before designing a notification spec" check.
+**Status:** PARTIAL. Therapist push (T-Push) shipped Phase 11.3. Client push (C-Push) infrastructure shipped Phase 11.4 then tabled in Phase 11.5 pending client login.
+**Why this matters:** HK May 17 2026 ~6am, after seeing the Notification Compliance Dashboard: "What about notifications on both therapist and client phones that pop up on the mobile? Shouldn't that be added as another communication mechanism." Correct, it should. The PWA push pipeline existed but was wired as a side path, not a unified channel in the notification spec.
+**What shipped (T-Push, Phase 11.3):**
+  - `push` channel added to `ALL_CHANNELS_BY_AUDIENCE.therapist` in `src/lib/notificationSpec.js`
+  - `notifyTherapist` in `supabase/functions/_shared/notifications.ts` calls `send-push` as channel #4
+  - Push attempts logged to `notification_log` with `channel='push'`
+  - Dashboard renders T-Push column
+**What was shipped then tabled (C-Push, Phase 11.4 → Phase 11.5):**
+  - Built: `client_push_subscriptions` table, `useClientPushNotifications` hook, `ClientPushCTA` banner, `send-push-client` edge function, `notifyClient` push fan-out branch
+  - Tabled because clients have no login. They book once, then have nothing installed to receive push to. The infrastructure is dormant but reusable when Macro #2 (client portal) ships.
+  - To re-enable: flip `CLIENT_PUSH_STATUS` to `'live'` in `src/lib/notificationSpec.js`, re-add `'push'` to C3-C5, C7-C15 channel arrays, re-import `ClientPushCTA` in `src/pages/BookingPage.js` OR move the install prompt into the post-login client portal.
+**Lesson learned:** when designing a notification spec, grep for every existing mechanism that sends a message to a human. Don't trust existing docs to be complete, they reflect what was in the engine at the time. AND: validate the architectural prerequisites (does the audience have a place to receive this channel?) before shipping infrastructure for it.
 
 ### Macro #10: Notification Compliance auto-fire + bulk-confirm
 **Status:** queued, ~3.5 hours.

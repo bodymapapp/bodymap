@@ -506,7 +506,7 @@ export default function NotificationCompliance() {
                             textAlign: 'center',
                           }}>
                             <span
-                              title="Client push notifications require a separate booking-page PWA subscription flow. Queued in BLOCK_PLAN."
+                              title="Client push is on hold until a client login exists. Clients without an account have nothing installed to receive push to. See BLOCK_PLAN Macro #2 (Optional client portal)."
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
