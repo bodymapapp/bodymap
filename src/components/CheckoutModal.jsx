@@ -24,6 +24,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
+import CloseButton from './CloseButton';
 
 const C = {
   forest: '#2A5741',
@@ -114,14 +115,20 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       );
       elementsRef.current = stripeRef.current.elements();
       cardElRef.current = elementsRef.current.create('card', {
+        hidePostalCode: true,
+        // Disable Stripe Link's "Save with Link" UI: therapists are
+        // collecting cards on behalf of clients in person; we don't
+        // want a third-party save prompt cluttering the UX.
+        disableLink: true,
         style: {
           base: {
             fontSize: '16px',
-            fontFamily: 'system-ui, sans-serif',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
             color: C.ink,
+            iconColor: C.forest,
             '::placeholder': { color: C.inkFade },
           },
-          invalid: { color: C.red },
+          invalid: { color: C.red, iconColor: C.red },
         },
       });
       cardElRef.current.on('ready', () => { if (alive) setStripeReady(true); });
@@ -429,7 +436,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
                   {appt?.client || client?.name}
                 </div>
               </div>
-              <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 26, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto' }}>×</button>
+              <CloseButton onClick={onClose} label="Done" />
             </div>
             <div style={bodyStyle}>
               <SuccessView detail={successDetail} onClose={onClose} linkUrl={linkUrl} linkDelivery={linkDelivery} clientPhone={client?.phone || appt?.phone} clientEmail={client?.email || appt?.email} therapistName={therapist?.business_name || therapist?.full_name} />
@@ -447,7 +454,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
                   {appt?.client || client?.name} · {appt?.service || 'Session'}
                 </div>
               </div>
-              <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 28, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto', marginTop: -2 }}>×</button>
+              <CloseButton onClick={onClose} label="Close" />
             </div>
 
             {/* Scrollable body */}
@@ -644,16 +651,22 @@ function ConfirmCardOnFile({ cardOnFile, totalCents, onConfirm, onBack, processi
 function NewCardForm({ cardDivRef, ready, totalCents, onConfirm, onBack, processing }) {
   return (
     <div>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>Card details</div>
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>Card details</div>
         <div ref={cardDivRef} style={{
-          padding: '14px',
+          padding: '16px 14px',
           border: `1.5px solid ${C.border}`,
           borderRadius: 12,
           background: '#fff',
-          minHeight: 48,
+          minHeight: 52,
+          // Stripe Elements iframe is inserted here. We give it room
+          // to render naturally without compression artifacts.
         }} />
-        {!ready && <div style={{ fontSize: 12, color: C.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif', marginTop: 8 }}>Loading secure card form…</div>}
+        {!ready && (
+          <div style={{ fontSize: 12, color: C.inkFade, fontStyle: 'italic', fontFamily: 'Georgia, serif', marginTop: 8 }}>
+            Loading secure card form
+          </div>
+        )}
       </div>
       <ActionRow onBack={onBack} onConfirm={onConfirm} processing={processing} confirmLabel={`Charge $${(totalCents / 100).toFixed(2)}`} disabled={!ready} />
     </div>
@@ -708,12 +721,24 @@ function DeliveryOption({ active, onClick, icon, label, detail, disabled }) {
 
 function ActionRow({ onBack, onConfirm, processing, confirmLabel, disabled }) {
   return (
-    <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+    <div style={{ display: 'flex', gap: 10, marginTop: 18 }}>
       <button
         type="button"
         onClick={onBack}
         disabled={processing}
-        style={{ flex: '0 0 90px', background: 'transparent', color: C.inkSoft, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 16px', fontSize: 14, fontWeight: 600, cursor: processing ? 'wait' : 'pointer', fontFamily: 'Georgia, serif', fontStyle: 'italic' }}>
+        style={{
+          flex: '0 0 96px',
+          minHeight: 48,
+          background: '#fff',
+          color: C.inkSoft,
+          border: `1.5px solid ${C.border}`,
+          borderRadius: 14,
+          padding: '12px 16px',
+          fontSize: 14,
+          fontWeight: 600,
+          cursor: processing ? 'wait' : 'pointer',
+          letterSpacing: '0.01em',
+        }}>
         Back
       </button>
       <button
@@ -722,18 +747,19 @@ function ActionRow({ onBack, onConfirm, processing, confirmLabel, disabled }) {
         disabled={processing || disabled}
         style={{
           flex: 1,
-          background: processing ? C.inkSoft : `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})`,
+          minHeight: 48,
+          background: (processing || disabled) ? '#A3B0A0' : `linear-gradient(135deg, ${C.forestDeep} 0%, ${C.forest} 100%)`,
           color: '#fff',
           border: 'none',
-          borderRadius: 12,
+          borderRadius: 14,
           padding: '12px 18px',
           fontSize: 15,
-          fontWeight: 700,
+          fontWeight: 600,
           cursor: (processing || disabled) ? 'wait' : 'pointer',
-          boxShadow: processing ? 'none' : '0 2px 10px rgba(42,87,65,0.2)',
-          opacity: disabled ? 0.5 : 1,
+          boxShadow: (processing || disabled) ? 'none' : '0 4px 14px rgba(31,64,48,0.25), 0 1px 0 rgba(255,255,255,0.15) inset',
+          letterSpacing: '0.01em',
         }}>
-        {processing ? 'Processing…' : confirmLabel}
+        {processing ? 'Processing' : confirmLabel}
       </button>
     </div>
   );

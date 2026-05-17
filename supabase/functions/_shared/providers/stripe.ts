@@ -389,21 +389,31 @@ export class StripeProvider implements PaymentProvider {
   // PaymentIntent with off_session=true to charge a saved card without
   // user action. Will fail with requires_action if the card needs SCA;
   // for cancellation fees on previously-set-up cards this is rare.
+  //
+  // Phase 12 (May 2026): also supports one-shot charges with no customer.
+  // When providerCustomerId is undefined, this is a fresh card entered
+  // at checkout time. off_session is false (the therapist IS present
+  // entering the card on the client's behalf), and customer is omitted
+  // from the request so Stripe creates an anonymous PaymentIntent.
   async chargeSavedCard(args: ChargeArgs): Promise<ChargeResult> {
+    const isOneShot = !args.providerCustomerId;
+    const body: Record<string, unknown> = {
+      amount: args.amountCents,
+      currency: 'usd',
+      payment_method: args.providerCardId,
+      confirm: true,
+      off_session: !isOneShot,
+      description: args.description || undefined,
+      receipt_email: args.receiptEmail || undefined,
+      metadata: { idempotency_key: args.idempotencyKey },
+    };
+    if (args.providerCustomerId) {
+      body.customer = args.providerCustomerId;
+    }
     const intent = await stripeFetch('/payment_intents', {
       method: 'POST',
       therapist: args.therapist,
-      body: {
-        amount: args.amountCents,
-        currency: 'usd',
-        customer: args.providerCustomerId,
-        payment_method: args.providerCardId,
-        confirm: true,
-        off_session: true,
-        description: args.description || undefined,
-        receipt_email: args.receiptEmail || undefined,
-        metadata: { idempotency_key: args.idempotencyKey },
-      },
+      body,
     });
 
     return {

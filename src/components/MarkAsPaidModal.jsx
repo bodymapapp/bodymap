@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import CloseButton from './CloseButton';
 
 const C = {
   forest: '#2A5741',
@@ -149,7 +150,7 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
             <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>Mark as paid</div>
             <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3 }}>Record a payment you took outside the app.</div>
           </div>
-          <button onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', fontSize: 28, color: C.inkFade, cursor: 'pointer', padding: 0, lineHeight: 1, flex: '0 0 auto', marginTop: -2 }}>×</button>
+          <CloseButton onClick={onClose} label="Close" />
         </div>
 
         <div style={bodyStyle}>

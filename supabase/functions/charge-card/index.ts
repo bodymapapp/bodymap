@@ -26,9 +26,12 @@ serve(async (req) => {
       idempotency_key,
     } = await req.json();
 
-    if (!customer_id) return respond({ error: 'customer_id required' }, 400);
     if (!payment_method_id) return respond({ error: 'payment_method_id required' }, 400);
     if (!amount_cents || amount_cents <= 0) return respond({ error: 'amount_cents required' }, 400);
+    // customer_id is now OPTIONAL. When null/undefined, this is treated
+    // as a one-shot charge against a fresh PaymentMethod (e.g. the
+    // Phase 12 'Enter new card' Checkout path). When present, this is
+    // the saved-card flow.
 
     const supabase = getSupabaseClient();
 
@@ -53,10 +56,10 @@ serve(async (req) => {
     const total = amount_cents + (tip_cents || 0);
     const result = await provider.chargeSavedCard({
       therapist,
-      providerCustomerId: customer_id,
+      providerCustomerId: customer_id || undefined,
       providerCardId: payment_method_id,
       amountCents: total,
-      idempotencyKey: idempotency_key || `charge-${customer_id}-${Date.now()}`,
+      idempotencyKey: idempotency_key || `charge-${customer_id || payment_method_id}-${Date.now()}`,
       description: description || 'Massage session',
       receiptEmail: send_receipt && client_email ? client_email : undefined,
     });
