@@ -1,5 +1,66 @@
 # Notifications: Live Audit, May 17 2026 ~5am
 
+## Test accounts reference
+
+This is the verified setup for end-to-end notification testing.
+**No secrets recorded here**, just identifiers and reference data.
+
+### Therapist account
+
+- **Login email:** `bodymapdemo@gmail.com` (NOT `mybodymapdemo`, common typo, caught May 17 ~5am)
+- **Therapist id:** `2a2886c3-00f2-4c6f-aaec-4b8150c61fcf`
+- **Display name:** Joy Demo
+- **Business name:** Healing Hands
+- **Custom URL:** `healinghands`
+- **Public booking page:** `https://mybodymap.app/book/healinghands`
+- **Therapist dashboard:** `https://mybodymap.app/dashboard`
+- **Twilio sender number:** `+15136133033` (verified in Twilio, paid number)
+- **Twilio credentials live in the `therapists` row** (`twilio_account_sid`, `twilio_auth_token`, `twilio_phone_number`), NOT in Supabase secrets. Multi-tenant design: each therapist brings their own Twilio account.
+- **Notification prefs:** seeded May 17 ~5am with all channels ON for: new_booking, booking_cancelled, no_show_recorded, payment_received, new_client_signup, plus client-side booking_confirmation/reminder_24h/post_session
+
+### Client account
+
+- **Login email:** `bodymap01@gmail.com`
+- **Two client rows exist for this email** (duplicate-row bug, queued in BLOCK_PLAN > Open asks > Found-during-testing):
+
+  | Client id | Name | Phone | Phone type | Created |
+  |---|---|---|---|---|
+  | ce205279-3800-4335-b1c7-0b5ad1092a14 | Joy I | (346) 242-6904 | Google Fi | 2026-05-16 |
+  | d38ce2b4-09d5-40cd-9959-0f31b652301c | Mybodymap Demo | 5136133033 | Google Voice | 2026-05-05 |
+
+- **Both phones operational** and verified to receive Twilio SMS.
+- **Both client rows linked to** therapist_id `2a2886c3-00f2-4c6f-aaec-4b8150c61fcf`.
+- **When booking via mybodymap.app/book/healinghands with email `bodymap01@gmail.com`**, the booking flow's email-match logic will pick one of these rows. Which one wins is the duplicate-client bug we still need to investigate.
+
+### Seed SQL for notification_prefs
+
+If notification_prefs needs to be reseeded for testing:
+
+```sql
+update therapists
+set notification_prefs = jsonb_build_object(
+  'client', jsonb_build_object(
+    'booking_confirmation', jsonb_build_object('email', true, 'sms', true),
+    'reminder_24h',         jsonb_build_object('email', true, 'sms', true),
+    'post_session',         jsonb_build_object('email', true, 'sms', true),
+    'rebooking_nudge',      jsonb_build_object('email', false, 'sms', false)
+  ),
+  'therapist', jsonb_build_object(
+    'new_booking',        jsonb_build_object('email', true, 'app_alert', true, 'sms', true),
+    'payment_received',   jsonb_build_object('email', true, 'app_alert', true, 'sms', true),
+    'new_client_signup',  jsonb_build_object('email', true, 'app_alert', true, 'sms', true),
+    'booking_cancelled',  jsonb_build_object('email', true, 'app_alert', true, 'sms', true),
+    'no_show_recorded',   jsonb_build_object('email', true, 'app_alert', true, 'sms', true),
+    'intake_filled',      jsonb_build_object('email', true, 'app_alert', true, 'sms', false),
+    'gift_purchased',     jsonb_build_object('email', true, 'app_alert', true, 'sms', false),
+    'daily_pulse',        jsonb_build_object('email', true)
+  )
+)
+where id = '2a2886c3-00f2-4c6f-aaec-4b8150c61fcf';
+```
+
+---
+
 ## TL;DR
 
 We have **most of the engine already built**. The Notifications Architecture
@@ -27,10 +88,10 @@ and what's the highest-impact next fill.
 
 ### Channel adapters
 
-- **`sendSmsViaTwilio(therapist, toPhone, message)`** — Twilio REST API, E.164 normalization, returns structured ok/error
-- **Resend** — used by `send-booking-confirmation`, `send-welcome`, `send-post-session`, `send-reminders` (email body), `send-drip`
-- **Bell drawer (`in_app_notifications` table)** — Postgres table, no external service
-- **Push (`send-push` edge function)** — VAPID push, separate from the bell drawer, fires to PWA-installed devices
+- **`sendSmsViaTwilio(therapist, toPhone, message)`**, Twilio REST API, E.164 normalization, returns structured ok/error
+- **Resend**, used by `send-booking-confirmation`, `send-welcome`, `send-post-session`, `send-reminders` (email body), `send-drip`
+- **Bell drawer (`in_app_notifications` table)**, Postgres table, no external service
+- **Push (`send-push` edge function)**, VAPID push, separate from the bell drawer, fires to PWA-installed devices
 
 ### Therapist bell drawer (in-app channel)
 
@@ -133,9 +194,9 @@ Per the Journey playbook revision, these should be SMS-first:
 
 These exist as therapist notifications but not as client notifications:
 
-- **Client cancellation confirmation** (email + SMS with refund breakdown, policy attached) — partial; the cancellation function may send something but the warmth/policy-attachment isn't verified.
-- **Polite no-show notice with payment request** — biggest single missing piece. The Money playbook's highest-impact retention touchpoint. Today: NOT wired.
-- **Therapist-cancel apology to client** — the choice-screen pattern in the Money playbook says therapist taps once and a warm apology + rebook link goes out. Today: NOT wired.
+- **Client cancellation confirmation** (email + SMS with refund breakdown, policy attached), partial; the cancellation function may send something but the warmth/policy-attachment isn't verified.
+- **Polite no-show notice with payment request**, biggest single missing piece. The Money playbook's highest-impact retention touchpoint. Today: NOT wired.
+- **Therapist-cancel apology to client**, the choice-screen pattern in the Money playbook says therapist taps once and a warm apology + rebook link goes out. Today: NOT wired.
 
 ### Gap 4: Lapse signal client side
 
@@ -190,7 +251,7 @@ But not tonight.
 
 ## Tonight's order
 
-1. **(15 min) Verify test accounts** — confirm both signed up, both have phone numbers, therapist has Twilio creds, therapist has notification_prefs enabled.
+1. **(15 min) Verify test accounts**, confirm both signed up, both have phone numbers, therapist has Twilio creds, therapist has notification_prefs enabled.
 2. **(45 min) Trigger every existing touchpoint** with the test accounts and document what actually fires. Mark each above as ✓ verified or ⚠ broken.
 3. **(15 min) Update this audit** with verified state.
 4. **(60-90 min) Wire the polite no-show notice** (Phase B target above) and test end-to-end.
