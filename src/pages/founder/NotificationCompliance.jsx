@@ -113,9 +113,9 @@ export default function NotificationCompliance() {
     // "latest per cell" in JS rather than 25 separate SQL queries.
     const { data, error } = await supabase
       .from('notification_log')
-      .select('id, notification_type, audience, channel, recipient, status, error_message, body_snippet, subject, created_at, confirmed_at, confirmed_by')
+      .select('id, notification_type, audience, channel, recipient, status, error_message, body_snippet, subject, sent_at, confirmed_at, confirmed_by')
       .eq('therapist_id', therapist.id)
-      .order('created_at', { ascending: false })
+      .order('sent_at', { ascending: false })
       .limit(500);
 
     if (error) {
@@ -691,7 +691,7 @@ function CellDetail({ selected, onClose, onConfirm, onUnconfirm }) {
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: COLORS.inkSoft, marginBottom: 10 }}>
               Latest log row
             </div>
-            <KV k="When" v={new Date(latestLog.created_at).toLocaleString()} />
+            <KV k="When" v={new Date(latestLog.sent_at).toLocaleString()} />
             <KV k="Recipient" v={latestLog.recipient || '—'} />
             <KV k="Status" v={latestLog.status} />
             {latestLog.subject && <KV k="Subject" v={latestLog.subject} />}

@@ -46,8 +46,21 @@ export function shouldSend(therapist, audience, type, channel) {
 // Log a send attempt to notification_log (non-blocking, fire and forget)
 export async function logNotification(supabase, row) {
   try {
-    await supabase.from('notification_log').insert(row);
-  } catch (e) { /* non-blocking */ }
+    const { error } = await supabase.from('notification_log').insert(row);
+    if (error) {
+      // Surface schema/RLS errors to logs. Previous version of this
+      // function silently swallowed every error which hid bugs like
+      // "subject column does not exist" for months.
+      console.warn('[notification_log] insert failed:', error.message, 'row:', JSON.stringify({
+        type: row.notification_type,
+        audience: row.audience,
+        channel: row.channel,
+        status: row.status,
+      }));
+    }
+  } catch (e) {
+    console.warn('[notification_log] unexpected exception:', e?.message || String(e));
+  }
 }
 
 // ─── notifyTherapist ─────────────────────────────────────────────

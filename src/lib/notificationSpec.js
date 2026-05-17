@@ -354,7 +354,7 @@ export function cellState({ latestLog, anyConfirmed }) {
     return { color: 'orange', label: 'Skipped', tooltip: `Engine intentionally skipped. Reason: ${latestLog.error_message || 'pref_off or no_recipient'}` };
   }
   if (status === 'sent' && !latestLog.confirmed_at) {
-    return { color: 'yellow', label: 'Sent, awaiting confirm', tooltip: `Sent at ${latestLog.created_at}. Tick the checkbox once you confirm receipt on the actual channel.` };
+    return { color: 'yellow', label: 'Sent, awaiting confirm', tooltip: `Sent at ${latestLog.sent_at}. Tick the checkbox once you confirm receipt on the actual channel.` };
   }
   if (status === 'sent' && latestLog.confirmed_at) {
     return { color: 'green', label: 'Verified', tooltip: `Confirmed received at ${latestLog.confirmed_at}.` };
