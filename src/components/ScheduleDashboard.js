@@ -1949,6 +1949,30 @@ export default function ScheduleDashboard({ therapist }) {
   // onScheduleAtTime callback to hand control here.
   const [pendingBookingTime, setPendingBookingTime] = useState(null);  // {date, startTime}
 
+  // Preview-data toggle (HK May 18 2026): Candice asked "How do I
+  // get it off preview mode?" The sample data appears whenever
+  // upcoming real bookings < 3 (see showSample logic below) which
+  // confused her. This toggle lets the therapist turn off samples
+  // entirely. Default true so brand-new accounts still get the
+  // populated demo on day one. Persists to therapists.show_preview_data.
+  const [showPreviewData, setShowPreviewData] = useState(
+    therapist?.show_preview_data !== false
+  );
+  useEffect(() => {
+    setShowPreviewData(therapist?.show_preview_data !== false);
+  }, [therapist?.show_preview_data]);
+
+  async function togglePreviewData() {
+    const next = !showPreviewData;
+    setShowPreviewData(next);
+    try {
+      await supabase.from('therapists').update({ show_preview_data: next }).eq('id', therapist.id);
+    } catch (e) {
+      // Revert on failure. Toggle is non-critical; don't block UI.
+      setShowPreviewData(!next);
+    }
+  }
+
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
   const [showBlockPanel, setShowBlockPanel] = useState(false);
@@ -2292,9 +2316,13 @@ export default function ScheduleDashboard({ therapist }) {
     }
   }
 
-  // FIX: only show sample when upcoming real bookings < 3 (not total)
+  // Show samples only when (a) therapist hasn't opted out via toggle
+  // AND (b) upcoming real bookings < 3. The < 3 threshold is the
+  // legacy 'populate the empty calendar so it doesn't look broken'
+  // behavior; the toggle gives the therapist an escape hatch when
+  // their real bookings are landing and they want a clean view.
   const upcomingReal = (realBookings || []).filter(a => a.date >= today);
-  const showSample = !realBookings || upcomingReal.length < 3;
+  const showSample = showPreviewData && (!realBookings || upcomingReal.length < 3);
   const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
 
   const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'insights',label:'Insights'}];
@@ -2331,7 +2359,12 @@ export default function ScheduleDashboard({ therapist }) {
             <span>Book Appointment</span>
           </button>
 
-          {/* Secondary: status pill (non-interactive visual, tap refreshes) */}
+          {/* Secondary: status pill (non-interactive visual, tap refreshes
+              when there's real data; tap to turn off previews when in
+              preview mode). The Preview pill replaces the Live pill when
+              there are no real bookings yet; tapping it disables sample
+              data entirely so the therapist gets a clean empty state
+              instead of fake clients. */}
           {realBookings?.length > 0
             ? <button onClick={fetchBookings} title="Refresh bookings"
                 style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#16A34A',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
@@ -2339,10 +2372,35 @@ export default function ScheduleDashboard({ therapist }) {
                 <span>Live</span>
                 <span style={{fontSize:12,opacity:0.7,marginLeft:2}}>↻</span>
               </button>
-            : <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1}}>
-                <span>👁️</span> Preview
-              </div>
+            : showPreviewData
+              ? <button
+                  onClick={togglePreviewData}
+                  title="Tap to hide preview clients and see a clean empty calendar"
+                  style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
+                  <span>👁️</span> Preview
+                  <span style={{fontSize:11,opacity:0.7,marginLeft:4}}>tap to hide</span>
+                </button>
+              : <button
+                  onClick={togglePreviewData}
+                  title="Tap to bring back preview clients on an empty calendar"
+                  style={{display:'inline-flex',alignItems:'center',gap:6,background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#6B7280',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
+                  <span>🌙</span> Previews off
+                </button>
           }
+
+          {/* Tap-to-hide affordance when samples are mixing in alongside
+              real bookings (therapist has 1-2 real upcoming sessions and
+              the < 3 threshold pulls in samples to fill space). Hidden
+              entirely once they hit 3+ real bookings since samples stop
+              showing anyway. */}
+          {realBookings?.length > 0 && showSample && (
+            <button
+              onClick={togglePreviewData}
+              title="You have real bookings AND preview clients showing. Tap to hide previews."
+              style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
+              <span>👁️</span> Hide previews
+            </button>
+          )}
 
           {/* Secondary: Time off toggle */}
           <button onClick={()=>setShowBlockPanel(v=>!v)}
