@@ -988,7 +988,19 @@ export default function BillingDashboard({ therapist }) {
       const refundSessions = [];
       (payments || []).forEach((p) => {
         const b = bookingsById[p.booking_id];
-        const dateObj = p.paid_at ? new Date(p.paid_at) : new Date(p.created_at);
+        // Phase 14.3l (HK May 17 2026 late): bucket payments by the
+        // booking's session date, not by when the money was collected.
+        // Therapist's mental model is 'X sessions tomorrow, Y of them
+        // paid.' If we used paid_at, an advance-paid Tuesday booking
+        // would show in Monday's bucket (when the card was charged),
+        // confusing the therapist.
+        //
+        // If there is no booking attached to this payment (e.g. a tip
+        // adjustment), fall back to paid_at so the row still appears
+        // somewhere.
+        const dateObj = b?.booking_date
+          ? new Date((b.booking_date || '') + 'T' + (b.start_time || '12:00:00'))
+          : (p.paid_at ? new Date(p.paid_at) : new Date(p.created_at));
         const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
         const actualCents = (p.amount_cents || 0) + (p.tip_cents || 0);
         const base = {
