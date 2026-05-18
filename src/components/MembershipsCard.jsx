@@ -73,6 +73,24 @@ export default function MembershipsCard({ therapist }) {
     setMemberships(arr => arr.map(x => x.id === m.id ? { ...x, active: !x.active } : x));
   }
 
+  // Visibility toggle (HK May 18 2026, Candice ask). Mirrors the
+  // services.visibility pattern: public memberships render on the
+  // booking page for new signups, private ones are hidden but stay
+  // assignable by the therapist. Candice has 3 legacy members locked
+  // in at old prices that need to stay private while she raises
+  // public pricing. Default 'public' for every existing row.
+  async function toggleMembershipVisibility(m) {
+    const next = (m.visibility === 'private') ? 'public' : 'private';
+    setMemberships(arr => arr.map(x => x.id === m.id ? { ...x, visibility: next } : x));
+    const { error } = await supabase.from('memberships').update({ visibility: next }).eq('id', m.id);
+    if (error) {
+      // Revert. The 'visibility column does not exist' error means
+      // the membership_package_visibility migration has not been run.
+      console.error('toggleMembershipVisibility failed:', error);
+      setMemberships(arr => arr.map(x => x.id === m.id ? { ...x, visibility: m.visibility } : x));
+    }
+  }
+
   async function deleteMembership(id) {
     if (!window.confirm('Remove this membership? Existing subscribers stay active; this just stops new signups.')) return;
     await supabase.from('memberships').delete().eq('id', id);
@@ -222,6 +240,34 @@ export default function MembershipsCard({ therapist }) {
                     <button onClick={() => toggleMembership(m)} style={{ background:m.active?'#fff':C.sage, color:m.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {m.active ? 'Hide' : 'Show'}
                     </button>
+                    {/* Public/Private toggle. Only meaningful when active=true;
+                        hidden when membership is off so the row stays clean.
+                        Private hides this membership from the public booking
+                        page but keeps it assignable manually for legacy
+                        grandfathered subscribers at older prices. */}
+                    {m.active && (
+                      <button
+                        onClick={() => toggleMembershipVisibility(m)}
+                        title={m.visibility === 'private'
+                          ? 'Only you can assign this membership. Tap to make it public.'
+                          : 'Anyone can subscribe to this on your public booking page. Tap to make it private.'}
+                        style={{
+                          background: m.visibility === 'private' ? '#FEF3C7' : '#E0E7FF',
+                          color: m.visibility === 'private' ? '#92400E' : '#3730A3',
+                          border: `1px solid ${m.visibility === 'private' ? '#FDE68A' : '#C7D2FE'}`,
+                          borderRadius: 8,
+                          padding: '5px 10px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {m.visibility === 'private' ? '🔒 Private' : '🌐 Public'}
+                      </button>
+                    )}
                     <button onClick={() => deleteMembership(m.id)} aria-label={`Delete ${m.name || 'this membership'}`} style={{ background:'transparent', color:C.gray, border:'1px solid transparent', fontSize:12, fontWeight:700, cursor:'pointer', padding:'4px 12px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Delete</button>
                   </div>
                 </div>

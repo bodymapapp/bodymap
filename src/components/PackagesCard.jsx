@@ -74,6 +74,20 @@ export default function PackagesCard({ therapist }) {
     setPackages(arr => arr.map(x => x.id === p.id ? { ...x, active: !x.active } : x));
   }
 
+  // Visibility toggle (HK May 18 2026, Candice ask). Same pattern as
+  // memberships: a private package is hidden from the public booking
+  // page but stays assignable for legacy/grandfathered clients at
+  // older pricing.
+  async function togglePackageVisibility(p) {
+    const next = (p.visibility === 'private') ? 'public' : 'private';
+    setPackages(arr => arr.map(x => x.id === p.id ? { ...x, visibility: next } : x));
+    const { error } = await supabase.from('packages').update({ visibility: next }).eq('id', p.id);
+    if (error) {
+      console.error('togglePackageVisibility failed:', error);
+      setPackages(arr => arr.map(x => x.id === p.id ? { ...x, visibility: p.visibility } : x));
+    }
+  }
+
   async function deletePackage(id) {
     if (!window.confirm('Remove this package? Existing customer purchases stay valid; this just stops new sales.')) return;
     await supabase.from('packages').delete().eq('id', id);
@@ -212,6 +226,32 @@ export default function PackagesCard({ therapist }) {
                     <button onClick={() => togglePackage(p)} style={{ background:p.active?'#fff':C.sage, color:p.active?C.gray:'#fff', border:`1px solid ${C.lightGray}`, borderRadius:8, padding:'5px 10px', fontSize:11, fontWeight:600, cursor:'pointer' }}>
                       {p.active ? 'Hide' : 'Show'}
                     </button>
+                    {/* Public/Private toggle. Hidden when package is off
+                        to keep the row clean. Private hides from public
+                        booking page but stays assignable for legacy clients. */}
+                    {p.active && (
+                      <button
+                        onClick={() => togglePackageVisibility(p)}
+                        title={p.visibility === 'private'
+                          ? 'Only you can sell this package. Tap to make it public.'
+                          : 'Anyone can buy this on your public booking page. Tap to make it private.'}
+                        style={{
+                          background: p.visibility === 'private' ? '#FEF3C7' : '#E0E7FF',
+                          color: p.visibility === 'private' ? '#92400E' : '#3730A3',
+                          border: `1px solid ${p.visibility === 'private' ? '#FDE68A' : '#C7D2FE'}`,
+                          borderRadius: 8,
+                          padding: '5px 10px',
+                          fontSize: 11,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {p.visibility === 'private' ? '🔒 Private' : '🌐 Public'}
+                      </button>
+                    )}
                     <button onClick={() => deletePackage(p.id)} aria-label={`Delete ${p.name || 'this package'}`} style={{ background:'transparent', color:C.gray, border:'1px solid transparent', fontSize:12, fontWeight:700, cursor:'pointer', padding:'4px 12px', borderRadius:999, transition:'all 0.15s' }} onMouseEnter={(e)=>{e.currentTarget.style.background='#FEF2F2';e.currentTarget.style.color='#DC2626';e.currentTarget.style.borderColor='#FCA5A5';}} onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color=C.gray;e.currentTarget.style.borderColor='transparent';}}>Delete</button>
                   </div>
                 </div>

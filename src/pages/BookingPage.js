@@ -1175,7 +1175,6 @@ export default function BookingPage() {
     setBlockedDates(new Set(fullDayBlocks));
     setPartialBlocksByDate(partialByDate);
     setAvailableAddons(addons||[]);
-    setPackagesList(pkgRes?.data || []);
     // Memberships render for therapists with EITHER processor connected.
     // Stripe is fully supported. Square is supported for the first month
     // checkout flow with a documented limitation: recurring monthly
@@ -1184,7 +1183,16 @@ export default function BookingPage() {
     // remains so clients do not click into a broken state when the
     // therapist has no processor at all.
     const therapistHasAnyProcessor = !!(t.stripe_account_id || t.square_access_token);
-    setMembershipsList(therapistHasAnyProcessor ? (memRes?.data || []) : []);
+    // Private memberships + packages filter (HK May 18 2026, Candice).
+    // We filter in JS rather than SQL so the query works both before
+    // and after the membership_package_visibility migration runs.
+    // SQL .neq('visibility','private') would fail with "column does
+    // not exist" pre-migration. JS treats undefined !== 'private' as
+    // true, so legacy rows pass through as public (correct default).
+    const publicPackages = (pkgRes?.data || []).filter(p => p.visibility !== 'private');
+    const publicMemberships = (memRes?.data || []).filter(m => m.visibility !== 'private');
+    setPackagesList(publicPackages);
+    setMembershipsList(therapistHasAnyProcessor ? publicMemberships : []);
 
     // Multi-location: store the list. Auto-pick when 0 or 1 location
     // exists so the picker step is skipped. When 2+ exist, leave
