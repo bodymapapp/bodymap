@@ -2355,8 +2355,567 @@ function MonthGroupCard({ group, onRefundClick }) {
   );
 }
 
-function InsightsView(props) {
-  return <PeriodPlaceholder period="Insights" {...props} />;
+// ─── InsightsView V2 ───────────────────────────────────────────────
+//
+// 9 peer-toned cards showing patterns in the therapist's practice.
+// Per BENCHMARKS.md: peer comparison line shown only where we have
+// real industry data (with citation in the footer). Where we don't,
+// show therapist's own data and skip the comparison.
+//
+// Refresh cadence (UI implication only): "Refreshes every Monday"
+// language since the underlying data is updated continuously.
+//
+// 4 accent colors used: sage (positive patterns), forest (calm
+// observations), gold (financial context), rose (notable callouts).
+function InsightsView({ sessions, therapist }) {
+  // Compute everything once for the year.
+  const now = new Date();
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  yearStart.setHours(0, 0, 0, 0);
+  const last90Start = addDays(TODAY, -90);
+  const last90Sessions = sessions.filter(s => s.date >= last90Start && s.date <= TODAY);
+  const yearSessions = sessions.filter(s => s.date >= yearStart && s.date <= TODAY);
+
+  return (
+    <div>
+      <InsightsIntro />
+      <TipsInsight sessions={last90Sessions} />
+      <NoShowRateInsight sessions={last90Sessions} />
+      <AvgSessionValueInsight sessions={last90Sessions} therapist={therapist} />
+      <SessionLengthMixInsight sessions={last90Sessions} />
+      <StrongestMonthInsight sessions={yearSessions} />
+      <DayOfWeekInsight sessions={last90Sessions} />
+      <EffectiveHourlyInsight sessions={last90Sessions} />
+      <SeasonalityInsight sessions={sessions} />
+      <ClientRetentionInsight sessions={sessions} />
+    </div>
+  );
+}
+
+function InsightsIntro() {
+  const now = new Date();
+  const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return (
+    <div style={{
+      background: `linear-gradient(140deg, #FBF7EC 0%, ${T.cream} 50%, ${T.creamDeep} 110%)`,
+      color: T.forestDeep,
+      border: `1px solid ${T.creamEdge}`,
+      borderRadius: 22,
+      padding: '22px 24px 22px',
+      marginBottom: 20,
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute', top: -40, right: -30,
+        width: 130, height: 130,
+        background: 'radial-gradient(circle, rgba(107, 158, 128, 0.18) 0%, transparent 65%)',
+        borderRadius: '50%', pointerEvents: 'none',
+      }} />
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 10,
+        position: 'relative',
+      }}>{monthYear}  ·  Updated weekly</div>
+      <div style={{
+        fontFamily: T.serif, fontSize: 24, fontWeight: 600,
+        lineHeight: 1.25, letterSpacing: '-0.01em',
+        marginBottom: 10, color: T.forestDeep,
+        position: 'relative',
+      }}>Here's how your practice is shaped.</div>
+      <div style={{ fontSize: 13, lineHeight: 1.55, color: T.gray700, position: 'relative' }}>
+        A look at patterns in your data alongside what's typical for solo LMTs nationally. Nothing to compete with. Just useful to know.
+      </div>
+    </div>
+  );
+}
+
+// Shared insight card shell. accent picks the top border stripe color.
+function InsightCard({ accent, eyebrow, tag = 'Pattern', children }) {
+  const borderColor = {
+    sage:   T.sage,
+    forest: T.forest,
+    gold:   T.gold,
+    rose:   T.rose,
+  }[accent] || T.sage;
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      padding: '20px 22px', marginBottom: 14,
+      boxShadow: T.shadowCard,
+      borderTop: `3px solid ${borderColor}`,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 12,
+      }}>
+        <span>{eyebrow}</span>
+        <span style={{
+          background: T.creamDeep, padding: '3px 8px',
+          borderRadius: 999, color: T.gray500, fontWeight: 600,
+          fontSize: 9, letterSpacing: '0.1em',
+        }}>{tag}</span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function InsightHeadline({ children }) {
+  return (
+    <div style={{
+      fontFamily: T.serif, fontSize: 21, fontWeight: 600,
+      color: T.forestDeep, lineHeight: 1.25,
+      marginBottom: 10, letterSpacing: '-0.005em',
+    }}>{children}</div>
+  );
+}
+
+function InsightCompare({ label = 'What this means', children }) {
+  return (
+    <div style={{
+      fontSize: 13, color: T.gray700,
+      lineHeight: 1.55, marginBottom: 14,
+      paddingBottom: 14,
+      borderBottom: `1px solid ${T.creamDeep}`,
+    }}>
+      <strong style={{ color: T.forestDeep, fontWeight: 700 }}>{label}: </strong>
+      {children}
+    </div>
+  );
+}
+
+function InsightFooter({ children }) {
+  return (
+    <div style={{
+      fontSize: 11, color: T.gray400,
+      lineHeight: 1.5, fontStyle: 'italic',
+    }}>{children}</div>
+  );
+}
+
+function BenchmarkBar({ valueLeftPct, peerLeftPct, peerLabel = 'national avg' }) {
+  return (
+    <div style={{
+      height: 6, background: T.creamDeep,
+      borderRadius: 999, position: 'relative',
+      marginTop: 6, marginBottom: 22,
+    }}>
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        width: `${valueLeftPct}%`,
+        background: `linear-gradient(90deg, ${T.sage} 0%, ${T.forest} 100%)`,
+        borderRadius: 999,
+      }} />
+      <div style={{
+        position: 'absolute', top: -3,
+        left: `${peerLeftPct}%`,
+        width: 2, height: 12,
+        background: T.rose, borderRadius: 1,
+      }}>
+        <div style={{
+          position: 'absolute', top: 14,
+          left: '50%', transform: 'translateX(-50%)',
+          fontSize: 9, fontWeight: 700, color: T.rose,
+          letterSpacing: '0.05em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+        }}>{peerLabel}</div>
+      </div>
+    </div>
+  );
+}
+
+function InsightStatRow({ stats }) {
+  return (
+    <div style={{ display: 'flex', gap: 14, marginBottom: 14 }}>
+      {stats.map((s, i) => (
+        <div key={i} style={{ flex: 1 }}>
+          <div style={{
+            fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+            textTransform: 'uppercase', color: T.gray400, marginBottom: 4,
+          }}>{s.label}</div>
+          <div style={{
+            fontFamily: T.serif, fontSize: 22, fontWeight: 600,
+            color: s.muted ? T.gray400 : T.forestDeep, lineHeight: 1,
+          }}>{s.value}</div>
+          {s.meta && (
+            <div style={{ fontSize: 11, color: T.gray500, marginTop: 4 }}>{s.meta}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Individual insight cards ──────────────────────────────────────
+
+// 1. Tips
+function TipsInsight({ sessions }) {
+  const tipMetrics = buildTipMetrics(sessions);
+  const peerAvg = 18; // BENCHMARKS.md: solo independent national avg
+  if (tipMetrics.totalCount < 3) {
+    return (
+      <InsightCard accent="sage" eyebrow="Tips" tag="Pattern">
+        <InsightHeadline>Your tip rate will appear here once you have a few sessions logged.</InsightHeadline>
+        <InsightFooter>National baseline for solo independent practice is around 18%. Source: AMTA / Soothe 2024.</InsightFooter>
+      </InsightCard>
+    );
+  }
+  const myPct = tipMetrics.pct;
+  const accentColor = myPct >= peerAvg ? T.sage : T.gold;
+  return (
+    <InsightCard accent="sage" eyebrow="Tips" tag="Pattern">
+      <InsightHeadline>
+        You earn <span style={{ color: accentColor, fontWeight: 700 }}>{myPct}%</span> in tips. Solo LMTs nationally average <span style={{ color: T.rose }}>{peerAvg}%</span>.
+      </InsightHeadline>
+      <BenchmarkBar
+        valueLeftPct={Math.min((myPct / 30) * 100, 100)}
+        peerLeftPct={(peerAvg / 30) * 100}
+      />
+      <InsightCompare>
+        Your tip rate is computed across the last 90 days of paid sessions ({tipMetrics.tippedCount} of {tipMetrics.totalCount} sessions tipped). {myPct >= peerAvg
+          ? 'Your tip rate runs above the national baseline, often a sign that clients feel the value of the work.'
+          : 'A small change to how you mention tipping at checkout often lifts this by 2-4 points.'}
+      </InsightCompare>
+      <InsightFooter>National benchmark from AMTA 2024 workforce data and Soothe operations report 2025.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 2. No-show rate
+function NoShowRateInsight({ sessions }) {
+  // Count: no_show sessions / total scheduled (paid + no_show + outstanding)
+  const noShows = sessions.filter(s => s.status === 'no_show').length;
+  const scheduled = sessions.filter(s =>
+    s.status === 'no_show' ||
+    (s.source === 'payment' && s.status === 'paid') ||
+    s.status === 'outstanding'
+  ).length;
+  if (scheduled < 5) {
+    return (
+      <InsightCard accent="forest" eyebrow="No-show rate" tag="Pattern">
+        <InsightHeadline>Your no-show rate will appear here once you've had a few weeks of scheduling.</InsightHeadline>
+        <InsightFooter>With automated reminders, the typical solo LMT no-show rate is around 8%. Source: SchedulingKit 2026 industry research.</InsightFooter>
+      </InsightCard>
+    );
+  }
+  const myPct = scheduled > 0 ? Math.round((noShows / scheduled) * 100) : 0;
+  const peerAvg = 8; // with reminders, BENCHMARKS.md
+  return (
+    <InsightCard accent="forest" eyebrow="No-show rate" tag="Pattern">
+      <InsightHeadline>
+        Your no-shows happen <span style={{ color: myPct <= peerAvg ? T.sage : T.rose, fontWeight: 700 }}>{myPct}%</span> of the time. With reminders, the typical rate is around <span style={{ color: T.rose }}>{peerAvg}%</span>.
+      </InsightHeadline>
+      <InsightCompare>
+        {myPct <= peerAvg
+          ? 'Your cancellation policy has found a rhythm with your clients. Below-average no-show rates protect real revenue.'
+          : 'A reminder a day before the appointment tends to move this number down. Most no-shows aren\'t deliberate, just forgetful.'}
+      </InsightCompare>
+      <InsightFooter>Benchmark from SchedulingKit 2026 industry data. Practices without reminders see ~18% no-show rates; those with reminders see closer to 8%.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 3. Avg session value
+function AvgSessionValueInsight({ sessions, therapist }) {
+  const paid = sessions.filter(s =>
+    s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund'
+  );
+  if (paid.length < 3) {
+    return (
+      <InsightCard accent="gold" eyebrow="Avg session value" tag="Observation">
+        <InsightHeadline>Your average session value will appear here once you have a few paid sessions.</InsightHeadline>
+        <InsightFooter>For independent practice in the Denver/Front Range area, typical 60-min sessions run $110-130. Source: local market research, January 2026.</InsightFooter>
+      </InsightCard>
+    );
+  }
+  const totalCollected = paid.reduce((sum, s) => sum + (s.actual || 0), 0);
+  const avg = Math.round(totalCollected / paid.length);
+  const peerAvg = 110; // Denver/Front Range solo independent, BENCHMARKS.md
+  return (
+    <InsightCard accent="gold" eyebrow="Avg session value" tag="Observation">
+      <InsightHeadline>
+        Your sessions average <span style={{ color: T.gold, fontWeight: 700 }}>{currency(avg)}</span>. Front Range LMTs in independent practice typically run <span style={{ color: T.rose }}>$110-130</span> for a 60-min.
+      </InsightHeadline>
+      <BenchmarkBar
+        valueLeftPct={Math.min((avg / 200) * 100, 100)}
+        peerLeftPct={(peerAvg / 200) * 100}
+        peerLabel="Front Range avg"
+      />
+      <InsightCompare>
+        Calculated across {paid.length} paid sessions in the last 90 days. {avg >= peerAvg
+          ? 'You sit at or above local market rates, which usually means you have room to hold or modestly raise.'
+          : 'Your rates run below the local range for independent practice. A small increase often goes through smoothly with regulars who already trust your work.'}
+      </InsightCompare>
+      <InsightFooter>Front Range benchmark from local market research (Denver/Boulder LMT pricing surveys), January 2026.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 4. Session length mix (own data only, no peer comparison)
+function SessionLengthMixInsight({ sessions }) {
+  const paid = sessions.filter(s =>
+    s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund'
+  );
+  if (paid.length < 5) {
+    return (
+      <InsightCard accent="sage" eyebrow="Session length mix" tag="Pattern">
+        <InsightHeadline>Your session length patterns will appear here as your data builds up.</InsightHeadline>
+      </InsightCard>
+    );
+  }
+  // Bucket by duration: <75 = "60-min", >=75 = "90-min"
+  const short = paid.filter(s => (s.duration || 60) < 75);
+  const long = paid.filter(s => (s.duration || 60) >= 75);
+  const shortAvg = short.length > 0
+    ? Math.round(short.reduce((sum, s) => sum + (s.actual || 0), 0) / short.length)
+    : 0;
+  const longAvg = long.length > 0
+    ? Math.round(long.reduce((sum, s) => sum + (s.actual || 0), 0) / long.length)
+    : 0;
+  const shortTipPct = computeTipPct(short);
+  const longTipPct = computeTipPct(long);
+
+  if (short.length === 0 || long.length === 0) {
+    // Only one length used; no comparison to draw.
+    return (
+      <InsightCard accent="sage" eyebrow="Session length mix" tag="Pattern">
+        <InsightHeadline>You're booking one session length consistently.</InsightHeadline>
+        <InsightCompare>
+          {short.length > 0
+            ? `Your 60-min sessions average ${currency(shortAvg)} with a ${shortTipPct}% tip rate.`
+            : `Your 90-min sessions average ${currency(longAvg)} with a ${longTipPct}% tip rate.`}
+        </InsightCompare>
+      </InsightCard>
+    );
+  }
+
+  return (
+    <InsightCard accent="sage" eyebrow="Session length mix" tag="Pattern">
+      <InsightHeadline>
+        Your 90-minute sessions tip <span style={{ color: T.sage, fontWeight: 700 }}>{longTipPct}%</span>. Your 60-minute sessions tip <span style={{ color: T.gold }}>{shortTipPct}%</span>.
+      </InsightHeadline>
+      <InsightStatRow stats={[
+        { label: '60-min', value: currency(shortAvg), meta: `${short.length} session${short.length !== 1 ? 's' : ''}` },
+        { label: '90-min', value: currency(longAvg), meta: `${long.length} session${long.length !== 1 ? 's' : ''}` },
+      ]} />
+      <InsightCompare>
+        {longTipPct > shortTipPct
+          ? 'Clients who book the longer session tip more, both in dollars and rate. If you\'d like to grow this share, leaning into the 90-min framing when new clients ask helps.'
+          : 'Both session lengths tip in a similar range. Mix is mostly driven by client preference.'}
+      </InsightCompare>
+      <InsightFooter>Computed from your last 90 days of paid sessions.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+function computeTipPct(arr) {
+  if (arr.length === 0) return 0;
+  const tipTotal = arr.reduce((s, x) => s + (x.tip || 0), 0);
+  const baseTotal = arr.reduce((s, x) => s + ((x.base != null ? x.base : (x.actual || 0)) - (x.tip || 0)), 0);
+  return baseTotal > 0 ? Math.round((tipTotal / baseTotal) * 100) : 0;
+}
+
+// 5. Strongest month (own data only)
+function StrongestMonthInsight({ sessions }) {
+  // Group by month within the year, find highest collected.
+  const byMonth = {};
+  sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      const m = s.date.getMonth();
+      byMonth[m] = (byMonth[m] || 0) + (s.actual || 0);
+    });
+  const entries = Object.entries(byMonth).map(([m, v]) => ({ m: parseInt(m, 10), v }));
+  if (entries.length < 2) {
+    return (
+      <InsightCard accent="rose" eyebrow="Your strongest month" tag="Pattern">
+        <InsightHeadline>Your strongest month will appear here as your data spans more months.</InsightHeadline>
+      </InsightCard>
+    );
+  }
+  entries.sort((a, b) => b.v - a.v);
+  const best = entries[0];
+  const bestName = new Date(2026, best.m, 1).toLocaleDateString('en-US', { month: 'long' });
+  return (
+    <InsightCard accent="rose" eyebrow="Your strongest month" tag="Pattern">
+      <InsightHeadline>
+        Your best month so far has been <span style={{ color: T.sage, fontWeight: 700 }}>{bestName}</span> at <span style={{ color: T.sage, fontWeight: 700 }}>{currency(best.v)}</span>.
+      </InsightHeadline>
+      <InsightCompare>
+        Across the months you've worked, {bestName} delivered the strongest collected total. Worth knowing for next year's planning, especially around marketing and outreach.
+      </InsightCompare>
+      <InsightFooter>Refreshes as new sessions are recorded.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 6. Day of week
+function DayOfWeekInsight({ sessions }) {
+  const dayCollected = [0,0,0,0,0,0,0];
+  const dayNames = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      const d = s.date.getDay();
+      dayCollected[d] += (s.actual || 0);
+    });
+  const total = dayCollected.reduce((s, x) => s + x, 0);
+  if (total === 0) {
+    return (
+      <InsightCard accent="sage" eyebrow="Day of week patterns" tag="Observation">
+        <InsightHeadline>Day-of-week patterns will appear once you have more sessions logged.</InsightHeadline>
+      </InsightCard>
+    );
+  }
+  const bestIdx = dayCollected.indexOf(Math.max(...dayCollected));
+  const bestName = dayNames[bestIdx];
+  const bestAmt = dayCollected[bestIdx];
+  return (
+    <InsightCard accent="sage" eyebrow="Day of week patterns" tag="Observation">
+      <InsightHeadline>
+        <span style={{ color: T.sage, fontWeight: 700 }}>{bestName}s</span> are your highest-earning day of the week.
+      </InsightHeadline>
+      <InsightCompare>
+        Across your last 90 days, {bestName}s have brought in {currency(bestAmt)}. If you have flexibility, adding capacity on this day historically returns the highest yield.
+      </InsightCompare>
+      <InsightFooter>Pattern based on the last 90 days of paid sessions.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 7. Effective hourly rate
+function EffectiveHourlyInsight({ sessions }) {
+  const paid = sessions.filter(s =>
+    s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund'
+  );
+  if (paid.length < 3) {
+    return (
+      <InsightCard accent="gold" eyebrow="Effective hourly rate" tag="For context">
+        <InsightHeadline>Your effective hourly rate will appear once you have a few paid sessions.</InsightHeadline>
+      </InsightCard>
+    );
+  }
+  const totalCollected = paid.reduce((sum, s) => sum + (s.actual || 0), 0);
+  const totalMinutes = paid.reduce((sum, s) => sum + (s.duration || 60), 0);
+  const totalHours = totalMinutes / 60;
+  const effectiveHourly = totalHours > 0 ? Math.round(totalCollected / totalHours) : 0;
+  return (
+    <InsightCard accent="gold" eyebrow="Effective hourly rate" tag="For context">
+      <InsightHeadline>
+        Across your session hours, you earn about <span style={{ color: T.gold, fontWeight: 700 }}>{currency(effectiveHourly)}/hr</span>.
+      </InsightHeadline>
+      <InsightCompare>
+        This counts only the hours you spent in session. It's useful for thinking about your time and pricing, not for setting your session price directly.
+      </InsightCompare>
+      <InsightFooter>Calculated from session minutes recorded in your schedule across the last 90 days.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 8. Seasonality
+function SeasonalityInsight({ sessions }) {
+  // Group by month across all years, find the multi-year average pattern.
+  const monthTotals = [0,0,0,0,0,0,0,0,0,0,0,0];
+  const monthCounts = [0,0,0,0,0,0,0,0,0,0,0,0];
+  const monthYearSet = new Set();
+  sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      const m = s.date.getMonth();
+      const ym = `${s.date.getFullYear()}-${m}`;
+      monthTotals[m] += (s.actual || 0);
+      if (!monthYearSet.has(ym)) {
+        monthYearSet.add(ym);
+        monthCounts[m] += 1;
+      }
+    });
+  const monthAvgs = monthTotals.map((t, i) => monthCounts[i] > 0 ? t / monthCounts[i] : 0);
+  const yearAvgMonth = monthAvgs.filter(v => v > 0);
+  const yearAvg = yearAvgMonth.length > 0
+    ? yearAvgMonth.reduce((s, x) => s + x, 0) / yearAvgMonth.length
+    : 0;
+
+  const monthDataPoints = monthAvgs.filter(v => v > 0).length;
+  if (monthDataPoints < 4) {
+    return (
+      <InsightCard accent="forest" eyebrow="Seasonality" tag="Pattern">
+        <InsightHeadline>Seasonality will appear once you have at least four months of data.</InsightHeadline>
+      </InsightCard>
+    );
+  }
+
+  // Find the month with the highest average.
+  const peakIdx = monthAvgs.indexOf(Math.max(...monthAvgs));
+  const peakName = new Date(2026, peakIdx, 1).toLocaleDateString('en-US', { month: 'long' });
+  const peakLift = yearAvg > 0
+    ? Math.round(((monthAvgs[peakIdx] - yearAvg) / yearAvg) * 100)
+    : 0;
+  return (
+    <InsightCard accent="forest" eyebrow="Seasonality" tag="Pattern">
+      <InsightHeadline>
+        Your <span style={{ color: T.sage, fontWeight: 700 }}>{peakName}</span> runs <span style={{ color: T.sage, fontWeight: 700 }}>{peakLift}%</span> above your year-round average.
+      </InsightHeadline>
+      <InsightCompare>
+        Across your history, {peakName} has been your strongest month. Worth keeping in mind when planning slower months. December typically slows 15-20% for most solo LMTs.
+      </InsightCompare>
+      <InsightFooter>Based on your own multi-month data, with seasonal context from industry sources.</InsightFooter>
+    </InsightCard>
+  );
+}
+
+// 9. Client retention
+function ClientRetentionInsight({ sessions }) {
+  // For each client, when was their first paid visit?
+  // Did they come back within 8 weeks?
+  const byClient = {};
+  sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      const key = s.client || 'Unknown';
+      if (!byClient[key]) byClient[key] = [];
+      byClient[key].push(s.date);
+    });
+  // Eligible clients: those with first visit > 8 weeks ago.
+  const eightWeeksMs = 8 * 7 * 24 * 60 * 60 * 1000;
+  let eligible = 0;
+  let returned = 0;
+  Object.values(byClient).forEach(dates => {
+    dates.sort((a, b) => a - b);
+    const first = dates[0];
+    if (TODAY - first < eightWeeksMs) return;
+    eligible += 1;
+    const hadReturnWithin8Wk = dates.some(d => d > first && (d - first) <= eightWeeksMs);
+    if (hadReturnWithin8Wk) returned += 1;
+  });
+  if (eligible < 5) {
+    return (
+      <InsightCard accent="forest" eyebrow="Client retention" tag="Pattern">
+        <InsightHeadline>Retention patterns will appear here once a few clients have been with you for 8+ weeks.</InsightHeadline>
+        <InsightFooter>National baseline: 55% of first-time massage clients book a second visit. Source: SchedulingKit 2026.</InsightFooter>
+      </InsightCard>
+    );
+  }
+  const myPct = Math.round((returned / eligible) * 100);
+  const peerAvg = 55; // BENCHMARKS.md
+  return (
+    <InsightCard accent="forest" eyebrow="Client retention" tag="Pattern">
+      <InsightHeadline>
+        <span style={{ color: myPct >= peerAvg ? T.sage : T.rose, fontWeight: 700 }}>{myPct}%</span> of your clients book again within 8 weeks. The typical rate is <span style={{ color: T.rose }}>{peerAvg}%</span>.
+      </InsightHeadline>
+      <InsightCompare>
+        {myPct >= 70
+          ? 'AMTA considers a 70%+ retention rate strong. Your client work is doing what marketing budgets try to buy.'
+          : myPct >= peerAvg
+          ? 'Your clients return at a rate above the national baseline. The relationships you\'re building hold.'
+          : myPct >= 30
+          ? 'Below the typical rate. A short follow-up note 1-2 weeks after a first visit tends to lift this meaningfully.'
+          : 'Substantially below the typical rate. Worth looking at first-visit experience and follow-up.'}
+      </InsightCompare>
+      <InsightFooter>National baseline from SchedulingKit 2026. AMTA considers below 50% retention poor and above 70% strong.</InsightFooter>
+    </InsightCard>
+  );
 }
 
 function PeriodPlaceholder({ period }) {
