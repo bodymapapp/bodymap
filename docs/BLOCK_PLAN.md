@@ -26,6 +26,9 @@ materials for a specific block.
 - Twilio onboarding friction (escalation tripwire: 3 handhold requests in one month)
 - Twilio A2P 10DLC Brand registration stuck in review with TCR (blocks all US SMS)
 
+**Action items (HK to do, not blocked by code).**
+- **Configure Twilio inbound webhook for STOP keyword handling.** Macro #12 shipped May 18 (commit `efd93cf6`). The `sms-inbound` edge function is live and the migration ran. Last step: in each therapist's Twilio Console (or the platform Twilio number `+15136133033`), go to Messaging → Settings → "A message comes in" → set Webhook URL to `https://rmnqfrljoknmellbnpiy.supabase.co/functions/v1/sms-inbound`, method HTTP POST. Without this, STOP texts from clients hit Twilio's network suppression but never update our DB, so our backend keeps trying to send and accumulating failed log rows.
+
 **Recently shipped (May 18 2026 morning, Phase 15 notification gap audit).**
 - Phase 15.1: BookingModal fires send-booking-confirmation for therapist-created bookings + reschedules (was completely silent before)
 - Phase 15.2: New `notify-payment-event` edge function. Wired into CheckoutModal (card-on-file + new-card paths) and MarkAsPaidModal (all offline methods). Therapist + Client fan-out.
