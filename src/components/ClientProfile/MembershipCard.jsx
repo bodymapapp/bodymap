@@ -34,6 +34,29 @@ const C = {
   danger:    '#DC2626',
 };
 
+// Reused input style for the inline edit form.
+const editInputStyle = {
+  width: '100%',
+  padding: '7px 9px',
+  border: `1.5px solid ${C.line}`,
+  borderRadius: 8,
+  fontSize: 13,
+  color: C.ink,
+  background: '#fff',
+  boxSizing: 'border-box',
+};
+
+// 1 -> 'st', 2 -> 'nd', 3 -> 'rd', 4 -> 'th', 11 -> 'th', etc.
+function ordinalSuffix(n) {
+  const v = Math.abs(parseInt(n, 10) || 0);
+  if (v >= 11 && v <= 13) return 'th';
+  const last = v % 10;
+  if (last === 1) return 'st';
+  if (last === 2) return 'nd';
+  if (last === 3) return 'rd';
+  return 'th';
+}
+
 export default function MembershipCard({ client, therapist }) {
   const [memberships, setMemberships] = useState([]);
   const [subs, setSubs] = useState([]);
@@ -45,7 +68,28 @@ export default function MembershipCard({ client, therapist }) {
   // row so the therapist can resolve from here, not just from the
   // billing dashboard's reminders card.
   const [pendingRenewals, setPendingRenewals] = useState([]);
+  // Phase 19.5 (HK May 18 2026): all renewals (any status). Used to
+  // compute the payment-status pill on each sub row, which tells the
+  // therapist at a glance whether this client is paid through, due,
+  // or past due. Without this pill the therapist had no visual cue
+  // that anything needed action.
+  const [allRenewals, setAllRenewals] = useState([]);
   const [renewalToCharge, setRenewalToCharge] = useState(null); // {renewal, subscription}
+  // Phase 19.5: ad-hoc charge with no renewal context. Therapist taps
+  // 'Charge now' on a sub that has no pending renewal yet (e.g. they
+  // want to collect for next month early, or the cron hasn't run).
+  const [adhocChargeSub, setAdhocChargeSub] = useState(null);
+  // Phase 19.5: inline edit form on a subscription row.
+  const [editingSubId, setEditingSubId] = useState(null);
+  const [editDraft, setEditDraft] = useState({
+    monthly_price: '',
+    current_credits: '',
+    renewal_day_of_month: '',
+    notes: '',
+    status: 'active',
+  });
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState(null);
 
   // New-sub form state
   const [planId, setPlanId] = useState('');
@@ -70,27 +114,32 @@ export default function MembershipCard({ client, therapist }) {
             .order('name', { ascending: true }),
           supabase
             .from('member_subscriptions')
-            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name')
+            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name, renewal_day_of_month, notes')
             .eq('therapist_id', therapist.id)
             .eq('client_id', client.id)
             .order('started_at', { ascending: false }),
           // Phase 19.4: pending renewals for THIS client. Defensive
           // try-catch in case the membership_renewal_v1 migration
           // hasn't been applied; we render empty array gracefully.
+          //
+          // Phase 19.5: also pull ALL renewals (any status, last 12
+          // months) so we can render the payment-status pill on each
+          // sub row.
           supabase
             .from('member_subscription_renewals')
-            .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status')
+            .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status, resolved_at')
             .eq('therapist_id', therapist.id)
             .eq('client_id', client.id)
-            .eq('status', 'pending')
-            .order('due_on', { ascending: true }),
+            .order('due_on', { ascending: false }),
         ]);
         if (mounted) {
           setMemberships(mRes.data || []);
           setSubs(sRes.data || []);
           // rRes may have an error if the table doesn't exist yet
           // pre-migration. Don't crash the rest of the panel.
-          setPendingRenewals(rRes.error ? [] : (rRes.data || []));
+          const all = rRes.error ? [] : (rRes.data || []);
+          setAllRenewals(all);
+          setPendingRenewals(all.filter(r => r.status === 'pending'));
         }
       } catch (e) {
         if (mounted) setError('Could not load memberships.');
@@ -107,12 +156,15 @@ export default function MembershipCard({ client, therapist }) {
     try {
       const { data, error: rErr } = await supabase
         .from('member_subscription_renewals')
-        .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status')
+        .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status, resolved_at')
         .eq('therapist_id', therapist.id)
         .eq('client_id', client.id)
-        .eq('status', 'pending')
-        .order('due_on', { ascending: true });
-      if (!rErr) setPendingRenewals(data || []);
+        .order('due_on', { ascending: false });
+      if (!rErr) {
+        const all = data || [];
+        setAllRenewals(all);
+        setPendingRenewals(all.filter(r => r.status === 'pending'));
+      }
     } catch (e) { /* non-blocking */ }
   }
 
@@ -227,6 +279,139 @@ export default function MembershipCard({ client, therapist }) {
     }
   }
 
+  // Phase 19.5 (HK May 18 2026): inline edit on a sub row.
+  function startEdit(sub) {
+    setEditingSubId(sub.id);
+    setEditDraft({
+      monthly_price: String(sub.monthly_price ?? ''),
+      current_credits: String(sub.current_credits ?? ''),
+      renewal_day_of_month: sub.renewal_day_of_month ? String(sub.renewal_day_of_month) : '',
+      notes: sub.notes || '',
+      status: sub.status || 'active',
+    });
+    setEditError(null);
+  }
+  function cancelEdit() {
+    setEditingSubId(null);
+    setEditError(null);
+  }
+  async function saveEdit(subId) {
+    setEditSaving(true);
+    setEditError(null);
+    try {
+      const priceNum = Number(editDraft.monthly_price);
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        setEditError('Enter a valid monthly price.');
+        setEditSaving(false);
+        return;
+      }
+      const creditsNum = editDraft.current_credits === ''
+        ? null
+        : Math.max(0, parseInt(editDraft.current_credits, 10) || 0);
+      const dayNum = editDraft.renewal_day_of_month === ''
+        ? null
+        : Math.max(1, Math.min(31, parseInt(editDraft.renewal_day_of_month, 10) || 0));
+      const patch = {
+        monthly_price: priceNum,
+        renewal_day_of_month: dayNum,
+        notes: editDraft.notes.trim() || null,
+        status: editDraft.status,
+      };
+      if (creditsNum !== null) patch.current_credits = creditsNum;
+      const { error: updErr } = await supabase
+        .from('member_subscriptions')
+        .update(patch)
+        .eq('id', subId);
+      if (updErr) throw updErr;
+      setSubs(arr => arr.map(s => s.id === subId ? { ...s, ...patch } : s));
+      setEditingSubId(null);
+    } catch (e) {
+      console.error('[MembershipCard] saveEdit failed:', e);
+      setEditError('Could not save. ' + (e?.message || 'Please try again.'));
+    } finally {
+      setEditSaving(false);
+    }
+  }
+
+  // Phase 19.5 payment-status pill. Returns { label, color, bg, border }
+  // describing the visual treatment for the sub row's pill.
+  function getPaymentStatus(sub) {
+    if (sub.status === 'canceled') {
+      return { label: 'Canceled', color: C.gray, bg: '#F3F4F6', border: C.line };
+    }
+    if (sub.status === 'paused') {
+      return { label: 'Paused', color: C.gray, bg: '#F3F4F6', border: C.line };
+    }
+    // Active sub: look at the most recent renewal across all statuses.
+    // allRenewals is sorted by due_on desc; the first matching row
+    // for this subscription is the latest.
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const subRenewals = allRenewals.filter(r => r.member_subscription_id === sub.id);
+    if (subRenewals.length === 0) {
+      return {
+        label: 'No renewal scheduled',
+        color: C.gray,
+        bg: '#FAFAF6',
+        border: C.line,
+        italic: true,
+      };
+    }
+    // Earliest pending renewal (if any) drives the urgency.
+    const pendingSorted = subRenewals
+      .filter(r => r.status === 'pending')
+      .sort((a, b) => a.due_on.localeCompare(b.due_on));
+    if (pendingSorted.length > 0) {
+      const p = pendingSorted[0];
+      const dueLabel = new Date(p.due_on + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const amount = `$${(p.amount_due_cents / 100).toFixed(2)}`;
+      if (p.due_on < todayStr) {
+        return {
+          label: `${amount} past due since ${dueLabel}`,
+          color: '#991B1B',
+          bg: '#FEF2F2',
+          border: '#FCA5A5',
+        };
+      }
+      if (p.due_on === todayStr) {
+        return {
+          label: `${amount} due today`,
+          color: '#92400E',
+          bg: '#FEF3C7',
+          border: '#FDE68A',
+        };
+      }
+      return {
+        label: `Next charge ${dueLabel}`,
+        color: C.gray,
+        bg: '#FAFAF6',
+        border: C.line,
+      };
+    }
+    // No pending. Look for the latest paid renewal.
+    const paidSorted = subRenewals
+      .filter(r => r.status === 'paid')
+      .sort((a, b) => b.period_end.localeCompare(a.period_end));
+    if (paidSorted.length > 0) {
+      const latest = paidSorted[0];
+      const endLabel = new Date(latest.period_end + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return {
+        label: `Paid through ${endLabel}`,
+        color: C.saved,
+        bg: '#F0FDF4',
+        border: '#BBF7D0',
+      };
+    }
+    // Only waived/skipped renewals exist.
+    return {
+      label: 'No active renewal',
+      color: C.gray,
+      bg: '#FAFAF6',
+      border: C.line,
+      italic: true,
+    };
+  }
+
   if (loading) {
     return (
       <div style={{ padding: '20px 4px', color: C.gray, fontSize: 13 }}>
@@ -246,6 +431,9 @@ export default function MembershipCard({ client, therapist }) {
             const plan = memberships.find(m => m.id === sub.membership_id);
             const planName = plan?.name || 'Unknown plan';
             const isActive = sub.status === 'active';
+            const paymentStatus = getPaymentStatus(sub);
+            const pending = pendingRenewals.find(r => r.member_subscription_id === sub.id);
+            const isEditing = editingSubId === sub.id;
             return (
               <div
                 key={sub.id}
@@ -262,55 +450,198 @@ export default function MembershipCard({ client, therapist }) {
                   <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif' }}>
                     {planName}
                   </div>
+                  {/* Phase 19.5: payment-status pill replaces the old
+                      status-only pill. Tells the therapist at a glance
+                      whether this client is paid, due, past due, or has
+                      no renewal scheduled. */}
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: 700,
-                    color: isActive ? C.saved : C.gray,
-                    background: isActive ? '#F0FDF4' : '#F3F4F6',
-                    border: `1px solid ${isActive ? '#BBF7D0' : C.line}`,
-                    padding: '2px 8px',
+                    color: paymentStatus.color,
+                    background: paymentStatus.bg,
+                    border: `1px solid ${paymentStatus.border}`,
+                    padding: '3px 9px',
                     borderRadius: 99,
                     textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    letterSpacing: '0.05em',
+                    fontStyle: paymentStatus.italic ? 'italic' : 'normal',
                   }}>
-                    {sub.status}
+                    {paymentStatus.label}
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.55 }}>
                   ${Number(sub.monthly_price).toFixed(2)}/mo · {sub.current_credits} credit{sub.current_credits === 1 ? '' : 's'} remaining
-                  {sub.current_period_end && (
-                    <> · Renews {new Date(sub.current_period_end).toLocaleDateString()}</>
+                  {sub.renewal_day_of_month && (
+                    <> · Bills on the {sub.renewal_day_of_month}{ordinalSuffix(sub.renewal_day_of_month)}</>
                   )}
                 </div>
-                {isActive && (
-                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                    {/* Phase 19.4: pending renewal CTA. Shows when this
-                        subscription has a pending renewal row for the
-                        therapist to action. Tap opens unified CheckoutModal
-                        in subscription mode. */}
-                    {(() => {
-                      const pending = pendingRenewals.find(r => r.member_subscription_id === sub.id);
-                      if (!pending) return null;
-                      const dueLabel = new Date(pending.due_on + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                      const amountLabel = `$${(pending.amount_due_cents / 100).toFixed(2)}`;
-                      return (
-                        <button
-                          onClick={() => setRenewalToCharge({ renewal: pending, subscription: sub })}
-                          style={{
-                            background: C.forest,
-                            color: '#fff',
-                            border: 'none',
-                            padding: '7px 13px',
-                            borderRadius: 8,
-                            fontSize: 12,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Charge {amountLabel} renewal · due {dueLabel}
-                        </button>
-                      );
-                    })()}
+                {sub.notes && !isEditing && (
+                  <div style={{ fontSize: 11.5, color: C.gray, fontStyle: 'italic', marginTop: 4, lineHeight: 1.5 }}>
+                    {sub.notes}
+                  </div>
+                )}
+
+                {/* Phase 19.5 inline edit form. Replaces the static
+                    row content when editingSubId matches this sub. */}
+                {isEditing && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: 10,
+                    background: '#FAFAF6',
+                    border: `1px dashed ${C.line}`,
+                    borderRadius: 10,
+                  }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                      <div>
+                        <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Monthly price ($)</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={editDraft.monthly_price}
+                          onChange={e => setEditDraft(d => ({ ...d, monthly_price: e.target.value }))}
+                          style={editInputStyle}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Credits left now</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={editDraft.current_credits}
+                          onChange={e => setEditDraft(d => ({ ...d, current_credits: e.target.value }))}
+                          style={editInputStyle}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Renewal day of month (1-31)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        value={editDraft.renewal_day_of_month}
+                        onChange={e => setEditDraft(d => ({ ...d, renewal_day_of_month: e.target.value }))}
+                        placeholder="e.g. 18"
+                        style={editInputStyle}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 8 }}>
+                      <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Notes</label>
+                      <input
+                        type="text"
+                        value={editDraft.notes}
+                        onChange={e => setEditDraft(d => ({ ...d, notes: e.target.value }))}
+                        placeholder="e.g. Legacy pricing per May 2024"
+                        style={editInputStyle}
+                      />
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Status</label>
+                      <select
+                        value={editDraft.status}
+                        onChange={e => setEditDraft(d => ({ ...d, status: e.target.value }))}
+                        style={editInputStyle}
+                      >
+                        <option value="active">Active</option>
+                        <option value="paused">Paused</option>
+                        <option value="canceled">Canceled</option>
+                      </select>
+                    </div>
+                    {editError && (
+                      <div style={{
+                        background: '#FEE2E2',
+                        border: '1px solid #FCA5A5',
+                        borderRadius: 8,
+                        padding: '7px 10px',
+                        fontSize: 11.5,
+                        color: '#991B1B',
+                        marginBottom: 8,
+                        lineHeight: 1.5,
+                      }}>
+                        {editError}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => saveEdit(sub.id)}
+                        disabled={editSaving}
+                        style={{
+                          background: editSaving ? '#9CA3AF' : C.forest,
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '7px 14px',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: editSaving ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {editSaving ? 'Saving...' : 'Save changes'}
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        disabled={editSaving}
+                        style={{
+                          background: 'transparent',
+                          color: C.gray,
+                          border: `1px solid ${C.line}`,
+                          borderRadius: 8,
+                          padding: '7px 14px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Action row. Phase 19.5 always shows the Charge button
+                    on active subs (was conditional on a pending renewal).
+                    Edit and Cancel sit beside it. */}
+                {isActive && !isEditing && (
+                  <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (pending) {
+                          setRenewalToCharge({ renewal: pending, subscription: sub });
+                        } else {
+                          setAdhocChargeSub(sub);
+                        }
+                      }}
+                      style={{
+                        background: C.forest,
+                        color: '#fff',
+                        border: 'none',
+                        padding: '7px 13px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {pending
+                        ? `Charge $${(pending.amount_due_cents / 100).toFixed(2)} renewal`
+                        : `Charge $${Number(sub.monthly_price).toFixed(2)} now`}
+                    </button>
+                    <button
+                      onClick={() => startEdit(sub)}
+                      style={{
+                        background: 'transparent',
+                        color: C.forest,
+                        border: `1px solid ${C.line}`,
+                        padding: '7px 13px',
+                        borderRadius: 8,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Edit
+                    </button>
                     <button
                       onClick={() => cancelSubscription(sub.id)}
                       style={{
@@ -541,6 +872,21 @@ export default function MembershipCard({ client, therapist }) {
           client={client}
           defaultAmountCents={renewalToCharge.renewal.amount_due_cents}
           onClose={() => setRenewalToCharge(null)}
+          onPaid={() => { refreshRenewals(); }}
+        />
+      )}
+
+      {/* Phase 19.5 ad-hoc charge: therapist taps Charge $X now on a
+          sub that has no pending renewal. Same modal, no renewal id
+          to resolve. Payment lands as a session_payments row tied to
+          the subscription. */}
+      {adhocChargeSub && (
+        <CheckoutModal
+          subscription={adhocChargeSub}
+          therapist={therapist}
+          client={client}
+          defaultAmountCents={Math.round(Number(adhocChargeSub.monthly_price) * 100)}
+          onClose={() => setAdhocChargeSub(null)}
           onPaid={() => { refreshRenewals(); }}
         />
       )}
