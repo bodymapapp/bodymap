@@ -131,6 +131,26 @@ serve(async (req) => {
         });
       }
 
+      // Phase 15.3 (HK May 18 2026): fire refund notification ONLY when
+      // the webhook is the one flipping the row. If the in-app refund
+      // function already flipped it, the idempotency check above
+      // returned early (and the in-app function already fired its own
+      // notification). This guarantees one fire per refund regardless
+      // of who initiates it.
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/notify-refund-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'apikey': SUPABASE_SERVICE_KEY,
+          },
+          body: JSON.stringify({ session_payment_id: paymentRow.id, source: 'webhook' }),
+        });
+      } catch (e) {
+        console.warn('[stripe-refund-webhook] notify fire failed', e);
+      }
+
       return new Response(JSON.stringify({
         received: true,
         table: 'session_payments',

@@ -100,6 +100,23 @@ serve(async (req) => {
         console.error('[refund-session-payment] offline update failed', updErr);
         return respond({ error: 'update_failed', detail: updErr.message }, 500);
       }
+      // Phase 15.3 (HK May 18 2026): fire notification for offline refunds.
+      // Fire-and-forget; failures are logged but don't block the response.
+      try {
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+        const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+        await fetch(`${SUPABASE_URL}/functions/v1/notify-refund-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+            'apikey': SUPABASE_SERVICE_KEY,
+          },
+          body: JSON.stringify({ session_payment_id, source: 'in_app_offline' }),
+        });
+      } catch (e) {
+        console.warn('[refund-session-payment] notify fire failed', e);
+      }
       return respond({
         success: true,
         offline: true,
@@ -185,6 +202,30 @@ serve(async (req) => {
         amount_refunded_cents: finalRefundCents,
         warning: 'stripe_refund_succeeded_but_local_row_update_failed',
       });
+    }
+
+    // Phase 15.3 (HK May 18 2026): fire notification for Stripe refunds
+    // initiated from inside the app. Fire-and-forget. The webhook
+    // (stripe-refund-webhook) will ALSO fire a notification when
+    // Stripe processes the refund. notify-refund-event is idempotent
+    // because the underlying notification_log table accepts duplicate
+    // rows by design (every send attempt logs). If we want to dedupe
+    // later, do it at the notify-refund-event level via a recent-fire
+    // check. For now, mild duplication is acceptable.
+    try {
+      const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
+      const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+      await fetch(`${SUPABASE_URL}/functions/v1/notify-refund-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+        body: JSON.stringify({ session_payment_id, source: 'in_app_stripe' }),
+      });
+    } catch (e) {
+      console.warn('[refund-session-payment] notify fire failed', e);
     }
 
     return respond({

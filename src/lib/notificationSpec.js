@@ -318,6 +318,24 @@ export const NOTIFICATION_SPEC = [
     channels: ['app_alert', 'push', 'email'],
     series: 'T',
   },
+  {
+    id: 'T14',
+    eventType: 'refund_issued',
+    title: 'Refund issued',
+    when: 'A session payment was refunded (Stripe or offline)',
+    audience: 'therapist',
+    channels: ['app_alert', 'push', 'email'],
+    series: 'T',
+  },
+  {
+    id: 'C16',
+    eventType: 'refund_issued',
+    title: 'Refund issued (client receipt)',
+    when: 'A payment they made was refunded',
+    audience: 'client',
+    channels: ['email', 'sms'],
+    series: 'C',
+  },
 ];
 
 // All distinct channels across the spec, in display order for the table
