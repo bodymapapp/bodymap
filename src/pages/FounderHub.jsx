@@ -39,6 +39,7 @@ import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
 import { StripeDebugEmbedded } from "./StripeDebug";
+import { RefundReconcileEmbedded } from "./RefundReconcile";
 
 const C = {
   forest: "#2A5741",
@@ -176,8 +177,17 @@ const SECTIONS = [
     component: "stripe-debug",
   },
   {
-    id: "other-docs",
+    id: "refund-reconcile",
     number: 9,
+    title: "Refund Reconcile",
+    subtitle: "Catch refunds issued outside the platform. Picks a therapist, scans their succeeded payments, asks Stripe whether each was refunded, flips matching rows. Idempotent. Use after Stripe Dashboard refunds before the webhook caught them, or anytime the Smart Billing hero drifts from Stripe Dashboard reality.",
+    status: "live",
+    type: "component",
+    component: "refund-reconcile",
+  },
+  {
+    id: "other-docs",
+    number: 10,
     title: "Other Documentation",
     subtitle: "Catch-all for anything that does not fit the other ten sections.",
     status: "live",
@@ -187,7 +197,7 @@ const SECTIONS = [
   },
   {
     id: "runbook",
-    number: 10,
+    number: 11,
     title: "Founder Runbook",
     subtitle: "If Claude is unavailable tomorrow, this is the handoff for a human team.",
     status: "live",
@@ -197,7 +207,7 @@ const SECTIONS = [
   },
   {
     id: "chat",
-    number: 11,
+    number: 12,
     title: "Ask Anything",
     subtitle: "Future: chat interface that uses all the documents above as the corpus.",
     status: "future",
@@ -562,6 +572,10 @@ function SectionContent({ section }) {
 
       {section.type === "component" && section.component === "stripe-debug" && (
         <StripeDebugEmbedded />
+      )}
+
+      {section.type === "component" && section.component === "refund-reconcile" && (
+        <RefundReconcileEmbedded />
       )}
 
       {section.type === "future" && (
