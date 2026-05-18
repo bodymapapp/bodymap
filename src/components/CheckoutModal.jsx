@@ -1,25 +1,27 @@
 // src/components/CheckoutModal.jsx
 //
 // Phase 12: Therapist Checkout flow on the calendar slide-over.
+// Phase 19 (HK May 18 2026): generalized to charge for memberships
+// too. The modal now accepts either an `appt` (charging for a
+// booked session, original behavior) or a `subscription` (charging
+// for a membership renewal). One modal, one mental model: "collect
+// money from this client right now."
 //
 // Candice request (May 17 2026): 'how do I check someone out /
 // collect payments... lets say they did not (pay online)... how
 // would they pay the therapist... this link is gone once the
 // massage is booked.'
 //
-// GlossGenius-inspired UX: one prominent Checkout button on the
-// calendar slide-over opens this modal. Three payment paths
-// inside, chosen by the therapist after the client says how
-// they want to pay:
+// Three payment paths inside, chosen by the therapist after the
+// client says how they want to pay:
 //
 //   1. Card on file (existing saved card, fastest)
-//   2. Enter new card now (Stripe Elements inline)
+//   2. Enter new card now (Stripe Elements inline) [bookings only,
+//      not exposed for subscriptions in V1]
 //   3. Send pay link (Stripe Payment Links + SMS or email)
-//
-// Cash / Venmo / Zelle / Other are NOT here. Those go through
-// the separate 'Mark as paid' button below this one, because
-// they are 'payment already happened, just record it' rather than
-// 'collect payment now.'
+//      [bookings only in V1, will gain subscription support in 19.2]
+//   4. Mark as paid (offline: cash, Venmo, Zelle, etc) Phase 19,
+//      folded in from the previous separate MarkAsPaidModal.
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
@@ -44,8 +46,34 @@ const C = {
   amberSoft: '#FEF3C7',
 };
 
-export default function CheckoutModal({ appt, therapist, client, defaultAmountCents, onClose, onPaid }) {
-  const [step, setStep] = useState('method'); // 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'success'
+// Offline payment methods (folded in from MarkAsPaidModal).
+// Used when the therapist taps the 'Mark as paid' button and
+// the money was already collected outside the platform.
+const OFFLINE_METHODS = [
+  { value: 'cash',    label: 'Cash' },
+  { value: 'venmo',   label: 'Venmo' },
+  { value: 'zelle',   label: 'Zelle' },
+  { value: 'cashapp', label: 'Cash App' },
+  { value: 'check',   label: 'Check' },
+  { value: 'other',   label: 'Other' },
+];
+
+export default function CheckoutModal({
+  appt,
+  subscription,         // NEW Phase 19: { id, monthly_price, membership: {name, ...}, ... } when charging a renewal
+  renewal,              // NEW Phase 19: an optional member_subscription_renewals row to link this payment to
+  therapist,
+  client,
+  defaultAmountCents,
+  onClose,
+  onPaid,
+}) {
+  // Two charge modes. Exactly one of appt or subscription must be set
+  // (enforced by callsites; this modal renders an error if both are
+  // unset).
+  const isSubscription = !!subscription;
+  const chargeContextOk = !!(appt || subscription);
+  const [step, setStep] = useState('method'); // 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'offline' | 'success'
   const [amount, setAmount] = useState(((defaultAmountCents || 0) / 100).toFixed(2));
   const [tip, setTip] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -185,6 +213,84 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   const totalCents = amountCents + tipCents;
   const validAmount = amountCents > 0;
 
+  // Build the session_payments row fields that link this payment to
+  // either a booking or a subscription renewal. Exactly one is set,
+  // per the session_payments_booking_xor_subscription CHECK constraint
+  // from the membership_renewal_v1 migration.
+  function buildPaymentContext() {
+    if (isSubscription) {
+      return {
+        booking_id: null,
+        member_subscription_id: subscription.id,
+        member_subscription_renewal_id: renewal?.id || null,
+      };
+    }
+    return {
+      booking_id: appt.id,
+      member_subscription_id: null,
+      member_subscription_renewal_id: null,
+    };
+  }
+
+  // After a successful subscription payment, mark the linked renewal
+  // row as paid (if one was passed in). This is what clears the
+  // reminder banner on the billing dashboard.
+  async function resolveRenewalAsPaid(sessionPaymentId) {
+    if (!isSubscription || !renewal?.id) return;
+    try {
+      await supabase.from('member_subscription_renewals').update({
+        status: 'paid',
+        resolved_at: new Date().toISOString(),
+        resolved_by_therapist_id: therapist.id,
+        session_payment_id: sessionPaymentId,
+      }).eq('id', renewal.id);
+    } catch (e) {
+      console.warn('resolveRenewalAsPaid failed:', e);
+    }
+  }
+
+  // Offline-form state (folded in from MarkAsPaidModal).
+  const [offlineMethod, setOfflineMethod] = useState('cash');
+  const [offlineNote, setOfflineNote] = useState('');
+
+  // ── Action: Mark as paid (offline) ──────────────────────────────
+  async function chargeOffline() {
+    if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
+    if (!client?.id) { setErrorMsg('Client record missing on this charge.'); return; }
+    setProcessing(true);
+    setErrorMsg(null);
+    try {
+      const { data: insertedPayment, error } = await supabase.from('session_payments').insert({
+        ...buildPaymentContext(),
+        therapist_id: therapist.id,
+        client_id: client.id,
+        amount_cents: amountCents,
+        tip_cents: tipCents,
+        payment_method: offlineMethod,
+        payment_method_detail: offlineNote || null,
+        status: 'succeeded',
+        paid_at: new Date().toISOString(),
+        created_by_therapist_id: therapist.id,
+      }).select('id').single();
+      if (error) throw new Error(error.message);
+      if (insertedPayment?.id) {
+        firePaymentNotification(insertedPayment.id);
+        await resolveRenewalAsPaid(insertedPayment.id);
+      }
+      setSuccessDetail({
+        method: OFFLINE_METHODS.find(m => m.value === offlineMethod)?.label || 'Offline',
+        detail: offlineNote || '',
+        total: (totalCents / 100).toFixed(2),
+      });
+      setStep('success');
+      onPaid?.();
+    } catch (e) {
+      setErrorMsg(e?.message || 'Failed to record payment.');
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   // Phase 15.2 (HK May 18 2026): fire-and-forget payment notification.
   // Called after every successful session_payments insert in this modal.
   // The edge function fans out to therapist (Bell + Email + SMS + Push)
@@ -248,7 +354,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       // charge-card doesn't notify (it's a pure provider call) and
       // the client-side insert was fire-and-forget.
       const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        booking_id: appt.id,
+        ...buildPaymentContext(),
         therapist_id: therapist.id,
         client_id: client.id,
         amount_cents: amountCents,
@@ -261,7 +367,10 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         created_by_therapist_id: therapist.id,
       }).select('id').single();
 
-      if (insertedPayment?.id) firePaymentNotification(insertedPayment.id);
+      if (insertedPayment?.id) {
+        firePaymentNotification(insertedPayment.id);
+        await resolveRenewalAsPaid(insertedPayment.id);
+      }
 
       setSuccessDetail({
         method: 'Card on file',
@@ -405,7 +514,7 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       // though the card was also saved for future use.
       // Phase 15.2: capture id, fire payment_received notification.
       const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        booking_id: appt.id,
+        ...buildPaymentContext(),
         therapist_id: therapist.id,
         client_id: client.id,
         amount_cents: amountCents,
@@ -418,7 +527,10 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         created_by_therapist_id: therapist.id,
       }).select('id').single();
 
-      if (insertedPayment?.id) firePaymentNotification(insertedPayment.id);
+      if (insertedPayment?.id) {
+        firePaymentNotification(insertedPayment.id);
+        await resolveRenewalAsPaid(insertedPayment.id);
+      }
 
       setSuccessDetail({
         method: 'Card entered',
@@ -437,6 +549,13 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   // ── Action: Send pay link ───────────────────────────────────────
   async function sendPayLink() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
+    if (isSubscription) {
+      // V1 limitation: create-payment-link edge function requires a
+      // booking_id. Subscription pay-links land in Phase 19.2 once the
+      // edge function accepts a member_subscription_id alternative.
+      setErrorMsg('Send-link is not yet available for membership charges. Use card on file or mark as paid.');
+      return;
+    }
     setProcessing(true);
     setErrorMsg(null);
     try {
@@ -625,6 +744,8 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
                   onCardOnFile={() => setStep('card_on_file')}
                   onCardNew={() => setStep('card_new')}
                   onSendLink={() => setStep('send_link')}
+                  onMarkPaid={() => setStep('offline')}
+                  isSubscription={isSubscription}
                   validAmount={validAmount}
                 />
               )}
@@ -659,6 +780,19 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
                   setLinkDelivery={setLinkDelivery}
                   totalCents={totalCents}
                   onConfirm={sendPayLink}
+                  onBack={() => setStep('method')}
+                  processing={processing}
+                />
+              )}
+
+              {step === 'offline' && (
+                <OfflineForm
+                  method={offlineMethod}
+                  setMethod={setOfflineMethod}
+                  note={offlineNote}
+                  setNote={setOfflineNote}
+                  totalCents={totalCents}
+                  onConfirm={chargeOffline}
                   onBack={() => setStep('method')}
                   processing={processing}
                 />
@@ -873,7 +1007,7 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, validAmount }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -889,20 +1023,42 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, validAm
           primary
         />
       )}
+      {/* New card entry is booking-only in V1. For subscriptions the
+          therapist would use 'Send pay link' (Phase 19.2) or charge a
+          card on file. */}
+      {!isSubscription && (
+        <MethodButton
+          onClick={onCardNew}
+          disabled={!validAmount}
+          icon="🪪"
+          title="Enter new card"
+          subtitle="Type card number now"
+          primary={!cardOnFile}
+        />
+      )}
+      {/* Send link is booking-only in V1; create-payment-link edge
+          function requires a booking_id. Subscription send-link arrives
+          in Phase 19.2. */}
+      {!isSubscription && (
+        <MethodButton
+          onClick={onSendLink}
+          disabled={!validAmount}
+          icon="📲"
+          title="Send pay link"
+          subtitle="Text or email a one-time link"
+        />
+      )}
+      {/* Mark as paid (offline): folded in from the prior
+          MarkAsPaidModal in Phase 19. Same flow for bookings AND
+          subscriptions: therapist records that the money was
+          collected outside the platform (cash, Venmo, etc). */}
       <MethodButton
-        onClick={onCardNew}
+        onClick={onMarkPaid}
         disabled={!validAmount}
-        icon="🪪"
-        title="Enter new card"
-        subtitle="Type card number now"
-        primary={!cardOnFile}
-      />
-      <MethodButton
-        onClick={onSendLink}
-        disabled={!validAmount}
-        icon="📲"
-        title="Send pay link"
-        subtitle="Text or email a one-time link"
+        icon="💵"
+        title="Mark as paid"
+        subtitle="Cash, Venmo, Zelle, or other"
+        primary={isSubscription && !cardOnFile}
       />
     </div>
   );
@@ -1121,6 +1277,66 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
         style={{ width: '100%', background: '#fff', color: C.forestDeep, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 18px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
         Done
       </button>
+    </div>
+  );
+}
+
+// Offline payment form. Folded in from the prior MarkAsPaidModal in
+// Phase 19. UI mirrors the original modal's method picker + optional
+// note field, but reuses the parent CheckoutModal's amount and tip
+// inputs (no duplicate amount field).
+function OfflineForm({ method, setMethod, note, setNote, totalCents, onConfirm, onBack, processing }) {
+  return (
+    <div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>How was the money received?</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+          {OFFLINE_METHODS.map(m => {
+            const active = method === m.value;
+            return (
+              <button
+                key={m.value}
+                type="button"
+                onClick={() => setMethod(m.value)}
+                style={{
+                  background: active ? C.greenSoft : '#fff',
+                  color: active ? '#15803D' : C.ink,
+                  border: `1.5px solid ${active ? '#86EFAC' : C.border}`,
+                  borderRadius: 10,
+                  padding: '10px 6px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                }}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 6 }}>Note (optional)</div>
+        <input
+          type="text"
+          value={note}
+          onChange={e => setNote(e.target.value)}
+          placeholder="e.g. Venmo @sarah-r, paid in advance"
+          style={{
+            width: '100%',
+            padding: '10px 12px',
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 10,
+            fontSize: 14,
+            boxSizing: 'border-box',
+            outline: 'none',
+            background: '#fff',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+          }}
+        />
+      </div>
+      <ActionRow onBack={onBack} onConfirm={onConfirm} processing={processing} confirmLabel={`Record $${(totalCents / 100).toFixed(2)} as paid`} />
     </div>
   );
 }
