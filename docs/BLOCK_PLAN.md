@@ -6,11 +6,14 @@ Read the **per-ribbon** sections to see what's coming on your platform.
 Drop into **Details** at the bottom only when you need execution-ready
 materials for a specific block.
 
-**Most recent session handover:** [`docs/HANDOVER_2026-05-15.md`](./HANDOVER_2026-05-15.md) (Stripe Connect marathon + Phase 1/2.1/2.2 work May 16 2026).
+**Most recent session handover:** [`docs/HANDOVER_2026-05-17.md`](./HANDOVER_2026-05-17.md) (Notification Compliance Dashboard morning + Phase 12-14 marathon evening, ~12 hours total, 35+ commits May 17 2026).
 
 ---
 
 ## Summary
+
+**TOMORROW MORNING TOP PRIORITY (May 18 2026, BEFORE real therapist live).**
+1. **NOTIFICATION REGRESSION INVESTIGATION.** HK reported: zero notifications fired (no email, no push, no SMS) across all the bookings, cancellations, and refunds tested in the Phase 12-14 marathon. The notification stack was verified end-to-end this morning (6 of 7 channels green) but something broke during the afternoon refactor. **Diagnose root cause before therapist Healing Hands BM1 starts using the platform live.** Most likely suspects: (1) Phase 13.3 client_id schema migration broke a join, (2) Phase 14.x data layer rewrite removed a trigger point, (3) notification_log rows being written but channel-send failing silently.
 
 **Currently active.** What is being worked or is ready to start the moment you OK it.
 1. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
@@ -22,6 +25,17 @@ materials for a specific block.
 - Google OAuth app verification (waiting on 5+ test therapists + reachable privacy/terms URLs)
 - Optional client portal (waiting on 3+ founding-therapist requests; currently 1)
 - Twilio onboarding friction (escalation tripwire: 3 handhold requests in one month)
+- Twilio A2P 10DLC Brand registration stuck in review with TCR (blocks all US SMS)
+
+**Recently shipped (May 17 2026 marathon, both sessions).**
+- Notification Compliance Dashboard end-to-end (Phases 11.1-11.7)
+- Phase 12: Checkout + Mark as paid on calendar slide-over (verified with real \$1 charge)
+- Phase 13: client_id pipeline (helper + 2 wires + backfill + orphan repair + FK constraint + cleanup)
+- Phase 13.5-13.8: Payment polish (card_last4 persist, no-show fees, slide-over redesign, tip chips, modal layout, iOS Safari 100dvh, Custom tip input)
+- Phase 14.1-14.2: Smart Billing data source rewrite + HeroPayCard
+- Phase 14.3: Complete refund stack (Stripe webhook with JWT allowlist fix, in-app modal for Stripe + offline paths, Reconcile founder tool, inline breakdown dropdown, schedule paid indicators, real outlined refund button)
+- Phase 14.3i: Confirmed bookings appear in Billing as scheduled sessions (root cause: filter required status='completed' only)
+- Phase 14.3l: Payment session bucketing by booking_date not paid_at (advance-paid sessions were in wrong day chip)
 
 **Recently shipped (May 16 2026 session).**
 - Stripe Connect architectural fix + stale-customer recovery in `create-deposit` and `charge-cancellation-fee` (Phases 0 + 1)

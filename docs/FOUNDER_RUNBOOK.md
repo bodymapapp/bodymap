@@ -743,6 +743,41 @@ If after running the above procedures the system is still misbehaving, two escal
 
 **End of Stripe Connect operations section.**
 
+## Edge function JWT verification (added May 17 2026)
+
+Discovered during Phase 14.3 refund webhook implementation. Symptom: external webhook (Stripe, Twilio, etc.) calls your edge function endpoint, gets `401 Unauthorized` with body `{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`. The function never even runs.
+
+### Why this happens
+
+Supabase puts a gateway in front of every edge function. By default, the gateway requires a Bearer JWT in the Authorization header before forwarding the request to your code. Third-party services (Stripe, Twilio) don't send Bearer JWTs, they sign payloads with their own signing secret. So the gateway rejects them before your signature-verification code runs.
+
+To make a function accept unauthenticated calls (so it can verify its own signature instead), deploy it with `--no-verify-jwt` flag.
+
+### How our deploy workflow handles this
+
+`.github/workflows/deploy-edge-functions.yml` maintains a `NO_JWT_FUNCTIONS` array. Any function name in this array is deployed with `--no-verify-jwt`. Currently includes:
+- `stripe-payment-link-webhook` (handles `checkout.session.completed`)
+- `stripe-refund-webhook` (handles `charge.refunded`)
+- `book-public` (public booking page form submit)
+- Other public endpoints as added
+
+If you add a new webhook function and forget to add it to this list, requests will fail with 401 silently until you fix the workflow and redeploy.
+
+### How to verify
+
+After deploy, check the function logs:
+```
+https://supabase.com/dashboard/project/<ref>/functions/<name>/logs
+```
+
+If you see 401s with no function-level entries, it's the gateway rejecting before your code runs. Add the function name to `NO_JWT_FUNCTIONS` in the deploy workflow, push the change, wait for the GitHub Action to redeploy, then retry.
+
+### Force-redeploy when allowlist changes
+
+GitHub Actions only deploys functions whose source files changed. If you ONLY edit the workflow yaml (to add a function to the allowlist), the function's source code didn't change, so the deploy may skip it. To force a redeploy, make a trivial source edit (touch a comment) alongside the workflow change.
+
+**End of edge function JWT section.**
+
 **End of runbook.**
 
 This document is the operational core of MyBodyMap. Update it at the end of any session that introduces meaningful new context, decisions, vendors, or risks. If you are reading this because HK is unavailable: take a breath, read it slowly, ask questions in writing rather than assuming, and remember that the platform is intentionally simple. Most "broken" reports are actually configuration questions answered in this runbook.
