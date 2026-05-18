@@ -2359,48 +2359,28 @@ export default function ScheduleDashboard({ therapist }) {
             <span>Book Appointment</span>
           </button>
 
-          {/* Secondary: status pill (non-interactive visual, tap refreshes
-              when there's real data; tap to turn off previews when in
-              preview mode). The Preview pill replaces the Live pill when
-              there are no real bookings yet; tapping it disables sample
-              data entirely so the therapist gets a clean empty state
-              instead of fake clients. */}
-          {realBookings?.length > 0
-            ? <button onClick={fetchBookings} title="Refresh bookings"
-                style={{display:'inline-flex',alignItems:'center',gap:6,background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#16A34A',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
-                <span style={{width:6,height:6,borderRadius:'50%',background:'#16A34A',boxShadow:'0 0 0 3px rgba(22,163,74,0.2)'}}/>
-                <span>Live</span>
-                <span style={{fontSize:12,opacity:0.7,marginLeft:2}}>↻</span>
-              </button>
-            : showPreviewData
-              ? <button
-                  onClick={togglePreviewData}
-                  title="Tap to hide preview clients and see a clean empty calendar"
-                  style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
-                  <span>👁️</span> Preview
-                  <span style={{fontSize:11,opacity:0.7,marginLeft:4}}>tap to hide</span>
-                </button>
-              : <button
-                  onClick={togglePreviewData}
-                  title="Tap to bring back preview clients on an empty calendar"
-                  style={{display:'inline-flex',alignItems:'center',gap:6,background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#6B7280',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
-                  <span>🌙</span> Previews off
-                </button>
-          }
-
-          {/* Tap-to-hide affordance when samples are mixing in alongside
-              real bookings (therapist has 1-2 real upcoming sessions and
-              the < 3 threshold pulls in samples to fill space). Hidden
-              entirely once they hit 3+ real bookings since samples stop
-              showing anyway. */}
-          {realBookings?.length > 0 && showSample && (
-            <button
-              onClick={togglePreviewData}
-              title="You have real bookings AND preview clients showing. Tap to hide previews."
-              style={{display:'inline-flex',alignItems:'center',gap:6,background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:22,padding:'10px 14px',fontSize:12,color:'#9A3412',fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,cursor:'pointer',WebkitTapHighlightColor:'transparent'}}>
-              <span>👁️</span> Hide previews
-            </button>
-          )}
+          {/* Previews toggle (HK May 18 2026): one pill, two states.
+              Maria knows exactly what it does. Tap to flip. No
+              hidden conditional behavior, no four different colors
+              for four different cases. Tracks therapists.show_preview_data.
+              When on, sample appointments fill the calendar when
+              upcoming real bookings < 3 (legacy threshold). When off,
+              samples never render. */}
+          <button
+            onClick={togglePreviewData}
+            title={showPreviewData ? 'Tap to hide preview clients' : 'Tap to show preview clients'}
+            style={{
+              display:'inline-flex',alignItems:'center',gap:6,
+              background: showPreviewData ? '#FFF7ED' : '#fff',
+              border: `1.5px solid ${showPreviewData ? '#FED7AA' : '#E5E7EB'}`,
+              borderRadius:22,padding:'10px 14px',fontSize:12,
+              color: showPreviewData ? '#9A3412' : '#6B7280',
+              fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,
+              cursor:'pointer',WebkitTapHighlightColor:'transparent',
+            }}>
+            <span>👁️</span>
+            <span>Previews: {showPreviewData ? 'ON' : 'OFF'}</span>
+          </button>
 
           {/* Secondary: Time off toggle */}
           <button onClick={()=>setShowBlockPanel(v=>!v)}
