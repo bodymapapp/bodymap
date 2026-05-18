@@ -45,6 +45,15 @@ export default function AgreementCard({ client, therapist }) {
   const [loadingPending, setLoadingPending] = useState(true);
   const [showSignedText, setShowSignedText] = useState(false);
   const [resendCopied, setResendCopied] = useState(false);
+  // Phase 19+ (HK May 18 2026): inline generate-link flow. When the
+  // therapist taps Send for signature on a client with no pending
+  // send, this component now creates the agreement_send_requests
+  // row and surfaces the link inline (with copy + email actions),
+  // instead of redirecting to /dashboard/settings (which was the
+  // old behavior; HK reported this was confusing because Settings
+  // has its own client picker the therapist would have to re-do).
+  const [generating, setGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState(null);
 
   const isSigned = !!client?.practice_agreement_signed_at;
   const signerName = client?.practice_agreement_signer_name || null;
@@ -86,6 +95,73 @@ export default function AgreementCard({ client, therapist }) {
       setResendCopied(true);
       setTimeout(() => setResendCopied(false), 2000);
     });
+  }
+
+  // Generate a signing link for THIS client and persist it. Same
+  // mechanic as Settings > PracticeAgreement > SendForSignaturePanel,
+  // but client is already known so no picker is needed. After success,
+  // the existing pendingSend useEffect refreshes and the card surfaces
+  // the link with Copy and Email actions.
+  async function generateLink() {
+    if (!client?.id) {
+      setGenerateError('Client record missing. Refresh and try again.');
+      return;
+    }
+    setGenerating(true);
+    setGenerateError(null);
+    try {
+      const token = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+      const alphabet = 'abcdefghjkmnpqrstuvwxyz23456789';
+      const codeBytes = crypto.getRandomValues(new Uint8Array(7));
+      const shortCode = Array.from(codeBytes)
+        .map(b => alphabet[b % alphabet.length])
+        .join('');
+
+      const { data, error: insErr } = await supabase
+        .from('agreement_send_requests')
+        .insert({
+          token,
+          short_code: shortCode,
+          therapist_id: therapist.id,
+          client_id: client.id,
+          client_name: client.name || null,
+          client_email: client.email || null,
+          client_phone: client.phone || null,
+        })
+        .select('id, short_code, token, sent_at, signed_at, client_email')
+        .single();
+      if (insErr) throw insErr;
+
+      // Surface immediately by setting pendingSend (no need to refetch).
+      setPendingSend(data);
+
+      // Fire-and-forget email delivery via edge function. Same path
+      // as the Settings flow. Failure is non-blocking; the therapist
+      // can still copy the link manually.
+      if (client.email) {
+        const link = `${window.location.origin}/s/${shortCode}`;
+        supabase.functions.invoke('send-agreement-email', {
+          body: {
+            short_code: shortCode,
+            therapist_id: therapist.id,
+            client_email: client.email,
+            client_name: client.name || null,
+            link,
+          },
+        }).then(({ error: fnErr }) => {
+          if (fnErr) console.error('[send-agreement-email] failed:', fnErr);
+        }).catch(e => {
+          console.error('[send-agreement-email] threw:', e);
+        });
+      }
+    } catch (e) {
+      console.error('[AgreementCard] generateLink failed:', e);
+      setGenerateError('Could not create the signing link. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
   }
 
   function formatSignedDate(iso) {
@@ -313,25 +389,39 @@ export default function AgreementCard({ client, therapist }) {
           No signed agreement on file yet.
         </div>
         <div style={{ fontSize: 12, color: C.gray, marginBottom: 12, lineHeight: 1.55 }}>
-          Send a signing link from Settings, or the client will sign automatically at their next intake.
+          Send a signing link now, or the client will sign automatically at their next intake.
         </div>
-        <a
-          href={`/dashboard/settings`}
+        {generateError && (
+          <div style={{
+            background: '#FEE2E2',
+            border: '1px solid #FCA5A5',
+            borderRadius: 8,
+            padding: '7px 10px',
+            fontSize: 12,
+            color: '#991B1B',
+            marginBottom: 10,
+            lineHeight: 1.5,
+          }}>
+            {generateError}
+          </div>
+        )}
+        <button
+          onClick={generateLink}
+          disabled={generating || !client?.id}
           style={{
             display: 'inline-block',
-            background: C.forest,
+            background: generating ? '#9CA3AF' : C.forest,
             color: '#fff',
             border: 'none',
             borderRadius: 8,
             padding: '8px 16px',
             fontSize: 12.5,
             fontWeight: 700,
-            cursor: 'pointer',
-            textDecoration: 'none',
+            cursor: generating ? 'wait' : 'pointer',
           }}
         >
-          Send for signature
-        </a>
+          {generating ? 'Generating...' : 'Send for signature'}
+        </button>
       </div>
     </div>
   );

@@ -117,7 +117,7 @@ export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) 
         {/* Agreement (permanent, always visible) */}
         <Tile
           icon="✍🏼"
-          label="Agreement"
+          label="Client agreement"
           tone={isAgreementSigned ? 'sage' : 'amber'}
           accentBorder
           onClick={onAgreementTap}
