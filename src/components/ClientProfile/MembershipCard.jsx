@@ -106,18 +106,36 @@ export default function MembershipCard({ client, therapist }) {
     let mounted = true;
     (async () => {
       try {
+        // Subs select with new Phase 19 columns. If those columns don't
+        // exist yet (migration not applied), fall back to the older
+        // column set so the panel still renders.
+        async function fetchSubs() {
+          const full = await supabase
+            .from('member_subscriptions')
+            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name, renewal_day_of_month, notes')
+            .eq('therapist_id', therapist.id)
+            .eq('client_id', client.id)
+            .order('started_at', { ascending: false });
+          if (full.error && /renewal_day_of_month|notes/.test(full.error.message || '')) {
+            console.warn('[MembershipCard] subs full select failed; retrying without Phase 19 columns:', full.error.message);
+            const legacy = await supabase
+              .from('member_subscriptions')
+              .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name')
+              .eq('therapist_id', therapist.id)
+              .eq('client_id', client.id)
+              .order('started_at', { ascending: false });
+            return legacy;
+          }
+          return full;
+        }
+
         const [mRes, sRes, rRes] = await Promise.all([
           supabase
             .from('memberships')
             .select('id, name, monthly_price, monthly_session_credits, active')
             .eq('therapist_id', therapist.id)
             .order('name', { ascending: true }),
-          supabase
-            .from('member_subscriptions')
-            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name, renewal_day_of_month, notes')
-            .eq('therapist_id', therapist.id)
-            .eq('client_id', client.id)
-            .order('started_at', { ascending: false }),
+          fetchSubs(),
           // Phase 19.4: pending renewals for THIS client. Defensive
           // try-catch in case the membership_renewal_v1 migration
           // hasn't been applied; we render empty array gracefully.
@@ -134,6 +152,10 @@ export default function MembershipCard({ client, therapist }) {
         ]);
         if (mounted) {
           setMemberships(mRes.data || []);
+          if (sRes.error) {
+            console.error('[MembershipCard] subs fetch error:', sRes.error);
+            setError('Could not load memberships.');
+          }
           setSubs(sRes.data || []);
           // rRes may have an error if the table doesn't exist yet
           // pre-migration. Don't crash the rest of the panel.
