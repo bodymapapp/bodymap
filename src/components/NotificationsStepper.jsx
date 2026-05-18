@@ -1,39 +1,46 @@
 // src/components/NotificationsStepper.jsx
 //
-// HK May 18 2026 v2: 3-card stepper for Home Ribbon 5.
+// HK May 18 2026 v3: 3-card stepper for Home Ribbon 5.
 //
 // Customer ask Maddy: 'We lost a lot of revenue last month when
 // reminders were not going out... MassageBook said clients should
 // be responsible for writing the appointment in their own calendars.'
 //
-// Card 1 of 3: The journey (animated, auto-plays on scroll, ~12s)
-//              Empathetic warm draw-in. Shows 6 client lifetime stages
-//              with notifications appearing at the right moment.
-// Card 2 of 3: What your client gets (compact table, 16 rows)
-// Card 3 of 3: What you get (compact table, 14 rows)
+// V3 changes from V2 per HK feedback:
+//   - Numbered dots on Card 1, numbers match row #s in Cards 2 + 3
+//   - Dot color = audience (gold for client, sage for therapist),
+//     not channel. Channel info lives in Cards 2/3.
+//   - Footnote on Card 2 (client table) explains why no Bell for
+//     clients: by design (no client login, magic links instead).
+//   - Full warmth pass: rounder corners, pastel channel pills,
+//     serif typography in more places, softer notification-preview
+//     tooltips, evocative stage captions, gentler copy throughout.
 //
-// Persona accommodations (Maria, 70yo solo LMT):
-//   - Manual Previous/Next, no auto-advance between cards
-//   - Big tap targets (44px+ buttons)
-//   - Fade-only transition (200ms)
-//   - 'Card N of 3' indicator always visible
-//   - Auto-play on Card 1 once on scroll, replay button after
+// Card 1 of 3: The journey (animated, ~12s, auto-plays on scroll)
+// Card 2 of 3: What your client receives (16 client notifications)
+// Card 3 of 3: What you receive (14 therapist notifications)
 //
-// Data is pulled live from src/lib/notificationSpec.js. No magic strings.
+// Data lives in src/lib/notificationSpec.js. No magic strings.
 
 import React, { useEffect, useRef, useState } from 'react';
 import { NOTIFICATION_SPEC } from '../lib/notificationSpec';
 
+// Pastel channel palette: softer than v2 but still distinguishable.
 const CHANNEL_LABELS = {
-  app_alert: { label: 'BELL', bg: '#FCF4DD', fg: '#92400E' },
-  email:     { label: 'EMAIL', bg: '#E0E7FF', fg: '#3730A3' },
-  sms:       { label: 'SMS', bg: '#DCFCE7', fg: '#166534' },
-  push:      { label: 'PUSH', bg: '#FAE8EC', fg: '#9F1239' },
+  app_alert: { label: 'Bell',  bg: '#FDF4E0', fg: '#7A5A1F', ring: '#E8D4A8' },
+  email:     { label: 'Email', bg: '#E8EBFA', fg: '#3F4894', ring: '#C7CFEF' },
+  sms:       { label: 'SMS',   bg: '#E6F3E5', fg: '#3F6E3B', ring: '#BFDDBF' },
+  push:      { label: 'Push',  bg: '#F6E5EA', fg: '#8B4458', ring: '#E4C2CD' },
 };
 
-// Stage map for the animated journey on Card 1. Hand-curated:
-// each touchpoint id maps to one of 6 lifetime stages, mirroring
-// the spine in /docs/CLIENT_LIFETIME_JOURNEY.html.
+// Audience colors used for the dot fill on Card 1.
+const AUDIENCE_COLORS = {
+  client:    { dot: '#C9A84C', soft: '#F3E9C8', label: 'For her' },
+  therapist: { dot: '#6B9E80', soft: '#E1ECE2', label: 'For you' },
+};
+
+// Hand-curated stage mapping. Each touchpoint id lives in one of 6
+// lifetime stages mirroring docs/CLIENT_LIFETIME_JOURNEY.html.
 const STAGE_MAP = {
   C1: 0, C2: 0, C3: 0, T1: 0, T2: 0, T3: 0, T8: 0,
   C4: 1, C5: 1, T4: 1,
@@ -41,20 +48,24 @@ const STAGE_MAP = {
   T9: 3,
   C14: 4, T10: 4, T11: 4,
   C15: 5,
+  // Off-ramps fold into the closest stage where they fire
   C7: 1, C8: 1, C9: 1, C10: 1, C11: 1, C12: 1, C13: 1, C16: 1,
   T5: 1, T7: 1, T12: 1, T13: 2, T14: 1,
 };
 
+// Warmer stage names. Each pairs a procedural label with an evocative
+// caption that frames the same moment in human language.
 const STAGES = [
-  { name: 'First contact',       caption: 'She finds you' },
-  { name: 'First session',       caption: 'She arrives' },
-  { name: 'Becoming a regular',  caption: 'She comes back' },
-  { name: 'Lifetime client',     caption: 'She brings friends' },
-  { name: 'Lapse signal',        caption: 'Life gets busy' },
-  { name: 'Return or goodbye',   caption: 'A graceful close' },
+  { name: 'She finds you',       caption: 'First contact' },
+  { name: 'She arrives',         caption: 'First session' },
+  { name: 'She comes back',      caption: 'Becoming a regular' },
+  { name: 'She belongs here',    caption: 'Lifetime client' },
+  { name: 'Life gets busy',      caption: 'Lapse signal' },
+  { name: 'A graceful close',    caption: 'Return or goodbye' },
 ];
 
-// Narrative order for the animation. Walks left-to-right across stages.
+// Narrative animation walks left-to-right across stages. The order
+// here is what the customer watches unfold over ~12 seconds.
 const NARRATIVE_ORDER = [
   'C1', 'T2', 'T3', 'C3', 'T8',
   'C4', 'C5', 'T1', 'T4',
@@ -64,106 +75,125 @@ const NARRATIVE_ORDER = [
   'C15',
 ];
 
-function ChannelBadge({ ch, dimmed, suffix }) {
+// Build a stable row-number map: each touchpoint id maps to its
+// position (1-based) within its audience's table. The same number
+// appears inside the dot on Card 1, and on the corresponding row
+// in Card 2 or Card 3.
+function buildRowNumbers() {
+  const clientRows = NOTIFICATION_SPEC.filter(n => n.audience === 'client');
+  const therapistRows = NOTIFICATION_SPEC.filter(n => n.audience === 'therapist');
+  const map = {};
+  clientRows.forEach((r, i) => { map[r.id] = i + 1; });
+  therapistRows.forEach((r, i) => { map[r.id] = i + 1; });
+  return map;
+}
+const ROW_NUMBER = buildRowNumbers();
+
+function ChannelPill({ ch, dimmed, suffix }) {
   const c = CHANNEL_LABELS[ch];
   if (!c) return null;
   return (
     <span style={{
       display: 'inline-block',
-      background: dimmed ? '#F0F0F0' : c.bg,
-      color: dimmed ? '#9CA3AF' : c.fg,
-      fontSize: 10,
-      fontWeight: 700,
-      letterSpacing: '0.05em',
-      padding: '3px 6px',
-      borderRadius: 4,
-      marginRight: 3,
-      marginBottom: 2,
+      background: dimmed ? '#F4F2EE' : c.bg,
+      color: dimmed ? '#A89F92' : c.fg,
+      fontSize: 10.5,
+      fontWeight: 600,
+      letterSpacing: '0.02em',
+      padding: '3.5px 9px',
+      borderRadius: 999,
+      marginRight: 4,
+      marginBottom: 3,
       verticalAlign: 'middle',
       fontStyle: dimmed ? 'italic' : 'normal',
+      fontFamily: 'Georgia, serif',
     }}>
-      {c.label}{suffix ? ` ${suffix}` : ''}
+      {c.label}{suffix ? ` · ${suffix}` : ''}
     </span>
   );
 }
 
-function NotificationRow({ row, index, audienceColor }) {
-  const isClient = row.audience === 'client';
-  // Show a dimmed 'PUSH soon' badge on client rows to indicate client
-  // push will arrive with the client app. Therapist rows have push
-  // working today (live on the dashboard PWA).
+function NotificationRow({ row, rowNumber, audienceColor, audience }) {
+  // For client rows we show a dimmed 'Push · soon' pill because
+  // client push lands with the future client app. For therapist
+  // rows, Push is already live on the dashboard PWA.
+  const isClient = audience === 'client';
   const showClientPushTeaser = isClient && !row.channels.includes('push');
 
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '28px 1fr auto',
-        gap: 10,
-        padding: '8px 12px',
-        background: index % 2 === 0 ? '#FFFFFF' : '#FBFAF4',
+        gridTemplateColumns: '36px 1fr auto',
+        gap: 12,
+        padding: '11px 14px',
+        background: rowNumber % 2 === 1 ? '#FEFCF6' : '#FFFFFF',
         fontSize: 13,
-        lineHeight: 1.35,
-        color: '#1F2937',
-        borderBottom: '1px solid #F0EAD8',
+        lineHeight: 1.4,
+        color: '#3F4F45',
+        borderBottom: '1px solid #F0E9D7',
         alignItems: 'center',
       }}
     >
       <div style={{
-        fontSize: 11,
+        width: 28,
+        height: 28,
+        borderRadius: '50%',
+        background: audienceColor.soft,
+        color: audienceColor.dot,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 12,
         fontWeight: 700,
-        color: audienceColor,
-        textAlign: 'center',
+        fontFamily: 'Georgia, serif',
       }}>
-        {index + 1}
+        {rowNumber}
       </div>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontWeight: 600, color: '#1F4030', fontSize: 13, marginBottom: 1 }}>
+        <div style={{
+          fontWeight: 600,
+          color: '#1F4030',
+          fontSize: 13.5,
+          marginBottom: 2,
+          fontFamily: 'Georgia, serif',
+        }}>
           {row.title}
         </div>
-        <div style={{ fontSize: 11, color: '#6B7280', fontStyle: 'italic', lineHeight: 1.4 }}>
+        <div style={{
+          fontSize: 11.5,
+          color: '#7A736A',
+          fontStyle: 'italic',
+          lineHeight: 1.45,
+        }}>
           {row.when}
         </div>
       </div>
       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-        {row.channels.map(ch => <ChannelBadge key={ch} ch={ch} />)}
-        {showClientPushTeaser && <ChannelBadge ch="push" dimmed suffix="soon" />}
+        {row.channels.map(ch => <ChannelPill key={ch} ch={ch} />)}
+        {showClientPushTeaser && <ChannelPill ch="push" dimmed suffix="soon" />}
       </div>
     </div>
   );
 }
 
-function NotificationTable({ rows, audienceColor }) {
+function NotificationTable({ rows, audience }) {
+  const audienceColor = AUDIENCE_COLORS[audience];
   return (
     <div style={{
       background: '#FFFFFF',
-      border: '1px solid #E5E0CE',
-      borderRadius: 10,
+      border: '1px solid #EDE2C8',
+      borderRadius: 16,
       overflow: 'hidden',
+      boxShadow: '0 1px 3px rgba(31, 64, 48, 0.04)',
     }}>
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '28px 1fr auto',
-        gap: 10,
-        padding: '8px 12px',
-        background: '#F5EFE0',
-        fontSize: 10,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.06em',
-        color: '#4A4035',
-        borderBottom: '1px solid #E5E0CE',
-      }}>
-        <div style={{ textAlign: 'center' }}>#</div>
-        <div>When</div>
-        <div style={{ textAlign: 'right' }}>Channels</div>
-      </div>
       {rows.map((row, i) => (
         <NotificationRow
           key={row.id}
           row={row}
-          index={i}
+          rowNumber={i + 1}
           audienceColor={audienceColor}
+          audience={audience}
         />
       ))}
     </div>
@@ -180,12 +210,38 @@ function JourneyCard({ replayKey }) {
   const [activeNotifIndex, setActiveNotifIndex] = useState(-1);
   const [showFinal, setShowFinal] = useState(false);
   const startedRef = useRef(false);
+  const replayCountRef = useRef(0);
 
   const narrativeSpecs = NARRATIVE_ORDER
     .map(id => NOTIFICATION_SPEC.find(s => s.id === id))
     .filter(Boolean);
 
-  // Reset and trigger on visibility, or when replayKey changes
+  function runAnimation() {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    setPhase('animating');
+    const timers = [];
+
+    STAGES.forEach((_, i) => {
+      timers.push(setTimeout(() => setVisibleStages(i + 1), 400 + i * 380));
+    });
+
+    const notifStart = 3000;
+    const notifSpacing = 550;
+    narrativeSpecs.forEach((_, i) => {
+      timers.push(setTimeout(() => setActiveNotifIndex(i), notifStart + i * notifSpacing));
+    });
+
+    const finalTime = notifStart + narrativeSpecs.length * notifSpacing + 800;
+    timers.push(setTimeout(() => {
+      setShowFinal(true);
+      setPhase('done');
+    }, finalTime));
+
+    return () => timers.forEach(clearTimeout);
+  }
+
+  // Reset + (re)trigger when replayKey changes
   useEffect(() => {
     setPhase('idle');
     setVisibleStages(0);
@@ -193,40 +249,21 @@ function JourneyCard({ replayKey }) {
     setShowFinal(false);
     startedRef.current = false;
 
-    let timers = [];
-
-    const start = () => {
-      if (startedRef.current) return;
-      startedRef.current = true;
-      setPhase('animating');
-
-      STAGES.forEach((_, i) => {
-        timers.push(setTimeout(() => setVisibleStages(i + 1), 400 + i * 380));
-      });
-
-      const notifStart = 3000;
-      const notifSpacing = 550;
-      narrativeSpecs.forEach((_, i) => {
-        timers.push(setTimeout(() => setActiveNotifIndex(i), notifStart + i * notifSpacing));
-      });
-
-      const finalTime = notifStart + narrativeSpecs.length * notifSpacing + 800;
-      timers.push(setTimeout(() => {
-        setShowFinal(true);
-        setPhase('done');
-      }, finalTime));
-    };
-
+    let cleanup;
     let io;
-    if (replayKey > 0) {
-      // Manual replay: start immediately
-      setTimeout(start, 100);
-    } else if (ref.current) {
+
+    if (replayKey > 0 && replayKey !== replayCountRef.current) {
+      replayCountRef.current = replayKey;
+      const t = setTimeout(() => { cleanup = runAnimation(); }, 120);
+      return () => { clearTimeout(t); cleanup && cleanup(); };
+    }
+
+    if (ref.current) {
       io = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            start();
-            io && io.disconnect();
+          if (entry.isIntersecting && !startedRef.current) {
+            cleanup = runAnimation();
+            io.disconnect();
           }
         });
       }, { threshold: 0.3 });
@@ -234,100 +271,88 @@ function JourneyCard({ replayKey }) {
     }
 
     return () => {
-      timers.forEach(clearTimeout);
       if (io) io.disconnect();
+      if (cleanup) cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replayKey]);
 
-  function replay() {
-    // Bumping a counter prop in parent would be cleaner; this is local
-    // because the parent only triggers replay when navigating back to
-    // this card. Inline replay just re-runs the effect.
+  function manualReplay() {
     setPhase('idle');
     setVisibleStages(0);
     setActiveNotifIndex(-1);
     setShowFinal(false);
     startedRef.current = false;
-    setTimeout(() => {
-      startedRef.current = true;
-      setPhase('animating');
-      STAGES.forEach((_, i) => {
-        setTimeout(() => setVisibleStages(i + 1), 400 + i * 380);
-      });
-      const notifStart = 3000;
-      const notifSpacing = 550;
-      narrativeSpecs.forEach((_, i) => {
-        setTimeout(() => setActiveNotifIndex(i), notifStart + i * notifSpacing);
-      });
-      const finalTime = notifStart + narrativeSpecs.length * notifSpacing + 800;
-      setTimeout(() => {
-        setShowFinal(true);
-        setPhase('done');
-      }, finalTime);
-    }, 100);
+    setTimeout(() => runAnimation(), 120);
   }
 
-  // Compute dot positions: stacked within each stage column
+  // Compute positions: stack within stage, vertically
   const notifPositions = narrativeSpecs.map((spec, i) => {
     const stageIdx = STAGE_MAP[spec.id] ?? 1;
-    const sameStageBefore = narrativeSpecs
+    const stack = narrativeSpecs
       .slice(0, i)
       .filter(s => (STAGE_MAP[s.id] ?? 1) === stageIdx)
       .length;
     return {
       stageIdx,
-      stack: sameStageBefore,
-      channels: spec.channels,
+      stack,
+      audience: spec.audience,
       title: spec.title,
+      id: spec.id,
+      rowNumber: ROW_NUMBER[spec.id],
     };
   });
 
   return (
     <div ref={ref}>
+      {/* Warm eyebrow + serif title */}
       <div style={{
-        fontSize: 11,
-        fontWeight: 700,
-        textTransform: 'uppercase',
-        letterSpacing: '0.1em',
-        color: '#6B9E80',
-        marginBottom: 8,
+        fontFamily: 'Georgia, serif',
+        fontSize: 12,
+        fontStyle: 'italic',
+        color: '#8B7A4F',
+        marginBottom: 10,
+        letterSpacing: '0.03em',
       }}>
         A day in the life of your client
       </div>
       <div style={{
         fontFamily: 'Georgia, serif',
-        fontSize: 26,
-        fontWeight: 600,
+        fontSize: 28,
+        fontWeight: 500,
         color: '#1F4030',
-        marginBottom: 6,
-        letterSpacing: '-0.01em',
-        lineHeight: 1.2,
+        marginBottom: 8,
+        letterSpacing: '-0.015em',
+        lineHeight: 1.15,
       }}>
         From hello to thank you
       </div>
       <div style={{
         fontSize: 14,
-        color: '#4A4035',
-        marginBottom: 18,
-        lineHeight: 1.55,
+        color: '#5A5145',
+        marginBottom: 22,
+        lineHeight: 1.65,
+        fontFamily: 'Georgia, serif',
+        fontStyle: 'italic',
+        maxWidth: 540,
       }}>
         Watch how every important moment gets a small message. So she always knows what's next. So you never have to remember.
       </div>
 
       <div style={{
         position: 'relative',
-        background: '#FFFFFF',
-        border: '1px solid #E5E0CE',
-        borderRadius: 10,
-        padding: '20px 10px 24px',
-        minHeight: 240,
+        background: 'linear-gradient(180deg, #FEFCF6 0%, #FAF4E6 100%)',
+        border: '1px solid #EDE2C8',
+        borderRadius: 18,
+        padding: '24px 14px 28px',
+        minHeight: 280,
+        boxShadow: '0 1px 3px rgba(31, 64, 48, 0.04)',
       }}>
         {/* Stage labels */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: `repeat(${STAGES.length}, 1fr)`,
-          gap: 4,
+          gap: 6,
           position: 'relative',
         }}>
           {STAGES.map((stage, i) => {
@@ -338,26 +363,27 @@ function JourneyCard({ replayKey }) {
                 style={{
                   textAlign: 'center',
                   opacity: isVisible ? 1 : 0,
-                  transform: isVisible ? 'translateY(0)' : 'translateY(-6px)',
-                  transition: 'opacity 350ms ease, transform 350ms ease',
+                  transform: isVisible ? 'translateY(0)' : 'translateY(-8px)',
+                  transition: 'opacity 450ms ease, transform 450ms ease',
                 }}
               >
                 <div style={{
-                  fontSize: 10.5,
-                  fontWeight: 700,
+                  fontSize: 11.5,
+                  fontWeight: 600,
                   color: '#1F4030',
                   fontFamily: 'Georgia, serif',
-                  lineHeight: 1.25,
+                  lineHeight: 1.3,
                   padding: '0 2px',
                 }}>
                   {stage.name}
                 </div>
                 <div style={{
                   fontSize: 9.5,
-                  color: '#6B7280',
+                  color: '#8B7A4F',
                   fontStyle: 'italic',
-                  marginTop: 2,
+                  marginTop: 3,
                   lineHeight: 1.3,
+                  letterSpacing: '0.02em',
                 }}>
                   {stage.caption}
                 </div>
@@ -366,39 +392,40 @@ function JourneyCard({ replayKey }) {
           })}
         </div>
 
-        {/* Horizontal spine */}
+        {/* Soft spine */}
         <div style={{
           position: 'relative',
-          marginTop: 14,
-          marginBottom: 10,
-          height: 3,
-          background: '#E5E0CE',
-          borderRadius: 1.5,
+          marginTop: 18,
+          marginBottom: 14,
+          height: 2,
+          background: '#EDE2C8',
+          borderRadius: 1,
           overflow: 'hidden',
         }}>
           <div style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(90deg, #6B9E80 0%, #1F4030 100%)',
+            background: 'linear-gradient(90deg, #C9A84C 0%, #6B9E80 50%, #1F4030 100%)',
             transform: phase === 'idle' ? 'scaleX(0)' : 'scaleX(1)',
             transformOrigin: 'left',
             transition: 'transform 2.8s ease-out',
+            opacity: 0.7,
           }} />
         </div>
 
-        {/* Notification dots */}
+        {/* Numbered audience dots */}
         <div style={{
           position: 'relative',
-          height: 120,
+          height: 140,
         }}>
           {notifPositions.map((notif, i) => {
             const isVisible = i <= activeNotifIndex;
             const isActive = i === activeNotifIndex;
             const stageWidth = 100 / STAGES.length;
             const leftPct = (notif.stageIdx + 0.5) * stageWidth;
-            const verticalOffset = notif.stack * 18;
-            const primaryChannel = notif.channels[0];
-            const channelColor = CHANNEL_LABELS[primaryChannel]?.fg || '#6B9E80';
+            const verticalOffset = notif.stack * 24;
+            const colors = AUDIENCE_COLORS[notif.audience] || AUDIENCE_COLORS.client;
+            const dotSize = isActive ? 28 : 22;
             return (
               <div
                 key={i}
@@ -408,37 +435,74 @@ function JourneyCard({ replayKey }) {
                   top: verticalOffset,
                   transform: 'translateX(-50%)',
                   opacity: isVisible ? 1 : 0,
-                  transition: 'opacity 350ms ease',
+                  transition: 'opacity 500ms ease',
                   pointerEvents: 'none',
-                  zIndex: isActive ? 2 : 1,
+                  zIndex: isActive ? 3 : (isVisible ? 2 : 1),
                 }}
               >
                 <div style={{
-                  width: isActive ? 12 : 8,
-                  height: isActive ? 12 : 8,
+                  width: dotSize,
+                  height: dotSize,
                   borderRadius: '50%',
-                  background: channelColor,
-                  boxShadow: isActive ? `0 0 0 4px ${channelColor}33` : 'none',
-                  transition: 'all 250ms ease',
+                  background: colors.dot,
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: isActive ? 12 : 10.5,
+                  fontWeight: 700,
+                  fontFamily: 'Georgia, serif',
+                  boxShadow: isActive
+                    ? `0 0 0 5px ${colors.dot}22, 0 2px 8px ${colors.dot}33`
+                    : `0 1px 2px ${colors.dot}33`,
+                  transition: 'all 350ms ease',
                   margin: '0 auto',
-                }} />
+                  border: '1.5px solid #FFFFFF',
+                }}>
+                  {notif.rowNumber}
+                </div>
                 {isActive && (
                   <div style={{
                     position: 'absolute',
-                    bottom: 'calc(100% + 6px)',
+                    bottom: 'calc(100% + 10px)',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    background: '#1F4030',
-                    color: '#fff',
-                    padding: '4px 8px',
-                    borderRadius: 6,
-                    fontSize: 11,
-                    fontWeight: 600,
+                    background: '#FFFFFF',
+                    color: '#1F4030',
+                    padding: '8px 12px',
+                    borderRadius: 12,
+                    fontSize: 12,
+                    fontWeight: 500,
+                    fontFamily: 'Georgia, serif',
                     whiteSpace: 'nowrap',
                     pointerEvents: 'none',
-                    boxShadow: '0 4px 12px rgba(31,64,48,0.2)',
+                    boxShadow: '0 6px 16px rgba(31, 64, 48, 0.12), 0 0 0 1px rgba(31, 64, 48, 0.08)',
+                    border: `1px solid ${colors.soft}`,
                   }}>
+                    <span style={{
+                      fontSize: 9.5,
+                      color: colors.dot,
+                      letterSpacing: '0.08em',
+                      textTransform: 'uppercase',
+                      fontWeight: 700,
+                      marginRight: 6,
+                      fontStyle: 'italic',
+                      fontFamily: 'system-ui, sans-serif',
+                    }}>
+                      {colors.label}
+                    </span>
                     {notif.title}
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      width: 0,
+                      height: 0,
+                      borderLeft: '6px solid transparent',
+                      borderRight: '6px solid transparent',
+                      borderTop: '6px solid #FFFFFF',
+                    }} />
                   </div>
                 )}
               </div>
@@ -449,40 +513,94 @@ function JourneyCard({ replayKey }) {
         {showFinal && (
           <div style={{
             textAlign: 'center',
-            marginTop: 8,
+            marginTop: 10,
             opacity: 1,
-            transition: 'opacity 600ms ease',
+            transition: 'opacity 700ms ease',
           }}>
             <div style={{
               fontFamily: 'Georgia, serif',
-              fontSize: 17,
-              fontWeight: 600,
+              fontSize: 19,
+              fontWeight: 500,
               color: '#1F4030',
-              marginBottom: 4,
+              marginBottom: 6,
+              letterSpacing: '-0.01em',
             }}>
               30 small moments of care
             </div>
-            <div style={{ fontSize: 12, color: '#6B7280', fontStyle: 'italic' }}>
+            <div style={{
+              fontSize: 12,
+              color: '#8B7A4F',
+              fontStyle: 'italic',
+              fontFamily: 'Georgia, serif',
+            }}>
               Every one written by hand. Sent by us. Owned by us.
             </div>
           </div>
         )}
       </div>
 
+      {/* Audience legend */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        gap: 22,
+        marginTop: 16,
+        flexWrap: 'wrap',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 14,
+            height: 14,
+            borderRadius: '50%',
+            background: AUDIENCE_COLORS.client.dot,
+            border: '1.5px solid #FFFFFF',
+            boxShadow: `0 0 0 1px ${AUDIENCE_COLORS.client.dot}33`,
+          }} />
+          <span style={{
+            fontSize: 12,
+            color: '#5A5145',
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+          }}>
+            For her
+          </span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{
+            width: 14,
+            height: 14,
+            borderRadius: '50%',
+            background: AUDIENCE_COLORS.therapist.dot,
+            border: '1.5px solid #FFFFFF',
+            boxShadow: `0 0 0 1px ${AUDIENCE_COLORS.therapist.dot}33`,
+          }} />
+          <span style={{
+            fontSize: 12,
+            color: '#5A5145',
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+          }}>
+            For you
+          </span>
+        </div>
+      </div>
+
       {phase === 'done' && (
-        <div style={{ textAlign: 'center', marginTop: 14 }}>
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
           <button
             type="button"
-            onClick={replay}
+            onClick={manualReplay}
             style={{
               background: '#FFFFFF',
               color: '#1F4030',
               border: '1.5px solid #1F4030',
-              borderRadius: 8,
-              padding: '8px 16px',
+              borderRadius: 999,
+              padding: '9px 20px',
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: 'pointer',
+              fontFamily: 'Georgia, serif',
+              letterSpacing: '0.02em',
             }}
           >
             ↻ Play again
@@ -509,19 +627,19 @@ export default function NotificationsStepper() {
     { kind: 'journey' },
     {
       kind: 'table',
-      title: 'What your client gets',
-      subtitle: `${clientRows.length} notifications that keep her informed, from first booking to a graceful goodbye.`,
+      title: 'What she receives',
+      subtitle: `${clientRows.length} small notes that keep her informed. From the first booking to a graceful goodbye.`,
       rows: clientRows,
-      audienceColor: '#C9A84C',
-      footnote: 'Client push notifications launch alongside the client app. Until then, email and SMS carry the load.',
+      audience: 'client',
+      footnote: 'No bell for your client. By design. She books, reads, and signs through one-tap magic links, never a password. The bell stays yours alone. Push notifications for her arrive with the future client app.',
     },
     {
       kind: 'table',
-      title: 'What you get',
-      subtitle: `${therapistRows.length} notifications that keep you in the loop, including the alerts that fire when something fails to deliver.`,
+      title: 'What you receive',
+      subtitle: `${therapistRows.length} alerts that keep you in the loop, including the ones that fire when something fails to deliver.`,
       rows: therapistRows,
-      audienceColor: '#6B9E80',
-      footnote: 'Bell and push notifications are live on your dashboard. SMS requires you to connect your Twilio number.',
+      audience: 'therapist',
+      footnote: 'Bell and push are already live on your dashboard. SMS to you needs your Twilio number connected. Email always works.',
     },
   ];
 
@@ -541,48 +659,52 @@ export default function NotificationsStepper() {
 
   return (
     <div style={{
-      background: 'linear-gradient(180deg, #FBFAF4 0%, #F2EFE4 100%)',
-      borderRadius: 18,
-      padding: '24px 22px',
-      border: '1px solid #EDE6D6',
+      background: 'linear-gradient(180deg, #FEFCF6 0%, #F5EFE0 100%)',
+      borderRadius: 22,
+      padding: '28px 24px',
+      border: '1px solid #EDE2C8',
       maxWidth: 880,
       margin: '0 auto',
+      boxShadow: '0 2px 12px rgba(31, 64, 48, 0.05)',
     }}>
       {/* Header */}
       <div style={{
         display: 'flex',
         alignItems: 'baseline',
-        gap: 14,
-        marginBottom: 18,
+        gap: 16,
+        marginBottom: 22,
         flexWrap: 'wrap',
       }}>
         <div style={{
           fontFamily: 'Georgia, serif',
-          fontSize: 52,
+          fontSize: 58,
           fontWeight: 400,
           lineHeight: 1,
           color: '#1F4030',
-          letterSpacing: '-0.02em',
+          letterSpacing: '-0.025em',
         }}>
           {total}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontFamily: 'Georgia, serif',
-            fontSize: 18,
-            fontWeight: 600,
+            fontSize: 19,
+            fontWeight: 500,
             color: '#1F4030',
-            marginBottom: 3,
-            lineHeight: 1.25,
+            marginBottom: 4,
+            lineHeight: 1.3,
+            letterSpacing: '-0.005em',
           }}>
-            automated notifications across the client journey
+            small notes between you and your client
           </div>
           <div style={{
             fontSize: 13,
-            color: '#4A4035',
-            lineHeight: 1.55,
+            color: '#5A5145',
+            lineHeight: 1.6,
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
           }}>
-            Built in-house. If a reminder doesn't deliver, you find out. Not your client.
+            Built in our own kitchen. If a reminder doesn't deliver, you find out. Not your client.
           </div>
         </div>
       </div>
@@ -592,34 +714,37 @@ export default function NotificationsStepper() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        marginBottom: 12,
+        marginBottom: 16,
         flexWrap: 'wrap',
         gap: 10,
       }}>
         <div style={{
           fontSize: 11,
-          fontWeight: 700,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: '#6B7280',
+          fontWeight: 600,
+          letterSpacing: '0.12em',
+          color: '#8B7A4F',
+          fontFamily: 'Georgia, serif',
+          fontStyle: 'italic',
         }}>
           Card {cardIndex + 1} of {cards.length}
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
+        <div style={{ display: 'flex', gap: 8 }}>
           <button
             type="button"
             onClick={() => goTo(cardIndex - 1)}
             disabled={cardIndex === 0}
             style={{
-              background: cardIndex === 0 ? '#F0EAD8' : '#FFFFFF',
-              color: cardIndex === 0 ? '#9CA3AF' : '#1F4030',
-              border: cardIndex === 0 ? '1px solid #F0EAD8' : '1.5px solid #1F4030',
-              borderRadius: 8,
-              padding: '9px 15px',
+              background: cardIndex === 0 ? '#F4F0E2' : '#FFFFFF',
+              color: cardIndex === 0 ? '#A89F92' : '#1F4030',
+              border: cardIndex === 0 ? '1px solid #F4F0E2' : '1.5px solid #1F4030',
+              borderRadius: 999,
+              padding: '10px 18px',
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: cardIndex === 0 ? 'not-allowed' : 'pointer',
               minHeight: 44,
+              fontFamily: 'Georgia, serif',
+              letterSpacing: '0.02em',
             }}
           >
             ← Previous
@@ -629,15 +754,17 @@ export default function NotificationsStepper() {
             onClick={() => goTo(cardIndex + 1)}
             disabled={cardIndex === cards.length - 1}
             style={{
-              background: cardIndex === cards.length - 1 ? '#F0EAD8' : '#1F4030',
-              color: cardIndex === cards.length - 1 ? '#9CA3AF' : '#FFFFFF',
-              border: cardIndex === cards.length - 1 ? '1px solid #F0EAD8' : '1.5px solid #1F4030',
-              borderRadius: 8,
-              padding: '9px 15px',
+              background: cardIndex === cards.length - 1 ? '#F4F0E2' : '#1F4030',
+              color: cardIndex === cards.length - 1 ? '#A89F92' : '#FFFFFF',
+              border: cardIndex === cards.length - 1 ? '1px solid #F4F0E2' : '1.5px solid #1F4030',
+              borderRadius: 999,
+              padding: '10px 18px',
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               cursor: cardIndex === cards.length - 1 ? 'not-allowed' : 'pointer',
               minHeight: 44,
+              fontFamily: 'Georgia, serif',
+              letterSpacing: '0.02em',
             }}
           >
             Next →
@@ -658,30 +785,38 @@ export default function NotificationsStepper() {
           <>
             <div style={{
               fontFamily: 'Georgia, serif',
-              fontSize: 20,
-              fontWeight: 600,
+              fontSize: 24,
+              fontWeight: 500,
               color: '#1F4030',
-              marginBottom: 4,
-              letterSpacing: '-0.005em',
+              marginBottom: 6,
+              letterSpacing: '-0.01em',
             }}>
               {card.title}
             </div>
             <div style={{
               fontSize: 13,
-              color: '#4A4035',
-              marginBottom: 12,
-              lineHeight: 1.55,
+              color: '#5A5145',
+              marginBottom: 16,
+              lineHeight: 1.65,
+              fontFamily: 'Georgia, serif',
+              fontStyle: 'italic',
+              maxWidth: 580,
             }}>
               {card.subtitle}
             </div>
-            <NotificationTable rows={card.rows} audienceColor={card.audienceColor} />
+            <NotificationTable rows={card.rows} audience={card.audience} />
             {card.footnote && (
               <div style={{
-                marginTop: 10,
-                fontSize: 12,
-                color: '#6B7280',
+                marginTop: 14,
+                padding: '12px 16px',
+                background: '#FAF4E6',
+                border: '1px solid #EDE2C8',
+                borderRadius: 12,
+                fontSize: 12.5,
+                color: '#5A5145',
                 fontStyle: 'italic',
-                lineHeight: 1.5,
+                lineHeight: 1.6,
+                fontFamily: 'Georgia, serif',
               }}>
                 {card.footnote}
               </div>
@@ -694,8 +829,8 @@ export default function NotificationsStepper() {
       <div style={{
         display: 'flex',
         justifyContent: 'center',
-        gap: 8,
-        marginTop: 18,
+        gap: 10,
+        marginTop: 22,
       }}>
         {cards.map((_, i) => (
           <button
@@ -703,13 +838,14 @@ export default function NotificationsStepper() {
             type="button"
             onClick={() => goTo(i)}
             style={{
-              width: 12,
-              height: 12,
+              width: 11,
+              height: 11,
               borderRadius: '50%',
-              border: '2px solid #1F4030',
+              border: '1.5px solid #1F4030',
               background: i === cardIndex ? '#1F4030' : 'transparent',
               cursor: 'pointer',
               padding: 0,
+              transition: 'background 200ms ease',
             }}
             aria-label={`Go to card ${i + 1}`}
           />
@@ -718,20 +854,21 @@ export default function NotificationsStepper() {
 
       {/* Trust line */}
       <div style={{
-        marginTop: 20,
-        paddingTop: 16,
-        borderTop: '1px solid #E5E0CE',
+        marginTop: 24,
+        paddingTop: 20,
+        borderTop: '1px solid #EDE2C8',
         textAlign: 'center',
       }}>
         <div style={{
           fontFamily: 'Georgia, serif',
-          fontSize: 16,
-          fontWeight: 400,
+          fontSize: 17,
+          fontWeight: 500,
           color: '#1F4030',
-          lineHeight: 1.5,
+          lineHeight: 1.55,
           letterSpacing: '-0.005em',
           maxWidth: 540,
           margin: '0 auto',
+          fontStyle: 'italic',
         }}>
           If a reminder doesn't go out, that's on us.<br/>
           Not on a third party. Not on your client.
