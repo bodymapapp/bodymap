@@ -48,6 +48,29 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
   const totalCents = amountCents + tipCents;
   const validAmount = amountCents > 0;
 
+  // Phase 15.2 (HK May 18 2026): fire-and-forget payment notification
+  // after a successful Mark-as-Paid (Cash, Venmo, Zelle, etc). The
+  // edge function fans out to therapist (Bell + Email + SMS + Push)
+  // and to client (Email + SMS) per their notification_prefs.
+  async function firePaymentNotification(sessionPaymentId) {
+    if (!sessionPaymentId) return;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/notify-payment-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ session_payment_id: sessionPaymentId }),
+      });
+    } catch (e) {
+      console.warn('notify-payment-event invocation failed:', e);
+    }
+  }
+
   async function save() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     // Phase 13.4 (HK May 17 2026): bookings.client_id is now always set.
@@ -55,7 +78,7 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
     setSaving(true);
     setErrorMsg(null);
     try {
-      const { error } = await supabase.from('session_payments').insert({
+      const { data: insertedPayment, error } = await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
         client_id: client.id,
@@ -66,8 +89,9 @@ export default function MarkAsPaidModal({ appt, therapist, client, defaultAmount
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
-      });
+      }).select('id').single();
       if (error) throw new Error(error.message);
+      if (insertedPayment?.id) firePaymentNotification(insertedPayment.id);
       onPaid?.();
       onClose();
     } catch (e) {

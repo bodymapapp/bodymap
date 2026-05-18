@@ -185,6 +185,30 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
   const totalCents = amountCents + tipCents;
   const validAmount = amountCents > 0;
 
+  // Phase 15.2 (HK May 18 2026): fire-and-forget payment notification.
+  // Called after every successful session_payments insert in this modal.
+  // The edge function fans out to therapist (Bell + Email + SMS + Push)
+  // and to client (Email + SMS) per their notification_prefs. Errors
+  // are warned to console but never block the UI success state.
+  async function firePaymentNotification(sessionPaymentId) {
+    if (!sessionPaymentId) return;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/notify-payment-event`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({ session_payment_id: sessionPaymentId }),
+      });
+    } catch (e) {
+      console.warn('notify-payment-event invocation failed:', e);
+    }
+  }
+
   // ── Action: Card on file ────────────────────────────────────────
   async function chargeCardOnFile() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
@@ -218,7 +242,12 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       if (!data.success) throw new Error('Charge did not succeed');
 
       // Record in session_payments
-      await supabase.from('session_payments').insert({
+      // Phase 15.2 (HK May 18 2026): capture the inserted id so we can
+      // fire the payment_received notification right after. Prior to
+      // this, payments via Checkout produced zero notifications because
+      // charge-card doesn't notify (it's a pure provider call) and
+      // the client-side insert was fire-and-forget.
+      const { data: insertedPayment } = await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
         client_id: client.id,
@@ -230,7 +259,9 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
-      });
+      }).select('id').single();
+
+      if (insertedPayment?.id) firePaymentNotification(insertedPayment.id);
 
       setSuccessDetail({
         method: 'Card on file',
@@ -372,7 +403,8 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
       // Step 5: session_payments row, payment_method = stripe_card_new
       // since this is the 'entered fresh at checkout' code path even
       // though the card was also saved for future use.
-      await supabase.from('session_payments').insert({
+      // Phase 15.2: capture id, fire payment_received notification.
+      const { data: insertedPayment } = await supabase.from('session_payments').insert({
         booking_id: appt.id,
         therapist_id: therapist.id,
         client_id: client.id,
@@ -384,7 +416,9 @@ export default function CheckoutModal({ appt, therapist, client, defaultAmountCe
         status: 'succeeded',
         paid_at: new Date().toISOString(),
         created_by_therapist_id: therapist.id,
-      });
+      }).select('id').single();
+
+      if (insertedPayment?.id) firePaymentNotification(insertedPayment.id);
 
       setSuccessDetail({
         method: 'Card entered',
