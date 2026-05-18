@@ -10,7 +10,26 @@ export async function sendSmsViaTwilio(therapist, toPhone, message) {
   const cleaned = String(toPhone).replace(/\D/g, '');
   const e164 = cleaned.startsWith('1') ? `+${cleaned}` : `+1${cleaned}`;
 
+  // Macro #13 (HK May 18 2026): tell Twilio to POST delivery state
+  // updates back to our twilio-status-callback function. This lets
+  // notification_log reflect ACTUAL carrier delivery (delivered /
+  // undelivered / failed) instead of just Twilio API acceptance.
+  // Without this, A2P-blocked or carrier-dropped messages logged
+  // as 'sent' (the dashboard matrix showed lying green/yellow cells).
+  const supabaseUrl = (typeof Deno !== 'undefined' ? Deno.env.get('SUPABASE_URL') : '') || '';
+  const statusCallback = supabaseUrl
+    ? `${supabaseUrl}/functions/v1/twilio-status-callback`
+    : '';
+
   try {
+    const params: Record<string, string> = {
+      To: e164,
+      From: therapist.twilio_phone_number.startsWith('+') ? therapist.twilio_phone_number : `+${therapist.twilio_phone_number}`,
+      Body: message,
+    };
+    if (statusCallback) {
+      params.StatusCallback = statusCallback;
+    }
     const res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${therapist.twilio_account_sid}/Messages.json`,
       {
@@ -19,11 +38,7 @@ export async function sendSmsViaTwilio(therapist, toPhone, message) {
           'Authorization': `Basic ${btoa(`${therapist.twilio_account_sid}:${therapist.twilio_auth_token}`)}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          To: e164,
-          From: therapist.twilio_phone_number.startsWith('+') ? therapist.twilio_phone_number : `+${therapist.twilio_phone_number}`,
-          Body: message,
-        }),
+        body: new URLSearchParams(params),
       }
     );
     const data = await res.json();
