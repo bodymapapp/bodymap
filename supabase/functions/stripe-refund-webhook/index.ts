@@ -4,6 +4,11 @@
 // so refunds initiated from the Stripe Dashboard (or anywhere else
 // outside the platform) propagate to session_payments + cancellation_charges.
 //
+// Phase 14.3a redeploy trigger (HK May 17 2026 8pm): forcing a fresh
+// deploy after adding to NO_JWT_FUNCTIONS allowlist in the workflow.
+// Stripe webhook attempts were returning 401 UNAUTHORIZED_NO_AUTH_HEADER
+// because the gateway was requiring a JWT and Stripe doesn't send one.
+//
 // Background: HK refunded 3 payments via Stripe Dashboard. Only the
 // one row that was manually flipped via SQL appeared in the Smart
 // Billing hero's "refunds" line. The other two stayed as
