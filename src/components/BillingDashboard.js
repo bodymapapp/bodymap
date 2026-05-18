@@ -279,6 +279,11 @@ function SampleDataBanner() {
 //   8. Tappable leakage detail (expands inline)
 function HeroPayCard({ sessions, prevSessions, periodLabel }) {
   const [leakageOpen, setLeakageOpen] = useState(false);
+  // Phase 14.3f (HK May 17 2026): refund breakdown is tappable. Default
+  // closed because most periods will have zero. When open, the aggregate
+  // line is followed by an inline list of individual refund rows so the
+  // therapist sees who, when, and how it was paid.
+  const [refundsOpen, setRefundsOpen] = useState(false);
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
   // Partition by source. Session revenue is the headline number;
@@ -415,10 +420,60 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
             </div>
           )}
           {refundTotal > 0 && (
-            <div style={{ fontSize: 13, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ color: '#DC2626', fontWeight: 700 }}>- {currency(refundTotal)}</span>
-              <span>refunded across {refundRows.length} payment{refundRows.length !== 1 ? 's' : ''}</span>
-            </div>
+            <>
+              <div
+                onClick={() => setRefundsOpen(!refundsOpen)}
+                style={{
+                  fontSize: 13, color: '#6B7280',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  cursor: 'pointer', userSelect: 'none',
+                }}>
+                <span style={{ color: '#DC2626', fontWeight: 700 }}>- {currency(refundTotal)}</span>
+                <span>refunded across {refundRows.length} payment{refundRows.length !== 1 ? 's' : ''}</span>
+                <span style={{ fontSize: 10, opacity: 0.7 }}>{refundsOpen ? '▾' : '▸'}</span>
+              </div>
+              {refundsOpen && (
+                <div style={{
+                  marginTop: 4, marginLeft: 12, paddingLeft: 12,
+                  borderLeft: '2px solid #FECACA',
+                  display: 'flex', flexDirection: 'column', gap: 8,
+                }}>
+                  {refundRows
+                    .slice()
+                    .sort((a, b) => b.date.getTime() - a.date.getTime())
+                    .map(r => {
+                      const m = r.method;
+                      const methodLabel =
+                        (m === 'stripe_card_on_file' || m === 'stripe_card_new') ? (r.methodDetail || 'Card')
+                        : m === 'stripe_payment_link' ? 'Pay link'
+                        : m === 'cash' ? 'Cash'
+                        : m === 'venmo' ? 'Venmo'
+                        : m === 'zelle' ? 'Zelle'
+                        : m === 'cashapp' ? 'Cash App'
+                        : m === 'check' ? 'Check'
+                        : 'Other';
+                      const wasOnline = m && m.startsWith('stripe_');
+                      return (
+                        <div key={r.id} style={{
+                          display: 'flex', alignItems: 'center', gap: 8,
+                          fontSize: 12, color: '#4B5563',
+                          padding: '6px 0',
+                        }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, color: '#1F2937' }}>{r.client}</div>
+                            <div style={{ fontSize: 11, color: '#9CA3AF', marginTop: 1 }}>
+                              {fmtShort(r.date)} · {methodLabel} · {wasOnline ? 'Returned to card' : 'Marked refunded'}
+                            </div>
+                          </div>
+                          <div style={{ color: '#DC2626', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                            -{currency(r.actual || 0)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </>
           )}
           {noShowRows.length > 0 && (
             <div style={{ fontSize: 13, color: '#6B7280', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -544,7 +599,6 @@ function DailyView({ sessions, onRefundClick }) {
         ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions on this day.</div>
         : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessionsRevenueOnly.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
-      <RefundsList refunds={daySessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
@@ -613,7 +667,6 @@ function WeeklyView({ sessions, onRefundClick }) {
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>All Sessions This Week</div>
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekRevenue.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekRevenue.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
-      <RefundsList refunds={weekSessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
@@ -679,7 +732,6 @@ function MonthlyView({ sessions, onRefundClick }) {
         ?<div style={{ background:'#FFFFFF', borderRadius:12, padding:24, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions. Click a day to view.</div>
         :<div style={{ display:'flex', flexDirection:'column', gap:8 }}>{selectedDaySessions.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
-      <RefundsList refunds={monthSessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
