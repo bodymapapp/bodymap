@@ -443,17 +443,23 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                           Works for both Stripe and offline payments;
                           the modal handles the branching internally
                           (Stripe calls the refund API, cash/Venmo/etc
-                          just flips the local row). */}
+                          just flips the local row).
+                          Phase 14.3h (HK May 17 2026 late): visual weight
+                          matches "Add another payment" so the therapist
+                          sees it as a real peer action, not decorative. */}
                       {(() => {
                         const refundable = paymentRows
                           .filter(p => p.status === 'succeeded')
                           .slice(-1)[0];
                         if (!refundable) return null;
                         return (
-                          <button onClick={() => setRefundTarget({ ...refundable, client_name: appt.client })}
-                            style={{background:'transparent',color:'#9CA3AF',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
-                            Refund
-                          </button>
+                          <>
+                            <span style={{color:'#B7D1AB',fontSize:14,fontWeight:300}}>·</span>
+                            <button onClick={() => setRefundTarget({ ...refundable, client_name: appt.client })}
+                              style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
+                              Refund
+                            </button>
+                          </>
                         );
                       })()}
                     </div>
