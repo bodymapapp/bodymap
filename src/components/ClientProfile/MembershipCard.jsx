@@ -90,6 +90,15 @@ export default function MembershipCard({ client, therapist }) {
   });
   const [editSaving, setEditSaving] = useState(false);
   const [editError, setEditError] = useState(null);
+  // Phase 19.5 hotfix: inline cancel-confirm (no window.confirm).
+  // First tap on 'Cancel membership' arms; second tap (within 4s)
+  // executes. Auto-disarms after timeout.
+  const [cancelArmedSubId, setCancelArmedSubId] = useState(null);
+  useEffect(() => {
+    if (!cancelArmedSubId) return;
+    const t = setTimeout(() => setCancelArmedSubId(null), 4000);
+    return () => clearTimeout(t);
+  }, [cancelArmedSubId]);
 
   // New-sub form state
   const [planId, setPlanId] = useState('');
@@ -286,7 +295,10 @@ export default function MembershipCard({ client, therapist }) {
   }
 
   async function cancelSubscription(subId) {
-    if (!window.confirm('Cancel this membership? The client keeps any remaining credits until the end of the current period, but no more credits will be added.')) return;
+    // Inline confirm pattern: first tap arms the cancel, second tap
+    // within 4 seconds executes. Avoids window.confirm (violates
+    // design principles) and the 'are you sure?' modal that breaks
+    // flow on mobile.
     try {
       const nowIso = new Date().toISOString();
       const { error: updErr } = await supabase
@@ -295,9 +307,11 @@ export default function MembershipCard({ client, therapist }) {
         .eq('id', subId);
       if (updErr) throw updErr;
       setSubs(subs.map(s => s.id === subId ? { ...s, status: 'canceled', canceled_at: nowIso } : s));
+      setCancelArmedSubId(null);
     } catch (e) {
       console.error('[MembershipCard] cancel failed:', e);
-      alert('Could not cancel. Please try again.');
+      setCancelArmedSubId(null);
+      setError('Could not cancel membership. Please try again.');
     }
   }
 
@@ -665,18 +679,27 @@ export default function MembershipCard({ client, therapist }) {
                       Edit
                     </button>
                     <button
-                      onClick={() => cancelSubscription(sub.id)}
+                      onClick={() => {
+                        if (cancelArmedSubId === sub.id) {
+                          cancelSubscription(sub.id);
+                        } else {
+                          setCancelArmedSubId(sub.id);
+                        }
+                      }}
                       style={{
-                        background: 'transparent',
-                        border: 'none',
+                        background: cancelArmedSubId === sub.id ? '#FEF2F2' : 'transparent',
+                        border: cancelArmedSubId === sub.id ? '1px solid #FCA5A5' : 'none',
                         color: C.danger,
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: 'pointer',
-                        padding: 0,
+                        padding: cancelArmedSubId === sub.id ? '4px 10px' : 0,
+                        borderRadius: 6,
                       }}
                     >
-                      Cancel membership
+                      {cancelArmedSubId === sub.id
+                        ? 'Tap again to confirm cancel'
+                        : 'Cancel membership'}
                     </button>
                   </div>
                 )}

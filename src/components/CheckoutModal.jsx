@@ -902,15 +902,35 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
               label switches to edit mode with the input focused.
               Typing a percent updates the tip dollars via setTip.
               Tip $ field stays editable too; both stay in sync because
-              the chip's displayed percent is derived from tip/amount. */}
-          <div
+              the chip's displayed percent is derived from tip/amount.
+
+              Phase 19.5 hotfix (HK May 18 2026): on iOS Safari the
+              keyboard wouldn't open on first tap because the focus()
+              call was inside a setTimeout (outside the user-gesture
+              event loop). iOS only opens the keyboard for focus()
+              calls inside the original tap event AND on focusable
+              elements. Fix: switch from <div onClick> to <button>
+              and focus the input synchronously. */}
+          <button
+            type="button"
             onClick={() => {
               if (!customEditing) {
                 setCustomEditing(true);
                 // Clear tip if currently on a preset; keep tip if user
                 // already had a custom amount from typing in $ field.
                 if (!isCustomActive) setTip('');
-                setTimeout(() => customPercentRef.current?.focus(), 0);
+                // Synchronous focus inside the gesture event; iOS
+                // requires this to open the keyboard on first tap.
+                // The input element is conditionally rendered though,
+                // so we use rAF inside the handler so React commits
+                // the customEditing=true state before we focus.
+                requestAnimationFrame(() => {
+                  customPercentRef.current?.focus();
+                });
+              } else {
+                // Already in edit mode; still focus to re-open keypad
+                // if user tapped the chip again.
+                customPercentRef.current?.focus();
               }
             }}
             style={{
@@ -977,7 +997,7 @@ function AmountRow({ amount, setAmount, tip, setTip, totalCents, therapist }) {
             ) : (
               'Custom'
             )}
-          </div>
+          </button>
         </div>
       )}
 
