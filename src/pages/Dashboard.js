@@ -2199,7 +2199,31 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   React.useEffect(() => {
     const hash = (location.hash || '').replace('#', '');
     if (!hash) return;
-    setOpenRow(hash);
+
+    // Deep-link map: a few hash targets are inside a PolicySubRow nested
+    // under a parent CollapsibleSection. The hash names the inner element;
+    // we open BOTH the parent CollapsibleSection and the inner PolicySubRow,
+    // then scroll the inner row into view. Add new mappings here as new
+    // PolicySubRows are added.
+    //
+    // Today the only nested target is the Client Agreement editor inside
+    // section 4.3 (cancellation). When the deep link is for
+    // #client_agreement, we expand 'cancellation' AND 'client_agreement'.
+    const POLICY_SUB_PARENTS = {
+      client_agreement: 'cancellation',
+      booking_policies: 'cancellation',
+    };
+
+    const parentSectionId = POLICY_SUB_PARENTS[hash] || hash;
+    setOpenRow(parentSectionId);
+    if (POLICY_SUB_PARENTS[hash]) {
+      setOpenPolicySubs(prev => {
+        const next = new Set(prev);
+        next.add(hash);
+        return next;
+      });
+    }
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const el = document.getElementById(hash);
@@ -3871,7 +3895,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           const PolicySubRow = ({ id, title, blurb, on, children }) => {
             const isOpen = openPolicySubs.has(id);
             return (
-              <div style={{
+              <div id={id} style={{
                 background: '#fff',
                 border: '1px solid #E5E7EB',
                 borderRadius: 12,

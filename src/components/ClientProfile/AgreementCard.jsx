@@ -350,7 +350,7 @@ export default function AgreementCard({ client, therapist }) {
               {resendCopied ? '\u2713 Copied' : 'Copy signing link'}
             </button>
             <a
-              href={`/dashboard/settings`}
+              href={`/dashboard/settings#client_agreement`}
               style={{
                 background: 'transparent',
                 border: `1px solid ${C.line}`,
