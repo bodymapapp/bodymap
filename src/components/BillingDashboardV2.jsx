@@ -1,0 +1,1531 @@
+// src/components/BillingDashboardV2.jsx
+//
+// Phase 16 Billing Dashboard rebuild (HK May 18 2026).
+//
+// Replaces the V1 design that HK called "extremely poor" with a
+// persona-led design for Maria, the 67-year-old solo LMT.
+//
+// Strategy doc: docs/BILLING_DASHBOARD_STRATEGY.md
+// Benchmarks: docs/BENCHMARKS.md
+// Mockup: see commit history for billing_mockup_v3.html
+//
+// Architecture:
+//   6 bands per period view (Daily, Weekly, Monthly, Yearly)
+//   1. THE NUMBER (collected + comparison)
+//   2. THE SHAPE (small bar chart)
+//   3. ATTENTION (only when present)
+//   4. THE BREAKDOWN (method card + tip ring card)
+//   5. PERIOD SELECTOR
+//   6. SESSIONS (receipt-style cards)
+//   + Bottom: "More detail" deep-dive cards (7 cards, all collapsed)
+//
+// Insights tab is a different design: card-per-insight with peer-toned
+// language. No bottom cards (Insights is already deep-dive content).
+//
+// Access control:
+//   V2 only renders for therapist.email === 'bodymapdemo@gmail.com'
+//   while HK validates the design and content. Once approved, V1
+//   gets deleted and V2 becomes the only Billing dashboard.
+
+import React, { useState, useMemo } from 'react';
+
+// ─── Design tokens ─────────────────────────────────────────────────
+// Matches the mockup. Cream backgrounds, forest/sage palette, rose
+// accent for refunds. Cormorant Garamond serif for numbers, system
+// sans for body (no Google Fonts dependency to avoid runtime fetch).
+const T = {
+  cream:      '#FAF6EE',
+  creamDeep:  '#F5EFE0',
+  creamEdge:  '#EDE6D6',
+  forest:     '#2A5741',
+  forestDeep: '#1F4131',
+  sage:       '#6B9E80',
+  sageSoft:   '#B7D1AB',
+  sageTint:   '#F0F6EE',
+  rose:       '#A87468',
+  gold:       '#C9A86A',
+  ink:        '#1F2937',
+  gray700:    '#374151',
+  gray500:    '#6B7280',
+  gray400:    '#9CA3AF',
+  gray300:    '#D1D5DB',
+  gray100:    '#F3F4F6',
+  redText:    '#B91C1C',
+  redBg:      '#FEF2F2',
+  redBorder:  '#FCA5A5',
+  amber:      '#B45309',
+  amberBg:    '#FEF3C7',
+  amberBorder:'#FCD34D',
+  shadowSoft: '0 1px 3px rgba(31, 41, 31, 0.04), 0 1px 2px rgba(31, 41, 31, 0.06)',
+  shadowCard: '0 2px 12px rgba(31, 41, 31, 0.05)',
+  serif:      "'Cormorant Garamond', Georgia, 'Times New Roman', serif",
+};
+
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const sameDay = (a, b) => a.toDateString() === b.toDateString();
+const fmtShort = (d) => d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+const fmtDayOnly = (d) => d.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 2);
+const currency = (n) => `$${Number(Math.abs(n)).toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+const currencyDecimal = (n) => `$${Number(n).toFixed(2)}`;
+
+// Method label for cards and receipts.
+const methodLabel = (m, detail) => {
+  if (m === 'stripe_card_on_file' || m === 'stripe_card_new') return detail || 'Card';
+  if (m === 'stripe_payment_link') return 'Card (pay link)';
+  if (m === 'cash')    return 'Cash';
+  if (m === 'venmo')   return 'Venmo';
+  if (m === 'zelle')   return 'Zelle';
+  if (m === 'cashapp') return 'Cash App';
+  if (m === 'check')   return 'Check';
+  return 'Other';
+};
+
+// Group method into card vs cash vs digital vs check (for breakdown).
+const methodGroup = (m) => {
+  if (!m) return 'other';
+  if (m.startsWith('stripe_')) return 'card';
+  if (m === 'cash')    return 'cash';
+  if (m === 'venmo' || m === 'zelle' || m === 'cashapp') return 'digital';
+  if (m === 'check')   return 'check';
+  return 'other';
+};
+
+const groupLabel = {
+  card:    'Card',
+  cash:    'Cash',
+  digital: 'Digital',
+  check:   'Check',
+  other:   'Other',
+};
+
+// ─── Band 1: The Number ────────────────────────────────────────────
+//
+// The big calm hero. Shows what was collected this period, with a
+// comparison vs the same period prior. Yearly variant adds the
+// gross/refunds/net/processing breakdown below the big number.
+function HeroNumber({ label, amount, prevAmount, breakdown = null }) {
+  const delta = (amount || 0) - (prevAmount || 0);
+  const hasComparison = prevAmount !== null && prevAmount !== undefined;
+  const deltaPct = prevAmount > 0
+    ? Math.round((delta / prevAmount) * 100)
+    : null;
+
+  return (
+    <div style={{
+      background: `linear-gradient(160deg, ${T.cream} 0%, #FBF7EC 50%, ${T.creamDeep} 100%)`,
+      borderRadius: 22,
+      padding: '22px 24px 20px',
+      marginBottom: 16,
+      position: 'relative',
+      border: `1px solid ${T.creamEdge}`,
+      overflow: 'hidden',
+    }}>
+      {/* Decorative radial gradient in top right */}
+      <div style={{
+        position: 'absolute',
+        top: -40, right: -30,
+        width: 130, height: 130,
+        background: 'radial-gradient(circle, rgba(107, 158, 128, 0.18) 0%, transparent 65%)',
+        borderRadius: '50%',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        fontSize: 11, fontWeight: 600, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 8,
+        position: 'relative',
+      }}>
+        {label}
+      </div>
+      <div style={{
+        fontFamily: T.serif,
+        fontSize: 56, fontWeight: 600,
+        color: T.forestDeep, lineHeight: 1,
+        letterSpacing: '-0.02em', marginBottom: 10,
+        display: 'flex', alignItems: 'baseline',
+        position: 'relative',
+      }}>
+        <span style={{ fontSize: 28, fontWeight: 500, color: T.forest, marginRight: 2, alignSelf: 'flex-start', marginTop: 8 }}>$</span>
+        <span>{Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+      </div>
+      {hasComparison && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.gray700, position: 'relative' }}>
+          {delta >= 0 ? (
+            <span style={{ color: T.sage, fontWeight: 700 }}>↑ {currency(delta)}</span>
+          ) : (
+            <span style={{ color: T.rose, fontWeight: 700 }}>↓ {currency(delta)}</span>
+          )}
+          {deltaPct !== null && (
+            <span style={{ color: T.gray500 }}>
+              ({delta >= 0 ? '+' : ''}{deltaPct}%) vs prior period
+            </span>
+          )}
+        </div>
+      )}
+      {breakdown && (
+        <div style={{
+          marginTop: 14, paddingTop: 12,
+          borderTop: `1px dashed ${T.creamEdge}`,
+          position: 'relative',
+        }}>
+          <NetBreakdownRow cells={breakdown} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NetBreakdownRow({ cells }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: cells.map(() => '1fr').join(' '), gap: 8 }}>
+      {cells.map((cell, i) => {
+        if (cell.divider) {
+          return (
+            <div key={i} style={{
+              textAlign: 'center', fontSize: 14, color: T.gray400,
+              display: 'flex', alignItems: 'flex-end', justifyContent: 'center', paddingBottom: 4,
+            }}>{cell.divider}</div>
+          );
+        }
+        return (
+          <div key={i}>
+            <div style={{
+              fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+              textTransform: 'uppercase', color: T.gray400,
+            }}>{cell.label}</div>
+            <div style={{
+              fontFamily: T.serif, fontSize: 16, fontWeight: 600,
+              color: cell.minus ? T.rose : T.forestDeep, marginTop: 2,
+            }}>{cell.value}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Band 2: The Shape ─────────────────────────────────────────────
+//
+// Small bar chart. Today/current highlighted in deep forest, prior
+// in sage gradient, future in dashed sage pattern. No axes, no labels.
+// Followed by a single pace line if applicable.
+function ShapeChart({ title, bars, paceLine = null }) {
+  const max = Math.max(...bars.map(b => b.value || 0), 1);
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      padding: '20px 22px', marginBottom: 16,
+      boxShadow: T.shadowSoft,
+    }}>
+      <div style={{ marginBottom: 14 }}>
+        <div style={{
+          fontFamily: T.serif, fontSize: 16, fontWeight: 600,
+          color: T.forestDeep,
+        }}>{title}</div>
+      </div>
+      <div style={{
+        height: 96, display: 'flex', alignItems: 'flex-end',
+        justifyContent: 'space-between', gap: 6,
+        paddingBottom: 4, position: 'relative',
+      }}>
+        {bars.map((bar, i) => {
+          const heightPct = max > 0 ? Math.max(12 / 96 * 100, (bar.value / max) * 100) : 12;
+          const isToday = bar.kind === 'today';
+          const isFuture = bar.kind === 'future';
+          const bg = isToday
+            ? `linear-gradient(180deg, ${T.forest} 0%, ${T.forestDeep} 100%)`
+            : isFuture
+              ? `repeating-linear-gradient(45deg, ${T.sageTint}, ${T.sageTint} 4px, white 4px, white 8px)`
+              : `linear-gradient(180deg, ${T.sageSoft} 0%, ${T.sage} 100%)`;
+          return (
+            <div key={i} style={{
+              flex: 1, height: `${heightPct}%`,
+              background: bg,
+              borderRadius: '5px 5px 0 0',
+              minHeight: 12,
+              border: isFuture ? `1px dashed ${T.sageSoft}` : 'none',
+            }} title={bar.label ? `${bar.label}: ${currency(bar.value)}` : ''} />
+          );
+        })}
+        <div style={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: 1, background: T.gray100,
+        }} />
+      </div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', gap: 6,
+        marginTop: 8,
+        fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
+        color: T.gray400, textTransform: 'uppercase',
+      }}>
+        {bars.map((bar, i) => (
+          <div key={i} style={{
+            flex: 1, textAlign: 'center',
+            color: bar.kind === 'today' ? T.forest : T.gray400,
+            fontWeight: bar.kind === 'today' ? 700 : 600,
+          }}>{bar.label || ''}</div>
+        ))}
+      </div>
+      {paceLine && (
+        <div style={{
+          marginTop: 12, paddingTop: 10,
+          borderTop: `1px solid ${T.creamDeep}`,
+          fontSize: 11, color: T.gray700, lineHeight: 1.5,
+        }}>
+          {paceLine}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Band 3: Attention ─────────────────────────────────────────────
+//
+// Only renders if any items present. Shows outstanding payments,
+// refunds issued, recurring client gaps. Each row has icon, title,
+// subtitle, optional action link.
+function AttentionBand({ items }) {
+  if (!items || items.length === 0) return null;
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      marginBottom: 16, boxShadow: T.shadowSoft, overflow: 'hidden',
+    }}>
+      {items.map((item, i) => (
+        <div key={i} style={{
+          padding: '14px 18px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          borderBottom: i < items.length - 1 ? `1px solid ${T.gray100}` : 'none',
+        }}>
+          <div style={{
+            width: 36, height: 36, borderRadius: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 14, flexShrink: 0,
+            background: item.iconBg || T.amberBg,
+            color: item.iconColor || T.amber,
+          }}>{item.icon}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 13, fontWeight: 600, color: T.ink,
+              lineHeight: 1.3, marginBottom: 2,
+            }}>{item.title}</div>
+            <div style={{ fontSize: 11, color: T.gray500, lineHeight: 1.4 }}>{item.sub}</div>
+          </div>
+          {item.action && (
+            <div style={{
+              fontSize: 11, fontWeight: 700, color: T.forest, whiteSpace: 'nowrap',
+            }}>{item.action} →</div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Band 4: The Breakdown ─────────────────────────────────────────
+//
+// Two-column grid on mobile: method card + tip ring card.
+function BreakdownRow({ methods, tips }) {
+  return (
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 12, marginBottom: 16,
+    }}>
+      <MethodCard methods={methods} />
+      <TipRingCard {...tips} />
+    </div>
+  );
+}
+
+function MethodCard({ methods }) {
+  const total = methods.reduce((s, m) => s + (m.amount || 0), 0);
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      padding: '18px 16px', boxShadow: T.shadowSoft,
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 14,
+      }}>By method</div>
+      {methods.length === 0 ? (
+        <div style={{ fontSize: 12, color: T.gray400, fontStyle: 'italic' }}>
+          No payments yet
+        </div>
+      ) : (
+        methods.map((m, i) => {
+          const pct = total > 0 ? Math.round((m.amount / total) * 100) : 0;
+          return (
+            <div key={i} style={{
+              display: 'flex', flexDirection: 'column',
+              marginBottom: i < methods.length - 1 ? 10 : 0,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>{m.label}</span>
+                <span style={{
+                  fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.forestDeep,
+                }}>{currency(m.amount)}</span>
+              </div>
+              <span style={{ fontSize: 10, color: T.gray400, fontWeight: 500 }}>{pct}%</span>
+              <div style={{
+                height: 4, background: T.creamDeep,
+                borderRadius: 4, overflow: 'hidden', marginTop: 4,
+              }}>
+                <div style={{
+                  height: '100%', width: `${pct}%`,
+                  background: `linear-gradient(90deg, ${T.sage} 0%, ${T.sageSoft} 100%)`,
+                  borderRadius: 4,
+                }} />
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+function TipRingCard({ pct, dollars, tippedCount, totalCount, compareText }) {
+  // SVG ring; circumference ~= 2 * PI * 42 = 264. Offset = 264 - (264 * pct / 100).
+  const C = 264;
+  const offset = C - (C * Math.min(pct || 0, 100) / 100);
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      padding: '18px 16px', boxShadow: T.shadowSoft,
+      display: 'flex', flexDirection: 'column',
+      alignItems: 'center', textAlign: 'center',
+    }}>
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 10,
+        alignSelf: 'flex-start',
+      }}>Tips</div>
+      <div style={{ position: 'relative', width: 78, height: 78, margin: '6px 0 10px' }}>
+        <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+          <circle cx="50" cy="50" r="42" fill="none" stroke={T.creamDeep} strokeWidth="8" />
+          <circle cx="50" cy="50" r="42" fill="none" stroke={T.forest} strokeWidth="8"
+            strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={offset} />
+        </svg>
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexDirection: 'column', fontFamily: T.serif,
+        }}>
+          <span style={{ fontSize: 22, fontWeight: 600, color: T.forestDeep, lineHeight: 1 }}>
+            {pct || 0}%
+          </span>
+        </div>
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
+        {currency(dollars || 0)} in tips
+      </div>
+      <div style={{ fontSize: 10, color: T.gray500, marginTop: 4 }}>
+        {tippedCount} of {totalCount} sessions tipped
+      </div>
+      {compareText && (
+        <div style={{
+          fontSize: 10, color: T.sage, fontWeight: 700, marginTop: 6,
+        }}>{compareText}</div>
+      )}
+    </div>
+  );
+}
+
+// ─── Band 5: Period Selector ───────────────────────────────────────
+function PeriodChips({ chips, onPick }) {
+  return (
+    <div style={{
+      display: 'flex', gap: 6, marginBottom: 18,
+      overflowX: 'auto', scrollbarWidth: 'none',
+      WebkitOverflowScrolling: 'touch',
+    }}>
+      {chips.map((c, i) => (
+        <button
+          key={i}
+          onClick={() => onPick && onPick(c)}
+          style={{
+            background: c.active ? T.forest : '#FFFFFF',
+            color: c.active ? '#FFFFFF' : T.gray500,
+            border: c.active ? `1px solid ${T.forest}` : `1px solid ${T.creamEdge}`,
+            borderRadius: 12,
+            padding: '10px 14px',
+            fontSize: 11, fontWeight: 600,
+            textAlign: 'center', flexShrink: 0, cursor: 'pointer',
+            minWidth: 70,
+          }}>
+          <div style={{
+            fontSize: 9, letterSpacing: '0.08em',
+            textTransform: 'uppercase', opacity: 0.8,
+          }}>{c.label}</div>
+          <div style={{
+            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+            marginTop: 1, marginBottom: 1,
+          }}>{c.value}</div>
+          <div style={{ fontSize: 9, opacity: 0.75, fontWeight: 500 }}>{c.meta}</div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Band 6: Sessions (Receipt Cards) ─────────────────────────────
+function ReceiptCard({ session, onRefundClick }) {
+  // session shape from BillingDashboard.js data layer:
+  //   { id, client, date, time, duration, rate, actual, base, tip,
+  //     status, method, methodDetail, service, source, paymentId, ... }
+  const isPaid = session.status === 'paid' && session.source === 'payment';
+  const isRefunded = session.source === 'refund' || session.status === 'refunded';
+  const isPending = session.status === 'pending' || session.status === 'outstanding';
+  const isNoShow = session.status === 'no_show';
+  const isCancelFee = session.source === 'cancellation_fee';
+
+  // Status bar at bottom of card.
+  let statusBg = T.sageTint;
+  let statusBorder = T.sageSoft;
+  let statusColor = T.forestDeep;
+  let statusLabel = '✓ Paid';
+  let statusRight = '';
+
+  if (isRefunded) {
+    statusBg = T.redBg; statusBorder = T.redBorder; statusColor = T.redText;
+    statusLabel = '↩ Refunded';
+    statusRight = session.method && session.method.startsWith('stripe_')
+      ? 'Returns in 5-10 days' : 'Marked refunded';
+  } else if (isPending && session.status === 'outstanding') {
+    statusBg = T.amberBg; statusBorder = T.amberBorder; statusColor = T.amber;
+    statusLabel = '⏳ Outstanding';
+  } else if (isPending) {
+    statusBg = T.amberBg; statusBorder = T.amberBorder; statusColor = T.amber;
+    statusLabel = '⏳ Pending';
+  } else if (isNoShow) {
+    statusBg = T.amberBg; statusBorder = T.amberBorder; statusColor = T.amber;
+    statusLabel = '○ No-show';
+  } else if (isCancelFee) {
+    statusBg = T.creamDeep; statusBorder = T.creamEdge; statusColor = T.gray700;
+    statusLabel = '○ Cancel fee';
+  }
+
+  const showRefundBtn = isPaid && session.paymentId && onRefundClick;
+  const tipPart = (session.tip || 0) > 0;
+  const total = (session.base != null ? session.base : (session.actual || 0)) + (session.tip || 0);
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 14,
+      marginBottom: 12, boxShadow: T.shadowSoft,
+      overflow: 'hidden', position: 'relative',
+    }}>
+      {/* Perforated top edge */}
+      <div style={{
+        height: 6,
+        background: `radial-gradient(circle at 5px 0, transparent 4px, white 4px), radial-gradient(circle at 15px 0, transparent 4px, white 4px), ${T.cream}`,
+        backgroundSize: '14px 6px', backgroundRepeat: 'repeat-x',
+      }} />
+      <div style={{ padding: '14px 16px 12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+          <div style={{
+            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.1,
+          }}>{session.client || 'Client'}</div>
+          <div style={{
+            fontSize: 11, color: T.gray500, fontWeight: 600, textAlign: 'right',
+          }}>{session.service || `${session.duration || 60}-min`}</div>
+        </div>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          fontSize: 11, color: T.gray500, marginBottom: 12,
+        }}>
+          <span>{session.time}</span>
+          <span>{methodLabel(session.method, session.methodDetail) || (isPending ? 'Not yet paid' : '')}</span>
+        </div>
+        <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 10 }}>
+          {isPending && !isPaid && !isRefunded && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '3px 0' }}>
+              <span>Expected</span>
+              <span>{currencyDecimal(session.rate || 0)}</span>
+            </div>
+          )}
+          {isRefunded && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '3px 0' }}>
+                <span>Session</span>
+                <span>{currencyDecimal(session.base != null ? session.base : (session.actual || 0))}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.redText, padding: '3px 0' }}>
+                <span>Refund</span>
+                <span>-{currencyDecimal((session.base != null ? session.base : (session.actual || 0)) + (session.tip || 0))}</span>
+              </div>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: 14, fontWeight: 700, color: T.forestDeep,
+                borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 8,
+              }}>
+                <span>Net</span><span>{currencyDecimal(0)}</span>
+              </div>
+            </>
+          )}
+          {!isPending && !isRefunded && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '3px 0' }}>
+                <span>{isCancelFee ? 'Cancel fee' : isNoShow ? 'No-show fee' : 'Session'}</span>
+                <span>{currencyDecimal(session.base != null ? session.base : (session.actual || 0))}</span>
+              </div>
+              {tipPart && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '3px 0' }}>
+                  <span>Tip</span>
+                  <span>{currencyDecimal(session.tip || 0)}</span>
+                </div>
+              )}
+              <div style={{
+                display: 'flex', justifyContent: 'space-between',
+                fontSize: 14, fontWeight: 700, color: T.forestDeep,
+                borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 8,
+              }}>
+                <span>Total</span><span>{currencyDecimal(total)}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: statusBg, borderTop: `1px solid ${statusBorder}`,
+        padding: '8px 16px', fontSize: 11, fontWeight: 700, color: statusColor,
+      }}>
+        <span>{statusLabel}</span>
+        {statusRight && <span style={{ fontWeight: 500, opacity: 0.8 }}>{statusRight}</span>}
+        {showRefundBtn && !statusRight && (
+          <button onClick={(e) => { e.stopPropagation(); onRefundClick(session); }}
+            style={{
+              background: 'transparent', border: 'none',
+              color: statusColor, fontSize: 11, fontWeight: 600,
+              textDecoration: 'underline', cursor: 'pointer', padding: 0,
+            }}>
+            Refund
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Deep-dive cards (bottom of page) ──────────────────────────────
+//
+// 7 collapsed cards. Tap to open. Each card shows an icon, title,
+// subtitle on the closed face. Open reveals detailed content.
+function DeepDiveCard({ icon, title, sub, children }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 16,
+      marginBottom: 10,
+      boxShadow: open ? '0 4px 16px rgba(31, 41, 31, 0.07)' : T.shadowSoft,
+      overflow: 'hidden',
+      border: `1px solid ${open ? T.sageSoft : T.creamEdge}`,
+    }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          width: '100%', padding: '14px 16px', cursor: 'pointer',
+          display: 'flex', alignItems: 'center', gap: 12,
+          background: 'transparent', border: 'none',
+          textAlign: 'left',
+        }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 15, flexShrink: 0,
+          background: open ? T.sageTint : T.creamDeep,
+          color: T.forest,
+        }}>{icon}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 700, color: T.ink, lineHeight: 1.2, marginBottom: 2,
+          }}>{title}</div>
+          <div style={{ fontSize: 11, color: T.gray500, lineHeight: 1.4 }}>{sub}</div>
+        </div>
+        <div style={{
+          color: open ? T.forest : T.gray400,
+          fontSize: 14, fontWeight: 400,
+          transform: open ? 'rotate(180deg)' : 'rotate(0)',
+          transition: 'transform 0.2s',
+        }}>▾</div>
+      </button>
+      {open && (
+        <div style={{
+          padding: '14px 16px 16px',
+          borderTop: `1px solid ${T.creamDeep}`,
+          fontSize: 12, color: T.gray700, lineHeight: 1.6,
+        }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeepDiveRow({ label, sub, value, valueClass }) {
+  return (
+    <div style={{
+      display: 'flex', justifyContent: 'space-between',
+      padding: '5px 0',
+      borderBottom: `1px dotted ${T.creamEdge}`,
+      fontSize: 12,
+    }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <span>{label}</span>
+        {sub && <span style={{ fontSize: 10, color: T.gray400, marginTop: 2 }}>{sub}</span>}
+      </div>
+      <span style={{
+        fontFamily: T.serif, fontWeight: 600,
+        color: valueClass === 'minus' ? T.rose : valueClass === 'muted' ? T.gray400 : T.forestDeep,
+        whiteSpace: 'nowrap',
+      }}>{value}</span>
+    </div>
+  );
+}
+
+function DeepDiveNote({ children }) {
+  return (
+    <div style={{
+      marginTop: 10,
+      fontSize: 11, color: T.gray500, fontStyle: 'italic', lineHeight: 1.5,
+    }}>{children}</div>
+  );
+}
+
+// ─── Data helpers ──────────────────────────────────────────────────
+//
+// Pure functions that turn the session array (the contract from V1's
+// data layer) into the shapes each band needs.
+
+// Returns all sessions for the given date (single day).
+function sessionsForDay(sessions, day) {
+  return sessions.filter(s => sameDay(s.date, day));
+}
+
+// Returns sessions in the inclusive range [start, end].
+function sessionsInRange(sessions, start, end) {
+  return sessions.filter(s => s.date >= start && s.date <= end);
+}
+
+// Sum of revenue (amount actually collected) excluding refunds and cancel fees.
+// Maps cleanly to the "collected today" headline number.
+function sumCollected(sessions) {
+  return sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .reduce((sum, s) => sum + (s.actual || 0), 0);
+}
+
+// Sum of refunds for the period.
+function sumRefunds(sessions) {
+  return sessions
+    .filter(s => s.source === 'refund')
+    .reduce((sum, s) => sum + (s.actual || 0), 0);
+}
+
+// Sum of cancellation fees.
+function sumCancelFees(sessions) {
+  return sessions
+    .filter(s => s.source === 'cancellation_fee')
+    .reduce((sum, s) => sum + (s.actual || 0), 0);
+}
+
+// Method breakdown for Band 4.
+function buildMethodBreakdown(sessions) {
+  // Aggregate by method group.
+  const groups = {};
+  sessions.forEach(s => {
+    if (s.status !== 'paid' || s.source === 'refund') return;
+    const g = methodGroup(s.method);
+    groups[g] = (groups[g] || 0) + (s.actual || 0);
+  });
+  return ['card', 'cash', 'digital', 'check', 'other']
+    .filter(k => (groups[k] || 0) > 0)
+    .map(k => ({ key: k, label: groupLabel[k], amount: groups[k] }));
+}
+
+// Tip metrics for the period.
+function buildTipMetrics(sessions) {
+  const paid = sessions.filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund');
+  const tipped = paid.filter(s => (s.tip || 0) > 0);
+  const tipTotal = paid.reduce((sum, s) => sum + (s.tip || 0), 0);
+  const baseTotal = paid.reduce((sum, s) => sum + (s.base != null ? s.base : (s.actual || 0)) - (s.tip || 0), 0);
+  // Tip rate = tips / base (industry standard, not / gross).
+  const pct = baseTotal > 0 ? Math.round((tipTotal / baseTotal) * 100) : 0;
+  return {
+    pct,
+    dollars: tipTotal,
+    tippedCount: tipped.length,
+    totalCount: paid.length,
+  };
+}
+
+// 7-day bar chart input for Daily view, centered on `centerDate`.
+// Shows the day-of-week each bar represents; today highlighted.
+function buildDailyShapeBars(sessions, centerDate) {
+  // Show the most recent 7 days ending on centerDate.
+  const bars = [];
+  for (let offset = -6; offset <= 0; offset++) {
+    const d = addDays(centerDate, offset);
+    const dayCollected = sumCollected(sessionsForDay(sessions, d));
+    const isFuture = d > TODAY;
+    const isCenter = sameDay(d, centerDate);
+    bars.push({
+      value: dayCollected,
+      label: fmtDayOnly(d),
+      kind: isCenter ? 'today' : isFuture ? 'future' : 'past',
+    });
+  }
+  return bars;
+}
+
+// Build the Attention items for the Daily view.
+function buildDailyAttention(sessions, day, allSessions) {
+  const items = [];
+  const daySessions = sessionsForDay(sessions, day);
+
+  // Outstanding/pending today
+  const outstanding = daySessions.filter(s => s.status === 'outstanding' || s.status === 'pending');
+  if (outstanding.length === 1) {
+    const s = outstanding[0];
+    items.push({
+      icon: '⏳', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${s.client} hasn't paid yet`,
+      sub: `${s.service || `${s.duration || 60}-min`} · ${s.time} · ${currency(s.rate)}`,
+      action: 'Send link',
+    });
+  } else if (outstanding.length > 1) {
+    const totalOwed = outstanding.reduce((s, x) => s + (x.rate || 0), 0);
+    items.push({
+      icon: '⏳', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${outstanding.length} unpaid sessions today`,
+      sub: `${currency(totalOwed)} expected`,
+      action: 'View',
+    });
+  }
+
+  // Refunds today
+  const refundsToday = daySessions.filter(s => s.source === 'refund');
+  refundsToday.forEach(r => {
+    const onCard = r.method && r.method.startsWith('stripe_');
+    items.push({
+      icon: '↩', iconBg: T.redBg, iconColor: T.redText,
+      title: `${currency(r.actual || 0)} refunded to ${r.client}`,
+      sub: onCard ? 'Back on her card in 5-10 days' : 'Marked refunded',
+      action: 'View',
+    });
+  });
+
+  // No-shows today
+  const noShowsToday = daySessions.filter(s => s.status === 'no_show');
+  if (noShowsToday.length > 0) {
+    items.push({
+      icon: '○', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${noShowsToday.length} no-show${noShowsToday.length > 1 ? 's' : ''} today`,
+      sub: noShowsToday.map(n => n.client).join(', '),
+      action: 'View',
+    });
+  }
+
+  return items;
+}
+
+// Build period selector chips for Daily view (5 days, today centered).
+function buildDailyChips(sessions, selectedDate, onPick) {
+  const chips = [];
+  for (let offset = -2; offset <= 2; offset++) {
+    const d = addDays(selectedDate, offset);
+    const dayItems = sessionsForDay(sessions, d).filter(s =>
+      s.status !== 'no_show' && s.source !== 'cancellation_fee' && s.source !== 'refund'
+    );
+    const collected = sumCollected(sessionsForDay(sessions, d));
+    let label;
+    if (sameDay(d, TODAY)) label = 'Today';
+    else if (sameDay(d, addDays(TODAY, -1))) label = 'Yesterday';
+    else if (sameDay(d, addDays(TODAY, 1))) label = 'Tomorrow';
+    else label = fmtShort(d).split(', ')[0]; // "Mon" from "Mon, May 18"
+    chips.push({
+      label,
+      value: collected > 0 ? currency(collected) : '$0',
+      meta: `${dayItems.length} sess`,
+      active: sameDay(d, selectedDate),
+      date: d,
+    });
+  }
+  return chips;
+}
+
+// Pace line for Daily Band 2.
+function buildDailyPaceLine(allSessions, selectedDate) {
+  // "Week so far: $X. To match last week ($Y), you need $Z over N days."
+  // Week starts Monday.
+  const getMonday = (d) => {
+    const x = new Date(d);
+    const day = x.getDay();
+    const diff = (day === 0 ? -6 : 1 - day);
+    x.setDate(x.getDate() + diff);
+    x.setHours(0,0,0,0);
+    return x;
+  };
+  if (!sameDay(selectedDate, TODAY)) return null;
+  const thisWeekStart = getMonday(TODAY);
+  const todayEnd = new Date(TODAY); todayEnd.setHours(23,59,59,999);
+  const thisWeekCollected = sumCollected(sessionsInRange(allSessions, thisWeekStart, todayEnd));
+
+  const lastWeekStart = addDays(thisWeekStart, -7);
+  const lastWeekEnd = addDays(thisWeekStart, -1);
+  lastWeekEnd.setHours(23,59,59,999);
+  const lastWeekCollected = sumCollected(sessionsInRange(allSessions, lastWeekStart, lastWeekEnd));
+
+  if (lastWeekCollected === 0) return null;
+
+  const daysRemaining = 7 - ((TODAY.getDay() === 0 ? 7 : TODAY.getDay()));
+  if (daysRemaining <= 0) return null;
+  const gap = lastWeekCollected - thisWeekCollected;
+  if (gap <= 0) {
+    return (
+      <span>
+        Week so far: <strong style={{ color: T.forestDeep }}>{currency(thisWeekCollected)}</strong>.
+        {' '}You've already beaten last week ({currency(lastWeekCollected)}).
+      </span>
+    );
+  }
+  return (
+    <span>
+      Week so far: <strong style={{ color: T.forestDeep }}>{currency(thisWeekCollected)}</strong>.
+      {' '}To match last week ({currency(lastWeekCollected)}), you need <strong style={{ color: T.forestDeep }}>{currency(gap)} over {daysRemaining} day{daysRemaining > 1 ? 's' : ''}</strong>.
+    </span>
+  );
+}
+
+// Detect recurring client gaps for the attention band.
+// A client is "overdue" if they typically book every N days and
+// haven't been seen in > 1.5*N days. Lightweight heuristic.
+function buildRecurringGaps(allSessions, asOfDate, maxToReturn = 1) {
+  // Group by client.
+  const byClient = {};
+  allSessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      const key = s.client || 'Unknown';
+      if (!byClient[key]) byClient[key] = [];
+      byClient[key].push(s.date);
+    });
+
+  const overdue = [];
+  Object.keys(byClient).forEach(client => {
+    const dates = byClient[client].sort((a, b) => a - b);
+    if (dates.length < 3) return; // need history to call cadence
+    // Compute median gap between consecutive visits.
+    const gaps = [];
+    for (let i = 1; i < dates.length; i++) {
+      const ms = dates[i] - dates[i - 1];
+      const days = ms / (1000 * 60 * 60 * 24);
+      if (days > 0 && days < 90) gaps.push(days);
+    }
+    if (gaps.length < 2) return;
+    gaps.sort((a, b) => a - b);
+    const median = gaps[Math.floor(gaps.length / 2)];
+    if (median > 35) return; // too sporadic for a "regular" callout
+    // Days since last visit.
+    const lastVisit = dates[dates.length - 1];
+    const daysSince = (asOfDate - lastVisit) / (1000 * 60 * 60 * 24);
+    if (daysSince > median * 1.6 && daysSince < median * 4) {
+      const weeksSince = Math.round(daysSince / 7);
+      const usualWeeks = Math.round(median / 7);
+      overdue.push({
+        client,
+        weeksSince,
+        usualWeeks,
+        priority: daysSince / median, // higher = more overdue
+      });
+    }
+  });
+
+  overdue.sort((a, b) => b.priority - a.priority);
+  return overdue.slice(0, maxToReturn);
+}
+
+// ─── DailyView V2 ──────────────────────────────────────────────────
+function DailyView({ sessions, therapist, onRefundClick }) {
+  const [selectedOffset, setSelectedOffset] = useState(0);
+  const selectedDate = addDays(TODAY, selectedOffset);
+
+  // Slice the data for the selected day + comparison day.
+  const daySessions = sessionsForDay(sessions, selectedDate);
+  const prevDayDate = addDays(selectedDate, -7); // compare to same day-of-week prior week
+  const prevDaySessions = sessionsForDay(sessions, prevDayDate);
+
+  const collected = sumCollected(daySessions);
+  const prevCollected = sumCollected(prevDaySessions);
+
+  const methods = buildMethodBreakdown(daySessions);
+  const tips = buildTipMetrics(daySessions);
+
+  // Attention items.
+  let attention = buildDailyAttention(sessions, selectedDate, sessions);
+  // Add recurring gap callout (for today only).
+  if (sameDay(selectedDate, TODAY)) {
+    const gaps = buildRecurringGaps(sessions, TODAY, 1);
+    gaps.forEach(g => {
+      attention.push({
+        icon: '🌿', iconBg: T.sageTint, iconColor: T.forest,
+        title: `${g.client} hasn't been in ${g.weeksSince} week${g.weeksSince > 1 ? 's' : ''}`,
+        sub: `Usually every ${g.usualWeeks} week${g.usualWeeks > 1 ? 's' : ''}. Worth a check-in?`,
+        action: 'Message',
+      });
+    });
+  }
+
+  // Shape bars (7 days ending on selectedDate).
+  const shapeBars = buildDailyShapeBars(sessions, selectedDate);
+  const paceLine = buildDailyPaceLine(sessions, selectedDate);
+
+  // Period chips.
+  const chips = buildDailyChips(sessions, selectedDate);
+
+  // Sessions to show in Band 6. Include refunded + paid + pending + no-shows but
+  // sort by time of day.
+  const sortedDaySessions = [...daySessions]
+    .filter(s => s.source !== 'cancellation_fee') // cancel fees go in deep-dives
+    .sort((a, b) => {
+      const ta = (a.time || '00:00').replace(/[^0-9:apmAPM]/g, '');
+      const tb = (b.time || '00:00').replace(/[^0-9:apmAPM]/g, '');
+      return ta.localeCompare(tb);
+    });
+
+  // Heading copy.
+  let dayLabel = 'today';
+  if (sameDay(selectedDate, addDays(TODAY, -1))) dayLabel = 'yesterday';
+  else if (sameDay(selectedDate, addDays(TODAY, 1))) dayLabel = 'tomorrow';
+  else if (!sameDay(selectedDate, TODAY)) dayLabel = fmtShort(selectedDate);
+
+  return (
+    <div>
+      {/* Band 1 */}
+      <HeroNumber
+        label={`Collected ${dayLabel}`}
+        amount={collected}
+        prevAmount={sameDay(selectedDate, TODAY) ? prevCollected : null}
+      />
+
+      {/* Band 2 */}
+      <ShapeChart
+        title="This week's shape"
+        bars={shapeBars}
+        paceLine={paceLine}
+      />
+
+      {/* Band 3 */}
+      {attention.length > 0 && <AttentionBand items={attention} />}
+
+      {/* Band 4 */}
+      <BreakdownRow methods={methods} tips={tips} />
+
+      {/* Other money collapsible */}
+      <OtherMoneyCollapsible sessions={daySessions} periodLabel={dayLabel} />
+
+      {/* Band 5 */}
+      <PeriodChips
+        chips={chips}
+        onPick={c => {
+          const offset = Math.round((c.date - TODAY) / (1000 * 60 * 60 * 24));
+          setSelectedOffset(offset);
+        }}
+      />
+
+      {/* Band 6 */}
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500,
+        marginBottom: 10, paddingLeft: 4,
+      }}>{dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1)}'s sessions</div>
+      {sortedDaySessions.length === 0 ? (
+        <div style={{
+          background: '#FFFFFF', borderRadius: 14, padding: 32,
+          textAlign: 'center', color: T.gray400, fontSize: 14, marginBottom: 16,
+          boxShadow: T.shadowSoft,
+        }}>No sessions on this day.</div>
+      ) : (
+        sortedDaySessions.map(s => (
+          <ReceiptCard key={s.id} session={s} onRefundClick={onRefundClick} />
+        ))
+      )}
+
+      {/* Deep-dive cards */}
+      <DeepDiveSection sessions={sessions} periodLabel={dayLabel} therapist={therapist} />
+    </div>
+  );
+}
+
+// ─── "Other money in & out" collapsible (mid-page) ────────────────
+function OtherMoneyCollapsible({ sessions, periodLabel }) {
+  const [open, setOpen] = useState(false);
+  const cancelFees = sumCancelFees(sessions);
+  const refunds = sumRefunds(sessions);
+  const noShowFees = sessions
+    .filter(s => s.source === 'no_show' && (s.actual || 0) > 0)
+    .reduce((sum, s) => sum + (s.actual || 0), 0);
+  // Discounts: not in current data model. Hidden until tracked.
+  const collected = sumCollected(sessions);
+  const net = collected + cancelFees + noShowFees - refunds;
+
+  // Hide entirely if all zero.
+  if (cancelFees === 0 && refunds === 0 && noShowFees === 0) return null;
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+    }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', padding: '14px 18px', cursor: 'pointer',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'transparent', border: 'none', textAlign: 'left',
+      }}>
+        <span style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+          textTransform: 'uppercase', color: T.gray500,
+        }}>Other money in & out {periodLabel}</span>
+        <span style={{ fontSize: 16, color: T.gray400 }}>{open ? '−' : '+'}</span>
+      </button>
+      {open && (
+        <div style={{
+          padding: '14px 18px 16px',
+          borderTop: `1px solid ${T.creamDeep}`,
+          fontSize: 12, color: T.gray700, lineHeight: 1.6,
+        }}>
+          {cancelFees > 0 && (
+            <DeepDiveRow label="Cancellation fees collected" value={currency(cancelFees)} />
+          )}
+          {noShowFees > 0 && (
+            <DeepDiveRow label="No-show fees collected" value={currency(noShowFees)} />
+          )}
+          {refunds > 0 && (
+            <DeepDiveRow label="Refunds issued" value={`-${currency(refunds)}`} valueClass="minus" />
+          )}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            borderTop: `1px solid ${T.gray300}`, marginTop: 8, paddingTop: 8,
+            fontWeight: 700,
+          }}>
+            <span>Net {periodLabel}</span>
+            <span style={{ fontFamily: T.serif, fontWeight: 700, color: T.forestDeep }}>
+              {currency(net)}
+            </span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Deep-dive section (bottom of page) ────────────────────────────
+//
+// Same 7 cards on every period view. Numbers scaled to the period.
+// Per BENCHMARKS.md, peer comparisons are HIDDEN where we don't have
+// real industry data. We show therapist's own numbers + a note for
+// future MyBodyMap aggregate.
+function DeepDiveSection({ sessions, periodLabel, therapist }) {
+  return (
+    <div style={{
+      marginTop: 28, paddingTop: 22,
+      borderTop: `1px dashed ${T.creamEdge}`,
+    }}>
+      <div style={{
+        fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+        color: T.forestDeep, marginBottom: 4,
+      }}>More detail</div>
+      <div style={{
+        fontSize: 12, color: T.gray500,
+        fontStyle: 'italic', marginBottom: 16, lineHeight: 1.5,
+      }}>
+        Tap any card to open. These views are useful when you want to step back from the day.
+      </div>
+
+      <PricingDeepDive therapist={therapist} />
+      <DiscountsDeepDive sessions={sessions} periodLabel={periodLabel} />
+      <NoShowRecoveryDeepDive sessions={sessions} />
+      <TopClientsDeepDive sessions={sessions} />
+      <DepositsDeepDive sessions={sessions} />
+      <PackagesDeepDive sessions={sessions} />
+      <RefundRateDeepDive sessions={sessions} />
+    </div>
+  );
+}
+
+// 1. Pricing snapshot.
+function PricingDeepDive({ therapist }) {
+  // For Phase A we don't have full services in props, so show the
+  // therapist's session_rate (the default rate they configured).
+  // Future: pull from services table for full breakdown.
+  const rate = therapist?.session_rate || 95;
+  return (
+    <DeepDiveCard
+      icon="💵"
+      title="Your pricing"
+      sub={`Default rate: ${currency(rate)} per session`}>
+      <div style={{
+        fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+        color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+      }}>Your current default session rate.</div>
+      <DeepDiveRow
+        label="Default session rate"
+        sub="set in your therapist profile"
+        value={currency(rate)} />
+      <DeepDiveNote>
+        For Front Range Colorado, solo independent practitioners typically charge $110-130 for a 60-minute session. National median across all settings is $85. Source: industry research, January 2026.
+      </DeepDiveNote>
+    </DeepDiveCard>
+  );
+}
+
+// 2. Discounts & comps.
+function DiscountsDeepDive({ sessions, periodLabel }) {
+  // Discounts not tracked in current data model. Show "coming soon"
+  // message rather than fake numbers.
+  return (
+    <DeepDiveCard
+      icon="🎁"
+      title="Discounts & comps"
+      sub="Track money given back to regulars">
+      <div style={{
+        fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+        color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+      }}>Coming soon.</div>
+      <DeepDiveNote>
+        We're building a clean way to log regular discounts, senior discounts, comps, and referral credits, separately from session revenue. This card will show them broken out by reason once the feature ships.
+      </DeepDiveNote>
+    </DeepDiveCard>
+  );
+}
+
+// 3. No-show recovery.
+function NoShowRecoveryDeepDive({ sessions }) {
+  // For each no-show, check if the same client booked again within 30 days.
+  const noShows = sessions.filter(s => s.status === 'no_show');
+  const recoveredClients = new Set();
+  noShows.forEach(ns => {
+    const followups = sessions.filter(s =>
+      s.client === ns.client &&
+      s.date > ns.date &&
+      (s.date - ns.date) < 30 * 24 * 60 * 60 * 1000 &&
+      s.status === 'paid'
+    );
+    if (followups.length > 0) recoveredClients.add(ns.client);
+  });
+  const total = noShows.length;
+  const recovered = recoveredClients.size;
+  const pct = total > 0 ? Math.round((recovered / total) * 100) : 0;
+
+  return (
+    <DeepDiveCard
+      icon="🔁"
+      title="No-show recovery"
+      sub={total === 0
+        ? 'No no-shows recorded yet'
+        : `${recovered} of ${total} no-shows came back within 30 days`}>
+      {total === 0 ? (
+        <>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+            color: T.forestDeep, marginBottom: 10,
+          }}>No no-shows in your data yet.</div>
+          <DeepDiveNote>
+            Once you have a few no-shows, we can show how many came back to your table within 30 days. The industry rate of return varies widely.
+          </DeepDiveNote>
+        </>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+            color: T.forestDeep, marginBottom: 10,
+          }}>
+            <span style={{ color: T.sage, fontWeight: 700 }}>{pct}%</span> of no-shows rebook within 30 days.
+          </div>
+          <DeepDiveRow
+            label="Your rate"
+            sub={`${recovered} of ${total} returned`}
+            value={`${pct}%`} />
+          <DeepDiveNote>
+            Industry data on no-show recovery for solo LMT practice is not publicly available. We'll add peer comparisons once we have aggregate data from enough MyBodyMap therapists.
+          </DeepDiveNote>
+        </>
+      )}
+    </DeepDiveCard>
+  );
+}
+
+// 4. Top clients.
+function TopClientsDeepDive({ sessions }) {
+  const byClient = {};
+  sessions
+    .filter(s => s.status === 'paid' && s.source !== 'cancellation_fee' && s.source !== 'refund')
+    .forEach(s => {
+      if (!byClient[s.client]) byClient[s.client] = { revenue: 0, count: 0 };
+      byClient[s.client].revenue += s.actual || 0;
+      byClient[s.client].count += 1;
+    });
+  const top = Object.entries(byClient)
+    .map(([client, data]) => ({ client, ...data }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5);
+  const top5Total = top.reduce((s, x) => s + x.revenue, 0);
+  const allTotal = Object.values(byClient).reduce((s, x) => s + x.revenue, 0);
+  const pct = allTotal > 0 ? Math.round((top5Total / allTotal) * 100) : 0;
+
+  return (
+    <DeepDiveCard
+      icon="⭐"
+      title="Top clients"
+      sub={top.length === 0
+        ? 'No paid sessions yet'
+        : `Top ${top.length} are ${pct}% of revenue`}>
+      {top.length === 0 ? (
+        <div style={{
+          fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+          color: T.forestDeep,
+        }}>No paid sessions yet.</div>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+          }}>
+            Your top <span style={{ color: T.sage, fontWeight: 700 }}>{top.length}</span> clients are {pct}% of revenue.
+          </div>
+          {top.map((c, i) => (
+            <DeepDiveRow
+              key={i}
+              label={c.client}
+              sub={`${c.count} session${c.count > 1 ? 's' : ''}`}
+              value={currency(c.revenue)} />
+          ))}
+          <DeepDiveNote>
+            A few clients carry a meaningful share of your week. Worth knowing if life changes for any of them. Nothing to act on, just useful to see.
+          </DeepDiveNote>
+        </>
+      )}
+    </DeepDiveCard>
+  );
+}
+
+// 5. Deposits & pre-payments.
+function DepositsDeepDive({ sessions }) {
+  // We don't have a separate deposits view yet in the data layer
+  // (deposits roll into session revenue). For now, show pending
+  // future sessions as a proxy.
+  const futurePending = sessions.filter(s =>
+    s.status === 'pending' && s.date >= TODAY
+  );
+  const totalExpected = futurePending.reduce((sum, s) => sum + (s.rate || 0), 0);
+
+  return (
+    <DeepDiveCard
+      icon="💳"
+      title="Deposits & pre-payments"
+      sub={futurePending.length === 0
+        ? 'No future bookings pending'
+        : `${futurePending.length} future booking${futurePending.length > 1 ? 's' : ''} · ${currency(totalExpected)} expected`}>
+      {futurePending.length === 0 ? (
+        <div style={{
+          fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+          color: T.forestDeep,
+        }}>No pending future bookings.</div>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+          }}>Future sessions with payment expected.</div>
+          {futurePending.slice(0, 8).map(s => (
+            <DeepDiveRow
+              key={s.id}
+              label={s.client}
+              sub={`${s.service || `${s.duration || 60}-min`} · ${fmtShort(s.date)}`}
+              value={currency(s.rate)} />
+          ))}
+          <DeepDiveNote>
+            Once a deposit feature is built, this card will separate deposits collected at booking from balances due at session.
+          </DeepDiveNote>
+        </>
+      )}
+    </DeepDiveCard>
+  );
+}
+
+// 6. Gift certificates & packages.
+function PackagesDeepDive({ sessions }) {
+  // Not yet in the data model.
+  return (
+    <DeepDiveCard
+      icon="🎟"
+      title="Gift certificates & packages"
+      sub="Sold but not yet redeemed">
+      <div style={{
+        fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+        color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+      }}>Coming soon.</div>
+      <DeepDiveNote>
+        Gift certificates and session packages are tracked separately because they represent sessions you've been paid for but haven't yet given. This card will show outstanding liability and expirations once the feature ships.
+      </DeepDiveNote>
+    </DeepDiveCard>
+  );
+}
+
+// 7. Refund rate.
+function RefundRateDeepDive({ sessions }) {
+  const paidPaymentSessions = sessions.filter(s =>
+    (s.status === 'paid' || s.status === 'refunded') &&
+    s.source === 'payment'
+  );
+  const refunds = paidPaymentSessions.filter(s => s.status === 'refunded' || s.source === 'refund');
+  // Also include refund-shape rows
+  const refundRows = sessions.filter(s => s.source === 'refund').length;
+  const totalSessions = paidPaymentSessions.length + refundRows;
+  const refundCount = Math.max(refunds.length, refundRows);
+  const pct = totalSessions > 0 ? ((refundCount / totalSessions) * 100).toFixed(1) : '0.0';
+
+  return (
+    <DeepDiveCard
+      icon="↩"
+      title="Refund rate"
+      sub={totalSessions === 0
+        ? 'No paid sessions yet'
+        : `${pct}% of paid sessions refunded`}>
+      {totalSessions === 0 ? (
+        <div style={{
+          fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+          color: T.forestDeep,
+        }}>No paid sessions yet.</div>
+      ) : (
+        <>
+          <div style={{
+            fontFamily: T.serif, fontSize: 17, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.3, marginBottom: 10,
+          }}>
+            You refund <span style={{ color: T.sage, fontWeight: 700 }}>{pct}%</span> of paid sessions.
+          </div>
+          <DeepDiveRow
+            label="Your refund count"
+            sub={`${refundCount} of ${totalSessions} paid sessions`}
+            value={`${pct}%`} />
+          <DeepDiveNote>
+            Industry data on refund rates for solo LMT practice is not publicly available. We'll add peer comparisons once we have aggregate data from enough MyBodyMap therapists.
+          </DeepDiveNote>
+        </>
+      )}
+    </DeepDiveCard>
+  );
+}
+
+// ─── Placeholder views (Weekly/Monthly/Yearly/Insights) ────────────
+// Phase B-D will replace these with full V2 implementations. For Phase
+// A, these fall back to the same DailyView component reusing the data
+// for the broader period. HK sees all 5 tabs working with V2 design
+// language even before the inheritance is fully tuned.
+function WeeklyView(props) {
+  return <PeriodPlaceholder period="Weekly" {...props} />;
+}
+function MonthlyView(props) {
+  return <PeriodPlaceholder period="Monthly" {...props} />;
+}
+function YearlyView(props) {
+  return <PeriodPlaceholder period="Yearly" {...props} />;
+}
+function InsightsView(props) {
+  return <PeriodPlaceholder period="Insights" {...props} />;
+}
+
+function PeriodPlaceholder({ period }) {
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 18,
+      padding: '40px 24px', textAlign: 'center',
+      boxShadow: T.shadowSoft,
+    }}>
+      <div style={{
+        fontFamily: T.serif, fontSize: 24, fontWeight: 600,
+        color: T.forestDeep, marginBottom: 10,
+      }}>{period} view</div>
+      <div style={{
+        fontSize: 13, color: T.gray500, lineHeight: 1.6,
+        maxWidth: 320, margin: '0 auto',
+      }}>
+        Coming in the next phase. The 6-band design from the Daily tab will scale to this period with the same architecture: hero number, shape chart, attention items, breakdown, period chips, and receipt-style session list.
+      </div>
+    </div>
+  );
+}
+
+// ─── Main exported component ───────────────────────────────────────
+//
+// Takes the same `sessions` array shape as V1, plus `therapist` and
+// `onRefundClick` callback. Tab state is local.
+export default function BillingDashboardV2({ sessions, therapist, onRefundClick }) {
+  const [subView, setSubView] = useState('daily');
+
+  const TABS = [
+    { id: 'daily',    label: 'Daily' },
+    { id: 'weekly',   label: 'Weekly' },
+    { id: 'monthly',  label: 'Monthly' },
+    { id: 'yearly',   label: 'Yearly' },
+    { id: 'insights', label: 'Insights' },
+  ];
+
+  const viewProps = { sessions, therapist, onRefundClick };
+
+  return (
+    <div style={{
+      width: '100%',
+      paddingBottom: typeof window !== 'undefined' && window.innerWidth < 768
+        ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0,
+      fontFamily: "'Sentient', Georgia, 'Times New Roman', serif",
+    }}>
+      {/* Page header */}
+      <div style={{ marginBottom: 16 }}>
+        <h2 style={{
+          fontFamily: T.serif, fontSize: 32, fontWeight: 600,
+          color: T.forestDeep, margin: 0,
+          letterSpacing: '-0.02em', lineHeight: 1,
+        }}>Billing</h2>
+        <p style={{
+          fontSize: 12, color: T.gray500, fontWeight: 500,
+          margin: '4px 0 0 0',
+        }}>{TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      </div>
+
+      {/* Period tabs */}
+      <div style={{
+        display: 'flex', gap: 2,
+        background: T.creamDeep, borderRadius: 12, padding: 4,
+        marginBottom: 20,
+        fontSize: 12, fontWeight: 600,
+      }}>
+        {TABS.map(t => (
+          <button key={t.id} onClick={() => setSubView(t.id)} style={{
+            flex: 1, textAlign: 'center',
+            padding: '7px 4px', borderRadius: 8,
+            color: subView === t.id ? T.forestDeep : T.gray500,
+            background: subView === t.id ? 'white' : 'transparent',
+            border: 'none', cursor: 'pointer',
+            boxShadow: subView === t.id ? T.shadowSoft : 'none',
+            fontWeight: 600, fontSize: 12,
+            transition: 'all 0.15s ease',
+          }}>{t.label}</button>
+        ))}
+      </div>
+
+      {/* Active view */}
+      {subView === 'daily'    && <DailyView {...viewProps} />}
+      {subView === 'weekly'   && <WeeklyView {...viewProps} />}
+      {subView === 'monthly'  && <MonthlyView {...viewProps} />}
+      {subView === 'yearly'   && <YearlyView {...viewProps} />}
+      {subView === 'insights' && <InsightsView {...viewProps} />}
+    </div>
+  );
+}

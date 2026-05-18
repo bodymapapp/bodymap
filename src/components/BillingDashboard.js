@@ -1,6 +1,7 @@
 // src/components/BillingDashboard.js
 import React, { useState, useEffect, useMemo } from 'react';
 import RefundModal from './RefundModal';
+import BillingDashboardV2 from './BillingDashboardV2';
 
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
@@ -1176,6 +1177,41 @@ export default function BillingDashboard({ therapist }) {
       <div style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'center', padding:64 }}>
         <div style={{ fontSize:14, color:'#9CA3AF' }}>Loading billing data…</div>
       </div>
+    );
+  }
+
+  // Phase 16 Billing V2 (HK May 18 2026): hidden behind email gate so
+  // only the Joy Demo account renders V2 while HK validates design and
+  // content. Once approved, V1 deletes and V2 becomes the default for
+  // every therapist. Per BENCHMARKS.md, V2 hides comparisons it can't
+  // source rather than fabricate numbers.
+  const isV2EligibleAccount = therapist?.email === 'bodymapdemo@gmail.com';
+  if (isV2EligibleAccount) {
+    const handleRefundClickV2 = (s) => {
+      setRefundTarget({
+        id: s.paymentId,
+        amount_cents: Math.round((s.base || s.actual || 0) * 100),
+        tip_cents: Math.round((s.tip || 0) * 100),
+        payment_method: s.method,
+        client_name: s.client,
+      });
+    };
+    return (
+      <>
+        <BillingDashboardV2
+          sessions={sessions}
+          therapist={therapist}
+          onRefundClick={handleRefundClickV2}
+        />
+        {refundTarget && (
+          <RefundModal
+            payment={refundTarget}
+            therapist={therapist}
+            onClose={() => setRefundTarget(null)}
+            onRefunded={() => { setReloadTick(t => t + 1); }}
+          />
+        )}
+      </>
     );
   }
 
