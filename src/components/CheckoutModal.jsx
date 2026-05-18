@@ -549,18 +549,28 @@ export default function CheckoutModal({
   // ── Action: Send pay link ───────────────────────────────────────
   async function sendPayLink() {
     if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
-    if (isSubscription) {
-      // V1 limitation: create-payment-link edge function requires a
-      // booking_id. Subscription pay-links land in Phase 19.2 once the
-      // edge function accepts a member_subscription_id alternative.
-      setErrorMsg('Send-link is not yet available for membership charges. Use card on file or mark as paid.');
-      return;
-    }
     setProcessing(true);
     setErrorMsg(null);
     try {
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      // Phase 19.4: build payload for either booking or subscription mode.
+      const payload: any = {
+        therapist_id: therapist.id,
+        amount_cents: amountCents,
+        tip_cents: tipCents,
+        client_email: client?.email || appt?.email,
+      };
+      if (isSubscription) {
+        payload.member_subscription_id = subscription.id;
+        if (renewal?.id) payload.member_subscription_renewal_id = renewal.id;
+        // Friendly default label; the edge function overrides with the
+        // membership plan name when it loads the subscription.
+        payload.service_name = 'Membership renewal';
+      } else {
+        payload.booking_id = appt.id;
+        payload.service_name = appt?.service || 'Massage session';
+      }
       const res = await fetch(`${supabaseUrl}/functions/v1/create-payment-link`, {
         method: 'POST',
         headers: {
@@ -568,14 +578,7 @@ export default function CheckoutModal({
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey,
         },
-        body: JSON.stringify({
-          therapist_id: therapist.id,
-          booking_id: appt.id,
-          amount_cents: amountCents,
-          tip_cents: tipCents,
-          service_name: appt?.service || 'Massage session',
-          client_email: client?.email || appt?.email,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -1036,18 +1039,18 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
           primary={!cardOnFile}
         />
       )}
-      {/* Send link is booking-only in V1; create-payment-link edge
-          function requires a booking_id. Subscription send-link arrives
-          in Phase 19.2. */}
-      {!isSubscription && (
-        <MethodButton
-          onClick={onSendLink}
-          disabled={!validAmount}
-          icon="📲"
-          title="Send pay link"
-          subtitle="Text or email a one-time link"
-        />
-      )}
+      {/* Send pay link (Phase 19.4): now supports both bookings AND
+          subscriptions. The edge function create-payment-link accepts
+          either booking_id or member_subscription_id. The link's line
+          item label adapts ('Massage session' vs 'Monthly Member
+          renewal'). */}
+      <MethodButton
+        onClick={onSendLink}
+        disabled={!validAmount}
+        icon="📲"
+        title="Send pay link"
+        subtitle="Text or email a one-time link"
+      />
       {/* Mark as paid (offline): folded in from the prior
           MarkAsPaidModal in Phase 19. Same flow for bookings AND
           subscriptions: therapist records that the money was

@@ -19,6 +19,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import CheckoutModal from '../CheckoutModal';
 
 const C = {
   forest:    '#2A5741',
@@ -39,6 +40,12 @@ export default function MembershipCard({ client, therapist }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState(null);
+  // Phase 19.4 (HK May 18 2026): pending renewals for THIS client.
+  // Surfaced as 'Charge renewal' buttons on each active subscription
+  // row so the therapist can resolve from here, not just from the
+  // billing dashboard's reminders card.
+  const [pendingRenewals, setPendingRenewals] = useState([]);
+  const [renewalToCharge, setRenewalToCharge] = useState(null); // {renewal, subscription}
 
   // New-sub form state
   const [planId, setPlanId] = useState('');
@@ -55,7 +62,7 @@ export default function MembershipCard({ client, therapist }) {
     let mounted = true;
     (async () => {
       try {
-        const [mRes, sRes] = await Promise.all([
+        const [mRes, sRes, rRes] = await Promise.all([
           supabase
             .from('memberships')
             .select('id, name, monthly_price, monthly_session_credits, active')
@@ -63,14 +70,27 @@ export default function MembershipCard({ client, therapist }) {
             .order('name', { ascending: true }),
           supabase
             .from('member_subscriptions')
-            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at')
+            .select('id, membership_id, status, monthly_price, monthly_session_credits, current_credits, current_period_end, started_at, canceled_at, client_email, client_name')
             .eq('therapist_id', therapist.id)
             .eq('client_id', client.id)
             .order('started_at', { ascending: false }),
+          // Phase 19.4: pending renewals for THIS client. Defensive
+          // try-catch in case the membership_renewal_v1 migration
+          // hasn't been applied; we render empty array gracefully.
+          supabase
+            .from('member_subscription_renewals')
+            .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status')
+            .eq('therapist_id', therapist.id)
+            .eq('client_id', client.id)
+            .eq('status', 'pending')
+            .order('due_on', { ascending: true }),
         ]);
         if (mounted) {
           setMemberships(mRes.data || []);
           setSubs(sRes.data || []);
+          // rRes may have an error if the table doesn't exist yet
+          // pre-migration. Don't crash the rest of the panel.
+          setPendingRenewals(rRes.error ? [] : (rRes.data || []));
         }
       } catch (e) {
         if (mounted) setError('Could not load memberships.');
@@ -80,6 +100,21 @@ export default function MembershipCard({ client, therapist }) {
     })();
     return () => { mounted = false; };
   }, [client.id, therapist.id]);
+
+  // Re-fetch renewals after a charge resolves (called by CheckoutModal's
+  // onPaid callback). Quick re-query rather than full reload.
+  async function refreshRenewals() {
+    try {
+      const { data, error: rErr } = await supabase
+        .from('member_subscription_renewals')
+        .select('id, member_subscription_id, period_start, period_end, due_on, amount_due_cents, status')
+        .eq('therapist_id', therapist.id)
+        .eq('client_id', client.id)
+        .eq('status', 'pending')
+        .order('due_on', { ascending: true });
+      if (!rErr) setPendingRenewals(data || []);
+    } catch (e) { /* non-blocking */ }
+  }
 
   async function addSubscription() {
     setError(null);
@@ -248,7 +283,34 @@ export default function MembershipCard({ client, therapist }) {
                   )}
                 </div>
                 {isActive && (
-                  <div style={{ marginTop: 8 }}>
+                  <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                    {/* Phase 19.4: pending renewal CTA. Shows when this
+                        subscription has a pending renewal row for the
+                        therapist to action. Tap opens unified CheckoutModal
+                        in subscription mode. */}
+                    {(() => {
+                      const pending = pendingRenewals.find(r => r.member_subscription_id === sub.id);
+                      if (!pending) return null;
+                      const dueLabel = new Date(pending.due_on + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      const amountLabel = `$${(pending.amount_due_cents / 100).toFixed(2)}`;
+                      return (
+                        <button
+                          onClick={() => setRenewalToCharge({ renewal: pending, subscription: sub })}
+                          style={{
+                            background: C.forest,
+                            color: '#fff',
+                            border: 'none',
+                            padding: '7px 13px',
+                            borderRadius: 8,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Charge {amountLabel} renewal · due {dueLabel}
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={() => cancelSubscription(sub.id)}
                       style={{
@@ -464,6 +526,23 @@ export default function MembershipCard({ client, therapist }) {
             MyBodyMap holds the membership record and reminds you each renewal day. You charge using Checkout (card on file, Venmo, cash, or whatever fits). Stripe Connect billing arrives in a later phase.
           </div>
         </div>
+      )}
+
+      {/* Renewal charge modal (Phase 19.4). Opens when therapist taps
+          the Charge renewal button on an active subscription that has
+          a pending renewal row. Reuses the same CheckoutModal that
+          handles service and renewal charges everywhere else on the
+          platform. */}
+      {renewalToCharge && (
+        <CheckoutModal
+          subscription={renewalToCharge.subscription}
+          renewal={renewalToCharge.renewal}
+          therapist={therapist}
+          client={client}
+          defaultAmountCents={renewalToCharge.renewal.amount_due_cents}
+          onClose={() => setRenewalToCharge(null)}
+          onPaid={() => { refreshRenewals(); }}
+        />
       )}
     </div>
   );

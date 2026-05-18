@@ -184,6 +184,28 @@ serve(async (req) => {
       });
     }
 
+    // Phase 19.4 (HK May 18 2026): if this session_payment is for a
+    // membership renewal (member_subscription_renewal_id set on the
+    // row by the create-payment-link request), resolve the renewal
+    // as paid. Defensive: the column may not exist pre-migration.
+    try {
+      const { data: paidRow } = await supabase
+        .from('session_payments')
+        .select('member_subscription_renewal_id, therapist_id')
+        .eq('id', sessionPaymentId)
+        .maybeSingle();
+      if (paidRow?.member_subscription_renewal_id) {
+        await supabase.from('member_subscription_renewals').update({
+          status: 'paid',
+          resolved_at: new Date().toISOString(),
+          resolved_by_therapist_id: paidRow.therapist_id,
+          session_payment_id: sessionPaymentId,
+        }).eq('id', paidRow.member_subscription_renewal_id);
+      }
+    } catch (rErr) {
+      console.warn('[stripe-payment-link-webhook] renewal resolution failed (non-blocking):', rErr);
+    }
+
     return new Response(JSON.stringify({ received: true, marked_paid: sessionPaymentId, booking_id: bookingId }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

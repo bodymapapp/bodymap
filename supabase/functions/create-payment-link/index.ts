@@ -37,6 +37,11 @@ serve(async (req) => {
     const {
       therapist_id,
       booking_id,
+      // Phase 19.4 (HK May 18 2026): subscription mode. Pass either
+      // booking_id OR (member_subscription_id + member_subscription_renewal_id).
+      // The session_payments row is keyed to whichever path is used.
+      member_subscription_id,
+      member_subscription_renewal_id,
       amount_cents,
       tip_cents = 0,
       service_name = 'Massage session',
@@ -44,7 +49,14 @@ serve(async (req) => {
     } = await req.json();
 
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
-    if (!booking_id) return respond({ error: 'booking_id required' }, 400);
+    // Mode validation: exactly one of booking_id or member_subscription_id.
+    const isSubscriptionMode = !!member_subscription_id;
+    if (!booking_id && !member_subscription_id) {
+      return respond({ error: 'booking_id or member_subscription_id required' }, 400);
+    }
+    if (booking_id && member_subscription_id) {
+      return respond({ error: 'booking_id and member_subscription_id are mutually exclusive' }, 400);
+    }
     if (!amount_cents || amount_cents <= 0) return respond({ error: 'amount_cents required' }, 400);
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -66,26 +78,49 @@ serve(async (req) => {
       return respond({ error: 'stripe_not_connected_for_therapist' }, 400);
     }
 
-    // Load booking to confirm it belongs to this therapist
-    const { data: booking, error: bErr } = await supabase
-      .from('bookings')
-      .select('id, therapist_id, client_id, client_name, client_email')
-      .eq('id', booking_id)
-      .single();
-    if (bErr || !booking) return respond({ error: 'booking_not_found' }, 404);
-    if (booking.therapist_id !== therapist_id) {
-      return respond({ error: 'booking_not_owned_by_therapist' }, 403);
+    // Booking mode: load booking row for client info + ownership check.
+    // Subscription mode: load subscription row for client info + ownership.
+    let clientId: string | null = null;
+    let chargeContextLabel = service_name;
+    if (isSubscriptionMode) {
+      const { data: sub, error: sErr } = await supabase
+        .from('member_subscriptions')
+        .select('id, therapist_id, client_id, monthly_price, membership:memberships(name)')
+        .eq('id', member_subscription_id)
+        .single();
+      if (sErr || !sub) return respond({ error: 'subscription_not_found' }, 404);
+      if (sub.therapist_id !== therapist_id) {
+        return respond({ error: 'subscription_not_owned_by_therapist' }, 403);
+      }
+      clientId = sub.client_id;
+      const planName = (sub as any).membership?.name || 'Membership';
+      chargeContextLabel = `${planName} renewal`;
+    } else {
+      const { data: booking, error: bErr } = await supabase
+        .from('bookings')
+        .select('id, therapist_id, client_id, client_name, client_email')
+        .eq('id', booking_id)
+        .single();
+      if (bErr || !booking) return respond({ error: 'booking_not_found' }, 404);
+      if (booking.therapist_id !== therapist_id) {
+        return respond({ error: 'booking_not_owned_by_therapist' }, 403);
+      }
+      clientId = booking.client_id;
     }
 
     // Create the pending session_payments row FIRST. We need its id
     // for the Stripe metadata so the webhook can find this row when
-    // the client pays.
+    // the client pays. The booking_id XOR member_subscription_id
+    // constraint enforced by the migration means exactly one of the
+    // two FK columns is set.
     const { data: paymentRow, error: pErr } = await supabase
       .from('session_payments')
       .insert({
-        booking_id,
+        booking_id: booking_id || null,
+        member_subscription_id: member_subscription_id || null,
+        member_subscription_renewal_id: member_subscription_renewal_id || null,
         therapist_id,
-        client_id: booking.client_id,
+        client_id: clientId,
         amount_cents,
         tip_cents,
         payment_method: 'stripe_payment_link',
@@ -106,7 +141,7 @@ serve(async (req) => {
     const lineItems: any[] = [
       {
         'price_data[currency]': 'usd',
-        'price_data[product_data][name]': service_name,
+        'price_data[product_data][name]': chargeContextLabel,
         'price_data[unit_amount]': String(amount_cents),
         'quantity': '1',
       },
@@ -130,7 +165,15 @@ serve(async (req) => {
     });
     // Metadata so the webhook can find this row
     params.append('metadata[session_payment_id]', paymentRow.id);
-    params.append('metadata[booking_id]', booking_id);
+    if (booking_id) {
+      params.append('metadata[booking_id]', booking_id);
+    }
+    if (member_subscription_id) {
+      params.append('metadata[member_subscription_id]', member_subscription_id);
+    }
+    if (member_subscription_renewal_id) {
+      params.append('metadata[member_subscription_renewal_id]', member_subscription_renewal_id);
+    }
     params.append('metadata[therapist_id]', therapist_id);
     // After-payment redirect to a 'thanks' page on the therapist site
     params.append('after_completion[type]', 'hosted_confirmation');
