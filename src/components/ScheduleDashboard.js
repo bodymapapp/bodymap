@@ -636,7 +636,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   );
 }
 
-function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock }) {
+function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime }) {
   const [selected,setSelected] = useState(null);
   const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
@@ -1108,9 +1108,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:18 }}>
               <div style={{ fontSize:24 }}>🌿</div>
               <div style={{ flex:1 }}>
-                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>Block this time?</div>
+                <div style={{ fontSize:18, fontWeight:700, color:'#1F2937', fontFamily:'Georgia,serif' }}>What would you like to do?</div>
                 <div style={{ fontSize:12, color:'#6B7280', marginTop:2 }}>
-                  {new Date(pendingBlock.date+'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })}
+                  {new Date(pendingBlock.date+'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'short', day:'numeric' })} at {fmtTime12(pendingBlock.startTime)}
                 </div>
               </div>
             </div>
@@ -1191,6 +1191,44 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                 {blockSheetSaving ? 'Saving…' : 'Block this time'}
               </button>
             </div>
+
+            {/* Phase 9.3 (HK May 18 2026): alternative path. Instead
+                of blocking this time, the therapist may want to
+                schedule a client at it. One tap closes this sheet
+                and opens BookingModal with date + start time
+                pre-filled. */}
+            <button
+              onClick={() => {
+                if (blockSheetSaving) return;
+                if (onScheduleAtTime) {
+                  onScheduleAtTime({
+                    date: pendingBlock.date,
+                    startTime: pendingBlock.startTime,
+                  });
+                }
+                setPendingBlock(null);
+              }}
+              disabled={blockSheetSaving}
+              style={{
+                width: '100%',
+                marginTop: 10,
+                background: '#fff',
+                color: '#2A5741',
+                border: '1.5px solid #2A5741',
+                padding: '10px',
+                borderRadius: 10,
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: blockSheetSaving ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              <span>📅</span>
+              <span>Schedule a session at this time instead</span>
+            </button>
 
             <div style={{ fontSize:11, color:'#9CA3AF', textAlign:'center', marginTop:12, fontStyle:'italic', fontFamily:'Georgia,serif', lineHeight:1.5 }}>
               Clients cannot book during this window. You'll still see existing bookings in this range if any overlap.
@@ -1901,6 +1939,12 @@ export default function ScheduleDashboard({ therapist }) {
   const SAMPLE = makeSample(today);
   const [showCreate, setShowCreate] = useState(false);
   const [rescheduleAppt, setRescheduleAppt] = useState(null);
+  // Phase 9.3 (HK May 18 2026): long-press → option to schedule a
+  // session instead of blocking. State lives here so BookingModal
+  // can render at this component level (TimelineView only owns the
+  // confirm sheet, not the modal). TimelineView calls our
+  // onScheduleAtTime callback to hand control here.
+  const [pendingBookingTime, setPendingBookingTime] = useState(null);  // {date, startTime}
 
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
@@ -2253,6 +2297,15 @@ export default function ScheduleDashboard({ therapist }) {
     <div style={{width:'100%', paddingBottom: isMobileW ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 24px)' : 0}}>
       {showCreate && (
         <BookingModal therapist={therapist} mode="create" onClose={() => setShowCreate(false)} onSuccess={fetchBookings} />
+      )}
+      {pendingBookingTime && (
+        <BookingModal
+          therapist={therapist}
+          mode="create"
+          prefillDateTime={pendingBookingTime}
+          onClose={() => setPendingBookingTime(null)}
+          onSuccess={() => { setPendingBookingTime(null); fetchBookings(); }}
+        />
       )}
       {rescheduleAppt && (
         <BookingModal therapist={therapist} mode="reschedule" existingBooking={rescheduleAppt} onClose={() => setRescheduleAppt(null)} onSuccess={fetchBookings} />
@@ -2812,7 +2865,7 @@ export default function ScheduleDashboard({ therapist }) {
 
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
-              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay}/>}
+              {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime}/>}
               {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
               {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}

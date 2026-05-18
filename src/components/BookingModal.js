@@ -34,7 +34,7 @@ const fmt12 = t => {
   return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h >= 12 ? 'PM' : 'AM'}`;
 };
 
-export default function BookingModal({ therapist, mode = 'create', existingBooking = null, prefillClient = null, onClose, onSuccess }) {
+export default function BookingModal({ therapist, mode = 'create', existingBooking = null, prefillClient = null, prefillDateTime = null, onClose, onSuccess }) {
   const isReschedule = mode === 'reschedule';
   const isRebook    = mode === 'rebook';
 
@@ -69,7 +69,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [serviceId, setServiceId] = useState('');
   const [services, setServices]   = useState([]);
   const [availability, setAvail]  = useState([]);
-  const [date, setDate]   = useState('');
+  // Phase 9.3 (HK May 18 2026): when launched from the long-press
+  // 'block or event' confirm sheet, prefillDateTime carries the
+  // date and start time the user pressed on. We seed `date` from
+  // it directly; the matching slot gets selected by an effect
+  // below once services and slots are loaded.
+  const [date, setDate]   = useState(prefillDateTime?.date || '');
   const [slots, setSlots] = useState([]);
   const [slot, setSlot]   = useState(null);
   const [notes, setNotes] = useState(existingBooking?.notes || '');
@@ -178,6 +183,32 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     setSlots(raw);
     setLoadingSlots(false);
   }
+
+  // Phase 9.3 (HK May 18 2026): if launched with prefillDateTime,
+  // auto-select the slot matching the prefilled start time once
+  // slots have populated. If no matching standard slot exists (e.g.
+  // the press landed at 10:23 AM and standard slots are on 30-min
+  // boundaries), fall through to a custom-time slot at the exact
+  // prefilled time.
+  useEffect(() => {
+    if (!prefillDateTime?.startTime) return;
+    if (loadingSlots) return;
+    if (slot) return; // user already picked something
+    const svc = services.find(s => s.id === serviceId);
+    if (!svc) return;
+    const targetStart = prefillDateTime.startTime;
+    const match = slots.find(s => s.start === targetStart);
+    if (match) {
+      setSlot(match);
+    } else {
+      // Custom slot at the exact prefilled time. Mirrors the
+      // 'Set a custom time' path further down in the UI.
+      setSlot({ start: targetStart, end: addMins(targetStart, svc.duration || 60) });
+    }
+    // Only run once after slots first load. Re-running on every
+    // slot change would fight the user when they pick a different slot.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingSlots, slots.length, serviceId]);
 
   async function save() {
     setError('');
