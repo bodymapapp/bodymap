@@ -270,7 +270,7 @@ function ShapeChart({ title, bars, paceLine = null }) {
         <div style={{
           marginTop: 12, paddingTop: 10,
           borderTop: `1px solid ${T.creamDeep}`,
-          fontSize: 11, color: T.gray700, lineHeight: 1.5,
+          fontSize: 12, color: T.gray700, lineHeight: 1.5,
         }}>
           {paceLine}
         </div>
@@ -309,11 +309,11 @@ function AttentionBand({ items }) {
               fontSize: 13, fontWeight: 600, color: T.ink,
               lineHeight: 1.3, marginBottom: 2,
             }}>{item.title}</div>
-            <div style={{ fontSize: 11, color: T.gray500, lineHeight: 1.4 }}>{item.sub}</div>
+            <div style={{ fontSize: 12, color: T.gray500, lineHeight: 1.4 }}>{item.sub}</div>
           </div>
           {item.action && (
             <div style={{
-              fontSize: 11, fontWeight: 700, color: T.forest, whiteSpace: 'nowrap',
+              fontSize: 12, fontWeight: 700, color: T.forest, whiteSpace: 'nowrap',
             }}>{item.action} →</div>
           )}
         </div>
@@ -367,7 +367,7 @@ function MethodCard({ methods }) {
                   fontFamily: T.serif, fontSize: 16, fontWeight: 600, color: T.forestDeep,
                 }}>{currency(m.amount)}</span>
               </div>
-              <span style={{ fontSize: 10, color: T.gray400, fontWeight: 500 }}>{pct}%</span>
+              <span style={{ fontSize: 11, color: T.gray400, fontWeight: 500 }}>{pct}%</span>
               <div style={{
                 height: 4, background: T.creamDeep,
                 borderRadius: 4, overflow: 'hidden', marginTop: 4,
@@ -422,12 +422,12 @@ function TipRingCard({ pct, dollars, tippedCount, totalCount, compareText }) {
       <div style={{ fontSize: 13, fontWeight: 600, color: T.ink }}>
         {currency(dollars || 0)} in tips
       </div>
-      <div style={{ fontSize: 10, color: T.gray500, marginTop: 4 }}>
+      <div style={{ fontSize: 12, color: T.gray500, marginTop: 4 }}>
         {tippedCount} of {totalCount} sessions tipped
       </div>
       {compareText && (
         <div style={{
-          fontSize: 10, color: T.sage, fontWeight: 700, marginTop: 6,
+          fontSize: 12, color: T.sage, fontWeight: 700, marginTop: 6,
         }}>{compareText}</div>
       )}
     </div>
@@ -457,14 +457,14 @@ function PeriodChips({ chips, onPick }) {
             minWidth: 70,
           }}>
           <div style={{
-            fontSize: 9, letterSpacing: '0.08em',
+            fontSize: 10, letterSpacing: '0.08em',
             textTransform: 'uppercase', opacity: 0.8,
           }}>{c.label}</div>
           <div style={{
             fontFamily: T.serif, fontSize: 18, fontWeight: 600,
             marginTop: 1, marginBottom: 1,
           }}>{c.value}</div>
-          <div style={{ fontSize: 9, opacity: 0.75, fontWeight: 500 }}>{c.meta}</div>
+          <div style={{ fontSize: 10, opacity: 0.75, fontWeight: 500 }}>{c.meta}</div>
         </button>
       ))}
     </div>
@@ -531,12 +531,12 @@ function ReceiptCard({ session, onRefundClick }) {
             color: T.forestDeep, lineHeight: 1.1,
           }}>{session.client || 'Client'}</div>
           <div style={{
-            fontSize: 11, color: T.gray500, fontWeight: 600, textAlign: 'right',
+            fontSize: 12, color: T.gray500, fontWeight: 600, textAlign: 'right',
           }}>{session.service || `${session.duration || 60}-min`}</div>
         </div>
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          fontSize: 11, color: T.gray500, marginBottom: 12,
+          fontSize: 12, color: T.gray500, marginBottom: 12,
         }}>
           <span>{session.time}</span>
           <span>{methodLabel(session.method, session.methodDetail) || (isPending ? 'Not yet paid' : '')}</span>
@@ -593,7 +593,7 @@ function ReceiptCard({ session, onRefundClick }) {
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
         background: statusBg, borderTop: `1px solid ${statusBorder}`,
-        padding: '8px 16px', fontSize: 11, fontWeight: 700, color: statusColor,
+        padding: '8px 16px', fontSize: 12, fontWeight: 700, color: statusColor,
       }}>
         <span>{statusLabel}</span>
         {statusRight && <span style={{ fontWeight: 500, opacity: 0.8 }}>{statusRight}</span>}
@@ -601,7 +601,7 @@ function ReceiptCard({ session, onRefundClick }) {
           <button onClick={(e) => { e.stopPropagation(); onRefundClick(session); }}
             style={{
               background: 'transparent', border: 'none',
-              color: statusColor, fontSize: 11, fontWeight: 600,
+              color: statusColor, fontSize: 12, fontWeight: 600,
               textDecoration: 'underline', cursor: 'pointer', padding: 0,
             }}>
             Refund
@@ -616,6 +616,40 @@ function ReceiptCard({ session, onRefundClick }) {
 //
 // 7 collapsed cards. Tap to open. Each card shows an icon, title,
 // subtitle on the closed face. Open reveals detailed content.
+// ─── ChevronPill ───────────────────────────────────────────────────
+//
+// Shared collapsible affordance used by DeepDiveCard, group cards,
+// and OtherMoneyCollapsible. A sage-tinted pill containing a chevron
+// that rotates 180 degrees when open. Consistent visual signal that
+// "this is a thing you can open." Tap target is 32x32.
+function ChevronPill({ open }) {
+  return (
+    <div style={{
+      width: 32, height: 32, borderRadius: 16,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: open ? T.forest : T.sageTint,
+      transition: 'background 0.2s ease',
+      flexShrink: 0,
+    }}>
+      <svg
+        width="14" height="14" viewBox="0 0 14 14"
+        style={{
+          transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.2s ease',
+        }}>
+        <path
+          d="M3 5 L7 9 L11 5"
+          stroke={open ? '#FFFFFF' : T.forest}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      </svg>
+    </div>
+  );
+}
+
 function DeepDiveCard({ icon, title, sub, children }) {
   const [open, setOpen] = useState(false);
   return (
@@ -625,6 +659,7 @@ function DeepDiveCard({ icon, title, sub, children }) {
       boxShadow: open ? '0 4px 16px rgba(31, 41, 31, 0.07)' : T.shadowSoft,
       overflow: 'hidden',
       border: `1px solid ${open ? T.sageSoft : T.creamEdge}`,
+      transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
     }}>
       <button
         onClick={() => setOpen(o => !o)}
@@ -640,25 +675,21 @@ function DeepDiveCard({ icon, title, sub, children }) {
           fontSize: 15, flexShrink: 0,
           background: open ? T.sageTint : T.creamDeep,
           color: T.forest,
+          transition: 'background 0.2s ease',
         }}>{icon}</div>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 13, fontWeight: 700, color: T.ink, lineHeight: 1.2, marginBottom: 2,
+            fontSize: 14, fontWeight: 700, color: T.ink, lineHeight: 1.2, marginBottom: 2,
           }}>{title}</div>
-          <div style={{ fontSize: 11, color: T.gray500, lineHeight: 1.4 }}>{sub}</div>
+          <div style={{ fontSize: 12, color: T.gray500, lineHeight: 1.4 }}>{sub}</div>
         </div>
-        <div style={{
-          color: open ? T.forest : T.gray400,
-          fontSize: 14, fontWeight: 400,
-          transform: open ? 'rotate(180deg)' : 'rotate(0)',
-          transition: 'transform 0.2s',
-        }}>▾</div>
+        <ChevronPill open={open} />
       </button>
       {open && (
         <div style={{
           padding: '14px 16px 16px',
           borderTop: `1px solid ${T.creamDeep}`,
-          fontSize: 12, color: T.gray700, lineHeight: 1.6,
+          fontSize: 13, color: T.gray700, lineHeight: 1.6,
         }}>
           {children}
         </div>
@@ -673,11 +704,11 @@ function DeepDiveRow({ label, sub, value, valueClass }) {
       display: 'flex', justifyContent: 'space-between',
       padding: '5px 0',
       borderBottom: `1px dotted ${T.creamEdge}`,
-      fontSize: 12,
+      fontSize: 13,
     }}>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <span>{label}</span>
-        {sub && <span style={{ fontSize: 10, color: T.gray400, marginTop: 2 }}>{sub}</span>}
+        {sub && <span style={{ fontSize: 12, color: T.gray400, marginTop: 2 }}>{sub}</span>}
       </div>
       <span style={{
         fontFamily: T.serif, fontWeight: 600,
@@ -692,7 +723,7 @@ function DeepDiveNote({ children }) {
   return (
     <div style={{
       marginTop: 10,
-      fontSize: 11, color: T.gray500, fontStyle: 'italic', lineHeight: 1.5,
+      fontSize: 12, color: T.gray500, fontStyle: 'italic', lineHeight: 1.5,
     }}>{children}</div>
   );
 }
@@ -1081,23 +1112,25 @@ function OtherMoneyCollapsible({ sessions, periodLabel }) {
     <div style={{
       background: '#FFFFFF', borderRadius: 18,
       marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+      border: `1px solid ${open ? T.sageSoft : 'transparent'}`,
+      transition: 'border-color 0.2s ease',
     }}>
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', padding: '14px 18px', cursor: 'pointer',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'transparent', border: 'none', textAlign: 'left',
+        background: 'transparent', border: 'none', textAlign: 'left', gap: 12,
       }}>
         <span style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: '0.16em',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.16em',
           textTransform: 'uppercase', color: T.gray500,
         }}>Other money in & out {periodLabel}</span>
-        <span style={{ fontSize: 16, color: T.gray400 }}>{open ? '−' : '+'}</span>
+        <ChevronPill open={open} />
       </button>
       {open && (
         <div style={{
           padding: '14px 18px 16px',
           borderTop: `1px solid ${T.creamDeep}`,
-          fontSize: 12, color: T.gray700, lineHeight: 1.6,
+          fontSize: 13, color: T.gray700, lineHeight: 1.6,
         }}>
           {cancelFees > 0 && (
             <DeepDiveRow label="Cancellation fees collected" value={currency(cancelFees)} />
@@ -1141,7 +1174,7 @@ function DeepDiveSection({ sessions, periodLabel, therapist }) {
         color: T.forestDeep, marginBottom: 4,
       }}>More detail</div>
       <div style={{
-        fontSize: 12, color: T.gray500,
+        fontSize: 13, color: T.gray500,
         fontStyle: 'italic', marginBottom: 16, lineHeight: 1.5,
       }}>
         Tap any card to open. These views are useful when you want to step back from the day.
@@ -1676,31 +1709,35 @@ function DayGroupCard({ group, onRefundClick }) {
     <div style={{
       background: '#FFFFFF', borderRadius: 14,
       marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+      border: `1px solid ${open ? T.sageSoft : 'transparent'}`,
+      transition: 'border-color 0.2s ease',
     }}>
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', padding: '14px 16px', cursor: 'pointer',
         background: 'transparent', border: 'none', textAlign: 'left',
-        display: 'flex', flexDirection: 'column', gap: 8,
+        display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-          <div style={{
-            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
-            color: T.forestDeep, lineHeight: 1.1,
-          }}>{dayLabel}</div>
-          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
-            {sessionCount} session{sessionCount !== 1 ? 's' : ''}
-            {open ? ' ▴' : ' ▾'}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+            <div style={{
+              fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+              color: T.forestDeep, lineHeight: 1.1,
+            }}>{dayLabel}</div>
+            <div style={{ fontSize: 12, color: T.gray500, fontWeight: 600 }}>
+              {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 12, fontSize: 13, color: T.gray700, flexWrap: 'wrap' }}>
+            <span><strong style={{ color: T.forestDeep, fontWeight: 700 }}>{currency(dayCollected)}</strong> collected</span>
+            {dayRefunds > 0 && (
+              <span style={{ color: T.rose }}>−{currency(dayRefunds)} refunded</span>
+            )}
+            {dayPending > 0 && (
+              <span style={{ color: T.amber }}>{currency(dayPending)} pending</span>
+            )}
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: T.gray700 }}>
-          <span><strong style={{ color: T.forestDeep, fontWeight: 700 }}>{currency(dayCollected)}</strong> collected</span>
-          {dayRefunds > 0 && (
-            <span style={{ color: T.rose }}>−{currency(dayRefunds)} refunded</span>
-          )}
-          {dayPending > 0 && (
-            <span style={{ color: T.amber }}>{currency(dayPending)} pending</span>
-          )}
-        </div>
+        <ChevronPill open={open} />
       </button>
       {open && (
         <div style={{
@@ -1925,47 +1962,53 @@ function WeekGroupCard({ group, onRefundClick }) {
     <div style={{
       background: '#FFFFFF', borderRadius: 14,
       marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+      border: `1px solid ${open ? T.sageSoft : 'transparent'}`,
+      transition: 'border-color 0.2s ease',
     }}>
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', padding: '14px 16px', cursor: 'pointer',
         background: 'transparent', border: 'none', textAlign: 'left',
+        display: 'flex', alignItems: 'flex-start', gap: 12,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <div style={{
-            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
-            color: T.forestDeep, lineHeight: 1.1,
-          }}>{label}</div>
-          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
-            {sessionCount} session{sessionCount !== 1 ? 's' : ''}{open ? ' ▴' : ' ▾'}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <div style={{
+              fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+              color: T.forestDeep, lineHeight: 1.1,
+            }}>{label}</div>
+            <div style={{ fontSize: 12, color: T.gray500, fontWeight: 600 }}>
+              {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '2px 0' }}>
+              <span>Sessions collected</span><span>{currency(collected)}</span>
+            </div>
+            {tips > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '2px 0' }}>
+                <span>Tips</span><span>{currency(tips)}</span>
+              </div>
+            )}
+            {refunds > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.redText, padding: '2px 0' }}>
+                <span>Refunds</span><span>-{currency(refunds)}</span>
+              </div>
+            )}
+            {outstanding > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.amber, padding: '2px 0' }}>
+                <span>Outstanding</span><span>{currency(outstanding)}</span>
+              </div>
+            )}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontSize: 14, fontWeight: 700, color: T.forestDeep,
+              borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
+            }}>
+              <span>Net for week</span><span>{currency(netForWeek)}</span>
+            </div>
           </div>
         </div>
-        <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
-            <span>Sessions collected</span><span>{currency(collected)}</span>
-          </div>
-          {tips > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
-              <span>Tips</span><span>{currency(tips)}</span>
-            </div>
-          )}
-          {refunds > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.redText, padding: '2px 0' }}>
-              <span>Refunds</span><span>-{currency(refunds)}</span>
-            </div>
-          )}
-          {outstanding > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.amber, padding: '2px 0' }}>
-              <span>Outstanding</span><span>{currency(outstanding)}</span>
-            </div>
-          )}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            fontSize: 13, fontWeight: 700, color: T.forestDeep,
-            borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
-          }}>
-            <span>Net for week</span><span>{currency(netForWeek)}</span>
-          </div>
-        </div>
+        <ChevronPill open={open} />
       </button>
       {open && (
         <div style={{
@@ -2304,42 +2347,48 @@ function MonthGroupCard({ group, onRefundClick }) {
     <div style={{
       background: '#FFFFFF', borderRadius: 14,
       marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+      border: `1px solid ${open ? T.sageSoft : 'transparent'}`,
+      transition: 'border-color 0.2s ease',
     }}>
       <button onClick={() => setOpen(o => !o)} style={{
         width: '100%', padding: '14px 16px', cursor: 'pointer',
         background: 'transparent', border: 'none', textAlign: 'left',
+        display: 'flex', alignItems: 'flex-start', gap: 12,
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <div style={{
-            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
-            color: T.forestDeep, lineHeight: 1.1,
-          }}>{label}</div>
-          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
-            {sessionCount} session{sessionCount !== 1 ? 's' : ''}{open ? ' ▴' : ' ▾'}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <div style={{
+              fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+              color: T.forestDeep, lineHeight: 1.1,
+            }}>{label}</div>
+            <div style={{ fontSize: 12, color: T.gray500, fontWeight: 600 }}>
+              {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '2px 0' }}>
+              <span>Sessions collected</span><span>{currency(collected)}</span>
+            </div>
+            {tips > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.gray700, padding: '2px 0' }}>
+                <span>Tips</span><span>{currency(tips)}</span>
+              </div>
+            )}
+            {refunds > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: T.redText, padding: '2px 0' }}>
+                <span>Refunds</span><span>-{currency(refunds)}</span>
+              </div>
+            )}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between',
+              fontSize: 14, fontWeight: 700, color: T.forestDeep,
+              borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
+            }}>
+              <span>Net for {monthName}</span><span>{currency(net)}</span>
+            </div>
           </div>
         </div>
-        <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
-            <span>Sessions collected</span><span>{currency(collected)}</span>
-          </div>
-          {tips > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
-              <span>Tips</span><span>{currency(tips)}</span>
-            </div>
-          )}
-          {refunds > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.redText, padding: '2px 0' }}>
-              <span>Refunds</span><span>-{currency(refunds)}</span>
-            </div>
-          )}
-          <div style={{
-            display: 'flex', justifyContent: 'space-between',
-            fontSize: 13, fontWeight: 700, color: T.forestDeep,
-            borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
-          }}>
-            <span>Net for {monthName}</span><span>{currency(net)}</span>
-          </div>
-        </div>
+        <ChevronPill open={open} />
       </button>
       {open && (
         <div style={{
@@ -2490,7 +2539,7 @@ function InsightCompare({ label = 'What this means', children }) {
 function InsightFooter({ children }) {
   return (
     <div style={{
-      fontSize: 11, color: T.gray400,
+      fontSize: 12, color: T.gray400,
       lineHeight: 1.5, fontStyle: 'italic',
     }}>{children}</div>
   );
@@ -2540,7 +2589,7 @@ function InsightStatRow({ stats }) {
             color: s.muted ? T.gray400 : T.forestDeep, lineHeight: 1,
           }}>{s.value}</div>
           {s.meta && (
-            <div style={{ fontSize: 11, color: T.gray500, marginTop: 4 }}>{s.meta}</div>
+            <div style={{ fontSize: 12, color: T.gray500, marginTop: 4 }}>{s.meta}</div>
           )}
         </div>
       ))}
@@ -2971,7 +3020,7 @@ export default function BillingDashboardV2({ sessions, therapist, onRefundClick 
           letterSpacing: '-0.02em', lineHeight: 1,
         }}>Billing</h2>
         <p style={{
-          fontSize: 12, color: T.gray500, fontWeight: 500,
+          fontSize: 13, color: T.gray500, fontWeight: 500,
           margin: '4px 0 0 0',
         }}>{TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
