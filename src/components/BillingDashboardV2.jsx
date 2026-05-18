@@ -1981,9 +1981,380 @@ function WeekGroupCard({ group, onRefundClick }) {
   );
 }
 
-function YearlyView(props) {
-  return <PeriodPlaceholder period="Yearly" {...props} />;
+// ─── YearlyView V2 ─────────────────────────────────────────────────
+//
+// Yearly differs from other periods:
+//   Hero has gross/refunds/net/processing breakdown below big number
+//   Band 3 becomes "Tax prep" (export, 1099-K, deductibles)
+//   Shape is 12 monthly bars + seasonality note
+//   Band 6 groups by month
+//   Period chips are years
+//
+// Per BENCHMARKS.md, Stripe processing fees are 2.9% + $0.30 per
+// card transaction. We compute the year-end estimate from the
+// stripe_card_on_file and stripe_card_new payments.
+function YearlyView({ sessions, therapist, onRefundClick }) {
+  const [yearOffset, setYearOffset] = useState(0);
+
+  const now = new Date();
+  const year = now.getFullYear() + yearOffset;
+  const yearStart = new Date(year, 0, 1);
+  yearStart.setHours(0, 0, 0, 0);
+  const yearEndExcl = new Date(year + 1, 0, 1);
+
+  const yearSessions = sessions.filter(s => s.date >= yearStart && s.date < yearEndExcl);
+
+  // Comparison: prior year, same N months elapsed if current year, else full.
+  const isCurrentYear = yearOffset === 0;
+  const prevYearStart = new Date(year - 1, 0, 1);
+  prevYearStart.setHours(0, 0, 0, 0);
+  const prevYearEnd = isCurrentYear
+    ? new Date(year - 1, now.getMonth(), now.getDate() + 1)
+    : new Date(year, 0, 1);
+  const prevYearSessions = sessions.filter(s => s.date >= prevYearStart && s.date < prevYearEnd);
+
+  // Gross, refunds, net, processing computation.
+  const gross = sumCollected(yearSessions);
+  const refunds = sumRefunds(yearSessions);
+  const net = gross - refunds;
+  const processingFees = estimateProcessingFees(yearSessions);
+  const prevGross = sumCollected(prevYearSessions);
+
+  // Hero breakdown: gross / refunds / net / processing in two rows of 3.
+  // Built as separate rows below the big number for visual clarity.
+  const heroBreakdown = [
+    { label: 'Gross', value: currency(gross) },
+    { divider: '−' },
+    { label: 'Refunds', value: currency(refunds), minus: true },
+  ];
+  const heroBreakdown2 = [
+    { label: 'Net', value: currency(net) },
+    { divider: '−' },
+    { label: 'Processing', value: currency(processingFees), minus: true },
+  ];
+
+  const methods = buildMethodBreakdown(yearSessions);
+  const tips = buildTipMetrics(yearSessions);
+
+  // Tax-prep band (replaces Attention).
+  const taxPrep = buildTaxPrepBand(yearSessions, tips, refunds);
+
+  // Shape: 12 monthly bars.
+  const shapeBars = buildYearlyShapeBars(yearSessions, year);
+  const paceLine = buildYearlyPaceLine(year);
+
+  // Year selector chips.
+  const chips = buildYearlyChips(sessions, yearOffset, now.getFullYear());
+
+  // Sessions grouped by month.
+  const sessionsByMonth = groupByMonth(yearSessions, year);
+
+  const yearLabel = isCurrentYear ? `${year} year to date` : `${year}`;
+  const heroLabel = isCurrentYear ? `Gross collected in ${year}` : `Collected in ${year}`;
+
+  return (
+    <div>
+      {/* Hero with gross/refunds/net/processing breakdown */}
+      <YearlyHero
+        label={heroLabel}
+        amount={gross}
+        prevAmount={prevGross > 0 ? prevGross : null}
+        breakdown1={heroBreakdown}
+        breakdown2={heroBreakdown2}
+      />
+      <ShapeChart
+        title={`${year} seasonality`}
+        bars={shapeBars}
+        paceLine={paceLine}
+      />
+      {taxPrep.length > 0 && <AttentionBand items={taxPrep} />}
+      <BreakdownRow methods={methods} tips={tips} />
+      <OtherMoneyCollapsible sessions={yearSessions} periodLabel={`in ${year}`} />
+      <PeriodChips
+        chips={chips}
+        onPick={c => setYearOffset(c.yearOffset)}
+      />
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500,
+        marginBottom: 10, paddingLeft: 4,
+      }}>{year}, by month</div>
+      {sessionsByMonth.length === 0 ? (
+        <div style={{
+          background: '#FFFFFF', borderRadius: 14, padding: 32,
+          textAlign: 'center', color: T.gray400, fontSize: 14, marginBottom: 16,
+          boxShadow: T.shadowSoft,
+        }}>No sessions this year.</div>
+      ) : (
+        sessionsByMonth.map(group => (
+          <MonthGroupCard key={group.monthIndex} group={group} onRefundClick={onRefundClick} />
+        ))
+      )}
+      <DeepDiveSection sessions={sessions} periodLabel={yearLabel} therapist={therapist} />
+    </div>
+  );
 }
+
+// YearlyHero is slightly different from HeroNumber: it has two
+// breakdown rows (gross/refunds and net/processing).
+function YearlyHero({ label, amount, prevAmount, breakdown1, breakdown2 }) {
+  const delta = (amount || 0) - (prevAmount || 0);
+  const hasComparison = prevAmount !== null && prevAmount !== undefined;
+  const deltaPct = prevAmount > 0 ? Math.round((delta / prevAmount) * 100) : null;
+
+  return (
+    <div style={{
+      background: `linear-gradient(160deg, ${T.cream} 0%, #FBF7EC 50%, ${T.creamDeep} 100%)`,
+      borderRadius: 22,
+      padding: '22px 24px 20px',
+      marginBottom: 16,
+      position: 'relative',
+      border: `1px solid ${T.creamEdge}`,
+      overflow: 'hidden',
+    }}>
+      <div style={{
+        position: 'absolute',
+        top: -40, right: -30,
+        width: 130, height: 130,
+        background: 'radial-gradient(circle, rgba(107, 158, 128, 0.18) 0%, transparent 65%)',
+        borderRadius: '50%',
+        pointerEvents: 'none',
+      }} />
+      <div style={{
+        fontSize: 11, fontWeight: 600, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500, marginBottom: 8,
+        position: 'relative',
+      }}>{label}</div>
+      <div style={{
+        fontFamily: T.serif, fontSize: 56, fontWeight: 600,
+        color: T.forestDeep, lineHeight: 1, letterSpacing: '-0.02em',
+        marginBottom: 10, display: 'flex', alignItems: 'baseline',
+        position: 'relative',
+      }}>
+        <span style={{ fontSize: 28, fontWeight: 500, color: T.forest, marginRight: 2, alignSelf: 'flex-start', marginTop: 8 }}>$</span>
+        <span>{Number(amount || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+      </div>
+      {hasComparison && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: T.gray700, position: 'relative' }}>
+          {delta >= 0 ? (
+            <span style={{ color: T.sage, fontWeight: 700 }}>↑ {currency(delta)}</span>
+          ) : (
+            <span style={{ color: T.rose, fontWeight: 700 }}>↓ {currency(delta)}</span>
+          )}
+          {deltaPct !== null && (
+            <span style={{ color: T.gray500 }}>
+              ({delta >= 0 ? '+' : ''}{deltaPct}%) vs prior year same period
+            </span>
+          )}
+        </div>
+      )}
+      {/* Two breakdown rows */}
+      <div style={{
+        marginTop: 14, paddingTop: 12,
+        borderTop: `1px dashed ${T.creamEdge}`,
+        position: 'relative',
+      }}>
+        <NetBreakdownRow cells={breakdown1} />
+        <div style={{ marginTop: 8 }}>
+          <NetBreakdownRow cells={breakdown2} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Estimate processing fees based on Stripe's 2.9% + $0.30 per transaction.
+// Only applies to stripe_* payment methods. Source: BENCHMARKS.md.
+function estimateProcessingFees(sessions) {
+  let total = 0;
+  sessions.forEach(s => {
+    if (s.status === 'paid' && s.method && s.method.startsWith('stripe_')) {
+      const amount = (s.base != null ? s.base : (s.actual || 0)) + (s.tip || 0);
+      if (amount > 0) {
+        total += (amount * 0.029) + 0.30;
+      }
+    }
+  });
+  return total;
+}
+
+// Tax prep band: export prompt, tips total, refunds deductible.
+function buildTaxPrepBand(yearSessions, tipMetrics, refundsTotal) {
+  const items = [];
+  items.push({
+    icon: '📋', iconBg: T.creamDeep, iconColor: T.forest,
+    title: 'Year-end summary preview',
+    sub: 'Ready for tax filing materials',
+    action: 'Open',
+  });
+  if (tipMetrics.dollars > 0) {
+    items.push({
+      icon: '📊', iconBg: T.creamDeep, iconColor: T.forest,
+      title: `${currency(tipMetrics.dollars)} in tips this year`,
+      sub: 'Tracked for 1099-K reporting',
+      action: 'Detail',
+    });
+  }
+  if (refundsTotal > 0) {
+    items.push({
+      icon: '↩', iconBg: T.redBg, iconColor: T.redText,
+      title: `${currency(refundsTotal)} refunded this year`,
+      sub: 'Deductible from gross revenue',
+      action: 'View',
+    });
+  }
+  return items;
+}
+
+// 12 monthly bars for shape chart.
+function buildYearlyShapeBars(yearSessions, year) {
+  const bars = [];
+  const monthLabels = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+  for (let m = 0; m < 12; m++) {
+    const monthStart = new Date(year, m, 1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthEndExcl = new Date(year, m + 1, 1);
+    const monthSessions = yearSessions.filter(s => s.date >= monthStart && s.date < monthEndExcl);
+    const collected = sumCollected(monthSessions);
+    const isCurrent = TODAY.getFullYear() === year && TODAY.getMonth() === m;
+    const isFuture = monthStart > TODAY;
+    bars.push({
+      value: collected,
+      label: monthLabels[m],
+      kind: isCurrent ? 'today' : isFuture ? 'future' : 'past',
+    });
+  }
+  return bars;
+}
+
+function buildYearlyPaceLine(year) {
+  // Hard to know seasonality from data with only ~6 months. Show a
+  // calm note for the current year, nothing for past years.
+  const isCurrentYear = year === TODAY.getFullYear();
+  if (!isCurrentYear) return null;
+  const month = TODAY.getMonth();
+  if (month < 3) {
+    return <span>Most solo LMTs see Q1 build slowly. March tends to be a strong month.</span>;
+  }
+  if (month >= 10) {
+    return <span>December typically slows 15-20% below average. Plan accordingly.</span>;
+  }
+  return null;
+}
+
+function buildYearlyChips(allSessions, selectedOffset, currentYear) {
+  const chips = [];
+  for (let i = -3; i <= 0; i++) {
+    const offset = selectedOffset + i;
+    const year = currentYear + offset;
+    const yStart = new Date(year, 0, 1);
+    yStart.setHours(0, 0, 0, 0);
+    const yEndExcl = new Date(year + 1, 0, 1);
+    const ySessions = allSessions.filter(s => s.date >= yStart && s.date < yEndExcl);
+    const collected = sumCollected(ySessions);
+    const count = ySessions.filter(s =>
+      s.source !== 'cancellation_fee' && s.source !== 'refund' && s.status !== 'no_show'
+    ).length;
+    const isFutureOrCurrent = year >= currentYear;
+    const isCurrent = year === currentYear;
+    chips.push({
+      label: String(year),
+      value: collected >= 1000 ? `$${(collected / 1000).toFixed(0)}k` : currency(collected),
+      meta: isCurrent ? 'YTD' : `${count} sess`,
+      active: offset === selectedOffset,
+      yearOffset: offset,
+    });
+  }
+  return chips;
+}
+
+// Group sessions by month within a year, return desc.
+function groupByMonth(yearSessions, year) {
+  const map = new Map();
+  yearSessions
+    .filter(s => s.source !== 'cancellation_fee')
+    .forEach(s => {
+      const monthIndex = s.date.getMonth();
+      if (!map.has(monthIndex)) {
+        map.set(monthIndex, { monthIndex, year, items: [] });
+      }
+      map.get(monthIndex).items.push(s);
+    });
+  return Array.from(map.values()).sort((a, b) => b.monthIndex - a.monthIndex);
+}
+
+// Month group card: shows the month summary + tap to expand to sessions.
+function MonthGroupCard({ group, onRefundClick }) {
+  const [open, setOpen] = useState(false);
+  const collected = sumCollected(group.items);
+  const tips = group.items.reduce((s, x) =>
+    s + (x.status === 'paid' && x.source !== 'cancellation_fee' && x.source !== 'refund' ? (x.tip || 0) : 0), 0);
+  const refunds = sumRefunds(group.items);
+  const sessionCount = group.items.filter(s => s.status === 'paid' && s.source === 'payment').length;
+  const monthName = new Date(group.year, group.monthIndex, 1)
+    .toLocaleDateString('en-US', { month: 'long' });
+  const isCurrentMonth = TODAY.getFullYear() === group.year && TODAY.getMonth() === group.monthIndex;
+  const label = isCurrentMonth ? `${monthName} (so far)` : monthName;
+  const net = collected - refunds;
+
+  // Mark "best month" if this is the highest collected.
+  // Caller responsibility, but we don't know context. Skip for now.
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 14,
+      marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+    }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', padding: '14px 16px', cursor: 'pointer',
+        background: 'transparent', border: 'none', textAlign: 'left',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <div style={{
+            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.1,
+          }}>{label}</div>
+          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
+            {sessionCount} session{sessionCount !== 1 ? 's' : ''}{open ? ' ▴' : ' ▾'}
+          </div>
+        </div>
+        <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
+            <span>Sessions collected</span><span>{currency(collected)}</span>
+          </div>
+          {tips > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
+              <span>Tips</span><span>{currency(tips)}</span>
+            </div>
+          )}
+          {refunds > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.redText, padding: '2px 0' }}>
+              <span>Refunds</span><span>-{currency(refunds)}</span>
+            </div>
+          )}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: 13, fontWeight: 700, color: T.forestDeep,
+            borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
+          }}>
+            <span>Net for {monthName}</span><span>{currency(net)}</span>
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div style={{
+          borderTop: `1px solid ${T.creamDeep}`,
+          padding: '8px 12px 12px',
+        }}>
+          {group.items
+            .sort((a, b) => b.date - a.date)
+            .map(s => <ReceiptCard key={s.id} session={s} onRefundClick={onRefundClick} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function InsightsView(props) {
   return <PeriodPlaceholder period="Insights" {...props} />;
 }
