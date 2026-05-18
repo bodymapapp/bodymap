@@ -1949,18 +1949,30 @@ export default function ScheduleDashboard({ therapist }) {
   // onScheduleAtTime callback to hand control here.
   const [pendingBookingTime, setPendingBookingTime] = useState(null);  // {date, startTime}
 
-  // Preview-data toggle (HK May 18 2026): Candice asked "How do I
-  // get it off preview mode?" The sample data appears whenever
-  // upcoming real bookings < 3 (see showSample logic below) which
-  // confused her. This toggle lets the therapist turn off samples
-  // entirely. Default true so brand-new accounts still get the
-  // populated demo on day one. Persists to therapists.show_preview_data.
+  // Preview-data toggle (HK May 18 2026, simplified per HK May 18
+  // feedback): one boolean. Therapist taps to flip. Persists to
+  // therapists.show_preview_data. Does NOT auto-sync from the
+  // therapist prop on re-render, because that overwrote the
+  // therapist's own choice with stale data from the parent's last
+  // fetch. The therapist is the source of truth once they tap.
+  //
+  // Initial value: read from therapist.show_preview_data if present,
+  // otherwise true (ON by default for brand-new accounts so the
+  // populated demo still works on day one). The useEffect ONLY fires
+  // when therapist.id changes (account switch), not on every render.
   const [showPreviewData, setShowPreviewData] = useState(
     therapist?.show_preview_data !== false
   );
+  const lastSyncedTherapistId = useRef(therapist?.id);
   useEffect(() => {
-    setShowPreviewData(therapist?.show_preview_data !== false);
-  }, [therapist?.show_preview_data]);
+    // Only re-read from props when a different therapist loads
+    // (account switch in a multi-account scenario). Within a single
+    // therapist's session, the user's tap is authoritative.
+    if (therapist?.id && therapist.id !== lastSyncedTherapistId.current) {
+      setShowPreviewData(therapist?.show_preview_data !== false);
+      lastSyncedTherapistId.current = therapist.id;
+    }
+  }, [therapist?.id, therapist?.show_preview_data]);
 
   async function togglePreviewData() {
     const next = !showPreviewData;
