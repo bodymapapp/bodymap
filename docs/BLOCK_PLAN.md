@@ -12,20 +12,24 @@ materials for a specific block.
 
 ## Summary
 
-**TOMORROW MORNING TOP PRIORITY (May 18 2026, BEFORE real therapist live).**
-1. **NOTIFICATION REGRESSION INVESTIGATION.** HK reported: zero notifications fired (no email, no push, no SMS) across all the bookings, cancellations, and refunds tested in the Phase 12-14 marathon. The notification stack was verified end-to-end this morning (6 of 7 channels green) but something broke during the afternoon refactor. **Diagnose root cause before therapist Healing Hands BM1 starts using the platform live.** Most likely suspects: (1) Phase 13.3 client_id schema migration broke a join, (2) Phase 14.x data layer rewrite removed a trigger point, (3) notification_log rows being written but channel-send failing silently.
-
 **Currently active.** What is being worked or is ready to start the moment you OK it.
-1. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
-2. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
-3. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
-4. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
+1. **Verify Phase 15 notification fires end-to-end with the live therapist's first sessions.** Spec, edge functions, and fire points all wired May 18 2026 morning. Healing Hands BM1 should now receive notifications for bookings, payments, refunds. Monitor first real activity to confirm.
+2. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
+3. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
+4. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
+5. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
 
 **Externally blocked.** Waiting on something we don't control.
 - Google OAuth app verification (waiting on 5+ test therapists + reachable privacy/terms URLs)
 - Optional client portal (waiting on 3+ founding-therapist requests; currently 1)
 - Twilio onboarding friction (escalation tripwire: 3 handhold requests in one month)
 - Twilio A2P 10DLC Brand registration stuck in review with TCR (blocks all US SMS)
+
+**Recently shipped (May 18 2026 morning, Phase 15 notification gap audit).**
+- Phase 15.1: BookingModal fires send-booking-confirmation for therapist-created bookings + reschedules (was completely silent before)
+- Phase 15.2: New `notify-payment-event` edge function. Wired into CheckoutModal (card-on-file + new-card paths) and MarkAsPaidModal (all offline methods). Therapist + Client fan-out.
+- Phase 15.3: New `notify-refund-event` edge function. Wired into refund-session-payment (offline + Stripe paths) and stripe-refund-webhook (external refunds). One fire per refund regardless of initiator. `refund_issued` added to notificationSpec for matrix coverage.
+- Diagnosis: prior 'no notifications fired' issue was a buildout gap, not a regression. Phase 12 introduced CheckoutModal without notification wiring. Phase 14.3 introduced refunds without notification wiring. Public booking page always worked. Therapist-side surfaces never did.
 
 **Recently shipped (May 17 2026 marathon, both sessions).**
 - Notification Compliance Dashboard end-to-end (Phases 11.1-11.7)
