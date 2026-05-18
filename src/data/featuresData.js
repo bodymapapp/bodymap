@@ -326,6 +326,18 @@ export const RIBBONS = [
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
     cards: [
       {
+        id: "5.1",
+        name: "Reliable reminders, not bolted-on",
+        automated: true,
+        customRender: 'notifications-journey',
+        body: [
+          "30 automated touchpoints map every moment of your client's lifetime journey, from the first booking to a graceful goodbye. SMS, email, in-app, and push. Configurable timing. Smart fallbacks when a channel fails.",
+          "We built the notification engine in-house. No third-party reminder service to blame when a 24-hour reminder doesn't go out. If something fails, <strong>you</strong> get notified, not your client.",
+          'Built in response to Maddy, a working LMT who lost real revenue last month because her old platform\'s third-party reminder service silently dropped sends and the support team said her clients should have written the appointment in their own calendars.',
+        ],
+        meta: "30 touchpoints · 4 channels · Failure alerts to you, not the client",
+      },
+      {
         id: "5.0",
         name: "Personalized campaign emails",
         automated: false,
@@ -336,16 +348,6 @@ export const RIBBONS = [
           'MassageBook publicly admits this works in their automated emails but not their campaigns. We do both.',
         ],
         meta: "Email · 8 Platform starters · 7 personalization tokens · Send history",
-      },
-      {
-        id: "5.1",
-        name: "Automated reminders",
-        automated: true,
-        body: [
-          "SMS and email reminders sent automatically. 24 hours before, 2 hours before, however you set it. Includes the intake link if they have not filled it.",
-          'The "did I confirm with Sarah?" anxiety just disappears.',
-        ],
-        meta: "SMS · Email · Configurable timing",
       },
       {
         id: "5.2",
