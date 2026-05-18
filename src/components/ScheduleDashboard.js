@@ -6,7 +6,8 @@ import SmartBookingRail from './schedule/SmartBookingRail';
 import InlineTimeInput from './InlineTimeInput';
 import CloseButton from './CloseButton';
 import CheckoutModal from './CheckoutModal';
-import MarkAsPaidModal from './MarkAsPaidModal';
+// MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
+// folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
@@ -48,9 +49,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
   const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
   const [savingTime, setSavingTime] = useState(false);
-  // Phase 12: Checkout + Mark as paid modals
+  // Phase 12: Checkout modal. Phase 19 (May 18 2026) folded MarkAsPaid
+  // into the same modal so there is now just one charge modal.
   const [showCheckout, setShowCheckout] = useState(false);
-  const [showMarkPaid, setShowMarkPaid] = useState(false);
   // Phase 14.3b (HK May 17 2026): in-app refund. refundTarget holds
   // the session_payments row to be refunded; setting it null closes
   // the modal.
@@ -525,21 +526,6 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                       }}>
                       Checkout
                     </button>
-                    <button onClick={()=>setShowMarkPaid(true)}
-                      style={{
-                        width:'100%',
-                        background:'#fff',
-                        color:'#2A5741',
-                        border:'1.5px solid #2A5741',
-                        borderRadius:12,
-                        padding:'12px 18px',
-                        fontSize:15,
-                        fontWeight:600,
-                        cursor:'pointer',
-                        letterSpacing:'0.01em',
-                      }}>
-                      Mark as paid
-                    </button>
                   </div>
                 )}
               </>
@@ -611,16 +597,6 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           client={clientRow}
           defaultAmountCents={defaultAmountCents}
           onClose={() => setShowCheckout(false)}
-          onPaid={() => { refreshPayments(); }}
-        />
-      )}
-      {showMarkPaid && (
-        <MarkAsPaidModal
-          appt={appt}
-          therapist={therapist}
-          client={clientRow}
-          defaultAmountCents={defaultAmountCents}
-          onClose={() => setShowMarkPaid(false)}
           onPaid={() => { refreshPayments(); }}
         />
       )}
