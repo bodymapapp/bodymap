@@ -433,33 +433,46 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         return 'Other';
                       }).join(' · ')}
                     </div>
-                    <div style={{display:'flex',gap:14,marginLeft:38,alignItems:'center'}}>
+                    {/* Phase 14.3k (HK May 17 2026 late): both actions are
+                        now proper outlined buttons inside the paid card.
+                        Therapist asked the Refund button be 10x better.
+                        Done: real button shapes with sage-green outline,
+                        equal sizing, side by side. Discoverable peers. */}
+                    <div style={{display:'flex',gap:8,marginTop:6,marginLeft:38}}>
                       <button onClick={()=>setShowCheckout(true)}
-                        style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
-                        + Add another payment
+                        style={{
+                          flex:1,
+                          background:'#fff',
+                          color:'#2A5741',
+                          border:'1.5px solid #B7D1AB',
+                          borderRadius:10,
+                          padding:'10px 12px',
+                          fontSize:13,
+                          fontWeight:600,
+                          cursor:'pointer',
+                        }}>
+                        + Add payment
                       </button>
-                      {/* Phase 14.3b (HK May 17 2026): refund the most
-                          recent succeeded payment on this booking.
-                          Works for both Stripe and offline payments;
-                          the modal handles the branching internally
-                          (Stripe calls the refund API, cash/Venmo/etc
-                          just flips the local row).
-                          Phase 14.3h (HK May 17 2026 late): visual weight
-                          matches "Add another payment" so the therapist
-                          sees it as a real peer action, not decorative. */}
                       {(() => {
                         const refundable = paymentRows
                           .filter(p => p.status === 'succeeded')
                           .slice(-1)[0];
                         if (!refundable) return null;
                         return (
-                          <>
-                            <span style={{color:'#B7D1AB',fontSize:14,fontWeight:300}}>·</span>
-                            <button onClick={() => setRefundTarget({ ...refundable, client_name: appt.client })}
-                              style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
-                              Refund
-                            </button>
-                          </>
+                          <button onClick={() => setRefundTarget({ ...refundable, client_name: appt.client })}
+                            style={{
+                              flex:1,
+                              background:'#fff',
+                              color:'#B91C1C',
+                              border:'1.5px solid #FCA5A5',
+                              borderRadius:10,
+                              padding:'10px 12px',
+                              fontSize:13,
+                              fontWeight:600,
+                              cursor:'pointer',
+                            }}>
+                            Refund
+                          </button>
                         );
                       })()}
                     </div>
@@ -1032,9 +1045,9 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
               return (
                 <div key={appt.id} data-appt-card="1" onClick={()=>setSelected(isSel?null:appt)}
                   style={{position:'absolute',top:y,left:2,right:2,height:bh,
-                    background:appt.preview?'#F9FAFB':(appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':'#FEF3C7'),
-                    border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':st.dot}`,
-                    borderLeft:`4px solid ${appt.preview?'#CBD5E1':st.dot}`,
+                    background:appt.preview?'#F9FAFB':(appt.paid?'#F0F6EE':appt.status==='intake-done'?'#DCFCE7':appt.status==='complete'?'#F3F4F6':'#FEF3C7'),
+                    border:`1.5px ${appt.preview?'dashed':'solid'} ${appt.preview?'#D1D5DB':appt.paid?'#B7D1AB':st.dot}`,
+                    borderLeft:`4px solid ${appt.preview?'#CBD5E1':appt.paid?'#2A5741':st.dot}`,
                     borderRadius:10,cursor:'pointer',overflow:'hidden',
                     opacity:appt.preview?0.5:isPast?0.6:1,
                     boxShadow:isSel?'0 4px 20px rgba(0,0,0,0.15)':appt.preview?'none':'0 2px 8px rgba(0,0,0,0.07)',
@@ -1057,7 +1070,8 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                     {bh>72&&(
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                         <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
-                        {!appt.preview&&appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:9,fontWeight:700,color:'#D97706',background:'#FEF3C7',borderRadius:20,padding:'2px 8px'}}>💳 Deposit due</div>}
+                        {!appt.preview&&appt.paid&&<div style={{fontSize:10,fontWeight:700,color:'#15803D',background:'#DCFCE7',borderRadius:20,padding:'2px 8px',display:'flex',alignItems:'center',gap:3}}>✓ Paid ${(appt.paid_cents/100).toFixed(0)}</div>}
+                        {!appt.preview&&!appt.paid&&appt.deposit_required&&!appt.deposit_paid&&<div style={{fontSize:9,fontWeight:700,color:'#D97706',background:'#FEF3C7',borderRadius:20,padding:'2px 8px'}}>💳 Deposit due</div>}
                         {!appt.preview&&appt.status==='intake-done'&&<div style={{fontSize:10,fontWeight:700,color:'#2A5741',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Brief ready →</div>}
                       </div>
                     )}
@@ -2043,6 +2057,24 @@ export default function ScheduleDashboard({ therapist }) {
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
 
+      // Phase 14.3j (HK May 17 2026 late): also fetch session_payments to
+      // know which bookings have been paid. Without this, the timeline
+      // can't visually distinguish paid bookings (real money received)
+      // from unpaid confirmed bookings. Both rendered identical yellow
+      // cards before this fix.
+      const { data: bookingPayments } = await supabase
+        .from('session_payments')
+        .select('booking_id, status, amount_cents, tip_cents')
+        .eq('therapist_id', therapist.id)
+        .in('booking_id', bookingIds);
+      const paidMap = {};
+      (bookingPayments || []).forEach(p => {
+        if (!p.booking_id) return;
+        if (p.status !== 'succeeded') return;
+        const cents = (p.amount_cents || 0) + (p.tip_cents || 0);
+        paidMap[p.booking_id] = (paidMap[p.booking_id] || 0) + cents;
+      });
+
       // booking_id → session_id
       const sessionMap = {};
       (sessions || []).forEach(s => {
@@ -2096,6 +2128,10 @@ export default function ScheduleDashboard({ therapist }) {
           partner_email: b.partner_email || null,
           endTime: (b.end_time || '').slice(0,5),
           startTime: (b.start_time || '').slice(0,5),
+          // Phase 14.3j: paid flag derived from session_payments rows.
+          // Used by the timeline card style to color paid bookings.
+          paid: (paidMap[b.id] || 0) > 0,
+          paid_cents: paidMap[b.id] || 0,
         };
       });
 
