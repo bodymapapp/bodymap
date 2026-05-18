@@ -13,11 +13,12 @@ materials for a specific block.
 ## Summary
 
 **Currently active.** What is being worked or is ready to start the moment you OK it.
-1. **Verify Phase 15 notification fires end-to-end with the live therapist's first sessions.** Spec, edge functions, and fire points all wired May 18 2026 morning. Healing Hands BM1 should now receive notifications for bookings, payments, refunds. Monitor first real activity to confirm.
-2. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
-3. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
-4. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
-5. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
+1. **Billing Dashboard Redesign (Phase A-E, 8.5 hrs across sessions).** Strategy doc shipped May 18 at [`docs/BILLING_DASHBOARD_STRATEGY.md`](./BILLING_DASHBOARD_STRATEGY.md). HK to review and approve before Phase A coding begins. Phase A = Daily page redesign with 6-band layout + receipt-style session cards (~3 hrs). Persona-led design for Maria, the 67-year-old solo LMT. Industry inspiration from Square, Stripe, GlossGenius, Mindbody, Monarch, Apple Wallet. Insights tab as separate beast in Phase D. HK quote: 'These chats on the block plan. So maybe remind me. And maybe four, five hours to do these chats. Full stop.' Reminder set for 4-5 hour estimate per session block.
+2. **Verify Phase 15 notification fires end-to-end with the live therapist's first sessions.** Spec, edge functions, and fire points all wired May 18 2026 morning. Healing Hands BM1 should now receive notifications for bookings, payments, refunds. Monitor first real activity to confirm.
+3. **Notification system, Phase 1: payment received + new client signup.** Backend `notification_log` + `notification_prefs` already wired; missing the actual fire points and an in-app surface. Macro Platform Improvement #1.
+4. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
+5. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
+6. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
 
 **Externally blocked.** Waiting on something we don't control.
 - Google OAuth app verification (waiting on 5+ test therapists + reachable privacy/terms URLs)
