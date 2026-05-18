@@ -332,32 +332,66 @@ export async function notifyClient({
 
   // ─── Channel 1: SMS via Twilio (primary by design) ─────────────
   if (smsText && client.phone) {
-    // Quiet-hours guard: don't send SMS between 21:00 and 08:00
-    // server local time. For v1 we use server time; client-local
-    // time requires storing client timezone, which we don't always
-    // have. Most US therapists in same TZ as their clients.
-    const hr = new Date().getHours();
-    const inQuietHours = (hr >= 21 || hr < 8);
-
-    if (respectQuietHours && inQuietHours) {
-      result.sms = { ok: true, skipped: 'quiet_hours' };
+    // Macro #12 (HK May 18 2026): SMS opt-out compliance. If the
+    // client has texted STOP to the therapist's Twilio number (or
+    // their record has been opted out manually), don't attempt the
+    // send. Twilio's own network would reject it anyway; this saves
+    // an API call and keeps the compliance log clean.
+    if (client.sms_opted_out_at) {
+      result.sms = { ok: true, skipped: 'client_opted_out' };
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: bookingId || null,
+        client_id: client.id || null,
+        session_id: sessionId || null,
+        notification_type: eventType,
+        audience: 'client',
+        channel: 'sms',
+        recipient: client.phone || null,
+        status: 'skipped',
+        provider_id: null,
+        body_snippet: (smsText || '').slice(0, 200),
+        error_message: 'client_opted_out',
+      });
     } else {
-      result.sms = await sendSmsViaTwilio(therapist, client.phone, smsText);
+      // Quiet-hours guard: don't send SMS between 21:00 and 08:00
+      // server local time. For v1 we use server time; client-local
+      // time requires storing client timezone, which we don't always
+      // have. Most US therapists in same TZ as their clients.
+      const hr = new Date().getHours();
+      const inQuietHours = (hr >= 21 || hr < 8);
+
+      // Macro #12 (HK May 18 2026): CTIA-required opt-out disclosure.
+      // Every SMS to a client gets "Reply STOP to opt out." appended
+      // unless the message already contains "STOP" in caps (indicating
+      // the disclosure or HELP language is already inline). The
+      // additional 26 chars per message is well under the 160-char
+      // SMS segment boundary for most of our notification copy.
+      const needsDisclosure = !smsText.includes('STOP');
+      const finalSmsText = needsDisclosure
+        ? `${smsText}\n\nReply STOP to opt out.`
+        : smsText;
+
+      if (respectQuietHours && inQuietHours) {
+        result.sms = { ok: true, skipped: 'quiet_hours' };
+      } else {
+        result.sms = await sendSmsViaTwilio(therapist, client.phone, finalSmsText);
+      }
+      await logNotification(supabase, {
+        therapist_id: therapist.id,
+        booking_id: bookingId || null,
+        client_id: client.id || null,
+        session_id: sessionId || null,
+        notification_type: eventType,
+        audience: 'client',
+        channel: 'sms',
+        recipient: client.phone || null,
+        status: result.sms?.ok && !result.sms?.skipped ? 'sent' : (result.sms?.skipped ? 'skipped' : 'failed'),
+        provider_id: result.sms?.sid || null,
+        body_snippet: (finalSmsText || '').slice(0, 200),
+        error_message: result.sms?.error || result.sms?.skipped || null,
+      });
     }
-    await logNotification(supabase, {
-      therapist_id: therapist.id,
-      booking_id: bookingId || null,
-      client_id: client.id || null,
-      session_id: sessionId || null,
-      notification_type: eventType,
-      audience: 'client',
-      channel: 'sms',
-      recipient: client.phone || null,
-      status: result.sms?.ok && !result.sms?.skipped ? 'sent' : (result.sms?.skipped ? 'skipped' : 'failed'),
-      provider_id: result.sms?.sid || null,
-      body_snippet: (smsText || '').slice(0, 200),
-      error_message: result.sms?.error || result.sms?.skipped || null,
-    });
   } else {
     result.sms = { ok: true, skipped: !smsText ? 'no_sms_text' : 'no_client_phone' };
   }
