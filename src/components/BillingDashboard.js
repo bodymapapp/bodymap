@@ -1078,11 +1078,25 @@ export default function BillingDashboard({ therapist }) {
       // Add 'outstanding' / 'pending' synthetic sessions for completed
       // bookings with no corresponding session_payments row. This is
       // the leakage view: services rendered, money not yet captured.
+      // Phase 14.3i (HK May 17 2026 late): include confirmed bookings,
+      // not just completed ones. Real therapist starting tomorrow has
+      // 5 confirmed bookings for the day and no payments yet. Before
+      // this fix, Billing showed 0 sessions for that day because the
+      // filter only included status='completed'. Now: any booking
+      // that's confirmed-or-completed (and not paid through the
+      // platform) shows up as an outstanding/scheduled session in
+      // the Billing dashboard at its booking date, with expected
+      // revenue from the service price.
       const leakageSessions = (bookings || [])
-        .filter(b => b.status === 'completed' && !paidBookingIds.has(b.id))
+        .filter(b => (b.status === 'completed' || b.status === 'confirmed') && !paidBookingIds.has(b.id))
         .map(b => {
           const dateObj = new Date((b.booking_date || '') + 'T' + (b.start_time || '12:00:00'));
           const expected = b?.services?.price || data?.session_rate || DEFAULT_RATE;
+          // Past sessions without payment = outstanding (real money issue).
+          // Future sessions without payment = pending (scheduled, payment
+          // will come at checkout). Different mental model, different
+          // status colors.
+          const isPast = dateObj < new Date();
           return {
             id: `unpaid-${b.id}`,
             client: b.client_name || 'Client',
@@ -1093,7 +1107,7 @@ export default function BillingDashboard({ therapist }) {
             actual: 0,
             base: 0,
             tip: 0,
-            status: 'outstanding',
+            status: isPast ? 'outstanding' : 'pending',
             method: null,
             methodDetail: null,
             service: b?.services?.name || null,
