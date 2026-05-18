@@ -188,12 +188,17 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
     setSaving(true);
     try {
+      let bookingId = null;
+      let eventType = null;
+
       if (isReschedule && existingBooking?.id) {
         // Update existing booking date/time
         const { error: e } = await supabase.from('bookings')
           .update({ booking_date: date, start_time: slot.start, end_time: slot.end, notes })
           .eq('id', existingBooking.id);
         if (e) throw e;
+        bookingId = existingBooking.id;
+        eventType = 'booking_rescheduled';
       } else {
         // Insert new booking
         const svc = services.find(s => s.id === serviceId);
@@ -205,7 +210,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           email,
           phone,
         });
-        const { error: e } = await supabase.from('bookings').insert({
+        // Phase 15.1 (HK May 18 2026): capture the new booking id so we can
+        // fire booking-confirmation notifications right after. Prior to
+        // this, the insert was fire-and-forget, the id was lost, no
+        // notifications fired for therapist-created bookings. Real
+        // therapist Healing Hands BM1 hit this gap last night.
+        const { data: newBooking, error: e } = await supabase.from('bookings').insert({
           therapist_id:  therapist.id,
           service_id:    serviceId,
           client_id:     clientIdForBooking,
@@ -220,15 +230,52 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           deposit_required: false,
           deposit_amount:   0,
           deposit_paid:     false,
-        });
+        }).select('id').single();
         if (e) throw e;
+        bookingId = newBooking?.id || null;
+        eventType = 'booking_created';
       }
+
+      // Fire-and-forget: notify client and therapist. Never blocks UI.
+      // send-booking-confirmation handles channel fan-out via
+      // notification_log + notification_prefs. For reschedules we still
+      // call the same function with event_type so the matrix can group;
+      // the function reads booking_date + start_time fresh so the email
+      // reflects the NEW time, not the old.
+      if (bookingId) fireBookingConfirmation(bookingId, eventType);
+
       onSuccess?.();
       onClose();
     } catch (e) {
       setError(e.message || 'Something went wrong.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Phase 15.1 (HK May 18 2026): fire booking confirmation after a
+  // therapist-created booking or reschedule. Same edge function as
+  // the public booking page (BookingPage.fireBookingConfirmation).
+  // Fire-and-forget: errors are warned to console but never block UI.
+  async function fireBookingConfirmation(theBookingId, eventType) {
+    if (!theBookingId) return;
+    try {
+      const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+      const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      await fetch(`${supabaseUrl}/functions/v1/send-booking-confirmation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${anonKey}`,
+          'apikey': anonKey,
+        },
+        body: JSON.stringify({
+          booking_id: theBookingId,
+          event_type: eventType || 'booking_created',
+        }),
+      });
+    } catch (e) {
+      console.warn('send-booking-confirmation invocation failed:', e);
     }
   }
 
