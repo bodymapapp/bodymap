@@ -1,14 +1,6 @@
 // src/components/FeatureModal.jsx
 import { useEffect, useCallback } from "react";
 import { photoForId } from "../data/featuresData";
-import NotificationsJourney from './NotificationsJourney';
-
-// Custom visuals injected into specific feature modals. Keyed by the
-// card's `customRender` string in featuresData. When present, the
-// component renders below the body paragraphs in the modal.
-const CUSTOM_RENDERERS = {
-  'notifications-journey': NotificationsJourney,
-};
 
 /**
  * FeatureModal — bottom-sheet modal that opens when a card is tapped.
@@ -113,10 +105,6 @@ export default function FeatureModal({ card, ribbon, onClose }) {
                 <p key={i} dangerouslySetInnerHTML={{ __html: p }} />
               ))}
             </div>
-            {card.customRender && CUSTOM_RENDERERS[card.customRender] && (() => {
-              const C = CUSTOM_RENDERERS[card.customRender];
-              return <C />;
-            })()}
             {card.meta && (
               <div className="bm-feature-modal__meta">{card.meta}</div>
             )}

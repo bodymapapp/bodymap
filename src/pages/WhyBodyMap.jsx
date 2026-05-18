@@ -103,6 +103,15 @@ const ONLY_MBM = [
     photoId: "1.2",
   },
   {
+    id: "notifications-owned",
+    title: "Notifications built in-house, not outsourced",
+    body:
+      "30 automated touchpoints across the client journey. Email, SMS, in-app, and push. When something fails to deliver, you find out within minutes. Your client never gets blamed for not writing it down.",
+    proof:
+      "MassageBook routes their reminders through a third-party SMS provider and disclaims responsibility for delivery in their terms of service. When reminders silently fail (and they do), their support tells therapists their clients should have written the appointment in their own calendar. We built our notification engine ourselves: 30 touchpoints mapped to every stage of the client journey, status callbacks on every send, retries on failure, and an alert to YOU (not your client) the moment something goes wrong. There is no third party to blame. The accountability stays where it belongs.",
+    photoId: "5.1",
+  },
+  {
     id: "smart-scheduling",
     title: "Smart Scheduling that packs your day",
     body:

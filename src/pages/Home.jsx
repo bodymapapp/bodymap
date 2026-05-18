@@ -31,6 +31,7 @@ import AIDemo from "../components/demos/AIDemo";
 import AutomationHub from "../components/demos/AutomationHub";
 import CampaignsDemo from "../components/demos/CampaignsDemo";
 import GiftCardDemo from "../components/demos/GiftCardDemo";
+import NotificationsStepper from "../components/NotificationsStepper";
 import CycleScheduleDemo from "../components/demos/CycleScheduleDemo";
 import SmartScheduleDemo from "../components/demos/SmartScheduleDemo";
 import ServiceDaysDemo from "../components/demos/ServiceDaysDemo";
@@ -152,21 +153,23 @@ const RIBBONS = [
     id: "5",
     name: "Relationships",
     tagline: "Turn first-timers into regulars. Keep regulars coming back.",
-    // THREE demos shown as a carousel. ORDER: Gift cards is the
-    // hero (newest, highest-pull marketing surface), then Campaigns,
-    // then Automation. Updated May 2026 per HK directive.
+    // FOUR demos shown as a carousel. ORDER: Notifications stepper is
+    // the hero (May 18 2026 in response to Maddy's MassageBook horror
+    // story about silent reminder failures). Then Gift cards, then
+    // Campaigns, then Automation.
     demos: [
+      { kind: "component", component: NotificationsStepper, label: "30 notifications" },
       { kind: "component", component: GiftCardDemo, label: "Gift cards" },
       { kind: "component", component: CampaignsDemo, label: "Campaign starter" },
       { kind: "component", component: AutomationHub, label: "Automation flows" },
     ],
     layout: "demo-right",
     subFeatures: [
-      "Automated SMS + email reminders",
+      "30 automated notifications across the client journey",
+      "Failure alerts go to YOU, not your client",
       "Post-session thank-you with rebook link",
       "One-tap campaign drafts in 8 categories",
       "Lapsed client outreach, weekly digest",
-      "Gift cards: print-ready in any size or email instantly",
     ],
     cta: "Relationships features",
   },

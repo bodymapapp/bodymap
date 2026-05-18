@@ -329,7 +329,6 @@ export const RIBBONS = [
         id: "5.1",
         name: "Reliable reminders, not bolted-on",
         automated: true,
-        customRender: 'notifications-journey',
         body: [
           "30 automated touchpoints map every moment of your client's lifetime journey, from the first booking to a graceful goodbye. SMS, email, in-app, and push. Configurable timing. Smart fallbacks when a channel fails.",
           "We built the notification engine in-house. No third-party reminder service to blame when a 24-hour reminder doesn't go out. If something fails, <strong>you</strong> get notified, not your client.",
