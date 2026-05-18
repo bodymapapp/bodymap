@@ -27,7 +27,9 @@
 //   while HK validates the design and content. Once approved, V1
 //   gets deleted and V2 becomes the only Billing dashboard.
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
+import CheckoutModal from './CheckoutModal';
 
 // ─── Design tokens ─────────────────────────────────────────────────
 // Matches the mockup. Cream backgrounds, forest/sage palette, rose
@@ -2995,6 +2997,83 @@ function PeriodPlaceholder({ period }) {
 export default function BillingDashboardV2({ sessions, therapist, onRefundClick }) {
   const [subView, setSubView] = useState('daily');
 
+  // Phase 19 (HK May 18 2026): pending membership renewals. Therapist
+  // resolves each by tapping Charge (opens Checkout in subscription
+  // mode) or Waive (one-tap update, status='waived').
+  const [renewals, setRenewals] = useState([]);
+  const [renewalsLoading, setRenewalsLoading] = useState(true);
+  const [renewalToCharge, setRenewalToCharge] = useState(null); // { renewal, subscription, client }
+
+  async function fetchRenewals() {
+    if (!therapist?.id) return;
+    setRenewalsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('member_subscription_renewals')
+        .select(`
+          id, period_start, period_end, due_on, amount_due_cents, status,
+          member_subscription_id,
+          subscription:member_subscriptions(
+            id, monthly_price, monthly_session_credits, current_credits,
+            client_id, client_email, client_name, renewal_day_of_month,
+            membership:memberships(name)
+          )
+        `)
+        .eq('therapist_id', therapist.id)
+        .eq('status', 'pending')
+        .order('due_on', { ascending: true });
+      if (error) {
+        // Probably 'relation does not exist' pre-migration. Render
+        // empty and don't crash the rest of the billing dashboard.
+        console.warn('renewals fetch failed (migration may not be applied):', error.message);
+        setRenewals([]);
+      } else {
+        setRenewals(data || []);
+      }
+    } catch (e) {
+      console.warn('renewals fetch threw:', e);
+      setRenewals([]);
+    } finally {
+      setRenewalsLoading(false);
+    }
+  }
+
+  useEffect(() => { fetchRenewals(); }, [therapist?.id]);
+
+  async function waiveRenewal(renewalId) {
+    try {
+      await supabase.from('member_subscription_renewals').update({
+        status: 'waived',
+        resolved_at: new Date().toISOString(),
+        resolved_by_therapist_id: therapist.id,
+      }).eq('id', renewalId);
+      setRenewals(rs => rs.filter(r => r.id !== renewalId));
+    } catch (e) {
+      console.warn('waive failed:', e);
+    }
+  }
+
+  async function openChargeForRenewal(renewal) {
+    // Need the client row to satisfy CheckoutModal's prop requirements
+    // (client.id, client.email).
+    const sub = renewal.subscription;
+    let client = null;
+    if (sub?.client_id) {
+      const { data } = await supabase
+        .from('clients').select('id, email, phone, name, stripe_customer_id, payment_method_id, card_last4, card_brand')
+        .eq('id', sub.client_id).maybeSingle();
+      client = data;
+    }
+    if (!client) {
+      client = {
+        id: sub?.client_id || null,
+        email: sub?.client_email || null,
+        name: sub?.client_name || null,
+      };
+    }
+    setRenewalToCharge({ renewal, subscription: sub, client });
+  }
+
   const TABS = [
     { id: 'daily',    label: 'Daily' },
     { id: 'weekly',   label: 'Weekly' },
@@ -3025,6 +3104,87 @@ export default function BillingDashboardV2({ sessions, therapist, onRefundClick 
         }}>{TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
       </div>
 
+      {/* Phase 19: pending membership renewals. Hidden when none.
+          Each row has a Charge button (opens Checkout in subscription
+          mode) and a smaller Waive option. The card surfaces every
+          due/upcoming renewal so the therapist can resolve before
+          forgetting. */}
+      {!renewalsLoading && renewals.length > 0 && (
+        <div style={{
+          background: '#FEF7E8',
+          border: '1px solid #F0D89C',
+          borderRadius: 14,
+          padding: '14px 16px',
+          marginBottom: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+            <span style={{ fontSize: 18 }}>⏰</span>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#854F0B' }}>
+              {renewals.length === 1
+                ? '1 membership needs your action'
+                : `${renewals.length} memberships need your action`}
+            </div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {renewals.map(r => {
+              const subName = r.subscription?.membership?.name || 'Membership';
+              const clientName = r.subscription?.client_name || r.subscription?.client_email || 'Client';
+              const amount = (r.amount_due_cents / 100).toFixed(2);
+              const dueText = new Date(r.due_on + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              return (
+                <div key={r.id} style={{
+                  background: '#fff',
+                  border: '1px solid #F0E5C4',
+                  borderRadius: 10,
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: T.ink }}>{clientName}</div>
+                    <div style={{ fontSize: 11.5, color: T.gray500, marginTop: 1 }}>
+                      {subName} · ${amount} due {dueText}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => openChargeForRenewal(r)}
+                    style={{
+                      background: T.forestDeep,
+                      color: '#fff',
+                      border: 'none',
+                      padding: '7px 14px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}>
+                    Charge
+                  </button>
+                  <button
+                    onClick={() => waiveRenewal(r.id)}
+                    title="Waive this renewal (no charge this period)"
+                    style={{
+                      background: 'transparent',
+                      color: T.gray500,
+                      border: '1px solid transparent',
+                      padding: '7px 10px',
+                      borderRadius: 8,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}>
+                    Waive
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Period tabs */}
       <div style={{
         display: 'flex', gap: 2,
@@ -3052,6 +3212,22 @@ export default function BillingDashboardV2({ sessions, therapist, onRefundClick 
       {subView === 'monthly'  && <MonthlyView {...viewProps} />}
       {subView === 'yearly'   && <YearlyView {...viewProps} />}
       {subView === 'insights' && <InsightsView {...viewProps} />}
+
+      {/* Subscription Checkout (Phase 19). Opens when therapist taps
+          Charge on a pending renewal row above. Reuses the same
+          CheckoutModal that handles service charges; the modal
+          internally branches on subscription vs appt. */}
+      {renewalToCharge && (
+        <CheckoutModal
+          subscription={renewalToCharge.subscription}
+          renewal={renewalToCharge.renewal}
+          therapist={therapist}
+          client={renewalToCharge.client}
+          defaultAmountCents={renewalToCharge.renewal.amount_due_cents}
+          onClose={() => setRenewalToCharge(null)}
+          onPaid={() => { fetchRenewals(); }}
+        />
+      )}
     </div>
   );
 }

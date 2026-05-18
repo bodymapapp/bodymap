@@ -45,6 +45,11 @@ export default function MembershipCard({ client, therapist }) {
   const [renewalDate, setRenewalDate] = useState('');
   const [statusValue, setStatusValue] = useState('active');
   const [creditsRemaining, setCreditsRemaining] = useState('');
+  // Phase 19 (HK May 18 2026): renewal-day + notes + first-paid for
+  // the renewal-tracking flow.
+  const [renewalDay, setRenewalDay] = useState('');
+  const [notes, setNotes] = useState('');
+  const [firstMonthAlreadyPaid, setFirstMonthAlreadyPaid] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -94,6 +99,9 @@ export default function MembershipCard({ client, therapist }) {
       const credits = creditsRemaining !== ''
         ? Math.max(0, parseInt(creditsRemaining, 10) || 0)
         : plan.monthly_session_credits;
+      const renewalDayInt = renewalDay !== ''
+        ? Math.max(1, Math.min(31, parseInt(renewalDay, 10) || 0))
+        : null;
 
       const { data, error: insErr } = await supabase
         .from('member_subscriptions')
@@ -104,8 +112,9 @@ export default function MembershipCard({ client, therapist }) {
           client_email: client.email || '',
           client_name: client.name || null,
           // No stripe_subscription_id, this is a manually attached sub.
-          // The therapist collects payment outside the platform until
-          // they convert it to a Stripe-backed sub.
+          // Phase 19: the therapist charges each month via Checkout.
+          // The renewal-reminder cron creates upcoming rows; the
+          // billing dashboard surfaces them.
           status: statusValue,
           current_period_start: nowIso,
           current_period_end: periodEnd,
@@ -113,17 +122,52 @@ export default function MembershipCard({ client, therapist }) {
           monthly_session_credits: plan.monthly_session_credits,
           current_credits: credits,
           started_at: nowIso,
+          renewal_day_of_month: renewalDayInt,
+          billing_cadence: 'monthly',
+          notes: notes.trim() || null,
         })
         .select()
         .single();
       if (insErr) throw insErr;
       if (data) setSubs([data, ...subs]);
 
+      // Phase 19: if the therapist hasn't already collected the first
+      // month, create a pending renewal row for THIS period. The
+      // billing dashboard reminder surfaces it. If they HAVE collected
+      // (Candice's grandfathered members case), skip; they're current.
+      if (data && !firstMonthAlreadyPaid && renewalDayInt) {
+        const today = new Date();
+        const periodStartStr = today.toISOString().slice(0, 10);
+        // First period_end: next occurrence of renewalDayInt.
+        const nextDay = new Date(today.getFullYear(), today.getMonth(), renewalDayInt);
+        if (nextDay <= today) nextDay.setMonth(nextDay.getMonth() + 1);
+        const periodEndStr = nextDay.toISOString().slice(0, 10);
+        try {
+          await supabase.from('member_subscription_renewals').insert({
+            member_subscription_id: data.id,
+            therapist_id: therapist.id,
+            client_id: client.id,
+            period_start: periodStartStr,
+            period_end: periodEndStr,
+            due_on: periodStartStr,
+            amount_due_cents: Math.round(Number(plan.monthly_price) * 100),
+            status: 'pending',
+          });
+        } catch (e) {
+          // Non-fatal: the sub itself was created, the renewal row
+          // can be created later by the cron or manually.
+          console.warn('initial renewal row insert failed:', e);
+        }
+      }
+
       // Reset form
       setPlanId('');
       setRenewalDate('');
       setStatusValue('active');
       setCreditsRemaining('');
+      setRenewalDay('');
+      setNotes('');
+      setFirstMonthAlreadyPaid(false);
     } catch (e) {
       console.error('[MembershipCard] add failed:', e);
       setError('Could not save. ' + (e?.message || 'Please try again.'));
@@ -323,6 +367,66 @@ export default function MembershipCard({ client, therapist }) {
             </div>
           </div>
 
+          {/* Phase 19 fields: renewal day + notes + first-paid */}
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>
+              Renewal day of month
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="31"
+              value={renewalDay}
+              onChange={e => setRenewalDay(e.target.value)}
+              placeholder="e.g. 18 = bills on the 18th"
+              style={{
+                width: '100%',
+                padding: '7px 9px',
+                border: `1.5px solid ${C.line}`,
+                borderRadius: 8,
+                fontSize: 13,
+                color: C.ink,
+                background: '#fff',
+                boxSizing: 'border-box',
+              }}
+            />
+            <div style={{ fontSize: 10.5, color: C.gray, marginTop: 3, lineHeight: 1.4 }}>
+              You will get a reminder on this day each month to charge or waive.
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>
+              Notes (optional)
+            </label>
+            <input
+              type="text"
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="e.g. Legacy pricing per May 2024 agreement"
+              style={{
+                width: '100%',
+                padding: '7px 9px',
+                border: `1.5px solid ${C.line}`,
+                borderRadius: 8,
+                fontSize: 13,
+                color: C.ink,
+                background: '#fff',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer', fontSize: 12, color: C.ink }}>
+            <input
+              type="checkbox"
+              checked={firstMonthAlreadyPaid}
+              onChange={e => setFirstMonthAlreadyPaid(e.target.checked)}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>First month already paid (skip the renewal reminder this period)</span>
+          </label>
+
           {error && (
             <div style={{
               background: '#FEE2E2',
@@ -357,7 +461,7 @@ export default function MembershipCard({ client, therapist }) {
           </button>
 
           <div style={{ fontSize: 10.5, color: C.gray, marginTop: 7, lineHeight: 1.5 }}>
-            This records the membership on the client. Billing is not started automatically. To bill through Stripe, connect Stripe in <strong>Settings → Payments</strong> and switch the subscription to a Stripe-backed one later.
+            MyBodyMap holds the membership record and reminds you each renewal day. You charge using Checkout (card on file, Venmo, cash, or whatever fits). Stripe Connect billing arrives in a later phase.
           </div>
         </div>
       )}
