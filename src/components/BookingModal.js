@@ -166,6 +166,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     const endMin   = eh * 60 + em;
     const dur = svc.duration || 60;
 
+    // Buffer time (HK May 18 2026): when therapist has buffer enabled,
+    // extend each existing booking's effective end time by buffer_minutes
+    // so the slot generator won't offer slots starting inside the buffer
+    // window. Mirrors the same logic in src/pages/BookingPage.js
+    // generateSlots(). Buffer also applies to partial-day blocks (the
+    // therapist might want breathing room after a self-block too).
+    const bufferMins = therapist?.buffer_enabled ? (therapist?.buffer_minutes || 15) : 0;
+
     const raw = [];
     for (let m = startMin; m + dur <= endMin; m += 30) {
       const h = Math.floor(m / 60), mn = m % 60;
@@ -174,7 +182,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
       const conflict = conflictPool.some(b => {
         const bs = parseInt(b.start_time) * 60 + parseInt(b.start_time.slice(3));
-        const be = parseInt(b.end_time)   * 60 + parseInt(b.end_time.slice(3));
+        const be = parseInt(b.end_time)   * 60 + parseInt(b.end_time.slice(3)) + bufferMins;
         const ss = m, se = m + dur;
         return ss < be && se > bs;
       });
