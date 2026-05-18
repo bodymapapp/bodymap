@@ -1423,17 +1423,564 @@ function RefundRateDeepDive({ sessions }) {
   );
 }
 
-// ─── Placeholder views (Weekly/Monthly/Yearly/Insights) ────────────
-// Phase B-D will replace these with full V2 implementations. For Phase
-// A, these fall back to the same DailyView component reusing the data
-// for the broader period. HK sees all 5 tabs working with V2 design
-// language even before the inheritance is fully tuned.
-function WeeklyView(props) {
-  return <PeriodPlaceholder period="Weekly" {...props} />;
+// ─── WeeklyView V2 ─────────────────────────────────────────────────
+//
+// Same 6 bands as DailyView, scaled to a week. Period boundary is
+// Monday->Sunday. Comparison is against the prior week.
+function WeeklyView({ sessions, therapist, onRefundClick }) {
+  const [weekOffset, setWeekOffset] = useState(0);
+
+  // Monday of the selected week.
+  const getMonday = (d) => {
+    const x = new Date(d);
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+  const weekStart = addDays(getMonday(TODAY), weekOffset * 7);
+  const weekEndExcl = addDays(weekStart, 7);
+  const weekEnd = addDays(weekStart, 6);
+
+  // Slice for this week and previous week.
+  const weekSessions = sessions.filter(s => s.date >= weekStart && s.date < weekEndExcl);
+  const prevWeekStart = addDays(weekStart, -7);
+  const prevWeekSessions = sessions.filter(s => s.date >= prevWeekStart && s.date < weekStart);
+
+  const collected = sumCollected(weekSessions);
+  const prevCollected = sumCollected(prevWeekSessions);
+
+  const methods = buildMethodBreakdown(weekSessions);
+  const tips = buildTipMetrics(weekSessions);
+
+  // Attention items for the week.
+  const attention = buildWeeklyAttention(weekSessions);
+
+  // Shape: 7 days Mon-Sun, today highlighted if in this week.
+  const shapeBars = buildWeeklyShapeBars(weekSessions, weekStart);
+  const paceLine = buildWeeklyPaceLine(weekStart, collected, prevCollected);
+
+  // Period chips: last 4 weeks ending with the selected week.
+  const chips = buildWeeklyChips(sessions, weekOffset);
+
+  // Sessions grouped by day for Band 6.
+  const sessionsByDay = groupByDay(weekSessions);
+
+  // Period label.
+  let periodLabel = 'this week';
+  if (weekOffset === -1) periodLabel = 'last week';
+  else if (weekOffset === 1) periodLabel = 'next week';
+  else if (weekOffset !== 0) periodLabel = `week of ${fmtShort(weekStart)}`;
+
+  const headerSub = `${fmtShort(weekStart)} – ${fmtShort(weekEnd)}`;
+
+  return (
+    <div>
+      <HeroNumber
+        label={`Collected ${periodLabel}`}
+        amount={collected}
+        prevAmount={weekOffset === 0 ? prevCollected : null}
+      />
+      <ShapeChart
+        title={`${periodLabel.charAt(0).toUpperCase() + periodLabel.slice(1)}'s shape`}
+        bars={shapeBars}
+        paceLine={paceLine}
+      />
+      {attention.length > 0 && <AttentionBand items={attention} />}
+      <BreakdownRow methods={methods} tips={tips} />
+      <OtherMoneyCollapsible sessions={weekSessions} periodLabel={periodLabel} />
+      <PeriodChips
+        chips={chips}
+        onPick={c => setWeekOffset(c.weekOffset)}
+      />
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500,
+        marginBottom: 10, paddingLeft: 4,
+      }}>{headerSub}, by day</div>
+      {sessionsByDay.length === 0 ? (
+        <div style={{
+          background: '#FFFFFF', borderRadius: 14, padding: 32,
+          textAlign: 'center', color: T.gray400, fontSize: 14, marginBottom: 16,
+          boxShadow: T.shadowSoft,
+        }}>No sessions this week.</div>
+      ) : (
+        sessionsByDay.map(group => (
+          <DayGroupCard key={group.date.toISOString()} group={group} onRefundClick={onRefundClick} />
+        ))
+      )}
+      <DeepDiveSection sessions={sessions} periodLabel={periodLabel} therapist={therapist} />
+    </div>
+  );
 }
-function MonthlyView(props) {
-  return <PeriodPlaceholder period="Monthly" {...props} />;
+
+// Build weekly shape: 7 bars Mon-Sun, value = collected per day.
+function buildWeeklyShapeBars(weekSessions, weekStart) {
+  const bars = [];
+  const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  for (let i = 0; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    const dayCollected = sumCollected(weekSessions.filter(s => sameDay(s.date, d)));
+    const isToday = sameDay(d, TODAY);
+    const isFuture = d > TODAY;
+    bars.push({
+      value: dayCollected,
+      label: dayLabels[i],
+      kind: isToday ? 'today' : isFuture ? 'future' : 'past',
+    });
+  }
+  return bars;
 }
+
+// Pace line for weekly: name the best day so far, or week-over-week.
+function buildWeeklyPaceLine(weekStart, collected, prevCollected) {
+  // If this is the current week, show pace to-match-last-week.
+  // If past week, show vs prior week comparison.
+  // If future, show nothing.
+  const isCurrentWeek = sameDay(getMondayOf(TODAY), weekStart);
+  const isFutureWeek = weekStart > TODAY;
+  if (isFutureWeek) return null;
+  if (isCurrentWeek && prevCollected > 0) {
+    const gap = prevCollected - collected;
+    if (gap <= 0) {
+      return (
+        <span>
+          You've already beaten last week's <strong style={{ color: T.forestDeep }}>{currency(prevCollected)}</strong>.
+        </span>
+      );
+    }
+    return (
+      <span>
+        Week-to-date: <strong style={{ color: T.forestDeep }}>{currency(collected)}</strong>. Last week finished at {currency(prevCollected)}.
+      </span>
+    );
+  }
+  return null;
+}
+
+function getMondayOf(d) {
+  const x = new Date(d);
+  const day = x.getDay();
+  x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+// Attention items for weekly: outstanding sessions in the week, refunds,
+// no-shows, recurring gaps that show up in this week's data.
+function buildWeeklyAttention(weekSessions) {
+  const items = [];
+  const outstanding = weekSessions.filter(s => s.status === 'outstanding' || s.status === 'pending');
+  if (outstanding.length > 0) {
+    const totalOwed = outstanding.reduce((s, x) => s + (x.rate || 0), 0);
+    const firstFew = outstanding.slice(0, 2).map(s => s.client).join(', ');
+    const more = outstanding.length > 2 ? `, +${outstanding.length - 2} more` : '';
+    items.push({
+      icon: '⏳', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${outstanding.length} unpaid session${outstanding.length > 1 ? 's' : ''} this week`,
+      sub: `${firstFew}${more} · ${currency(totalOwed)} expected`,
+      action: 'View',
+    });
+  }
+  const refunds = weekSessions.filter(s => s.source === 'refund');
+  if (refunds.length > 0) {
+    const total = refunds.reduce((s, x) => s + (x.actual || 0), 0);
+    items.push({
+      icon: '↩', iconBg: T.redBg, iconColor: T.redText,
+      title: `${currency(total)} refunded this week`,
+      sub: `${refunds.length} refund${refunds.length > 1 ? 's' : ''}`,
+      action: 'View',
+    });
+  }
+  const noShows = weekSessions.filter(s => s.status === 'no_show');
+  if (noShows.length > 0) {
+    items.push({
+      icon: '○', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${noShows.length} no-show${noShows.length > 1 ? 's' : ''} this week`,
+      sub: noShows.slice(0, 3).map(n => n.client).join(', '),
+      action: 'View',
+    });
+  }
+  return items;
+}
+
+// Weekly period chips: 4 weeks ending at selected.
+function buildWeeklyChips(allSessions, selectedOffset) {
+  const chips = [];
+  const getMonday = (d) => {
+    const x = new Date(d);
+    const day = x.getDay();
+    x.setDate(x.getDate() + (day === 0 ? -6 : 1 - day));
+    x.setHours(0, 0, 0, 0);
+    return x;
+  };
+  for (let i = -3; i <= 0; i++) {
+    const offset = selectedOffset + i;
+    const wkStart = addDays(getMonday(TODAY), offset * 7);
+    const wkEndExcl = addDays(wkStart, 7);
+    const wkSessions = allSessions.filter(s => s.date >= wkStart && s.date < wkEndExcl);
+    const collected = sumCollected(wkSessions);
+    const count = wkSessions.filter(s =>
+      s.source !== 'cancellation_fee' && s.source !== 'refund' && s.status !== 'no_show'
+    ).length;
+    let label;
+    if (offset === 0) label = 'This wk';
+    else if (offset === -1) label = 'Last wk';
+    else label = wkStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    chips.push({
+      label, value: currency(collected),
+      meta: `${count} sess`,
+      active: offset === selectedOffset,
+      weekOffset: offset,
+    });
+  }
+  return chips;
+}
+
+// Group sessions by day, return array sorted descending (most recent first).
+function groupByDay(sessions) {
+  const map = new Map();
+  sessions
+    .filter(s => s.source !== 'cancellation_fee')
+    .forEach(s => {
+      const key = s.date.toDateString();
+      if (!map.has(key)) map.set(key, { date: s.date, items: [] });
+      map.get(key).items.push(s);
+    });
+  const groups = Array.from(map.values()).sort((a, b) => b.date - a.date);
+  // Sort items within each group by time of day.
+  groups.forEach(g => {
+    g.items.sort((a, b) => {
+      const ta = (a.time || '00:00').replace(/[^0-9:apmAPM\s]/g, '');
+      const tb = (b.time || '00:00').replace(/[^0-9:apmAPM\s]/g, '');
+      return ta.localeCompare(tb);
+    });
+  });
+  return groups;
+}
+
+// Day group card: compact card showing day total + collapsible session list.
+function DayGroupCard({ group, onRefundClick }) {
+  const [open, setOpen] = useState(false);
+  const dayCollected = sumCollected(group.items);
+  const dayRefunds = sumRefunds(group.items);
+  const dayPending = group.items
+    .filter(s => s.status === 'pending' || s.status === 'outstanding')
+    .reduce((sum, s) => sum + (s.rate || 0), 0);
+  const sessionCount = group.items.filter(s => s.status !== 'no_show').length;
+  const dayLabel = sameDay(group.date, TODAY) ? 'Today'
+    : sameDay(group.date, addDays(TODAY, -1)) ? 'Yesterday'
+    : group.date.toLocaleDateString('en-US', { weekday: 'long' });
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 14,
+      marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+    }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', padding: '14px 16px', cursor: 'pointer',
+        background: 'transparent', border: 'none', textAlign: 'left',
+        display: 'flex', flexDirection: 'column', gap: 8,
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+          <div style={{
+            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.1,
+          }}>{dayLabel}</div>
+          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
+            {sessionCount} session{sessionCount !== 1 ? 's' : ''}
+            {open ? ' ▴' : ' ▾'}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 12, fontSize: 12, color: T.gray700 }}>
+          <span><strong style={{ color: T.forestDeep, fontWeight: 700 }}>{currency(dayCollected)}</strong> collected</span>
+          {dayRefunds > 0 && (
+            <span style={{ color: T.rose }}>−{currency(dayRefunds)} refunded</span>
+          )}
+          {dayPending > 0 && (
+            <span style={{ color: T.amber }}>{currency(dayPending)} pending</span>
+          )}
+        </div>
+      </button>
+      {open && (
+        <div style={{
+          borderTop: `1px solid ${T.creamDeep}`,
+          padding: '8px 12px 12px',
+        }}>
+          {group.items.map(s => (
+            <ReceiptCard key={s.id} session={s} onRefundClick={onRefundClick} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MonthlyView V2 ────────────────────────────────────────────────
+//
+// Same 6 bands, scaled to a calendar month. Period boundary is 1st to
+// last day of the month. Comparison vs prior month (same period).
+function MonthlyView({ sessions, therapist, onRefundClick }) {
+  const [monthOffset, setMonthOffset] = useState(0);
+
+  const now = new Date();
+  const viewMonth = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+  viewMonth.setHours(0, 0, 0, 0);
+  const monthStart = viewMonth;
+  const monthEndExcl = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+  const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+
+  // Slice for this month.
+  const monthSessions = sessions.filter(s => s.date >= monthStart && s.date < monthEndExcl);
+  // Comparison: prior month, same N days elapsed (so May-to-date compares to April-1-through-N).
+  const prevMonthStart = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+  prevMonthStart.setHours(0, 0, 0, 0);
+  const isCurrentMonth = monthOffset === 0;
+  const dayOfMonth = isCurrentMonth ? TODAY.getDate() : daysInMonth;
+  const prevMonthCompareEnd = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth(), Math.min(dayOfMonth, daysInMonth) + 1);
+  const prevMonthSessions = sessions.filter(s => s.date >= prevMonthStart && s.date < prevMonthCompareEnd);
+
+  const collected = sumCollected(monthSessions);
+  const prevCollected = sumCollected(prevMonthSessions);
+
+  const methods = buildMethodBreakdown(monthSessions);
+  const tips = buildTipMetrics(monthSessions);
+
+  // Attention items.
+  const attention = buildMonthlyAttention(monthSessions);
+
+  // Shape: N day bars (one per day of the month).
+  const shapeBars = buildMonthlyShapeBars(monthSessions, viewMonth, daysInMonth);
+  const paceLine = buildMonthlyPaceLine(monthSessions, viewMonth, daysInMonth, prevCollected, collected);
+
+  // Period chips: 4 months ending at selected.
+  const chips = buildMonthlyChips(sessions, monthOffset);
+
+  // Sessions grouped by week within the month.
+  const sessionsByWeek = groupByWeek(monthSessions, viewMonth);
+
+  const monthName = viewMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  let periodLabel = monthName.toLowerCase().replace(/\s\d+/, ''); // "may"
+  if (isCurrentMonth) periodLabel = `${periodLabel} so far`;
+
+  return (
+    <div>
+      <HeroNumber
+        label={`Collected in ${monthName.split(' ')[0]}`}
+        amount={collected}
+        prevAmount={prevCollected > 0 ? prevCollected : null}
+      />
+      <ShapeChart
+        title={`${monthName.split(' ')[0]} income pattern`}
+        bars={shapeBars}
+        paceLine={paceLine}
+      />
+      {attention.length > 0 && <AttentionBand items={attention} />}
+      <BreakdownRow methods={methods} tips={tips} />
+      <OtherMoneyCollapsible sessions={monthSessions} periodLabel={`in ${monthName.split(' ')[0]}`} />
+      <PeriodChips
+        chips={chips}
+        onPick={c => setMonthOffset(c.monthOffset)}
+      />
+      <div style={{
+        fontSize: 10, fontWeight: 700, letterSpacing: '0.16em',
+        textTransform: 'uppercase', color: T.gray500,
+        marginBottom: 10, paddingLeft: 4,
+      }}>{monthName}, by week</div>
+      {sessionsByWeek.length === 0 ? (
+        <div style={{
+          background: '#FFFFFF', borderRadius: 14, padding: 32,
+          textAlign: 'center', color: T.gray400, fontSize: 14, marginBottom: 16,
+          boxShadow: T.shadowSoft,
+        }}>No sessions this month.</div>
+      ) : (
+        sessionsByWeek.map(group => (
+          <WeekGroupCard key={group.weekStart.toISOString()} group={group} onRefundClick={onRefundClick} />
+        ))
+      )}
+      <DeepDiveSection sessions={sessions} periodLabel={periodLabel} therapist={therapist} />
+    </div>
+  );
+}
+
+// Monthly shape bars: one per day of the month.
+function buildMonthlyShapeBars(monthSessions, monthStart, daysInMonth) {
+  const bars = [];
+  const todayDate = sameDay(new Date(monthStart.getFullYear(), monthStart.getMonth(), 1), new Date(TODAY.getFullYear(), TODAY.getMonth(), 1))
+    ? TODAY.getDate() : -1;
+  for (let i = 1; i <= daysInMonth; i++) {
+    const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), i);
+    d.setHours(0, 0, 0, 0);
+    const collected = sumCollected(monthSessions.filter(s => sameDay(s.date, d)));
+    const isToday = i === todayDate;
+    const isFuture = d > TODAY;
+    bars.push({
+      value: collected,
+      label: i === 1 || i === daysInMonth || i === todayDate ? String(i) : '',
+      kind: isToday ? 'today' : isFuture ? 'future' : 'past',
+    });
+  }
+  return bars;
+}
+
+function buildMonthlyPaceLine(monthSessions, monthStart, daysInMonth, prevCollected, collected) {
+  const isCurrentMonth = monthStart.getFullYear() === TODAY.getFullYear() && monthStart.getMonth() === TODAY.getMonth();
+  if (!isCurrentMonth) return null;
+  const dayOfMonth = TODAY.getDate();
+  const daysRemaining = daysInMonth - dayOfMonth;
+  if (daysRemaining <= 0) return null;
+  const pace = collected / dayOfMonth;
+  const projected = Math.round(pace * daysInMonth);
+  return (
+    <span>
+      {daysRemaining} day{daysRemaining > 1 ? 's' : ''} left. Your pace projects to <strong style={{ color: T.forestDeep }}>{currency(projected)}</strong>{prevCollected > 0 ? `, vs ${currency(prevCollected)} for the prior month.` : '.'}
+    </span>
+  );
+}
+
+function buildMonthlyAttention(monthSessions) {
+  const items = [];
+  const outstanding = monthSessions.filter(s => s.status === 'outstanding');
+  if (outstanding.length > 0) {
+    const totalOwed = outstanding.reduce((s, x) => s + (x.rate || 0), 0);
+    // Oldest age.
+    const ages = outstanding.map(s => Math.floor((TODAY - s.date) / (1000 * 60 * 60 * 24)));
+    const oldest = Math.max(...ages);
+    items.push({
+      icon: '⏳', iconBg: T.amberBg, iconColor: T.amber,
+      title: `${currency(totalOwed)} outstanding this month`,
+      sub: `${outstanding.length} client${outstanding.length > 1 ? 's' : ''} · oldest ${oldest} day${oldest !== 1 ? 's' : ''}`,
+      action: 'View',
+    });
+  }
+  const refunds = monthSessions.filter(s => s.source === 'refund');
+  if (refunds.length > 0) {
+    const total = refunds.reduce((s, x) => s + (x.actual || 0), 0);
+    items.push({
+      icon: '↩', iconBg: T.redBg, iconColor: T.redText,
+      title: `${currency(total)} refunded this month`,
+      sub: `${refunds.length} refund${refunds.length > 1 ? 's' : ''}`,
+      action: 'View',
+    });
+  }
+  return items;
+}
+
+function buildMonthlyChips(allSessions, selectedOffset) {
+  const chips = [];
+  const now = new Date();
+  for (let i = -3; i <= 0; i++) {
+    const offset = selectedOffset + i;
+    const mStart = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+    mStart.setHours(0, 0, 0, 0);
+    const mEndExcl = new Date(now.getFullYear(), now.getMonth() + offset + 1, 1);
+    const mSessions = allSessions.filter(s => s.date >= mStart && s.date < mEndExcl);
+    const collected = sumCollected(mSessions);
+    const count = mSessions.filter(s =>
+      s.source !== 'cancellation_fee' && s.source !== 'refund' && s.status !== 'no_show'
+    ).length;
+    const label = mStart.toLocaleDateString('en-US', { month: 'short' });
+    chips.push({
+      label, value: currency(collected),
+      meta: `${count} sess`,
+      active: offset === selectedOffset,
+      monthOffset: offset,
+    });
+  }
+  return chips;
+}
+
+// Group sessions by week of the month, return sorted descending.
+function groupByWeek(monthSessions, monthStart) {
+  const map = new Map();
+  monthSessions
+    .filter(s => s.source !== 'cancellation_fee')
+    .forEach(s => {
+      const weekStart = getMondayOf(s.date);
+      const key = weekStart.toISOString();
+      if (!map.has(key)) map.set(key, { weekStart, items: [] });
+      map.get(key).items.push(s);
+    });
+  return Array.from(map.values()).sort((a, b) => b.weekStart - a.weekStart);
+}
+
+// Week group card: shows week summary + tap to expand to receipt cards.
+function WeekGroupCard({ group, onRefundClick }) {
+  const [open, setOpen] = useState(false);
+  const collected = sumCollected(group.items);
+  const tips = group.items.reduce((s, x) =>
+    s + (x.status === 'paid' && x.source !== 'cancellation_fee' && x.source !== 'refund' ? (x.tip || 0) : 0), 0);
+  const refunds = sumRefunds(group.items);
+  const outstanding = group.items
+    .filter(s => s.status === 'outstanding')
+    .reduce((s, x) => s + (x.rate || 0), 0);
+  const sessionCount = group.items.filter(s => s.status === 'paid' && s.source === 'payment').length;
+  const weekEnd = addDays(group.weekStart, 6);
+  const label = `Week of ${group.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+  const dateRange = `${group.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
+
+  const netForWeek = collected - refunds;
+
+  return (
+    <div style={{
+      background: '#FFFFFF', borderRadius: 14,
+      marginBottom: 12, boxShadow: T.shadowSoft, overflow: 'hidden',
+    }}>
+      <button onClick={() => setOpen(o => !o)} style={{
+        width: '100%', padding: '14px 16px', cursor: 'pointer',
+        background: 'transparent', border: 'none', textAlign: 'left',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <div style={{
+            fontFamily: T.serif, fontSize: 18, fontWeight: 600,
+            color: T.forestDeep, lineHeight: 1.1,
+          }}>{label}</div>
+          <div style={{ fontSize: 11, color: T.gray500, fontWeight: 600 }}>
+            {sessionCount} session{sessionCount !== 1 ? 's' : ''}{open ? ' ▴' : ' ▾'}
+          </div>
+        </div>
+        <div style={{ borderTop: `1px dashed ${T.gray300}`, paddingTop: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
+            <span>Sessions collected</span><span>{currency(collected)}</span>
+          </div>
+          {tips > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.gray700, padding: '2px 0' }}>
+              <span>Tips</span><span>{currency(tips)}</span>
+            </div>
+          )}
+          {refunds > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.redText, padding: '2px 0' }}>
+              <span>Refunds</span><span>-{currency(refunds)}</span>
+            </div>
+          )}
+          {outstanding > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: T.amber, padding: '2px 0' }}>
+              <span>Outstanding</span><span>{currency(outstanding)}</span>
+            </div>
+          )}
+          <div style={{
+            display: 'flex', justifyContent: 'space-between',
+            fontSize: 13, fontWeight: 700, color: T.forestDeep,
+            borderTop: `1px solid ${T.gray300}`, marginTop: 6, paddingTop: 6,
+          }}>
+            <span>Net for week</span><span>{currency(netForWeek)}</span>
+          </div>
+        </div>
+      </button>
+      {open && (
+        <div style={{
+          borderTop: `1px solid ${T.creamDeep}`,
+          padding: '8px 12px 12px',
+        }}>
+          {group.items
+            .sort((a, b) => a.date - b.date)
+            .map(s => <ReceiptCard key={s.id} session={s} onRefundClick={onRefundClick} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function YearlyView(props) {
   return <PeriodPlaceholder period="Yearly" {...props} />;
 }
