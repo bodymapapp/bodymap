@@ -1,5 +1,6 @@
 // src/components/BillingDashboard.js
 import React, { useState, useEffect, useMemo } from 'react';
+import RefundModal from './RefundModal';
 
 const TODAY = new Date();
 TODAY.setHours(0,0,0,0);
@@ -146,8 +147,17 @@ function StatRow({ children }) {
   );
 }
 
-function SessionRow({ s }) {
+function SessionRow({ s, onRefundClick }) {
   const sc = STATUS_CFG[s.status];
+  // Phase 14.3b (HK May 17 2026): show Refund button on paid Stripe
+  // rows. Cash/Venmo/Zelle/etc. aren't refundable via the platform
+  // (they happened offline), and outstanding/no-show/refund/cancel-fee
+  // rows aren't refundable either.
+  const canRefund = s.status === 'paid'
+    && s.source === 'payment'
+    && s.method && s.method.startsWith('stripe_')
+    && s.paymentId
+    && onRefundClick;
   return (
     <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#FFFFFF', borderRadius:10, boxShadow:'0 1px 3px rgba(0,0,0,0.06)', flexWrap:'wrap' }}>
       <div style={{ width:36, height:36, borderRadius:'50%', background:'#2A5741', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, flexShrink:0 }}>
@@ -162,6 +172,17 @@ function SessionRow({ s }) {
         <div style={{ fontSize:11, color:'#9CA3AF' }}>Expected: {currency(s.rate)}</div>
       </div>
       <div style={{ background:sc.bg, color:sc.color, borderRadius:20, padding:'4px 12px', fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{sc.label}</div>
+      {canRefund && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRefundClick(s); }}
+          style={{
+            background: 'transparent', color: '#9CA3AF',
+            border: 'none', padding: '4px 8px', fontSize: 11, fontWeight: 700,
+            cursor: 'pointer', textDecoration: 'underline',
+          }}>
+          Refund
+        </button>
+      )}
     </div>
   );
 }
@@ -422,7 +443,7 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
   );
 }
 
-function DailyView({ sessions }) {
+function DailyView({ sessions, onRefundClick }) {
   const [dayOffset, setDayOffset] = useState(0);
   const days = [-2,-1,0,1,2].map(n=>addDays(TODAY,n));
   const selectedDate = addDays(TODAY, dayOffset - 2);
@@ -469,13 +490,13 @@ function DailyView({ sessions }) {
       </div>
       {daySessionsRevenueOnly.length === 0
         ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions on this day.</div>
-        : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessionsRevenueOnly.map(s=><SessionRow key={s.id} s={s} />)}</div>
+        : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessionsRevenueOnly.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
     </div>
   );
 }
 
-function WeeklyView({ sessions }) {
+function WeeklyView({ sessions, onRefundClick }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const getMonday = (d) => { const x=new Date(d); const day=x.getDay(); x.setDate(x.getDate()+(day===0?-6:1-day)); x.setHours(0,0,0,0); return x; };
   const weekStart = addDays(getMonday(TODAY), weekOffset*7);
@@ -538,12 +559,12 @@ function WeeklyView({ sessions }) {
         <div style={{ display:'flex', alignItems:'center', gap:6 }}><div style={{ width:12, height:12, background:'#2A5741', borderRadius:2 }}/><span style={{ color:'#6B7280' }}>Collected</span></div>
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>All Sessions This Week</div>
-      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekRevenue.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekRevenue.map(s=><SessionRow key={s.id} s={s} />)}</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekRevenue.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekRevenue.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
     </div>
   );
 }
 
-function MonthlyView({ sessions }) {
+function MonthlyView({ sessions, onRefundClick }) {
   const [monthOffset, setMonthOffset] = useState(0);
   const [selectedDate, setSelectedDate] = useState(TODAY);
   const viewMonth = new Date(TODAY.getFullYear(), TODAY.getMonth()+monthOffset, 1);
@@ -602,13 +623,13 @@ function MonthlyView({ sessions }) {
       </div>
       {selectedDaySessions.length===0
         ?<div style={{ background:'#FFFFFF', borderRadius:12, padding:24, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions. Click a day to view.</div>
-        :<div style={{ display:'flex', flexDirection:'column', gap:8 }}>{selectedDaySessions.map(s=><SessionRow key={s.id} s={s}/>)}</div>
+        :<div style={{ display:'flex', flexDirection:'column', gap:8 }}>{selectedDaySessions.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
     </div>
   );
 }
 
-function YearlyView({ sessions }) {
+function YearlyView({ sessions, onRefundClick }) {
   const [year, setYear] = useState(TODAY.getFullYear());
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   // Phase 14.3: monthData and StatCards use revenue rows only.
@@ -669,7 +690,7 @@ function YearlyView({ sessions }) {
   );
 }
 
-function InsightsView({ sessions }) {
+function InsightsView({ sessions, onRefundClick }) {
   const last30 = sessions.filter(s=>s.date>=addDays(TODAY,-30)&&s.date<=TODAY);
   const prev30 = sessions.filter(s=>s.date>=addDays(TODAY,-60)&&s.date<addDays(TODAY,-30));
   const last30Rev = last30.reduce((t,x)=>t+(x.actual||0),0);
@@ -731,7 +752,7 @@ function InsightsView({ sessions }) {
         <div style={{ background:'#FEF2F2', border:'1px solid #FECACA', borderRadius:12, padding:20 }}>
           <div style={{ fontSize:14, fontWeight:700, color:'#DC2626', marginBottom:12 }}>🔴 Outstanding Payments - {currency(outstandingTotal)}</div>
           <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-            {outstanding.map(s=><SessionRow key={s.id} s={s}/>)}
+            {outstanding.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}
           </div>
         </div>
       )}
@@ -748,6 +769,11 @@ export default function BillingDashboard({ therapist }) {
   const [squareConnected, setSquareConnected] = useState(null);
   const [sessionRate, setSessionRate] = useState(DEFAULT_RATE);
   const [realTransactions, setRealTransactions] = useState(null); // null = loading, [] = connected but empty, [...] = has data
+  // Phase 14.3b (HK May 17 2026): in-app refund. refundTarget holds the
+  // session row to be refunded. reloadTick increments after a refund
+  // succeeds to trigger the useEffect to re-pull data.
+  const [refundTarget, setRefundTarget] = useState(null);
+  const [reloadTick, setReloadTick] = useState(0);
 
   useEffect(() => {
     if (!therapist?.id) return;
@@ -955,7 +981,8 @@ export default function BillingDashboard({ therapist }) {
       combined.sort((a, b) => b.date.getTime() - a.date.getTime());
       setRealTransactions(combined);
     });
-  }, [therapist]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [therapist, reloadTick]);
 
   // "Has live data" if either processor is connected. Drives sample
   // data fallback and banner copy below.
@@ -1035,11 +1062,38 @@ export default function BillingDashboard({ therapist }) {
         ))}
       </div>
 
-      {subView==='daily'    && <DailyView    sessions={sessions} />}
-      {subView==='weekly'   && <WeeklyView   sessions={sessions} />}
-      {subView==='monthly'  && <MonthlyView  sessions={sessions} />}
-      {subView==='yearly'   && <YearlyView   sessions={sessions} />}
-      {subView==='insights' && <InsightsView sessions={sessions} />}
+      {(() => {
+        const handleRefundClick = (s) => {
+          // Adapt the session-shape object into a session_payments
+          // row shape that RefundModal expects.
+          setRefundTarget({
+            id: s.paymentId,
+            amount_cents: Math.round((s.base || s.actual || 0) * 100),
+            tip_cents: Math.round((s.tip || 0) * 100),
+            payment_method: s.method,
+            client_name: s.client,
+          });
+        };
+        const viewProps = { sessions, onRefundClick: handleRefundClick };
+        return (
+          <>
+            {subView==='daily'    && <DailyView    {...viewProps} />}
+            {subView==='weekly'   && <WeeklyView   {...viewProps} />}
+            {subView==='monthly'  && <MonthlyView  {...viewProps} />}
+            {subView==='yearly'   && <YearlyView   {...viewProps} />}
+            {subView==='insights' && <InsightsView {...viewProps} />}
+          </>
+        );
+      })()}
+
+      {refundTarget && (
+        <RefundModal
+          payment={refundTarget}
+          therapist={therapist}
+          onClose={() => setRefundTarget(null)}
+          onRefunded={() => { setReloadTick(t => t + 1); }}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import InlineTimeInput from './InlineTimeInput';
 import CloseButton from './CloseButton';
 import CheckoutModal from './CheckoutModal';
 import MarkAsPaidModal from './MarkAsPaidModal';
+import RefundModal from './RefundModal';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -50,6 +51,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // Phase 12: Checkout + Mark as paid modals
   const [showCheckout, setShowCheckout] = useState(false);
   const [showMarkPaid, setShowMarkPaid] = useState(false);
+  // Phase 14.3b (HK May 17 2026): in-app refund. refundTarget holds
+  // the session_payments row to be refunded; setting it null closes
+  // the modal.
+  const [refundTarget, setRefundTarget] = useState(null);
   const [paymentRows, setPaymentRows] = useState([]);
   const [paymentsLoading, setPaymentsLoading] = useState(true);
   const [clientRow, setClientRow] = useState(null);
@@ -428,10 +433,27 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         return 'Other';
                       }).join(' · ')}
                     </div>
-                    <button onClick={()=>setShowCheckout(true)}
-                      style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',marginLeft:38,padding:0}}>
-                      + Add another payment
-                    </button>
+                    <div style={{display:'flex',gap:14,marginLeft:38,alignItems:'center'}}>
+                      <button onClick={()=>setShowCheckout(true)}
+                        style={{background:'transparent',color:'#5B7551',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
+                        + Add another payment
+                      </button>
+                      {/* Phase 14.3b (HK May 17 2026): refund the most
+                          recent succeeded Stripe payment on this booking.
+                          Hidden if no refundable payment exists. */}
+                      {(() => {
+                        const refundable = paymentRows
+                          .filter(p => p.status === 'succeeded' && p.payment_method && p.payment_method.startsWith('stripe_'))
+                          .slice(-1)[0];
+                        if (!refundable) return null;
+                        return (
+                          <button onClick={() => setRefundTarget({ ...refundable, client_name: appt.client })}
+                            style={{background:'transparent',color:'#9CA3AF',border:'none',fontSize:12,fontWeight:600,cursor:'pointer',padding:0}}>
+                            Refund
+                          </button>
+                        );
+                      })()}
+                    </div>
                   </div>
                 ) : pendingTotalCents > 0 ? (
                   /* PENDING STATE: link sent, waiting */
@@ -578,6 +600,14 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           defaultAmountCents={defaultAmountCents}
           onClose={() => setShowMarkPaid(false)}
           onPaid={() => { refreshPayments(); }}
+        />
+      )}
+      {refundTarget && (
+        <RefundModal
+          payment={refundTarget}
+          therapist={therapist}
+          onClose={() => setRefundTarget(null)}
+          onRefunded={() => { refreshPayments(); }}
         />
       )}
     </>
