@@ -90,35 +90,35 @@ ALTER TABLE services
 
 -- RLS: same model as the rest of the per-therapist tables. The
 -- therapist owns their locations; public can read for the booking page.
+-- therapists.id IS the auth.uid() in this schema (no separate
+-- auth_user_id column). Matches the pattern used by service_addons,
+-- packages, memberships, etc.
 ALTER TABLE therapist_locations ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "therapist_locations_select_own" ON therapist_locations;
 CREATE POLICY "therapist_locations_select_own"
   ON therapist_locations FOR SELECT
-  USING (
-    therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid())
-  );
+  USING (therapist_id = auth.uid());
 
+DROP POLICY IF EXISTS "therapist_locations_insert_own" ON therapist_locations;
 CREATE POLICY "therapist_locations_insert_own"
   ON therapist_locations FOR INSERT
-  WITH CHECK (
-    therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid())
-  );
+  WITH CHECK (therapist_id = auth.uid());
 
+DROP POLICY IF EXISTS "therapist_locations_update_own" ON therapist_locations;
 CREATE POLICY "therapist_locations_update_own"
   ON therapist_locations FOR UPDATE
-  USING (
-    therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid())
-  );
+  USING (therapist_id = auth.uid());
 
+DROP POLICY IF EXISTS "therapist_locations_delete_own" ON therapist_locations;
 CREATE POLICY "therapist_locations_delete_own"
   ON therapist_locations FOR DELETE
-  USING (
-    therapist_id IN (SELECT id FROM therapists WHERE auth_user_id = auth.uid())
-  );
+  USING (therapist_id = auth.uid());
 
 -- Public read for the booking page. Anyone landing on /<custom_url>
 -- needs to see the therapist's locations to pick one. Same model as
 -- services and availability.
+DROP POLICY IF EXISTS "therapist_locations_public_read" ON therapist_locations;
 CREATE POLICY "therapist_locations_public_read"
   ON therapist_locations FOR SELECT
   TO anon
