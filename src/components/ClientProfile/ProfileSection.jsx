@@ -59,6 +59,7 @@ export default function ProfileSection({
   onToggle,
   children,
   order = 0,
+  dataSectionId,
 }) {
   const [hover, setHover] = React.useState(false);
   const interactive = typeof onToggle === 'function';
@@ -66,6 +67,7 @@ export default function ProfileSection({
 
   return (
     <div
+      data-section-id={dataSectionId}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{

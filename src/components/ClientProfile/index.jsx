@@ -178,9 +178,26 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         </div>
       )}
 
-      {/* Status strip stays uncollapsible: balance + next + lifetime
-          are too important to hide behind a click. */}
-      {profile && <StatusStrip profile={profile} />}
+      {/* Status strip stays uncollapsible: balance + next + lifetime +
+          agreement are too important to hide behind a click. */}
+      {profile && <StatusStrip
+        profile={profile}
+        onAgreementTap={() => {
+          // Force the Agreement section open and scroll to it. If
+          // the agreement is unsigned, the user will see the
+          // 'Send for signature' button in AgreementCard once it
+          // expands. (TODO: deep-link directly into the
+          // SendForSignaturePanel with client pre-fill, instead of
+          // scrolling to the in-section button. Queued for next pass.)
+          setOpenSections(s => ({ ...s, agreement: true }));
+          // Defer scroll to next tick so the section has time to
+          // render expanded before we measure its position.
+          setTimeout(() => {
+            const el = document.querySelector('[data-section-id="agreement"]');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
+        }}
+      />}
 
       {profile && (
         <div style={{ padding: '0 14px 24px' }}>
@@ -324,6 +341,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             accent="agreement"
             order={6}
             title="Client agreement"
+            dataSectionId="agreement"
             trailingLabel={client?.practice_agreement_signed_at
               ? `Signed ${new Date(client.practice_agreement_signed_at).toLocaleDateString()}`
               : 'No signature on file'}

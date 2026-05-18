@@ -3,37 +3,39 @@
 // The four things a therapist scans first when they open a client.
 // Renders as a responsive grid of tiles. Each tile is tappable when
 // it has a sensible action (e.g., next booking tile opens the
-// booking; attention tile jumps to the relevant section).
+// booking; agreement tile expands the agreement section).
 //
 // Tiles:
 //   1. Balance      🎟  package + membership inline
 //   2. Next visit   📅  date + service or "None scheduled"
 //   3. Lifetime     💚  total sessions + dollars
-//   4. Attention    ⚠️   pending intake / unfilled SOAP / lapsed
-//                       Renders only if there's something to show.
+//   4. Agreement    ✍🏼  signed date + signer name, or "Not on file"
+//
+// May 18 2026 (HK deferred from May 15-16 session): the old
+// conditional Attention chip that surfaced pendingIntake or lapsed
+// state has been replaced by a permanent Agreement tile. Agreement
+// state is too important to hide behind a conditional. If we later
+// want an Intake-status tile, build it separately in its own slot.
 
 import React from 'react';
 import { C, F, S, formatShortDate, formatCurrency } from './tokens';
 
-export default function StatusStrip({ profile, onNextBooking, onAttention }) {
+export default function StatusStrip({ profile, onNextBooking, onAgreementTap }) {
   if (!profile) return null;
-  const { stats, packagePurchases = [], memberSubscriptions = [] } = profile;
+  const { stats, packagePurchases = [], memberSubscriptions = [], client } = profile;
 
   // ─── Balance tile content ───
   const activePackage = packagePurchases.find(p => p.status === 'active');
   const activeMembership = memberSubscriptions.find(m => m.status === 'active');
   const hasBalance = activePackage || activeMembership;
 
-  // ─── Attention tile content (only renders if something) ───
-  const attention = (() => {
-    if (stats?.pendingIntake) {
-      return { icon: '🧭', label: 'Intake filled', detail: 'No SOAP note yet', tone: 'amber' };
-    }
-    if (stats?.daysSinceVisit !== null && stats?.daysSinceVisit >= 60) {
-      return { icon: '🍂', label: 'Lapsed', detail: `${stats.daysSinceVisit}d since last visit`, tone: 'amber' };
-    }
-    return null;
-  })();
+  // ─── Agreement tile content ───
+  // Read directly off the client row, same data AgreementCard uses.
+  // No extra fetch needed; the columns are already on the row from
+  // the standard client load.
+  const agreementSignedAt = client?.practice_agreement_signed_at || null;
+  const agreementSignerName = client?.practice_agreement_signer_name || null;
+  const isAgreementSigned = !!agreementSignedAt;
 
   return (
     <div style={{
@@ -112,18 +114,30 @@ export default function StatusStrip({ profile, onNextBooking, onAttention }) {
           />
         </Tile>
 
-        {/* Attention (only if needed) */}
-        {attention && (
-          <Tile
-            icon={attention.icon}
-            label={attention.label}
-            tone={attention.tone}
-            accentBorder
-            onClick={onAttention}
-          >
-            <Detail>{attention.detail}</Detail>
-          </Tile>
-        )}
+        {/* Agreement (permanent, always visible) */}
+        <Tile
+          icon="✍🏼"
+          label="Agreement"
+          tone={isAgreementSigned ? 'sage' : 'amber'}
+          accentBorder
+          onClick={onAgreementTap}
+        >
+          {isAgreementSigned ? (
+            <>
+              <BigText>Signed {formatShortDate(agreementSignedAt)}</BigText>
+              {agreementSignerName && (
+                <Detail>by {agreementSignerName}</Detail>
+              )}
+            </>
+          ) : (
+            <>
+              <BigText>Not on file</BigText>
+              <Detail>
+                <span style={{ fontStyle: 'italic' }}>Tap to send</span>
+              </Detail>
+            </>
+          )}
+        </Tile>
       </div>
     </div>
   );
