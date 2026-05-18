@@ -6,7 +6,7 @@ Read the **per-ribbon** sections to see what's coming on your platform.
 Drop into **Details** at the bottom only when you need execution-ready
 materials for a specific block.
 
-**Most recent session handover:** [`docs/HANDOVER_2026-05-17.md`](./HANDOVER_2026-05-17.md) (Notification Compliance Dashboard morning + Phase 12-14 marathon evening, ~12 hours total, 35+ commits May 17 2026).
+**Most recent session handover:** [`docs/HANDOVER_2026-05-18.md`](./HANDOVER_2026-05-18.md) (Phase 15 notification gap audit, 3 commits, ~45 min May 18 2026 morning).
 
 ---
 
