@@ -186,6 +186,59 @@ function SessionRow({ s, onRefundClick }) {
   );
 }
 
+function RefundRow({ r }) {
+  const methodLabel = (() => {
+    const m = r.method;
+    if (m === 'stripe_card_on_file' || m === 'stripe_card_new') return r.methodDetail || 'Card';
+    if (m === 'stripe_payment_link') return 'Pay link';
+    if (m === 'cash') return 'Cash';
+    if (m === 'venmo') return 'Venmo';
+    if (m === 'zelle') return 'Zelle';
+    if (m === 'cashapp') return 'Cash App';
+    if (m === 'check') return 'Check';
+    return 'Other';
+  })();
+  const wasOnline = r.method && r.method.startsWith('stripe_');
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'#FFFFFF', borderRadius:10, boxShadow:'0 1px 3px rgba(0,0,0,0.06)', flexWrap:'wrap' }}>
+      <div style={{ width:36, height:36, borderRadius:'50%', background:'#FEE2E2', color:'#991B1B', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, flexShrink:0 }}>
+        ↺
+      </div>
+      <div style={{ flex:1, minWidth:100 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#1F2937' }}>{r.client}</div>
+        <div style={{ fontSize:12, color:'#6B7280' }}>
+          {fmtShort(r.date)} · {methodLabel} · {wasOnline ? 'Returned to card' : 'Marked refunded'}
+        </div>
+      </div>
+      <div style={{ textAlign:'right', minWidth:80 }}>
+        <div style={{ fontSize:14, fontWeight:700, color:'#DC2626' }}>
+          {currency(-(r.actual || 0))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RefundsList({ refunds }) {
+  if (!refunds || refunds.length === 0) return null;
+  const total = refunds.reduce((sum, r) => sum + (r.actual || 0), 0);
+  return (
+    <div style={{ marginTop:20 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:10, padding:'0 4px' }}>
+        <div style={{ fontSize:12, color:'#6B7280', fontWeight:700, letterSpacing:'0.04em', textTransform:'uppercase' }}>
+          Refunds · {refunds.length}
+        </div>
+        <div style={{ fontSize:13, color:'#991B1B', fontWeight:700 }}>
+          {currency(-total)}
+        </div>
+      </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {refunds.map(r => <RefundRow key={r.id} r={r} />)}
+      </div>
+    </div>
+  );
+}
+
 function EmptyBillingState() {
   return (
     <div style={{ background:'#FFFFFF', borderRadius:16, padding:'48px 32px', textAlign:'center', boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
@@ -491,6 +544,7 @@ function DailyView({ sessions, onRefundClick }) {
         ? <div style={{ background:'#FFFFFF', borderRadius:12, padding:32, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions on this day.</div>
         : <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{daySessionsRevenueOnly.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
+      <RefundsList refunds={daySessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
@@ -559,6 +613,7 @@ function WeeklyView({ sessions, onRefundClick }) {
       </div>
       <div style={{ fontSize:12, fontWeight:700, color:'#6B7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:12 }}>All Sessions This Week</div>
       <div style={{ display:'flex', flexDirection:'column', gap:8 }}>{weekRevenue.length===0?<div style={{ color:'#9CA3AF', fontSize:14, textAlign:'center', padding:24 }}>No sessions this week.</div>:weekRevenue.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
+      <RefundsList refunds={weekSessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
@@ -624,6 +679,7 @@ function MonthlyView({ sessions, onRefundClick }) {
         ?<div style={{ background:'#FFFFFF', borderRadius:12, padding:24, textAlign:'center', color:'#9CA3AF', fontSize:14 }}>No sessions. Click a day to view.</div>
         :<div style={{ display:'flex', flexDirection:'column', gap:8 }}>{selectedDaySessions.map(s=><SessionRow key={s.id} s={s} onRefundClick={onRefundClick}/>)}</div>
       }
+      <RefundsList refunds={monthSessions.filter(s => s.source === 'refund')} />
     </div>
   );
 }
@@ -755,6 +811,15 @@ function InsightsView({ sessions, onRefundClick }) {
           </div>
         </div>
       )}
+      {(() => {
+        const allRefunds = sessions.filter(s => s.source === 'refund').sort((a,b)=>b.date-a.date).slice(0, 20);
+        if (allRefunds.length === 0) return null;
+        return (
+          <div style={{ marginTop:20 }}>
+            <RefundsList refunds={allRefunds} />
+          </div>
+        );
+      })()}
     </div>
   );
 }
