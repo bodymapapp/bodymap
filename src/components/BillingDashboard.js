@@ -424,13 +424,29 @@ function HeroPayCard({ sessions, prevSessions, periodLabel }) {
               <div
                 onClick={() => setRefundsOpen(!refundsOpen)}
                 style={{
-                  fontSize: 13, color: '#6B7280',
+                  fontSize: 13,
                   display: 'flex', alignItems: 'center', gap: 8,
                   cursor: 'pointer', userSelect: 'none',
+                  padding: '8px 12px',
+                  background: refundsOpen ? '#FEF2F2' : 'transparent',
+                  border: `1.5px solid ${refundsOpen ? '#FECACA' : 'transparent'}`,
+                  borderRadius: 8,
+                  margin: '-2px -10px',
+                  transition: 'background 0.15s, border-color 0.15s',
                 }}>
                 <span style={{ color: '#DC2626', fontWeight: 700 }}>- {currency(refundTotal)}</span>
-                <span>refunded across {refundRows.length} payment{refundRows.length !== 1 ? 's' : ''}</span>
-                <span style={{ fontSize: 10, opacity: 0.7 }}>{refundsOpen ? '▾' : '▸'}</span>
+                <span style={{ color: '#6B7280' }}>
+                  refunded across {refundRows.length} payment{refundRows.length !== 1 ? 's' : ''}
+                </span>
+                <span style={{
+                  marginLeft: 'auto',
+                  fontSize: 11, fontWeight: 700,
+                  color: refundsOpen ? '#991B1B' : '#9CA3AF',
+                  display: 'flex', alignItems: 'center', gap: 4,
+                }}>
+                  {refundsOpen ? 'Hide' : 'View'}
+                  <span style={{ fontSize: 9 }}>{refundsOpen ? '▾' : '▸'}</span>
+                </span>
               </div>
               {refundsOpen && (
                 <div style={{
