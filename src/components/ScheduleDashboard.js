@@ -439,11 +439,14 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         + Add another payment
                       </button>
                       {/* Phase 14.3b (HK May 17 2026): refund the most
-                          recent succeeded Stripe payment on this booking.
-                          Hidden if no refundable payment exists. */}
+                          recent succeeded payment on this booking.
+                          Works for both Stripe and offline payments;
+                          the modal handles the branching internally
+                          (Stripe calls the refund API, cash/Venmo/etc
+                          just flips the local row). */}
                       {(() => {
                         const refundable = paymentRows
-                          .filter(p => p.status === 'succeeded' && p.payment_method && p.payment_method.startsWith('stripe_'))
+                          .filter(p => p.status === 'succeeded')
                           .slice(-1)[0];
                         if (!refundable) return null;
                         return (

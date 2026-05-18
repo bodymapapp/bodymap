@@ -38,7 +38,7 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { session_payment_id, therapist_id, refund_amount_cents } = await req.json();
+    const { session_payment_id, therapist_id, refund_amount_cents, offline_only } = await req.json();
 
     if (!session_payment_id) return respond({ error: 'session_payment_id required' }, 400);
     if (!therapist_id) return respond({ error: 'therapist_id required' }, 400);
@@ -50,7 +50,11 @@ serve(async (req) => {
     const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const STRIPE_SECRET_KEY = Deno.env.get('STRIPE_SECRET_KEY');
 
-    if (!STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
+    // Phase 14.3b (HK May 17 2026): offline_only allows refunding
+    // cash/Venmo/Zelle/check payments by just flipping the local
+    // row. No Stripe call needed in that path, so we don't require
+    // STRIPE_SECRET_KEY for offline refunds.
+    if (!offline_only && !STRIPE_SECRET_KEY) return respond({ error: 'stripe_not_configured' }, 500);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
@@ -74,15 +78,42 @@ serve(async (req) => {
       });
     }
 
-    // Only Stripe-backed payments can be refunded via this function.
-    // Cash/Venmo/Zelle "refunds" happen offline; the therapist can
-    // still mark the row as refunded via a different UI but that's
-    // not this function's job.
+    // Determine refund amount up front; same logic for both branches.
+    const fullAmount = (row.amount_cents || 0) + (row.tip_cents || 0);
+    const finalRefundCents = refund_amount_cents || fullAmount;
+    if (finalRefundCents > fullAmount) {
+      return respond({
+        error: 'refund_exceeds_paid',
+        detail: `Cannot refund more than the original $${(fullAmount/100).toFixed(2)}.`,
+      }, 400);
+    }
+
+    // Phase 14.3b (HK May 17 2026): offline_only short-circuits the
+    // Stripe API call. For cash/Venmo/Zelle/check payments, just
+    // flip the local row. The therapist returns the money out-of-band.
+    if (offline_only) {
+      const { error: updErr } = await supabase
+        .from('session_payments')
+        .update({ status: 'refunded' })
+        .eq('id', session_payment_id);
+      if (updErr) {
+        console.error('[refund-session-payment] offline update failed', updErr);
+        return respond({ error: 'update_failed', detail: updErr.message }, 500);
+      }
+      return respond({
+        success: true,
+        offline: true,
+        amount_refunded_cents: finalRefundCents,
+        status: 'refunded',
+      });
+    }
+
+    // From here, this is the Stripe path.
     const isStripe = row.payment_method && row.payment_method.startsWith('stripe_');
     if (!isStripe) {
       return respond({
         error: 'not_a_stripe_payment',
-        detail: `Cannot refund a ${row.payment_method} payment through Stripe. Mark it refunded offline.`,
+        detail: `Cannot refund a ${row.payment_method} payment through Stripe. Pass offline_only=true to mark it refunded locally.`,
       }, 400);
     }
 
@@ -101,16 +132,6 @@ serve(async (req) => {
       .single();
     if (!therapist?.stripe_account_id || !therapist.stripe_account_connected) {
       return respond({ error: 'stripe_not_connected_for_therapist' }, 400);
-    }
-
-    // Determine refund amount. Default is full (amount + tip).
-    const fullAmount = (row.amount_cents || 0) + (row.tip_cents || 0);
-    const finalRefundCents = refund_amount_cents || fullAmount;
-    if (finalRefundCents > fullAmount) {
-      return respond({
-        error: 'refund_exceeds_paid',
-        detail: `Cannot refund more than the original \$${(fullAmount/100).toFixed(2)}.`,
-      }, 400);
     }
 
     // Call Stripe to issue the refund. Use idempotency_key based on

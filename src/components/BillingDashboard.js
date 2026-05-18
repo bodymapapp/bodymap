@@ -149,13 +149,12 @@ function StatRow({ children }) {
 
 function SessionRow({ s, onRefundClick }) {
   const sc = STATUS_CFG[s.status];
-  // Phase 14.3b (HK May 17 2026): show Refund button on paid Stripe
-  // rows. Cash/Venmo/Zelle/etc. aren't refundable via the platform
-  // (they happened offline), and outstanding/no-show/refund/cancel-fee
-  // rows aren't refundable either.
+  // Phase 14.3b (HK May 17 2026): show Refund button on any paid
+  // session_payments row. Stripe payments call the refund API;
+  // cash/Venmo/Zelle/check/other just flip status='refunded' locally.
+  // The RefundModal branches based on payment_method.
   const canRefund = s.status === 'paid'
     && s.source === 'payment'
-    && s.method && s.method.startsWith('stripe_')
     && s.paymentId
     && onRefundClick;
   return (
