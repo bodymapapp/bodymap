@@ -213,6 +213,16 @@ function ServicesAndAvailability({ therapist }) {
   const [depositSaving, setDepositSaving] = React.useState(false);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
+  // Multi-location support (HK May 18 2026): list of therapist
+  // locations. Empty array if therapist has none (the most common
+  // case, including most current accounts). When length >= 2 the
+  // per-service location picker shows up + booking pages add a
+  // location step.
+  const [locations, setLocations] = React.useState([]);
+  const [locDraft, setLocDraft] = React.useState({ name: '', street1: '', street2: '', city: '', state: '', postal_code: '', notes: '' });
+  const [locSaving, setLocSaving] = React.useState(false);
+  const [locError, setLocError] = React.useState('');
+  const [editingLocId, setEditingLocId] = React.useState(null);
   // Track which service the therapist is being asked to confirm
   // deletion for. null = no confirm pending. Inline-confirm pattern,
   // not a modal or window.confirm (per house rules + 70yo persona).
@@ -259,16 +269,20 @@ function ServicesAndAvailability({ therapist }) {
   React.useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
 
   async function load() {
-    const [{ data: svcs }, { data: avail }] = await Promise.all([
+    const [{ data: svcs }, { data: avail }, { data: locs }] = await Promise.all([
       // is_('archived_at', null) filters out soft-deleted services so
       // they don't reappear in the management list after Remove. The
       // archived rows still exist for FK integrity but the therapist
       // never sees them again.
       supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('duration'),
       supabase.from('availability').select('*').eq('therapist_id', therapist.id),
+      // Locations (HK May 18 2026): only active rows. Sorted by
+      // sort_order so primary surfaces first.
+      supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
     ]);
     setServices(svcs || []);
     setAvailability(avail || []);
+    setLocations(locs || []);
     setLoading(false);
   }
 
@@ -365,6 +379,157 @@ function ServicesAndAvailability({ therapist }) {
     if (error) {
       console.error('updateService failed:', error);
       setServices(s => s.map(x => x.id === id ? prev : x));
+    }
+  }
+
+  // ─── Location management (HK May 18 2026) ───────────────────────
+  // V1 scope: add, edit, soft-archive, mark primary. No reorder UI
+  // (sort_order set automatically on add). No service-mapping UI here;
+  // that lives in the per-service location picker further down in
+  // the Services section.
+
+  function locResetDraft() {
+    setLocDraft({ name: '', street1: '', street2: '', city: '', state: '', postal_code: '', notes: '' });
+    setLocError('');
+    setEditingLocId(null);
+  }
+
+  function locStartEdit(loc) {
+    setEditingLocId(loc.id);
+    setLocDraft({
+      name: loc.name || '',
+      street1: loc.street1 || '',
+      street2: loc.street2 || '',
+      city: loc.city || '',
+      state: loc.state || '',
+      postal_code: loc.postal_code || '',
+      notes: loc.notes || '',
+    });
+    setLocError('');
+  }
+
+  async function addOrUpdateLocation() {
+    const name = (locDraft.name || '').trim();
+    if (!name) {
+      setLocError('Location needs a name.');
+      return;
+    }
+    setLocSaving(true);
+    setLocError('');
+    try {
+      const payload = {
+        name,
+        street1: (locDraft.street1 || '').trim() || null,
+        street2: (locDraft.street2 || '').trim() || null,
+        city: (locDraft.city || '').trim() || null,
+        state: (locDraft.state || '').trim() || null,
+        postal_code: (locDraft.postal_code || '').trim() || null,
+        notes: (locDraft.notes || '').trim() || null,
+        updated_at: new Date().toISOString(),
+      };
+      if (editingLocId) {
+        const { data, error } = await supabase
+          .from('therapist_locations')
+          .update(payload)
+          .eq('id', editingLocId)
+          .select()
+          .single();
+        if (error) throw error;
+        setLocations(ls => ls.map(x => x.id === editingLocId ? data : x));
+      } else {
+        // New location. First-ever location becomes primary
+        // automatically so the per-service UI has a sensible default
+        // once a second location is added later.
+        const isFirst = locations.length === 0;
+        const nextSort = locations.length === 0
+          ? 0
+          : Math.max(...locations.map(l => l.sort_order || 0)) + 1;
+        const { data, error } = await supabase
+          .from('therapist_locations')
+          .insert({
+            therapist_id: therapist.id,
+            ...payload,
+            is_primary: isFirst,
+            sort_order: nextSort,
+            active: true,
+          })
+          .select()
+          .single();
+        if (error) throw error;
+        setLocations(ls => [...ls, data]);
+      }
+      locResetDraft();
+    } catch (e) {
+      setLocError(e.message || 'Save failed.');
+    } finally {
+      setLocSaving(false);
+    }
+  }
+
+  async function setPrimaryLocation(id) {
+    // Atomic-ish: unset all then set the chosen one. Race window is
+    // narrow (single-user editing their own row). Partial-index
+    // constraint will reject if both end up true momentarily.
+    try {
+      await supabase
+        .from('therapist_locations')
+        .update({ is_primary: false })
+        .eq('therapist_id', therapist.id);
+      const { data, error } = await supabase
+        .from('therapist_locations')
+        .update({ is_primary: true })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      setLocations(ls => ls.map(x => ({ ...x, is_primary: x.id === id })));
+    } catch (e) {
+      setLocError(e.message || 'Could not change primary.');
+    }
+  }
+
+  async function archiveLocation(id) {
+    // Soft delete. Historical bookings keep their FK pointer intact.
+    const loc = locations.find(l => l.id === id);
+    if (!loc) return;
+    if (loc.is_primary && locations.filter(l => l.active).length > 1) {
+      setLocError('Choose another primary location before removing this one.');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('therapist_locations')
+        .update({ active: false, archived_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+      setLocations(ls => ls.filter(x => x.id !== id));
+    } catch (e) {
+      setLocError(e.message || 'Could not remove location.');
+    }
+  }
+
+  // Update which locations a service is offered at. Used by the
+  // per-service location checkbox group rendered only when 2+
+  // locations exist. NULL or empty array means "all locations"
+  // (the default). The backend treats NULL the same as a full list
+  // for filtering purposes; the UI mirrors that.
+  async function updateServiceLocations(serviceId, locationIds) {
+    const prev = services.find(s => s.id === serviceId);
+    if (!prev) return;
+    // Sentinel: if all locations are checked, store NULL ("all").
+    // Easier to reason about than a list that drifts when locations
+    // are added/removed.
+    const valueToStore = (locationIds && locationIds.length > 0 && locationIds.length < locations.length)
+      ? locationIds
+      : null;
+    setServices(s => s.map(x => x.id === serviceId ? { ...x, location_ids: valueToStore } : x));
+    const { error } = await supabase
+      .from('services')
+      .update({ location_ids: valueToStore })
+      .eq('id', serviceId);
+    if (error) {
+      console.error('updateServiceLocations failed:', error);
+      setServices(s => s.map(x => x.id === serviceId ? prev : x));
     }
   }
 
@@ -749,6 +914,65 @@ function ServicesAndAvailability({ therapist }) {
                     })()}
                   </div>
                 </div>
+
+                {/* Per-service location picker. Only shows when therapist
+                    has 2+ active locations (V1: feature gates itself off
+                    for the common single-location case). NULL/empty
+                    location_ids = "offered at all locations" (default).
+                    Therapist picks subset; updateServiceLocations stores
+                    NULL if all are checked. */}
+                {locations.length >= 2 && (
+                  <div style={{ marginTop:8, paddingTop:8, borderTop:`1px dashed ${C2.lightGray}` }}>
+                    <div style={{ fontSize:11, fontWeight:700, color:C2.gray, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:6 }}>
+                      Offered at
+                    </div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+                      {locations.map(loc => {
+                        // Treat NULL/empty location_ids as "all locations
+                        // checked" so the default behaves predictably.
+                        const currentIds = (svc.location_ids && svc.location_ids.length > 0)
+                          ? svc.location_ids
+                          : locations.map(l => l.id);
+                        const isChecked = currentIds.includes(loc.id);
+                        return (
+                          <button
+                            key={loc.id}
+                            onClick={() => {
+                              const next = isChecked
+                                ? currentIds.filter(id => id !== loc.id)
+                                : [...currentIds, loc.id];
+                              // Don't allow zero-locations on a service:
+                              // a service offered nowhere is unbookable.
+                              // The button is disabled visually below
+                              // when this would be the result.
+                              if (next.length === 0) return;
+                              updateServiceLocations(svc.id, next);
+                            }}
+                            disabled={isChecked && currentIds.length === 1}
+                            style={{
+                              display:'inline-flex',
+                              alignItems:'center',
+                              gap:6,
+                              background: isChecked ? '#F0F6EE' : '#fff',
+                              border:`1.5px solid ${isChecked ? C2.forest : C2.lightGray}`,
+                              borderRadius:8,
+                              padding:'5px 10px',
+                              fontSize:12,
+                              fontWeight:600,
+                              color: isChecked ? C2.forest : C2.gray,
+                              cursor: isChecked && currentIds.length === 1 ? 'not-allowed' : 'pointer',
+                              opacity: isChecked && currentIds.length === 1 ? 0.7 : 1,
+                            }}
+                            aria-pressed={isChecked}
+                          >
+                            <span style={{ fontSize:11 }}>{isChecked ? '✓' : ''}</span>
+                            <span>{loc.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -785,6 +1009,103 @@ function ServicesAndAvailability({ therapist }) {
             </button>
           )}
         </div>
+      </DisclosureRow>
+
+
+      {/* Locations. Disclosure row pattern. HK May 18 2026.
+          Driven by Jackie's inbound asking for multi-location support.
+          Sits between Services and Deposit since locations are tightly
+          tied to services (per-service location picker appears in
+          Services when 2+ locations exist). */}
+      <DisclosureRow
+        icon="📍"
+        title="Locations"
+        summary={
+          locations.length === 0
+            ? 'Add the place you practice from'
+            : locations.length === 1
+              ? `1 location: ${locations[0].name}`
+              : `${locations.length} locations`
+        }
+        open={openSubRow === 'locations'}
+        onToggle={() => { setOpenSubRow(openSubRow === 'locations' ? null : 'locations'); locResetDraft(); }}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
+          Where you see clients. Add a second location if you practice in more than one place, and clients will pick which one when booking.
+        </p>
+
+        {/* Existing locations list */}
+        {locations.length > 0 && (
+          <div style={{ display:'flex', flexDirection:'column', gap:8, marginBottom:14 }}>
+            {locations.map(loc => {
+              const fullAddr = [loc.street1, loc.street2, loc.city, loc.state, loc.postal_code]
+                .filter(Boolean).join(', ');
+              const isEditing = editingLocId === loc.id;
+              if (isEditing) {
+                return (
+                  <LocationEditCard
+                    key={loc.id}
+                    draft={locDraft}
+                    setDraft={setLocDraft}
+                    onSave={addOrUpdateLocation}
+                    onCancel={locResetDraft}
+                    saving={locSaving}
+                    error={locError}
+                    isEdit
+                    C2={C2}
+                  />
+                );
+              }
+              return (
+                <div key={loc.id} style={{ padding:'12px 14px', background:'#F9FAFB', borderRadius:10, border:`1px solid ${C2.lightGray}` }}>
+                  <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, flexWrap:'wrap' }}>
+                    <div style={{ minWidth:0, flex:1 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
+                        <span style={{ fontSize:14, fontWeight:700, color:C2.darkGray }}>{loc.name}</span>
+                        {loc.is_primary && (
+                          <span style={{ fontSize:10, fontWeight:700, color:C2.forest, background:'#F0F6EE', border:'1px solid #B7D1AB', borderRadius:999, padding:'2px 7px', letterSpacing:'0.04em', textTransform:'uppercase' }}>Primary</span>
+                        )}
+                      </div>
+                      {fullAddr && (
+                        <div style={{ fontSize:12, color:C2.gray, marginTop:3 }}>{fullAddr}</div>
+                      )}
+                      {loc.notes && (
+                        <div style={{ fontSize:11, color:C2.gray, marginTop:3, fontStyle:'italic' }}>{loc.notes}</div>
+                      )}
+                    </div>
+                    <div style={{ display:'flex', gap:6 }}>
+                      {!loc.is_primary && (
+                        <button onClick={() => setPrimaryLocation(loc.id)} style={{ background:'transparent', border:`1px solid ${C2.lightGray}`, padding:'5px 11px', borderRadius:6, fontSize:11, fontWeight:600, color:C2.forest, cursor:'pointer' }}>
+                          Make primary
+                        </button>
+                      )}
+                      <button onClick={() => locStartEdit(loc)} style={{ background:'transparent', border:`1px solid ${C2.lightGray}`, padding:'5px 11px', borderRadius:6, fontSize:11, fontWeight:600, color:C2.darkGray, cursor:'pointer' }}>
+                        Edit
+                      </button>
+                      <button onClick={() => archiveLocation(loc.id)} style={{ background:'transparent', border:`1px solid ${C2.lightGray}`, padding:'5px 11px', borderRadius:6, fontSize:11, fontWeight:600, color:'#9F6B6B', cursor:'pointer' }}>
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Add new location form. Only shows when not editing an existing one. */}
+        {!editingLocId && (
+          <LocationEditCard
+            draft={locDraft}
+            setDraft={setLocDraft}
+            onSave={addOrUpdateLocation}
+            onCancel={locResetDraft}
+            saving={locSaving}
+            error={locError}
+            isEdit={false}
+            C2={C2}
+          />
+        )}
       </DisclosureRow>
 
 
@@ -3867,6 +4188,170 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     </div>
   );
 }
+
+
+// LocationEditCard (HK May 18 2026): inline form for adding or editing
+// a therapist location. Used by the Locations DisclosureRow in the
+// main Dashboard function. Structured address fields (street1, street2,
+// city, state, postal_code) plus name and optional notes. Saving is
+// the parent's responsibility; this component only edits the draft.
+function LocationEditCard({ draft, setDraft, onSave, onCancel, saving, error, isEdit, C2 }) {
+  const set = (field) => (e) => setDraft({ ...draft, [field]: e.target.value });
+  const inputStyle = {
+    width: '100%',
+    padding: '8px 10px',
+    border: `1.5px solid ${C2.lightGray}`,
+    borderRadius: 8,
+    fontSize: 13,
+    outline: 'none',
+    boxSizing: 'border-box',
+    background: '#fff',
+    fontFamily: 'system-ui, -apple-system, sans-serif',
+  };
+  const labelStyle = {
+    display: 'block',
+    fontSize: 11,
+    fontWeight: 700,
+    color: C2.gray,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    marginBottom: 4,
+  };
+  return (
+    <div style={{ padding: '14px 16px', background: '#FAFAF7', borderRadius: 10, border: `1.5px dashed ${C2.lightGray}` }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: C2.darkGray }}>
+          {isEdit ? 'Edit location' : 'Add a location'}
+        </span>
+      </div>
+
+      {/* Name */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Name</label>
+        <input
+          type="text"
+          value={draft.name}
+          onChange={set('name')}
+          placeholder="Downtown studio"
+          disabled={saving}
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Street1 */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Street address</label>
+        <input
+          type="text"
+          value={draft.street1}
+          onChange={set('street1')}
+          placeholder="123 Main St"
+          disabled={saving}
+          style={inputStyle}
+        />
+      </div>
+
+      {/* Street2 */}
+      <div style={{ marginBottom: 10 }}>
+        <label style={labelStyle}>Suite, floor, room (optional)</label>
+        <input
+          type="text"
+          value={draft.street2}
+          onChange={set('street2')}
+          placeholder="Studio B"
+          disabled={saving}
+          style={inputStyle}
+        />
+      </div>
+
+      {/* City + State + Postal: 3-column on wider, stacks on narrow */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+        <div>
+          <label style={labelStyle}>City</label>
+          <input
+            type="text"
+            value={draft.city}
+            onChange={set('city')}
+            placeholder="Boulder"
+            disabled={saving}
+            style={inputStyle}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>State</label>
+          <input
+            type="text"
+            value={draft.state}
+            onChange={set('state')}
+            placeholder="CO"
+            maxLength={2}
+            disabled={saving}
+            style={{ ...inputStyle, textTransform: 'uppercase' }}
+          />
+        </div>
+        <div>
+          <label style={labelStyle}>ZIP</label>
+          <input
+            type="text"
+            value={draft.postal_code}
+            onChange={set('postal_code')}
+            placeholder="80301"
+            disabled={saving}
+            style={inputStyle}
+          />
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div style={{ marginBottom: 12 }}>
+        <label style={labelStyle}>Notes (optional)</label>
+        <input
+          type="text"
+          value={draft.notes}
+          onChange={set('notes')}
+          placeholder="Parking behind the building, buzz suite 200"
+          disabled={saving}
+          style={inputStyle}
+        />
+      </div>
+
+      {error && (
+        <div style={{ background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B', borderRadius: 8, padding: '8px 12px', fontSize: 12, marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 8 }}>
+        {isEdit && (
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            style={{ background: '#F3F4F6', color: '#4B5563', border: 'none', padding: '9px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer' }}
+          >
+            Cancel
+          </button>
+        )}
+        <button
+          onClick={onSave}
+          disabled={saving || !draft.name.trim()}
+          style={{
+            background: saving || !draft.name.trim() ? '#D1D5DB' : C2.forest,
+            color: '#fff',
+            border: 'none',
+            padding: '9px 18px',
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: saving || !draft.name.trim() ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Saving...' : (isEdit ? 'Save changes' : 'Add location')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 
 export default function Dashboard({ view }) {
   const { therapist, signOut } = useAuth();

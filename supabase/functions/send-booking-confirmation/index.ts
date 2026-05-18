@@ -182,7 +182,7 @@ serve(async (req) => {
 
     const { data: booking, error: bErr } = await supabase
       .from("bookings")
-      .select("*, therapists(*), services(*)")
+      .select("*, therapists(*), services(*), location:therapist_locations(*)")
       .eq("id", booking_id)
       .maybeSingle();
 
@@ -227,6 +227,19 @@ serve(async (req) => {
     const dashboardUrl = `https://mybodymap.app/dashboard`;
     const status = booking.status || "confirmed";
     const isPendingApproval = status === "pending-approval";
+
+    // Multi-location (HK May 18 2026): build display strings for the
+    // booked location. NULL when therapist has no locations set up or
+    // the booking pre-dates multi-location; in that case all the
+    // location_* fields below stay empty and the email renders without
+    // a location block, exactly as before.
+    const location = (booking as any).location || null;
+    const locationName = location?.name || null;
+    const locationAddress = location
+      ? [location.street1, location.street2, location.city, location.state, location.postal_code]
+          .filter(Boolean).join(", ")
+      : null;
+    const locationNotes = location?.notes || null;
 
     const results: Record<string, any> = { client_email: null, therapist_email: null };
 
@@ -303,6 +316,14 @@ serve(async (req) => {
           with ${escapeHtml(therapistName)}
           ${servicePrice ? `<br/>$${servicePrice}` : ""}
         </div>
+        ${locationName ? `
+        <div style="margin-top:14px;padding-top:14px;border-top:1px dashed ${C.beige};">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${C.gray};margin-bottom:4px;">Location</div>
+          <div style="font-size:14px;font-weight:600;color:${C.ink};margin-bottom:2px;">${escapeHtml(locationName)}</div>
+          ${locationAddress ? `<div style="font-size:13px;color:${C.gray};line-height:1.5;">${escapeHtml(locationAddress)}</div>` : ""}
+          ${locationNotes ? `<div style="font-size:12px;color:${C.gray};line-height:1.5;font-style:italic;margin-top:4px;">${escapeHtml(locationNotes)}</div>` : ""}
+        </div>
+        ` : ""}
       </div>
 
       ${!isPendingApproval ? `
@@ -407,6 +428,7 @@ serve(async (req) => {
       <div style="background:${C.cream};border-radius:12px;padding:18px;margin-bottom:18px;font-size:14px;color:${C.ink};line-height:1.8;">
         <strong>When:</strong> ${escapeHtml(apt.full)}<br/>
         <strong>Service:</strong> ${escapeHtml(serviceName)}${servicePrice ? ` ($${servicePrice})` : ""}<br/>
+        ${locationName ? `<strong>Location:</strong> ${escapeHtml(locationName)}${locationAddress ? ` (${escapeHtml(locationAddress)})` : ""}<br/>` : ""}
         <strong>Email:</strong> <a href="mailto:${escapeHtml(clientEmail || "")}" style="color:${C.forest};">${escapeHtml(clientEmail || "(not provided)")}</a>
         ${booking.client_phone ? `<br/><strong>Phone:</strong> <a href="tel:${escapeHtml(booking.client_phone)}" style="color:${C.forest};">${escapeHtml(booking.client_phone)}</a>` : ""}
       </div>

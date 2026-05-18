@@ -1066,7 +1066,10 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                         {!appt.preview&&!appt.reminder_sent&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>📧 Pending</div>}
                       </div>
                     </div>
-                    {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>{appt.service}</div>}
+                    {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>
+                      {appt.service}
+                      {appt.locationName && <span style={{ color: '#9CA3AF', fontWeight: 500 }}> · 📍 {appt.locationName}</span>}
+                    </div>}
                     {bh>72&&(
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                         <div style={{background:appt.preview?'transparent':st.dot+'22',color:appt.preview?'#C4C4C4':st.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{st.icon} {appt.preview?'Preview':st.label}</div>
@@ -2056,7 +2059,7 @@ export default function ScheduleDashboard({ therapist }) {
 
       const { data: bookings, error } = await supabase
         .from('bookings')
-        .select('*, services(name, duration, price, is_couples), reminder_sent_at, deposit_required, deposit_paid, deposit_amount, partner_name, partner_email')
+        .select('*, services(name, duration, price, is_couples), location:therapist_locations(name), reminder_sent_at, deposit_required, deposit_paid, deposit_amount, partner_name, partner_email')
         .eq('therapist_id', therapist.id)
         .neq('status', 'cancelled')
         .gte('booking_date', toDateStr(past))
@@ -2176,6 +2179,10 @@ export default function ScheduleDashboard({ therapist }) {
           // Used by the timeline card style to color paid bookings.
           paid: (paidMap[b.id] || 0) > 0,
           paid_cents: paidMap[b.id] || 0,
+          // Multi-location (HK May 18 2026): location name for the
+          // appointment chip. NULL for single-location therapists or
+          // pre-migration bookings; the chip render guards on this.
+          locationName: b.location?.name || null,
         };
       });
 

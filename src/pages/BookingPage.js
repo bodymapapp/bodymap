@@ -689,6 +689,13 @@ export default function BookingPage() {
   const {slug}=useParams();
   const [therapist,setTherapist]=useState(null);
   const [services,setServices]=useState([]);
+  // Multi-location (HK May 18 2026): therapist's locations + the one
+  // the client picked. When length < 2 the picker doesn't render and
+  // selectedLocation stays whatever was auto-chosen (primary, or null
+  // when none exist). When length >= 2 the picker is step 1 of the
+  // flow before service selection.
+  const [locations,setLocations]=useState([]);
+  const [selectedLocation,setSelectedLocation]=useState(null);
   // Available add-ons for this therapist + the set the client has selected.
   // Each entry in availableAddons is a row from service_addons.
   const [availableAddons,setAvailableAddons]=useState([]);
@@ -1125,7 +1132,7 @@ export default function BookingPage() {
       console.warn('[MyBodyMap] schema log failed', e);
     }
 
-    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes]=await Promise.all([
+    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs}]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('price'),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       // Phase 9.1 (May 16 2026): fetch start_time and end_time so we
@@ -1143,6 +1150,10 @@ export default function BookingPage() {
       // active=true rows.
       supabase.from('packages').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
       supabase.from('memberships').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
+      // Locations (HK May 18 2026): active only, sorted so primary
+      // surfaces first. Empty array means therapist hasn't set up
+      // multi-location; the picker stays hidden in that case.
+      supabase.from('therapist_locations').select('*').eq('therapist_id',t.id).eq('active',true).order('sort_order',{ascending:true}),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
@@ -1174,6 +1185,17 @@ export default function BookingPage() {
     // therapist has no processor at all.
     const therapistHasAnyProcessor = !!(t.stripe_account_id || t.square_access_token);
     setMembershipsList(therapistHasAnyProcessor ? (memRes?.data || []) : []);
+
+    // Multi-location: store the list. Auto-pick when 0 or 1 location
+    // exists so the picker step is skipped. When 2+ exist, leave
+    // selectedLocation null and the picker renders as step 1.
+    const locList = locs || [];
+    setLocations(locList);
+    if (locList.length === 1) {
+      setSelectedLocation(locList[0]);
+    } else if (locList.length === 0) {
+      setSelectedLocation(null);
+    }
     setLoading(false);
   }
 
@@ -1655,6 +1677,12 @@ export default function BookingPage() {
       booking_policies_text_snapshot: (therapist?.booking_policies_enabled && bookingPoliciesAgreed)
         ? (therapist.booking_policies || null)
         : null,
+      // Multi-location (HK May 18 2026). When therapist has 2+
+      // locations, the client picked one in step 1; persist the FK.
+      // Single-location therapists implicitly set selectedLocation to
+      // that location at load time. No-location therapists keep this
+      // NULL, which is the legacy behavior.
+      location_id: selectedLocation?.id || null,
     }).select().single();
     setSubmitting(false);
     if(error){alert('Something went wrong. Please try again.');return;}
@@ -2437,16 +2465,132 @@ export default function BookingPage() {
               </div>
             )}
 
-            {services.length===0
+            {/* Multi-location picker (HK May 18 2026). Shows ONLY when
+                therapist has 2+ active locations. When no location is
+                selected yet, this replaces the service list entirely:
+                the client picks a location first, then sees services.
+                Once selected, a thin location chip surfaces above the
+                services with a 'Change' affordance. */}
+            {locations.length >= 2 && !selectedLocation && (
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 13, color: C.gray, fontWeight: 600, marginBottom: 10 }}>
+                  Where would you like to come?
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {locations.map(loc => {
+                    const fullAddr = [loc.street1, loc.street2, loc.city, loc.state, loc.postal_code]
+                      .filter(Boolean).join(', ');
+                    return (
+                      <button
+                        key={loc.id}
+                        onClick={() => setSelectedLocation(loc)}
+                        style={{
+                          background: C.white,
+                          border: `2px solid ${C.light}`,
+                          borderRadius: 16,
+                          padding: '16px 18px',
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          width: '100%',
+                          transition: 'all 0.15s',
+                          outline: 'none',
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.forest; e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 16px rgba(42,87,65,0.12)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.light; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                          <span style={{ fontSize: 22, lineHeight: 1 }}>📍</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                              {loc.name}
+                            </div>
+                            {fullAddr && (
+                              <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.4 }}>
+                                {fullAddr}
+                              </div>
+                            )}
+                            {loc.notes && (
+                              <div style={{ fontSize: 12, color: C.gray, fontStyle: 'italic', marginTop: 4, lineHeight: 1.4 }}>
+                                {loc.notes}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Selected location chip with Change affordance. Sits
+                above the service list once a location is picked. */}
+            {locations.length >= 2 && selectedLocation && (
+              <div style={{
+                marginBottom: 14,
+                padding: '10px 14px',
+                background: '#F0F6EE',
+                border: '1px solid #B7D1AB',
+                borderRadius: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 16 }}>📍</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#1F4131' }}>
+                    {selectedLocation.name}
+                  </div>
+                  {(() => {
+                    const fullAddr = [selectedLocation.street1, selectedLocation.city, selectedLocation.state]
+                      .filter(Boolean).join(', ');
+                    return fullAddr ? (
+                      <div style={{ fontSize: 12, color: '#1F4131', opacity: 0.75 }}>{fullAddr}</div>
+                    ) : null;
+                  })()}
+                </div>
+                <button
+                  onClick={() => { setSelectedLocation(null); setSvc(null); }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #B7D1AB',
+                    color: '#1F4131',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    padding: '5px 11px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Change
+                </button>
+              </div>
+            )}
+
+            {/* Service list. Hidden entirely when the picker is on
+                screen so the client doesn't get overwhelmed. */}
+            {!(locations.length >= 2 && !selectedLocation) && (services.length===0
               ?<div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available yet. Check back soon.</div>
               :<div style={{display:'flex',flexDirection:'column',gap:10}}>
                 {(() => {
+                  // Multi-location filter (HK May 18 2026). When the
+                  // therapist has 2+ locations and the client has picked
+                  // one, hide services that aren't offered at that
+                  // location. NULL/empty location_ids means "all
+                  // locations" so those services always show.
+                  let filtered = services;
+                  if (locations.length >= 2 && selectedLocation) {
+                    filtered = services.filter(s => {
+                      if (!s.location_ids || s.location_ids.length === 0) return true;
+                      return s.location_ids.includes(selectedLocation.id);
+                    });
+                  }
                   // Apply cycle scheduling filter if therapist has it on.
                   // Returns the original services array unchanged otherwise.
                   // Filter is by TODAY's phase — meaning the menu reflects
                   // what she's offering this week. Future-dated bookings still
                   // pick from today's available menu (V1 simplification).
-                  const visibleServices = applyCycleFilter(therapist, services);
+                  const visibleServices = applyCycleFilter(therapist, filtered);
                   if (visibleServices.length === 0 && services.length > 0) {
                     return <div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available right now. Check back in a few days.</div>;
                   }
@@ -2472,7 +2616,7 @@ export default function BookingPage() {
                 ));
                 })()}
               </div>
-            }
+            )}
           </div>
         )}
 

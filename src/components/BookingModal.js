@@ -84,16 +84,24 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [blockedDates, setBlockedDates] = useState(new Set());
   // Phase 9.1: partial-day blocks keyed by date string.
   const [partialBlocksByDate, setPartialBlocksByDate] = useState({});
+  // Multi-location (HK May 18 2026): list of therapist's active
+  // locations. Dropdown only renders when length >= 2. Default
+  // selection is the primary location. On reschedule, preserves the
+  // existing booking's location.
+  const [locations, setLocations] = useState([]);
+  const [locationId, setLocationId] = useState(existingBooking?.location_id || null);
 
   // Load services + availability + blocked days
   useEffect(() => {
     async function load() {
-      const [{ data: svcs }, { data: avail }, { data: blocked }] = await Promise.all([
+      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('price'),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         // Phase 9.1: fetch start_time/end_time so partial-day blocks
         // are honored in the therapist's book-on-behalf flow too.
         supabase.from('blocked_days').select('date, start_time, end_time').eq('therapist_id', therapist.id),
+        // Multi-location: same fetch as the public booking page.
+        supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
@@ -112,6 +120,15 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       }
       setBlockedDates(new Set(fullDay));
       setPartialBlocksByDate(partial);
+      // Locations: default to primary (or whatever location the
+      // existing reschedule booking already had, preserved at state
+      // init).
+      const locList = locs || [];
+      setLocations(locList);
+      if (!existingBooking?.location_id && locList.length > 0) {
+        const primary = locList.find(l => l.is_primary) || locList[0];
+        setLocationId(primary.id);
+      }
       if (svcs?.length) {
         // Pre-select service if reschedule
         const existing = svcs.find(s => s.name === existingBooking?.service) || svcs[0];
@@ -231,9 +248,16 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       let eventType = null;
 
       if (isReschedule && existingBooking?.id) {
-        // Update existing booking date/time
+        // Update existing booking date/time. location_id only sent
+        // when therapist has multi-location active (otherwise the
+        // existing FK stays untouched, which is the correct behavior
+        // for single-location accounts).
+        const updatePayload = { booking_date: date, start_time: slot.start, end_time: slot.end, notes };
+        if (locations.length >= 2 && locationId) {
+          updatePayload.location_id = locationId;
+        }
         const { error: e } = await supabase.from('bookings')
-          .update({ booking_date: date, start_time: slot.start, end_time: slot.end, notes })
+          .update(updatePayload)
           .eq('id', existingBooking.id);
         if (e) throw e;
         bookingId = existingBooking.id;
@@ -269,6 +293,10 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           deposit_required: false,
           deposit_amount:   0,
           deposit_paid:     false,
+          // Multi-location (HK May 18 2026): NULL when therapist has
+          // no locations set up. Otherwise the picked location, or
+          // primary by default.
+          location_id:   locationId || null,
         }).select('id').single();
         if (e) throw e;
         bookingId = newBooking?.id || null;
@@ -382,12 +410,66 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
             </div>
           )}
 
+          {/* Location (HK May 18 2026): only shows when therapist has
+              2+ active locations. Single-location therapists keep the
+              modal exactly as it was. Picker buttons match the service
+              picker style for visual consistency. */}
+          {locations.length >= 2 && (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Location</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {locations.map(loc => {
+                  const isPicked = locationId === loc.id;
+                  const addrShort = [loc.city, loc.state].filter(Boolean).join(', ');
+                  return (
+                    <button
+                      key={loc.id}
+                      onClick={() => setLocationId(loc.id)}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${isPicked ? C.forest : C.border}`,
+                        background: isPicked ? '#F0FDF4' : '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? C.forest : C.dark, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        📍 {loc.name}
+                        {loc.is_primary && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: C.gray, marginLeft: 2 }}>(primary)</span>
+                        )}
+                      </span>
+                      {addrShort && (
+                        <span style={{ fontSize: 12, color: C.gray }}>{addrShort}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Service */}
           {!isReschedule && (
             <div>
               <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>Service</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {services.map(s => (
+                {(() => {
+                  // Filter by location when therapist has 2+ locations
+                  // and one is picked. NULL/empty location_ids on a
+                  // service = available everywhere, default behavior.
+                  let visibleServices = services;
+                  if (locations.length >= 2 && locationId) {
+                    visibleServices = services.filter(s => {
+                      if (!s.location_ids || s.location_ids.length === 0) return true;
+                      return s.location_ids.includes(locationId);
+                    });
+                  }
+                  return visibleServices.map(s => (
                   <button key={s.id} onClick={() => setServiceId(s.id)}
                     style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${serviceId === s.id ? C.forest : C.border}`,
                       background: serviceId === s.id ? '#F0FDF4' : '#fff', cursor: 'pointer',
@@ -400,7 +482,8 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                     </span>
                     <span style={{ fontSize: 13, color: C.gray }}>{s.duration} min · ${s.price}</span>
                   </button>
-                ))}
+                  ));
+                })()}
               </div>
             </div>
           )}
