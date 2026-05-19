@@ -44,7 +44,12 @@ const F = {
   serif: 'Georgia, "Times New Roman", serif',
 };
 
-// Strategy library, picked by tier
+// Strategy library, picked by tier. Each strategy declares whether
+// it has a wired action. Wired strategies render with a button.
+// Unwired strategies render as text-only content (icon + title + why)
+// per the design principle: don't fake actions, don't say 'coming
+// soon', let the text stand on its own when no wired destination
+// exists yet.
 const STRATEGY_LIB = {
   outreach: (count) => ({
     icon: '↻',
@@ -52,34 +57,36 @@ const STRATEGY_LIB = {
     why: 'Existing clients convert 4x better than new outreach.',
     btn: 'Send check-in messages',
     action: 'outreach',
+    wired: true,
   }),
   socialPost: {
     icon: '✍',
     title: 'Share a recent client win',
-    why: 'A short post takes 10 minutes and can bring 2 to 3 inquiries.',
-    btn: 'Draft a post',
+    why: 'A short post about a session outcome can bring 2 to 3 inquiries.',
     action: 'draftPost',
+    wired: false,
   },
   reviewRequest: {
     icon: '⭐',
     title: 'Ask 2 clients for a review',
-    why: 'Reviews compound. 80 percent of new bookings check reviews first.',
+    why: 'Reviews compound. Most new bookings check reviews first.',
     btn: 'Pick clients to ask',
     action: 'reviewRequest',
+    wired: true,
   },
   cluster: {
     icon: '⬢',
     title: 'Cluster isolated slots',
-    why: 'Back-to-back sessions reduce setup time and fatigue.',
-    btn: 'Suggest cluster',
+    why: 'Back-to-back sessions reduce setup time and fatigue. Worth proposing to clients on days with two single appointments.',
     action: 'cluster',
+    wired: false,
   },
   premiumSlot: {
     icon: '⏱',
-    title: 'Offer a 90-min deep tissue special',
-    why: 'Longer sessions earn more per hour and serve loyal clients better.',
-    btn: 'Add premium slot',
+    title: 'Offer a 90-min deep tissue session',
+    why: 'Longer sessions earn more per hour and serve your most loyal clients better.',
     action: 'premium',
+    wired: false,
   },
   selfCare: {
     icon: '🌱',
@@ -87,20 +94,21 @@ const STRATEGY_LIB = {
     why: 'Your body is the practice. Recovery time pays back in longevity.',
     btn: 'Block self-care window',
     action: 'blockTime',
+    wired: true,
   },
   ceu: {
     icon: '📖',
     title: 'Take a CEU course this week',
-    why: 'Most state licenses need CEUs. Spacious weeks are when you fit them.',
-    btn: 'Browse CEU options',
+    why: 'Most state licenses need continuing education hours. Spacious weeks are when they fit.',
     action: 'ceu',
+    wired: false,
   },
   waitlist: {
     icon: '📋',
     title: 'Start a small waitlist',
-    why: 'A few clients always want your time. Capture interest when full.',
-    btn: 'Set up waitlist',
+    why: 'When you are full, capture the clients who still want time with you. A short list to call when a cancellation opens.',
     action: 'waitlist',
+    wired: false,
   },
   rateReview: {
     icon: '💵',
@@ -108,6 +116,7 @@ const STRATEGY_LIB = {
     why: 'Full schedules at current rates are a signal your work is undervalued.',
     btn: 'Review your rates',
     action: 'rates',
+    wired: true,
   },
 };
 
@@ -269,12 +278,10 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
 
   const isFullyBooked = totalMinutes === 0;
 
-  // Map each strategy.action to a real destination. Soft actions show
-  // a brief note via window.alert (lightweight, no toast dep) until
-  // each flow is wired up properly. Outreach and clients-tab actions
-  // navigate immediately. blockTime calls a parent handler so the
-  // existing Time off panel opens above the calendar where the
-  // therapist can pick a specific window to block off.
+  // Map each wired strategy.action to a real destination. Unwired
+  // strategies render text-only and never call this function (the
+  // button is not rendered for them). Per design principle: no
+  // alert popups, no 'coming soon' notes, no fake actions.
   function runStrategy(s) {
     switch (s.action) {
       case 'outreach':
@@ -290,24 +297,8 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
         if (typeof onParentAction === 'function') {
           onParentAction('open-time-off');
         } else {
-          // Fallback if parent didn't wire the handler
           navigate('/dashboard/schedule');
         }
-        return;
-      case 'draftPost':
-        alert('Post drafting is coming soon. For now, share your win directly on your channels.');
-        return;
-      case 'cluster':
-        alert('Cluster suggestion drafts are coming. For now, you can text clients directly to ask if they would prefer back-to-back times.');
-        return;
-      case 'premium':
-        alert('Premium-slot promotion is coming soon. For now, message a client about offering a longer session.');
-        return;
-      case 'ceu':
-        alert('CEU browser is coming soon. For now, check AMTA or ABMP for course catalogs.');
-        return;
-      case 'waitlist':
-        alert('Waitlist setup is coming. For now, keep a note of clients who ask when you are full.');
         return;
       default:
         return;
@@ -397,7 +388,7 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
           padding: '10px 11px',
           marginBottom: i < strategies.length - 1 ? 7 : 0,
         }}>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 7 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: s.wired ? 7 : 0 }}>
             <div style={{
               fontSize: 14, flexShrink: 0, width: 20,
               textAlign: 'center', color: C.forest,
@@ -417,23 +408,25 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
               }}>{s.why}</div>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); runStrategy(s); }}
-            style={{
-              width: '100%',
-              background: '#FFFFFF',
-              color: C.forestDeep,
-              border: `1px solid ${C.creamEdge}`,
-              borderRadius: 7,
-              padding: '6px',
-              fontSize: 11.5,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: F.sans,
-            }}>
-            {s.btn}
-          </button>
+          {s.wired && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); runStrategy(s); }}
+              style={{
+                width: '100%',
+                background: '#FFFFFF',
+                color: C.forestDeep,
+                border: `1px solid ${C.creamEdge}`,
+                borderRadius: 7,
+                padding: '6px',
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: F.sans,
+              }}>
+              {s.btn}
+            </button>
+          )}
         </div>
       ))}
     </section>
