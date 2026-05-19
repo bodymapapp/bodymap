@@ -42,6 +42,8 @@ import CancellationPolicyDemo from "../components/demos/CancellationPolicyDemo";
 import ProcessorParityDemo from "../components/demos/ProcessorParityDemo";
 import CardOnFileDemo from "../components/demos/CardOnFileDemo";
 import RefundDemo from "../components/demos/RefundDemo";
+import ServiceGroupingDemo from "../components/demos/ServiceGroupingDemo";
+import DataOwnershipDemo from "../components/demos/DataOwnershipDemo";
 
 // ───────────────────────────────────────────────────────────────────────
 // Ribbon configuration. Mirrors the 7 ribbons on /features but adapted
@@ -65,6 +67,7 @@ const RIBBONS = [
       { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
       { kind: "component", component: SmartScheduleDemo, label: "Smart Scheduling" },
       { kind: "component", component: ServiceDaysDemo, label: "Custom days per service" },
+      { kind: "component", component: ServiceGroupingDemo, label: "Group your services" },
     ],
     layout: "demo-right",
     subFeatures: [
@@ -74,6 +77,7 @@ const RIBBONS = [
       "Cycle-aligned scheduling (only on MyBodyMap)",
       "Smart Scheduling that packs your day tight (only on MyBodyMap)",
       "Custom days per service, different services on different days (only on MyBodyMap)",
+      "Service grouping, auto-classified into Prenatal, Couples, Therapeutic, Relaxation, Energy, Add-ons (only on MyBodyMap)",
       "Cal.com sync, two-way",
       "Deposits at booking via Stripe / Square",
       "Website embed for your existing site",
@@ -192,6 +196,7 @@ const RIBBONS = [
       { kind: "component", component: ProcessorParityDemo, label: "Stripe + Square" },
       { kind: "component", component: CardOnFileDemo, label: "Card on file" },
       { kind: "component", component: RefundDemo, label: "One-tap refunds" },
+      { kind: "component", component: DataOwnershipDemo, label: "Download all your data" },
     ],
     layout: "demo-left",
     subFeatures: [
@@ -202,6 +207,7 @@ const RIBBONS = [
       "One-tap refunds from your dashboard, no Stripe/Square login",
       "ESIGN-compliant signed waivers, 7-year retention",
       "HIPAA-encrypted, same standards as MassageBook and Vagaro",
+      "Download all your data anytime as one ZIP, free (only on MyBodyMap)",
     ],
     cta: "Money & Protection features",
   },

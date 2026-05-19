@@ -125,6 +125,19 @@ export const RIBBONS = [
         ],
         meta: "Per-service day filter · No competitor offers this",
       },
+      {
+        id: "1.11",
+        name: "Service grouping, auto-classified",
+        // SVG animation demo shows the flat list flipping into 4
+        // pre-defined groups when the toggle goes on. Per HK
+        // direction May 19 2026, customer ask from Candice Peek.
+        body: [
+          "Tap a toggle. Your services automatically sort into pre-defined groups: <em>Prenatal &amp; Postnatal</em>, <em>Couples</em>, <em>Therapeutic &amp; Recovery</em>, <em>Relaxation &amp; Spa</em>, <em>Energy &amp; Modalities</em>, <em>Add-ons</em>. We classify each one by name, no typing.",
+          "On your booking page, clients see your services organized by category instead of one long list. Reorder groups, reorder services within a group, add your own custom groups if our six do not fit. Collapse a group to focus on one section. The change shows up everywhere automatically.",
+          "Default is off, flat list. Flip it on only if you want sections.",
+        ],
+        meta: "Optional toggle · Auto-classifier · Custom groups supported · Flows to booking page",
+      },
     ],
   },
   {
@@ -472,6 +485,22 @@ export const RIBBONS = [
           "Works for full or partial amounts. Works for packages and one-time deposits. Memberships use a separate cancel-and-prorate flow.",
         ],
         meta: "Stripe and Square · Audit trail · Partial refunds supported",
+      },
+      {
+        id: "6.8",
+        name: "Download all your data, anytime",
+        // SVG animation demo shows the comparison side-by-side:
+        // other platforms = multiple separate exports from multiple
+        // screens; MyBodyMap = one tap, one ZIP, emailed. Per HK
+        // direction May 19 2026, customer driver: Colleen Eidemiller
+        // FB challenge about what happens to data when you leave.
+        // All competitor claims sourced from public support docs.
+        body: [
+          "Tap one button in Settings. Get back a ZIP file with every client, every booking, every session, every SOAP note, every payment, every intake answer, your service menu, your memberships, your gift certificates, and your account settings. Emailed to you as a secure link, usually within a minute.",
+          "Your data is yours. You can keep it as a backup, share it with an accountant, migrate it to another system, or just have it. Free for every therapist, no plan upgrade needed.",
+          "Most platforms in this space (Vagaro, MassageBook, Acuity) require you to export each piece separately from different screens, and some only export SOAP notes one PDF at a time via browser print. We bundle everything into one file so you never have to chase your own data.",
+        ],
+        meta: "Free for all therapists · One ZIP, 14 files · 7-day secure download link · Verifiable competitor sources",
       },
     ],
   },
