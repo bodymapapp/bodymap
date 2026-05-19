@@ -371,6 +371,37 @@ export default function MembershipCard({ client, therapist }) {
 
   // Phase 19.5 payment-status pill. Returns { label, color, bg, border }
   // describing the visual treatment for the sub row's pill.
+  //
+  // Phase 19.5 (HK May 18 2026, Candice feedback): replaced the
+  // alarming 'NO RENEWAL SCHEDULED' state with a computed 'NEXT
+  // RENEWAL [date]' when we have renewal_day_of_month set. The
+  // renewal row will be created by the daily cron a few days before
+  // the date, so the absence of a row is normal mid-cycle, not a
+  // problem.
+  function computeNextRenewalDateLabel(renewalDay) {
+    if (!renewalDay) return null;
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    // Try this month first
+    let next = new Date(year, month, renewalDay);
+    if (next.getMonth() !== month) {
+      // Day rolled over (e.g. Feb 31 became Mar 3); use last day of original month
+      next = new Date(year, month + 1, 0);
+    }
+    // If renewal day this month has passed (or is today), roll to next month
+    if (next <= today) {
+      let nextMonth = month + 1;
+      let nextYear = year;
+      if (nextMonth > 11) { nextMonth = 0; nextYear = year + 1; }
+      next = new Date(nextYear, nextMonth, renewalDay);
+      if (next.getMonth() !== nextMonth) {
+        next = new Date(nextYear, nextMonth + 1, 0);
+      }
+    }
+    return next.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  }
+
   function getPaymentStatus(sub) {
     if (sub.status === 'canceled') {
       return { label: 'Canceled', color: C.gray, bg: '#F3F4F6', border: C.line };
@@ -385,8 +416,22 @@ export default function MembershipCard({ client, therapist }) {
     const todayStr = today.toISOString().slice(0, 10);
     const subRenewals = allRenewals.filter(r => r.member_subscription_id === sub.id);
     if (subRenewals.length === 0) {
+      // No renewal row yet. This is the normal mid-cycle state when
+      // the cron hasn't created the next reminder. Compute the next
+      // renewal date from renewal_day_of_month and display it as a
+      // calm, informational pill.
+      const nextDateLabel = computeNextRenewalDateLabel(sub.renewal_day_of_month);
+      if (nextDateLabel) {
+        return {
+          label: `Next renewal ${nextDateLabel}`,
+          color: '#4A4035',
+          bg: '#F5EFE0',
+          border: '#EDE2C8',
+        };
+      }
+      // No renewal day set: this is a record-only membership, no tracking.
       return {
-        label: 'No renewal scheduled',
+        label: 'No renewal day set',
         color: C.gray,
         bg: '#FAFAF6',
         border: C.line,
