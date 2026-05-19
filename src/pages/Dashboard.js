@@ -3547,9 +3547,20 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   // is yours.' Matches the FB thread where Colleen challenged
   // 'what happens to your data when you leave?' as the deciding
   // factor between platforms.
-  const [exportStatus, setExportStatus] = React.useState('idle'); // idle | building | sent | failed
+  // Export state machine:
+  //   idle      -> button enabled, no message
+  //   building  -> button disabled with spinner, banner says 'preparing'
+  //                while polling data_exports every 3s
+  //   ready     -> button shows 'Export ready, check your email' with
+  //                checkmark, banner says 'Sent! Check your inbox'
+  //                Button auto-resets to idle after 60s so therapist
+  //                can request another export later.
+  //   failed    -> button returns to enabled state with 'Try again'
+  //                label, error banner shows the reason
+  const [exportStatus, setExportStatus] = React.useState('idle');
   const [exportMessage, setExportMessage] = React.useState('');
   const [lastExportAt, setLastExportAt] = React.useState(null);
+  const [currentExportId, setCurrentExportId] = React.useState(null);
 
   // On mount, check if the therapist has a recent ready export
   React.useEffect(() => {
@@ -3568,7 +3579,51 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       });
   }, [therapist?.id]);
 
+  // Poll data_exports while an export is building. Checks every 3s
+  // for up to 3 minutes. Stops when status flips to ready or failed.
+  React.useEffect(() => {
+    if (exportStatus !== 'building' || !currentExportId) return;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // 3 seconds * 60 = 3 minutes
+    const interval = setInterval(async () => {
+      attempts += 1;
+      if (attempts > MAX_ATTEMPTS) {
+        clearInterval(interval);
+        setExportStatus('failed');
+        setExportMessage('Export is taking longer than expected. Check your email in a few minutes, or try again. If this keeps happening, please email us at hello@mybodymap.app.');
+        return;
+      }
+      const { data } = await supabase
+        .from('data_exports')
+        .select('status, completed_at, error_message, file_size_bytes, row_count')
+        .eq('id', currentExportId)
+        .maybeSingle();
+      if (!data) return;
+      if (data.status === 'ready') {
+        clearInterval(interval);
+        setExportStatus('ready');
+        const mb = data.file_size_bytes ? (data.file_size_bytes / 1024 / 1024).toFixed(1) : null;
+        const sizeBlurb = mb ? ` (${mb} MB, ${(data.row_count || 0).toLocaleString()} records)` : '';
+        setExportMessage(`Your export is ready${sizeBlurb}. Check your email for the download link.`);
+        setLastExportAt(data.completed_at);
+        // Auto-reset to idle after 60 seconds so therapist can request
+        // another export if needed (e.g., made a change and wants fresh data)
+        setTimeout(() => {
+          setExportStatus('idle');
+          setExportMessage('');
+          setCurrentExportId(null);
+        }, 60000);
+      } else if (data.status === 'failed') {
+        clearInterval(interval);
+        setExportStatus('failed');
+        setExportMessage(`Export failed: ${data.error_message || 'Unknown error'}. Please try again or contact us at hello@mybodymap.app.`);
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [exportStatus, currentExportId]);
+
   async function requestDataExport() {
+    // Lock the button immediately by entering building state
     setExportStatus('building');
     setExportMessage('Starting your export...');
     try {
@@ -3583,8 +3638,10 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data?.error || 'Export failed');
-      setExportStatus('sent');
-      setExportMessage(data.message || 'Your export is being prepared. We will email you when it is ready.');
+      // Stay in 'building' state. The polling effect above will flip
+      // us to 'ready' or 'failed' when the backend completes.
+      setCurrentExportId(data.export_id);
+      setExportMessage(data.message || 'Building your export. We will email you when it is ready, usually within a minute.');
     } catch (err) {
       console.error('requestDataExport failed:', err);
       setExportStatus('failed');
@@ -5206,22 +5263,36 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <li>Your account settings and intake form schema</li>
           </ul>
         </div>
+        {/* Button state machine:
+              idle      -> 'Download all my data' (forest, enabled)
+              building  -> 'Preparing your export...' (gray, locked,
+                           spinner, no click possible)
+              ready     -> 'Export sent to your email' (sage, locked
+                           for 60s with checkmark, then auto-resets)
+              failed    -> 'Try again' (forest, enabled, retry path)
+        */}
         <button
           onClick={requestDataExport}
-          disabled={exportStatus === 'building'}
+          disabled={exportStatus === 'building' || exportStatus === 'ready'}
           style={{
-            background: exportStatus === 'building' ? '#9CA3AF' : C2.forest,
+            background: exportStatus === 'building'
+              ? '#9CA3AF'
+              : exportStatus === 'ready'
+                ? '#16A34A'
+                : C2.forest,
             color: '#fff',
             border: 'none',
             padding: '12px 24px',
             borderRadius: 24,
             fontSize: 14,
             fontWeight: 700,
-            cursor: exportStatus === 'building' ? 'wait' : 'pointer',
+            cursor: (exportStatus === 'building' || exportStatus === 'ready') ? 'not-allowed' : 'pointer',
+            opacity: exportStatus === 'building' ? 0.85 : 1,
             display: 'inline-flex',
             alignItems: 'center',
             gap: 8,
             WebkitTapHighlightColor: 'transparent',
+            transition: 'background 0.2s ease, opacity 0.2s ease',
           }}
         >
           {exportStatus === 'building' && (
@@ -5230,15 +5301,37 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               <path d="M7 2 A5 5 0 0 1 12 7" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round"/>
             </svg>
           )}
-          {exportStatus === 'building' ? 'Preparing your export...' : 'Download all my data'}
+          {exportStatus === 'ready' && (
+            <svg width="14" height="14" viewBox="0 0 14 14">
+              <path d="M3 7 L6 10 L11 4" stroke="#fff" strokeWidth="2.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
+          {exportStatus === 'building' && 'Preparing your export...'}
+          {exportStatus === 'ready' && 'Export sent to your email'}
+          {exportStatus === 'failed' && 'Try again'}
+          {exportStatus === 'idle' && 'Download all my data'}
         </button>
         {exportMessage && (
           <div style={{
             marginTop: 12,
             padding: '10px 14px',
-            background: exportStatus === 'failed' ? '#FEF2F2' : '#F0FDF4',
-            border: `1px solid ${exportStatus === 'failed' ? '#FCA5A5' : '#86EFAC'}`,
-            color: exportStatus === 'failed' ? '#991B1B' : '#15803D',
+            background: exportStatus === 'failed'
+              ? '#FEF2F2'
+              : exportStatus === 'ready'
+                ? '#F0FDF4'
+                : '#FFF8E7',
+            border: `1px solid ${
+              exportStatus === 'failed'
+                ? '#FCA5A5'
+                : exportStatus === 'ready'
+                  ? '#86EFAC'
+                  : '#F3D88E'
+            }`,
+            color: exportStatus === 'failed'
+              ? '#991B1B'
+              : exportStatus === 'ready'
+                ? '#15803D'
+                : '#854F0B',
             borderRadius: 8,
             fontSize: 13,
             lineHeight: 1.5,
