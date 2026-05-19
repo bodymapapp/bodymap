@@ -404,41 +404,92 @@ function ServicesAndAvailability({ therapist }) {
   // prenatal and postnatal services rather than have them sorted by
   // duration.' Up/down arrows chosen over drag-and-drop for the
   // 70-year-old persona who finds touch drag tricky on phone.
-  async function moveService(id, direction) {
-    const sorted = [...services].sort((a, b) => {
+  // HK May 19 2026: services can be reordered with number input or
+  // up/down arrows. Both call setServicePosition under the hood with
+  // the new 1-based position. The function recomputes sort_order
+  // values stepped by 10 for the affected slice and persists all
+  // changed rows.
+  //
+  // Why stepped sort_order: future inserts can fit between existing
+  // values without renumbering every row. Visible display is always
+  // 1-based contiguous (1, 2, 3...) because we render in sort_order
+  // ASC then created_at ASC.
+  //
+  // Optimistic update strategy: compute the new sorted array locally,
+  // patch sort_order on every row that needs to change, write all
+  // changed rows in parallel. On any error, refetch from server.
+  function getSortedServices() {
+    return [...services].sort((a, b) => {
       const sa = a.sort_order ?? 9999;
       const sb = b.sort_order ?? 9999;
       if (sa !== sb) return sa - sb;
       return new Date(a.created_at) - new Date(b.created_at);
     });
-    const idx = sorted.findIndex(s => s.id === id);
-    if (idx === -1) return;
-    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
+  }
 
-    const me = sorted[idx];
-    const neighbor = sorted[neighborIdx];
-    const mySort = me.sort_order ?? 9999;
-    const neighborSort = neighbor.sort_order ?? 9999;
+  async function setServicePosition(id, newPos1Based) {
+    const sorted = getSortedServices();
+    const currentIdx = sorted.findIndex(s => s.id === id);
+    if (currentIdx === -1) return;
 
-    // Optimistic local swap
-    setServices(s => s.map(x => {
-      if (x.id === me.id) return { ...x, sort_order: neighborSort };
-      if (x.id === neighbor.id) return { ...x, sort_order: mySort };
-      return x;
+    // Clamp the new position to the valid range
+    const targetIdx = Math.max(0, Math.min(sorted.length - 1, newPos1Based - 1));
+    if (targetIdx === currentIdx) return;
+
+    // Move the item in the array
+    const moved = sorted.splice(currentIdx, 1)[0];
+    sorted.splice(targetIdx, 0, moved);
+
+    // Recompute sort_order values stepped by 10. We only need to
+    // update rows whose position actually changed, but for simplicity
+    // and to keep the math clean we renumber everyone. With small
+    // service counts (typically under 30) this is cheap.
+    const updates = sorted.map((svc, i) => ({
+      id: svc.id,
+      newSort: (i + 1) * 10,
     }));
 
-    // Persist both
-    const [r1, r2] = await Promise.all([
-      supabase.from('services').update({ sort_order: neighborSort }).eq('id', me.id),
-      supabase.from('services').update({ sort_order: mySort }).eq('id', neighbor.id),
-    ]);
-    if (r1.error || r2.error) {
-      console.error('moveService failed:', r1.error || r2.error);
-      // Revert by refetching from server
-      const { data } = await supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+    // Optimistic local update
+    setServices(s => s.map(x => {
+      const u = updates.find(u => u.id === x.id);
+      return u ? { ...x, sort_order: u.newSort } : x;
+    }));
+
+    // Persist only the rows that actually changed
+    const changed = updates.filter(u => {
+      const original = services.find(s => s.id === u.id);
+      return original && (original.sort_order ?? 9999) !== u.newSort;
+    });
+    if (changed.length === 0) return;
+
+    const results = await Promise.all(
+      changed.map(u =>
+        supabase.from('services').update({ sort_order: u.newSort }).eq('id', u.id)
+      )
+    );
+    const hasError = results.some(r => r.error);
+    if (hasError) {
+      console.error('setServicePosition failed:', results.find(r => r.error)?.error);
+      // Refetch to resync
+      const { data } = await supabase
+        .from('services')
+        .select('*')
+        .eq('therapist_id', therapist.id)
+        .is('archived_at', null)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
       if (data) setServices(data);
     }
+  }
+
+  // Convenience wrapper for up/down arrows. Computes the current
+  // 1-based position from the sorted list and shifts by 1.
+  async function moveService(id, direction) {
+    const sorted = getSortedServices();
+    const idx = sorted.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const newPos1Based = direction === 'up' ? idx : idx + 2;
+    await setServicePosition(id, newPos1Based);
   }
 
   // ─── Location management (HK May 18 2026) ───────────────────────
@@ -671,60 +722,30 @@ function ServicesAndAvailability({ therapist }) {
       >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Clients choose from these when booking online.</p>
 
-        {/* Existing services */}
+        {/* Existing services, rendered in sort_order ascending so
+            the displayed order matches what the therapist sees on
+            the booking page. Position controls are 1-based and
+            contiguous: first row is position 1, last is N. */}
         {services.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
-            {services.map((svc, idx) => (
+            {getSortedServices().map((svc, idx, sortedArr) => (
               <div key={svc.id} style={{ padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                  {/* Up/down arrow stack for reordering. Per HK design
-                      principle for 70-year-old persona: clear tappable
-                      controls, no drag gestures. First row's up arrow
-                      is disabled, last row's down arrow is disabled. */}
-                  <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
-                    <button
-                      onClick={() => moveService(svc.id, 'up')}
-                      disabled={idx === 0}
-                      aria-label={`Move ${svc.name} up`}
-                      style={{
-                        width: 24,
-                        height: 22,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: idx === 0 ? '#F3F4F6' : '#fff',
-                        border: `1px solid ${idx === 0 ? '#F3F4F6' : C2.lightGray}`,
-                        borderRadius: 6,
-                        cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                        color: idx === 0 ? '#D1D5DB' : C2.darkGray,
-                        padding: 0,
-                        lineHeight: 1,
-                      }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 7 L5 3 L8 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
-                    </button>
-                    <button
-                      onClick={() => moveService(svc.id, 'down')}
-                      disabled={idx === services.length - 1}
-                      aria-label={`Move ${svc.name} down`}
-                      style={{
-                        width: 24,
-                        height: 22,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: idx === services.length - 1 ? '#F3F4F6' : '#fff',
-                        border: `1px solid ${idx === services.length - 1 ? '#F3F4F6' : C2.lightGray}`,
-                        borderRadius: 6,
-                        cursor: idx === services.length - 1 ? 'not-allowed' : 'pointer',
-                        color: idx === services.length - 1 ? '#D1D5DB' : C2.darkGray,
-                        padding: 0,
-                        lineHeight: 1,
-                      }}
-                    >
-                      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3 L5 7 L8 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
-                    </button>
-                  </div>
+                  {/* Position controls: number input + up/down arrows.
+                      Per HK design principle for 70-year-old persona:
+                      clear tappable controls + a fast big-jump option.
+                      Number is 1-based, applies on Enter or blur.
+                      Arrows nudge by one. */}
+                  <ServicePositionControl
+                    position={idx + 1}
+                    total={sortedArr.length}
+                    onSetPosition={(n) => setServicePosition(svc.id, n)}
+                    onMoveUp={() => moveService(svc.id, 'up')}
+                    onMoveDown={() => moveService(svc.id, 'down')}
+                    serviceName={svc.name}
+                    lightGray={C2.lightGray}
+                    darkGray={C2.darkGray}
+                  />
                   <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                     <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
                     <span style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6 }}>
@@ -4972,6 +4993,127 @@ export default function Dashboard({ view }) {
 
       {/* PWA install banner */}
       <PWAInstallBanner therapist={therapist} />
+    </div>
+  );
+}
+
+// Inline component: position controls for a single service row.
+// Renders [number input][up arrow][down arrow] side by side.
+//
+// Per HK May 19 2026: 1-based contiguous position. Tap the number,
+// type a new position, press Enter or tap away to apply. Arrows
+// nudge by 1. Both go through the same setServicePosition handler.
+//
+// Behavior:
+//   - Local draft state while typing so user can backspace
+//   - On blur or Enter: parse, clamp to [1, total], dispatch if changed
+//   - On Escape: revert and blur
+//   - Empty input or invalid input on commit: revert to original
+//   - Up arrow disabled at position 1, down arrow disabled at position total
+function ServicePositionControl({ position, total, onSetPosition, onMoveUp, onMoveDown, serviceName, lightGray, darkGray }) {
+  const [draft, setDraft] = React.useState(String(position));
+  const [editing, setEditing] = React.useState(false);
+
+  // Keep draft in sync when the actual position changes from outside
+  // (e.g., the therapist moved a different service which renumbered
+  // this one). Skip while editing so we don't clobber the user's typing.
+  React.useEffect(() => {
+    if (!editing) setDraft(String(position));
+  }, [position, editing]);
+
+  function commit() {
+    setEditing(false);
+    const n = parseInt(draft, 10);
+    if (Number.isNaN(n) || n < 1 || n > total) {
+      setDraft(String(position));
+      return;
+    }
+    if (n === position) {
+      setDraft(String(position));
+      return;
+    }
+    onSetPosition(n);
+  }
+
+  function cancel() {
+    setEditing(false);
+    setDraft(String(position));
+  }
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
+      <input
+        type="text"
+        inputMode="numeric"
+        pattern="[0-9]*"
+        value={draft}
+        onFocus={(e) => { setEditing(true); e.target.select(); }}
+        onChange={(e) => setDraft(e.target.value.replace(/[^0-9]/g, ''))}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur(); }
+          else if (e.key === 'Escape') { cancel(); e.currentTarget.blur(); }
+        }}
+        aria-label={`Position of ${serviceName}`}
+        style={{
+          width: 34,
+          height: 28,
+          textAlign: 'center',
+          fontSize: 13,
+          fontWeight: 700,
+          color: darkGray,
+          background: '#fff',
+          border: `1px solid ${lightGray}`,
+          borderRadius: 6,
+          padding: '0 2px',
+          outline: 'none',
+          fontFamily: 'inherit',
+        }}
+      />
+      <div style={{ display:'flex', flexDirection:'column', gap:2 }}>
+        <button
+          onClick={onMoveUp}
+          disabled={position === 1}
+          aria-label={`Move ${serviceName} up`}
+          style={{
+            width: 22,
+            height: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: position === 1 ? '#F3F4F6' : '#fff',
+            border: `1px solid ${position === 1 ? '#F3F4F6' : lightGray}`,
+            borderRadius: 4,
+            cursor: position === 1 ? 'not-allowed' : 'pointer',
+            color: position === 1 ? '#D1D5DB' : darkGray,
+            padding: 0,
+            lineHeight: 1,
+          }}
+        >
+          <svg width="9" height="6" viewBox="0 0 10 7"><path d="M2 5 L5 2 L8 5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={position === total}
+          aria-label={`Move ${serviceName} down`}
+          style={{
+            width: 22,
+            height: 13,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: position === total ? '#F3F4F6' : '#fff',
+            border: `1px solid ${position === total ? '#F3F4F6' : lightGray}`,
+            borderRadius: 4,
+            cursor: position === total ? 'not-allowed' : 'pointer',
+            color: position === total ? '#D1D5DB' : darkGray,
+            padding: 0,
+            lineHeight: 1,
+          }}
+        >
+          <svg width="9" height="6" viewBox="0 0 10 7"><path d="M2 2 L5 5 L8 2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+        </button>
+      </div>
     </div>
   );
 }
