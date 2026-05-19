@@ -551,7 +551,7 @@ export default function MembershipCard({ client, therapist }) {
                   </span>
                 </div>
                 <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.55 }}>
-                  ${Number(sub.monthly_price).toFixed(2)}/mo · {sub.current_credits} credit{sub.current_credits === 1 ? '' : 's'} remaining
+                  ${Number(sub.monthly_price).toFixed(2)}/mo · {sub.current_credits} of {sub.monthly_session_credits} session{sub.monthly_session_credits === 1 ? '' : 's'} available
                   {sub.renewal_day_of_month && (
                     <> · Bills on the {sub.renewal_day_of_month}{ordinalSuffix(sub.renewal_day_of_month)}</>
                   )}
@@ -585,7 +585,7 @@ export default function MembershipCard({ client, therapist }) {
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Credits left now</label>
+                        <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Sessions available now</label>
                         <input
                           type="number"
                           min="0"
@@ -804,7 +804,7 @@ export default function MembershipCard({ client, therapist }) {
             <option value="">Pick a plan</option>
             {activePlans.map(m => (
               <option key={m.id} value={m.id}>
-                {m.name} · ${Number(m.monthly_price).toFixed(2)}/mo · {m.monthly_session_credits} credit{m.monthly_session_credits === 1 ? '' : 's'}
+                {m.name} · ${Number(m.monthly_price).toFixed(2)}/mo · {m.monthly_session_credits} session{m.monthly_session_credits === 1 ? '' : 's'}/month
               </option>
             ))}
           </select>
@@ -829,7 +829,7 @@ export default function MembershipCard({ client, therapist }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Credits left now</label>
+              <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Sessions available now</label>
               <input
                 type="number"
                 min="0"
