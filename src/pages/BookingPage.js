@@ -1133,7 +1133,7 @@ export default function BookingPage() {
     }
 
     const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs}]=await Promise.all([
-      supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('price'),
+      supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('sort_order', { ascending: true }).order('price', { ascending: true }),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       // Phase 9.1 (May 16 2026): fetch start_time and end_time so we
       // can support partial-day blocks. Rows with both NULL are

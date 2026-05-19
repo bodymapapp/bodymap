@@ -95,7 +95,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   useEffect(() => {
     async function load() {
       const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }] = await Promise.all([
-        supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('price'),
+        supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('sort_order', { ascending: true }).order('price', { ascending: true }),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         // Phase 9.1: fetch start_time/end_time so partial-day blocks
         // are honored in the therapist's book-on-behalf flow too.

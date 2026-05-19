@@ -274,7 +274,7 @@ function ServicesAndAvailability({ therapist }) {
       // they don't reappear in the management list after Remove. The
       // archived rows still exist for FK integrity but the therapist
       // never sees them again.
-      supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('duration'),
+      supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('sort_order', { ascending: true }).order('created_at', { ascending: true }),
       supabase.from('availability').select('*').eq('therapist_id', therapist.id),
       // Locations (HK May 18 2026): only active rows. Sorted by
       // sort_order so primary surfaces first.
@@ -298,7 +298,20 @@ function ServicesAndAvailability({ therapist }) {
   async function addService() {
     if (!draft.name.trim()) return;
     setSaving('add');
-    const { data } = await supabase.from('services').insert({ name: draft.name, duration: draft.duration, price: draft.price, therapist_id: therapist.id, active: true, visibility: 'public', is_couples: draft.is_couples || false }).select().single();
+    // New services go to the end of the sort order. Compute max + 10
+    // so therapist can drag/move within the list without renumbering
+    // every neighbor. Steps of 10 preserve gaps for inserts.
+    const maxSort = services.reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+    const { data } = await supabase.from('services').insert({
+      name: draft.name,
+      duration: draft.duration,
+      price: draft.price,
+      therapist_id: therapist.id,
+      active: true,
+      visibility: 'public',
+      is_couples: draft.is_couples || false,
+      sort_order: maxSort + 10,
+    }).select().single();
     setServices(s => [...s, data]);
     setDraft({ preset:'', name:'', duration:60, price:85 });
     setSaving(false);
@@ -379,6 +392,52 @@ function ServicesAndAvailability({ therapist }) {
     if (error) {
       console.error('updateService failed:', error);
       setServices(s => s.map(x => x.id === id ? prev : x));
+    }
+  }
+
+  // HK May 19 2026: services can be reordered with up/down arrows.
+  // Swaps the sort_order of the moved service with its neighbor in
+  // the direction of movement. Optimistic update locally, then writes
+  // both rows. On error, refetches to resync.
+  //
+  // Customer ask, Candice Peek: 'I'd like to group together my
+  // prenatal and postnatal services rather than have them sorted by
+  // duration.' Up/down arrows chosen over drag-and-drop for the
+  // 70-year-old persona who finds touch drag tricky on phone.
+  async function moveService(id, direction) {
+    const sorted = [...services].sort((a, b) => {
+      const sa = a.sort_order ?? 9999;
+      const sb = b.sort_order ?? 9999;
+      if (sa !== sb) return sa - sb;
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+    const idx = sorted.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= sorted.length) return;
+
+    const me = sorted[idx];
+    const neighbor = sorted[neighborIdx];
+    const mySort = me.sort_order ?? 9999;
+    const neighborSort = neighbor.sort_order ?? 9999;
+
+    // Optimistic local swap
+    setServices(s => s.map(x => {
+      if (x.id === me.id) return { ...x, sort_order: neighborSort };
+      if (x.id === neighbor.id) return { ...x, sort_order: mySort };
+      return x;
+    }));
+
+    // Persist both
+    const [r1, r2] = await Promise.all([
+      supabase.from('services').update({ sort_order: neighborSort }).eq('id', me.id),
+      supabase.from('services').update({ sort_order: mySort }).eq('id', neighbor.id),
+    ]);
+    if (r1.error || r2.error) {
+      console.error('moveService failed:', r1.error || r2.error);
+      // Revert by refetching from server
+      const { data } = await supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+      if (data) setServices(data);
     }
   }
 
@@ -615,9 +674,57 @@ function ServicesAndAvailability({ therapist }) {
         {/* Existing services */}
         {services.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
-            {services.map(svc => (
+            {services.map((svc, idx) => (
               <div key={svc.id} style={{ padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                  {/* Up/down arrow stack for reordering. Per HK design
+                      principle for 70-year-old persona: clear tappable
+                      controls, no drag gestures. First row's up arrow
+                      is disabled, last row's down arrow is disabled. */}
+                  <div style={{ display:'flex', flexDirection:'column', gap:2, flexShrink:0 }}>
+                    <button
+                      onClick={() => moveService(svc.id, 'up')}
+                      disabled={idx === 0}
+                      aria-label={`Move ${svc.name} up`}
+                      style={{
+                        width: 24,
+                        height: 22,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: idx === 0 ? '#F3F4F6' : '#fff',
+                        border: `1px solid ${idx === 0 ? '#F3F4F6' : C2.lightGray}`,
+                        borderRadius: 6,
+                        cursor: idx === 0 ? 'not-allowed' : 'pointer',
+                        color: idx === 0 ? '#D1D5DB' : C2.darkGray,
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 7 L5 3 L8 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+                    </button>
+                    <button
+                      onClick={() => moveService(svc.id, 'down')}
+                      disabled={idx === services.length - 1}
+                      aria-label={`Move ${svc.name} down`}
+                      style={{
+                        width: 24,
+                        height: 22,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: idx === services.length - 1 ? '#F3F4F6' : '#fff',
+                        border: `1px solid ${idx === services.length - 1 ? '#F3F4F6' : C2.lightGray}`,
+                        borderRadius: 6,
+                        cursor: idx === services.length - 1 ? 'not-allowed' : 'pointer',
+                        color: idx === services.length - 1 ? '#D1D5DB' : C2.darkGray,
+                        padding: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3 L5 7 L8 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" fill="none"/></svg>
+                    </button>
+                  </div>
                   <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
                     <span style={{ fontSize:13, fontWeight:700, color:C2.darkGray }}>{svc.name}</span>
                     <span style={{ fontSize:12, color:C2.gray, display:'inline-flex', alignItems:'center', gap:6 }}>
