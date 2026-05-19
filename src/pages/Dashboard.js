@@ -1091,6 +1091,58 @@ function ServicesAndAvailability({ therapist }) {
           </div>
         )}
 
+        {/* Collapse all / Expand all (HK May 19 2026). Only renders
+            when groups are on and there is more than one group to
+            collapse. Single tap closes (or opens) every group at
+            once. Useful when the therapist has many groups and
+            wants a clean overview. */}
+        {useGroups && services.length > 0 && (() => {
+          const layout = getGroupedServiceLayout();
+          if (layout.length <= 1) return null;
+          // All groups currently collapsed?
+          const allCollapsed = layout.every(g => collapsedGroups.has(g.name));
+          return (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              marginBottom: 8,
+            }}>
+              <button
+                onClick={() => {
+                  if (allCollapsed) {
+                    setCollapsedGroups(new Set());
+                  } else {
+                    setCollapsedGroups(new Set(layout.map(g => g.name)));
+                  }
+                }}
+                style={{
+                  background: '#fff',
+                  color: '#1F4131',
+                  border: `1.5px solid ${C2.lightGray}`,
+                  borderRadius: 18,
+                  padding: '6px 14px',
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  whiteSpace: 'nowrap',
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 14 14" style={{ flexShrink: 0 }}>
+                  {allCollapsed
+                    ? <path d="M3 9 L7 5 L11 9" stroke="#1F4131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    : <path d="M3 5 L7 9 L11 5" stroke="#1F4131" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                  }
+                </svg>
+                {allCollapsed ? 'Expand all groups' : 'Collapse all groups'}
+              </button>
+            </div>
+          );
+        })()}
+
         {/* Existing services, rendered in sort_order ascending so
             the displayed order matches what the therapist sees on
             the booking page. Position controls are 1-based and
@@ -1160,98 +1212,88 @@ function ServicesAndAvailability({ therapist }) {
                   });
                 };
                 return (
-                  <div key={`group:${item.groupName}`} style={{
-                    display:'flex',
-                    alignItems:'center',
-                    gap:10,
-                    padding:'12px 14px',
-                    marginTop: i === 0 ? 4 : 16,
-                    marginBottom: 2,
-                    background: isUngrouped ? '#F5F5F0' : '#F0F6EE',
-                    border: `1px solid ${isUngrouped ? '#E5E1D5' : '#B7D1AB'}`,
-                    borderRadius: 10,
-                  }}>
+                  <div
+                    key={`group:${item.groupName}`}
+                    onClick={toggleCollapse}
+                    style={{
+                      display:'flex',
+                      alignItems:'center',
+                      gap:10,
+                      padding:'12px 14px',
+                      marginTop: i === 0 ? 4 : 16,
+                      marginBottom: 2,
+                      background: isUngrouped ? '#F5F5F0' : '#F0F6EE',
+                      border: `1px solid ${isUngrouped ? '#E5E1D5' : '#B7D1AB'}`,
+                      borderRadius: 10,
+                      cursor: 'pointer',
+                      userSelect: 'none',
+                    }}>
                     {!isUngrouped && (
-                      <ServicePositionControl
-                        position={item.groupPosition}
-                        total={item.groupTotal}
-                        onSetPosition={(n) => setGroupPosition(item.groupName, n)}
-                        onMoveUp={() => moveGroup(item.groupName, 'up')}
-                        onMoveDown={() => moveGroup(item.groupName, 'down')}
-                        serviceName={item.groupDisplayName}
-                        lightGray={C2.lightGray}
-                        darkGray={C2.darkGray}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ServicePositionControl
+                          position={item.groupPosition}
+                          total={item.groupTotal}
+                          onSetPosition={(n) => setGroupPosition(item.groupName, n)}
+                          onMoveUp={() => moveGroup(item.groupName, 'up')}
+                          onMoveDown={() => moveGroup(item.groupName, 'down')}
+                          serviceName={item.groupDisplayName}
+                          lightGray={C2.lightGray}
+                          darkGray={C2.darkGray}
+                        />
+                      </div>
                     )}
-                    <button
-                      onClick={toggleCollapse}
-                      aria-label={isCollapsed ? `Expand ${item.groupDisplayName}` : `Collapse ${item.groupDisplayName}`}
-                      style={{
-                        flex:1,
-                        minWidth:0,
-                        background:'transparent',
-                        border:'none',
-                        padding:0,
-                        cursor:'pointer',
-                        textAlign:'left',
-                        display:'flex',
-                        alignItems:'center',
-                        gap:10,
-                        fontFamily:'inherit',
-                      }}>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{
-                          fontFamily: "'Cormorant Garamond', Georgia, serif",
-                          fontSize: 18,
-                          fontWeight: 700,
-                          color: isUngrouped ? C2.gray : '#1F4131',
-                          letterSpacing: '-0.005em',
-                          lineHeight: 1.2,
-                        }}>{item.groupDisplayName}</div>
-                        <div style={{
-                          fontSize: 11,
-                          color: isUngrouped ? '#A0A0A0' : '#6B7280',
-                          marginTop: 2,
-                        }}>
-                          {(() => {
-                            const groupKey = item.groupName;
-                            const count = services.filter(s => {
-                              const k = (s.service_group || '').trim() || '__UNGROUPED__';
-                              return k === groupKey;
-                            }).length;
-                            return `${count} service${count === 1 ? '' : 's'}${isCollapsed ? ' · hidden' : ''}`;
-                          })()}
-                        </div>
-                      </div>
-                      {/* ChevronPill: matches Billing's collapsible
-                          pattern (Memory #17). 32x32 circular,
-                          sage-tint when closed, forest when open. */}
+                    <div style={{ flex:1, minWidth:0 }}>
                       <div style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: isCollapsed ? '#F0F6EE' : '#1F4131',
-                        flexShrink: 0,
-                        transition: 'background 0.2s ease',
+                        fontFamily: "'Cormorant Garamond', Georgia, serif",
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: isUngrouped ? C2.gray : '#1F4131',
+                        letterSpacing: '-0.005em',
+                        lineHeight: 1.2,
+                      }}>{item.groupDisplayName}</div>
+                      <div style={{
+                        fontSize: 11,
+                        color: isUngrouped ? '#A0A0A0' : '#6B7280',
+                        marginTop: 2,
                       }}>
-                        <svg width="14" height="14" viewBox="0 0 14 14" style={{
-                          transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
-                          transition: 'transform 0.2s ease',
-                        }}>
-                          <path
-                            d="M3 5 L7 9 L11 5"
-                            stroke={isCollapsed ? '#1F4131' : '#FFFFFF'}
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            fill="none"
-                          />
-                        </svg>
+                        {(() => {
+                          const groupKey = item.groupName;
+                          const count = services.filter(s => {
+                            const k = (s.service_group || '').trim() || '__UNGROUPED__';
+                            return k === groupKey;
+                          }).length;
+                          return `${count} service${count === 1 ? '' : 's'}${isCollapsed ? ' · hidden' : ''}`;
+                        })()}
                       </div>
-                    </button>
+                    </div>
+                    {/* ChevronPill: matches Billing's collapsible
+                        pattern (Memory #17). 32x32 circular,
+                        sage-tint when closed, forest when open. */}
+                    <div style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 16,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: isCollapsed ? '#F0F6EE' : '#1F4131',
+                      flexShrink: 0,
+                      transition: 'background 0.2s ease',
+                    }}>
+                      <svg width="14" height="14" viewBox="0 0 14 14" style={{
+                        transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                        transition: 'transform 0.2s ease',
+                      }}>
+                        <path
+                          d="M3 5 L7 9 L11 5"
+                          stroke={isCollapsed ? '#1F4131' : '#FFFFFF'}
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          fill="none"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 );
               }
