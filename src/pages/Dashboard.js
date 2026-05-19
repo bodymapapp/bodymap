@@ -3537,6 +3537,61 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setTimeout(() => setPwMsg(null), 4000);
   }
 
+  // ─── Data export (HK May 19 2026) ──────────────────────────────
+  // Therapist taps 'Download all my data'. We call the
+  // export-therapist-data edge function which builds a ZIP of every
+  // table tied to her therapist_id, uploads to Supabase Storage, and
+  // emails her a 7-day signed URL.
+  //
+  // Free for all therapists. Marketing differentiator: 'your data
+  // is yours.' Matches the FB thread where Colleen challenged
+  // 'what happens to your data when you leave?' as the deciding
+  // factor between platforms.
+  const [exportStatus, setExportStatus] = React.useState('idle'); // idle | building | sent | failed
+  const [exportMessage, setExportMessage] = React.useState('');
+  const [lastExportAt, setLastExportAt] = React.useState(null);
+
+  // On mount, check if the therapist has a recent ready export
+  React.useEffect(() => {
+    if (!therapist?.id) return;
+    supabase
+      .from('data_exports')
+      .select('status, completed_at, created_at')
+      .eq('therapist_id', therapist.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.status === 'ready' && data.completed_at) {
+          setLastExportAt(data.completed_at);
+        }
+      });
+  }, [therapist?.id]);
+
+  async function requestDataExport() {
+    setExportStatus('building');
+    setExportMessage('Starting your export...');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const resp = await fetch(`${process.env.REACT_APP_SUPABASE_URL || 'https://rmnqfrljoknmellbnpiy.supabase.co'}/functions/v1/export-therapist-data`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data?.error || 'Export failed');
+      setExportStatus('sent');
+      setExportMessage(data.message || 'Your export is being prepared. We will email you when it is ready.');
+    } catch (err) {
+      console.error('requestDataExport failed:', err);
+      setExportStatus('failed');
+      setExportMessage('Could not start the export. Please try again, or contact us at hello@mybodymap.app.');
+    }
+  }
+
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const bookingUrl = `${window.location.origin}/book/${therapist?.custom_url}`;
 
@@ -5112,6 +5167,91 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         </div>
       </div></CollapsibleSection>
       </>)}
+
+      {matchesSearch('Your data', 'Download all your client records, sessions, services, settings as a ZIP file', '5.3') && (<>
+      <CollapsibleSection
+        id="dataexport"
+        taxonomy="5.3"
+        timeBadge="~1m"
+        label="Your data"
+        summary={lastExportAt
+          ? `Last export: ${new Date(lastExportAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+          : 'Download everything as a ZIP, anytime'}
+        status="done"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+        isOpen={openRow === 'dataexport'}
+        onToggle={toggleRow}
+      ><div style={{ padding: '4px 4px' }}>
+        <p style={{ fontSize:13, color:C2.gray, margin:'0 0 14px 0', lineHeight:1.5 }}>
+          Your data is yours. Download a complete copy anytime as a ZIP file. Includes all your clients, bookings, sessions, services, intake answers, SOAP notes, memberships, gift certificates, and account settings.
+        </p>
+        <div style={{
+          background: '#F9FAFB',
+          border: `1px solid ${C2.lightGray}`,
+          borderRadius: 10,
+          padding: 14,
+          marginBottom: 14,
+        }}>
+          <div style={{ fontSize:12, fontWeight:700, color:C2.darkGray, marginBottom:8, letterSpacing:'0.04em', textTransform:'uppercase' }}>What is in the ZIP</div>
+          <ul style={{ margin:0, padding:'0 0 0 18px', fontSize:13, color:C2.gray, lineHeight:1.7 }}>
+            <li>Every client (name, email, phone, notes, tags, lifetime spend)</li>
+            <li>Every booking ever (date, service, status, deposit info)</li>
+            <li>Sessions with intake answers (focus, pressure, music, medical flags)</li>
+            <li>SOAP notes in a separate file you can secure independently</li>
+            <li>Payment records per session</li>
+            <li>Your service menu, add-ons, weekly hours</li>
+            <li>Memberships, packages, and active client subscriptions</li>
+            <li>Gift certificates outstanding</li>
+            <li>Signed waiver records (metadata, no signature images)</li>
+            <li>Your account settings and intake form schema</li>
+          </ul>
+        </div>
+        <button
+          onClick={requestDataExport}
+          disabled={exportStatus === 'building'}
+          style={{
+            background: exportStatus === 'building' ? '#9CA3AF' : C2.forest,
+            color: '#fff',
+            border: 'none',
+            padding: '12px 24px',
+            borderRadius: 24,
+            fontSize: 14,
+            fontWeight: 700,
+            cursor: exportStatus === 'building' ? 'wait' : 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            WebkitTapHighlightColor: 'transparent',
+          }}
+        >
+          {exportStatus === 'building' && (
+            <svg width="14" height="14" viewBox="0 0 14 14" style={{ animation: 'spin 1s linear infinite' }}>
+              <circle cx="7" cy="7" r="5" stroke="rgba(255,255,255,0.3)" strokeWidth="2" fill="none"/>
+              <path d="M7 2 A5 5 0 0 1 12 7" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round"/>
+            </svg>
+          )}
+          {exportStatus === 'building' ? 'Preparing your export...' : 'Download all my data'}
+        </button>
+        {exportMessage && (
+          <div style={{
+            marginTop: 12,
+            padding: '10px 14px',
+            background: exportStatus === 'failed' ? '#FEF2F2' : '#F0FDF4',
+            border: `1px solid ${exportStatus === 'failed' ? '#FCA5A5' : '#86EFAC'}`,
+            color: exportStatus === 'failed' ? '#991B1B' : '#15803D',
+            borderRadius: 8,
+            fontSize: 13,
+            lineHeight: 1.5,
+          }}>
+            {exportMessage}
+          </div>
+        )}
+        <p style={{ fontSize:11.5, color:C2.gray, marginTop:14, lineHeight:1.5, fontStyle:'italic' }}>
+          Exports usually take less than a minute. We will email you a secure download link when ready. The link is good for 7 days. You can request a fresh export anytime.
+        </p>
+      </div></CollapsibleSection>
+      </>)}
+
       </SettingsGroup></>)}
       </>)}
 
