@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Schedule Today, mockup</title>
+<style>
+  /* Tokens, lifted from BillingDashboardV2 for parity */
+  :root {
+    --cream:      #FAF6EE;
+    --cream-deep: #F5EFE0;
+    --cream-edge: #EDE6D6;
+    --forest:     #2A5741;
+    --forest-deep:#1F4131;
+    --sage:       #6B9E80;
+    --sage-soft:  #B7D1AB;
+    --sage-tint:  #F0F6EE;
+    --rose:       #A87468;
+    --gold:       #C9A86A;
+    --ink:        #1F2937;
+    --gray-700:   #374151;
+    --gray-500:   #6B7280;
+    --gray-400:   #9CA3AF;
+    --gray-300:   #D1D5DB;
+    --gray-100:   #F3F4F6;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --shadow-soft: 0 1px 3px rgba(31, 65, 49, 0.06), 0 1px 2px rgba(31, 65, 49, 0.04);
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    font-family: var(--sans);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .phone-frame {
+    max-width: 430px;
+    margin: 0 auto;
+    background: var(--cream);
+    min-height: 100vh;
+    padding: 0 16px 80px;
+  }
+
+  /* ── App header bar ── */
+  .app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 4px 14px;
+  }
+  .app-header__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .app-header__icon {
+    width: 28px; height: 28px;
+    background: linear-gradient(135deg, var(--sage), var(--forest));
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-weight: 700; font-size: 14px;
+  }
+  .app-header__name {
+    font-family: var(--serif);
+    font-size: 22px; font-weight: 600;
+    color: var(--forest-deep);
+    line-height: 1;
+  }
+  .app-header__sub {
+    font-size: 11px; color: var(--gray-500);
+    margin-top: 1px;
+  }
+  .plan-pill {
+    background: var(--sage-tint);
+    color: var(--forest-deep);
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--sage-soft);
+  }
+
+  /* ── Page header (matches Billing) ── */
+  .page-header {
+    margin: 16px 0 16px;
+  }
+  .page-header__title {
+    font-family: var(--serif);
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    margin: 0;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .page-header__sub {
+    font-size: 13px;
+    color: var(--gray-500);
+    font-weight: 500;
+    margin: 4px 0 0 0;
+  }
+
+  /* ── Period tabs (matches Billing exactly) ── */
+  .period-tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--cream-deep);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .period-tabs button {
+    flex: 1;
+    text-align: center;
+    padding: 8px 4px;
+    border-radius: 8px;
+    color: var(--gray-500);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 12px;
+    transition: all 0.15s ease;
+    font-family: var(--sans);
+  }
+  .period-tabs button.active {
+    color: var(--forest-deep);
+    background: white;
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* ── Action row (below tabs, per HK preference) ── */
+  .action-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .action-row::-webkit-scrollbar { display: none; }
+  .action-btn {
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: var(--shadow-soft);
+  }
+  .action-btn--primary {
+    background: linear-gradient(135deg, var(--forest), var(--forest-deep));
+    color: white;
+    border-color: var(--forest-deep);
+  }
+  .action-btn__icon {
+    font-size: 14px;
+  }
+
+  /* ── Band 1: NEXT UP hero ── */
+  .next-up {
+    background: linear-gradient(140deg, #FFFFFF 0%, var(--cream-deep) 100%);
+    border: 1px solid var(--cream-edge);
+    border-radius: 18px;
+    padding: 22px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+  }
+  .next-up__eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .next-up__eyebrow::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--sage);
+    box-shadow: 0 0 0 4px rgba(107, 158, 128, 0.18);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 4px rgba(107, 158, 128, 0.18); }
+    50%      { box-shadow: 0 0 0 6px rgba(107, 158, 128, 0.32); }
+  }
+  .next-up__time {
+    font-family: var(--serif);
+    font-size: 56px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+  .next-up__time__meridiem {
+    font-size: 24px;
+    color: var(--gray-500);
+    font-weight: 500;
+    margin-left: 4px;
+  }
+  .next-up__who {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 3px;
+  }
+  .next-up__service {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-bottom: 14px;
+  }
+  .next-up__countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--sage-tint);
+    border: 1px solid var(--sage-soft);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    margin-bottom: 16px;
+  }
+  .next-up__actions {
+    display: flex;
+    gap: 8px;
+  }
+  .next-up__action {
+    flex: 1;
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    cursor: pointer;
+    text-align: center;
+  }
+
+  /* Empty state variant of Next Up */
+  .next-up--empty .next-up__time { color: var(--gray-400); font-size: 32px; }
+  .next-up--empty .next-up__who { color: var(--gray-500); }
+
+  /* ── Band 2: TODAY'S SHAPE timeline ── */
+  .shape {
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 18px;
+    padding: 18px 18px 22px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-soft);
+  }
+  .shape__title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    margin: 0 0 14px;
+    letter-spacing: -0.01em;
+  }
+  .shape__bar {
+    position: relative;
+    height: 56px;
+    background: var(--cream);
+    border-radius: 10px;
+    border: 1px solid var(--cream-edge);
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .shape__block {
+    position: absolute;
+    top: 8px;
+    height: 40px;
+    background: linear-gradient(140deg, var(--sage), var(--forest));
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(31, 65, 49, 0.2);
+  }
+  .shape__block--current {
+    background: linear-gradient(140deg, var(--gold), #B89456);
+    box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.3), 0 1px 3px rgba(184, 148, 86, 0.4);
+  }
+  .shape__now {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 2px;
+    background: var(--rose);
+    z-index: 2;
+  }
+  .shape__now::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    width: 8px; height: 8px;
+    background: var(--rose);
+    border-radius: 50%;
+  }
+  .shape__hours {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--gray-400);
+    font-weight: 600;
+    padding: 0 2px;
+    margin-top: 4px;
+  }
+  .shape__summary {
+    font-size: 13px;
+    color: var(--gray-700);
+    margin-top: 14px;
+    line-height: 1.5;
+  }
+  .shape__summary strong { color: var(--forest-deep); }
+
+  /* ── Band 3: ATTENTION ── */
+  .attention {
+    background: #FEF7E8;
+    border: 1px solid #F0D89C;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .attention__title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #854F0B;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .attention__list {
+    margin: 0; padding: 0; list-style: none;
+  }
+  .attention__item {
+    padding: 8px 0;
+    border-bottom: 1px solid #F0E5C4;
+    font-size: 13px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .attention__item:last-child { border-bottom: none; }
+  .attention__item__action {
+    margin-left: auto;
+    background: var(--forest-deep);
+    color: white;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* ── Band 4: ALL SESSIONS list ── */
+  .sessions-band {
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 18px;
+    padding: 18px;
+    box-shadow: var(--shadow-soft);
+  }
+  .sessions-band__title {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    margin: 0 0 12px;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    letter-spacing: -0.01em;
+  }
+  .sessions-band__count {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--gray-500);
+    font-weight: 500;
+  }
+  .session-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-top: 1px solid var(--cream-edge);
+  }
+  .session-row:first-of-type { border-top: none; padding-top: 0; }
+  .session-row__time {
+    width: 64px;
+    flex-shrink: 0;
+  }
+  .session-row__time__hr {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    line-height: 1;
+  }
+  .session-row__time__meridiem {
+    font-size: 11px;
+    color: var(--gray-500);
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .session-row__details {
+    flex: 1;
+    min-width: 0;
+  }
+  .session-row__client {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .session-row__meta {
+    font-size: 12px;
+    color: var(--gray-500);
+  }
+  .session-row__pill {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 3px 7px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .session-row__pill--intake-done { background: #DCFCE7; color: #166534; }
+  .session-row__pill--intake-todo { background: #FEF3C7; color: #92400E; }
+  .session-row__pill--next       { background: var(--sage-tint); color: var(--forest-deep); border: 1px solid var(--sage-soft); }
+
+  /* ── Trust line at bottom ── */
+  .trust-line {
+    text-align: center;
+    margin: 28px auto 8px;
+    max-width: 380px;
+    font-family: var(--serif);
+    font-size: 15px;
+    font-style: italic;
+    color: var(--gray-500);
+    line-height: 1.5;
+  }
+
+  /* ── Bottom nav (mock) ── */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--cream-edge);
+    padding: 12px 4px 18px;
+    display: flex;
+    justify-content: space-around;
+    max-width: 430px;
+    margin: 0 auto;
+  }
+  .bottom-nav__item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    color: var(--gray-400);
+    font-size: 10px;
+    font-weight: 600;
+  }
+  .bottom-nav__item--active {
+    color: var(--forest-deep);
+  }
+  .bottom-nav__icon {
+    width: 26px; height: 26px;
+    background: var(--cream-deep);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .bottom-nav__item--active .bottom-nav__icon {
+    background: var(--sage-tint);
+  }
+
+  /* Annotations panel */
+  .annotations {
+    max-width: 860px;
+    margin: 60px auto;
+    padding: 24px;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--cream-edge);
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--gray-700);
+  }
+  .annotations h2 {
+    font-family: var(--serif);
+    font-size: 24px;
+    color: var(--forest-deep);
+    margin: 0 0 16px;
+  }
+  .annotations h3 {
+    font-size: 14px;
+    color: var(--forest-deep);
+    margin: 18px 0 6px;
+  }
+  .annotations ul { margin: 0 0 6px; padding-left: 18px; }
+  .annotations code { background: var(--cream-deep); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+  <div class="app-header">
+    <div class="app-header__brand">
+      <div class="app-header__icon">M</div>
+      <div>
+        <div class="app-header__name">MyBodyMap</div>
+        <div class="app-header__sub">Healing Hands</div>
+      </div>
+    </div>
+    <div class="plan-pill">Silver, Free</div>
+  </div>
+
+  <header class="page-header">
+    <h1 class="page-header__title">Schedule</h1>
+    <p class="page-header__sub">Tuesday, May 19</p>
+  </header>
+
+  <nav class="period-tabs">
+    <button class="active">Today</button>
+    <button>Weekly</button>
+    <button>Monthly</button>
+    <button>Yearly</button>
+    <button>Insights</button>
+  </nav>
+
+  <div class="action-row">
+    <button class="action-btn action-btn--primary">
+      <span class="action-btn__icon">+</span> Book appointment
+    </button>
+    <button class="action-btn">
+      <span class="action-btn__icon">👁</span> Previews off
+    </button>
+    <button class="action-btn">
+      <span class="action-btn__icon">🌿</span> Time off
+    </button>
+  </div>
+
+  <!-- BAND 1: NEXT UP -->
+  <section class="next-up">
+    <div class="next-up__eyebrow">Next up</div>
+    <div class="next-up__time">
+      2:00<span class="next-up__time__meridiem">pm</span>
+    </div>
+    <div class="next-up__who">Sarah Chen</div>
+    <div class="next-up__service">Deep Tissue, 60 min</div>
+    <div class="next-up__countdown">⏱ In 1 hour 23 minutes</div>
+    <div class="next-up__actions">
+      <button class="next-up__action">View intake</button>
+      <button class="next-up__action">Reschedule</button>
+    </div>
+  </section>
+
+  <!-- BAND 2: TODAY'S SHAPE -->
+  <section class="shape">
+    <h2 class="shape__title">Today's shape</h2>
+    <div class="shape__bar">
+      <!-- 9 to 7pm = 11hr window. Mock blocks positioned by percent. -->
+      <div class="shape__block" style="left: 4%; width: 11%;">9a</div>
+      <div class="shape__block" style="left: 18%; width: 13%;">10:30a</div>
+      <div class="shape__block shape__block--current" style="left: 47%; width: 11%;">2p Sarah</div>
+      <div class="shape__block" style="left: 70%; width: 13%;">4:30p</div>
+      <div class="shape__now" style="left: 39%;"></div>
+    </div>
+    <div class="shape__hours">
+      <span>9a</span>
+      <span>11a</span>
+      <span>1p</span>
+      <span>3p</span>
+      <span>5p</span>
+      <span>7p</span>
+    </div>
+    <div class="shape__summary">
+      <strong>4 sessions</strong> · 4h booked · 3 open windows · Now: 12:37 pm
+    </div>
+  </section>
+
+  <!-- BAND 3: ATTENTION (only renders when items exist) -->
+  <section class="attention">
+    <div class="attention__title">⚠ Needs attention</div>
+    <ul class="attention__list">
+      <li class="attention__item">
+        2 clients haven't filled intake
+        <button class="attention__item__action">Send</button>
+      </li>
+      <li class="attention__item">
+        1 session unpaid from yesterday
+        <button class="attention__item__action">Charge</button>
+      </li>
+    </ul>
+  </section>
+
+  <!-- BAND 4: ALL SESSIONS -->
+  <section class="sessions-band">
+    <h2 class="sessions-band__title">
+      All sessions
+      <span class="sessions-band__count">4 today</span>
+    </h2>
+
+    <div class="session-row">
+      <div class="session-row__time">
+        <div class="session-row__time__hr">9:00</div>
+        <div class="session-row__time__meridiem">am · 60 min</div>
+      </div>
+      <div class="session-row__details">
+        <div class="session-row__client">Joy Client</div>
+        <div class="session-row__meta">Swedish · $90</div>
+      </div>
+      <span class="session-row__pill session-row__pill--intake-done">Intake ✓</span>
+    </div>
+
+    <div class="session-row">
+      <div class="session-row__time">
+        <div class="session-row__time__hr">10:30</div>
+        <div class="session-row__time__meridiem">am · 60 min</div>
+      </div>
+      <div class="session-row__details">
+        <div class="session-row__client">Mark Rivera</div>
+        <div class="session-row__meta">Swedish · $90</div>
+      </div>
+      <span class="session-row__pill session-row__pill--intake-done">Intake ✓</span>
+    </div>
+
+    <div class="session-row">
+      <div class="session-row__time">
+        <div class="session-row__time__hr">2:00</div>
+        <div class="session-row__time__meridiem">pm · 60 min</div>
+      </div>
+      <div class="session-row__details">
+        <div class="session-row__client">Sarah Chen</div>
+        <div class="session-row__meta">Deep Tissue · $110</div>
+      </div>
+      <span class="session-row__pill session-row__pill--next">Next</span>
+    </div>
+
+    <div class="session-row">
+      <div class="session-row__time">
+        <div class="session-row__time__hr">4:30</div>
+        <div class="session-row__time__meridiem">pm · 60 min</div>
+      </div>
+      <div class="session-row__details">
+        <div class="session-row__client">Mark Rivera</div>
+        <div class="session-row__meta">Swedish, returning · $90</div>
+      </div>
+      <span class="session-row__pill session-row__pill--intake-todo">Intake todo</span>
+    </div>
+  </section>
+
+  <p class="trust-line">
+    Your day, in one calm picture.
+  </p>
+
+  <div class="bottom-nav">
+    <div class="bottom-nav__item">
+      <div class="bottom-nav__icon">👥</div>Clients
+    </div>
+    <div class="bottom-nav__item bottom-nav__item--active">
+      <div class="bottom-nav__icon">📅</div>Schedule
+    </div>
+    <div class="bottom-nav__item">
+      <div class="bottom-nav__icon">💳</div>Billing
+    </div>
+    <div class="bottom-nav__item">
+      <div class="bottom-nav__icon">📨</div>Outreach
+    </div>
+    <div class="bottom-nav__item">
+      <div class="bottom-nav__icon">⋯</div>More
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Annotations (visible when previewing on desktop, hidden on phone width) ── -->
+<aside class="annotations">
+  <h2>Design notes</h2>
+  <p>
+    Same content as the current Schedule Today view, restyled to match BillingDashboardV2.
+    Uses identical tokens (cream, forest, sage, gold, rose), identical typography
+    (Cormorant Garamond serif for headings + giant numerals, system sans for body),
+    identical period-tab pattern (equal-width pills on cream-deep background),
+    and identical card-radius (18px) plus shadow-soft.
+  </p>
+
+  <h3>What changed</h3>
+  <ul>
+    <li><strong>Period tabs</strong> swapped from cool-gray <code>#F3F4F6</code> background to <code>--cream-deep</code>. Active text from <code>#1F2937</code> to <code>--forest-deep</code>. Tabs now equal-width (<code>flex: 1</code>) like Billing.</li>
+    <li><strong>Yearly tab added</strong>, bringing parity with Billing's 5-tab pattern.</li>
+    <li><strong>Action buttons</strong> moved below the tab bar per your direction. Same three actions (Book, Previews, Time off), now styled as soft white cards with cream borders.</li>
+    <li><strong>Stat strip</strong> from the old design (0 Today, 0 Brief ready, 0 Need intake, 0 This week) is absorbed into the band 2 summary line plus band 3 attention list.</li>
+    <li><strong>Hero band</strong> introduces "Next up" with giant serif time, client, service, countdown pill, and two inline actions.</li>
+    <li><strong>Shape band</strong> renders the day as a horizontal timeline strip with appointment blocks, an animated "now" marker, and hour labels below.</li>
+    <li><strong>Attention band</strong> only renders when there's something to resolve.</li>
+    <li><strong>All sessions list</strong> uses session-row format matching Billing's ReceiptCard density.</li>
+  </ul>
+
+  <h3>What stayed the same</h3>
+  <ul>
+    <li>All four bands of content (next session, daily summary, attention items, full session list) are preserved.</li>
+    <li>Tap behavior, deep links, modal opens are unchanged.</li>
+    <li>Time-rail TimelineView component can either stay as-is below this dashboard, or this dashboard replaces it. Open question.</li>
+  </ul>
+
+  <h3>Open questions for HK</h3>
+  <ul>
+    <li>Does this replace the existing TimelineView or sit above it? If above, do we hide the vertical time-rail under a "View timeline" expand?</li>
+    <li>Counters on the action buttons. The old strip showed "0 Today | 0 Brief ready | 0 Need intake | 0 This week", and those numbers are now buried in band 2's summary line. Should we surface them as a small ribbon below the action row?</li>
+    <li>Trust line at bottom. "Your day, in one calm picture." Want a different line, or none?</li>
+  </ul>
+</aside>
+
+</body>
+</html>
