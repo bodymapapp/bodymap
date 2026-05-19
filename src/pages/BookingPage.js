@@ -2602,26 +2602,68 @@ export default function BookingPage() {
                   if (visibleServices.length === 0 && services.length > 0) {
                     return <div style={{background:C.white,borderRadius:14,padding:32,textAlign:'center',color:C.gray,fontSize:14}}>No services available right now. Check back in a few days.</div>;
                   }
-                  return visibleServices.map(s=>(
-                  <button key={s.id} onClick={()=>{setSvc(s);setStep(2);}}
-                    style={{background:C.white,border:`2px solid ${C.light}`,borderRadius:16,padding:'18px 20px',textAlign:'left',cursor:'pointer',width:'100%',transition:'all 0.15s',outline:'none'}}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor=C.forest;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(42,87,65,0.12)';}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor=C.light;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
-                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:16,fontWeight:700,color:C.dark,marginBottom:6}}>{s.name}</div>
-                        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:s.description?8:0}}>
-                          <span style={{background:'#F0FDF4',color:'#16A34A',borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:600}}>⏱ {s.duration} min</span>
+                  // Render service card (extracted so we can reuse
+                  // both flat and grouped layouts).
+                  const renderSvcBtn = (s) => (
+                    <button key={s.id} onClick={()=>{setSvc(s);setStep(2);}}
+                      style={{background:C.white,border:`2px solid ${C.light}`,borderRadius:16,padding:'18px 20px',textAlign:'left',cursor:'pointer',width:'100%',transition:'all 0.15s',outline:'none'}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=C.forest;e.currentTarget.style.transform='translateY(-1px)';e.currentTarget.style.boxShadow='0 4px 16px rgba(42,87,65,0.12)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=C.light;e.currentTarget.style.transform='none';e.currentTarget.style.boxShadow='none';}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:16,fontWeight:700,color:C.dark,marginBottom:6}}>{s.name}</div>
+                          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:s.description?8:0}}>
+                            <span style={{background:'#F0FDF4',color:'#16A34A',borderRadius:20,padding:'3px 10px',fontSize:12,fontWeight:600}}>⏱ {s.duration} min</span>
+                          </div>
+                          {s.description&&<div style={{fontSize:13,color:C.gray,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{s.description}</div>}
                         </div>
-                        {s.description&&<div style={{fontSize:13,color:C.gray,lineHeight:1.5,whiteSpace:'pre-wrap'}}>{s.description}</div>}
+                        <div style={{textAlign:'right',flexShrink:0}}>
+                          <div style={{fontSize:22,fontWeight:700,color:C.forest}}>${s.price}</div>
+                          <div style={{fontSize:11,color:C.gray}}>pay at session</div>
+                        </div>
                       </div>
-                      <div style={{textAlign:'right',flexShrink:0}}>
-                        <div style={{fontSize:22,fontWeight:700,color:C.forest}}>${s.price}</div>
-                        <div style={{fontSize:11,color:C.gray}}>pay at session</div>
-                      </div>
-                    </div>
-                  </button>
-                ));
+                    </button>
+                  );
+                  // Grouped layout when therapist has opted in. Each
+                  // group is a small section header above its
+                  // services. Ungrouped services land under "All
+                  // other services."
+                  if (therapist?.use_service_groups) {
+                    const order = Array.isArray(therapist.service_group_order) ? therapist.service_group_order : [];
+                    const buckets = {};
+                    for (const s of visibleServices) {
+                      const key = (s.service_group || '').trim() || '__UNGROUPED__';
+                      if (!buckets[key]) buckets[key] = [];
+                      buckets[key].push(s);
+                    }
+                    const namedKeys = Object.keys(buckets).filter(k => k !== '__UNGROUPED__');
+                    const orderedKeys = [];
+                    for (const name of order) {
+                      if (namedKeys.includes(name)) orderedKeys.push(name);
+                    }
+                    for (const k of namedKeys) {
+                      if (!orderedKeys.includes(k)) orderedKeys.push(k);
+                    }
+                    if (buckets['__UNGROUPED__']) orderedKeys.push('__UNGROUPED__');
+                    const nodes = [];
+                    for (const key of orderedKeys) {
+                      const label = key === '__UNGROUPED__' ? 'All other services' : key;
+                      nodes.push(
+                        <div key={`group:${key}`} style={{
+                          fontFamily:'Georgia,serif',
+                          fontSize:14,
+                          fontWeight:700,
+                          color:C.forest,
+                          marginTop: nodes.length === 0 ? 0 : 10,
+                          marginBottom: 2,
+                          letterSpacing:'-0.005em',
+                        }}>{label}</div>
+                      );
+                      for (const s of buckets[key]) nodes.push(renderSvcBtn(s));
+                    }
+                    return nodes;
+                  }
+                  return visibleServices.map(renderSvcBtn);
                 })()}
               </div>
             )}

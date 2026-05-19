@@ -469,20 +469,64 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                       return s.location_ids.includes(locationId);
                     });
                   }
-                  return visibleServices.map(s => (
-                  <button key={s.id} onClick={() => setServiceId(s.id)}
-                    style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${serviceId === s.id ? C.forest : C.border}`,
-                      background: serviceId === s.id ? '#F0FDF4' : '#fff', cursor: 'pointer',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: serviceId === s.id ? C.forest : C.dark, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {s.visibility === 'private' && (
-                        <span title="Private service: hidden from your public booking page. Only you can schedule it." style={{ fontSize: 12 }}>🔒</span>
-                      )}
-                      {s.name}
-                    </span>
-                    <span style={{ fontSize: 13, color: C.gray }}>{s.duration} min · ${s.price}</span>
-                  </button>
-                  ));
+                  // Render the service button (extracted so we can
+                  // reuse it both flat and within groups).
+                  const renderServiceBtn = (s) => (
+                    <button key={s.id} onClick={() => setServiceId(s.id)}
+                      style={{ padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${serviceId === s.id ? C.forest : C.border}`,
+                        background: serviceId === s.id ? '#F0FDF4' : '#fff', cursor: 'pointer',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 14, fontWeight: 600, color: serviceId === s.id ? C.forest : C.dark, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {s.visibility === 'private' && (
+                          <span title="Private service: hidden from your public booking page. Only you can schedule it." style={{ fontSize: 12 }}>🔒</span>
+                        )}
+                        {s.name}
+                      </span>
+                      <span style={{ fontSize: 13, color: C.gray }}>{s.duration} min · ${s.price}</span>
+                    </button>
+                  );
+                  // When therapist opted into groups, render each
+                  // group section with a small header. The order of
+                  // groups follows therapist.service_group_order;
+                  // ungrouped services land under "All other services."
+                  if (therapist?.use_service_groups) {
+                    const order = Array.isArray(therapist.service_group_order) ? therapist.service_group_order : [];
+                    const buckets = {};
+                    for (const s of visibleServices) {
+                      const key = (s.service_group || '').trim() || '__UNGROUPED__';
+                      if (!buckets[key]) buckets[key] = [];
+                      buckets[key].push(s);
+                    }
+                    const namedKeys = Object.keys(buckets).filter(k => k !== '__UNGROUPED__');
+                    const orderedKeys = [];
+                    for (const name of order) {
+                      if (namedKeys.includes(name)) orderedKeys.push(name);
+                    }
+                    for (const k of namedKeys) {
+                      if (!orderedKeys.includes(k)) orderedKeys.push(k);
+                    }
+                    if (buckets['__UNGROUPED__']) orderedKeys.push('__UNGROUPED__');
+                    const nodes = [];
+                    for (const key of orderedKeys) {
+                      const label = key === '__UNGROUPED__' ? 'All other services' : key;
+                      nodes.push(
+                        <div key={`group:${key}`} style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          letterSpacing: '0.07em',
+                          textTransform: 'uppercase',
+                          color: C.gray,
+                          marginTop: nodes.length === 0 ? 0 : 8,
+                          marginBottom: 2,
+                        }}>{label}</div>
+                      );
+                      for (const s of buckets[key]) {
+                        nodes.push(renderServiceBtn(s));
+                      }
+                    }
+                    return nodes;
+                  }
+                  return visibleServices.map(renderServiceBtn);
                 })()}
               </div>
             </div>

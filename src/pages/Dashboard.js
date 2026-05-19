@@ -211,6 +211,15 @@ function ServicesAndAvailability({ therapist }) {
   const [tipPreset2, setTipPreset2] = React.useState(therapist?.tip_preset_2 ?? 18);
   const [tipPreset3, setTipPreset3] = React.useState(therapist?.tip_preset_3 ?? 20);
   const [depositSaving, setDepositSaving] = React.useState(false);
+  // HK May 19 2026: opt-in service grouping. Therapist can choose to
+  // organize her services into named groups. Default is off, flat
+  // list (matches the simpler experience most therapists want). When
+  // on, each service has a service_group text field and the menu
+  // renders grouped sections with their own ordering.
+  const [useGroups, setUseGroups] = React.useState(therapist?.use_service_groups || false);
+  const [groupOrder, setGroupOrder] = React.useState(
+    Array.isArray(therapist?.service_group_order) ? therapist.service_group_order : []
+  );
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   // Multi-location support (HK May 18 2026): list of therapist
@@ -428,25 +437,43 @@ function ServicesAndAvailability({ therapist }) {
   }
 
   async function setServicePosition(id, newPos1Based) {
-    const sorted = getSortedServices();
-    const currentIdx = sorted.findIndex(s => s.id === id);
+    // When groups are on, the position is 1-based WITHIN the
+    // service's own group. Renumber only that group's services.
+    // When off, fall back to global renumbering.
+    const allSorted = getSortedServices();
+    const me = allSorted.find(s => s.id === id);
+    if (!me) return;
+
+    let scope;
+    if (useGroups) {
+      const groupKey = (me.service_group || '').trim() || '__UNGROUPED__';
+      scope = allSorted.filter(s => {
+        const k = (s.service_group || '').trim() || '__UNGROUPED__';
+        return k === groupKey;
+      });
+    } else {
+      scope = allSorted;
+    }
+
+    const currentIdx = scope.findIndex(s => s.id === id);
     if (currentIdx === -1) return;
 
-    // Clamp the new position to the valid range
-    const targetIdx = Math.max(0, Math.min(sorted.length - 1, newPos1Based - 1));
+    // Clamp the new position to the valid range within the scope
+    const targetIdx = Math.max(0, Math.min(scope.length - 1, newPos1Based - 1));
     if (targetIdx === currentIdx) return;
 
-    // Move the item in the array
-    const moved = sorted.splice(currentIdx, 1)[0];
-    sorted.splice(targetIdx, 0, moved);
+    // Move the item within the scope array
+    const moved = scope.splice(currentIdx, 1)[0];
+    scope.splice(targetIdx, 0, moved);
 
-    // Recompute sort_order values stepped by 10. We only need to
-    // update rows whose position actually changed, but for simplicity
-    // and to keep the math clean we renumber everyone. With small
-    // service counts (typically under 30) this is cheap.
-    const updates = sorted.map((svc, i) => ({
+    // Compute new sort_order values for the scope. We pack the scope
+    // into the range of sort_order values it currently occupies, then
+    // step by 10 between them. This keeps other groups' sort_order
+    // intact so they don't get re-interleaved.
+    const occupiedSorts = scope.map(s => s.sort_order ?? 9999).sort((a, b) => a - b);
+    const updates = scope.map((svc, i) => ({
       id: svc.id,
-      newSort: (i + 1) * 10,
+      newSort: occupiedSorts[i],
     }));
 
     // Optimistic local update
@@ -485,11 +512,162 @@ function ServicesAndAvailability({ therapist }) {
   // Convenience wrapper for up/down arrows. Computes the current
   // 1-based position from the sorted list and shifts by 1.
   async function moveService(id, direction) {
+    // When grouping is on, arrows only nudge within the service's own
+    // group. When off, arrows nudge globally across the full list.
+    if (useGroups) {
+      const svc = services.find(s => s.id === id);
+      if (!svc) return;
+      const groupKey = (svc.service_group || '').trim() || '__UNGROUPED__';
+      const groupSorted = getSortedServices().filter(s => {
+        const k = (s.service_group || '').trim() || '__UNGROUPED__';
+        return k === groupKey;
+      });
+      const idxInGroup = groupSorted.findIndex(s => s.id === id);
+      if (idxInGroup === -1) return;
+      const neighborInGroup = direction === 'up'
+        ? groupSorted[idxInGroup - 1]
+        : groupSorted[idxInGroup + 1];
+      if (!neighborInGroup) return;
+      // Swap sort_order with the neighbor in-group. We do this
+      // directly rather than via setServicePosition because the
+      // latter renumbers the global list which would re-interleave
+      // services from other groups.
+      const mySort = svc.sort_order ?? 9999;
+      const neighborSort = neighborInGroup.sort_order ?? 9999;
+      setServices(s => s.map(x => {
+        if (x.id === svc.id) return { ...x, sort_order: neighborSort };
+        if (x.id === neighborInGroup.id) return { ...x, sort_order: mySort };
+        return x;
+      }));
+      const [r1, r2] = await Promise.all([
+        supabase.from('services').update({ sort_order: neighborSort }).eq('id', svc.id),
+        supabase.from('services').update({ sort_order: mySort }).eq('id', neighborInGroup.id),
+      ]);
+      if (r1.error || r2.error) {
+        console.error('moveService in-group failed:', r1.error || r2.error);
+        const { data } = await supabase.from('services').select('*').eq('therapist_id', therapist.id).is('archived_at', null).order('sort_order', { ascending: true }).order('created_at', { ascending: true });
+        if (data) setServices(data);
+      }
+      return;
+    }
     const sorted = getSortedServices();
     const idx = sorted.findIndex(s => s.id === id);
     if (idx === -1) return;
     const newPos1Based = direction === 'up' ? idx : idx + 2;
     await setServicePosition(id, newPos1Based);
+  }
+
+  // ─── Group management (HK May 19 2026, opt-in) ───────────────────
+  // Groups are derived from distinct values of service.service_group
+  // per therapist. Empty / null group means the service has no group
+  // and shows under "All other services."
+  //
+  // Group order is stored on therapists.service_group_order as a JSON
+  // array of group names. Groups not in the array sort alphabetically
+  // after named ones.
+
+  // Returns an array of group names in display order. Includes the
+  // implicit "All other services" pseudo-group only when there is
+  // at least one ungrouped service.
+  function getGroupedServiceLayout() {
+    const sorted = getSortedServices();
+    const grouped = {};
+    for (const s of sorted) {
+      const key = (s.service_group || '').trim() || '__UNGROUPED__';
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(s);
+    }
+    // Build the ordered list of group names: named groups first in
+    // groupOrder sequence, then any new named groups alphabetically,
+    // then ungrouped last.
+    const namedKeys = Object.keys(grouped).filter(k => k !== '__UNGROUPED__');
+    const ordered = [];
+    for (const name of groupOrder) {
+      if (namedKeys.includes(name)) ordered.push(name);
+    }
+    const unordered = namedKeys.filter(k => !ordered.includes(k)).sort();
+    ordered.push(...unordered);
+    if (grouped['__UNGROUPED__']) ordered.push('__UNGROUPED__');
+    return ordered.map(name => ({
+      name,
+      displayName: name === '__UNGROUPED__' ? 'All other services' : name,
+      services: grouped[name],
+    }));
+  }
+
+  // Toggle the opt-in group UI. Writes to therapists.use_service_groups
+  // so the setting persists across sessions.
+  async function toggleUseGroups() {
+    const next = !useGroups;
+    setUseGroups(next);
+    const { error } = await supabase
+      .from('therapists')
+      .update({ use_service_groups: next })
+      .eq('id', therapist.id);
+    if (error) {
+      console.error('toggleUseGroups failed:', error);
+      setUseGroups(!next);
+    }
+  }
+
+  // Set the group name for a service. Empty string clears the group
+  // (service moves to "All other services"). New group names that
+  // are not yet in groupOrder get appended.
+  async function setServiceGroup(id, rawName) {
+    const name = (rawName || '').trim();
+    const patch = { service_group: name || null };
+    await updateService(id, patch);
+    if (name && !groupOrder.includes(name)) {
+      const nextOrder = [...groupOrder, name];
+      setGroupOrder(nextOrder);
+      await supabase
+        .from('therapists')
+        .update({ service_group_order: nextOrder })
+        .eq('id', therapist.id);
+    }
+  }
+
+  // Move a group up or down in the displayed group order. Stays out
+  // of the ungrouped pseudo-group, which is always last.
+  async function moveGroup(groupName, direction) {
+    if (groupName === '__UNGROUPED__') return;
+    const layout = getGroupedServiceLayout().filter(g => g.name !== '__UNGROUPED__');
+    const idx = layout.findIndex(g => g.name === groupName);
+    if (idx === -1) return;
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= layout.length) return;
+    const nextOrder = layout.map(g => g.name);
+    const tmp = nextOrder[idx];
+    nextOrder[idx] = nextOrder[neighborIdx];
+    nextOrder[neighborIdx] = tmp;
+    setGroupOrder(nextOrder);
+    const { error } = await supabase
+      .from('therapists')
+      .update({ service_group_order: nextOrder })
+      .eq('id', therapist.id);
+    if (error) {
+      console.error('moveGroup failed:', error);
+    }
+  }
+
+  async function setGroupPosition(groupName, newPos1Based) {
+    if (groupName === '__UNGROUPED__') return;
+    const layout = getGroupedServiceLayout().filter(g => g.name !== '__UNGROUPED__');
+    const currentIdx = layout.findIndex(g => g.name === groupName);
+    if (currentIdx === -1) return;
+    const targetIdx = Math.max(0, Math.min(layout.length - 1, newPos1Based - 1));
+    if (targetIdx === currentIdx) return;
+    const nextOrder = layout.map(g => g.name);
+    const moved = nextOrder.splice(currentIdx, 1)[0];
+    nextOrder.splice(targetIdx, 0, moved);
+    setGroupOrder(nextOrder);
+    const { error } = await supabase
+      .from('therapists')
+      .update({ service_group_order: nextOrder })
+      .eq('id', therapist.id);
+    if (error) {
+      console.error('setGroupPosition failed:', error);
+    }
   }
 
   // ─── Location management (HK May 18 2026) ───────────────────────
@@ -722,13 +900,134 @@ function ServicesAndAvailability({ therapist }) {
       >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px' }}>Clients choose from these when booking online.</p>
 
+        {/* Opt-in group toggle (HK May 19 2026). Default off keeps the
+            menu flat, which is what most therapists want. Therapists
+            with sub-categories (Candice's prenatal + postnatal) flip
+            it on, give each service a group name, and the menu
+            renders grouped sections with their own ordering. */}
+        {services.length > 0 && (
+          <div style={{
+            marginBottom: 14,
+            padding: '10px 12px',
+            background: useGroups ? '#F0F6EE' : '#FAFAFA',
+            border: `1px solid ${useGroups ? '#B7D1AB' : '#EEE9DC'}`,
+            borderRadius: 10,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: C2.darkGray, marginBottom: 2 }}>Organize services into groups</div>
+              <div style={{ fontSize: 12, color: C2.gray, lineHeight: 1.4 }}>
+                Optional. Use this if you want sections like "Prenatal" or "Couples" with their own service lists.
+              </div>
+            </div>
+            <button
+              onClick={toggleUseGroups}
+              aria-label={useGroups ? 'Turn off groups' : 'Turn on groups'}
+              style={{
+                background: useGroups ? '#16A34A' : '#fff',
+                color: useGroups ? '#fff' : C2.gray,
+                border: `1.5px solid ${useGroups ? '#16A34A' : C2.lightGray}`,
+                borderRadius: 20,
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >{useGroups ? 'On' : 'Off'}</button>
+          </div>
+        )}
+
         {/* Existing services, rendered in sort_order ascending so
             the displayed order matches what the therapist sees on
             the booking page. Position controls are 1-based and
-            contiguous: first row is position 1, last is N. */}
+            contiguous: first row is position 1, last is N.
+            When useGroups is on, services render in group sections
+            with their own group header (group name + position
+            controls). Within each group, services have their own
+            1-based contiguous position. */}
         {services.length > 0 && (
           <div style={{ display:'flex', flexDirection:'column', gap:6, marginBottom:16 }}>
-            {getSortedServices().map((svc, idx, sortedArr) => (
+            {(() => {
+              // Build the display list. When grouped, interleave
+              // group headers between sections. When flat, just the
+              // services in sort order.
+              const flat = getSortedServices();
+              if (!useGroups) {
+                return flat.map((svc, idx) => ({
+                  kind: 'service',
+                  svc,
+                  idxInGroup: idx,
+                  totalInGroup: flat.length,
+                  groupKey: null,
+                }));
+              }
+              const layout = getGroupedServiceLayout();
+              const namedGroups = layout.filter(g => g.name !== '__UNGROUPED__');
+              const items = [];
+              for (let gi = 0; gi < layout.length; gi++) {
+                const group = layout[gi];
+                const isNamed = group.name !== '__UNGROUPED__';
+                items.push({
+                  kind: 'group-header',
+                  groupName: group.name,
+                  groupDisplayName: group.displayName,
+                  groupPosition: isNamed ? namedGroups.findIndex(g => g.name === group.name) + 1 : null,
+                  groupTotal: namedGroups.length,
+                });
+                group.services.forEach((svc, idx) => {
+                  items.push({
+                    kind: 'service',
+                    svc,
+                    idxInGroup: idx,
+                    totalInGroup: group.services.length,
+                    groupKey: group.name,
+                  });
+                });
+              }
+              return items;
+            })().map((item, i) => {
+              if (item.kind === 'group-header') {
+                const isUngrouped = item.groupName === '__UNGROUPED__';
+                return (
+                  <div key={`group:${item.groupName}`} style={{
+                    display:'flex',
+                    alignItems:'center',
+                    gap:10,
+                    padding:'12px 12px 6px',
+                    marginTop: i === 0 ? 0 : 12,
+                  }}>
+                    {!isUngrouped && (
+                      <ServicePositionControl
+                        position={item.groupPosition}
+                        total={item.groupTotal}
+                        onSetPosition={(n) => setGroupPosition(item.groupName, n)}
+                        onMoveUp={() => moveGroup(item.groupName, 'up')}
+                        onMoveDown={() => moveGroup(item.groupName, 'down')}
+                        serviceName={item.groupDisplayName}
+                        lightGray={C2.lightGray}
+                        darkGray={C2.darkGray}
+                      />
+                    )}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: isUngrouped ? C2.gray : C2.forest,
+                      }}>{item.groupDisplayName}</div>
+                    </div>
+                  </div>
+                );
+              }
+              const svc = item.svc;
+              const idx = item.idxInGroup;
+              const sortedArr = { length: item.totalInGroup };
+              return (
               <div key={svc.id} style={{ padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {/* Position controls: number input + up/down arrows.
@@ -832,6 +1131,66 @@ function ServicesAndAvailability({ therapist }) {
                     </button>
                   )}
                 </div>
+
+                {/* Group selector (HK May 19 2026). Only renders when
+                    the therapist has opted into groups. Tap to type a
+                    new group name. Datalist suggests existing groups
+                    so therapist can reuse names without typos. */}
+                {useGroups && (
+                  <div style={{
+                    marginTop: 8,
+                    paddingTop: 8,
+                    borderTop: `1px dashed ${C2.lightGray}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: C2.gray,
+                      flexShrink: 0,
+                    }}>Group</span>
+                    <input
+                      type="text"
+                      defaultValue={svc.service_group || ''}
+                      list={`group-suggestions-${svc.id}`}
+                      placeholder="None"
+                      onBlur={(e) => {
+                        const next = (e.target.value || '').trim();
+                        const current = (svc.service_group || '').trim();
+                        if (next !== current) setServiceGroup(svc.id, next);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') e.currentTarget.blur();
+                        if (e.key === 'Escape') {
+                          e.currentTarget.value = svc.service_group || '';
+                          e.currentTarget.blur();
+                        }
+                      }}
+                      aria-label={`Group for ${svc.name}`}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        fontSize: 12.5,
+                        color: C2.darkGray,
+                        background: '#fff',
+                        border: `1px solid ${C2.lightGray}`,
+                        borderRadius: 6,
+                        padding: '5px 8px',
+                        outline: 'none',
+                        fontFamily: 'inherit',
+                      }}
+                    />
+                    <datalist id={`group-suggestions-${svc.id}`}>
+                      {Array.from(new Set(services.map(s => (s.service_group || '').trim()).filter(Boolean))).map(name => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                  </div>
+                )}
 
                 {/* Inline confirm bar. Replaces the row's normal
                     bottom area when the therapist has tapped Remove
@@ -1102,7 +1461,8 @@ function ServicesAndAvailability({ therapist }) {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
