@@ -14,6 +14,8 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
+import CollapsibleGroup from './CollapsibleGroup';
+import TimeAvailableCard from './TimeAvailableCard';
 
 const C = {
   forest:    '#1F3A2C',
@@ -141,7 +143,7 @@ const PLACEHOLDER_GAP = {
   otherMatches: 2,
 };
 
-export default function SmartBookingRail({ isMobile = false, therapist, allAppts, today, scope = 'today' }) {
+export default function SmartBookingRail({ isMobile = false, therapist, allAppts, today, scope = 'today', onOpenTimeOff }) {
   const [intelByClient, setIntelByClient] = useState({});
 
   // Compute scope time window. All widgets read this so they stay
@@ -709,6 +711,34 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     return upcomingBookings.map((b, i) => buildBriefCard(b, intelByClient[b.clientId], i));
   }, [upcomingBookings, intelByClient]);
 
+  // Compute teaser strings for the two collapsible groups so the
+  // therapist gets a glance-level summary without expanding.
+  // HK May 19 2026: clear collapsibles design principle. Teaser is
+  // the "what's inside" preview that justifies the tap.
+  const todaysTeaser = useMemo(() => {
+    const parts = [];
+    const next = upcoming.find(u => !u.isPlaceholder);
+    if (next) {
+      parts.push(`${next.name || 'Next session'} at ${next.when || ''}`.trim());
+    } else if (upcoming.length > 0) {
+      parts.push('Sample data shown');
+    } else {
+      parts.push('No upcoming sessions');
+    }
+    if (scopedLoad && typeof scopedLoad.pct === 'number') {
+      parts.push(`Body load ${scopedLoad.pct}%`);
+    }
+    return parts.join(' · ');
+  }, [upcoming, scopedLoad]);
+
+  const growthTeaser = useMemo(() => {
+    const parts = [];
+    if (fillGap) parts.push('1 gap to fill');
+    if (rebookWatch && rebookWatch.length > 0) parts.push(`${rebookWatch.length} to rebook`);
+    if (parts.length === 0) parts.push('See suggestions');
+    return parts.join(' · ');
+  }, [fillGap, rebookWatch]);
+
   return (
     <aside style={{
       display: 'flex',
@@ -718,40 +748,64 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
       minWidth: 0,
       fontFamily: F.sans,
     }}>
-      <UpNextCarousel upcoming={upcoming} isMobile={isMobile} scope={scope} />
-      {/* Body Load + Revenue: on mobile, 2-up row to cut vertical
-          scroll. On desktop, stack vertically in the narrow rail.
-          Each card uses 0-width-flex-grow so they share the row
-          equally and don't blow out the column. */}
-      <div style={{
-        display: isMobile ? 'grid' : 'block',
-        gridTemplateColumns: isMobile ? '1fr 1fr' : undefined,
-        gap: isMobile ? 12 : 0,
-      }}>
+      {/* Group 1: Today's insights. Up Next briefing + Body Load.
+          Default collapsed. Therapist taps the header to reveal the
+          briefing cards. The 70-year-old persona benefits from the
+          calendar being visible immediately without scrolling through
+          a stack of intelligence cards first. */}
+      <CollapsibleGroup
+        icon="⏱"
+        title="Today's insights"
+        teaser={todaysTeaser}
+        defaultOpen={false}
+      >
+        <UpNextCarousel upcoming={upcoming} isMobile={isMobile} scope={scope} />
         <BodyLoadCard load={scopedLoad || PLACEHOLDER_LOAD} compact={isMobile} />
-        {!isMobile && <div style={{ height: 14 }} />}
-        <RevenueCard revenue={monthRevenue || PLACEHOLDER_REVENUE} compact={isMobile} />
-      </div>
-      {/* Fill This Gap only renders when there's a real gap AND a real
-          candidate. On a real account with no qualifying gap, we hide
-          rather than show fake data. Placeholder shows ONLY in the
-          completely empty seed/demo case. */}
-      {fillGap ? (
-        <FillGapCard gap={fillGap} therapistFirstName={(therapist?.full_name || '').split(' ')[0]} />
-      ) : (!therapist?.id ? (
-        <FillGapCard gap={PLACEHOLDER_GAP} therapistFirstName="" />
-      ) : null)}
-      {/* Rebook Watch: top 3 lapsed regulars approaching cadence break.
-          Same data source as FillGap but a different lens. FillGap is
-          'fill this slot with one client.' Rebook Watch is 'these
-          three regulars need a nudge before they drift.' Shown on
-          every tab when there are qualifying candidates. */}
-      {rebookWatch && rebookWatch.length > 0 && (
-        <RebookWatchCard
-          clients={rebookWatch}
-          therapistFirstName={(therapist?.full_name || '').split(' ')[0]}
+      </CollapsibleGroup>
+
+      {/* Group 2: Growth insights. Time Available (replaces Revenue) +
+          Fill This Gap + Rebook Watch. Default collapsed. Time
+          Available frames open time as capacity, not revenue loss.
+          Fill This Gap and Rebook Watch only render when there are
+          real candidates; in placeholder mode, the demo gap shows. */}
+      <CollapsibleGroup
+        icon="🌱"
+        title="Growth insights"
+        teaser={growthTeaser}
+        defaultOpen={false}
+      >
+        <TimeAvailableCard
+          allAppts={allAppts}
+          scope={scope}
+          today={today}
+          lapsedCount={rebookWatch ? rebookWatch.length : 0}
+          onParentAction={(id) => {
+            if (id === 'open-time-off' && typeof onOpenTimeOff === 'function') {
+              onOpenTimeOff();
+            }
+          }}
         />
-      )}
+        {/* Fill This Gap only renders when there's a real gap AND a real
+            candidate. On a real account with no qualifying gap, we hide
+            rather than show fake data. Placeholder shows ONLY in the
+            completely empty seed/demo case. */}
+        {fillGap ? (
+          <FillGapCard gap={fillGap} therapistFirstName={(therapist?.full_name || '').split(' ')[0]} />
+        ) : (!therapist?.id ? (
+          <FillGapCard gap={PLACEHOLDER_GAP} therapistFirstName="" />
+        ) : null)}
+        {/* Rebook Watch: top 3 lapsed regulars approaching cadence break.
+            Same data source as FillGap but a different lens. FillGap is
+            'fill this slot with one client.' Rebook Watch is 'these
+            three regulars need a nudge before they drift.' Shown on
+            every tab when there are qualifying candidates. */}
+        {rebookWatch && rebookWatch.length > 0 && (
+          <RebookWatchCard
+            clients={rebookWatch}
+            therapistFirstName={(therapist?.full_name || '').split(' ')[0]}
+          />
+        )}
+      </CollapsibleGroup>
     </aside>
   );
 }

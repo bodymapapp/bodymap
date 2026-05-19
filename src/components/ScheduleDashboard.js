@@ -2313,7 +2313,7 @@ export default function ScheduleDashboard({ therapist }) {
   const showSample = showPreviewData && (!realBookings || upcomingReal.length < 3);
   const allAppts = [...(realBookings||[]), ...(showSample ? SAMPLE : [])];
 
-  const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'insights',label:'Insights'}];
+  const TABS=[{id:'today',label:'Today'},{id:'weekly',label:'Weekly'},{id:'monthly',label:'Monthly'},{id:'yearly',label:'Yearly'},{id:'insights',label:'Insights'}];
 
   const isMobileW = window.innerWidth < 768;
   return (
@@ -2335,50 +2335,8 @@ export default function ScheduleDashboard({ therapist }) {
       )}
       <div style={{marginBottom:14}}>
         <div style={{display:'flex',alignItems:'baseline',gap:10,flexWrap:'wrap',marginBottom:10}}>
-          <h2 style={{fontFamily:'Georgia,serif',fontSize:22,fontWeight:700,color:'#1F2937',margin:0,lineHeight:1.1}}>Schedule</h2>
+          <h2 style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:32,fontWeight:600,color:'#1F4131',margin:0,lineHeight:1,letterSpacing:'-0.02em'}}>Schedule</h2>
           <span style={{fontSize:13,color:'#6B7280',fontWeight:500}}>{fmtDay(today)}</span>
-        </div>
-        {/* Action row, unified pill buttons, consistent heights */}
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-          {/* Primary: Book Appointment */}
-          <button onClick={() => setShowCreate(true)}
-            style={{display:'inline-flex',alignItems:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
-            <span style={{fontSize:16,lineHeight:1,marginTop:-1}}>+</span>
-            <span>Book Appointment</span>
-          </button>
-
-          {/* Previews toggle (HK May 18 2026): one pill, two states.
-              Maria knows exactly what it does. Tap to flip. No
-              hidden conditional behavior, no four different colors
-              for four different cases. Tracks therapists.show_preview_data.
-              When on, sample appointments fill the calendar when
-              upcoming real bookings < 3 (legacy threshold). When off,
-              samples never render. */}
-          <button
-            onClick={togglePreviewData}
-            title={showPreviewData ? 'Tap to hide preview clients' : 'Tap to show preview clients'}
-            style={{
-              display:'inline-flex',alignItems:'center',gap:6,
-              background: showPreviewData ? '#FFF7ED' : '#fff',
-              border: `1.5px solid ${showPreviewData ? '#FED7AA' : '#E5E7EB'}`,
-              borderRadius:22,padding:'10px 14px',fontSize:12,
-              color: showPreviewData ? '#9A3412' : '#6B7280',
-              fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,
-              cursor:'pointer',WebkitTapHighlightColor:'transparent',
-            }}>
-            <span>👁️</span>
-            <span>Previews: {showPreviewData ? 'ON' : 'OFF'}</span>
-          </button>
-
-          {/* Secondary: Time off toggle */}
-          <button onClick={()=>setShowBlockPanel(v=>!v)}
-            style={{display:'inline-flex',alignItems:'center',gap:6,background:showBlockPanel?'#F3F4F6':'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,fontWeight:700,color:'#4B5563',cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
-            <span>🌿</span>
-            <span>Time off</span>
-            {blockedDays.length > 0 && (
-              <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'2px 7px',fontSize:11,fontWeight:700,lineHeight:1}}>{blockedDays.length}</span>
-            )}
-          </button>
         </div>
       </div>
 
@@ -2826,42 +2784,83 @@ export default function ScheduleDashboard({ therapist }) {
           card tiles ate 110px of vertical space above the calendar,
           which is the star feature. Compressed to one line that
           carries the same four numbers with a thin separator. Same
-          numbers, ~75px shorter. Wraps on narrow viewports. */}
+          numbers, ~75px shorter. Wraps on narrow viewports.
+          HK May 19 2026 restyle: bigger serif numerals (24px), 14px
+          radius, cream-edge border, soft shadow to match Billing. */}
       <div className="bm-sched-stats" style={{
         display:'flex',
         flexWrap:'wrap',
         gap:0,
         marginBottom:14,
-        padding:'10px 14px',
+        padding:'14px 18px',
         background:'#fff',
-        borderRadius:10,
-        border:'1px solid #F3F4F6',
+        borderRadius:14,
+        border:'1px solid #EDE6D6',
+        boxShadow:'0 1px 3px rgba(31, 65, 49, 0.06), 0 1px 2px rgba(31, 65, 49, 0.04)',
         alignItems:'center',
       }}>
         {[
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#2A5741'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview).length,label:'Today',color:'#1F4131'},
           {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='intake-done').length,label:'Brief ready',color:'#16A34A'},
-          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#D97706'},
+          {val:allAppts.filter(a=>sameDay(a.date,today)&&!a.preview&&a.status==='pending-intake').length,label:'Need intake',color:'#854F0B'},
           {val:allAppts.filter(a=>!a.preview&&a.date>=today&&a.date<=addDays(today,7)).length,label:'This week',color:'#6B9E80'},
         ].map((s,idx,arr)=>(
           <React.Fragment key={s.label}>
-            <div style={{display:'inline-flex',alignItems:'baseline',gap:6,padding:'0 14px',flexShrink:0}}>
-              <span style={{fontSize:18,fontWeight:700,fontFamily:'Georgia,serif',color:s.color,lineHeight:1}}>{s.val}</span>
-              <span style={{fontSize:11,color:'#9CA3AF',fontWeight:600,letterSpacing:'0.02em'}}>{s.label}</span>
+            <div style={{display:'inline-flex',alignItems:'baseline',gap:8,padding:'0 18px',flexShrink:0}}>
+              <span style={{fontSize:24,fontWeight:600,fontFamily:"'Cormorant Garamond', Georgia, serif",color:s.color,lineHeight:1,letterSpacing:'-0.01em'}}>{s.val}</span>
+              <span style={{fontSize:11,color:'#6B7280',fontWeight:600,letterSpacing:'0.02em'}}>{s.label}</span>
             </div>
-            {idx < arr.length - 1 && <div style={{width:1,height:18,background:'#E5E7EB',flexShrink:0}}/>}
+            {idx < arr.length - 1 && <div style={{width:1,height:22,background:'#EDE6D6',flexShrink:0}}/>}
           </React.Fragment>
         ))}
       </div>
 
-      {/* Tab bar */}
-      <div className="bm-tabbar" style={{display:'flex',gap:2,background:'#F3F4F6',borderRadius:12,padding:4,marginBottom:20,width:'fit-content',maxWidth:'100%',overflowX:'auto',scrollbarWidth:'none',WebkitOverflowScrolling:'touch',flexWrap:'nowrap'}}>
+      {/* Period tabs. HK May 19 2026 restyle to match Billing's
+          pattern: cream-deep background, equal-width pills, forest-deep
+          active text. Yearly tab added for parity. */}
+      <div className="bm-tabbar" style={{display:'flex',gap:2,background:'#F5EFE0',borderRadius:12,padding:4,marginBottom:14}}>
         {TABS.map(t=>(
           <button key={t.id} onClick={()=>setSubView(t.id)}
-            style={{background:subView===t.id?'#fff':'transparent',color:subView===t.id?'#1F2937':'#6B7280',border:'none',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',boxShadow:subView===t.id?'0 1px 4px rgba(0,0,0,0.1)':'none',transition:'all 0.15s',whiteSpace:'nowrap',flexShrink:0}}>
+            style={{flex:1,textAlign:'center',background:subView===t.id?'#fff':'transparent',color:subView===t.id?'#1F4131':'#6B7280',border:'none',borderRadius:8,padding:'8px 4px',fontSize:12,fontWeight:600,cursor:'pointer',boxShadow:subView===t.id?'0 1px 3px rgba(31, 65, 49, 0.08)':'none',transition:'all 0.15s',whiteSpace:'nowrap'}}>
             {t.label}
           </button>
         ))}
+      </div>
+
+      {/* Action row, moved below the tab bar per HK May 19 2026:
+          'Action buttons sit right below the daily / weekly etc as
+          these are important.' Same three actions, same styles. */}
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:18}}>
+        <button onClick={() => setShowCreate(true)}
+          style={{display:'inline-flex',alignItems:'center',gap:6,background:'linear-gradient(135deg,#2A5741,#3D6B54)',color:'#fff',border:'none',borderRadius:22,padding:'10px 18px',fontSize:13,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',boxShadow:'0 2px 8px rgba(42,87,65,0.25)',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+          <span style={{fontSize:16,lineHeight:1,marginTop:-1}}>+</span>
+          <span>Book Appointment</span>
+        </button>
+
+        <button
+          onClick={togglePreviewData}
+          title={showPreviewData ? 'Tap to hide preview clients' : 'Tap to show preview clients'}
+          style={{
+            display:'inline-flex',alignItems:'center',gap:6,
+            background: showPreviewData ? '#FFF7ED' : '#fff',
+            border: `1.5px solid ${showPreviewData ? '#FED7AA' : '#E5E7EB'}`,
+            borderRadius:22,padding:'10px 14px',fontSize:12,
+            color: showPreviewData ? '#9A3412' : '#6B7280',
+            fontWeight:700,whiteSpace:'nowrap',height:40,lineHeight:1,
+            cursor:'pointer',WebkitTapHighlightColor:'transparent',
+          }}>
+          <span>👁️</span>
+          <span>Previews: {showPreviewData ? 'ON' : 'OFF'}</span>
+        </button>
+
+        <button onClick={()=>setShowBlockPanel(v=>!v)}
+          style={{display:'inline-flex',alignItems:'center',gap:6,background:showBlockPanel?'#F3F4F6':'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,fontWeight:700,color:'#4B5563',cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
+          <span>🌿</span>
+          <span>Time off</span>
+          {blockedDays.length > 0 && (
+            <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'2px 7px',fontSize:11,fontWeight:700,lineHeight:1}}>{blockedDays.length}</span>
+          )}
+        </button>
       </div>
 
       {loading
@@ -2893,6 +2892,7 @@ export default function ScheduleDashboard({ therapist }) {
                 allAppts={allAppts}
                 today={today}
                 scope={subView}
+                onOpenTimeOff={() => setShowBlockPanel(true)}
               />
             </div>
 
@@ -2901,6 +2901,12 @@ export default function ScheduleDashboard({ therapist }) {
               {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime}/>}
               {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
               {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='yearly'  &&(
+                <div style={{background:'#fff',border:'1px solid #EDE6D6',borderRadius:18,padding:'40px 24px',textAlign:'center',boxShadow:'0 1px 3px rgba(31, 65, 49, 0.06)'}}>
+                  <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:24,fontWeight:600,color:'#1F4131',marginBottom:8,letterSpacing:'-0.01em'}}>Yearly view, coming soon</div>
+                  <div style={{fontSize:13,color:'#6B7280',fontStyle:'italic',lineHeight:1.55,maxWidth:420,margin:'0 auto',fontFamily:'Georgia, serif'}}>A 12-month overview of bookings, busiest weeks, and seasonal patterns. In the meantime, your Insights tab covers cohort and retention trends.</div>
+                </div>
+              )}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}
             </div>
           </div>
