@@ -224,6 +224,9 @@ function ServicesAndAvailability({ therapist }) {
   const [moveMenuFor, setMoveMenuFor] = React.useState(null);
   // Inline 'New group' prompt state. null = prompt closed.
   const [newGroupDraft, setNewGroupDraft] = React.useState(null);
+  // Which groups are collapsed. Set of group names ('Prenatal &
+  // Postnatal', '__UNGROUPED__', etc.). Default empty = all expanded.
+  const [collapsedGroups, setCollapsedGroups] = React.useState(new Set());
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   // Multi-location support (HK May 18 2026): list of therapist
@@ -281,6 +284,31 @@ function ServicesAndAvailability({ therapist }) {
 
   React.useEffect(() => { if (therapist?.id) load(); }, [therapist?.id]);
 
+  // Pre-defined groups + keyword match. Defined ABOVE load() so load
+  // can reference them when auto-classifying on initial fetch. The
+  // toggleUseGroups and other group functions later in the component
+  // also reference these via closure.
+  const PREDEFINED_GROUPS = [
+    'Prenatal & Postnatal',
+    'Couples',
+    'Therapeutic & Recovery',
+    'Relaxation & Spa',
+    'Energy & Modalities',
+    'Add-ons',
+  ];
+
+  function classifyService(name) {
+    const n = (name || '').toLowerCase();
+    if (!n) return null;
+    if (/pre[\s-]?natal|post[\s-]?natal|pregnan|maternity/.test(n)) return 'Prenatal & Postnatal';
+    if (/couple|duo|two\s?person|partner massage/.test(n)) return 'Couples';
+    if (/deep tissue|sports|recovery|trigger point|myofascial|neuromuscular|orthopedic|injury|rehab/.test(n)) return 'Therapeutic & Recovery';
+    if (/swedish|hot stone|aromatherapy|relax|spa|lomi|hot towel|warm/.test(n)) return 'Relaxation & Spa';
+    if (/reiki|cup|reflex|cranial|sacral|lymphatic|thai|shiatsu|energy|chakra/.test(n)) return 'Energy & Modalities';
+    if (/add[\s-]?on|enhancement|upgrade|booster|extra/.test(n)) return 'Add-ons';
+    return null;
+  }
+
   async function load() {
     const [{ data: svcs }, { data: avail }, { data: locs }] = await Promise.all([
       // is_('archived_at', null) filters out soft-deleted services so
@@ -293,7 +321,48 @@ function ServicesAndAvailability({ therapist }) {
       // sort_order so primary surfaces first.
       supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
     ]);
-    setServices(svcs || []);
+    let loadedSvcs = svcs || [];
+    // HK May 19 2026: if therapist already has groups ON but services
+    // were created before the auto-classify shipped (or somehow have
+    // a null group), classify them now. Idempotent: services with a
+    // group set are never touched.
+    if ((therapist?.use_service_groups) && loadedSvcs.length > 0) {
+      const unassigned = loadedSvcs.filter(s => !s.service_group);
+      const updates = unassigned
+        .map(s => ({ id: s.id, group: classifyService(s.name) }))
+        .filter(u => u.group);
+      if (updates.length > 0) {
+        // Persist
+        await Promise.all(
+          updates.map(u =>
+            supabase.from('services').update({ service_group: u.group }).eq('id', u.id)
+          )
+        );
+        // Patch the loaded array so we render the new groups immediately
+        loadedSvcs = loadedSvcs.map(s => {
+          const u = updates.find(u => u.id === s.id);
+          return u ? { ...s, service_group: u.group } : s;
+        });
+        // Seed group order with any newly-discovered groups
+        const groupsInUse = Array.from(new Set([
+          ...(Array.isArray(therapist?.service_group_order) ? therapist.service_group_order : []),
+          ...updates.map(u => u.group),
+        ]));
+        const orderedByPredef = [
+          ...PREDEFINED_GROUPS.filter(g => groupsInUse.includes(g)),
+          ...groupsInUse.filter(g => !PREDEFINED_GROUPS.includes(g)),
+        ];
+        const currentOrder = Array.isArray(therapist?.service_group_order) ? therapist.service_group_order : [];
+        if (JSON.stringify(orderedByPredef) !== JSON.stringify(currentOrder)) {
+          setGroupOrder(orderedByPredef);
+          await supabase
+            .from('therapists')
+            .update({ service_group_order: orderedByPredef })
+            .eq('id', therapist.id);
+        }
+      }
+    }
+    setServices(loadedSvcs);
     setAvailability(avail || []);
     setLocations(locs || []);
     setLoading(false);
@@ -610,35 +679,6 @@ function ServicesAndAvailability({ therapist }) {
       displayName: name === '__UNGROUPED__' ? 'All other services' : name,
       services: grouped[name],
     }));
-  }
-
-  // Pre-defined groups + keyword match. When the therapist flips the
-  // groups toggle ON for the first time, we auto-classify each service
-  // into one of these groups by simple keyword match on the name.
-  // Therapist can override per-service with the 'Move to...' button.
-  //
-  // Order matters: more specific groups are checked first so 'sports
-  // recovery' lands in Therapeutic & Recovery rather than getting
-  // caught by a broader keyword later.
-  const PREDEFINED_GROUPS = [
-    'Prenatal & Postnatal',
-    'Couples',
-    'Therapeutic & Recovery',
-    'Relaxation & Spa',
-    'Energy & Modalities',
-    'Add-ons',
-  ];
-
-  function classifyService(name) {
-    const n = (name || '').toLowerCase();
-    if (!n) return null;
-    if (/pre[\s-]?natal|post[\s-]?natal|pregnan|maternity/.test(n)) return 'Prenatal & Postnatal';
-    if (/couple|duo|two\s?person|partner massage/.test(n)) return 'Couples';
-    if (/deep tissue|sports|recovery|trigger point|myofascial|neuromuscular|orthopedic|injury|rehab/.test(n)) return 'Therapeutic & Recovery';
-    if (/swedish|hot stone|aromatherapy|relax|spa|lomi|hot towel|warm/.test(n)) return 'Relaxation & Spa';
-    if (/reiki|cup|reflex|cranial|sacral|lymphatic|thai|shiatsu|energy|chakra/.test(n)) return 'Energy & Modalities';
-    if (/add[\s-]?on|enhancement|upgrade|booster|extra/.test(n)) return 'Add-ons';
-    return null;
   }
 
   // Toggle the opt-in group UI. Writes to therapists.use_service_groups
@@ -1099,9 +1139,26 @@ function ServicesAndAvailability({ therapist }) {
                 });
               }
               return items;
-            })().map((item, i) => {
+            })().filter(item => {
+              // Hide service rows whose group is collapsed. Group
+              // headers always render (their chevron is the way to
+              // expand back).
+              if (item.kind !== 'service') return true;
+              const groupKey = item.groupKey || '__UNGROUPED__';
+              if (collapsedGroups.has(groupKey)) return false;
+              return true;
+            }).map((item, i) => {
               if (item.kind === 'group-header') {
                 const isUngrouped = item.groupName === '__UNGROUPED__';
+                const isCollapsed = collapsedGroups.has(item.groupName);
+                const toggleCollapse = () => {
+                  setCollapsedGroups(prev => {
+                    const next = new Set(prev);
+                    if (next.has(item.groupName)) next.delete(item.groupName);
+                    else next.add(item.groupName);
+                    return next;
+                  });
+                };
                 return (
                   <div key={`group:${item.groupName}`} style={{
                     display:'flex',
@@ -1126,31 +1183,75 @@ function ServicesAndAvailability({ therapist }) {
                         darkGray={C2.darkGray}
                       />
                     )}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{
-                        fontFamily: "'Cormorant Garamond', Georgia, serif",
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: isUngrouped ? C2.gray : '#1F4131',
-                        letterSpacing: '-0.005em',
-                        lineHeight: 1.2,
-                      }}>{item.groupDisplayName}</div>
-                      <div style={{
-                        fontSize: 11,
-                        color: isUngrouped ? '#A0A0A0' : '#6B7280',
-                        marginTop: 2,
+                    <button
+                      onClick={toggleCollapse}
+                      aria-label={isCollapsed ? `Expand ${item.groupDisplayName}` : `Collapse ${item.groupDisplayName}`}
+                      style={{
+                        flex:1,
+                        minWidth:0,
+                        background:'transparent',
+                        border:'none',
+                        padding:0,
+                        cursor:'pointer',
+                        textAlign:'left',
+                        display:'flex',
+                        alignItems:'center',
+                        gap:10,
+                        fontFamily:'inherit',
                       }}>
-                        {(() => {
-                          // Count services in this group from current state
-                          const groupKey = item.groupName;
-                          const count = services.filter(s => {
-                            const k = (s.service_group || '').trim() || '__UNGROUPED__';
-                            return k === groupKey;
-                          }).length;
-                          return `${count} service${count === 1 ? '' : 's'}`;
-                        })()}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{
+                          fontFamily: "'Cormorant Garamond', Georgia, serif",
+                          fontSize: 18,
+                          fontWeight: 700,
+                          color: isUngrouped ? C2.gray : '#1F4131',
+                          letterSpacing: '-0.005em',
+                          lineHeight: 1.2,
+                        }}>{item.groupDisplayName}</div>
+                        <div style={{
+                          fontSize: 11,
+                          color: isUngrouped ? '#A0A0A0' : '#6B7280',
+                          marginTop: 2,
+                        }}>
+                          {(() => {
+                            const groupKey = item.groupName;
+                            const count = services.filter(s => {
+                              const k = (s.service_group || '').trim() || '__UNGROUPED__';
+                              return k === groupKey;
+                            }).length;
+                            return `${count} service${count === 1 ? '' : 's'}${isCollapsed ? ' · hidden' : ''}`;
+                          })()}
+                        </div>
                       </div>
-                    </div>
+                      {/* ChevronPill: matches Billing's collapsible
+                          pattern (Memory #17). 32x32 circular,
+                          sage-tint when closed, forest when open. */}
+                      <div style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: isCollapsed ? '#F0F6EE' : '#1F4131',
+                        flexShrink: 0,
+                        transition: 'background 0.2s ease',
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 14 14" style={{
+                          transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)',
+                          transition: 'transform 0.2s ease',
+                        }}>
+                          <path
+                            d="M3 5 L7 9 L11 5"
+                            stroke={isCollapsed ? '#1F4131' : '#FFFFFF'}
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            fill="none"
+                          />
+                        </svg>
+                      </div>
+                    </button>
                   </div>
                 );
               }
