@@ -1309,6 +1309,12 @@ function ServicesAndAvailability({ therapist }) {
                 marginLeft: useGroups ? 16 : 0,
                 borderLeft: useGroups ? `3px solid ${item.groupKey === '__UNGROUPED__' ? '#E5E1D5' : '#B7D1AB'}` : `1px solid ${svc.active?C2.lightGray:'#F0F0F0'}`,
               }}>
+                {/* Service row top: position + name + duration/price.
+                    Action pills (On/Off, Public/Private, Remove) live on
+                    a second row aligned right. This two-row structure
+                    prevents the action pills from overlapping the
+                    service name on narrow screens (~360-400px wide).
+                    HK May 19 2026 phone overlap fix. */}
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {/* Position controls: number input + up/down arrows.
                       Per HK design principle for 70-year-old persona:
@@ -1357,6 +1363,10 @@ function ServicesAndAvailability({ therapist }) {
                       />
                     </span>
                   </div>
+                </div>
+                {/* Service row action pills. Second row, right-aligned.
+                    Wrap if even these overflow on the narrowest phones. */}
+                <div style={{ display:'flex', alignItems:'center', gap:8, justifyContent:'flex-end', flexWrap:'wrap', marginTop:8 }}>
                   <button onClick={() => toggleService(svc)} style={{ background:svc.active?'#DCFCE7':'#F3F4F6', color:svc.active?'#16A34A':C2.gray, border:'none', borderRadius:20, padding:'3px 10px', fontSize:'11px', fontWeight:600, cursor:'pointer', flexShrink:0 }}>
                     {svc.active ? 'On' : 'Off'}
                   </button>
