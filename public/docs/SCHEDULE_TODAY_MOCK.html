@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Schedule Today, restyle v3</title>
+<title>Schedule Today, restyle v4</title>
 <style>
   /* Tokens lifted from BillingDashboardV2 */
   :root {
@@ -287,44 +287,77 @@
   .revenue__delta--down { color: var(--rose); }
   .revenue__goal { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
 
-  /* Time Available card (replaces Revenue) */
-  .timeavail { cursor: pointer; transition: box-shadow 0.18s; }
-  .timeavail:hover { box-shadow: 0 2px 6px rgba(31, 65, 49, 0.1); }
-  .timeavail__head {
-    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  /* ── Rail collapsible groups ── */
+  .rail-group {
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: box-shadow 0.18s ease;
+    box-shadow: var(--shadow-soft);
   }
-  .timeavail__num {
+  .rail-group:hover { box-shadow: 0 2px 8px rgba(31, 65, 49, 0.08); }
+  .rail-group__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    gap: 10px;
+  }
+  .rail-group__head__left { flex: 1; min-width: 0; }
+  .rail-group__eyebrow {
     font-family: var(--serif);
-    font-size: 24px; font-weight: 600;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--forest-deep);
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+    margin-bottom: 2px;
+  }
+  .rail-group__teaser {
+    font-size: 11.5px;
+    color: var(--gray-500);
+    font-family: var(--serif);
+    font-style: italic;
+    line-height: 1.3;
+  }
+  .rail-group__chevron {
+    font-size: 16px;
+    color: var(--gray-400);
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+  }
+  .rail-group.is-open .rail-group__chevron { transform: rotate(180deg); }
+  .rail-group__body {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease;
+    padding: 0 14px;
+  }
+  .rail-group.is-open .rail-group__body {
+    max-height: 3000px;
+    padding: 0 14px 14px;
+  }
+  .rail-group .rail-card {
+    margin-top: 10px;
+    cursor: default; /* the card itself isn't clickable inside a group */
+  }
+  .rail-group .rail-card:first-of-type { margin-top: 4px; }
+
+  /* Time Available card inside the Growth Insights group, no separate expand */
+  .timeavail-inline .timeavail__num {
+    font-family: var(--serif);
+    font-size: 26px; font-weight: 600;
     color: var(--forest-deep);
     line-height: 1; letter-spacing: -0.01em;
     margin: 6px 0 4px;
   }
   .timeavail__num__unit { font-size: 14px; color: var(--gray-500); font-weight: 500; }
-  .timeavail__teaser {
-    font-size: 11px; color: var(--gray-500);
+  .timeavail__sub {
+    font-size: 11.5px; color: var(--gray-500);
     font-family: var(--serif); font-style: italic;
-  }
-  .timeavail__chevron {
-    font-size: 16px;
-    color: var(--gray-400);
-    transition: transform 0.2s;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .timeavail.is-open .timeavail__chevron { transform: rotate(180deg); }
-  .timeavail__body {
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease, margin-top 0.3s ease;
-  }
-  .timeavail.is-open .timeavail__body {
-    max-height: 720px;
-    margin-top: 4px;
-  }
-  .timeavail__divider {
-    border: none; border-top: 1px solid var(--cream-edge);
-    margin: 12px 0;
+    margin-bottom: 12px;
   }
   .timeavail__windows {
     margin: 0 0 14px; padding: 0; list-style: none;
@@ -852,52 +885,69 @@
     <!-- ╔══ LEFT RAIL: SmartBookingRail (preserved) ══╗ -->
     <aside class="rail">
 
-      <!-- Up Next Briefing Carousel -->
-      <div class="rail-card">
-        <div class="rail-card__eyebrow">⏱ Up next</div>
-        <div class="upnext__time">2:00<span class="upnext__time__meridiem">pm</span></div>
-        <div class="upnext__client">Sarah Chen</div>
-        <div class="upnext__service">Deep Tissue · 60 min · In 1h 23m</div>
-        <ul class="upnext__points">
-          <li>Recurring lower-back focus, sciatic referral</li>
-          <li>Last session: cried on prone. Be gentle on intro.</li>
-          <li>Likes deep but starts with effleurage</li>
-        </ul>
-        <div class="upnext__nav">
-          <button class="upnext__nav__btn">‹</button>
-          <div class="upnext__nav__dots">
-            <span class="active"></span><span></span><span></span><span></span>
+      <!-- ─── Collapsible 1: TODAY'S INSIGHTS ─── -->
+      <div class="rail-group" id="todaysInsights" onclick="toggleGroup(event, 'todaysInsights')">
+        <div class="rail-group__head">
+          <div class="rail-group__head__left">
+            <div class="rail-group__eyebrow">Today's insights</div>
+            <div class="rail-group__teaser">Sarah at 2pm · Body load 68%</div>
           </div>
-          <button class="upnext__nav__btn">›</button>
+          <span class="rail-group__chevron">⌄</span>
+        </div>
+        <div class="rail-group__body">
+
+          <!-- Up Next Briefing Carousel -->
+          <div class="rail-card">
+            <div class="rail-card__eyebrow">⏱ Up next</div>
+            <div class="upnext__time">2:00<span class="upnext__time__meridiem">pm</span></div>
+            <div class="upnext__client">Sarah Chen</div>
+            <div class="upnext__service">Deep Tissue · 60 min · In 1h 23m</div>
+            <ul class="upnext__points">
+              <li>Recurring lower-back focus, sciatic referral</li>
+              <li>Last session: cried on prone. Be gentle on intro.</li>
+              <li>Likes deep but starts with effleurage</li>
+            </ul>
+            <div class="upnext__nav">
+              <button class="upnext__nav__btn" onclick="event.stopPropagation()">‹</button>
+              <div class="upnext__nav__dots">
+                <span class="active"></span><span></span><span></span><span></span>
+              </div>
+              <button class="upnext__nav__btn" onclick="event.stopPropagation()">›</button>
+            </div>
+          </div>
+
+          <!-- Body Load -->
+          <div class="rail-card">
+            <div class="rail-card__eyebrow">🌿 Body load</div>
+            <div class="bodyload__num">68%</div>
+            <div class="bodyload__bar">
+              <div class="bodyload__fill" style="width: 68%"></div>
+            </div>
+            <div class="bodyload__row">
+              <span class="bodyload__label">Moderate</span>
+              <span class="bodyload__label">4h booked</span>
+            </div>
+          </div>
+
         </div>
       </div>
 
-      <!-- Body Load + Revenue: 2-up on mobile, stacked on desktop -->
-      <div class="rail-2up">
-
-        <div class="rail-card">
-          <div class="rail-card__eyebrow">🌿 Body load</div>
-          <div class="bodyload__num">68%</div>
-          <div class="bodyload__bar">
-            <div class="bodyload__fill" style="width: 68%"></div>
+      <!-- ─── Collapsible 2: GROWTH INSIGHTS ─── -->
+      <div class="rail-group" id="growthInsights" onclick="toggleGroup(event, 'growthInsights')">
+        <div class="rail-group__head">
+          <div class="rail-group__head__left">
+            <div class="rail-group__eyebrow">Growth insights</div>
+            <div class="rail-group__teaser">12h 30m open · 1 gap · 3 to rebook</div>
           </div>
-          <div class="bodyload__row">
-            <span class="bodyload__label">Moderate</span>
-            <span class="bodyload__label">4h booked</span>
-          </div>
+          <span class="rail-group__chevron">⌄</span>
         </div>
+        <div class="rail-group__body">
 
-        <div class="rail-card timeavail" id="timeavail" onclick="toggleTimeAvail(event)">
-          <div class="timeavail__head">
-            <div>
-              <div class="rail-card__eyebrow">🌿 Time available</div>
-              <div class="timeavail__num">12h 30m<span class="timeavail__num__unit"> open</span></div>
-              <div class="timeavail__teaser">6 windows this week · Tap to see</div>
-            </div>
-            <span class="timeavail__chevron" id="timeavailChevron">⌄</span>
-          </div>
-          <div class="timeavail__body" id="timeavailBody">
-            <hr class="timeavail__divider">
+          <!-- Time Available -->
+          <div class="rail-card timeavail-inline">
+            <div class="rail-card__eyebrow">🌿 Time available</div>
+            <div class="timeavail__num">12h 30m<span class="timeavail__num__unit"> open</span></div>
+            <div class="timeavail__sub">6 bookable windows this week</div>
             <ul class="timeavail__windows">
               <li>Tue 11:30am · 2h 00m</li>
               <li>Wed 2:00pm · 3h 00m</li>
@@ -936,46 +986,46 @@
               <button class="strategy__btn" onclick="event.stopPropagation()">Add premium slot</button>
             </div>
           </div>
-        </div>
 
-      </div>
+          <!-- Fill This Gap -->
+          <div class="rail-card fillgap">
+            <div class="rail-card__eyebrow">⚡ Fill this gap</div>
+            <div class="fillgap__gap">11:30am · 90 min open</div>
+            <div class="fillgap__client">
+              <strong>Mark Rivera</strong> usually books Wed. Last visit 12 days ago.
+            </div>
+            <button class="fillgap__btn" onclick="event.stopPropagation()">Text Mark · "Want this slot?"</button>
+          </div>
 
-      <!-- Fill This Gap (amber) -->
-      <div class="rail-card fillgap">
-        <div class="rail-card__eyebrow">⚡ Fill this gap</div>
-        <div class="fillgap__gap">11:30am · 90 min open</div>
-        <div class="fillgap__client">
-          <strong>Mark Rivera</strong> usually books Wed. Last visit 12 days ago.
-        </div>
-        <button class="fillgap__btn">Text Mark · "Want this slot?"</button>
-      </div>
+          <!-- Rebook Watch -->
+          <div class="rail-card">
+            <div class="rail-card__eyebrow">📅 Rebook watch</div>
+            <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px;">
+              Drifting from their usual cadence
+            </div>
+            <div class="rebook__row">
+              <div>
+                <div class="rebook__name">Jennifer Lin</div>
+                <div class="rebook__gap">28 days · usually 14</div>
+              </div>
+              <button class="rebook__btn" onclick="event.stopPropagation()">Reach out</button>
+            </div>
+            <div class="rebook__row">
+              <div>
+                <div class="rebook__name">Tom Park</div>
+                <div class="rebook__gap">19 days · usually 10</div>
+              </div>
+              <button class="rebook__btn" onclick="event.stopPropagation()">Reach out</button>
+            </div>
+            <div class="rebook__row">
+              <div>
+                <div class="rebook__name">Aisha M.</div>
+                <div class="rebook__gap">36 days · usually 21</div>
+              </div>
+              <button class="rebook__btn" onclick="event.stopPropagation()">Reach out</button>
+            </div>
+          </div>
 
-      <!-- Rebook Watch -->
-      <div class="rail-card">
-        <div class="rail-card__eyebrow">📅 Rebook watch</div>
-        <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px;">
-          Drifting from their usual cadence
-        </div>
-        <div class="rebook__row">
-          <div>
-            <div class="rebook__name">Jennifer Lin</div>
-            <div class="rebook__gap">28 days · usually 14</div>
-          </div>
-          <button class="rebook__btn">Reach out</button>
-        </div>
-        <div class="rebook__row">
-          <div>
-            <div class="rebook__name">Tom Park</div>
-            <div class="rebook__gap">19 days · usually 10</div>
-          </div>
-          <button class="rebook__btn">Reach out</button>
-        </div>
-        <div class="rebook__row">
-          <div>
-            <div class="rebook__name">Aisha M.</div>
-            <div class="rebook__gap">36 days · usually 21</div>
-          </div>
-          <button class="rebook__btn">Reach out</button>
         </div>
       </div>
 
@@ -1312,12 +1362,12 @@
 
   <h4 style="font-family: var(--serif); color: var(--forest-deep); font-size: 16px; margin-top: 16px;">Left rail: SmartBookingRail (every tab)</h4>
   <ul>
-    <li>UpNextCarousel: 3-point briefing cards per upcoming client, ‹ › nav, dot indicators</li>
-    <li>BodyLoadCard: today's service mix vs injury risk meter, scope-aware</li>
-    <li><strong>TimeAvailableCard (NEW, replaces RevenueCard)</strong>: collapsed by default showing hours open + window count + tap-to-expand. Expanded reveals named windows + 3 industry-best-practice strategies, each with a single primary action button. Strategies adapt to time-tier (light, comfortable, spacious, fully-booked).</li>
-    <li>FillGapCard: one matched client per gap, one-tap text outreach (hidden when no real gap)</li>
-    <li>RebookWatchCard: top 3 lapsed regulars approaching cadence break (hidden when no candidates)</li>
-    <li>Body Load + TimeAvailable render 2-up on mobile, stacked on desktop (preserved layout)</li>
+    <li>UpNextCarousel: 3-point briefing cards per upcoming client, ‹ › nav, dot indicators. Now lives inside the <strong>Today's insights</strong> collapsible group.</li>
+    <li>BodyLoadCard: today's service mix vs injury risk meter, scope-aware. Now lives inside <strong>Today's insights</strong>.</li>
+    <li><strong>TimeAvailableCard (NEW, replaces RevenueCard)</strong>: hours open + bookable windows list + 3 strategy cards. Lives inside the <strong>Growth insights</strong> collapsible group.</li>
+    <li>FillGapCard: one matched client per gap, one-tap text outreach. Lives inside <strong>Growth insights</strong>.</li>
+    <li>RebookWatchCard: top 3 lapsed regulars approaching cadence break. Lives inside <strong>Growth insights</strong>.</li>
+    <li><strong>Both groups default to collapsed</strong> so the calendar is immediately visible. Group header shows a teaser line (e.g., "Sarah at 2pm · Body load 68%" or "12h 30m open · 1 gap · 3 to rebook") that gives a glance-level summary without expanding.</li>
   </ul>
 
   <h4 style="font-family: var(--serif); color: var(--forest-deep); font-size: 16px; margin-top: 16px;">Above the layout</h4>
@@ -1342,16 +1392,10 @@
 </aside>
 
 <script>
-  function toggleTimeAvail(e) {
-    var card = document.getElementById('timeavail');
-    if (!card) return;
-    card.classList.toggle('is-open');
-    var teaser = card.querySelector('.timeavail__teaser');
-    if (teaser) {
-      teaser.textContent = card.classList.contains('is-open')
-        ? '6 windows this week · Tap to collapse'
-        : '6 windows this week · Tap to see';
-    }
+  function toggleGroup(e, id) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('is-open');
   }
 </script>
 
