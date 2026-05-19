@@ -3,29 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-<title>Schedule Today, mockup</title>
+<title>Schedule Today, restyle v2</title>
 <style>
-  /* Tokens, lifted from BillingDashboardV2 for parity */
+  /* Tokens lifted from BillingDashboardV2 */
   :root {
-    --cream:      #FAF6EE;
-    --cream-deep: #F5EFE0;
-    --cream-edge: #EDE6D6;
-    --forest:     #2A5741;
-    --forest-deep:#1F4131;
-    --sage:       #6B9E80;
-    --sage-soft:  #B7D1AB;
-    --sage-tint:  #F0F6EE;
-    --rose:       #A87468;
-    --gold:       #C9A86A;
-    --ink:        #1F2937;
-    --gray-700:   #374151;
-    --gray-500:   #6B7280;
-    --gray-400:   #9CA3AF;
-    --gray-300:   #D1D5DB;
-    --gray-100:   #F3F4F6;
+    --cream:        #FAF6EE;
+    --cream-deep:   #F5EFE0;
+    --cream-edge:   #EDE6D6;
+    --canvas:       #FBF8F1;
+    --forest:       #2A5741;
+    --forest-deep:  #1F4131;
+    --sage:         #6B9E80;
+    --sage-soft:    #B7D1AB;
+    --sage-tint:    #F0F6EE;
+    --rose:         #A87468;
+    --gold:         #C9A86A;
+    --amber-bg:     #FEF7E8;
+    --amber-border: #F0D89C;
+    --amber-text:   #854F0B;
+    --ink:          #1F2937;
+    --gray-700:     #374151;
+    --gray-500:     #6B7280;
+    --gray-400:     #9CA3AF;
+    --gray-300:     #D1D5DB;
+    --gray-100:     #F3F4F6;
+    --green:        #16A34A;
+    --green-bg:     #DCFCE7;
+    --red:          #EF4444;
     --serif: 'Cormorant Garamond', Georgia, serif;
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     --shadow-soft: 0 1px 3px rgba(31, 65, 49, 0.06), 0 1px 2px rgba(31, 65, 49, 0.04);
+    --shadow-med:  0 4px 12px rgba(31, 65, 49, 0.08);
   }
 
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -37,94 +45,107 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  .phone-frame {
-    max-width: 430px;
+  /* On wide viewports, show desktop layout (rail + canvas side by side).
+     On phone width, single column with rail on top.                       */
+  .page {
+    max-width: 1180px;
     margin: 0 auto;
-    background: var(--cream);
-    min-height: 100vh;
-    padding: 0 16px 80px;
+    padding: 16px 18px 80px;
   }
 
-  /* ── App header bar ── */
+  /* ── App header ── */
   .app-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 18px 4px 14px;
+    padding: 14px 4px 18px;
   }
-  .app-header__brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+  .app-header__brand { display: flex; align-items: center; gap: 12px; }
   .app-header__icon {
-    width: 28px; height: 28px;
+    width: 30px; height: 30px;
     background: linear-gradient(135deg, var(--sage), var(--forest));
-    border-radius: 8px;
+    border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
     color: white; font-weight: 700; font-size: 14px;
   }
   .app-header__name {
     font-family: var(--serif);
-    font-size: 22px; font-weight: 600;
-    color: var(--forest-deep);
-    line-height: 1;
+    font-size: 24px; font-weight: 600;
+    color: var(--forest-deep); line-height: 1;
   }
-  .app-header__sub {
-    font-size: 11px; color: var(--gray-500);
-    margin-top: 1px;
-  }
+  .app-header__sub { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
   .plan-pill {
-    background: var(--sage-tint);
-    color: var(--forest-deep);
-    font-size: 11px; font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 999px;
-    border: 1px solid var(--sage-soft);
+    background: var(--sage-tint); color: var(--forest-deep);
+    font-size: 11px; font-weight: 600; padding: 4px 10px;
+    border-radius: 999px; border: 1px solid var(--sage-soft);
   }
 
   /* ── Page header (matches Billing) ── */
-  .page-header {
-    margin: 16px 0 16px;
-  }
+  .page-header { margin: 8px 0 14px; }
   .page-header__title {
     font-family: var(--serif);
-    font-size: 32px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    margin: 0;
-    letter-spacing: -0.02em;
-    line-height: 1;
+    font-size: 36px; font-weight: 600;
+    color: var(--forest-deep); margin: 0;
+    letter-spacing: -0.02em; line-height: 1;
   }
   .page-header__sub {
-    font-size: 13px;
-    color: var(--gray-500);
-    font-weight: 500;
-    margin: 4px 0 0 0;
+    font-size: 13px; color: var(--gray-500);
+    font-weight: 500; margin: 4px 0 0 0;
+  }
+
+  /* ── Stats strip (preserved, restyled) ── */
+  .stats {
+    display: flex; flex-wrap: wrap;
+    padding: 14px 18px;
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    align-items: center;
+    box-shadow: var(--shadow-soft);
+  }
+  .stats__cell {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 0 18px;
+    flex-shrink: 0;
+  }
+  .stats__cell:first-child { padding-left: 0; }
+  .stats__cell:last-child { padding-right: 0; }
+  .stats__val {
+    font-family: var(--serif);
+    font-size: 24px; font-weight: 600;
+    line-height: 1; letter-spacing: -0.01em;
+  }
+  .stats__val--today { color: var(--forest-deep); }
+  .stats__val--brief { color: var(--green); }
+  .stats__val--intake { color: var(--amber-text); }
+  .stats__val--week { color: var(--sage); }
+  .stats__lbl {
+    font-size: 11px; color: var(--gray-500);
+    font-weight: 600; letter-spacing: 0.02em;
+  }
+  .stats__sep {
+    width: 1px; height: 22px; background: var(--cream-edge); flex-shrink: 0;
   }
 
   /* ── Period tabs (matches Billing exactly) ── */
   .period-tabs {
-    display: flex;
-    gap: 2px;
+    display: flex; gap: 2px;
     background: var(--cream-deep);
     border-radius: 12px;
     padding: 4px;
     margin-bottom: 12px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 12px; font-weight: 600;
   }
   .period-tabs button {
-    flex: 1;
-    text-align: center;
-    padding: 8px 4px;
-    border-radius: 8px;
+    flex: 1; text-align: center;
+    padding: 8px 4px; border-radius: 8px;
     color: var(--gray-500);
     background: transparent;
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 12px;
+    border: none; cursor: pointer;
+    font-weight: 600; font-size: 12px;
     transition: all 0.15s ease;
     font-family: var(--sans);
   }
@@ -134,11 +155,10 @@
     box-shadow: var(--shadow-soft);
   }
 
-  /* ── Action row (below tabs, per HK preference) ── */
+  /* ── Action row, below tabs per HK direction ── */
   .action-row {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
+    display: flex; gap: 8px;
+    margin-bottom: 18px;
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
@@ -150,396 +170,516 @@
     border: 1px solid var(--cream-edge);
     border-radius: 10px;
     padding: 10px 14px;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 13px; font-weight: 600;
     color: var(--forest-deep);
-    cursor: pointer;
-    white-space: nowrap;
+    cursor: pointer; white-space: nowrap;
     flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+    display: flex; align-items: center; gap: 6px;
     box-shadow: var(--shadow-soft);
   }
   .action-btn--primary {
     background: linear-gradient(135deg, var(--forest), var(--forest-deep));
-    color: white;
-    border-color: var(--forest-deep);
+    color: white; border-color: var(--forest-deep);
   }
-  .action-btn__icon {
-    font-size: 14px;
+  .action-btn__icon { font-size: 14px; }
+
+  /* ── 2-column layout: rail + canvas ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 16px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
   }
 
-  /* ── Band 1: NEXT UP hero ── */
-  .next-up {
-    background: linear-gradient(140deg, #FFFFFF 0%, var(--cream-deep) 100%);
+  /* ── LEFT RAIL: SmartBookingRail ── */
+  .rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .rail-card {
+    background: white;
     border: 1px solid var(--cream-edge);
-    border-radius: 18px;
-    padding: 22px;
-    margin-bottom: 16px;
+    border-radius: 14px;
+    padding: 14px 14px;
     box-shadow: var(--shadow-soft);
-    position: relative;
-    overflow: hidden;
   }
-  .next-up__eyebrow {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--sage);
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  .rail-card__eyebrow {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--sage); margin-bottom: 8px;
   }
-  .next-up__eyebrow::before {
-    content: '';
-    width: 6px; height: 6px;
-    border-radius: 50%;
+  .rail-card__title {
+    font-family: var(--serif);
+    font-size: 17px; font-weight: 600;
+    color: var(--forest-deep);
+    margin: 0 0 4px;
+    line-height: 1.2;
+    letter-spacing: -0.005em;
+  }
+
+  /* Up Next briefing card */
+  .upnext__time {
+    font-family: var(--serif);
+    font-size: 28px; font-weight: 600;
+    color: var(--forest-deep);
+    line-height: 1; letter-spacing: -0.015em;
+    margin: 2px 0 6px;
+  }
+  .upnext__time__meridiem { font-size: 14px; color: var(--gray-500); margin-left: 4px; }
+  .upnext__client { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+  .upnext__service { font-size: 12px; color: var(--gray-500); margin-bottom: 10px; }
+  .upnext__points { font-size: 12px; color: var(--gray-700); line-height: 1.55; }
+  .upnext__points li { margin: 4px 0; padding-left: 12px; position: relative; list-style: none; }
+  .upnext__points li::before {
+    content: ''; position: absolute; left: 0; top: 7px;
+    width: 5px; height: 5px; border-radius: 50%;
     background: var(--sage);
-    box-shadow: 0 0 0 4px rgba(107, 158, 128, 0.18);
-    animation: pulse 2s ease-in-out infinite;
   }
-  @keyframes pulse {
-    0%, 100% { box-shadow: 0 0 0 4px rgba(107, 158, 128, 0.18); }
-    50%      { box-shadow: 0 0 0 6px rgba(107, 158, 128, 0.32); }
+  .upnext__nav {
+    display: flex; justify-content: space-between; margin-top: 12px;
+    font-size: 11px; color: var(--gray-400);
   }
-  .next-up__time {
-    font-family: var(--serif);
-    font-size: 56px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    line-height: 1;
-    letter-spacing: -0.02em;
-    margin-bottom: 6px;
+  .upnext__nav__btn { background: none; border: none; cursor: pointer; color: var(--forest); font-size: 16px; padding: 0; }
+  .upnext__nav__dots { display: flex; gap: 4px; }
+  .upnext__nav__dots span { width: 5px; height: 5px; border-radius: 50%; background: var(--cream-edge); }
+  .upnext__nav__dots span.active { background: var(--forest); }
+
+  /* Body Load + Revenue: side-by-side on mobile (2-up), stacked on desktop */
+  .rail-2up { display: contents; }
+  @media (max-width: 900px) {
+    .rail-2up {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
   }
-  .next-up__time__meridiem {
-    font-size: 24px;
-    color: var(--gray-500);
-    font-weight: 500;
-    margin-left: 4px;
-  }
-  .next-up__who {
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 3px;
-  }
-  .next-up__service {
-    font-size: 13px;
-    color: var(--gray-500);
-    margin-bottom: 14px;
-  }
-  .next-up__countdown {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--sage-tint);
-    border: 1px solid var(--sage-soft);
+
+  /* Body Load meter */
+  .bodyload__bar {
+    background: var(--cream-deep);
     border-radius: 999px;
-    padding: 6px 12px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    margin-bottom: 16px;
+    height: 8px;
+    overflow: hidden;
+    margin: 8px 0 6px;
   }
-  .next-up__actions {
-    display: flex;
-    gap: 8px;
+  .bodyload__fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--sage), var(--gold));
+    border-radius: 999px;
   }
-  .next-up__action {
-    flex: 1;
-    background: white;
-    border: 1px solid var(--cream-edge);
-    border-radius: 10px;
-    padding: 10px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    cursor: pointer;
-    text-align: center;
-  }
-
-  /* Empty state variant of Next Up */
-  .next-up--empty .next-up__time { color: var(--gray-400); font-size: 32px; }
-  .next-up--empty .next-up__who { color: var(--gray-500); }
-
-  /* ── Band 2: TODAY'S SHAPE timeline ── */
-  .shape {
-    background: white;
-    border: 1px solid var(--cream-edge);
-    border-radius: 18px;
-    padding: 18px 18px 22px;
-    margin-bottom: 16px;
-    box-shadow: var(--shadow-soft);
-  }
-  .shape__title {
+  .bodyload__label { font-size: 11px; color: var(--gray-500); }
+  .bodyload__num {
     font-family: var(--serif);
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    margin: 0 0 14px;
+    font-size: 22px; font-weight: 600;
+    color: var(--forest-deep); line-height: 1;
     letter-spacing: -0.01em;
   }
-  .shape__bar {
-    position: relative;
-    height: 56px;
-    background: var(--cream);
-    border-radius: 10px;
-    border: 1px solid var(--cream-edge);
-    overflow: hidden;
-    margin-bottom: 10px;
-  }
-  .shape__block {
-    position: absolute;
-    top: 8px;
-    height: 40px;
-    background: linear-gradient(140deg, var(--sage), var(--forest));
-    border-radius: 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 10px;
-    font-weight: 700;
-    box-shadow: 0 1px 3px rgba(31, 65, 49, 0.2);
-  }
-  .shape__block--current {
-    background: linear-gradient(140deg, var(--gold), #B89456);
-    box-shadow: 0 0 0 2px rgba(201, 168, 106, 0.3), 0 1px 3px rgba(184, 148, 86, 0.4);
-  }
-  .shape__now {
-    position: absolute;
-    top: 0; bottom: 0;
-    width: 2px;
-    background: var(--rose);
-    z-index: 2;
-  }
-  .shape__now::before {
-    content: '';
-    position: absolute;
-    top: -3px;
-    left: -3px;
-    width: 8px; height: 8px;
-    background: var(--rose);
-    border-radius: 50%;
-  }
-  .shape__hours {
-    display: flex;
-    justify-content: space-between;
-    font-size: 10px;
-    color: var(--gray-400);
-    font-weight: 600;
-    padding: 0 2px;
-    margin-top: 4px;
-  }
-  .shape__summary {
-    font-size: 13px;
-    color: var(--gray-700);
-    margin-top: 14px;
-    line-height: 1.5;
-  }
-  .shape__summary strong { color: var(--forest-deep); }
+  .bodyload__row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 6px; }
 
-  /* ── Band 3: ATTENTION ── */
-  .attention {
-    background: #FEF7E8;
-    border: 1px solid #F0D89C;
-    border-radius: 14px;
-    padding: 14px 16px;
-    margin-bottom: 16px;
+  /* Revenue card */
+  .revenue__num {
+    font-family: var(--serif);
+    font-size: 22px; font-weight: 600;
+    color: var(--forest-deep); line-height: 1;
+    letter-spacing: -0.01em; margin: 6px 0 2px;
   }
-  .attention__title {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: #854F0B;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  .revenue__delta { font-size: 11px; color: var(--green); font-weight: 600; }
+  .revenue__delta--down { color: var(--rose); }
+  .revenue__goal { font-size: 11px; color: var(--gray-500); margin-top: 4px; }
+
+  /* Fill Gap card */
+  .fillgap {
+    background: linear-gradient(140deg, var(--amber-bg) 0%, #FDF0CE 100%);
+    border-color: var(--amber-border);
   }
-  .attention__list {
-    margin: 0; padding: 0; list-style: none;
+  .fillgap .rail-card__eyebrow { color: var(--amber-text); }
+  .fillgap__gap {
+    font-family: var(--serif);
+    font-size: 17px; font-weight: 600;
+    color: var(--forest-deep);
+    margin-bottom: 4px;
   }
-  .attention__item {
-    padding: 8px 0;
-    border-bottom: 1px solid #F0E5C4;
-    font-size: 13px;
-    color: var(--ink);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .attention__item:last-child { border-bottom: none; }
-  .attention__item__action {
-    margin-left: auto;
+  .fillgap__client { font-size: 13px; color: var(--gray-700); margin-bottom: 10px; }
+  .fillgap__btn {
+    width: 100%;
     background: var(--forest-deep);
     color: white;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 5px 10px;
-    border-radius: 6px;
-    border: none;
+    border: none; border-radius: 9px;
+    padding: 9px;
+    font-size: 12px; font-weight: 700;
     cursor: pointer;
-    flex-shrink: 0;
   }
 
-  /* ── Band 4: ALL SESSIONS list ── */
-  .sessions-band {
+  /* Rebook Watch card */
+  .rebook__row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--cream-edge);
+    font-size: 12px;
+  }
+  .rebook__row:last-child { border-bottom: none; }
+  .rebook__name { font-weight: 600; color: var(--ink); }
+  .rebook__gap { color: var(--gray-500); font-size: 11px; }
+  .rebook__btn {
+    background: none; border: 1px solid var(--forest);
+    color: var(--forest-deep);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11px; font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* ── RIGHT PANE: TimelineView ── */
+  .pane { min-width: 0; }
+
+  /* Date nav header */
+  .date-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; margin-bottom: 12px;
+  }
+  .date-nav__btn {
     background: white;
     border: 1px solid var(--cream-edge);
-    border-radius: 18px;
-    padding: 18px;
-    box-shadow: var(--shadow-soft);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer; color: var(--forest-deep);
+    flex-shrink: 0;
+    font-family: var(--sans);
   }
-  .sessions-band__title {
+  .date-nav__center { text-align: center; flex: 1; }
+  .date-nav__label {
     font-family: var(--serif);
-    font-size: 20px;
-    font-weight: 600;
+    font-size: 18px; font-weight: 600;
     color: var(--forest-deep);
-    margin: 0 0 12px;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
     letter-spacing: -0.01em;
   }
-  .sessions-band__count {
-    font-family: var(--sans);
-    font-size: 12px;
-    color: var(--gray-500);
-    font-weight: 500;
-  }
-  .session-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px 0;
-    border-top: 1px solid var(--cream-edge);
-  }
-  .session-row:first-of-type { border-top: none; padding-top: 0; }
-  .session-row__time {
-    width: 64px;
-    flex-shrink: 0;
-  }
-  .session-row__time__hr {
-    font-family: var(--serif);
-    font-size: 20px;
-    font-weight: 600;
-    color: var(--forest-deep);
-    line-height: 1;
-  }
-  .session-row__time__meridiem {
-    font-size: 11px;
-    color: var(--gray-500);
-    font-weight: 500;
-    margin-top: 2px;
-  }
-  .session-row__details {
-    flex: 1;
-    min-width: 0;
-  }
-  .session-row__client {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--ink);
-    margin-bottom: 2px;
-  }
-  .session-row__meta {
-    font-size: 12px;
-    color: var(--gray-500);
-  }
-  .session-row__pill {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    padding: 3px 7px;
-    border-radius: 4px;
-    flex-shrink: 0;
-  }
-  .session-row__pill--intake-done { background: #DCFCE7; color: #166534; }
-  .session-row__pill--intake-todo { background: #FEF3C7; color: #92400E; }
-  .session-row__pill--next       { background: var(--sage-tint); color: var(--forest-deep); border: 1px solid var(--sage-soft); }
-
-  /* ── Trust line at bottom ── */
-  .trust-line {
-    text-align: center;
-    margin: 28px auto 8px;
-    max-width: 380px;
-    font-family: var(--serif);
-    font-size: 15px;
-    font-style: italic;
-    color: var(--gray-500);
-    line-height: 1.5;
+  .date-nav__back {
+    background: none; border: none;
+    font-size: 11px; color: var(--sage);
+    font-weight: 600; cursor: pointer;
+    padding: 2px 0;
   }
 
-  /* ── Bottom nav (mock) ── */
-  .bottom-nav {
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
+  /* Day picker scroll */
+  .day-picker {
+    display: flex; gap: 6px;
+    margin-bottom: 14px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .day-picker::-webkit-scrollbar { display: none; }
+  .day-pill {
+    flex-shrink: 0;
     background: white;
-    border-top: 1px solid var(--cream-edge);
-    padding: 12px 4px 18px;
-    display: flex;
-    justify-content: space-around;
-    max-width: 430px;
-    margin: 0 auto;
+    color: var(--ink);
+    border: 1px solid var(--cream-edge);
+    border-radius: 12px;
+    padding: 8px 12px;
+    cursor: pointer;
+    min-width: 64px;
+    text-align: center;
+    transition: all 0.15s;
+    font-family: var(--sans);
   }
-  .bottom-nav__item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 3px;
-    color: var(--gray-400);
+  .day-pill--past { opacity: 0.85; color: var(--gray-400); }
+  .day-pill--sel {
+    background: var(--forest);
+    color: white;
+    border-color: var(--forest);
+  }
+  .day-pill__wk {
+    font-size: 10px; font-weight: 700;
+    text-transform: uppercase;
+    opacity: 0.75;
+    margin-bottom: 2px;
+    letter-spacing: 0.04em;
+  }
+  .day-pill__num { font-size: 16px; font-weight: 700; line-height: 1.1; font-family: var(--serif); }
+  .day-pill__cnt { font-size: 10px; font-weight: 600; margin-top: 3px; opacity: 0.7; }
+
+  /* Legend pill */
+  .legend-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .legend-toggle {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: white;
+    border: 1px solid var(--cream-edge);
+    border-radius: 14px;
+    padding: 5px 11px;
+    font-size: 11px; color: var(--gray-500);
+    font-weight: 600; cursor: pointer;
+  }
+  .legend-toggle--open { background: var(--sage-tint); color: var(--green); border-color: var(--sage-soft); }
+  .legend-swatches {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    padding: 6px 10px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid var(--cream-edge);
+  }
+  .legend-swatch { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--gray-500); }
+  .legend-swatch__dot {
+    width: 11px; height: 11px; border-radius: 3px;
+  }
+
+  /* The pixel-positional calendar canvas */
+  .canvas {
+    background: var(--canvas);
+    border-radius: 18px;
+    padding: 18px 14px 22px;
+    border: 1px solid var(--cream-edge);
+    box-shadow: var(--shadow-soft);
+  }
+  .canvas__inner {
+    position: relative;
+    margin-left: 48px; /* gutter for hour labels */
+    height: 564px; /* 11 hours * 60 min * 0.85 px + padding */
+    touch-action: pan-y;
+    user-select: none;
+  }
+  .hour-row {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px solid var(--cream-edge);
+  }
+  .hour-label {
+    position: absolute;
+    left: -48px;
+    width: 42px;
+    text-align: right;
     font-size: 10px;
     font-weight: 600;
+    color: var(--gray-400);
+    transform: translateY(-50%);
+    user-select: none;
+    font-family: var(--sans);
+    letter-spacing: 0.02em;
   }
-  .bottom-nav__item--active {
-    color: var(--forest-deep);
+
+  /* Blocked time, 45deg stripes amber */
+  .blocked {
+    position: absolute;
+    left: 0; right: 0;
+    background: repeating-linear-gradient(45deg, rgba(217,119,6,0.08), rgba(217,119,6,0.08) 6px, rgba(217,119,6,0.18) 6px, rgba(217,119,6,0.18) 12px);
+    border: 1.5px solid rgba(217,119,6,0.45);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    padding-left: 14px;
   }
-  .bottom-nav__icon {
-    width: 26px; height: 26px;
-    background: var(--cream-deep);
+  .blocked__lbl {
+    font-size: 11.5px; font-weight: 700;
+    color: var(--amber-text);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .blocked__note { margin-left: 8px; font-style: italic; font-weight: 500; text-transform: none; letter-spacing: 0; color: #9A3412; }
+
+  /* Gaps */
+  .gap-short {
+    position: absolute; left: 0; right: 0;
+    background: repeating-linear-gradient(45deg, transparent, transparent 5px, #FFFBEB 5px, #FFFBEB 6px);
+    border: 1px dashed #FCD34D;
     border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px;
+    opacity: 0.9;
   }
-  .bottom-nav__item--active .bottom-nav__icon {
+  .gap-short__pill {
+    font-size: 10.5px; font-weight: 700;
+    color: #D97706;
+    background: #FFFBEB;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid #FCD34D;
+    white-space: nowrap;
+  }
+  .gap-long {
+    position: absolute; left: 0; right: 0;
+    background: linear-gradient(180deg, rgba(254,243,199,0.35) 0%, rgba(254,243,199,0.18) 100%);
+    border: 1px dashed rgba(252,211,77,0.45);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gap-long__lbl {
+    font-size: 11px; font-weight: 600;
+    color: var(--amber-text);
+    letter-spacing: 0.04em;
+  }
+
+  /* Now line */
+  .now-line {
+    position: absolute;
+    left: -6px; right: 0;
+    z-index: 10;
+    pointer-events: none;
+    display: flex; align-items: center;
+  }
+  .now-line__dot {
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    background: var(--red);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+  }
+  .now-line__bar { flex: 1; height: 2px; background: var(--red); opacity: 0.6; }
+
+  /* Appointment cards */
+  .appt {
+    position: absolute;
+    left: 2px; right: 2px;
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+    transition: all 0.15s;
+  }
+  .appt__inner {
+    padding: 6px 11px;
+    height: 100%;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+  }
+  .appt__head {
+    display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 6px;
+  }
+  .appt__left { display: flex; gap: 7px; align-items: center; flex: 1; min-width: 0; }
+  .appt__avatar {
+    width: 24px; height: 24px; border-radius: 50%;
+    flex-shrink: 0;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 700;
+    font-family: var(--serif);
+  }
+  .appt__name {
+    font-size: 13px; font-weight: 700;
+    color: #111827;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .appt__right { flex-shrink: 0; text-align: right; }
+  .appt__time {
+    font-size: 11px; font-weight: 700;
+    color: var(--ink); font-family: var(--sans);
+  }
+  .appt__dur { font-size: 10px; color: var(--gray-400); }
+  .appt__sent { font-size: 9px; color: var(--green); font-weight: 700; margin-top: 1px; }
+  .appt__pending { font-size: 9px; color: var(--gray-400); margin-top: 1px; }
+  .appt__service {
+    font-size: 11px; margin-left: 31px;
+    color: var(--gray-700);
+    margin-top: 3px;
+  }
+  .appt__loc { color: var(--gray-400); font-weight: 500; }
+  .appt__footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 5px;
+  }
+  .appt__pill {
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-size: 10px; font-weight: 700;
+  }
+  .appt__pill--brief { background: var(--green-bg); color: var(--green); }
+  .appt__pill--paid { background: var(--green-bg); color: #15803D; display: flex; align-items: center; gap: 3px; }
+  .appt__pill--deposit { background: #FEF3C7; color: #D97706; font-size: 9px; }
+  .appt__pill--status { background: rgba(0,0,0,0.04); }
+
+  /* Appt color variants. Border-left 4px solid status color, soft bg. */
+  .appt--intake-done {
+    background: var(--green-bg);
+    border: 1.5px solid var(--green);
+    border-left: 4px solid var(--green);
+  }
+  .appt--pending-intake {
+    background: #FEF3C7;
+    border: 1.5px solid #D97706;
+    border-left: 4px solid #D97706;
+  }
+  .appt--complete {
+    background: var(--gray-100);
+    border: 1.5px solid var(--gray-400);
+    border-left: 4px solid var(--gray-400);
+    opacity: 0.6;
+  }
+  .appt--paid {
     background: var(--sage-tint);
+    border: 1.5px solid var(--sage-soft);
+    border-left: 4px solid var(--forest);
   }
+  .appt--preview {
+    background: #F9FAFB;
+    border: 1.5px dashed var(--gray-300);
+    border-left: 4px dashed var(--gray-300);
+    opacity: 0.5;
+  }
+  .appt--google {
+    background: #EFEAFD;
+    border: 1.5px solid #7F77DD;
+    border-left: 4px solid #7F77DD;
+  }
+  .appt--selected {
+    transform: scale(1.01);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 5;
+  }
+
+  /* Long-press hint at bottom of canvas, only when day is empty */
+  .empty-hint {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 20px 28px;
+    pointer-events: none;
+    max-width: 320px;
+  }
+  .empty-hint__icon { font-size: 28px; margin-bottom: 8px; }
+  .empty-hint__title { font-size: 14px; font-weight: 600; color: var(--ink); margin-bottom: 4px; font-family: var(--serif); }
+  .empty-hint__sub { font-size: 12px; color: var(--gray-400); line-height: 1.5; }
 
   /* Annotations panel */
   .annotations {
-    max-width: 860px;
-    margin: 60px auto;
-    padding: 24px;
+    max-width: 880px;
+    margin: 60px auto 40px;
+    padding: 28px 30px;
     background: white;
-    border-radius: 12px;
+    border-radius: 16px;
     border: 1px solid var(--cream-edge);
-    font-size: 13px;
+    font-size: 13.5px;
     line-height: 1.65;
     color: var(--gray-700);
   }
   .annotations h2 {
     font-family: var(--serif);
-    font-size: 24px;
+    font-size: 28px;
     color: var(--forest-deep);
     margin: 0 0 16px;
+    letter-spacing: -0.01em;
   }
   .annotations h3 {
-    font-size: 14px;
+    font-family: var(--serif);
+    font-size: 18px;
     color: var(--forest-deep);
-    margin: 18px 0 6px;
+    margin: 22px 0 8px;
+    letter-spacing: -0.005em;
   }
-  .annotations ul { margin: 0 0 6px; padding-left: 18px; }
-  .annotations code { background: var(--cream-deep); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .annotations ul { margin: 0 0 6px; padding-left: 20px; }
+  .annotations li { margin: 4px 0; }
+  .annotations code {
+    background: var(--cream-deep); padding: 2px 6px;
+    border-radius: 4px; font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, monospace;
+  }
+  .annotations table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 13px; }
+  .annotations th, .annotations td { padding: 6px 10px; border-bottom: 1px solid var(--cream-edge); text-align: left; vertical-align: top; }
+  .annotations th { background: var(--cream-deep); color: var(--forest-deep); font-weight: 600; font-size: 12px; }
 </style>
 </head>
 <body>
 
-<div class="phone-frame">
+<div class="page">
 
   <div class="app-header">
     <div class="app-header__brand">
@@ -549,7 +689,7 @@
         <div class="app-header__sub">Healing Hands</div>
       </div>
     </div>
-    <div class="plan-pill">Silver, Free</div>
+    <div class="plan-pill">Silver · Free</div>
   </div>
 
   <header class="page-header">
@@ -557,6 +697,30 @@
     <p class="page-header__sub">Tuesday, May 19</p>
   </header>
 
+  <!-- ────────  STATS STRIP (preserved + restyled)  ──────── -->
+  <div class="stats">
+    <div class="stats__cell">
+      <span class="stats__val stats__val--today">4</span>
+      <span class="stats__lbl">Today</span>
+    </div>
+    <div class="stats__sep"></div>
+    <div class="stats__cell">
+      <span class="stats__val stats__val--brief">2</span>
+      <span class="stats__lbl">Brief ready</span>
+    </div>
+    <div class="stats__sep"></div>
+    <div class="stats__cell">
+      <span class="stats__val stats__val--intake">1</span>
+      <span class="stats__lbl">Need intake</span>
+    </div>
+    <div class="stats__sep"></div>
+    <div class="stats__cell">
+      <span class="stats__val stats__val--week">17</span>
+      <span class="stats__lbl">This week</span>
+    </div>
+  </div>
+
+  <!-- ────────  PERIOD TABS  (Yearly added) ──────── -->
   <nav class="period-tabs">
     <button class="active">Today</button>
     <button>Weekly</button>
@@ -565,6 +729,7 @@
     <button>Insights</button>
   </nav>
 
+  <!-- ────────  ACTION ROW (below tabs)  ──────── -->
   <div class="action-row">
     <button class="action-btn action-btn--primary">
       <span class="action-btn__icon">+</span> Book appointment
@@ -577,176 +742,455 @@
     </button>
   </div>
 
-  <!-- BAND 1: NEXT UP -->
-  <section class="next-up">
-    <div class="next-up__eyebrow">Next up</div>
-    <div class="next-up__time">
-      2:00<span class="next-up__time__meridiem">pm</span>
-    </div>
-    <div class="next-up__who">Sarah Chen</div>
-    <div class="next-up__service">Deep Tissue, 60 min</div>
-    <div class="next-up__countdown">⏱ In 1 hour 23 minutes</div>
-    <div class="next-up__actions">
-      <button class="next-up__action">View intake</button>
-      <button class="next-up__action">Reschedule</button>
-    </div>
-  </section>
+  <!-- ────────  2-COL LAYOUT  ──────── -->
+  <div class="layout">
 
-  <!-- BAND 2: TODAY'S SHAPE -->
-  <section class="shape">
-    <h2 class="shape__title">Today's shape</h2>
-    <div class="shape__bar">
-      <!-- 9 to 7pm = 11hr window. Mock blocks positioned by percent. -->
-      <div class="shape__block" style="left: 4%; width: 11%;">9a</div>
-      <div class="shape__block" style="left: 18%; width: 13%;">10:30a</div>
-      <div class="shape__block shape__block--current" style="left: 47%; width: 11%;">2p Sarah</div>
-      <div class="shape__block" style="left: 70%; width: 13%;">4:30p</div>
-      <div class="shape__now" style="left: 39%;"></div>
-    </div>
-    <div class="shape__hours">
-      <span>9a</span>
-      <span>11a</span>
-      <span>1p</span>
-      <span>3p</span>
-      <span>5p</span>
-      <span>7p</span>
-    </div>
-    <div class="shape__summary">
-      <strong>4 sessions</strong> · 4h booked · 3 open windows · Now: 12:37 pm
-    </div>
-  </section>
+    <!-- ╔══ LEFT RAIL: SmartBookingRail (preserved) ══╗ -->
+    <aside class="rail">
 
-  <!-- BAND 3: ATTENTION (only renders when items exist) -->
-  <section class="attention">
-    <div class="attention__title">⚠ Needs attention</div>
-    <ul class="attention__list">
-      <li class="attention__item">
-        2 clients haven't filled intake
-        <button class="attention__item__action">Send</button>
-      </li>
-      <li class="attention__item">
-        1 session unpaid from yesterday
-        <button class="attention__item__action">Charge</button>
-      </li>
-    </ul>
-  </section>
-
-  <!-- BAND 4: ALL SESSIONS -->
-  <section class="sessions-band">
-    <h2 class="sessions-band__title">
-      All sessions
-      <span class="sessions-band__count">4 today</span>
-    </h2>
-
-    <div class="session-row">
-      <div class="session-row__time">
-        <div class="session-row__time__hr">9:00</div>
-        <div class="session-row__time__meridiem">am · 60 min</div>
+      <!-- Up Next Briefing Carousel -->
+      <div class="rail-card">
+        <div class="rail-card__eyebrow">⏱ Up next</div>
+        <div class="upnext__time">2:00<span class="upnext__time__meridiem">pm</span></div>
+        <div class="upnext__client">Sarah Chen</div>
+        <div class="upnext__service">Deep Tissue · 60 min · In 1h 23m</div>
+        <ul class="upnext__points">
+          <li>Recurring lower-back focus, sciatic referral</li>
+          <li>Last session: cried on prone. Be gentle on intro.</li>
+          <li>Likes deep but starts with effleurage</li>
+        </ul>
+        <div class="upnext__nav">
+          <button class="upnext__nav__btn">‹</button>
+          <div class="upnext__nav__dots">
+            <span class="active"></span><span></span><span></span><span></span>
+          </div>
+          <button class="upnext__nav__btn">›</button>
+        </div>
       </div>
-      <div class="session-row__details">
-        <div class="session-row__client">Joy Client</div>
-        <div class="session-row__meta">Swedish · $90</div>
-      </div>
-      <span class="session-row__pill session-row__pill--intake-done">Intake ✓</span>
-    </div>
 
-    <div class="session-row">
-      <div class="session-row__time">
-        <div class="session-row__time__hr">10:30</div>
-        <div class="session-row__time__meridiem">am · 60 min</div>
-      </div>
-      <div class="session-row__details">
-        <div class="session-row__client">Mark Rivera</div>
-        <div class="session-row__meta">Swedish · $90</div>
-      </div>
-      <span class="session-row__pill session-row__pill--intake-done">Intake ✓</span>
-    </div>
+      <!-- Body Load + Revenue: 2-up on mobile, stacked on desktop -->
+      <div class="rail-2up">
 
-    <div class="session-row">
-      <div class="session-row__time">
-        <div class="session-row__time__hr">2:00</div>
-        <div class="session-row__time__meridiem">pm · 60 min</div>
-      </div>
-      <div class="session-row__details">
-        <div class="session-row__client">Sarah Chen</div>
-        <div class="session-row__meta">Deep Tissue · $110</div>
-      </div>
-      <span class="session-row__pill session-row__pill--next">Next</span>
-    </div>
+        <div class="rail-card">
+          <div class="rail-card__eyebrow">🌿 Body load</div>
+          <div class="bodyload__num">68%</div>
+          <div class="bodyload__bar">
+            <div class="bodyload__fill" style="width: 68%"></div>
+          </div>
+          <div class="bodyload__row">
+            <span class="bodyload__label">Moderate</span>
+            <span class="bodyload__label">4h booked</span>
+          </div>
+        </div>
 
-    <div class="session-row">
-      <div class="session-row__time">
-        <div class="session-row__time__hr">4:30</div>
-        <div class="session-row__time__meridiem">pm · 60 min</div>
-      </div>
-      <div class="session-row__details">
-        <div class="session-row__client">Mark Rivera</div>
-        <div class="session-row__meta">Swedish, returning · $90</div>
-      </div>
-      <span class="session-row__pill session-row__pill--intake-todo">Intake todo</span>
-    </div>
-  </section>
+        <div class="rail-card">
+          <div class="rail-card__eyebrow">💰 Revenue</div>
+          <div class="revenue__num">$380</div>
+          <div class="revenue__delta">▲ $80 vs last week</div>
+          <div class="revenue__goal">Goal: $500/wk · 76%</div>
+        </div>
 
-  <p class="trust-line">
-    Your day, in one calm picture.
-  </p>
+      </div>
 
-  <div class="bottom-nav">
-    <div class="bottom-nav__item">
-      <div class="bottom-nav__icon">👥</div>Clients
-    </div>
-    <div class="bottom-nav__item bottom-nav__item--active">
-      <div class="bottom-nav__icon">📅</div>Schedule
-    </div>
-    <div class="bottom-nav__item">
-      <div class="bottom-nav__icon">💳</div>Billing
-    </div>
-    <div class="bottom-nav__item">
-      <div class="bottom-nav__icon">📨</div>Outreach
-    </div>
-    <div class="bottom-nav__item">
-      <div class="bottom-nav__icon">⋯</div>More
-    </div>
+      <!-- Fill This Gap (amber) -->
+      <div class="rail-card fillgap">
+        <div class="rail-card__eyebrow">⚡ Fill this gap</div>
+        <div class="fillgap__gap">11:30am · 90 min open</div>
+        <div class="fillgap__client">
+          <strong>Mark Rivera</strong> usually books Wed. Last visit 12 days ago.
+        </div>
+        <button class="fillgap__btn">Text Mark · "Want this slot?"</button>
+      </div>
+
+      <!-- Rebook Watch -->
+      <div class="rail-card">
+        <div class="rail-card__eyebrow">📅 Rebook watch</div>
+        <div style="font-size: 11px; color: var(--gray-500); margin-bottom: 8px;">
+          Drifting from their usual cadence
+        </div>
+        <div class="rebook__row">
+          <div>
+            <div class="rebook__name">Jennifer Lin</div>
+            <div class="rebook__gap">28 days · usually 14</div>
+          </div>
+          <button class="rebook__btn">Reach out</button>
+        </div>
+        <div class="rebook__row">
+          <div>
+            <div class="rebook__name">Tom Park</div>
+            <div class="rebook__gap">19 days · usually 10</div>
+          </div>
+          <button class="rebook__btn">Reach out</button>
+        </div>
+        <div class="rebook__row">
+          <div>
+            <div class="rebook__name">Aisha M.</div>
+            <div class="rebook__gap">36 days · usually 21</div>
+          </div>
+          <button class="rebook__btn">Reach out</button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ╔══ RIGHT PANE: TimelineView (preserved) ══╗ -->
+    <main class="pane">
+
+      <!-- Date nav header -->
+      <div class="date-nav">
+        <button class="date-nav__btn">← Prev</button>
+        <div class="date-nav__center">
+          <div class="date-nav__label">Today</div>
+          <button class="date-nav__back" style="visibility: hidden;">Back to Today</button>
+        </div>
+        <button class="date-nav__btn">Next →</button>
+      </div>
+
+      <!-- Day picker scroll -->
+      <div class="day-picker">
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Tue</div>
+          <div class="day-pill__num">12</div>
+          <div class="day-pill__cnt">3 appts</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Wed</div>
+          <div class="day-pill__num">13</div>
+          <div class="day-pill__cnt">5 appts</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Thu</div>
+          <div class="day-pill__num">14</div>
+          <div class="day-pill__cnt">4 appts</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Fri</div>
+          <div class="day-pill__num">15</div>
+          <div class="day-pill__cnt">6 appts</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Sat</div>
+          <div class="day-pill__num">16</div>
+          <div class="day-pill__cnt">2 appts</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Sun</div>
+          <div class="day-pill__num">17</div>
+          <div class="day-pill__cnt">·</div>
+        </div>
+        <div class="day-pill day-pill--past">
+          <div class="day-pill__wk">Yest</div>
+          <div class="day-pill__num">18</div>
+          <div class="day-pill__cnt">5 appts</div>
+        </div>
+        <div class="day-pill day-pill--sel">
+          <div class="day-pill__wk">Today</div>
+          <div class="day-pill__num">19</div>
+          <div class="day-pill__cnt">4 appts</div>
+        </div>
+        <div class="day-pill">
+          <div class="day-pill__wk">Tmrw</div>
+          <div class="day-pill__num">20</div>
+          <div class="day-pill__cnt">3 appts</div>
+        </div>
+        <div class="day-pill">
+          <div class="day-pill__wk">Thu</div>
+          <div class="day-pill__num">21</div>
+          <div class="day-pill__cnt">5 appts</div>
+        </div>
+        <div class="day-pill">
+          <div class="day-pill__wk">Fri</div>
+          <div class="day-pill__num">22</div>
+          <div class="day-pill__cnt">·</div>
+        </div>
+      </div>
+
+      <!-- Legend (collapsible) -->
+      <div class="legend-row">
+        <button class="legend-toggle legend-toggle--open">
+          <span style="font-size: 10px;">▾</span> Legend
+        </button>
+        <div class="legend-swatches">
+          <div class="legend-swatch">
+            <div class="legend-swatch__dot" style="background: var(--green-bg); border: 1.5px solid var(--green);"></div>
+            Brief ready
+          </div>
+          <div class="legend-swatch">
+            <div class="legend-swatch__dot" style="background: #FEF3C7; border: 1.5px solid #D97706;"></div>
+            No intake yet
+          </div>
+          <div class="legend-swatch">
+            <div class="legend-swatch__dot" style="background: var(--gray-100); border: 1.5px solid var(--gray-400);"></div>
+            Complete
+          </div>
+          <div class="legend-swatch">
+            <div class="legend-swatch__dot" style="background: #EFEAFD; border: 1.5px solid #7F77DD;"></div>
+            From Google
+          </div>
+          <div class="legend-swatch">
+            <div class="legend-swatch__dot" style="background: #F8F8F8; border: 1.5px dashed var(--gray-300);"></div>
+            Preview
+          </div>
+        </div>
+      </div>
+
+      <!-- ─── THE CANVAS: vertical time-rail calendar ─── -->
+      <div class="canvas">
+        <div class="canvas__inner">
+
+          <!-- Hour rows (8am to 7pm = 11 hours × 60min × 0.85px ≈ 561px) -->
+          <!-- 1 minute = 0.85px. T=0 is 8am. -->
+          <div class="hour-row" style="top: 0px;"><div class="hour-label" style="top: 0;">8 AM</div></div>
+          <div class="hour-row" style="top: 51px;"><div class="hour-label" style="top: 51px;">9 AM</div></div>
+          <div class="hour-row" style="top: 102px;"><div class="hour-label" style="top: 102px;">10 AM</div></div>
+          <div class="hour-row" style="top: 153px;"><div class="hour-label" style="top: 153px;">11 AM</div></div>
+          <div class="hour-row" style="top: 204px;"><div class="hour-label" style="top: 204px;">12 PM</div></div>
+          <div class="hour-row" style="top: 255px;"><div class="hour-label" style="top: 255px;">1 PM</div></div>
+          <div class="hour-row" style="top: 306px;"><div class="hour-label" style="top: 306px;">2 PM</div></div>
+          <div class="hour-row" style="top: 357px;"><div class="hour-label" style="top: 357px;">3 PM</div></div>
+          <div class="hour-row" style="top: 408px;"><div class="hour-label" style="top: 408px;">4 PM</div></div>
+          <div class="hour-row" style="top: 459px;"><div class="hour-label" style="top: 459px;">5 PM</div></div>
+          <div class="hour-row" style="top: 510px;"><div class="hour-label" style="top: 510px;">6 PM</div></div>
+          <div class="hour-row" style="top: 561px;"><div class="hour-label" style="top: 561px;">7 PM</div></div>
+
+          <!-- Appt 1: 9:00 AM, 60 min, intake-done (Joy) -->
+          <div class="appt appt--intake-done" style="top: 51px; height: 51px;">
+            <div class="appt__inner">
+              <div class="appt__head">
+                <div class="appt__left">
+                  <div class="appt__avatar" style="background: #2A5741;">JC</div>
+                  <span class="appt__name">Joy Client</span>
+                </div>
+                <div class="appt__right">
+                  <div class="appt__time">9:00 AM</div>
+                  <div class="appt__dur">60m</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Appt 2: 10:30 AM, 60 min, intake-done (Mark) -->
+          <div class="appt appt--intake-done" style="top: 127px; height: 60px;">
+            <div class="appt__inner">
+              <div class="appt__head">
+                <div class="appt__left">
+                  <div class="appt__avatar" style="background: #3B6B8A;">MR</div>
+                  <span class="appt__name">Mark Rivera</span>
+                </div>
+                <div class="appt__right">
+                  <div class="appt__time">10:30 AM</div>
+                  <div class="appt__dur">60m</div>
+                  <div class="appt__sent">📧 Sent</div>
+                </div>
+              </div>
+              <div class="appt__service">Swedish · <span class="appt__loc">📍 Bay Ridge</span></div>
+            </div>
+          </div>
+
+          <!-- Gap 11:30 AM to 2:00 PM (150 min, long gap) -->
+          <div class="gap-long" style="top: 187px; height: 119px;">
+            <div class="gap-long__lbl">Open · 2h available</div>
+          </div>
+
+          <!-- Now line (12:37 PM = 277 min from 8am = 235px) -->
+          <div class="now-line" style="top: 235px;">
+            <div class="now-line__dot"></div>
+            <div class="now-line__bar"></div>
+          </div>
+
+          <!-- Appt 3: 2:00 PM, 60 min, pending-intake, selected (Sarah) -->
+          <div class="appt appt--pending-intake appt--selected" style="top: 306px; height: 75px;">
+            <div class="appt__inner">
+              <div class="appt__head">
+                <div class="appt__left">
+                  <div class="appt__avatar" style="background: #C05621;">SC</div>
+                  <span class="appt__name">Sarah Chen</span>
+                </div>
+                <div class="appt__right">
+                  <div class="appt__time">2:00 PM</div>
+                  <div class="appt__dur">60m</div>
+                  <div class="appt__sent">📧 Sent</div>
+                </div>
+              </div>
+              <div class="appt__service">Deep Tissue · <span class="appt__loc">📍 Bay Ridge</span></div>
+              <div class="appt__footer">
+                <div class="appt__pill" style="background: #FEF3C7; color: #D97706;">⏱ Pending</div>
+                <div class="appt__pill appt__pill--deposit">💳 Deposit due</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Short gap 3:00 to 4:30 PM (90 min, fillable) -->
+          <div class="gap-short" style="top: 381px; height: 76px;">
+            <span class="gap-short__pill">⚡ 1h 30m open · fill this gap</span>
+          </div>
+
+          <!-- Appt 4: 4:30 PM, 60 min, pending-intake (Mark return) -->
+          <div class="appt appt--pending-intake" style="top: 459px; height: 75px;">
+            <div class="appt__inner">
+              <div class="appt__head">
+                <div class="appt__left">
+                  <div class="appt__avatar" style="background: #3B6B8A;">MR</div>
+                  <span class="appt__name">Mark Rivera</span>
+                </div>
+                <div class="appt__right">
+                  <div class="appt__time">4:30 PM</div>
+                  <div class="appt__dur">60m</div>
+                  <div class="appt__pending">📧 Pending</div>
+                </div>
+              </div>
+              <div class="appt__service">Swedish · returning client</div>
+              <div class="appt__footer">
+                <div class="appt__pill" style="background: #FEF3C7; color: #D97706;">⏱ Pending intake</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Blocked time 6:00 to 7:00 PM (60 min, amber stripes) -->
+          <div class="blocked" style="top: 510px; height: 51px;">
+            <span class="blocked__lbl">🌿 Blocked 6:00 PM to 7:00 PM <span class="blocked__note">· Yoga class</span></span>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
   </div>
 
 </div>
 
-<!-- ── Annotations (visible when previewing on desktop, hidden on phone width) ── -->
+<!-- ──── Annotations panel for the desktop preview ──── -->
 <aside class="annotations">
-  <h2>Design notes</h2>
+  <h2>What changed, what stayed</h2>
   <p>
-    Same content as the current Schedule Today view, restyled to match BillingDashboardV2.
-    Uses identical tokens (cream, forest, sage, gold, rose), identical typography
-    (Cormorant Garamond serif for headings + giant numerals, system sans for body),
-    identical period-tab pattern (equal-width pills on cream-deep background),
-    and identical card-radius (18px) plus shadow-soft.
+    This is a <strong>pure visual restyle</strong>, no content deletions. Every feature
+    listed in the audit before this build is preserved. The only changes are the
+    visual chrome (tab palette, header typography, card radii, spacing) to match
+    BillingDashboardV2.
   </p>
 
-  <h3>What changed</h3>
+  <h3>Chrome changes (the only changes)</h3>
+  <table>
+    <thead>
+      <tr><th>Element</th><th>Before</th><th>After</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Period tabs background</td>
+        <td><code>#F3F4F6</code> cool gray</td>
+        <td><code>#F5EFE0</code> cream-deep</td>
+      </tr>
+      <tr>
+        <td>Period tabs distribution</td>
+        <td>Natural width</td>
+        <td><code>flex: 1</code> equal width</td>
+      </tr>
+      <tr>
+        <td>Period tabs active text</td>
+        <td><code>#1F2937</code></td>
+        <td><code>#1F4131</code> forest-deep</td>
+      </tr>
+      <tr>
+        <td>Period tabs count</td>
+        <td>4 tabs</td>
+        <td>5 tabs (Yearly added)</td>
+      </tr>
+      <tr>
+        <td>Page title font</td>
+        <td>System sans</td>
+        <td>Cormorant Garamond, 36px, weight 600</td>
+      </tr>
+      <tr>
+        <td>Stats strip card</td>
+        <td>10px radius, plain border</td>
+        <td>14px radius, cream-edge border, soft shadow</td>
+      </tr>
+      <tr>
+        <td>Stats strip numerals</td>
+        <td>18px serif</td>
+        <td>24px serif, tightened tracking</td>
+      </tr>
+      <tr>
+        <td>Action buttons</td>
+        <td>Above tab bar</td>
+        <td>Below tab bar (per HK direction)</td>
+      </tr>
+      <tr>
+        <td>Canvas radius</td>
+        <td>16px</td>
+        <td>18px</td>
+      </tr>
+      <tr>
+        <td>Date nav label font</td>
+        <td>15px sans bold</td>
+        <td>18px Cormorant Garamond</td>
+      </tr>
+      <tr>
+        <td>Day picker pills</td>
+        <td>10px radius</td>
+        <td>12px radius, serif numerals</td>
+      </tr>
+      <tr>
+        <td>Rail card backgrounds</td>
+        <td>Mixed white + cream</td>
+        <td>White on cream-edge border, 14px radius, consistent shadow</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What stayed (verified against the audit)</h3>
+  <h4 style="font-family: var(--serif); color: var(--forest-deep); font-size: 16px; margin-top: 16px;">Right pane: TimelineView</h4>
   <ul>
-    <li><strong>Period tabs</strong> swapped from cool-gray <code>#F3F4F6</code> background to <code>--cream-deep</code>. Active text from <code>#1F2937</code> to <code>--forest-deep</code>. Tabs now equal-width (<code>flex: 1</code>) like Billing.</li>
-    <li><strong>Yearly tab added</strong>, bringing parity with Billing's 5-tab pattern.</li>
-    <li><strong>Action buttons</strong> moved below the tab bar per your direction. Same three actions (Book, Previews, Time off), now styled as soft white cards with cream borders.</li>
-    <li><strong>Stat strip</strong> from the old design (0 Today, 0 Brief ready, 0 Need intake, 0 This week) is absorbed into the band 2 summary line plus band 3 attention list.</li>
-    <li><strong>Hero band</strong> introduces "Next up" with giant serif time, client, service, countdown pill, and two inline actions.</li>
-    <li><strong>Shape band</strong> renders the day as a horizontal timeline strip with appointment blocks, an animated "now" marker, and hour labels below.</li>
-    <li><strong>Attention band</strong> only renders when there's something to resolve.</li>
-    <li><strong>All sessions list</strong> uses session-row format matching Billing's ReceiptCard density.</li>
+    <li>Vertical pixel-positional canvas, 0.85 px per minute, 8am to 7pm default</li>
+    <li>Auto-stretches if appointments fall outside the default window</li>
+    <li>48px left gutter for hour labels</li>
+    <li>Horizontal hairlines per hour</li>
+    <li>Date nav header with Prev / Today label / Next + "Back to Today" link when offset isn't 0</li>
+    <li>11-day horizontal day picker scroll row (-7 to +3), past days dimmed, today highlighted, auto-scrolls to today</li>
+    <li>Collapsible Legend pill with 5 swatches (Brief ready, No intake yet, Complete, From Google, Preview)</li>
+    <li>Long-press 500ms anywhere on canvas to create a personal-time block (modal with editable start/end via InlineTimeInput, optional reason, "Block this time" or "Schedule a session at this time instead" buttons per Phase 9.3)</li>
+    <li>Long-press cancels on pointermove greater than 10px (so scroll doesn't trigger)</li>
+    <li>Therapist's own blocked time rendered as 45° amber stripes with label and reason</li>
+    <li>Gaps under 90 min: amber dashed stripes with "fill this gap" pill</li>
+    <li>Gaps over 90 min: soft amber gradient with "Open, Nh available" label</li>
+    <li>Now-line marker (red dot + bar) on today only, positioned by current minute</li>
+    <li>Empty-day hint centered with long-press instruction</li>
+    <li>Appointment cards positioned by minute, color-coded by status (intake-done green, pending-intake amber, complete gray, paid cream, preview dashed gray, Google purple)</li>
+    <li>Border-left 4px solid status color stripe on each card</li>
+    <li>Avatar circle, name, time, duration, reminder indicator, service, location pill</li>
+    <li>Status pill, paid pill, deposit-due pill, brief-ready pill conditionally rendered</li>
+    <li>Click appt to select, opens DetailPanel slide-over</li>
   </ul>
 
-  <h3>What stayed the same</h3>
+  <h4 style="font-family: var(--serif); color: var(--forest-deep); font-size: 16px; margin-top: 16px;">Left rail: SmartBookingRail (every tab)</h4>
   <ul>
-    <li>All four bands of content (next session, daily summary, attention items, full session list) are preserved.</li>
-    <li>Tap behavior, deep links, modal opens are unchanged.</li>
-    <li>Time-rail TimelineView component can either stay as-is below this dashboard, or this dashboard replaces it. Open question.</li>
+    <li>UpNextCarousel: 3-point briefing cards per upcoming client, ‹ › nav, dot indicators</li>
+    <li>BodyLoadCard: today's service mix vs injury risk meter, scope-aware</li>
+    <li>RevenueCard: this week vs last + goal pacing</li>
+    <li>FillGapCard: one matched client per gap, one-tap text outreach (hidden when no real gap)</li>
+    <li>RebookWatchCard: top 3 lapsed regulars approaching cadence break (hidden when no candidates)</li>
+    <li>Body Load + Revenue render 2-up on mobile, stacked on desktop (preserved layout)</li>
   </ul>
 
-  <h3>Open questions for HK</h3>
+  <h4 style="font-family: var(--serif); color: var(--forest-deep); font-size: 16px; margin-top: 16px;">Above the layout</h4>
   <ul>
-    <li>Does this replace the existing TimelineView or sit above it? If above, do we hide the vertical time-rail under a "View timeline" expand?</li>
-    <li>Counters on the action buttons. The old strip showed "0 Today | 0 Brief ready | 0 Need intake | 0 This week", and those numbers are now buried in band 2's summary line. Should we surface them as a small ribbon below the action row?</li>
-    <li>Trust line at bottom. "Your day, in one calm picture." Want a different line, or none?</li>
+    <li>App header (logo, brand, plan pill)</li>
+    <li>Page header: "Schedule" + date subtitle</li>
+    <li>Stats strip: 4 numbers with vertical separators (Today, Brief ready, Need intake, This week)</li>
+    <li>Action buttons: Book Appointment, Previews toggle, Time off</li>
+    <li>Period tabs (now 5 instead of 4)</li>
   </ul>
+
+  <h3>Three small open questions</h3>
+  <ol>
+    <li>Yearly tab: what content goes inside? The current code has no YearlyView. Should I copy Billing's YearlyView pattern (12-month grid) or leave it as a placeholder until you spec the content?</li>
+    <li>The stats strip and the tab bar are visually similar to two horizontal pill rows. On a phone, that's two strips back to back. Want me to keep both as-is, or fold the stats values inline somewhere else (e.g. into the day picker pills)?</li>
+    <li>The Up Next card on the rail and the Next session on the canvas (Sarah Chen at 2pm with the selected highlight) show the same info twice. Want to keep both (the rail is the briefing, the canvas is the schedule) or de-emphasize one?</li>
+  </ol>
+
+  <p style="margin-top: 24px; color: var(--gray-400); font-style: italic;">
+    Mockup URL: <code>https://mybodymap.app/docs/SCHEDULE_TODAY_MOCK.html</code>
+  </p>
 </aside>
 
 </body>
