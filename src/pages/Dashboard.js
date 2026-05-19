@@ -220,6 +220,10 @@ function ServicesAndAvailability({ therapist }) {
   const [groupOrder, setGroupOrder] = React.useState(
     Array.isArray(therapist?.service_group_order) ? therapist.service_group_order : []
   );
+  // Which service's 'Move to...' menu is currently open. null = none.
+  const [moveMenuFor, setMoveMenuFor] = React.useState(null);
+  // Inline 'New group' prompt state. null = prompt closed.
+  const [newGroupDraft, setNewGroupDraft] = React.useState(null);
   const [services, setServices] = React.useState([]);
   const [availability, setAvailability] = React.useState([]);
   // Multi-location support (HK May 18 2026): list of therapist
@@ -311,6 +315,9 @@ function ServicesAndAvailability({ therapist }) {
     // so therapist can drag/move within the list without renumbering
     // every neighbor. Steps of 10 preserve gaps for inserts.
     const maxSort = services.reduce((m, s) => Math.max(m, s.sort_order || 0), 0);
+    // When groups are on, classify the new service by name keyword so
+    // it lands in a group without the therapist having to assign it.
+    const autoGroup = useGroups ? classifyService(draft.name) : null;
     const { data } = await supabase.from('services').insert({
       name: draft.name,
       duration: draft.duration,
@@ -320,10 +327,20 @@ function ServicesAndAvailability({ therapist }) {
       visibility: 'public',
       is_couples: draft.is_couples || false,
       sort_order: maxSort + 10,
+      service_group: autoGroup,
     }).select().single();
     setServices(s => [...s, data]);
     setDraft({ preset:'', name:'', duration:60, price:85 });
     setSaving(false);
+    // If we auto-classified into a group not yet in the order, add it
+    if (autoGroup && !groupOrder.includes(autoGroup)) {
+      const nextOrder = [...groupOrder, autoGroup];
+      setGroupOrder(nextOrder);
+      await supabase
+        .from('therapists')
+        .update({ service_group_order: nextOrder })
+        .eq('id', therapist.id);
+    }
     // Activation: first service added
     if (therapist?.id) {
       try {
@@ -595,8 +612,40 @@ function ServicesAndAvailability({ therapist }) {
     }));
   }
 
+  // Pre-defined groups + keyword match. When the therapist flips the
+  // groups toggle ON for the first time, we auto-classify each service
+  // into one of these groups by simple keyword match on the name.
+  // Therapist can override per-service with the 'Move to...' button.
+  //
+  // Order matters: more specific groups are checked first so 'sports
+  // recovery' lands in Therapeutic & Recovery rather than getting
+  // caught by a broader keyword later.
+  const PREDEFINED_GROUPS = [
+    'Prenatal & Postnatal',
+    'Couples',
+    'Therapeutic & Recovery',
+    'Relaxation & Spa',
+    'Energy & Modalities',
+    'Add-ons',
+  ];
+
+  function classifyService(name) {
+    const n = (name || '').toLowerCase();
+    if (!n) return null;
+    if (/pre[\s-]?natal|post[\s-]?natal|pregnan|maternity/.test(n)) return 'Prenatal & Postnatal';
+    if (/couple|duo|two\s?person|partner massage/.test(n)) return 'Couples';
+    if (/deep tissue|sports|recovery|trigger point|myofascial|neuromuscular|orthopedic|injury|rehab/.test(n)) return 'Therapeutic & Recovery';
+    if (/swedish|hot stone|aromatherapy|relax|spa|lomi|hot towel|warm/.test(n)) return 'Relaxation & Spa';
+    if (/reiki|cup|reflex|cranial|sacral|lymphatic|thai|shiatsu|energy|chakra/.test(n)) return 'Energy & Modalities';
+    if (/add[\s-]?on|enhancement|upgrade|booster|extra/.test(n)) return 'Add-ons';
+    return null;
+  }
+
   // Toggle the opt-in group UI. Writes to therapists.use_service_groups
-  // so the setting persists across sessions.
+  // so the setting persists across sessions. The first time groups go
+  // ON, auto-assign every unassigned service to a pre-defined group
+  // by keyword match. Services we can't classify stay null (they
+  // render under 'All other services' as the fallback).
   async function toggleUseGroups() {
     const next = !useGroups;
     setUseGroups(next);
@@ -607,23 +656,84 @@ function ServicesAndAvailability({ therapist }) {
     if (error) {
       console.error('toggleUseGroups failed:', error);
       setUseGroups(!next);
+      return;
+    }
+    // Only auto-assign on the ON transition. Don't override services
+    // the therapist has already placed in a group.
+    if (next) {
+      const unassigned = services.filter(s => !s.service_group);
+      const updates = unassigned
+        .map(s => ({ id: s.id, group: classifyService(s.name) }))
+        .filter(u => u.group);
+      if (updates.length > 0) {
+        // Optimistic local update
+        setServices(s => s.map(x => {
+          const u = updates.find(u => u.id === x.id);
+          return u ? { ...x, service_group: u.group } : x;
+        }));
+        // Persist
+        await Promise.all(
+          updates.map(u =>
+            supabase.from('services').update({ service_group: u.group }).eq('id', u.id)
+          )
+        );
+        // Seed the group order so groups appear in the predefined order
+        const groupsInUse = Array.from(new Set([
+          ...groupOrder,
+          ...updates.map(u => u.group),
+        ]));
+        const orderedByPredef = [
+          ...PREDEFINED_GROUPS.filter(g => groupsInUse.includes(g)),
+          ...groupsInUse.filter(g => !PREDEFINED_GROUPS.includes(g)),
+        ];
+        if (JSON.stringify(orderedByPredef) !== JSON.stringify(groupOrder)) {
+          setGroupOrder(orderedByPredef);
+          await supabase
+            .from('therapists')
+            .update({ service_group_order: orderedByPredef })
+            .eq('id', therapist.id);
+        }
+      }
     }
   }
 
-  // Set the group name for a service. Empty string clears the group
-  // (service moves to "All other services"). New group names that
-  // are not yet in groupOrder get appended.
-  async function setServiceGroup(id, rawName) {
-    const name = (rawName || '').trim();
-    const patch = { service_group: name || null };
-    await updateService(id, patch);
-    if (name && !groupOrder.includes(name)) {
-      const nextOrder = [...groupOrder, name];
+  // Move a service to a specific group (or to ungrouped if null).
+  // Used by the 'Move to...' button in each service row when groups
+  // are on.
+  async function moveServiceToGroup(id, groupName) {
+    const next = groupName || null;
+    await updateService(id, { service_group: next });
+    if (next && !groupOrder.includes(next)) {
+      const insertAt = PREDEFINED_GROUPS.includes(next)
+        ? Math.max(0, ...groupOrder.map((g, i) => PREDEFINED_GROUPS.indexOf(g) > PREDEFINED_GROUPS.indexOf(next) ? i : -1)) + 1
+        : groupOrder.length;
+      const nextOrder = [...groupOrder];
+      nextOrder.splice(insertAt, 0, next);
       setGroupOrder(nextOrder);
       await supabase
         .from('therapists')
         .update({ service_group_order: nextOrder })
         .eq('id', therapist.id);
+    }
+  }
+
+  // Add a new custom group. Therapist types a name in the inline
+  // prompt at the bottom of the groups list. Empty / duplicate names
+  // are ignored. The new group appears at the end and the therapist
+  // assigns services to it via 'Move to...'.
+  async function addCustomGroup(rawName) {
+    const name = (rawName || '').trim();
+    if (!name) return;
+    if (groupOrder.includes(name) || PREDEFINED_GROUPS.includes(name)) return;
+    const nextOrder = [...groupOrder, name];
+    setGroupOrder(nextOrder);
+    const { error } = await supabase
+      .from('therapists')
+      .update({ service_group_order: nextOrder })
+      .eq('id', therapist.id);
+    if (error) {
+      console.error('addCustomGroup failed:', error);
+      setGroupOrder(groupOrder);
     }
   }
 
@@ -997,8 +1107,12 @@ function ServicesAndAvailability({ therapist }) {
                     display:'flex',
                     alignItems:'center',
                     gap:10,
-                    padding:'12px 12px 6px',
-                    marginTop: i === 0 ? 0 : 12,
+                    padding:'12px 14px',
+                    marginTop: i === 0 ? 4 : 16,
+                    marginBottom: 2,
+                    background: isUngrouped ? '#F5F5F0' : '#F0F6EE',
+                    border: `1px solid ${isUngrouped ? '#E5E1D5' : '#B7D1AB'}`,
+                    borderRadius: 10,
                   }}>
                     {!isUngrouped && (
                       <ServicePositionControl
@@ -1014,12 +1128,28 @@ function ServicesAndAvailability({ therapist }) {
                     )}
                     <div style={{ flex:1, minWidth:0 }}>
                       <div style={{
-                        fontSize: 12,
+                        fontFamily: "'Cormorant Garamond', Georgia, serif",
+                        fontSize: 18,
                         fontWeight: 700,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        color: isUngrouped ? C2.gray : C2.forest,
+                        color: isUngrouped ? C2.gray : '#1F4131',
+                        letterSpacing: '-0.005em',
+                        lineHeight: 1.2,
                       }}>{item.groupDisplayName}</div>
+                      <div style={{
+                        fontSize: 11,
+                        color: isUngrouped ? '#A0A0A0' : '#6B7280',
+                        marginTop: 2,
+                      }}>
+                        {(() => {
+                          // Count services in this group from current state
+                          const groupKey = item.groupName;
+                          const count = services.filter(s => {
+                            const k = (s.service_group || '').trim() || '__UNGROUPED__';
+                            return k === groupKey;
+                          }).length;
+                          return `${count} service${count === 1 ? '' : 's'}`;
+                        })()}
+                      </div>
                     </div>
                   </div>
                 );
@@ -1028,7 +1158,14 @@ function ServicesAndAvailability({ therapist }) {
               const idx = item.idxInGroup;
               const sortedArr = { length: item.totalInGroup };
               return (
-              <div key={svc.id} style={{ padding:'10px 12px', background:svc.active?'#F9FAFB':'#FAFAFA', borderRadius:10, border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}` }}>
+              <div key={svc.id} style={{
+                padding:'10px 12px',
+                background:svc.active?'#F9FAFB':'#FAFAFA',
+                borderRadius:10,
+                border:`1px solid ${svc.active?C2.lightGray:'#F0F0F0'}`,
+                marginLeft: useGroups ? 16 : 0,
+                borderLeft: useGroups ? `3px solid ${item.groupKey === '__UNGROUPED__' ? '#E5E1D5' : '#B7D1AB'}` : `1px solid ${svc.active?C2.lightGray:'#F0F0F0'}`,
+              }}>
                 <div style={{ display:'flex', alignItems:'center', gap:10 }}>
                   {/* Position controls: number input + up/down arrows.
                       Per HK design principle for 70-year-old persona:
@@ -1132,10 +1269,13 @@ function ServicesAndAvailability({ therapist }) {
                   )}
                 </div>
 
-                {/* Group selector (HK May 19 2026). Only renders when
-                    the therapist has opted into groups. Tap to type a
-                    new group name. Datalist suggests existing groups
-                    so therapist can reuse names without typos. */}
+                {/* Move to group control (HK May 19 2026, opt-in
+                    groups). Replaces the previous free-text Group
+                    field which was hard to find and required typing.
+                    Now: tap 'Move to...' to see all groups in a small
+                    inline menu, tap a group name to reassign. Current
+                    group is shown as a pill so the therapist sees at
+                    a glance which group the service is in. */}
                 {useGroups && (
                   <div style={{
                     marginTop: 8,
@@ -1144,6 +1284,7 @@ function ServicesAndAvailability({ therapist }) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: 8,
+                    flexWrap: 'wrap',
                   }}>
                     <span style={{
                       fontSize: 11,
@@ -1152,43 +1293,100 @@ function ServicesAndAvailability({ therapist }) {
                       textTransform: 'uppercase',
                       color: C2.gray,
                       flexShrink: 0,
-                    }}>Group</span>
-                    <input
-                      type="text"
-                      defaultValue={svc.service_group || ''}
-                      list={`group-suggestions-${svc.id}`}
-                      placeholder="None"
-                      onBlur={(e) => {
-                        const next = (e.target.value || '').trim();
-                        const current = (svc.service_group || '').trim();
-                        if (next !== current) setServiceGroup(svc.id, next);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') e.currentTarget.blur();
-                        if (e.key === 'Escape') {
-                          e.currentTarget.value = svc.service_group || '';
-                          e.currentTarget.blur();
-                        }
-                      }}
-                      aria-label={`Group for ${svc.name}`}
+                    }}>In group</span>
+                    <span style={{
+                      background: svc.service_group ? '#F0F6EE' : '#F3F4F6',
+                      color: svc.service_group ? '#1F4131' : C2.gray,
+                      border: `1px solid ${svc.service_group ? '#B7D1AB' : C2.lightGray}`,
+                      borderRadius: 16,
+                      padding: '3px 10px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}>{svc.service_group || 'None'}</span>
+                    <button
+                      onClick={() => setMoveMenuFor(moveMenuFor === svc.id ? null : svc.id)}
                       style={{
-                        flex: 1,
-                        minWidth: 0,
-                        fontSize: 12.5,
-                        color: C2.darkGray,
+                        marginLeft: 'auto',
+                        background: moveMenuFor === svc.id ? '#F0F6EE' : '#fff',
+                        color: '#1F4131',
+                        border: `1.5px solid ${moveMenuFor === svc.id ? '#B7D1AB' : C2.lightGray}`,
+                        borderRadius: 8,
+                        padding: '5px 12px',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                      }}
+                    >Move to...</button>
+                    {moveMenuFor === svc.id && (
+                      <div style={{
+                        flexBasis: '100%',
                         background: '#fff',
                         border: `1px solid ${C2.lightGray}`,
-                        borderRadius: 6,
-                        padding: '5px 8px',
-                        outline: 'none',
-                        fontFamily: 'inherit',
-                      }}
-                    />
-                    <datalist id={`group-suggestions-${svc.id}`}>
-                      {Array.from(new Set(services.map(s => (s.service_group || '').trim()).filter(Boolean))).map(name => (
-                        <option key={name} value={name} />
-                      ))}
-                    </datalist>
+                        borderRadius: 10,
+                        padding: 6,
+                        marginTop: 6,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 2,
+                        boxShadow: '0 4px 12px rgba(31, 65, 49, 0.08)',
+                      }}>
+                        {/* All groups currently in use, in display order */}
+                        {(() => {
+                          const allGroups = Array.from(new Set([
+                            ...PREDEFINED_GROUPS,
+                            ...groupOrder,
+                          ]));
+                          return allGroups.map(g => (
+                            <button
+                              key={g}
+                              onClick={() => {
+                                moveServiceToGroup(svc.id, g);
+                                setMoveMenuFor(null);
+                              }}
+                              style={{
+                                textAlign: 'left',
+                                background: svc.service_group === g ? '#F0F6EE' : 'transparent',
+                                color: svc.service_group === g ? '#1F4131' : C2.darkGray,
+                                border: 'none',
+                                borderRadius: 6,
+                                padding: '8px 12px',
+                                fontSize: 13,
+                                fontWeight: svc.service_group === g ? 700 : 500,
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                              }}
+                            >
+                              {svc.service_group === g && '✓ '}{g}
+                            </button>
+                          ));
+                        })()}
+                        {/* 'All other services' option (clears the group) */}
+                        <button
+                          onClick={() => {
+                            moveServiceToGroup(svc.id, null);
+                            setMoveMenuFor(null);
+                          }}
+                          style={{
+                            textAlign: 'left',
+                            background: !svc.service_group ? '#F0F6EE' : 'transparent',
+                            color: !svc.service_group ? '#1F4131' : C2.gray,
+                            border: 'none',
+                            borderRadius: 6,
+                            padding: '8px 12px',
+                            fontSize: 13,
+                            fontWeight: !svc.service_group ? 700 : 500,
+                            cursor: 'pointer',
+                            fontStyle: 'italic',
+                            fontFamily: 'inherit',
+                          }}
+                        >
+                          {!svc.service_group && '✓ '}All other services
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1463,6 +1661,102 @@ function ServicesAndAvailability({ therapist }) {
               </div>
               );
             })}
+          </div>
+        )}
+
+        {/* + New group (HK May 19 2026, opt-in groups). Only renders
+            when the therapist has groups on. Lets her add a custom
+            group name beyond the 6 pre-defined ones, then assign
+            services to it via 'Move to...' in each row. */}
+        {useGroups && services.length > 0 && (
+          <div style={{ marginBottom: 14 }}>
+            {newGroupDraft === null ? (
+              <button
+                onClick={() => setNewGroupDraft('')}
+                style={{
+                  background: '#fff',
+                  color: '#1F4131',
+                  border: `1.5px dashed ${C2.lightGray}`,
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >+ Add a new group</button>
+            ) : (
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                background: '#F0F6EE',
+                border: `1px solid #B7D1AB`,
+                borderRadius: 10,
+                padding: 10,
+              }}>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newGroupDraft}
+                  onChange={(e) => setNewGroupDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const name = newGroupDraft.trim();
+                      if (name) addCustomGroup(name);
+                      setNewGroupDraft(null);
+                    } else if (e.key === 'Escape') {
+                      setNewGroupDraft(null);
+                    }
+                  }}
+                  placeholder="New group name"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    fontSize: 13,
+                    color: C2.darkGray,
+                    background: '#fff',
+                    border: `1px solid ${C2.lightGray}`,
+                    borderRadius: 8,
+                    padding: '8px 10px',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const name = newGroupDraft.trim();
+                    if (name) addCustomGroup(name);
+                    setNewGroupDraft(null);
+                  }}
+                  style={{
+                    background: '#16A34A',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 8,
+                    padding: '8px 14px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >Add</button>
+                <button
+                  onClick={() => setNewGroupDraft(null)}
+                  style={{
+                    background: 'transparent',
+                    color: C2.gray,
+                    border: `1px solid ${C2.lightGray}`,
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                  }}
+                >Cancel</button>
+              </div>
+            )}
           </div>
         )}
 
