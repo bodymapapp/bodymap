@@ -49,13 +49,20 @@ const C = {
 // Offline payment methods (folded in from MarkAsPaidModal).
 // Used when the therapist taps the 'Mark as paid' button and
 // the money was already collected outside the platform.
+// HK May 19 2026: added Trade and 'Paid before switchover' per
+// Candice ask. A $0 trade session (massage in exchange for hair)
+// or a session paid weeks ago before the therapist joined MBM
+// both record as legitimate offline payments.
 const OFFLINE_METHODS = [
-  { value: 'cash',    label: 'Cash' },
-  { value: 'venmo',   label: 'Venmo' },
-  { value: 'zelle',   label: 'Zelle' },
-  { value: 'cashapp', label: 'Cash App' },
-  { value: 'check',   label: 'Check' },
-  { value: 'other',   label: 'Other' },
+  { value: 'cash',           label: 'Cash' },
+  { value: 'venmo',          label: 'Venmo' },
+  { value: 'zelle',          label: 'Zelle' },
+  { value: 'cashapp',        label: 'Cash App' },
+  { value: 'check',          label: 'Check' },
+  { value: 'trade',          label: 'Trade or barter' },
+  { value: 'paid_elsewhere', label: 'Paid before switchover' },
+  { value: 'comped',         label: 'Comped' },
+  { value: 'other',          label: 'Other' },
 ];
 
 export default function CheckoutModal({
@@ -254,9 +261,15 @@ export default function CheckoutModal({
   const [offlineNote, setOfflineNote] = useState('');
 
   // ── Action: Mark as paid (offline) ──────────────────────────────
+  // HK May 19 2026: $0 IS allowed here. Trade sessions, comped
+  // sessions, and sessions paid weeks ago before the therapist
+  // switched to MyBodyMap all need to be recorded with a real
+  // payment row so the session shows as 'paid' in the schedule
+  // and billing dashboards. Card and pay-link paths still require
+  // a positive amount since Stripe cannot charge $0.
   async function chargeOffline() {
-    if (!validAmount) { setErrorMsg('Enter a valid amount.'); return; }
     if (!client?.id) { setErrorMsg('Client record missing on this charge.'); return; }
+    if (amountCents < 0) { setErrorMsg('Amount cannot be negative.'); return; }
     setProcessing(true);
     setErrorMsg(null);
     try {
@@ -1074,13 +1087,16 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
       {/* Mark as paid (offline): folded in from the prior
           MarkAsPaidModal in Phase 19. Same flow for bookings AND
           subscriptions: therapist records that the money was
-          collected outside the platform (cash, Venmo, etc). */}
+          collected outside the platform (cash, Venmo, etc).
+          HK May 19 2026: Mark as paid allows $0 (trade sessions,
+          comped sessions, paid-before-switchover sessions). The
+          card and pay link paths still require a positive amount
+          since Stripe cannot charge $0. */}
       <MethodButton
         onClick={onMarkPaid}
-        disabled={!validAmount}
         icon="💵"
         title="Mark as paid"
-        subtitle="Cash, Venmo, Zelle, or other"
+        subtitle="Cash, Venmo, Zelle, trade, or paid before switching over"
         primary={isSubscription && !cardOnFile}
       />
     </div>
@@ -1262,12 +1278,18 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
     <div style={{ textAlign: 'center', padding: '12px 8px 8px' }}>
       <div style={{ fontSize: 56, marginBottom: 12 }}>{isLink ? '📲' : '✓'}</div>
       <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep, marginBottom: 8 }}>
-        {isLink ? 'Payment link ready' : `Charged $${detail?.total}`}
+        {isLink
+          ? 'Payment link ready'
+          : parseFloat(detail?.total) > 0
+            ? `Charged $${detail?.total}`
+            : 'Session recorded as paid'}
       </div>
       <div style={{ fontSize: 14, color: C.inkSoft, marginBottom: 20 }}>
         {isLink
           ? 'Send it to your client through their preferred channel.'
-          : `${detail?.method} · ${detail?.detail}. Receipt emailed to client.`}
+          : parseFloat(detail?.total) > 0
+            ? `${detail?.method} · ${detail?.detail}. Receipt emailed to client.`
+            : `${detail?.method}${detail?.detail ? ` · ${detail?.detail}` : ''}. No money exchanged.`}
       </div>
       {isLink && (
         <div style={{ marginBottom: 18 }}>
@@ -1359,7 +1381,11 @@ function OfflineForm({ method, setMethod, note, setNote, totalCents, onConfirm, 
           }}
         />
       </div>
-      <ActionRow onBack={onBack} onConfirm={onConfirm} processing={processing} confirmLabel={`Record $${(totalCents / 100).toFixed(2)} as paid`} />
+      <ActionRow onBack={onBack} onConfirm={onConfirm} processing={processing} confirmLabel={
+        totalCents === 0
+          ? 'Record session as paid ($0)'
+          : `Record $${(totalCents / 100).toFixed(2)} as paid`
+      } />
     </div>
   );
 }
