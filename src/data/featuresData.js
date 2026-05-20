@@ -138,6 +138,19 @@ export const RIBBONS = [
         ],
         meta: "Optional toggle · Auto-classifier · Custom groups supported · Flows to booking page",
       },
+      {
+        id: "1.12",
+        name: "Multiple locations",
+        // HK May 19 2026: add Locations to ribbon 1 (Find & Book)
+        // since location selection happens on the booking page.
+        // Backend has been live; this is the Features card.
+        body: [
+          "Work from a home studio Monday and a clinic on Wednesday? Add each location once. Clients pick where they want to be seen when they book. Address, parking instructions, suite number, and intercom code travel with the booking.",
+          "Per-service availability per location. Hot Stone at the home studio only. Couples at the clinic only. The booking page filters automatically so clients never see a slot that does not exist where you actually are.",
+          "Set one as your primary so it pre-selects for new clients. Returning clients see the location they used last time.",
+        ],
+        meta: "Per-service location · Primary location · Address &amp; parking notes",
+      },
     ],
   },
   {
@@ -560,9 +573,35 @@ export const RIBBONS = [
   },
 ];
 
-// Helper: build photo URL from feature id
+// Helper: build photo URL from feature id. Falls back to ribbon hero
+// image (feature-{ribbon}-1.jpg) for cards whose specific photo has
+// not been generated yet, so a new feature does not render as a blank
+// card with a broken background. The specific image overrides
+// automatically once it lands in public/images/.
+const KNOWN_PHOTO_IDS = new Set([
+  // Ribbon 1
+  "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.9", "1.10",
+  // Ribbon 2
+  "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7",
+  // Ribbon 3
+  "3.1", "3.2", "3.3", "3.4", "3.5", "3.6",
+  // Ribbon 4
+  "4.1", "4.2", "4.3", "4.4", "4.5",
+  // Ribbon 5
+  "5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8",
+  // Ribbon 6
+  "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7",
+  // Ribbon 7
+  "7.1", "7.2", "7.3", "7.4",
+]);
+
 export function photoForId(id) {
-  return `/images/feature-${id.replace(/\./g, "-")}.jpg`;
+  if (KNOWN_PHOTO_IDS.has(id)) {
+    return `/images/feature-${id.replace(/\./g, "-")}.jpg`;
+  }
+  // Fall back to the ribbon's first card image, which always exists.
+  const ribbon = id.split(".")[0];
+  return `/images/feature-${ribbon}-1.jpg`;
 }
 
 // Computed totals (used by page header)

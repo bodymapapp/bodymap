@@ -63,11 +63,11 @@ const RIBBONS = [
     // scheduling is, but cycle gets its own pill label so curious users
     // can tap right to it.
     demos: [
+      { kind: "component", component: ServiceGroupingDemo, label: "Group your services" },
       { kind: "component", component: BookingDemo, label: "Try the booking page" },
       { kind: "component", component: CycleScheduleDemo, label: "Cycle-aligned scheduling" },
       { kind: "component", component: SmartScheduleDemo, label: "Smart Scheduling" },
       { kind: "component", component: ServiceDaysDemo, label: "Custom days per service" },
-      { kind: "component", component: ServiceGroupingDemo, label: "Group your services" },
     ],
     layout: "demo-right",
     subFeatures: [
@@ -191,12 +191,12 @@ const RIBBONS = [
     // Each gets its own pill so curious visitors can tap directly
     // to the feature that interests them.
     demos: [
+      { kind: "component", component: DataOwnershipDemo, label: "Download all your data" },
       { kind: "component", component: BillingDemo, label: "Billing dashboard" },
       { kind: "component", component: CancellationPolicyDemo, label: "Cancellation policy" },
       { kind: "component", component: ProcessorParityDemo, label: "Stripe + Square" },
       { kind: "component", component: CardOnFileDemo, label: "Card on file" },
       { kind: "component", component: RefundDemo, label: "One-tap refunds" },
-      { kind: "component", component: DataOwnershipDemo, label: "Download all your data" },
     ],
     layout: "demo-left",
     subFeatures: [

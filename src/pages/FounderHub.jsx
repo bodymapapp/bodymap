@@ -35,6 +35,7 @@
 //   No build redeploy needed for content updates.
 
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import Nav from "../components/Nav";
 import MarkdownView from "../components/founder/MarkdownView";
 import useGithubMarkdown from "../components/founder/useGithubMarkdown";
@@ -557,6 +558,60 @@ function SectionContent({ section }) {
       }}>
         {section.subtitle}
       </div>
+
+      {/* HK May 19 2026: link the interactive Compliance Dashboard
+          from the Notification Map section so the strategic doc and
+          the live 28x7 matrix sit side by side. The dashboard lives
+          at /founder/notifications with end-to-end fire validation
+          per channel. */}
+      {section.id === "notification-map" && (
+        <Link
+          to="/founder/notifications"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            background: "#F0F6EE",
+            border: "1px solid #B7D1AB",
+            borderRadius: 12,
+            padding: "14px 18px",
+            marginBottom: 24,
+            textDecoration: "none",
+            color: C.forest,
+            transition: "background 0.15s ease, transform 0.15s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.background = "#E5F0E0")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "#F0F6EE")}
+        >
+          <div>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: C.forest,
+              marginBottom: 2,
+              letterSpacing: "0.02em",
+            }}>
+              Open the live Compliance Dashboard
+            </div>
+            <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5 }}>
+              28 touchpoints × 7 channels matrix, auto-fire validation, sender + destination card. The runtime view of this map.
+            </div>
+          </div>
+          <span style={{
+            background: C.forest,
+            color: "#fff",
+            padding: "8px 14px",
+            borderRadius: 18,
+            fontSize: 12,
+            fontWeight: 700,
+            whiteSpace: "nowrap",
+            flexShrink: 0,
+          }}>
+            Open →
+          </span>
+        </Link>
+      )}
 
       {section.type === "markdown" && (
         <MarkdownContent path={section.path} />
