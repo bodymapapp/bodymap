@@ -584,6 +584,13 @@ export const RIBBONS = [
 // ID in this set must have a corresponding feature-{id}.jpg file on
 // disk in public/images/. If we add a new feature card, add its ID
 // here AFTER the image lands, not before.
+//
+// Cache version (HK May 19 2026): bumped to v=7 to force browsers
+// to reload images after the v7 batch deploy. Without this, browsers
+// that cached the old (duplicate) images will keep serving them
+// even though the file on disk is fresh. Bump this whenever images
+// change wholesale; not needed for single-file swaps.
+const PHOTO_CACHE_VERSION = "v=7";
 const KNOWN_PHOTO_IDS = new Set([
   // Ribbon 1
   "1.1", "1.1b", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7",
@@ -604,11 +611,11 @@ const KNOWN_PHOTO_IDS = new Set([
 
 export function photoForId(id) {
   if (KNOWN_PHOTO_IDS.has(id)) {
-    return `/images/feature-${id.replace(/\./g, "-")}.jpg`;
+    return `/images/feature-${id.replace(/\./g, "-")}.jpg?${PHOTO_CACHE_VERSION}`;
   }
   // Fall back to the ribbon's first card image, which always exists.
   const ribbon = id.split(".")[0];
-  return `/images/feature-${ribbon}-1.jpg`;
+  return `/images/feature-${ribbon}-1.jpg?${PHOTO_CACHE_VERSION}`;
 }
 
 // Computed totals (used by page header)
