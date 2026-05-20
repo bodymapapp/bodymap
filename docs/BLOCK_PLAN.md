@@ -223,6 +223,108 @@ ribbon's product area goes here.
 
 ---
 
+## 2027 plan
+
+**Status: deferred to 2027.** These are real customer asks from solo LMTs who are growing their practices into multi-staff wellness businesses. Each one is a genuinely good idea AND a category expansion away from our current ICP (solo LMT). Capturing them here so the demand signal accumulates without distracting the 2026 roadmap.
+
+**Why these are 2027, not now:**
+1. Our 2026 ICP is solo LMT. Multi-room spas, multi-therapist clinics, and group-class businesses are adjacent markets with different scheduling models, payroll needs, and pricing dynamics.
+2. The longitudinal body intelligence moat does not apply to salt rooms, cold plunges, or group classes (no body data per session).
+3. Distribution PMF is unproven at the solo-LMT segment yet. Widening scope before that wedge lands is premature.
+4. Each item below is 4-12 weeks of dedicated build. Stacking them on top of the 2026 plan would push every existing customer ask another quarter.
+
+**Threshold to graduate any item from 2027 to active:** 5+ explicit asks from paying customers AND solo-LMT segment PMF demonstrated (e.g. 50+ active paying therapists, retention > 80% month-3).
+
+### 2027.1 Resource-based scheduling (multi-room spa support)
+
+**The ask, verbatim (Facebook group, spa owner, May 19 2026):**
+*"I'm helping open a spa and having troubles finding a booking site that fits our needs. We will have multiple self-service rooms such as a salt room with 7 seats, an infrared sauna, one massage room, mineral soak bath room, 2 cold plunges, an outdoor steam sauna. For beginning, there will be one massage therapist working and 1-2 front desk workers that will get people started in the other self-service rooms and clean them between sessions. My main issue with booking sites I've tried like Vagaro and GlossGenius is if one person is booked for salt room at 9:00am it isn't showing that we have anything else available. The work around these sites have given me is make each room an employee. Well, every employee has to have an assigned email and that's a lot of fake emails to use and seems like a hassle. What are my options?"*
+
+**Reinforced by AJ (real MyBodyMap customer, May 19 2026):**
+*"My shop is becoming similar to this. I've done some research and I think the best one I'm planning to switch to is from MassageBook to Jane. You can just assign each service its own room. And then the room is booked, not just the time. I've almost hit 1600 clients and I'm booked out and could use another therapist. The part from transitioning from single owner and employee operation to an actually wellness spa and functioning business is rough."*
+
+**Two real customers have flagged this in the same week.** Pattern is forming.
+
+**The category problem.** Vagaro, GlossGenius, MassageBook, Acuity, Square Appointments all use person-led scheduling: every appointment belongs to an `employee_id`. Their availability query asks "is this employee free at 9am." That model cannot represent "the salt room can hold 7 simultaneous bookings while the massage therapist is also working in the massage room and the front desk is handling 2 self-service rooms in parallel." Jane.app, Mindbody, Booker, and Zenoti use resource-led scheduling and can. The cheaper personal-service platforms tell customers to "make each room an employee" as a workaround, which creates fake employees in reports, payroll, and staff calendars.
+
+**What MyBodyMap would need to build.**
+- New `resources` table (id, name, capacity, location_id)
+- New `service_resources` map (service_id → required_resource_id, optional_staff_required)
+- Rewritten availability query that checks resource seats AND optionally staff availability as separate constraints
+- Booking-page UI changes: rooms-as-resources view, capacity indicators per slot, group-class style seat-picking for high-capacity rooms (salt room)
+- Settings UI: define rooms, assign services to rooms, set per-resource working hours
+- Reports & dashboards: revenue per resource, utilization per resource, staffing-vs-resource gaps
+
+**Estimate: 4-6 weeks of focused build.** Most of the work is the availability query rewrite (touches every scheduling surface) and the booking-page UX (rooms are not visible to clients today).
+
+**Risk:** scope-creeps MyBodyMap into Mindbody/Zenoti territory where their feature set is mature and we have no edge. Spa owners already have decent options. Solo LMTs do not.
+
+**Action between now and 2027:**
+- Track ask count per quarter. If 5+ paying customers ask, escalate.
+- Reply to Facebook spa owner with Mindbody / Booker / Jane recommendations and reasoning (see canned reply in chat history May 19 2026).
+- When AJ pings about expansion, point her to Jane.app honestly, then track whether she switches or asks us to build it.
+
+### 2027.2 Group classes & multi-spot capacity booking
+
+**The ask, from AJ (real MyBodyMap customer):**
+*"I'd love to know more about your receptionists. Does your other services offset and pay enough to afford the receptionist? How much do you pay them, how many hours do they work, and what is their role. I definitely need to get a receptionist but how do you justify another 1500 going out without us working that much more to cover it."*
+
+AJ has asked about group classes and packages multiple times in our threads. Her practice is shifting from one-on-one massage to a wellness spa with multiple service categories: massage rooms, recovery rooms, and class-style group offerings.
+
+**The feature:**
+- Service marked as "class" with `max_attendees` (e.g. 6, 10, 20)
+- Booking page shows class slots with "5 of 10 spots remaining"
+- Per-attendee intake, attendance check-in, waitlist when full
+- Pricing per attendee (not per booking), discounts for series passes, drop-in vs membership pricing
+- Class roster view for the therapist (who is coming, attendance history, contact info)
+
+**Why bundled with 2027.1:** group classes share the resource-led data model. If we build resources, classes are 80% of the way there (a class is "one room with N seats for one time block, hosted by staff").
+
+**Estimate: 2-3 weeks ADDITIONAL to 2027.1.** Doing both together saves time vs separate.
+
+### 2027.3 Multi-staff team support with payroll and commission
+
+**Implied by AJ's situation and the spa owner's setup.** Once you have a receptionist (2 hourly staff at $15-25/hr) plus a contracted second therapist (1099 with revenue share), the platform needs:
+
+- Staff roles beyond "owner therapist" (front desk, contractor therapist, salaried therapist)
+- Schedule assignment per staff member (which days they work, which services they perform)
+- Commission / revenue-split tracking per booking (e.g. "Sarah gets 60% of her bookings, owner gets 40%")
+- Tip routing (whose tip is it?)
+- Payroll exports (CSV ready for Gusto / ADP)
+- Staff PIN for tablet check-in (front desk uses iPad, doesn't have full owner credentials)
+
+**The ask, verbatim:**
+*"It seems I've helped a few convince them to go on their own and in addition to the encouragement in these groups being against employee status, it's been hard to find anyone who doesn't want to be contract work. I'm not about to risk my brand for someone that isn't respectful of my business and what I've built."*
+
+So 1099 contractor model first (single revenue-share rule per contractor), W-2 staff later if at all.
+
+**Estimate: 6-8 weeks.** Touches auth (roles), bookings (assignment), session_payments (commission split), every report, every dashboard.
+
+### 2027.4 Receptionist mode (front desk tablet UX)
+
+Spin-off of 2027.3 but valuable on its own. AJ's "$1500 going out" question is about justifying a receptionist; the platform can make a receptionist 2x more productive than the owner doing it herself.
+
+- Tablet-optimized check-in screen ("who is here, who is on table, who is next")
+- One-tap mark-paid for walk-in cash
+- Inventory of self-service room availability ("salt room: 4 of 7 seats taken, sauna: free")
+- Front-desk-only auth with limited PII access (can see booking, can take payment, cannot edit clinical notes)
+- Cleaning checklist between rooms with timestamps
+
+**Estimate: 2-3 weeks AFTER 2027.3 lands.** Reuses the staff role and auth work.
+
+### Tracking demand for 2027 items
+
+| Item | Asks to date | Source |
+|---|---|---|
+| 2027.1 Resource scheduling | 2 | FB spa owner (May 19), AJ (May 19) |
+| 2027.2 Group classes | 2 | AJ (multiple), Jackie (earlier thread) |
+| 2027.3 Multi-staff + commission | 1 | AJ (May 19, implied) |
+| 2027.4 Receptionist mode | 1 | AJ (May 19, implied) |
+
+Update this table as new asks come in. When any single item crosses 5 paying-customer asks, re-evaluate against the 2027 graduation threshold.
+
+---
+
 ## Details
 
 All execution-ready materials. Each entry below is the original detailed block,
