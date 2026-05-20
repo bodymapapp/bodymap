@@ -578,9 +578,16 @@ export const RIBBONS = [
 // not been generated yet, so a new feature does not render as a blank
 // card with a broken background. The specific image overrides
 // automatically once it lands in public/images/.
+//
+// HK May 19 2026: KNOWN_PHOTO_IDS expanded to include the v7 image
+// batch (18 new feature photos for the gaps left after v6). Every
+// ID in this set must have a corresponding feature-{id}.jpg file on
+// disk in public/images/. If we add a new feature card, add its ID
+// here AFTER the image lands, not before.
 const KNOWN_PHOTO_IDS = new Set([
   // Ribbon 1
-  "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.9", "1.10",
+  "1.1", "1.1b", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7",
+  "1.8", "1.9", "1.10", "1.11", "1.12",
   // Ribbon 2
   "2.1", "2.2", "2.3", "2.4", "2.5", "2.6", "2.7",
   // Ribbon 3
@@ -588,11 +595,11 @@ const KNOWN_PHOTO_IDS = new Set([
   // Ribbon 4
   "4.1", "4.2", "4.3", "4.4", "4.5",
   // Ribbon 5
-  "5.1", "5.2", "5.3", "5.4", "5.5", "5.6", "5.7", "5.8",
+  "5.0", "5.1", "5.2", "5.3", "5.4", "5.5", "5.6",
   // Ribbon 6
-  "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7",
+  "6.1", "6.2", "6.3", "6.4", "6.5", "6.6", "6.7", "6.8",
   // Ribbon 7
-  "7.1", "7.2", "7.3", "7.4",
+  "7.1", "7.2", "7.3", "7.4", "7.5",
 ]);
 
 export function photoForId(id) {
