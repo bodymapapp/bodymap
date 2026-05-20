@@ -19,6 +19,7 @@ materials for a specific block.
 4. **Smart Calendar SVG animation (Ribbon 4 demo).** Three-act loop bringing the left-column insights to life. Replaces `ScheduleDemo` in Ribbon 4. Phase 4 of the May 16 session, queued.
 5. **Card-on-file detection for returning clients.** Booking page does not detect existing saved card after 5+ bookings; client list lacks the indicator too. Ribbon 1 entry. Real customer-facing bug.
 6. **StatusStrip Agreement tile.** 75 min. Replace the conditional pendingIntake chip with a permanent Agreement tile on the client profile. Ribbon 2 entry.
+7. **Engagement state column + filter on /admin Table 1 (~45 min).** HK May 19 2026: the current 'Last used' column on the founder dashboard is misleading. It pulls from max(sessions.created_at, clients.created_at) and ignores logins, page views, settings activity, booking page traffic, outreach activity. So a therapist who logs in every day to check schedule but has no clients looks 'inactive.' Real question HK is trying to answer: of the signed-up therapists, how many are GHOSTS (never logged in), how many are SETTING UP, how many are ACTIVE. Build: pull `auth.users.last_sign_in_at`, derive engagement_state per row (GHOST, COLD, TIRE KICKER, EXPLORING, SETTING UP, DORMANT, ACTIVE), render as a color-coded pill next to the name, add a top-of-table filter to view one cohort at a time. Logic and SQL drafted in chat May 19 2026.
 
 **Externally blocked.** Waiting on something we don't control.
 - Google OAuth app verification (waiting on 5+ test therapists + reachable privacy/terms URLs)
