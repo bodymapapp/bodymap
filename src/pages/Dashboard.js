@@ -13,6 +13,7 @@ import BillingDashboard from '../components/BillingDashboard';
 import AIDashboard from '../components/AIDashboard';
 import NotificationsBell from '../components/NotificationsBell';
 import GiftCertificates from '../components/GiftCertificates';
+import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import PackagesCard from '../components/PackagesCard';
 import MembershipsCard from '../components/MembershipsCard';
 import EventsCard from '../components/EventsCard';
@@ -5430,20 +5431,35 @@ function LocationEditCard({ draft, setDraft, onSave, onCancel, saving, error, is
         />
       </div>
 
-      {/* Street1 */}
+      {/* Address autocomplete (HK May 19 2026): single type-ahead
+          field that fills street, city, state, zip on selection.
+          Suite stays its own field because Google does not reliably
+          return suite numbers, and the therapist usually knows hers
+          better than Google would anyway. Falls back to manual
+          entry if Places API is unavailable (no key, network, etc). */}
       <div style={{ marginBottom: 10 }}>
-        <label style={labelStyle}>Street address</label>
-        <input
-          type="text"
-          value={draft.street1}
-          onChange={set('street1')}
-          placeholder="123 Main St"
+        <label style={labelStyle}>Address</label>
+        <AddressAutocompleteInput
+          street1={draft.street1}
+          city={draft.city}
+          state={draft.state}
+          postal_code={draft.postal_code}
+          onSelect={(parts) => setDraft({
+            ...draft,
+            street1: parts.street1 || '',
+            city: parts.city || '',
+            state: parts.state || '',
+            postal_code: parts.postal_code || '',
+          })}
           disabled={saving}
-          style={inputStyle}
+          placeholder="Start typing your address..."
+          inputStyle={inputStyle}
+          labelStyle={labelStyle}
         />
       </div>
 
-      {/* Street2 */}
+      {/* Street2 (suite) stays its own field since Places does not
+          reliably return suite numbers. */}
       <div style={{ marginBottom: 10 }}>
         <label style={labelStyle}>Suite, floor, room (optional)</label>
         <input
@@ -5454,44 +5470,6 @@ function LocationEditCard({ draft, setDraft, onSave, onCancel, saving, error, is
           disabled={saving}
           style={inputStyle}
         />
-      </div>
-
-      {/* City + State + Postal: 3-column on wider, stacks on narrow */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
-        <div>
-          <label style={labelStyle}>City</label>
-          <input
-            type="text"
-            value={draft.city}
-            onChange={set('city')}
-            placeholder="Boulder"
-            disabled={saving}
-            style={inputStyle}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>State</label>
-          <input
-            type="text"
-            value={draft.state}
-            onChange={set('state')}
-            placeholder="CO"
-            maxLength={2}
-            disabled={saving}
-            style={{ ...inputStyle, textTransform: 'uppercase' }}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>ZIP</label>
-          <input
-            type="text"
-            value={draft.postal_code}
-            onChange={set('postal_code')}
-            placeholder="80301"
-            disabled={saving}
-            style={inputStyle}
-          />
-        </div>
       </div>
 
       {/* Notes */}

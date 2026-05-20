@@ -1,0 +1,147 @@
+// src/lib/googlePlaces.js
+//
+// Google Places Autocomplete utility for MyBodyMap.
+//
+// HK May 19 2026: shipped to replace the 5-field address entry on
+// the Locations form (and any other address field going forward)
+// with type-ahead suggestions. User types 'Downtown studio' and the
+// system suggests '123 Main St, Boulder, CO 80301'. Tap once, every
+// component fills.
+//
+// Why a single lib file:
+//   - Google Places JS library is ~150 KB. We do NOT want it
+//     loaded on every page. Lazy-load on demand when the address
+//     input mounts.
+//   - The library uses a singleton pattern: load once per session,
+//     subsequent loads are no-op. This file handles that.
+//   - Parsing Place results into our 5-field shape (street1, city,
+//     state, postal_code, country) is non-trivial. Keep it in one
+//     place so the booking page, client intake, and therapist
+//     locations all use the same parser.
+//
+// Graceful degradation: if REACT_APP_GOOGLE_PLACES_KEY is missing
+// at runtime, hooks return placesReady=false and consumers fall
+// back to manual entry. No broken UX.
+
+import { useEffect, useState } from 'react';
+
+const SCRIPT_ID = 'google-places-autocomplete-script';
+const API_KEY = process.env.REACT_APP_GOOGLE_PLACES_KEY || '';
+
+let loadPromise = null;
+
+/**
+ * Lazy-load the Google Maps JS library with the Places + Geocoding
+ * libraries. Returns a promise that resolves when window.google.maps
+ * is available. Resolves immediately if already loaded. Rejects if
+ * no API key is configured.
+ */
+export function loadGooglePlaces() {
+  if (!API_KEY) return Promise.reject(new Error('Google Places key not configured'));
+  if (window.google && window.google.maps && window.google.maps.places) {
+    return Promise.resolve(window.google);
+  }
+  if (loadPromise) return loadPromise;
+
+  loadPromise = new Promise((resolve, reject) => {
+    // If a script tag already exists (e.g. injected by another
+    // component), reuse it instead of double-loading.
+    const existing = document.getElementById(SCRIPT_ID);
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.google));
+      existing.addEventListener('error', reject);
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = SCRIPT_ID;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&v=weekly&loading=async`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(window.google);
+    script.onerror = (err) => {
+      loadPromise = null; // allow retry
+      reject(err);
+    };
+    document.head.appendChild(script);
+  });
+
+  return loadPromise;
+}
+
+/**
+ * Parse a Google Place result's address_components into our
+ * structured shape: { street1, city, state, postal_code, country }.
+ * Returns null if the place has no usable address components.
+ */
+export function parsePlaceAddress(place) {
+  if (!place || !place.address_components) return null;
+
+  const parts = {
+    street_number: '',
+    route: '',
+    city: '',
+    state: '',
+    postal_code: '',
+    country: '',
+  };
+
+  for (const c of place.address_components) {
+    const types = c.types || [];
+    if (types.includes('street_number')) parts.street_number = c.long_name;
+    else if (types.includes('route')) parts.route = c.long_name;
+    else if (types.includes('locality')) parts.city = c.long_name;
+    else if (types.includes('sublocality') && !parts.city) parts.city = c.long_name;
+    else if (types.includes('postal_town') && !parts.city) parts.city = c.long_name;
+    else if (types.includes('administrative_area_level_1')) parts.state = c.short_name;
+    else if (types.includes('postal_code')) parts.postal_code = c.long_name;
+    else if (types.includes('country')) parts.country = c.short_name;
+  }
+
+  const street1 = [parts.street_number, parts.route].filter(Boolean).join(' ').trim();
+
+  if (!street1 && !parts.city) return null;
+
+  return {
+    street1: street1 || '',
+    city: parts.city || '',
+    state: parts.state || '',
+    postal_code: parts.postal_code || '',
+    country: parts.country || 'US',
+    formatted: place.formatted_address || '',
+  };
+}
+
+/**
+ * Hook: returns whether Google Places is ready to use. Triggers the
+ * lazy load on mount. Components can check `placesReady` and either
+ * render the autocomplete input or fall back to manual fields.
+ *
+ *   const { placesReady, placesError } = useGooglePlaces();
+ */
+export function useGooglePlaces() {
+  const [placesReady, setPlacesReady] = useState(
+    Boolean(window.google && window.google.maps && window.google.maps.places)
+  );
+  const [placesError, setPlacesError] = useState(null);
+
+  useEffect(() => {
+    if (placesReady) return;
+    if (!API_KEY) {
+      setPlacesError('not_configured');
+      return;
+    }
+    let cancelled = false;
+    loadGooglePlaces()
+      .then(() => { if (!cancelled) setPlacesReady(true); })
+      .catch((err) => {
+        if (!cancelled) {
+          console.warn('[google-places] load failed:', err);
+          setPlacesError('load_failed');
+        }
+      });
+    return () => { cancelled = true; };
+  }, [placesReady]);
+
+  return { placesReady, placesError };
+}

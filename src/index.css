@@ -3388,3 +3388,49 @@ section[id] {
 .bm-section-bare > div > p:first-child {
   display: none;
 }
+
+/* Google Places Autocomplete dropdown (HK May 19 2026):
+   The .pac-container is injected by Google's library directly to
+   <body> with position: absolute. By default its z-index is ~1000.
+   Push it above MyBodyMap's modals (which use ~9999) so the
+   suggestions never get hidden behind a modal backdrop. Also style
+   to match our cream + sage palette so it does not feel jarring. */
+.pac-container {
+  z-index: 10001 !important;
+  border-radius: 10px;
+  margin-top: 4px;
+  border: 1.5px solid #D6CFB9;
+  box-shadow: 0 8px 24px rgba(31, 65, 49, 0.12);
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 13px;
+  background: #FFFDF8;
+  overflow: hidden;
+}
+.pac-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-top: 1px solid #F1EBDA;
+  color: #1F2937;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pac-item:first-child {
+  border-top: none;
+}
+.pac-item:hover {
+  background: #F0F6EE;
+}
+.pac-item-selected {
+  background: #E5F0E0;
+}
+.pac-icon {
+  display: none;
+}
+.pac-item-query {
+  font-weight: 700;
+  color: #1F4131;
+  font-size: 13px;
+}
+.pac-matched {
+  font-weight: 700;
+}
