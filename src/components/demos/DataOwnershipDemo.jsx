@@ -1,37 +1,18 @@
 // src/components/demos/DataOwnershipDemo.jsx
 //
-// Animated SVG demo for data ownership / 'Download all my data'.
-// Shown on Home (in a ribbon) and Features (card body).
+// HK feedback May 19 2026: 'I still dont like the animation on
+// download all my data... it is too small... why cant we have a
+// simple table with some animation on what we provide and others
+// dont?'
 //
-// Per HK direction: 'showcase that we let therapists take all their
-// data for free vs. others who provide limited information with a
-// complex way to download.' Comparison style. 100% factual.
+// Replaced the side-by-side mini-panels with a real comparison table.
+// Rows reveal progressively (one every 400ms) so the eye has time
+// to land on each row. After all rows are visible, table stays
+// settled. No loop. Calm.
 //
-// All competitor claims verified against public support docs:
-//   - Vagaro: Customer list as Excel/PDF, Calendar as .ics,
-//     Appointments Summary as Excel/PDF, per-customer history as
-//     download/print. Multiple separate exports from multiple
-//     screens. Sources: Vagaro support articles 360006371094,
-//     360000242193, 360000550993.
-//   - MassageBook: Client list CSV, Reports CSV per report.
-//     SOAP notes saved one at a time as PDF via browser print.
-//     Same for intake forms. Sources: support articles
-//     18572149119757, 18572085380621.
-//   - Acuity: Client list CSV, Appointments CSV. No native SOAP
-//     feature (scheduling-only platform). Source: support article
-//     16676916553485.
-//
-// Loop story (~6 seconds):
-//   Stage 0 (0 to 2s): two side-by-side panels light up, both
-//     'idle' state. Title 'How exports work.'
-//   Stage 1 (2s to 4s): Other Platforms panel shows multiple
-//     separate file icons spawning one at a time (Clients...
-//     Appointments... SOAP one PDF at a time...). Slow, scattered.
-//   Stage 2 (4s to 6s): MyBodyMap panel shows ONE button tap, a
-//     spinner, then a single ZIP file fly-in with all 14 files
-//     listed inside. Clean, single motion.
-//
-// Built with declarative SVG + CSS-keyframe-style transitions.
+// All competitor claims sourced from public support docs (May 2026).
+// Sources cited in the parent commit. Per HK design principle #19:
+// 100% factual, no hallucination.
 
 import React, { useEffect, useState } from "react";
 
@@ -51,208 +32,253 @@ const PALETTE = {
   gray300: "#D1D5DB",
   gray100: "#F3F4F6",
   ink: "#1F2937",
-  amber: "#D97706",
-  amberSoft: "#FEF3C7",
+  successFill: "#DCFCE7",
+  successBorder: "#86EFAC",
+  successText: "#15803D",
+  warnFill: "#FEF3C7",
+  warnBorder: "#FDE68A",
+  warnText: "#92400E",
+  failFill: "#FEE2E2",
+  failBorder: "#FCA5A5",
+  failText: "#991B1B",
 };
 
-const STAGE_DURATION_MS = 2000;
+// Rows are content the export contains, ordered the way a therapist
+// would think about her practice: clients first, then sessions, then
+// money, then settings. Six rows total. Short enough to scan, long
+// enough to make the point.
+//
+// Cell values use one of three states:
+//   yes  -> green check, label
+//   partial -> amber dash, label
+//   no   -> red x, 'Not available'
+//
+// All competitor claims verified May 19 2026 from these sources:
+// Vagaro support articles 360006371094 (clients), 360000242193
+// (calendar), 360000550993 (appointments), Vagaro guide on Exporting
+// Customer Notes; MassageBook support articles 18572149119757
+// (client list), 18572085380621 (SOAP one PDF at a time); Acuity
+// support article 16676916553485 (appointments + clients).
+
+const ROWS = [
+  {
+    label: "Clients",
+    mbm:        { state: "yes", text: "Included" },
+    vagaro:     { state: "yes", text: "Separate export" },
+    massagebook:{ state: "yes", text: "Separate export" },
+    acuity:     { state: "yes", text: "Separate export" },
+  },
+  {
+    label: "Bookings",
+    mbm:        { state: "yes", text: "Included" },
+    vagaro:     { state: "yes", text: "Separate export" },
+    massagebook:{ state: "yes", text: "Separate export" },
+    acuity:     { state: "yes", text: "Separate export" },
+  },
+  {
+    label: "SOAP notes",
+    mbm:        { state: "yes",     text: "All in one file" },
+    vagaro:     { state: "no",      text: "Not exportable" },
+    massagebook:{ state: "partial", text: "One PDF at a time" },
+    acuity:     { state: "no",      text: "Not in platform" },
+  },
+  {
+    label: "Intake answers",
+    mbm:        { state: "yes",     text: "All in one file" },
+    vagaro:     { state: "partial", text: "Notes field only" },
+    massagebook:{ state: "partial", text: "One PDF at a time" },
+    acuity:     { state: "yes",     text: "With appointments" },
+  },
+  {
+    label: "Payment records",
+    mbm:        { state: "yes",     text: "Included" },
+    vagaro:     { state: "partial", text: "In reports" },
+    massagebook:{ state: "partial", text: "In reports" },
+    acuity:     { state: "partial", text: "In reports" },
+  },
+  {
+    label: "All in one ZIP",
+    mbm:        { state: "yes", text: "Yes, one file" },
+    vagaro:     { state: "no",  text: "Separate exports" },
+    massagebook:{ state: "no",  text: "Separate exports" },
+    acuity:     { state: "no",  text: "Separate exports" },
+  },
+];
+
+const COLUMNS = ["mbm", "vagaro", "massagebook", "acuity"];
+const COLUMN_LABELS = {
+  mbm: "MyBodyMap",
+  vagaro: "Vagaro",
+  massagebook: "MassageBook",
+  acuity: "Acuity",
+};
+
+// Reveal one row every 400ms after mount
+const REVEAL_INTERVAL_MS = 400;
+
+function Cell({ state, text }) {
+  const palette = state === "yes"
+    ? { bg: PALETTE.successFill, border: PALETTE.successBorder, text: PALETTE.successText, icon: "✓" }
+    : state === "partial"
+      ? { bg: PALETTE.warnFill, border: PALETTE.warnBorder, text: PALETTE.warnText, icon: "–" }
+      : { bg: PALETTE.failFill, border: PALETTE.failBorder, text: PALETTE.failText, icon: "✕" };
+  return (
+    <div style={{
+      background: palette.bg,
+      border: `1px solid ${palette.border}`,
+      borderRadius: 7,
+      padding: "5px 8px",
+      fontSize: 11,
+      fontWeight: 600,
+      color: palette.text,
+      textAlign: "center",
+      lineHeight: 1.3,
+      minHeight: 30,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 4,
+      whiteSpace: "nowrap",
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>{palette.icon}</span>
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function DataOwnershipDemo() {
-  const [stage, setStage] = useState(0);
+  const [rowsRevealed, setRowsRevealed] = useState(0);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStage((s) => (s + 1) % 3);
-    }, STAGE_DURATION_MS);
-    return () => clearInterval(interval);
-  }, []);
+    if (rowsRevealed >= ROWS.length) return;
+    const t = setTimeout(() => setRowsRevealed((n) => n + 1), REVEAL_INTERVAL_MS);
+    return () => clearTimeout(t);
+  }, [rowsRevealed]);
 
   return (
     <div style={{
       width: "100%",
-      maxWidth: 420,
+      maxWidth: 600,
       margin: "0 auto",
       background: PALETTE.cream,
       borderRadius: 18,
-      padding: 16,
+      padding: 18,
       boxShadow: "0 4px 16px rgba(31, 65, 49, 0.08)",
       border: `1px solid ${PALETTE.creamEdge}`,
-      overflow: "hidden",
     }}>
-      <svg viewBox="0 0 400 380" width="100%" height="auto" style={{ display: "block" }} aria-label="Data ownership demo">
-        <defs>
-          <linearGradient id="do-forest" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={PALETTE.forest} />
-            <stop offset="1" stopColor={PALETTE.forestDeep} />
-          </linearGradient>
-        </defs>
-
-        {/* Title */}
-        <text x="200" y="22" textAnchor="middle" fontFamily="'Cormorant Garamond', Georgia, serif" fontSize="18" fontWeight="700" fill={PALETTE.forestDeep}>
-          How exports work
-        </text>
-
-        {/* ─── LEFT PANEL: Other platforms ─── */}
-        <g>
-          <rect x="10" y="40" width="185" height="320" rx="14"
-            fill={PALETTE.white}
-            stroke={PALETTE.creamEdge}
-            strokeWidth="1"
-          />
-          <text x="102" y="60" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="11" fontWeight="700" fill={PALETTE.gray500} letterSpacing="0.06em">
-            OTHER PLATFORMS
-          </text>
-          <text x="102" y="78" textAnchor="middle" fontFamily="Georgia, serif" fontSize="10" fontStyle="italic" fill={PALETTE.gray400}>
-            Vagaro · MassageBook · Acuity
-          </text>
-
-          {/* Separate file icons appearing one at a time (stage >= 1) */}
-          {[
-            { label: "Clients.csv", screen: "Reports screen", y: 100 },
-            { label: "Appointments.csv", screen: "Different report", y: 152 },
-            { label: "SOAP #1.pdf", screen: "Print one at a time", y: 204 },
-            { label: "SOAP #2.pdf", screen: "Print one at a time", y: 232 },
-            { label: "SOAP #3.pdf", screen: "...continue manually", y: 260 },
-          ].map((file, idx) => (
-            <g key={idx} style={{
-              opacity: stage >= 1 ? 1 : 0,
-              transition: `opacity 0.4s ease ${idx * 0.15}s`,
-            }}>
-              <rect x="22" y={file.y} width="162" height="40" rx="8"
-                fill={PALETTE.gray100}
-                stroke={PALETTE.gray300}
-                strokeWidth="0.5"
-              />
-              {/* File icon */}
-              <rect x="32" y={file.y + 10} width="16" height="20" rx="2"
-                fill={PALETTE.white}
-                stroke={PALETTE.gray400}
-                strokeWidth="0.7"
-              />
-              <line x1="35" y1={file.y + 16} x2="44" y2={file.y + 16} stroke={PALETTE.gray400} strokeWidth="0.5" />
-              <line x1="35" y1={file.y + 19} x2="44" y2={file.y + 19} stroke={PALETTE.gray400} strokeWidth="0.5" />
-              <line x1="35" y1={file.y + 22} x2="44" y2={file.y + 22} stroke={PALETTE.gray400} strokeWidth="0.5" />
-              <text x="56" y={file.y + 19} fontFamily="-apple-system, sans-serif" fontSize="11" fontWeight="600" fill={PALETTE.ink}>
-                {file.label}
-              </text>
-              <text x="56" y={file.y + 31} fontFamily="-apple-system, sans-serif" fontSize="9" fill={PALETTE.gray500}>
-                {file.screen}
-              </text>
-            </g>
-          ))}
-
-          {/* Footer note */}
-          <text x="102" y="334" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="10" fill={PALETTE.gray500} style={{
-            opacity: stage >= 1 ? 1 : 0,
-            transition: "opacity 0.6s ease 0.8s",
-          }}>
-            Separate exports
-          </text>
-          <text x="102" y="346" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="10" fill={PALETTE.gray500} style={{
-            opacity: stage >= 1 ? 1 : 0,
-            transition: "opacity 0.6s ease 0.9s",
-          }}>
-            from multiple screens
-          </text>
-        </g>
-
-        {/* ─── RIGHT PANEL: MyBodyMap ─── */}
-        <g>
-          <rect x="205" y="40" width="185" height="320" rx="14"
-            fill={PALETTE.sageTint}
-            stroke={PALETTE.sageSoft}
-            strokeWidth="1"
-          />
-          <text x="297" y="60" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="11" fontWeight="700" fill={PALETTE.forestDeep} letterSpacing="0.06em">
-            MYBODYMAP
-          </text>
-          <text x="297" y="78" textAnchor="middle" fontFamily="Georgia, serif" fontSize="10" fontStyle="italic" fill={PALETTE.sage}>
-            One tap. Everything.
-          </text>
-
-          {/* Single download button + state changes */}
-          <g style={{
-            opacity: stage === 0 ? 1 : 0,
-            transition: "opacity 0.4s ease",
-          }}>
-            <rect x="225" y="110" width="144" height="36" rx="18" fill="url(#do-forest)" />
-            <text x="297" y="133" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="12" fontWeight="700" fill={PALETTE.white}>
-              Download my data
-            </text>
-          </g>
-
-          {/* ZIP arriving (stage >= 2) */}
-          <g style={{
-            opacity: stage >= 2 ? 1 : 0,
-            transform: stage >= 2 ? "translateY(0)" : "translateY(20px)",
-            transition: "opacity 0.5s ease, transform 0.5s ease",
-            transformOrigin: "center",
-          }}>
-            <rect x="225" y="100" width="144" height="220" rx="12"
-              fill={PALETTE.white}
-              stroke={PALETTE.sageSoft}
-              strokeWidth="1.5"
-            />
-            <text x="297" y="120" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="10" fontWeight="700" fill={PALETTE.forestDeep} letterSpacing="0.06em">
-              📦 mybodymap-export.zip
-            </text>
-            {/* Inner file list */}
-            {[
-              "clients.csv",
-              "bookings.csv",
-              "sessions.csv",
-              "soap_notes.csv",
-              "payments.csv",
-              "intake_responses.csv",
-              "services.csv",
-              "memberships.csv",
-              "gift_certs.csv",
-              "waivers.csv",
-              "profile.json",
-              "README.txt",
-            ].map((name, idx) => (
-              <g key={name}>
-                <rect x="232" y={130 + idx * 14} width="6" height="6" rx="1" fill={PALETTE.sage} />
-                <text x="245" y={136 + idx * 14} fontFamily="-apple-system, sans-serif" fontSize="9" fill={PALETTE.gray700}>
-                  {name}
-                </text>
-              </g>
-            ))}
-            <text x="297" y="312" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="9" fontStyle="italic" fill={PALETTE.gray500}>
-              + 2 more
-            </text>
-          </g>
-
-          {/* Footer note */}
-          <text x="297" y="334" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="10" fontWeight="600" fill={PALETTE.forestDeep} style={{
-            opacity: stage >= 2 ? 1 : 0,
-            transition: "opacity 0.6s ease 0.6s",
-          }}>
-            One ZIP, all data
-          </text>
-          <text x="297" y="346" textAnchor="middle" fontFamily="-apple-system, sans-serif" fontSize="10" fill={PALETTE.forestDeep} style={{
-            opacity: stage >= 2 ? 1 : 0,
-            transition: "opacity 0.6s ease 0.7s",
-          }}>
-            Emailed to you
-          </text>
-        </g>
-      </svg>
-
-      {/* Caption */}
+      {/* Title */}
       <div style={{
-        marginTop: 10,
+        fontFamily: "'Cormorant Garamond', Georgia, serif",
+        fontSize: 22,
+        fontWeight: 700,
+        color: PALETTE.forestDeep,
         textAlign: "center",
-        fontFamily: "Georgia, serif",
-        fontSize: 12,
-        fontStyle: "italic",
-        color: PALETTE.gray500,
-        minHeight: 36,
-        lineHeight: 1.5,
+        marginBottom: 4,
+        lineHeight: 1.2,
       }}>
-        {stage === 0 && "Both let you export. Only one bundles it all."}
-        {stage === 1 && "Other platforms: separate exports, multiple screens."}
-        {stage === 2 && "MyBodyMap: one tap, one ZIP, emailed to you."}
+        Exporting your data: who lets you take what
+      </div>
+      <div style={{
+        fontSize: 11.5,
+        color: PALETTE.gray500,
+        textAlign: "center",
+        marginBottom: 16,
+        fontStyle: "italic",
+        fontFamily: "Georgia, serif",
+      }}>
+        Verified from each platform's support pages, May 2026
+      </div>
+
+      {/* Header row */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(90px, 1.2fr) repeat(4, minmax(70px, 1fr))",
+        gap: 6,
+        marginBottom: 6,
+        alignItems: "stretch",
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: PALETTE.gray500,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          padding: "8px 4px",
+          alignSelf: "end",
+        }}>
+          What's in the export
+        </div>
+        {COLUMNS.map((col) => {
+          const isMBM = col === "mbm";
+          return (
+            <div
+              key={col}
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: isMBM ? PALETTE.white : PALETTE.gray700,
+                background: isMBM ? PALETTE.forest : PALETTE.creamDeep,
+                border: isMBM ? "none" : `1px solid ${PALETTE.creamEdge}`,
+                borderRadius: 8,
+                padding: "8px 6px",
+                textAlign: "center",
+                letterSpacing: "0.02em",
+              }}
+            >
+              {COLUMN_LABELS[col]}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Data rows */}
+      {ROWS.map((row, idx) => {
+        const visible = idx < rowsRevealed;
+        return (
+          <div
+            key={row.label}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(90px, 1.2fr) repeat(4, minmax(70px, 1fr))",
+              gap: 6,
+              marginBottom: 6,
+              alignItems: "stretch",
+              opacity: visible ? 1 : 0,
+              transform: visible ? "translateY(0)" : "translateY(6px)",
+              transition: "opacity 0.35s ease, transform 0.35s ease",
+            }}
+          >
+            <div style={{
+              fontSize: 12.5,
+              fontWeight: 700,
+              color: PALETTE.ink,
+              padding: "8px 4px",
+              alignSelf: "center",
+            }}>
+              {row.label}
+            </div>
+            {COLUMNS.map((col) => (
+              <Cell key={col} state={row[col].state} text={row[col].text} />
+            ))}
+          </div>
+        );
+      })}
+
+      {/* Footer */}
+      <div style={{
+        marginTop: 14,
+        padding: "10px 14px",
+        background: PALETTE.sageTint,
+        border: `1px solid ${PALETTE.sageSoft}`,
+        borderRadius: 10,
+        fontSize: 12,
+        color: PALETTE.forestDeep,
+        lineHeight: 1.5,
+        textAlign: "center",
+        opacity: rowsRevealed >= ROWS.length ? 1 : 0,
+        transition: "opacity 0.5s ease 0.2s",
+      }}>
+        <strong>One tap. One ZIP. Emailed to you.</strong> Free for every therapist.
       </div>
     </div>
   );

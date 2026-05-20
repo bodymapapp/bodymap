@@ -189,7 +189,7 @@ const ONLY_MBM = [
     body:
       "Tap one button in Settings. Get back a ZIP file with every client, every booking, every session, every SOAP note, every payment, every intake answer, your services, memberships, gift certificates, and account settings. Emailed to you as a secure link, usually within a minute. Free for every therapist. Your data is yours.",
     proof:
-      "Most platforms in this space split exports across multiple screens. Vagaro: customer list as Excel or PDF from Reports (Vagaro support article on Export Your Customer List), calendar as iCal from a separate menu (support article 360000242193), and appointment summaries as another Excel report (support article 360000550993). MassageBook: client list CSV from one screen (support article 18572149119757), but SOAP notes are saved one at a time as PDF via the browser print dialog, one note per file, one file at a time (support article 18572085380621). Acuity: client list and appointments are separate CSV exports, and there is no native SOAP feature (support article 16676916553485, plus Acuity's product is scheduling-only). MyBodyMap bundles everything into one file you can save, share, or migrate. We treat data portability as table stakes, not a paid plan add-on.",
+      "Most other platforms make you export each piece separately, from a different screen. Vagaro: one screen for clients, another for the calendar, another for appointments. MassageBook: SOAP notes save one at a time as a PDF, by hand, through your browser's print menu. Acuity: client list and appointments are two separate downloads, and there are no SOAP notes at all. MyBodyMap gives you everything in one file. One tap. One email. Done.",
     photoId: "6.1",
   },
   {
@@ -198,7 +198,7 @@ const ONLY_MBM = [
     body:
       "Flip a toggle and your services automatically sort into six pre-defined groups: Prenatal & Postnatal, Couples, Therapeutic & Recovery, Relaxation & Spa, Energy & Modalities, Add-ons. We classify each one by its name, no typing required. Reorder groups, reorder services within a group, add your own custom groups. Your booking page shows them as clean sections instead of one long list.",
     proof:
-      "Service categorization on competing platforms is either absent or fully manual (the therapist types every category name from scratch). MyBodyMap's classifier reads your service names and places each one automatically, then lets you override per-service with a Move to button. Default is off, flat list, for therapists who do not want sections. Optional features are optional. We do not force structure on solo practices that do not need it.",
+      "Other platforms make you type every category name yourself, one by one. MyBodyMap reads your service names and places each one in the right group automatically. Move any service to a different group with one tap if our guess is wrong. The setting is off by default. Flip it on only if you want the sections.",
     photoId: "1.1",
   },
 ];

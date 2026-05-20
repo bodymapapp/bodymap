@@ -1,26 +1,21 @@
 // src/components/demos/ServiceGroupingDemo.jsx
 //
-// Animated SVG demo for the Home page Find & Book ribbon and the
-// Features page card 1.x.
+// User-controlled service grouping demo. HK feedback May 19 2026:
+// 'have a few more services (around 10), and let the visitor toggle
+// if needed to group the services...it is going too fast to
+// understand what is going on.'
 //
-// Loop story (~6 seconds):
-//   Stage 1 (0 to 1.5s): flat list of 6 services. 'Organize into
-//     groups' toggle visible at top in OFF position.
-//   Stage 2 (1.5s to 3s): toggle slides to ON. Services freeze in
-//     place. A small 'auto-classifying...' label fades in.
-//   Stage 3 (3s to 5s): services slide into 3 group section
-//     headers (Relaxation & Spa, Therapeutic & Recovery, Couples)
-//     with their pre-defined group labels. Each service slides up
-//     under its destination group header.
-//   Stage 4 (5s to 6s): pause. Then loops.
+// Rewritten:
+//   - 10 services instead of 6
+//   - User taps the toggle pill to switch between flat and grouped
+//   - No auto-loop. Visitor controls the pace
+//   - When toggle flips ON, services slide into groups with a 700ms
+//     transition so the motion is visible and slow enough to read
+//   - Caption text changes to match the current state
 //
-// Per HK direction: 'services list flat -> toggle ON -> services
-// slide into 6 colored group sections. Loops. Calm.'
-//
-// Built with framer-motion (already in deps) so animations stay
-// smooth on mobile.
+// Slower, calmer, more interactive.
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useState } from "react";
 
 const PALETTE = {
   forest: "#2A5741",
@@ -33,85 +28,98 @@ const PALETTE = {
   creamEdge: "#EDE6D6",
   white: "#FFFFFF",
   gray500: "#6B7280",
+  gray400: "#9CA3AF",
   gray300: "#D1D5DB",
   ink: "#1F2937",
 };
 
-// Six fixed services and their target groups. Names chosen so the
-// pre-defined keyword classifier matches each one cleanly.
+// Ten services, distributed across the six pre-defined groups so the
+// demo shows the auto-classifier doing meaningful work. Names chosen
+// so a viewer can see why each one lands where it does.
 const SERVICES = [
-  { id: "s1", name: "Swedish Massage", duration: 60, price: 90, group: "Relaxation & Spa" },
-  { id: "s2", name: "Deep Tissue", duration: 60, price: 100, group: "Therapeutic & Recovery" },
-  { id: "s3", name: "Prenatal Massage", duration: 60, price: 95, group: "Prenatal & Postnatal" },
-  { id: "s4", name: "Hot Stone", duration: 90, price: 140, group: "Relaxation & Spa" },
-  { id: "s5", name: "Sports Recovery", duration: 75, price: 120, group: "Therapeutic & Recovery" },
-  { id: "s6", name: "Couples Massage", duration: 90, price: 180, group: "Couples" },
+  { id: "s1",  name: "Swedish Massage",   duration: 60, price: 90,  group: "Relaxation & Spa" },
+  { id: "s2",  name: "Deep Tissue",       duration: 60, price: 100, group: "Therapeutic & Recovery" },
+  { id: "s3",  name: "Prenatal Massage",  duration: 60, price: 95,  group: "Prenatal & Postnatal" },
+  { id: "s4",  name: "Hot Stone",         duration: 90, price: 140, group: "Relaxation & Spa" },
+  { id: "s5",  name: "Sports Recovery",   duration: 75, price: 120, group: "Therapeutic & Recovery" },
+  { id: "s6",  name: "Couples Massage",   duration: 90, price: 180, group: "Couples" },
+  { id: "s7",  name: "Reiki Session",     duration: 60, price: 85,  group: "Energy & Modalities" },
+  { id: "s8",  name: "Postnatal Massage", duration: 60, price: 95,  group: "Prenatal & Postnatal" },
+  { id: "s9",  name: "Aromatherapy",      duration: 60, price: 95,  group: "Relaxation & Spa" },
+  { id: "s10", name: "Hot Stone Add-on",  duration: 15, price: 25,  group: "Add-ons" },
 ];
 
-// Three groups in display order. Each gets a slot of services after
-// classification.
-const GROUPS = [
-  { name: "Prenatal & Postnatal", color: PALETTE.sageSoft },
-  { name: "Therapeutic & Recovery", color: PALETTE.sageSoft },
-  { name: "Relaxation & Spa", color: PALETTE.sageSoft },
-  { name: "Couples", color: PALETTE.sageSoft },
+// Groups in display order. Auto-classifier seeds this from the
+// PREDEFINED list, so we mirror it here.
+const GROUPS_IN_USE = [
+  "Prenatal & Postnatal",
+  "Couples",
+  "Therapeutic & Recovery",
+  "Relaxation & Spa",
+  "Energy & Modalities",
+  "Add-ons",
 ];
 
-const STAGE_DURATION_MS = 6000;
+// Layout constants
+const SVG_WIDTH = 360;
+const SVG_HEADER_H = 56;
+const TOGGLE_H = 50;
+const SERVICE_ROW_H = 44;
+const SERVICE_GAP = 6;
+const GROUP_HEADER_H = 30;
+const GROUP_GAP = 14;
 
 export default function ServiceGroupingDemo() {
-  // 0 = flat list shown
-  // 1 = toggle flipping
-  // 2 = services regrouping (animating into groups)
-  // 3 = groups settled, paused
-  const [stage, setStage] = useState(0);
+  const [grouped, setGrouped] = useState(false);
 
-  // Drive the loop
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStage((s) => (s + 1) % 4);
-    }, STAGE_DURATION_MS / 4);
-    return () => clearInterval(interval);
-  }, []);
+  // Compute Y positions for each service in the current layout.
+  function flatY(idx) {
+    return SVG_HEADER_H + TOGGLE_H + 12 + idx * (SERVICE_ROW_H + SERVICE_GAP);
+  }
 
-  const toggleOn = stage >= 1;
-  const grouped = stage >= 2;
-
-  // Compute Y positions for each service. In flat mode, services
-  // stack at 8px spacing starting at y=120. In grouped mode, each
-  // service sits under its group header at the right offset.
-  const flatY = useCallback((idx) => 130 + idx * 50, []);
-
-  const groupedY = useCallback((svc) => {
-    // Find which group this service belongs to in display order, and
-    // which position within the group.
-    let cursorY = 120;
-    for (const g of GROUPS) {
-      cursorY += 36; // group header height
-      const servicesInGroup = SERVICES.filter((s) => s.group === g.name);
-      if (g.name === svc.group) {
+  function groupedY(svc) {
+    let cursorY = SVG_HEADER_H + TOGGLE_H + 12;
+    for (const groupName of GROUPS_IN_USE) {
+      const servicesInGroup = SERVICES.filter((s) => s.group === groupName);
+      if (servicesInGroup.length === 0) continue;
+      cursorY += GROUP_HEADER_H + 6;
+      if (groupName === svc.group) {
         const idxInGroup = servicesInGroup.findIndex((s) => s.id === svc.id);
-        return cursorY + 8 + idxInGroup * 44;
+        return cursorY + idxInGroup * (SERVICE_ROW_H + SERVICE_GAP);
       }
-      cursorY += 8 + servicesInGroup.length * 44 + 14; // group bottom padding
+      cursorY += servicesInGroup.length * (SERVICE_ROW_H + SERVICE_GAP) + GROUP_GAP;
     }
     return cursorY;
-  }, []);
+  }
 
-  const groupHeaderY = useCallback((groupIdx) => {
-    let cursorY = 120;
-    for (let i = 0; i < groupIdx; i++) {
-      const g = GROUPS[i];
-      const servicesInGroup = SERVICES.filter((s) => s.group === g.name);
-      cursorY += 36 + 8 + servicesInGroup.length * 44 + 14;
+  function groupHeaderY(groupName) {
+    let cursorY = SVG_HEADER_H + TOGGLE_H + 12;
+    for (const g of GROUPS_IN_USE) {
+      const servicesInGroup = SERVICES.filter((s) => s.group === g);
+      if (servicesInGroup.length === 0) continue;
+      if (g === groupName) return cursorY;
+      cursorY += GROUP_HEADER_H + 6 + servicesInGroup.length * (SERVICE_ROW_H + SERVICE_GAP) + GROUP_GAP;
     }
     return cursorY;
-  }, []);
+  }
+
+  // Total SVG height needed for grouped layout (taller than flat)
+  const groupedTotalH = (() => {
+    let h = SVG_HEADER_H + TOGGLE_H + 12;
+    for (const g of GROUPS_IN_USE) {
+      const servicesInGroup = SERVICES.filter((s) => s.group === g);
+      if (servicesInGroup.length === 0) continue;
+      h += GROUP_HEADER_H + 6 + servicesInGroup.length * (SERVICE_ROW_H + SERVICE_GAP) + GROUP_GAP;
+    }
+    return h;
+  })();
+  const flatTotalH = SVG_HEADER_H + TOGGLE_H + 12 + SERVICES.length * (SERVICE_ROW_H + SERVICE_GAP);
+  const svgHeight = Math.max(flatTotalH, groupedTotalH) + 8;
 
   return (
     <div style={{
       width: "100%",
-      maxWidth: 380,
+      maxWidth: 420,
       margin: "0 auto",
       background: PALETTE.cream,
       borderRadius: 18,
@@ -120,7 +128,13 @@ export default function ServiceGroupingDemo() {
       border: `1px solid ${PALETTE.creamEdge}`,
       overflow: "hidden",
     }}>
-      <svg viewBox="0 0 360 620" width="100%" height="auto" style={{ display: "block" }} aria-label="Service grouping demo">
+      <svg
+        viewBox={`0 0 ${SVG_WIDTH} ${svgHeight}`}
+        width="100%"
+        height="auto"
+        style={{ display: "block" }}
+        aria-label="Service grouping demo"
+      >
         <defs>
           <linearGradient id="sg-toggle-on" x1="0" y1="0" x2="1" y2="0">
             <stop offset="0" stopColor="#16A34A" />
@@ -128,111 +142,175 @@ export default function ServiceGroupingDemo() {
           </linearGradient>
         </defs>
 
-        {/* Header label */}
-        <text x="14" y="32" fontFamily="'Cormorant Garamond', Georgia, serif" fontSize="22" fontWeight="700" fill={PALETTE.forestDeep}>
+        {/* Header */}
+        <text x="14" y="28" fontFamily="'Cormorant Garamond', Georgia, serif" fontSize="22" fontWeight="700" fill={PALETTE.forestDeep}>
           Services
         </text>
-        <text x="14" y="50" fontFamily="-apple-system, sans-serif" fontSize="11" fill={PALETTE.gray500}>
-          6 active
+        <text x="14" y="44" fontFamily="-apple-system, sans-serif" fontSize="11" fill={PALETTE.gray500}>
+          {SERVICES.length} active
         </text>
 
-        {/* Organize toggle row */}
-        <g>
-          <rect x="14" y="64" width="332" height="42" rx="10"
-            fill={toggleOn ? PALETTE.sageTint : "#FAFAFA"}
-            stroke={toggleOn ? PALETTE.sageSoft : PALETTE.creamEdge}
+        {/* Toggle row: TAP to flip */}
+        <g
+          onClick={() => setGrouped(!grouped)}
+          style={{ cursor: "pointer" }}
+        >
+          <rect
+            x="14"
+            y={SVG_HEADER_H + 4}
+            width={SVG_WIDTH - 28}
+            height={TOGGLE_H - 8}
+            rx="10"
+            fill={grouped ? PALETTE.sageTint : "#FAFAFA"}
+            stroke={grouped ? PALETTE.sageSoft : PALETTE.creamEdge}
             strokeWidth="1"
-            style={{ transition: "fill 0.4s ease, stroke 0.4s ease" }}
+            style={{ transition: "fill 0.5s ease, stroke 0.5s ease" }}
           />
-          <text x="24" y="84" fontFamily="-apple-system, sans-serif" fontSize="12" fontWeight="700" fill={PALETTE.ink}>
+          <text
+            x="24"
+            y={SVG_HEADER_H + 22}
+            fontFamily="-apple-system, sans-serif"
+            fontSize="13"
+            fontWeight="700"
+            fill={PALETTE.ink}
+          >
             Organize into groups
           </text>
-          <text x="24" y="98" fontFamily="-apple-system, sans-serif" fontSize="10" fill={PALETTE.gray500}>
-            Auto-sorted by keyword
+          <text
+            x="24"
+            y={SVG_HEADER_H + 36}
+            fontFamily="-apple-system, sans-serif"
+            fontSize="10"
+            fill={PALETTE.gray500}
+          >
+            {grouped ? "On. Tap to turn off." : "Off. Tap to turn on."}
           </text>
           {/* Toggle pill */}
-          <rect x="300" y="76" width="36" height="18" rx="9"
-            fill={toggleOn ? "url(#sg-toggle-on)" : PALETTE.gray300}
-            style={{ transition: "fill 0.4s ease" }}
+          <rect
+            x={SVG_WIDTH - 64}
+            y={SVG_HEADER_H + 13}
+            width="40"
+            height="22"
+            rx="11"
+            fill={grouped ? "url(#sg-toggle-on)" : PALETTE.gray300}
+            style={{ transition: "fill 0.5s ease" }}
           />
           <circle
-            cx={toggleOn ? "327" : "309"}
-            cy="85"
-            r="7"
+            cx={grouped ? SVG_WIDTH - 35 : SVG_WIDTH - 53}
+            cy={SVG_HEADER_H + 24}
+            r="8"
             fill={PALETTE.white}
-            style={{ transition: "cx 0.4s cubic-bezier(0.4, 0, 0.2, 1)" }}
+            style={{ transition: "cx 0.7s cubic-bezier(0.4, 0, 0.2, 1)" }}
           />
         </g>
 
-        {/* GROUP HEADERS, fade in when grouped */}
-        {GROUPS.map((g, gIdx) => {
-          const y = groupHeaderY(gIdx);
-          const servicesInGroup = SERVICES.filter((s) => s.group === g.name);
+        {/* Group headers */}
+        {GROUPS_IN_USE.map((groupName) => {
+          const servicesInGroup = SERVICES.filter((s) => s.group === groupName);
+          if (servicesInGroup.length === 0) return null;
+          const y = groupHeaderY(groupName);
           return (
-            <g key={g.name} style={{ opacity: grouped ? 1 : 0, transition: "opacity 0.6s ease" }}>
-              <rect x="14" y={y} width="332" height="28" rx="8"
+            <g
+              key={groupName}
+              style={{
+                opacity: grouped ? 1 : 0,
+                transition: "opacity 0.5s ease 0.2s",
+              }}
+            >
+              <rect
+                x="14"
+                y={y}
+                width={SVG_WIDTH - 28}
+                height={GROUP_HEADER_H}
+                rx="8"
                 fill={PALETTE.sageTint}
                 stroke={PALETTE.sageSoft}
                 strokeWidth="1"
               />
-              <text x="24" y={y + 18} fontFamily="'Cormorant Garamond', Georgia, serif" fontSize="13" fontWeight="700" fill={PALETTE.forestDeep}>
-                {g.name}
+              <text
+                x="24"
+                y={y + 20}
+                fontFamily="'Cormorant Garamond', Georgia, serif"
+                fontSize="14"
+                fontWeight="700"
+                fill={PALETTE.forestDeep}
+              >
+                {groupName}
               </text>
-              <text x={346 - 4} y={y + 18} fontFamily="-apple-system, sans-serif" fontSize="10" fill={PALETTE.gray500} textAnchor="end">
+              <text
+                x={SVG_WIDTH - 24}
+                y={y + 20}
+                fontFamily="-apple-system, sans-serif"
+                fontSize="10"
+                fill={PALETTE.gray500}
+                textAnchor="end"
+              >
                 {servicesInGroup.length} service{servicesInGroup.length === 1 ? "" : "s"}
               </text>
             </g>
           );
         })}
 
-        {/* SERVICE CARDS */}
+        {/* Service cards */}
         {SERVICES.map((svc, idx) => {
-          const y = grouped ? groupedY(svc) : flatY(idx);
+          const targetY = grouped ? groupedY(svc) : flatY(idx);
           return (
-            <g key={svc.id} style={{ transition: "transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)" }}
-               transform={`translate(0, ${y - 130 - idx * 50})`}>
-              <rect x="20" y={130 + idx * 50} width="320" height="42" rx="9"
+            <g
+              key={svc.id}
+              transform={`translate(0, ${targetY})`}
+              style={{
+                transition: "transform 0.7s cubic-bezier(0.4, 0, 0.2, 1)",
+              }}
+            >
+              <rect
+                x="20"
+                y="0"
+                width={SVG_WIDTH - 40}
+                height={SERVICE_ROW_H}
+                rx="9"
                 fill={PALETTE.white}
                 stroke={PALETTE.creamEdge}
                 strokeWidth="1"
               />
-              <text x="32" y={147 + idx * 50} fontFamily="-apple-system, sans-serif" fontSize="13" fontWeight="700" fill={PALETTE.ink}>
+              <text
+                x="32"
+                y="18"
+                fontFamily="-apple-system, sans-serif"
+                fontSize="13"
+                fontWeight="700"
+                fill={PALETTE.ink}
+              >
                 {svc.name}
               </text>
-              <text x="32" y={162 + idx * 50} fontFamily="-apple-system, sans-serif" fontSize="11" fill={PALETTE.gray500}>
+              <text
+                x="32"
+                y="33"
+                fontFamily="-apple-system, sans-serif"
+                fontSize="11"
+                fill={PALETTE.gray500}
+              >
                 {svc.duration} min · ${svc.price}
               </text>
-              {/* In group pill (only visible when grouped) */}
-              <g style={{ opacity: grouped ? 1 : 0, transition: "opacity 0.5s ease 0.3s" }}>
-                <rect x="248" y={141 + idx * 50} width="80" height="18" rx="9"
-                  fill={PALETTE.sageTint}
-                  stroke={PALETTE.sageSoft}
-                  strokeWidth="0.5"
-                />
-                <text x="288" y={154 + idx * 50} fontFamily="-apple-system, sans-serif" fontSize="9" fontWeight="600" fill={PALETTE.forestDeep} textAnchor="middle">
-                  in group
-                </text>
-              </g>
             </g>
           );
         })}
       </svg>
 
-      {/* Caption */}
+      {/* Caption + tap hint */}
       <div style={{
         marginTop: 10,
         textAlign: "center",
         fontFamily: "Georgia, serif",
-        fontSize: 12,
+        fontSize: 13,
         fontStyle: "italic",
         color: PALETTE.gray500,
         minHeight: 36,
         lineHeight: 1.5,
+        padding: "0 8px",
       }}>
-        {stage === 0 && "Flat menu, 6 services."}
-        {stage === 1 && "Toggle on. Auto-classifying..."}
-        {stage === 2 && "Services slide into pre-defined groups."}
-        {stage === 3 && "4 groups, ready for the booking page."}
+        {grouped
+          ? "Auto-classified into 6 groups. Tap the toggle to switch back."
+          : "Flat list of 10 services. Tap the toggle above to organize into groups."}
       </div>
     </div>
   );
