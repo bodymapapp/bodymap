@@ -1649,10 +1649,32 @@ export default function BookingPage() {
     //      story.
     //   3. The booking time is not inside a partial-day block.
     try {
-      const [{ data: svcCheck }, { data: bdCheck }] = await Promise.all([
+      // HK May 19 2026 audit item 8: re-check location and addons
+      // alongside the service + blocked_days checks. Same race-
+      // condition defense: if any of these flipped to inactive
+      // between page-load and submit, reject before the booking
+      // record gets created.
+      const selectedAddonIdsToCheck = selectedAddonIds && selectedAddonIds.length > 0
+        ? selectedAddonIds
+        : [];
+      const checks = [
         supabase.from('services').select('active, visibility, archived_at').eq('id', svc.id).maybeSingle(),
         supabase.from('blocked_days').select('start_time, end_time').eq('therapist_id', therapist.id).eq('date', date),
-      ]);
+      ];
+      const locId = selectedLocation?.id || null;
+      if (locId) {
+        checks.push(supabase.from('therapist_locations').select('active').eq('id', locId).maybeSingle());
+      }
+      if (selectedAddonIdsToCheck.length > 0) {
+        checks.push(supabase.from('service_addons').select('id, active').in('id', selectedAddonIdsToCheck));
+      }
+      const results = await Promise.all(checks);
+      const svcCheck = results[0]?.data;
+      const bdCheck  = results[1]?.data;
+      const locCheck = locId ? results[2]?.data : null;
+      const addonsCheck = selectedAddonIdsToCheck.length > 0
+        ? (locId ? results[3]?.data : results[2]?.data) || []
+        : [];
 
       if (!svcCheck || svcCheck.archived_at || !svcCheck.active) {
         setSubmitting(false);
@@ -1675,6 +1697,44 @@ export default function BookingPage() {
         setSubmitting(false);
         setSubmitError('That time is no longer available. Please refresh the page and pick a different time.');
         return;
+      }
+      if (locId && (!locCheck || locCheck.active === false)) {
+        setSubmitting(false);
+        setSubmitError('The location you picked is no longer available. Please refresh the page and pick another.');
+        return;
+      }
+      if (selectedAddonIdsToCheck.length > 0) {
+        const stillActive = new Set((addonsCheck || []).filter(a => a.active !== false).map(a => a.id));
+        const inactiveAddon = selectedAddonIdsToCheck.find(id => !stillActive.has(id));
+        if (inactiveAddon) {
+          setSubmitting(false);
+          setSubmitError('One of the add-ons you selected is no longer available. Please refresh the page and try again.');
+          return;
+        }
+      }
+
+      // Lead-time symmetry guard (HK May 19 2026 audit item 9).
+      // The booking page already filters slots that violate the
+      // minimum_advance_hours and maximum_advance_days settings, but
+      // those are intra-day client-side filters. Re-check at submit
+      // in case the therapist tightened the rules between page-load
+      // and submit.
+      const minLeadHours = Number(therapist.minimum_advance_hours) || 0;
+      const maxLeadDays  = Number(therapist.maximum_advance_days) || 0;
+      if (minLeadHours > 0 || maxLeadDays > 0) {
+        const bookingMoment = new Date(`${date}T${slot.start}:00`);
+        const nowMs = Date.now();
+        const bookingMs = bookingMoment.getTime();
+        if (minLeadHours > 0 && (bookingMs - nowMs) < (minLeadHours * 3600 * 1000)) {
+          setSubmitting(false);
+          setSubmitError(`This therapist requires bookings at least ${minLeadHours} hour${minLeadHours === 1 ? '' : 's'} in advance. Please pick a later time.`);
+          return;
+        }
+        if (maxLeadDays > 0 && (bookingMs - nowMs) > (maxLeadDays * 86400 * 1000)) {
+          setSubmitting(false);
+          setSubmitError(`This therapist only accepts bookings up to ${maxLeadDays} days in advance. Please pick a sooner date.`);
+          return;
+        }
       }
     } catch (e) {
       // If the guard query fails, fall through. We do not want a

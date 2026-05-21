@@ -46,9 +46,13 @@ serve(async (req) => {
 
     // Preserve cart order; drop missing/inactive items silently
     // (the cart UI already filtered to active; this is defense-in-depth).
+    // Server-side guard (HK May 19 2026 audit item 8): also drop any
+    // package whose visibility flipped to 'private' between cart add
+    // and checkout. Treat private as unavailable, same as inactive.
     const lineItems = cart_items
       .map((c: any) => pkgs.find((p: any) => p.id === c.package_id))
-      .filter(Boolean);
+      .filter(Boolean)
+      .filter((p: any) => p.visibility !== 'private');
     if (lineItems.length === 0) return respond({ error: 'all_cart_items_inactive' }, 400);
 
     const therapistName = therapist.business_name || therapist.full_name || 'Therapist';

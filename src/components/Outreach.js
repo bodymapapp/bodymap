@@ -148,7 +148,16 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       !c.outreach_unsubscribed && (c.email || c.phone)
     );
     switch(segment) {
-      case 'lapsed':     return eligible.filter(c => c.days_since_visit !== null && c.days_since_visit >= customLapsed);
+      // Lapsed segment (HK May 19 2026 audit item 9). Default upper
+      // ceiling of 365 days protects therapists from auto-targeting
+      // 2-year-stale clients who likely moved away or stopped getting
+      // bodywork. Lower bound (customLapsed) is therapist-set. If they
+      // need to reach older clients, they can switch segment to 'all'.
+      case 'lapsed':     return eligible.filter(c =>
+        c.days_since_visit !== null
+        && c.days_since_visit >= customLapsed
+        && c.days_since_visit <= 365
+      );
       case 'due':        return eligible.filter(c => { const avg=avgInterval(c); return avg && c.days_since_visit && c.days_since_visit >= avg*1.2; });
       case 'onetimer':   return eligible.filter(c => c.total_sessions === 1);
       case 'frequent':   return eligible.filter(c => c.total_sessions >= 4);

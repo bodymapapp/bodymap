@@ -37,6 +37,15 @@ serve(async (req) => {
       .eq('active', true)
       .single();
     if (!m) return respond({ error: 'membership_not_found' }, 404);
+    // Server-side guard (HK May 19 2026 audit item 8). If the
+    // therapist marked this membership private after the client
+    // loaded the booking page, reject. The client-side filter on
+    // BookingPage line 1192 catches the menu render but not the
+    // submit. Same defense-in-depth pattern as the booking-page
+    // server guard shipped in commit 1f4705df.
+    if ((m as any).visibility === 'private') {
+      return respond({ error: 'membership_unavailable' }, 410);
+    }
 
     // Memberships work with both Stripe and Square per the parity
     // rollout. Routing decision:

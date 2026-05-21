@@ -36,6 +36,12 @@ serve(async (req) => {
       .eq('active', true)
       .single();
     if (!pkg) return respond({ error: 'package_not_found_or_inactive' }, 404);
+    // Server-side guard (HK May 19 2026 audit item 8). Reject if the
+    // therapist marked this package private after the client loaded
+    // the booking page. Mirrors purchase-membership guard.
+    if ((pkg as any).visibility === 'private') {
+      return respond({ error: 'package_unavailable' }, 410);
+    }
 
     const therapistName = therapist.business_name || therapist.full_name || 'Therapist';
 
