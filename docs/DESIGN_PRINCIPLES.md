@@ -356,6 +356,9 @@ the value normally. Swapped to InlineSaveNumberInput same day.
 - **Before automating a money decision:** check rule #8.
 - **Before adding a new product surface:** check rule #9.
 - **Before instructing a human to run a checklist:** check rule #10.
+- **Before committing any UI change:** check rule #11 (mobile-first).
+- **Before adding a code path that auto-creates database rows from user input:** check rule #12.
+- **Before adding any therapist-facing numeric input:** check rule #13.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The

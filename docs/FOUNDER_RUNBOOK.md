@@ -119,7 +119,9 @@ Full rules: `FEATURES_TAXONOMY.md` in repo root.
 
 ## 5. Design principles
 
-Every product decision must pass through these five principles. When two conflict, "deeper" usually wins, but call it out explicitly.
+Every product decision must pass through these five high-level principles. When two conflict, "deeper" usually wins, but call it out explicitly.
+
+**Note:** these five are the foundational philosophy. The operational rules (currently 13, growing as incidents teach us) live in `docs/DESIGN_PRINCIPLES.md` and on the founder page under "Design Principles". Read that doc before changing any UI, adding any auto-create code path, or instructing a human to follow a manual process.
 
 ### Deeper, not wider
 Solve one therapist's real problem all the way through, not five problems halfway. Card-on-file at booking is "deeper" because it goes from policy in Settings, through booking page mandate, through cancellation modal, through actual charge, through audit trail. We did all five.
@@ -193,19 +195,24 @@ npx vercel --prod --token=<token> --scope bodymapapps-projects
 ### Where to find credentials
 **Canonical source:** `ENVIRONMENT.md` in the repo root. Always check this BEFORE asking HK for any secret. If it's not in `ENVIRONMENT.md`, it doesn't exist or HK forgot to log it.
 
-### Critical credentials (current as of May 2026)
+### Critical credentials (current as of May 21, 2026)
 - **GitHub PAT** (for code pushes): logged in `ENVIRONMENT.md`
 - **Vercel token** (for prod deploys, no expiry): logged in `ENVIRONMENT.md`
 - **Resend API key**: logged in `ENVIRONMENT.md`
-- **Supabase service role**: managed in Supabase dashboard, also reflected in edge function env vars
-- **Stripe live keys**: managed in Stripe dashboard. Connect platform account is in HK's email.
-- **Square Production App ID** `sq0idp-3kYk490uQ-cjpb_s1zJmAQ`: set as `SQUARE_APP_ID` env var (NOT `SQUARE_APPLICATION_ID` — naming matters)
+- **Supabase project ref**: `rmnqfrljoknmellbnpiy`. Dashboard at https://supabase.com/dashboard/project/rmnqfrljoknmellbnpiy. Service role key managed in Supabase dashboard, also reflected in edge function env vars.
+- **Stripe live keys**: managed in Stripe dashboard. Connect platform account is in HK's email. **Critical:** HK has TWO Stripe accounts under the same email (one from Google OAuth login, one from email+password). Real verified platform with all Connect accounts is the email+password one. See Procedure 9 in Stripe Connect operations section below.
+- **Square Production App ID** `sq0idp-3kYk490uQ-cjpb_s1zJmAQ`: set as `SQUARE_APP_ID` env var (NOT `SQUARE_APPLICATION_ID`, naming matters)
+- **Twilio platform number**: `+15136133033`. Used for founder-to-therapist outreach only, NOT for therapist-to-client SMS. Architecture is BYO-Twilio: each therapist supplies their own Twilio credentials for their own client SMS, so the platform doesn't absorb per-therapist costs or A2P 10DLC liability. BYO-Twilio onboarding UI is queued (known blocker).
+- **Twilio Account SID + Auth Token**: logged in `ENVIRONMENT.md`. A2P 10DLC Brand registration is stuck in TCR review (blocks all outbound US SMS until resolved, including the platform number).
+- **Cal.com OAuth**: Client ID stored as Supabase secret `CAL_CLIENT_ID`. Integration approved May 2026. Powers the Schedule tab's external calendar sync.
 - **Cloudflare**: zone ID `2f2d81115be22e62a0b7cffb7f56caa1`. Email routing configured to forward `*@mybodymap.app` to `bodymapdemo@gmail.com` and `hello@mybodymap.app` to `bodymap01@gmail.com`.
 
 ### Vendor relationships
 - **Stripe:** primary payment processor. HK has direct dashboard access. No account manager retained yet.
 - **Square:** secondary payment processor. Account is HK's mom's name (HK started with that and decided to continue). Activation pending Friday May 9 with mom's ID + selfie.
-- **Supabase:** free tier. Will need to upgrade when production volume justifies it.
+- **Twilio:** SMS infrastructure. BYO model: each therapist supplies their own credentials. Platform number `+15136133033` only used for founder outreach. A2P 10DLC Brand registration stuck in TCR review (external blocker).
+- **Cal.com:** external calendar sync. OAuth app approved. Powers Schedule tab integration with Google/Apple/Outlook calendars.
+- **Supabase:** free tier. Will need to upgrade when production volume justifies it. Project ref `rmnqfrljoknmellbnpiy`.
 - **Vercel:** free hobby tier. Pro tier needed if SLA matters.
 - **Resend:** free tier (3,000 emails/month). Upgrade when broadcast volume exceeds.
 - **Anthropic:** Claude API for AI features. Pay-as-you-go, billed monthly to HK personal credit card.
@@ -244,7 +251,18 @@ Full schema lives in Supabase. Key tables:
 All schema changes applied via Supabase SQL editor manually by HK. Most recent block (run May 7, 2026) added Square columns to all payment-related tables for parity. See git log for the SQL blocks.
 
 ### Critical RLS policies
-Every table has Row Level Security enabled. Therapist can only access their own rows. Client portal (booking page) uses anon role with carefully-scoped read/write policies. NEVER disable RLS to debug — find the policy that's blocking and fix it.
+Every table has Row Level Security enabled. Therapist can only access their own rows. Client portal (booking page) uses anon role with carefully-scoped read/write policies. NEVER disable RLS to debug, find the policy that's blocking and fix it.
+
+**Tables the public booking page MUST be able to read (anon role):**
+- `therapists` (basic profile fields only)
+- `services` (active only)
+- `locations` (active only)
+- `addons` (active only)
+- `memberships` (visibility != 'private', active only)
+- `packages` (visibility != 'private', active only)
+- `blocked_days` (added May 21, 2026 from Candice incident, see below)
+
+**Critical lesson, May 21 2026 (Candice blocked-day incident):** Any table the booking page queries needs an explicit public-read RLS policy. Default `FOR ALL USING (therapist_id = auth.uid())` returns empty silently when called by the anon role (since `auth.uid()` is null), which the JS client treats as "no rows" rather than an error. Symptom: customer reports a feature appearing broken on the booking page even though data is correct in the dashboard. Root cause: missing public-read policy. Fix in commit `613de194`, migration `2026-05-20-blocked-days-public-read.sql`. When adding any new table the booking page reads, add a public-read policy in the same migration.
 
 ---
 
@@ -473,6 +491,57 @@ Major decisions made and the reasoning behind them. Append to this rather than o
 3. Check the model name in the edge function — Anthropic deprecates older models; if we're calling a deprecated one, swap to current
 4. As of May 2026, current model is Claude Opus 4.7 (`claude-opus-4-7`)
 
+### "A feature looks broken on the booking page but works in the therapist dashboard"
+**This is almost always an RLS gap.** The booking page uses the anon Supabase role; the dashboard uses an authenticated role. Tables without an explicit public-read RLS policy return empty silently when queried by anon (because `auth.uid()` is null), which the JS client treats as "no rows" rather than an error.
+1. Identify the table the booking page is querying (look in `src/pages/BookingPage.js` for the failing feature's data fetch)
+2. Check current RLS policies: `SELECT polname, polcmd, polqual FROM pg_policy WHERE polrelid = '<table_name>'::regclass;`
+3. If there's no policy with `polcmd = 'SELECT'` and `polqual = 'true'` (or similar permissive condition), add one
+4. Migration template: `CREATE POLICY "<table>_public_read" ON <table> FOR SELECT USING (true);`
+5. Apply via Supabase SQL Editor (HK does this manually) or push as a new migration file (auto-deploys via GitHub Actions)
+6. Reference incident: Candice's blocked-day bug, May 21 2026, commit `613de194`
+
+### "A therapist did an import and now their account has hundreds of fake records"
+1. **Do not panic.** This is recoverable via SQL. Reference incident: Jackie Bodkin, May 21 2026 (1,988 fake records cleaned up successfully).
+2. Identify the cutoff timestamp: when was the bad import? Look in `created_at` columns.
+3. Run preview queries to count what would be deleted:
+   ```sql
+   SELECT COUNT(*) FROM clients WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   SELECT COUNT(*) FROM services WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   SELECT COUNT(*) FROM memberships WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   SELECT COUNT(*) FROM member_subscriptions WHERE therapist_id = '<uuid>' AND started_at >= '<cutoff>';
+   SELECT COUNT(*) FROM bookings WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   ```
+4. Share counts with the therapist for confirmation before deleting.
+5. Run cleanup as a single transaction (BEGIN/COMMIT in one click in Supabase SQL Editor, since the editor session is stateless between clicks):
+   ```sql
+   BEGIN;
+   DELETE FROM member_subscriptions WHERE therapist_id = '<uuid>' AND started_at >= '<cutoff>';
+   DELETE FROM bookings WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   DELETE FROM sessions WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   DELETE FROM clients WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   DELETE FROM services WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   DELETE FROM memberships WHERE therapist_id = '<uuid>' AND created_at >= '<cutoff>';
+   COMMIT;
+   ```
+6. Verify all counts return to zero. If non-zero, the COMMIT didn't land (session timeout); re-run the whole block.
+7. The import flow has pre-flight checks as of May 21 2026, so this shouldn't recur, but the recovery procedure is documented in case it does.
+
+### "Therapist says they can't change a numeric setting on their phone"
+**Diagnosis:** the input is probably a raw `<input type="number">` with `step` and `parseInt fallback`. Mobile browsers fight this pattern (step constraints + empty-field revert to default).
+1. Find the input in the React code (`grep -rn "type=\"number\"" src/`)
+2. Replace with `InlineSaveNumberInput` from `src/components/InlineSaveNumberInput.jsx`
+3. Pass `min`, `max`, `suffix` ('min' for minutes, '$' for dollars, etc.)
+4. The component handles clamp-on-commit so the user can clear and retype without fighting auto-revert
+5. Reference incident: Jackie Bodkin buffer setting, May 21 2026, commit `93eddda6`
+
+### "GitHub Actions sends daily 'Run failed: Deploy Supabase Edge Functions' emails"
+**Diagnosis:** `supabase/setup-cli@v1` with `version: latest` is rate-limited by GitHub's release API on shared runners.
+1. Open `.github/workflows/deploy-edge-functions.yml`
+2. Change `version: latest` to a pinned version (`version: 2.100.1` or whatever is current stable)
+3. Push the change
+4. The next workflow run should succeed and the daily emails should stop
+5. Reference fix: commit `933144f7`, May 21 2026
+
 ### "I (HK) need to take a 2-week break"
 - **Email to all founding therapists:** "Joy / MyBodyMap Team is on a brief break. We will respond to all inquiries by [date]. The platform itself continues to run normally."
 - **Set up an out-of-office on `hello@mybodymap.app`**
@@ -552,17 +621,27 @@ The most important files to know:
 
 | Path | What it is |
 |------|------------|
-| `BLOCK_PLAN.md` | Active fires, deferred work, ideas. Updated frequently. |
-| `FEATURES_TAXONOMY.md` | Taxonomy rules + design principles. Read before any feature add. |
-| `ENVIRONMENT.md` | Canonical secrets list. Read before asking HK for any credential. |
-| `docs/FOUNDER_RUNBOOK.md` | This document. Operational insurance. |
-| `docs/email-voice-guide.md` | Joy persona + email broadcast rules. |
+| `BLOCK_PLAN.md` | Active fires, deferred work, ideas. Updated end of every session. Renders at `/founder` section 4. |
+| `FEATURES_TAXONOMY.md` | Taxonomy rules. Read before any feature add. Renders at `/founder` section 5. |
+| `ENVIRONMENT.md` | Canonical secrets list. Read before asking HK for any credential. NOT in /founder (secrets never go in checked-in docs). |
+| `docs/FOUNDER_RUNBOOK.md` | This document. Operational insurance. Renders at `/founder` section 11. |
+| `docs/DESIGN_PRINCIPLES.md` | Operational rules with incident logs (13 rules as of May 21 2026). Renders at `/founder` section 3.3. |
+| `docs/BILLING_STRATEGY.md` | Payment processor strategy + competitive matrix. Renders at `/founder` section 3. |
+| `docs/MARKETING_THERAPIST_PLAYBOOK.md` | Seven marketing strategies for therapists. Renders at `/founder` section 1. |
+| `docs/MARKETING_MYBODYMAP.md` | How we market ourselves. Renders at `/founder` section 2. |
+| `docs/NOTIFICATION_MAP.md` | Single source of truth for every notification we send. Renders at `/founder` section 3.2. |
+| `docs/OTHER_NOTES.md` | Catch-all. Renders at `/founder` section 10. |
 | `src/data/featuresData.js` | The seven ribbons + cards. The taxonomy in code. |
 | `src/pages/Home.jsx` | Marketing home page |
 | `src/pages/FeaturesV2.jsx` | Marketing features page |
 | `src/pages/Dashboard.js` | Therapist's logged-in dashboard. The biggest single file in the codebase. |
 | `src/pages/BookingPage.js` | Client-facing booking flow. |
+| `src/components/ScheduleDashboard.js` | Therapist's schedule view. Timeline, weekly, monthly. |
+| `src/components/ImportClients.js` | Both client and appointment imports. Maria-persona safety hardened May 21 2026. |
+| `src/components/InlineSaveNumberInput.jsx` | Standard numeric input. Use everywhere a therapist edits a number, never raw `type="number"`. |
+| `src/pages/FounderHub.jsx` | `/founder` page wiring. Renders all docs above as markdown sections. |
 | `supabase/functions/_shared/payment-provider.ts` | The payment abstraction. The most architecturally important file. |
+| `supabase/migrations/` | All RLS policies and schema changes. Auto-deploy via GitHub Actions on push. |
 | `research/` | Competitive analyses and market research. |
 
 ## Appendix B: Glossary of terms HK uses
