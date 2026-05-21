@@ -1179,6 +1179,12 @@ export function ImportBookings({ therapist, onComplete }) {
   // where phase is 'preparing', 'looking-up-clients',
   // 'creating-new-clients', or 'creating-bookings'.
   const [progress, setProgress] = useState(null);
+  // Pre-flight warning state (HK May 21 2026 parity with client
+  // import). If the appointment import would auto-create 30+ new
+  // services OR the service column values look like client names,
+  // we block and require explicit confirmation.
+  const [importWarning, setImportWarning] = useState(null);
+  const [importConfirmed, setImportConfirmed] = useState(false);
   const fileRef = useRef();
 
   function detectBookingMapping(headers) {
@@ -1190,15 +1196,31 @@ export function ImportBookings({ therapist, onComplete }) {
       }
       return -1;
     };
+    // Strict matcher for risky columns (HK May 21 2026, parity with
+    // client import). Whole-word boundary so 'first_name' cannot
+    // accidentally match 'service' or 'price'.
+    const findStrict = (...terms) => {
+      for (const t of terms) {
+        const i = h.findIndex(x => {
+          if (x === t) return true;
+          const re = new RegExp(`(^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i');
+          return re.test(x);
+        });
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
     return {
       clientName:  find('client name', 'name', 'client'),
       clientEmail: find('email'),
       clientPhone: find('phone', 'mobile'),
-      service:     find('service', 'treatment', 'appointment type'),
+      // Risky: service auto-creates a service if no match. Use strict.
+      service:     findStrict('service', 'treatment', 'appointment type', 'session type'),
       date:        find('date'),
       startTime:   find('start time', 'time', 'start'),
       duration:    find('duration', 'length', 'minutes'),
-      price:       find('price', 'amount', 'cost'),
+      // Risky: price feeds the auto-created service's default price.
+      price:       findStrict('price', 'amount', 'cost', 'session price'),
       notes:       find('notes', 'note', 'comments'),
     };
   }
@@ -1218,7 +1240,45 @@ export function ImportBookings({ therapist, onComplete }) {
     reader.readAsText(file);
   }
 
+  function preflightCheck() {
+    // Same pattern as the client-import preflight (HK May 21 2026
+    // Jackie incident). If service column would create 30+ new
+    // services or values look like client names, block the import.
+    if (!(mapping.service >= 0)) return null;
+    const distinct = new Set();
+    for (const row of rows) {
+      const val = (row[mapping.service] || '').trim();
+      if (val) distinct.add(val.toLowerCase());
+    }
+    const distinctCount = distinct.size;
+    const sample = Array.from(distinct).slice(0, 8);
+    const SERVICE_KEYWORDS = /\b(massage|minute|min|session|deep|tissue|swedish|facial|stone|prenatal|couples|sport|relaxation|therapy|treatment|reiki|aromatherapy|reflexology|trigger|cup|hot|cold|chair|sauna|infrared)\b/i;
+    const looksLikeNames = sample.length > 0 && sample.every(v => {
+      const words = v.split(/\s+/).filter(Boolean);
+      const noKeyword = !SERVICE_KEYWORDS.test(v);
+      const shortish = words.length <= 2 && v.length < 25;
+      return noKeyword && shortish;
+    });
+    const tooManyDistinct = distinctCount >= 30;
+    if (looksLikeNames || tooManyDistinct) {
+      return { distinctCount, sample, looksLikeNames, tooManyDistinct };
+    }
+    return null;
+  }
+
   async function runImport() {
+    // Pre-flight (HK May 21 2026 parity with client import). Block
+    // dangerous mappings before any DB writes happen. The 'I checked,
+    // import anyway' button sets importConfirmed=true and re-runs.
+    if (!importConfirmed) {
+      const warning = preflightCheck();
+      if (warning) {
+        setImportWarning(warning);
+        return;
+      }
+    }
+    setImportWarning(null);
+
     setImporting(true);
     setError('');
     setProgress({ phase: 'preparing', current: 0, total: rows.length });
@@ -1315,12 +1375,24 @@ export function ImportBookings({ therapist, onComplete }) {
       return;
     }
 
+    // Phone normalization helper (HK May 21 2026). Strip everything
+    // except digits. So '(573) 480-1030' and '573-480-1030' and
+    // '5734801030' and '+1 573 480 1030' all reduce to the same
+    // canonical '5734801030'. Without this, MassageBook exports
+    // (which usually format phones one way) would not match clients
+    // already imported by a CSV that formatted phones a different
+    // way, creating duplicate clients.
+    const normalizePhone = (p) => (p || '').replace(/\D/g, '');
+
     const emailToId = new Map();
     const phoneToId = new Map();
     const nameToId = new Map();
     for (const c of (existingClients || [])) {
       if (c.email) emailToId.set(c.email.toLowerCase().trim(), c.id);
-      if (c.phone) phoneToId.set(c.phone.trim(), c.id);
+      if (c.phone) {
+        const norm = normalizePhone(c.phone);
+        if (norm) phoneToId.set(norm, c.id);
+      }
       if (c.name)  nameToId.set(c.name.trim().toLowerCase(), c.id);
     }
 
@@ -1354,7 +1426,7 @@ export function ImportBookings({ therapist, onComplete }) {
     }
     for (const b of (existingBookings || [])) {
       const emailLower = b.client_email ? b.client_email.toLowerCase().trim() : null;
-      const phone = b.client_phone ? b.client_phone.trim() : null;
+      const phone = b.client_phone ? normalizePhone(b.client_phone) || null : null;
       const nameLower = b.client_name ? b.client_name.toLowerCase().trim() : null;
       existingBookingKeys.add(bookingKey(emailLower, phone, nameLower, b.booking_date, b.start_time));
     }
@@ -1366,7 +1438,7 @@ export function ImportBookings({ therapist, onComplete }) {
     const seenInThisRun = new Set();
     for (const p of prepared) {
       const emailLower = p.clientEmail ? p.clientEmail.toLowerCase().trim() : null;
-      const phone = p.clientPhone ? p.clientPhone.trim() : null;
+      const phone = p.clientPhone ? normalizePhone(p.clientPhone) || null : null;
       const nameLower = p.clientName ? p.clientName.toLowerCase().trim() : null;
       const key = bookingKey(emailLower, phone, nameLower, p.bookingDate, p.startTime);
       if (existingBookingKeys.has(key) || seenInThisRun.has(key)) {
@@ -1411,7 +1483,7 @@ export function ImportBookings({ therapist, onComplete }) {
       const sig = clientSignature(p.clientName, p.clientEmail, p.clientPhone);
       let id = null;
       if (p.clientEmail) id = emailToId.get(p.clientEmail.toLowerCase().trim());
-      if (!id && p.clientPhone) id = phoneToId.get(p.clientPhone.trim());
+      if (!id && p.clientPhone) id = phoneToId.get(normalizePhone(p.clientPhone));
       if (!id && !p.clientEmail && !p.clientPhone) {
         // Name-only match (legacy spa data without contact info)
         id = nameToId.get(p.clientName.trim().toLowerCase());
@@ -1706,6 +1778,98 @@ export function ImportBookings({ therapist, onComplete }) {
             </table>
             {rows.length > 5 && <div style={{ fontSize:11, color:C.gray, marginTop:4 }}>...and {rows.length - 5} more</div>}
           </div>
+
+          {/* Pre-flight warning (HK May 21 2026 parity with client
+              import). Same protection pattern: block dangerous
+              mappings before any DB writes. */}
+          {importWarning && (
+            <div style={{
+              marginBottom: 16,
+              background: '#FEF2F2',
+              border: '2px solid #FCA5A5',
+              borderRadius: 12,
+              padding: 16,
+            }}>
+              <div style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: '#991B1B',
+                marginBottom: 8,
+              }}>
+                Wait. Something looks off with the Service column.
+              </div>
+              <div style={{
+                fontSize: 13,
+                color: '#7F1D1D',
+                lineHeight: 1.55,
+                marginBottom: 10,
+              }}>
+                {importWarning.looksLikeNames
+                  ? `Your Service column has values that look like client names, not services. If you continue, MyBodyMap will create ${importWarning.distinctCount} new services in your account, one per unique value in that column.`
+                  : `This import would create ${importWarning.distinctCount} new services in your account. That is a lot for a solo practice and usually means the Service column is mapped to the wrong CSV column.`}
+              </div>
+              <div style={{
+                fontSize: 12,
+                color: '#7F1D1D',
+                marginBottom: 12,
+                fontStyle: 'italic',
+              }}>
+                Sample values from your Service column: {importWarning.sample.map(s => `"${s}"`).join(', ')}
+              </div>
+              <div style={{
+                fontSize: 12.5,
+                color: '#7F1D1D',
+                lineHeight: 1.55,
+                marginBottom: 12,
+                background: '#FFFBEB',
+                border: '1px solid #FDE68A',
+                borderRadius: 8,
+                padding: '10px 12px',
+              }}>
+                <strong>What to do:</strong> scroll up, find the <strong>Service</strong> dropdown, and set it to <strong>skip</strong>. Or pick a CSV column that actually has service names.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setImportWarning(null);
+                    setMapping(m => ({ ...m, service: -1, price: -1 }));
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #2A5741, #1F4030)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 18px',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Set Service to skip and continue
+                </button>
+                <button
+                  onClick={() => {
+                    setImportWarning(null);
+                    setImportConfirmed(true);
+                    setTimeout(() => runImport(), 0);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: '#991B1B',
+                    border: '1.5px solid #FCA5A5',
+                    padding: '10px 18px',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  I checked, import anyway
+                </button>
+              </div>
+            </div>
+          )}
+
           <button onClick={runImport} disabled={importing}
             style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'12px', fontSize:14, fontWeight:700, cursor:importing?'wait':'pointer' }}>
             {importing ? `Importing ${rows.length} appointments…` : `Import ${rows.length} Appointments →`}
