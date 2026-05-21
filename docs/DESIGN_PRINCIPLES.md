@@ -239,6 +239,112 @@ once and move on.
 
 ---
 
+## 11. Imagine the 375px iPhone render before committing any UI change.
+
+Multiple commits on May 21 2026 shipped UI that rendered fine on
+desktop but broke at 375px iPhone width. Jackie sent a screenshot
+of the block-off-time panel calling it "third world": "all of on
+[date] to" wrapped across three lines with the "to" orphaned at
+the end of row one and the second date dropping to row two.
+
+The pattern that breaks: prose-style sentence composition with
+inline inputs (`<span>on</span><input/><span>to</span><input/>`)
+inside a flex container. Reads great on a wide screen. Falls
+apart at narrow widths because each chunk wraps unpredictably.
+
+**The rule:** before clicking commit on any UI change, ask "what
+does this look like at 375px wide?" If you can't picture it
+clearly, open dev tools or imagine harder. Don't ship and let
+the customer be the QA.
+
+**The pattern that works:** stacked vertical sections with
+labeled inputs. Each input gets its own row with a small uppercase
+label above it. Use flex containers with `flex: 1 1 140px` so
+inputs wrap cleanly to their own row when the screen narrows.
+
+**Incident log:**
+- May 21 2026: Block panel redesign, full-day block render, multi-
+day block input. All three commits shipped with desktop-only
+testing. Jackie caught them. Redesigned to vertical-stacked
+labeled inputs same day.
+
+---
+
+## 12. No silent auto-create on user input. Pre-flight or refuse.
+
+May 21 2026, Jackie's first appointment import: one mis-mapped
+column (Service dropdown pointed at first_name) caused us to
+silently create 397 fake services, 397 fake memberships, and 608
+fake subscriptions. All named after her clients. She tapped
+Import and the platform happily wrote 1,988 fake rows.
+
+The original code's logic: "if the service name doesn't exist,
+create it." Reasonable for a happy path. Catastrophic for a
+mis-mapped one. No guardrails between user input and silent
+auto-creation of records.
+
+**The rule:** any code path that auto-creates database rows from
+user input must pre-flight check before writing. Two questions:
+1. Does the volume look suspicious? (30+ new records from one
+   import for a solo therapist = mis-mapping signal)
+2. Do the values look like the right kind of thing? (Service
+   names should contain massage keywords, not just be 1-2-word
+   client-name-shaped strings)
+
+If either trips, surface a blocking banner with the actual data
+the user is about to create and a one-tap "skip this column"
+override. Don't silently proceed and clean up later.
+
+**Apply to:** every auto-create path. Services, memberships,
+clients, locations, packages, anything user input drives. Both
+import flows have this; future flows must adopt the same pattern
+or skip auto-create entirely.
+
+**Incident log:**
+- May 21 2026: Jackie incident. 1,988 fake records created from
+one mis-mapped CSV column. Recovery via SQL same day. Pre-flight
+checks shipped for both client and appointment imports.
+
+---
+
+## 13. Therapist-facing numeric inputs use InlineSaveNumberInput, never raw `type="number"`.
+
+May 21 2026, Jackie reported she couldn't change the buffer
+minutes from 15 to 30. The input was `<input type="number"
+min="5" max="60" step="5" value={15} onChange={parseInt || 15}>`.
+On touch devices this fights the user:
+
+1. `step="5"` constrains keystrokes on some mobile browsers
+2. The onChange `parseInt(e.target.value) || 15` reverts to 15
+   whenever the field is empty mid-typing
+3. Clearing the field to retype = field briefly empty = parseInt
+   returns NaN = falls back to 15 = her keystrokes vanish
+
+Her workaround: select-all the existing 15 with triple-tap, then
+type 30 over it. She figured this out herself and described it
+as "always me every time I get a new app." It wasn't her. The
+input was hostile.
+
+**The rule:** any numeric setting a therapist might edit uses
+`InlineSaveNumberInput` from `src/components/InlineSaveNumberInput.jsx`.
+That component:
+- Uses plain `type="text"` with `inputMode="numeric"`
+- Sanitizes and clamps on commit (blur or Enter), not on every keystroke
+- Flashes a green checkmark on save
+- Has visible up/down +/- buttons for touch users
+- Handles min/max as soft clamps, not as keystroke filters
+
+**Apply to:** buffer minutes, lead time, max advance days,
+cancellation window, deposit amount, pricing, any numeric setting
+on Settings or per-record edits. Never use `<input type="number">`
+in a flow a therapist will touch.
+
+**Incident log:**
+- May 21 2026: Buffer setting on Dashboard. Jackie couldn't change
+the value normally. Swapped to InlineSaveNumberInput same day.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.

@@ -1,6 +1,6 @@
 # MyBodyMap Founder Runbook
 
-**Last updated:** May 7, 2026
+**Last updated:** May 21, 2026
 **Owner:** HK (founder + sole operator)
 **Purpose:** Operational insurance. If Claude is unavailable tomorrow and HK needs to onboard a human team or vendor to keep MyBodyMap running, this document is the handoff. It contains everything a competent senior engineer + product manager + GTM lead would need to take over with minimal additional context.
 
@@ -34,9 +34,11 @@ This is a LIVING document. Updated at the end of any session that introduces new
 ### Mission
 Help solo licensed massage therapists retain and grow their client base by automating the practice-management work they currently do manually or through expensive, clunky competitors (Vagaro, MassageBook, ClinicSense). The northstar: make it impossible for a client not to return.
 
-### Current state (as of May 2026)
-- **Stage:** Pre-revenue beta. Founding-therapist program offering Silver tier free for life.
-- **Users:** Single-digit therapists onboarded for testing. Goal: 100 founding therapists on free Silver before charging.
+### Current state (as of May 21, 2026)
+- **Stage:** Pre-revenue beta with first real customers actively using the platform.
+- **Users:** Single-digit founding therapists onboarded for testing. Two active real customers as of May 21:
+  - **Candice Peek (Grounded Grace)**: signed up May 15. Three bugs reported and fixed May 19-21 (buffer two-sided, private services hidden, blocked-day RLS root cause). Real testimonial customer.
+  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. Catastrophic first import (1,988 fake records from one mis-mapped CSV column). Cleaned via SQL same day. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Surfaced 6+ real bugs and UX gaps in one day, every one of which became a shipped fix.
 - **Business form:** BodyMap LLC (Texas). HK is sole owner.
 - **Engineering:** Solo build via Claude. No human engineers retained.
 - **Funding:** Self-funded by HK from IBM income.
@@ -46,11 +48,16 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - Square payment integration achieves parity with Stripe (subject to Square activation by individual therapists)
 - Automated client retention: post-session AI brief, lapsed-client outreach, cancellation policy with auto-charge
 - Marketing surface: home + features pages with seven-ribbon taxonomy
+- **CSV import** (clients + appointments) with Maria-persona safety: pre-flight checks, strict column matching, phone normalization, downloadable skipped/failed rows. Survived a real catastrophic-mapping case (Jackie May 21) with cleanup-via-SQL.
+- **Schedule** loads 365 days back + 365 days forward. Multi-day blocks for vacations. Full-day blocks visible on timeline.
+- **Notification system** Phase 15 wired for bookings, payments, refunds (May 18). Awaiting first real customer-driven activity to verify end-to-end.
 
 ### What's not working / unproven
 - No real revenue yet. Need 100 founding therapists to validate retention metrics before pricing rollout.
 - Square activation friction: each therapist must complete identity + bank verification at squareup.com/activate before charges process
 - Therapist acquisition channel: currently word-of-mouth only via founder DMs (Katelynn et al.)
+- **Twilio A2P 10DLC Brand registration** stuck in review with TCR. Blocks all US SMS until cleared.
+- **Service-name fragmentation during appointment import.** When a CSV has service names that don't exactly match a therapist's existing services, we silently create duplicates at $0 price. Jackie hit this May 21. Pre-flight + price-entry step shipped same day, but fuzzy matching ("Restorative Relaxation Massage" should propose merge into "Relaxation Massage") is still pending.
 
 ---
 
@@ -385,6 +392,17 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 ## 14. Decision log
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
+
+### May 21, 2026
+- **Schedule future window raised from 60 to 365 days.** The 60-day cap (set April 1 in commit f9bf30495 as a safe arbitrary number) hid 80% of Jackie's real bookings. Real therapists book weekly standing clients a year out. Past window stays at 365. Explicit `.limit(2000)` added for query safety.
+- **CSV imports now require Maria-friendly safety on every silent auto-create path.** Triggered by Jackie's catastrophic import (1,988 fake records from one mis-mapped column). Three protections now standard on both client and appointment imports: strict whole-word column matching, pre-flight checks for too-many-distinct or names-in-service-column, phone normalization to prevent duplicate clients. Plus a price-entry step before service auto-create runs. Any future silent-auto-create path must adopt these.
+- **Buffer minutes and other therapist-facing numeric inputs must use InlineSaveNumberInput, never raw `type="number"`.** The `type="number"` + `step` + `parseInt fallback to default` pattern fights the user's typing on touch devices. Standing rule reaffirmed and applied to the Buffer setting in Dashboard.
+- **Mobile-first or it doesn't ship.** Multiple UI commits today rendered fine on desktop but broke at 375px. Jackie sent a screenshot calling the block panel "third world." From now on, imagine the 375px iPhone render before committing any UI change. Added to design principles.
+- **Blocked days surface visibly on the Schedule timeline, not silently.** Full-day blocks were filtered out of the timeline render with a comment saying "the whole canvas would be amber" as if that was the problem to avoid. The actual problem: a blocked day looked identical to an empty day. Now full-day blocks render as a canvas-wide amber band with the reason centered.
+- **Reason for blocking time uses tappable pills, not a dropdown or open text alone.** Vacation, Personal day, Sick, Conference, Family, Other as default pills. Free-text fallback still available. Per design principle "Drop downs reek of Excel formulas and 1990s websites."
+- **Schedule and import flows must show WHICH rows were skipped or failed, not just counts.** Jackie's question "Which ones are skipped and how can we see them?" exposed a real audit gap. Both imports now offer "Download N skipped rows" and "Download N failed rows" CSVs with the original columns plus `bm_reason` + `bm_details` appended.
+- **Supabase CLI version pinned in deploy workflow.** `supabase/setup-cli@v1` with `version: latest` was rate-limited by GitHub's release API on shared runners, generating daily "Run failed" emails. Pinned to 2.100.1.
+- **Critical RLS gap on blocked_days fixed.** The booking page (anon role) was silently returning empty blocked_days on every query because the RLS policy only allowed `therapist_id = auth.uid()`. Public-read policy now in place. This was the root cause of Candice's "blocked days not respected" reports stretching back to mid-May.
 
 ### May 7, 2026
 - **Decided to skip ACH entirely.** Phase 1 (Stripe Payment Element wallet methods) and Phase 3 (FedNow when ready) only. Reasoning: ACH liability is real (60-day return window, dispute exposure), customer benefit is marginal at $100 ticket, build cost is 3-5 days, and skipping it focuses scarce engineering on Phase 1 (which is 1 day, near-zero liability).
