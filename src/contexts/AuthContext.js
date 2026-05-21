@@ -143,7 +143,20 @@ export const AuthProvider = ({ children }) => {
 
   const signInWithGoogle = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + '/dashboard' } });
+      // Force Google's account chooser every time (HK May 21 2026,
+      // Jackie incident). Without prompt=select_account, Google
+      // silently uses whichever account the browser is currently
+      // logged into, which means therapists with multiple Google
+      // accounts (or anyone sharing a device with family) can't
+      // switch accounts without incognito mode. Adding this one
+      // parameter shows the standard Google picker every time.
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard',
+          queryParams: { prompt: 'select_account' },
+        },
+      });
       if (error) throw error;
       return { success: true };
     } catch (error) {
