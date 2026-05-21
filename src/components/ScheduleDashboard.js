@@ -2129,7 +2129,15 @@ export default function ScheduleDashboard({ therapist }) {
 
       const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       const past = new Date(today); past.setDate(today.getDate() - 365);
-      const future = new Date(today); future.setDate(today.getDate() + 60);
+      // Future window raised from 60 to 365 days (HK May 21 2026 from
+      // Jackie incident). 60 was set on April 1 2026 in the schedule
+      // repair commit as a safe arbitrary cap; never a deliberate
+      // design choice. Real therapists like Jackie book weekly
+      // standing clients up to a year out, so 60 days hid roughly 80%
+      // of her real schedule. 365 covers a full year forward + 365
+      // back of history. Explicit .limit(2000) keeps the query safe
+      // for busy therapists with 1000+ bookings/year.
+      const future = new Date(today); future.setDate(today.getDate() + 365);
 
       const { data: bookings, error } = await supabase
         .from('bookings')
@@ -2139,7 +2147,8 @@ export default function ScheduleDashboard({ therapist }) {
         .gte('booking_date', toDateStr(past))
         .lte('booking_date', toDateStr(future))
         .order('booking_date')
-        .order('start_time');
+        .order('start_time')
+        .limit(2000);
 
       if (error || !bookings?.length) { setRealBookings([]); setPendingApprovalBookings([]); setLoading(false); return; }
 
