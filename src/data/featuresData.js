@@ -94,9 +94,9 @@ export const RIBBONS = [
         name: "Blocked days",
         body: [
           "One tap to mark a day off. Holidays, retreats, sick days, dentist appointments. Booking page automatically shows the next available slot.",
-          "No need to manually decline requests or apologize for being human.",
+          "Going on vacation? Block a range of dates in one shot (up to 90 days). Reason picks from quick pills (Vacation, Personal day, Sick, Conference) or type your own. Blocked days appear clearly on your timeline so you never miss them.",
         ],
-        meta: "Recurring blocks supported",
+        meta: "Single day or vacation range",
       },
       {
         id: "1.8",
@@ -564,7 +564,8 @@ export const RIBBONS = [
         id: "7.5",
         name: "Switch in minutes",
         body: [
-          "Coming from MindBody, Vagaro, Acuity, Square Appointments, or just a Google Sheet? CSV import for client lists, services, and history. Most switches take under 15 minutes.",
+          "Coming from MassageBook, MindBody, Vagaro, Acuity, Square Appointments, or just a Google Sheet? CSV import for client lists and appointment history. Most switches take under 15 minutes.",
+          "Designed for therapists who do not enjoy spreadsheets. The import checks every column for sanity before writing anything, refuses mappings that would create duplicate or fake records, and gives you a clear downloadable list of any rows it skipped and why. You get a clean account or a clear explanation, never a half-imported pile.",
           "We do the import for you on request. Reply to any email and we will help.",
         ],
         meta: "CSV import · White-glove option",

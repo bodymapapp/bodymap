@@ -1,6 +1,6 @@
 # Features Taxonomy
 
-**Last updated:** May 9, 2026 (renamed from CONTRIBUTING.md)
+**Last updated:** May 21, 2026
 
 This file is the canonical rule set for how features get added to MyBodyMap. It defines the seven external-marketing ribbons, the design principles, and the rules for placing new feature cards. Future Claude sessions: read this before building any new user-facing feature. HK reads this when something feels misplaced and wants to push back.
 
@@ -117,13 +117,14 @@ A "core differentiation" mark means this is one of the things a sales conversati
 | 1.1 | Custom booking page | Table stakes | Every modern tool offers a personalized booking URL. Ours is at `mybodymap.app/{custom_url}`. |
 | 1.2 | Cycle-aligned scheduling | **Core differentiation** | Tag services to menstrual cycle phases. Booking page filters automatically. No competitor offers this. |
 | 1.3 | Services catalog | Table stakes | List of services with prices, durations, descriptions. Every tool has this. |
-| 1.4 | Availability and hours | Table stakes | Set your working hours, time zones, breaks. Every tool has this. |
+| 1.4 | Availability and hours | Table stakes | Set your working hours, time zones, breaks. Includes per-day toggles and configurable **buffer time between sessions** (5 to 120 minutes, applied both before and after each booking so back-to-back booking is prevented from either side). Buffer setting uses InlineSaveNumberInput per Design Principle #13. Every modern tool offers hours; configurable two-sided buffer is uncommon. |
 | 1.5 | Deposits at booking | Table stakes | Standard Stripe / Square hosted checkout deposit flow. We do it well but it is not unique. |
 | 1.6 | Cal.com sync | Table stakes | Two-way sync with Cal.com (and through it, Google Calendar). Modern tools all do this. |
-| 1.7 | Blocked days | Table stakes | Mark specific days off, block recurring patterns. Every tool has this. |
+| 1.7 | Blocked days | Table stakes | Mark specific days off. Supports both **single-day blocks** (one date, optional time-of-day range for partial-day blocks like lunch) and **multi-day range blocks** for vacations (up to 90 days at a time). Reason can be chosen from pills (Vacation, Personal day, Sick, Conference, Family, Other) or typed free-text. Full-day blocks render as an amber-striped band across the timeline with the reason centered, so therapists can't miss them. Day strip cells show "🌿 Blocked" under any blocked dates. Conflict-check pre-flight surfaces any existing bookings on dates in the block range before writing. Multi-day support shipped May 21 2026 (Jackie ask); single-day was earlier. **Recurring blocks not yet supported.** |
 | 1.8 | Website embed | Table stakes | iFrame snippet to embed booking on your own site. Every tool has this. |
 | 1.9 | Smart Scheduling | **Core differentiation** | Two-level toggle (Normal vs Efficient, then Soft vs Hard). When on, the booking page either nudges (soft) or restricts (hard) clients toward slots that pack tightly against existing appointments, eliminating awkward gaps mid-day. No competitor offers this primitive; Acuity / Vagaro / Fresha all give all clients the full grid regardless of how it fragments the therapist's day. Marketed as "Smart Scheduling" externally; internal Settings card stays "Efficient scheduling" since that describes the mechanic. Added May 10 2026 per Lindsey #7. |
 | 1.10 | Custom days per service | **Core differentiation** | Each service can have its own subset of weekly days. Hot Stone Tue/Thu only, Prenatal Saturday only, Swedish every weekday. Configured by tapping day pills inline on each service row in Settings (no separate editor, no time fields). The public booking page filters the calendar to the selected service's days and shows a clear note: "Hot Stone is offered on Tuesday and Thursday only." Hours always inherit from the master schedule (custom hours per service deferred). No competitor offers this; Acuity / Vagaro / Fresha all force every service to share one weekly schedule. Renamed from "Service days" to "Custom days per service" May 10 2026 per HK feedback that the short name was too generic. Added May 10 2026 per Lindsey #4 follow-up. |
+| 1.11 | Long-horizon schedule | Table stakes | The therapist's Schedule view loads 365 days back + 365 days forward of bookings (capped at 2000 rows per query for performance). Therapists with weekly standing clients booked a year out see their full calendar without artificial truncation. Raised from a 60-day forward cap on May 21 2026 (Jackie incident: the prior cap hid 80% of her real bookings). |
 
 ### Ribbon 2: Know Your Client
 
@@ -136,6 +137,7 @@ A "core differentiation" mark means this is one of the things a sales conversati
 | 2.5 | Smart pre-fill on return | **Core differentiation** | Returning clients see their last intake pre-filled, edit only what changed. Saves them 5 minutes every visit. Competitors make every intake a fresh form. |
 | 2.6 | Client notes and medical flags | Table stakes | Therapist-side notes on each client. Every tool has this. |
 | 2.7 | QR codes for everything | Table stakes | QR code generation for booking page, gift cards, etc. Modern table stakes. |
+| 2.8 | Migrate from another platform | **Core differentiation** | CSV import for both client lists and appointment history. Supports MassageBook, Vagaro, GlossGenius, Mindbody, Square Appointments, and generic CSVs. Maria-persona safety on every silent auto-create path: pre-flight checks refuse imports that would create 30+ services or contain name-shaped values in service columns; strict whole-word column matching prevents `first_name` from accidentally landing in a Service slot; phone normalization (strip non-digits) prevents duplicate clients from format mismatches like `(573) 480-1030` vs `573-480-1030`; price-entry step lets the therapist set prices for newly-detected services BEFORE auto-creation rather than after; skipped/failed rows downloadable as CSV with reason + details columns for full audit. Hardening shipped May 21 2026 after the Jackie incident (one mis-mapped column briefly created 1,988 fake records, fully recoverable via SQL, then made impossible-by-design). Most competitors offer barebones CSV import without these safety dimensions; some force white-glove migration as a paid service. |
 
 ### Ribbon 3: Client Intelligence
 
@@ -189,21 +191,23 @@ A "core differentiation" mark means this is one of the things a sales conversati
 | 7.2 | Push notifications | Table stakes | Browser push for new bookings, cancellations. Modern table stakes. |
 | 7.3 | Founding Therapist emails | **Core differentiation** | Joy persona, personalized founder communication channel. Competitors at this scale do not have a founder voice. |
 | 7.4 | Refer and reward | Table stakes | Referral link generation. Standard. |
+| 7.5 | Switch in minutes | **Core differentiation** | Pairs with 2.8 (Migrate from another platform). 7.5 is the marketing pitch ("switch in 15 minutes, white-glove option available"); 2.8 is the underlying CSV import feature with all its safety dimensions. Live on the Features page. The combination of (a) fast self-serve import + (b) white-glove fallback + (c) refuse-the-mess safety hardening is a real moat against competitors who either don't import at all, force paid migration, or have unsafe imports. |
 
 ---
 
 ## Differentiation summary
 
-Of 41 total cards across the seven ribbons:
+Of 44 total cards across the seven ribbons:
 
-- **15 cards are core differentiation** (37%)
-- **26 cards are table stakes** (63%)
+- **17 cards are core differentiation** (39%)
+- **27 cards are table stakes** (61%)
 
 That ratio is healthy. Too few core differentiators (under 25%) means we are a feature-parity tool and clients have no reason to switch. Too many (over 50%) means we are over-claiming and the table-stakes work has been neglected.
 
-The 15 core differentiators cluster heavily in two ribbons:
+The 17 core differentiators cluster heavily in two ribbons:
 - **Ribbon 3 (Client Intelligence): 4 of 5 cards differentiated** · this is the strongest moat
 - **Ribbon 6 (Money & Protection): 3 of 7 cards differentiated** · payment parity and explicit cancellation enforcement
+- **Ribbon 2 (Know Your Client) + Ribbon 7 (On Your Phone)** now each carry a migration-related differentiator since the May 21 2026 import-safety work (2.8 + 7.5).
 
 Ribbons 1 (Find & Book) and 4 (Day-of-Session) are mostly table stakes. That is fine. We do not have to be best-in-class at every category; we have to be best-in-class at the ones that matter most for our wedge.
 
