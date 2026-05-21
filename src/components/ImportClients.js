@@ -134,7 +134,71 @@ export default function ImportClients({ therapist, onComplete }) {
     reader.readAsText(file);
   }
 
+  // Pre-flight sanity check state. When the import would create
+  // a suspicious number of services (or when the service column
+  // appears to hold client names), we pause and require explicit
+  // confirmation. HK May 21 2026 from Jackie incident: she ran an
+  // import where the Service dropdown was set to first_name, which
+  // auto-created 307 services named after her clients.
+  const [importWarning, setImportWarning] = useState(null);
+  const [importConfirmed, setImportConfirmed] = useState(false);
+
+  function preflightCheck() {
+    // Only relevant if service column is mapped
+    if (!(mapping.service >= 0)) return null;
+
+    // Distinct values in the service column for this import
+    const distinctServices = new Set();
+    for (const row of rows) {
+      const val = (row[mapping.service] || '').trim();
+      if (val) distinctServices.add(val.toLowerCase());
+    }
+    const distinctCount = distinctServices.size;
+
+    // Sample of values to inspect
+    const sample = Array.from(distinctServices).slice(0, 8);
+
+    // Heuristic: does the service column look like client names?
+    // Names are typically single-word, short, capitalized, no
+    // service keywords. Real services have words like "massage",
+    // "min", "minute", "session", "deep", "tissue", "swedish",
+    // "facial", "stone", "prenatal", "couples".
+    const SERVICE_KEYWORDS = /\b(massage|minute|min|session|deep|tissue|swedish|facial|stone|prenatal|couples|sport|relaxation|therapy|treatment|reiki|aromatherapy|reflexology|trigger|cup|hot|cold|chair|sauna|infrared)\b/i;
+    const looksLikeNames = sample.length > 0 && sample.every(v => {
+      const words = v.split(/\s+/).filter(Boolean);
+      const noKeyword = !SERVICE_KEYWORDS.test(v);
+      const shortish = words.length <= 2 && v.length < 25;
+      return noKeyword && shortish;
+    });
+
+    // Threshold: a single solo therapist almost never has more than
+    // 20 distinct services. 30+ distinct from one import is a strong
+    // signal something is mis-mapped.
+    const tooManyDistinct = distinctCount >= 30;
+
+    if (looksLikeNames || tooManyDistinct) {
+      return {
+        distinctCount,
+        sample,
+        looksLikeNames,
+        tooManyDistinct,
+      };
+    }
+    return null;
+  }
+
   async function runImport() {
+    // Pre-flight: stop the import if the mapping looks dangerous,
+    // unless the user has explicitly clicked 'Import anyway'.
+    if (!importConfirmed) {
+      const warning = preflightCheck();
+      if (warning) {
+        setImportWarning(warning);
+        return;
+      }
+    }
+    setImportWarning(null);
+
     setImporting(true);
     let created = 0, skipped = 0, failed = 0;
     // Track membership creation separately. A client row can both
@@ -724,6 +788,98 @@ export default function ImportClients({ therapist, onComplete }) {
               </table>
               {rows.length > 5 && <div style={{ fontSize:11, color:C.gray, marginTop:6 }}>...and {rows.length - 5} more clients</div>}
             </div>
+
+            {/* Pre-flight warning (HK May 21 2026 Jackie incident). If
+                the mapping looks dangerous (service column contains
+                client names, or would create 30+ distinct services),
+                we block the import and force a deliberate confirm. */}
+            {importWarning && (
+              <div style={{
+                marginBottom: 16,
+                background: '#FEF2F2',
+                border: '2px solid #FCA5A5',
+                borderRadius: 12,
+                padding: 16,
+              }}>
+                <div style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#991B1B',
+                  marginBottom: 8,
+                }}>
+                  Wait. Something looks off with the Service column.
+                </div>
+                <div style={{
+                  fontSize: 13,
+                  color: '#7F1D1D',
+                  lineHeight: 1.55,
+                  marginBottom: 10,
+                }}>
+                  {importWarning.looksLikeNames
+                    ? `Your Service column has values that look like client names, not services. If you continue, MyBodyMap will create ${importWarning.distinctCount} new services in your account, one per unique value in that column.`
+                    : `This import would create ${importWarning.distinctCount} new services in your account. That is a lot for a solo practice and usually means the Service column is mapped to the wrong CSV column.`}
+                </div>
+                <div style={{
+                  fontSize: 12,
+                  color: '#7F1D1D',
+                  marginBottom: 12,
+                  fontStyle: 'italic',
+                }}>
+                  Sample values from your Service column: {importWarning.sample.map(s => `"${s}"`).join(', ')}
+                </div>
+                <div style={{
+                  fontSize: 12.5,
+                  color: '#7F1D1D',
+                  lineHeight: 1.55,
+                  marginBottom: 12,
+                  background: '#FFFBEB',
+                  border: '1px solid #FDE68A',
+                  borderRadius: 8,
+                  padding: '10px 12px',
+                }}>
+                  <strong>What to do:</strong> scroll up, find the <strong>Service</strong> dropdown, and set it to <strong>skip</strong>. Or pick the CSV column that actually contains service names (like "Massage Type" or "Service").
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      setImportWarning(null);
+                      setMapping(m => ({ ...m, service: -1, price: -1 }));
+                    }}
+                    style={{
+                      background: 'linear-gradient(135deg, #2A5741, #1F4030)',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '10px 18px',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Set Service to skip and continue
+                  </button>
+                  <button
+                    onClick={() => {
+                      setImportWarning(null);
+                      setImportConfirmed(true);
+                      setTimeout(() => runImport(), 0);
+                    }}
+                    style={{
+                      background: 'transparent',
+                      color: '#991B1B',
+                      border: '1.5px solid #FCA5A5',
+                      padding: '10px 18px',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    I checked, import anyway
+                  </button>
+                </div>
+              </div>
+            )}
 
             <button onClick={runImport} disabled={importing || (mapping.firstName < 0 && mapping.fullName < 0)}
               style={{ width:'100%', background:importing?C.sage:C.forest, color:'#fff', border:'none', borderRadius:10, padding:'13px', fontSize:15, fontWeight:700, cursor:importing?'wait':'pointer', opacity:(mapping.firstName < 0 && mapping.fullName < 0) ? 0.5 : 1 }}>
