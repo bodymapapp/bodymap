@@ -3,6 +3,43 @@ import { supabase } from '../lib/supabase';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
+// CSV download helper (HK May 21 2026 from Jackie's question about
+// seeing which rows got skipped). Takes the original CSV headers,
+// an array of {row, reason, details} objects, and a filename. Builds
+// a CSV string with the original columns + bm_reason + bm_details
+// appended, then triggers a browser download.
+//
+// Cell escaping: wraps any cell that contains comma, quote, or
+// newline in double quotes and escapes inner quotes per RFC 4180.
+function downloadRowsAsCSV(originalHeaders, rowDetails, filename) {
+  const escape = (val) => {
+    if (val === null || val === undefined) return '';
+    const s = String(val);
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const headerLine = [...originalHeaders, 'bm_reason', 'bm_details'].map(escape).join(',');
+  const lines = [headerLine];
+  for (const item of rowDetails) {
+    const cells = [...(item.row || []).map(escape), escape(item.reason || ''), escape(item.details || '')];
+    lines.push(cells.join(','));
+  }
+  const csv = lines.join('\n');
+  // Use a blob + anchor to download. Works in all browsers we care
+  // about. No external library needed.
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 const PLATFORMS = [
   { id:'vagaro',       label:'Vagaro',        cols:['First Name','Last Name','Email','Mobile Phone','Notes'] },
   { id:'massagebook',  label:'MassageBook',   cols:['First Name','Last Name','Email','Phone','Notes'] },
@@ -231,6 +268,19 @@ export default function ImportClients({ therapist, onComplete }) {
     // independent of created/skipped.
     let membershipsCreated = 0, membershipsFailed = 0;
 
+    // Track WHICH rows got skipped or failed (HK May 21 2026 from
+    // Jackie's question 'Which ones are skipped?'). Same pattern as
+    // appointment import. At the end of the import these get
+    // exported as downloadable CSVs.
+    const skippedRows = [];
+    const failedRows = [];
+    function recordSkip(row, reason, details) {
+      skippedRows.push({ row, reason, details });
+    }
+    function recordFail(row, reason, details) {
+      failedRows.push({ row, reason, details });
+    }
+
     // Cache services by name (lowercased) so we don't query/insert
     // the same service repeatedly across rows. resolveServiceId returns
     // an existing service id if one matches, otherwise creates a new
@@ -389,7 +439,11 @@ export default function ImportClients({ therapist, onComplete }) {
       if (!name && phone) name = `Client ${phone.replace(/\D/g,'').slice(-4)}`;
 
       // Nothing at all, truly skip
-      if (!name && !email && !phone) { skipped++; continue; }
+      if (!name && !email && !phone) {
+        skipped++;
+        recordSkip(row, 'missing_required', 'Row has no name, email, or phone');
+        continue;
+      }
 
       try {
         let client = null;
@@ -420,6 +474,7 @@ export default function ImportClients({ therapist, onComplete }) {
             await supabase.from('clients').update(updates).eq('id', client.id);
           }
           skipped++; // already exists, count as skipped not failed
+          recordSkip(row, 'already_exists', `Client ${name || email || phone} already in your account`);
         } else {
           // Insert new client
           const payload = { therapist_id: therapist.id, name };
@@ -430,7 +485,11 @@ export default function ImportClients({ therapist, onComplete }) {
           const { data: newClient, error: insertErr } = await supabase
             .from('clients').insert(payload).select('id').single();
 
-          if (insertErr) { failed++; continue; }
+          if (insertErr) {
+            failed++;
+            recordFail(row, 'database_error', insertErr.message);
+            continue;
+          }
           client = newClient;
           created++;
         }
@@ -598,10 +657,14 @@ export default function ImportClients({ therapist, onComplete }) {
           }
         }
 
-      } catch(e) { console.error('Import row error:', e, row); failed++; }
+      } catch(e) {
+        console.error('Import row error:', e, row);
+        failed++;
+        recordFail(row, 'unexpected_error', e?.message || 'Unknown error during import');
+      }
     }
 
-    setResults({ created, skipped, failed, total: rows.length, membershipsCreated, membershipsFailed });
+    setResults({ created, skipped, failed, total: rows.length, membershipsCreated, membershipsFailed, skippedRows, failedRows });
     setImporting(false);
     setStep(4);
     // Log activation (imported at least one client)
@@ -1050,6 +1113,63 @@ export default function ImportClients({ therapist, onComplete }) {
                 </div>
               ))}
             </div>
+
+            {/* Download skipped/failed CSVs (HK May 21 2026 from
+                Jackie's question 'Which ones are skipped?'). */}
+            {(results.skippedRows?.length > 0 || results.failedRows?.length > 0) && (
+              <div style={{
+                background: '#F0F9FF',
+                border: '1.5px solid #BFDBFE',
+                borderRadius: 10,
+                padding: '12px 14px',
+                marginBottom: 16,
+                textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#1E40AF', marginBottom: 8 }}>
+                  📋 Review what got skipped or failed
+                </div>
+                <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.55, marginBottom: 10 }}>
+                  Download a list to see exactly which rows did not get imported and why. Open the file in Excel or Google Sheets to review.
+                </div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {results.skippedRows?.length > 0 && (
+                    <button
+                      onClick={() => downloadRowsAsCSV(headers, results.skippedRows, `mybodymap-skipped-clients-${new Date().toISOString().slice(0,10)}.csv`)}
+                      style={{
+                        background: '#3B82F6',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '9px 16px',
+                        borderRadius: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Download {results.skippedRows.length} skipped row{results.skippedRows.length === 1 ? '' : 's'}
+                    </button>
+                  )}
+                  {results.failedRows?.length > 0 && (
+                    <button
+                      onClick={() => downloadRowsAsCSV(headers, results.failedRows, `mybodymap-failed-clients-${new Date().toISOString().slice(0,10)}.csv`)}
+                      style={{
+                        background: '#DC2626',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '9px 16px',
+                        borderRadius: 8,
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Download {results.failedRows.length} failed row{results.failedRows.length === 1 ? '' : 's'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Memberships migrated callout. Only shows when the CSV
                 actually had a Membership Plan column with at least one
                 non-empty row. Stripe billing has to be wired separately
@@ -1312,6 +1432,20 @@ export function ImportBookings({ therapist, onComplete }) {
     // Validate, parse dates/times, build canonical booking objects.
     // Anything that cannot parse goes straight to skipped/failed.
     const prepared = []; // { row data including bookingDate, startTime, endTime, ... }
+    // Track WHICH rows got skipped or failed (HK May 21 2026 from
+    // Jackie's question "Which ones are skipped?"). We record the
+    // original CSV row + a reason code + a human-readable detail.
+    // At the end of the import these get exported as a CSV the
+    // therapist can review in Excel.
+    const skippedRows = []; // { row, reason, details }
+    const failedRows = []; // { row, reason, details }
+    function recordSkip(row, reason, details) {
+      skippedRows.push({ row, reason, details });
+    }
+    function recordFail(row, reason, details) {
+      failedRows.push({ row, reason, details });
+    }
+
     for (const row of rows) {
       const clientName  = get(row, mapping.clientName);
       const clientEmail = get(row, mapping.clientEmail)?.toLowerCase() || null;
@@ -1323,11 +1457,19 @@ export function ImportBookings({ therapist, onComplete }) {
       const price       = parseFloat(get(row, mapping.price)) || 0;
       const notes       = get(row, mapping.notes) || '';
 
-      if (!clientName || !dateStr) { skipped++; continue; }
+      if (!clientName || !dateStr) {
+        skipped++;
+        recordSkip(row, 'missing_required',
+          !clientName && !dateStr ? 'Missing both client name and date'
+          : !clientName ? 'Missing client name'
+          : 'Missing appointment date');
+        continue;
+      }
 
       const bookingDate = parseDate(dateStr);
       if (!bookingDate) {
         failed++;
+        recordFail(row, 'invalid_date', `Could not parse date "${dateStr}"`);
         if (failureSamples.length < 5) failureSamples.push(`Could not parse date "${dateStr}" for ${clientName}`);
         continue;
       }
@@ -1348,11 +1490,12 @@ export function ImportBookings({ therapist, onComplete }) {
       prepared.push({
         clientName, clientEmail, clientPhone, service, bookingDate,
         startTime, endTime, duration, price, notes,
+        _originalRow: row, // keep ref so dedupe step can record it
       });
     }
 
     if (prepared.length === 0) {
-      setResults({ created, skipped, failed, failureSamples });
+      setResults({ created, skipped, failed, failureSamples, skippedRows, failedRows });
       setImporting(false);
       setProgress(null);
       return;
@@ -1441,8 +1584,15 @@ export function ImportBookings({ therapist, onComplete }) {
       const phone = p.clientPhone ? normalizePhone(p.clientPhone) || null : null;
       const nameLower = p.clientName ? p.clientName.toLowerCase().trim() : null;
       const key = bookingKey(emailLower, phone, nameLower, p.bookingDate, p.startTime);
-      if (existingBookingKeys.has(key) || seenInThisRun.has(key)) {
+      const existsInDb = existingBookingKeys.has(key);
+      const existsInBatch = seenInThisRun.has(key);
+      if (existsInDb || existsInBatch) {
         dupSkipped++;
+        recordSkip(p._originalRow,
+          existsInDb ? 'already_on_schedule' : 'duplicate_in_file',
+          existsInDb
+            ? `Appointment for ${p.clientName} on ${p.bookingDate} at ${p.startTime} already exists on your schedule`
+            : `${p.clientName} ${p.bookingDate} ${p.startTime} appears twice in this file`);
         continue;
       }
       seenInThisRun.add(key);
@@ -1458,7 +1608,7 @@ export function ImportBookings({ therapist, onComplete }) {
     for (const p of dedupedPrepared) prepared.push(p);
 
     if (prepared.length === 0) {
-      setResults({ created, skipped, failed, failureSamples });
+      setResults({ created, skipped, failed, failureSamples, skippedRows, failedRows });
       setImporting(false);
       setProgress(null);
       if (onComplete) onComplete();
@@ -1648,6 +1798,10 @@ export function ImportBookings({ therapist, onComplete }) {
           const { error: rowErr } = await supabase.from('bookings').insert(r);
           if (rowErr) {
             failed++;
+            // r is the DB payload. Trace back to the original CSV
+            // row so we can include it in the failed-rows download.
+            const origP = prepared.find(p => p.clientName === r.client_name && p.bookingDate === r.booking_date && p.startTime === (r.start_time || '').slice(0,5));
+            if (origP) recordFail(origP._originalRow, 'database_error', rowErr.message);
             if (failureSamples.length < 5) {
               failureSamples.push(`${r.client_name} ${r.booking_date}: ${rowErr.message}`);
             }
@@ -1662,9 +1816,14 @@ export function ImportBookings({ therapist, onComplete }) {
     }
 
     // Rows that did not get a client_id are counted as failed
-    failed += prepared.filter(p => !p._clientId).length;
+    const missingClientRows = prepared.filter(p => !p._clientId);
+    failed += missingClientRows.length;
+    for (const p of missingClientRows) {
+      recordFail(p._originalRow, 'no_client_match',
+        `Could not find or create a client for "${p.clientName}". This usually means the client row was missing both name and email/phone, or the client creation step failed.`);
+    }
 
-    setResults({ created, skipped, failed, failureSamples });
+    setResults({ created, skipped, failed, failureSamples, skippedRows, failedRows });
     setImporting(false);
     setProgress(null);
     if (onComplete) onComplete();
@@ -1714,6 +1873,65 @@ export function ImportBookings({ therapist, onComplete }) {
               {results.created} added · {results.skipped} skipped · {results.failed} failed
             </div>
           </div>
+
+          {/* Download skipped/failed CSVs (HK May 21 2026 from Jackie's
+              question 'Which ones are skipped and how can we see them?').
+              Each button is only shown when that category has rows.
+              The CSV includes the original CSV columns plus a reason
+              and details column so the therapist can open in Excel
+              and audit. */}
+          {(results.skippedRows?.length > 0 || results.failedRows?.length > 0) && (
+            <div style={{
+              background: '#F0F9FF',
+              border: '1.5px solid #BFDBFE',
+              borderRadius: 10,
+              padding: '12px 14px',
+              marginBottom: 12,
+            }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#1E40AF', marginBottom: 8 }}>
+                📋 Review what got skipped or failed
+              </div>
+              <div style={{ fontSize: 12.5, color: '#1E3A8A', lineHeight: 1.55, marginBottom: 10 }}>
+                Download a list to see exactly which rows did not get imported and why. Open the file in Excel or Google Sheets to review.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {results.skippedRows?.length > 0 && (
+                  <button
+                    onClick={() => downloadRowsAsCSV(headers, results.skippedRows, `mybodymap-skipped-appointments-${new Date().toISOString().slice(0,10)}.csv`)}
+                    style={{
+                      background: '#3B82F6',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '9px 16px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Download {results.skippedRows.length} skipped row{results.skippedRows.length === 1 ? '' : 's'}
+                  </button>
+                )}
+                {results.failedRows?.length > 0 && (
+                  <button
+                    onClick={() => downloadRowsAsCSV(headers, results.failedRows, `mybodymap-failed-appointments-${new Date().toISOString().slice(0,10)}.csv`)}
+                    style={{
+                      background: '#DC2626',
+                      color: '#fff',
+                      border: 'none',
+                      padding: '9px 16px',
+                      borderRadius: 8,
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Download {results.failedRows.length} failed row{results.failedRows.length === 1 ? '' : 's'}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {results.failed > 0 && results.failureSamples?.length > 0 && (
             <div style={{
