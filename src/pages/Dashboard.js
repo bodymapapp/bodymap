@@ -2118,19 +2118,21 @@ function ServicesAndAvailability({ therapist }) {
           </span>
         </div>
         {bufferEnabled && (
-          <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <span style={{ fontSize:13, color:C2.gray }}>Block</span>
-            <div style={{ display:'flex', alignItems:'center', background:'#F9FAFB', border:`1.5px solid ${C2.lightGray}`, borderRadius:10, padding:'6px 12px', gap:4 }}>
-              <input type="number" min="5" max="60" step="5" value={bufferMinutes}
-                onChange={e => setBufferMinutes(parseInt(e.target.value)||15)}
-                onBlur={async e => {
-                  const v = Math.min(60, Math.max(5, parseInt(e.target.value)||15));
-                  setBufferMinutes(v);
-                  await supabase.from('therapists').update({ buffer_minutes: v }).eq('id', therapist.id);
-                }}
-                style={{ width:46, border:'none', background:'transparent', fontSize:16, fontWeight:700, color:C2.forest, outline:'none', textAlign:'center' }} />
-              <span style={{ fontSize:13, color:C2.gray }}>min</span>
-            </div>
+            <InlineSaveNumberInput
+              value={bufferMinutes}
+              defaultValue={15}
+              onChange={setBufferMinutes}
+              onSave={async v => {
+                await supabase.from('therapists').update({ buffer_minutes: v }).eq('id', therapist.id);
+              }}
+              suffix="min"
+              min={5}
+              max={120}
+              placeholder="15"
+              width={70}
+            />
             <span style={{ fontSize:13, color:C2.gray }}>after each session</span>
           </div>
         )}
