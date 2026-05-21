@@ -1305,6 +1305,20 @@ export function ImportBookings({ therapist, onComplete }) {
   // we block and require explicit confirmation.
   const [importWarning, setImportWarning] = useState(null);
   const [importConfirmed, setImportConfirmed] = useState(false);
+  // Price-entry step state (HK May 21 2026 from Jackie 'lots of work
+  // to update prices after import'). Before running the full import,
+  // detect which service names in the CSV are new (not yet in the
+  // therapist's services list). If any, surface them in a panel and
+  // let the therapist enter price + duration for each one. Then the
+  // full import uses these prices when auto-creating those services.
+  //
+  // Shape:
+  //   newServicesNeedingPrices: Array<{ name, suggestedDuration, suggestedPrice }>
+  //     or null when no panel is showing.
+  //   servicePricesByName: Map of lowercase-name -> { price, duration }
+  //     populated by the therapist's input. Empty Map by default.
+  const [newServicesNeedingPrices, setNewServicesNeedingPrices] = useState(null);
+  const [servicePricesByName, setServicePricesByName] = useState(new Map());
   const fileRef = useRef();
 
   function detectBookingMapping(headers) {
@@ -1398,6 +1412,55 @@ export function ImportBookings({ therapist, onComplete }) {
       }
     }
     setImportWarning(null);
+
+    // Price-entry prescan (HK May 21 2026 from Jackie 'lots of work
+    // to update prices after import'). If the CSV has service names
+    // that don't yet exist in the therapist's services list AND we
+    // have not yet collected prices for them, surface a price-entry
+    // panel and pause. Once the therapist submits prices (or skips
+    // intentionally), we proceed with the full import which uses
+    // the collected prices when auto-creating services.
+    //
+    // We skip the prescan when:
+    //   - the service column is unmapped (no auto-creation possible)
+    //   - the user already submitted prices in this session
+    //     (servicePricesByName has any entries, signaling explicit
+    //     user action)
+    if (mapping.service >= 0 && servicePricesByName.size === 0 && !newServicesNeedingPrices) {
+      // Quick lookup: which service names already exist for this
+      // therapist?
+      const { data: existingServices } = await supabase
+        .from('services')
+        .select('name')
+        .eq('therapist_id', therapist.id);
+      const existingNames = new Set(
+        (existingServices || []).map(s => (s.name || '').toLowerCase().trim())
+      );
+      const get = (row, idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
+      const newServiceMap = new Map(); // name (raw) -> { count, sampleDuration }
+      for (const row of rows) {
+        const svcName = get(row, mapping.service);
+        if (!svcName) continue;
+        const key = svcName.toLowerCase().trim();
+        if (existingNames.has(key)) continue;
+        if (!newServiceMap.has(key)) {
+          const durStr = get(row, mapping.duration);
+          const suggestedDuration = parseInt(durStr) || 60;
+          newServiceMap.set(key, {
+            name: svcName,
+            suggestedDuration,
+            count: 1,
+          });
+        } else {
+          newServiceMap.get(key).count += 1;
+        }
+      }
+      if (newServiceMap.size > 0) {
+        const list = Array.from(newServiceMap.values()).sort((a, b) => b.count - a.count);
+        setNewServicesNeedingPrices(list);
+        return; // Pause here; user fills in prices and re-clicks.
+      }
+    }
 
     setImporting(true);
     setError('');
@@ -1726,11 +1789,22 @@ export function ImportBookings({ therapist, onComplete }) {
       if (!key) continue;
       if (svcNameToId.has(key)) continue;
       if (!newServicesByName.has(key)) {
+        // Use therapist-provided price/duration from the prescan
+        // panel if present, otherwise fall back to the CSV's own
+        // duration/price columns, otherwise defaults. The therapist
+        // input wins over CSV data because CSV often has $0.
+        const userInput = servicePricesByName.get(key);
+        const finalDuration = (userInput && userInput.duration > 0)
+          ? userInput.duration
+          : (p.duration || 60);
+        const finalPrice = (userInput && userInput.price >= 0)
+          ? userInput.price
+          : (p.price || 0);
         newServicesByName.set(key, {
           therapist_id: therapist.id,
           name: p.service,
-          duration: p.duration || 60,
-          price: p.price || 0,
+          duration: finalDuration,
+          price: finalPrice,
           active: true,
         });
       }
@@ -2083,6 +2157,186 @@ export function ImportBookings({ therapist, onComplete }) {
                   }}
                 >
                   I checked, import anyway
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Price entry panel (HK May 21 2026 Option B from Jackie
+              feedback 'lots of work to update prices after import').
+              Shows when the prescan detected new service names in the
+              CSV that don't yet exist in the therapist's services
+              list. Therapist enters price and duration for each one,
+              then taps 'Set prices & import' to proceed. */}
+          {newServicesNeedingPrices && newServicesNeedingPrices.length > 0 && (
+            <div style={{
+              background: '#FFFBEB',
+              border: '2px solid #FDE68A',
+              borderRadius: 12,
+              padding: 16,
+              marginBottom: 16,
+            }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>
+                💰 Set prices for {newServicesNeedingPrices.length} new {newServicesNeedingPrices.length === 1 ? 'service' : 'services'}
+              </div>
+              <div style={{ fontSize: 13, color: '#7C2D12', lineHeight: 1.55, marginBottom: 12 }}>
+                These services are in your file but not yet in MyBodyMap. Enter prices now so you don't have to set them later one by one. Leave a price blank and we will create the service at $0 (you can fix it later).
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
+                {newServicesNeedingPrices.map((s, idx) => {
+                  const key = s.name.toLowerCase().trim();
+                  const current = servicePricesByName.get(key) || {};
+                  const priceVal = current.price !== undefined ? current.price : '';
+                  const durVal = current.duration !== undefined ? current.duration : s.suggestedDuration;
+                  return (
+                    <div key={idx} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      background: '#fff',
+                      border: '1px solid #FDE68A',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      flexWrap: 'wrap',
+                    }}>
+                      <div style={{ flex: 1, minWidth: 180 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#1A1A2E' }}>{s.name}</div>
+                        <div style={{ fontSize: 11, color: '#6B7280' }}>
+                          {s.count} appointment{s.count === 1 ? '' : 's'} in your file
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 13, color: '#6B7280' }}>$</span>
+                        <input
+                          type="number"
+                          inputMode="decimal"
+                          step="1"
+                          min="0"
+                          value={priceVal}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const numeric = v === '' ? undefined : parseFloat(v);
+                            setServicePricesByName(prev => {
+                              const next = new Map(prev);
+                              const existing = next.get(key) || {};
+                              next.set(key, { ...existing, price: numeric });
+                              return next;
+                            });
+                          }}
+                          placeholder="0"
+                          aria-label={`Price for ${s.name}`}
+                          style={{
+                            width: 70,
+                            padding: '6px 8px',
+                            border: '1.5px solid #E8E4DC',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#1F4030',
+                            outline: 'none',
+                            textAlign: 'right',
+                          }}
+                        />
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          step="5"
+                          min="5"
+                          max="240"
+                          value={durVal}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            const numeric = v === '' ? undefined : parseInt(v);
+                            setServicePricesByName(prev => {
+                              const next = new Map(prev);
+                              const existing = next.get(key) || {};
+                              next.set(key, { ...existing, duration: numeric });
+                              return next;
+                            });
+                          }}
+                          placeholder="60"
+                          aria-label={`Duration for ${s.name}`}
+                          style={{
+                            width: 56,
+                            padding: '6px 8px',
+                            border: '1.5px solid #E8E4DC',
+                            borderRadius: 6,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: '#1F4030',
+                            outline: 'none',
+                            textAlign: 'right',
+                          }}
+                        />
+                        <span style={{ fontSize: 12, color: '#6B7280' }}>min</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    // Sanitize: every service must have something in
+                    // the map (even if user left price blank, mark
+                    // it as 0 explicitly so the runImport prescan
+                    // gate doesn't re-trigger).
+                    setServicePricesByName(prev => {
+                      const next = new Map(prev);
+                      for (const s of newServicesNeedingPrices) {
+                        const key = s.name.toLowerCase().trim();
+                        const cur = next.get(key) || {};
+                        next.set(key, {
+                          price: typeof cur.price === 'number' ? cur.price : 0,
+                          duration: typeof cur.duration === 'number' ? cur.duration : s.suggestedDuration,
+                        });
+                      }
+                      return next;
+                    });
+                    setNewServicesNeedingPrices(null);
+                    setTimeout(() => runImport(), 0);
+                  }}
+                  style={{
+                    background: 'linear-gradient(135deg, #B45309, #92400E)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '10px 18px',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Set prices and import →
+                </button>
+                <button
+                  onClick={() => {
+                    // Skip: explicitly mark all new services as $0
+                    // and proceed without prices. User can edit
+                    // later in Settings.
+                    setServicePricesByName(prev => {
+                      const next = new Map(prev);
+                      for (const s of newServicesNeedingPrices) {
+                        const key = s.name.toLowerCase().trim();
+                        next.set(key, { price: 0, duration: s.suggestedDuration });
+                      }
+                      return next;
+                    });
+                    setNewServicesNeedingPrices(null);
+                    setTimeout(() => runImport(), 0);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: '#92400E',
+                    border: '1.5px solid #FDE68A',
+                    padding: '10px 18px',
+                    borderRadius: 999,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Skip and import without prices
                 </button>
               </div>
             </div>
