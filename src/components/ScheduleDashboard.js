@@ -1971,6 +1971,14 @@ export default function ScheduleDashboard({ therapist }) {
   const [blockMode, setBlockMode] = useState('full');  // 'full' or 'partial'
   const [blockSaving, setBlockSaving] = useState(false);
   const [blockError, setBlockError] = useState('');
+  // Pending-conflicts state (HK May 19 2026 from Candice report).
+  // When a therapist tries to block a date that has existing
+  // confirmed or pending-approval bookings, we surface the
+  // conflicts inline and wait for explicit confirmation. Shape:
+  //   null when no conflicts pending
+  //   { date, partial, conflicts: [{client_name, start_time, status}] }
+  //     when conflicts need user decision
+  const [pendingBlockConflicts, setPendingBlockConflicts] = useState(null);
 
   useEffect(()=>{if(therapist?.id){ fetchBookings(); loadBlockedDays(); }},[therapist?.id]);
 
@@ -1989,9 +1997,13 @@ export default function ScheduleDashboard({ therapist }) {
     //   (2) addBlockedDay({date, startTime, endTime, note}): used by
     //                          long-press in TimelineView (Phase 9.2).
     //                          Bypasses the inline form entirely.
+    //   Both paths accept an optional skipConflictCheck flag, used by
+    //   the inline 'Block anyway' button after the therapist has
+    //   acknowledged the conflict banner.
     setBlockError('');
 
     const useArgs = args && typeof args === 'object' && args.date;
+    const skipConflictCheck = !!(args && args.skipConflictCheck);
     const payload = useArgs
       ? {
           therapist_id: therapist.id,
@@ -2032,6 +2044,54 @@ export default function ScheduleDashboard({ therapist }) {
       }
     }
 
+    // Pre-check for conflicting bookings on this date (HK May 19 2026
+    // from Candice report: she blocked Wednesday but Cheryl's pending
+    // booking on Wednesday was still active, forcing a manual decline).
+    // Only run when the therapist has NOT already acknowledged the
+    // conflict. The skip flag flips true after they click 'Block anyway'.
+    if (!skipConflictCheck) {
+      const { data: clashes, error: clashErr } = await supabase
+        .from('bookings')
+        .select('id, client_name, start_time, end_time, status')
+        .eq('therapist_id', therapist.id)
+        .eq('booking_date', payload.date)
+        .in('status', ['confirmed', 'pending-approval', 'pending-deposit']);
+
+      if (!clashErr && Array.isArray(clashes) && clashes.length > 0) {
+        // For partial blocks, only flag bookings whose times overlap
+        // the block window. For full-day blocks, every booking on
+        // that date conflicts.
+        const partial = !!(payload.start_time && payload.end_time);
+        const overlapping = partial
+          ? clashes.filter(b => {
+              const bs = (b.start_time || '').slice(0,5);
+              const be = (b.end_time   || '').slice(0,5);
+              return bs < payload.end_time && be > payload.start_time;
+            })
+          : clashes;
+        if (overlapping.length > 0) {
+          setPendingBlockConflicts({
+            date: payload.date,
+            partial,
+            blockStart: payload.start_time || null,
+            blockEnd: payload.end_time || null,
+            note: payload.note || null,
+            useArgs,
+            conflicts: overlapping
+              .slice() // copy before sort
+              .sort((a,b) => (a.start_time || '').localeCompare(b.start_time || ''))
+              .map(b => ({
+                id: b.id,
+                client_name: b.client_name,
+                start_time: b.start_time,
+                status: b.status,
+              })),
+          });
+          return null;
+        }
+      }
+    }
+
     setBlockSaving(true);
     const { data, error } = await supabase.from('blocked_days')
       .insert(payload)
@@ -2050,6 +2110,8 @@ export default function ScheduleDashboard({ therapist }) {
       setBlockDate(''); setBlockNote(''); setBlockStartTime(''); setBlockEndTime('');
       setBlockMode('full');
     }
+    // Clear any lingering conflict banner now that the block went through.
+    setPendingBlockConflicts(null);
     setBlockSaving(false);
     return data;
   }
@@ -2530,6 +2592,130 @@ export default function ScheduleDashboard({ therapist }) {
               onBlur={(e) => { e.target.style.background = '#FBFAF4'; e.target.style.borderColor = '#E8E4DC'; }}
             />
           </div>
+
+          {/* Pending-conflicts banner (HK May 19 2026 from Candice
+              report). If the therapist tries to block a date that has
+              existing confirmed or pending bookings, surface them here
+              with their times and client names. Therapist either
+              cancels or confirms 'Block anyway', which proceeds with
+              the block and leaves the conflicting bookings for her to
+              decline manually with personal notes. No window.confirm
+              per design principle: all confirmation lives inline. */}
+          {pendingBlockConflicts && (
+            <div style={{
+              marginBottom: 14,
+              background: '#FFF7ED',
+              border: '1.5px solid #FED7AA',
+              borderRadius: 12,
+              padding: 14,
+            }}>
+              <div style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: '#9A3412',
+                marginBottom: 6,
+              }}>
+                Heads up: {pendingBlockConflicts.conflicts.length} booking{pendingBlockConflicts.conflicts.length === 1 ? '' : 's'} on this day
+              </div>
+              <div style={{
+                fontSize: 12.5,
+                color: '#7C2D12',
+                lineHeight: 1.5,
+                marginBottom: 10,
+              }}>
+                {pendingBlockConflicts.partial
+                  ? 'These bookings overlap the time you are blocking. Blocking will not auto-cancel them. You will need to decline each one from your dashboard.'
+                  : 'These bookings sit on the day you are blocking. Blocking will not auto-cancel them. You will need to decline each one from your dashboard.'}
+              </div>
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 6,
+                marginBottom: 12,
+              }}>
+                {pendingBlockConflicts.conflicts.map(c => {
+                  const t = (c.start_time || '').slice(0,5);
+                  const [h, m] = t.split(':');
+                  const hh = parseInt(h || '0', 10);
+                  const ampm = hh >= 12 ? 'PM' : 'AM';
+                  const hr = hh % 12 === 0 ? 12 : hh % 12;
+                  const tlabel = t ? `${hr}:${m} ${ampm}` : '';
+                  return (
+                    <div key={c.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      background: '#FFFDF8',
+                      border: '1px solid #FDE68A',
+                      borderRadius: 8,
+                      padding: '8px 12px',
+                      fontSize: 12.5,
+                      color: '#1F2937',
+                    }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ fontWeight: 700 }}>{c.client_name || 'Unknown client'}</span>
+                        <span style={{ fontSize: 11, color: '#6B7280' }}>
+                          {tlabel}{c.status === 'pending-approval' ? ' · pending your approval' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    // Re-issue the block insert with skipConflictCheck=true.
+                    // Use either the args path or the form path depending on
+                    // what triggered the conflict.
+                    const c = pendingBlockConflicts;
+                    if (c.useArgs) {
+                      addBlockedDay({
+                        date: c.date,
+                        startTime: c.blockStart,
+                        endTime: c.blockEnd,
+                        note: c.note,
+                        skipConflictCheck: true,
+                      });
+                    } else {
+                      addBlockedDay({ skipConflictCheck: true });
+                    }
+                  }}
+                  disabled={blockSaving}
+                  style={{
+                    background: 'linear-gradient(135deg, #B45309, #92400E)',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '8px 16px',
+                    borderRadius: 999,
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: blockSaving ? 'wait' : 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  {blockSaving ? 'Blocking…' : 'Block anyway'}
+                </button>
+                <button
+                  onClick={() => setPendingBlockConflicts(null)}
+                  disabled={blockSaving}
+                  style={{
+                    background: 'transparent',
+                    color: '#7C2D12',
+                    border: '1.5px solid #FED7AA',
+                    padding: '8px 16px',
+                    borderRadius: 999,
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: blockSaving ? 'wait' : 'pointer',
+                    WebkitTapHighlightColor: 'transparent',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action row: error banner on the left if any, Block button
               on the right. The button is sized confidently. */}
