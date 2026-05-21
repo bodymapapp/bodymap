@@ -714,6 +714,17 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
     return b.start_time && b.end_time;
   });
 
+  // Full-day blocks (HK May 21 2026, Jackie feedback). Previously the
+  // timeline only rendered partial-time blocks; full-day blocks just
+  // disappeared from the day view, leaving the therapist with a 'No
+  // sessions this day' empty state and no indication anything was
+  // blocked. Now we render the whole canvas as an amber band with the
+  // reason label centered.
+  const myFullDayBlocksToday = (blockedDays || []).filter(b => {
+    if (b.date !== viewDateStr) return false;
+    return !b.start_time && !b.end_time;
+  });
+
   const snapTo15 = (mins) => Math.round(mins / 15) * 15;
 
   const minutesToTimeStr = (mins) => {
@@ -840,18 +851,25 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         {DAY_RANGE.map(i=>{
           const d=addDays(today,i);
           const count=allAppts.filter(a=>sameDay(a.date,d)&&!a.preview).length;
+          // Full-day block indicator (HK May 21 2026, Jackie feedback).
+          // Day strip previously showed only the appointment count; now
+          // we surface 'Blocked' under the date when a full-day block
+          // exists for that date so blocks are scannable across the
+          // strip without tapping each day.
+          const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+          const isBlocked = (blockedDays || []).some(b => b.date === dateStr && !b.start_time && !b.end_time);
           const isSel=i===dayOffset;
           const isToday=i===0;
           const isPast=i<0;
           return (
             <button key={i} data-istoday={isToday?'true':undefined} onClick={()=>setDayOffset(i)}
-              style={{flexShrink:0,background:isSel?'#2A5741':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':'#E5E7EB'}`,borderRadius:10,padding:'8px 10px',cursor:'pointer',minWidth:60,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.85:1}}>
+              style={{flexShrink:0,background:isSel?'#2A5741':isBlocked?'#FEF3C7':'#fff',color:isSel?'#fff':isPast?'#9CA3AF':'#1F2937',border:`1.5px solid ${isSel?'#2A5741':isBlocked?'#FCD34D':'#E5E7EB'}`,borderRadius:10,padding:'8px 10px',cursor:'pointer',minWidth:60,textAlign:'center',transition:'all 0.15s',opacity:isPast&&!isSel?0.85:1}}>
               <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',opacity:0.75,marginBottom:2,letterSpacing:'0.04em'}}>
                 {i===0?'Today':i===-1?'Yest':i===1?'Tmrw':d.toLocaleDateString('en-US',{weekday:'short'})}
               </div>
               <div style={{fontSize:15,fontWeight:700,lineHeight:1.1}}>{d.getDate()}</div>
-              <div style={{fontSize:10,fontWeight:600,marginTop:3,opacity:count>0?0.7:0.3}}>
-                {count > 0 ? `${count} appt${count!==1?'s':''}` : '·'}
+              <div style={{fontSize:10,fontWeight:600,marginTop:3,opacity: isBlocked ? 1 : (count>0?0.7:0.3), color: isBlocked && !isSel ? '#92400E' : undefined}}>
+                {isBlocked ? '🌿 Blocked' : (count > 0 ? `${count} appt${count!==1?'s':''}` : '·')}
               </div>
             </button>
           );
@@ -903,6 +921,59 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
             );
           })}
 
+          {/* Full-day block render (HK May 21 2026, Jackie feedback).
+              When a full-day block exists for the viewed date, paint
+              the entire timeline canvas amber and label it with the
+              reason. Visually distinguishes 'blocked day' from
+              'empty day with no work scheduled'. */}
+          {myFullDayBlocksToday.length > 0 && (
+            <div
+              data-appt-card="1"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: H,
+                background: 'repeating-linear-gradient(45deg, rgba(217,119,6,0.08), rgba(217,119,6,0.08) 8px, rgba(217,119,6,0.16) 8px, rgba(217,119,6,0.16) 16px)',
+                border: '1.5px solid rgba(217,119,6,0.4)',
+                borderRadius: 12,
+                pointerEvents: 'none',
+                zIndex: 1,
+              }}
+            >
+              <div style={{
+                position: 'absolute',
+                top: 18,
+                left: 0,
+                right: 0,
+                textAlign: 'center',
+                fontSize: 14,
+                fontWeight: 700,
+                color: '#92400E',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}>
+                🌿 Day blocked off
+              </div>
+              {myFullDayBlocksToday[0].note && (
+                <div style={{
+                  position: 'absolute',
+                  top: 46,
+                  left: 0,
+                  right: 0,
+                  textAlign: 'center',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  color: '#9A3412',
+                  fontStyle: 'italic',
+                }}>
+                  {myFullDayBlocksToday[0].note}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Phase 9.2: render the therapist's own partial-day blocks
               as amber-tinted bands. They sit underneath bookings (which
               shouldn't overlap them anyway, but defensive). */}
@@ -941,8 +1012,10 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
           })}
 
           {/* Hint pill for empty days: stays inside the canvas so the
-              long-press surface is preserved. */}
-          {dayAppts.length === 0 && (
+              long-press surface is preserved. Suppressed when a full-
+              day block is present (the amber band already signals the
+              state more clearly than the empty-state text). */}
+          {dayAppts.length === 0 && myFullDayBlocksToday.length === 0 && (
             <div style={{
               position: 'absolute',
               top: '50%',
