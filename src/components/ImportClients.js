@@ -22,6 +22,26 @@ function detectMapping(headers) {
     }
     return -1;
   };
+  // Strict matcher for RISKY optional columns (Service, Price,
+  // Membership Plan, etc). The loose `find` above matches any
+  // substring, which let columns like 'first_name' accidentally
+  // pass as Service if a therapist mis-mapped it. Stricter rule
+  // (HK May 21 2026 Jackie incident): the header must equal one
+  // of the terms, OR contain it as a whole word (with non-alpha
+  // boundaries). Headers like 'first_name', 'last_name',
+  // 'mobile_number' will never match 'service' / 'plan' / 'price'.
+  const findStrict = (...terms) => {
+    for (const t of terms) {
+      const i = h.findIndex(x => {
+        if (x === t) return true;
+        // whole-word check: term surrounded by start/end or non-alphanumeric
+        const re = new RegExp(`(^|[^a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`, 'i');
+        return re.test(x);
+      });
+      if (i >= 0) return i;
+    }
+    return -1;
+  };
   // Smarter name detection. Some platforms (GlossGenius, Square,
   // Mindbody exports) put first+last in ONE column called "Client
   // Name", "Customer Name", "Name", or "Full Name". Detect that
@@ -63,25 +83,22 @@ function detectMapping(headers) {
     notes:        find('notes', 'note', 'comments'),
     visitCount:   find('visit count', 'visits', 'appointment count'),
     lastVisit:    find('last visit', 'last appointment', 'last seen'),
-    // Two new optional columns. When present, every session created
-    // from this row gets the named service (auto-created if it doesn't
-    // exist) and the price. That makes the dashboard's
-    // sessions/earnings counters reflect imported history. Without
-    // these, imported sessions still write but with no session_date /
-    // service_id / price, so the dashboard counters can't see them.
-    service:      find('service', 'treatment', 'appointment type'),
-    price:        find('price', 'session price', 'amount'),
-    // Optional membership columns. When any of these are present we
-    // create a member_subscriptions row alongside the client. Plan
-    // is auto-created in the memberships table if it doesn't exist
-    // yet. Per HK May 14 2026: memberships are part of client import,
-    // not a separate flow. Therapists think of a client and their
-    // active membership as one record.
-    membershipPlan:    find('membership plan', 'membership name', 'membership', 'plan name', 'subscription plan', 'subscription'),
-    membershipPrice:   find('membership price', 'monthly price', 'plan price', 'subscription price'),
-    membershipCredits: find('monthly credits', 'sessions per month', 'sessions/month', 'monthly sessions', 'credits per month', 'credits'),
-    membershipRenewal: find('next renewal', 'renewal date', 'next bill', 'next billing', 'renews on', 'next charge'),
-    membershipStatus:  find('membership status', 'subscription status'),
+    // RISKY optional columns: use findStrict so a column like
+    // first_name cannot accidentally match. If the therapist truly
+    // has a column called 'Service', 'Treatment', etc., we'll find
+    // it. Anything else stays at -1 (skip).
+    service:      findStrict('service', 'treatment', 'appointment type', 'session type'),
+    price:        findStrict('price', 'amount', 'session price', 'fee', 'cost'),
+    // Optional membership columns. Same strict matching applies.
+    // Per HK May 14 2026: memberships are part of client import.
+    // Per HK May 21 2026 Jackie incident: never use loose matching
+    // for plan/membership/subscription columns -- the auto-create
+    // path can silently generate hundreds of fake records.
+    membershipPlan:    findStrict('membership plan', 'membership name', 'membership', 'plan name', 'subscription plan', 'subscription'),
+    membershipPrice:   findStrict('membership price', 'monthly price', 'plan price', 'subscription price'),
+    membershipCredits: findStrict('monthly credits', 'sessions per month', 'sessions/month', 'monthly sessions', 'credits per month', 'credits'),
+    membershipRenewal: findStrict('next renewal', 'renewal date', 'next bill', 'next billing', 'renews on', 'next charge'),
+    membershipStatus:  findStrict('membership status', 'subscription status'),
   };
 }
 
@@ -142,49 +159,57 @@ export default function ImportClients({ therapist, onComplete }) {
   // auto-created 307 services named after her clients.
   const [importWarning, setImportWarning] = useState(null);
   const [importConfirmed, setImportConfirmed] = useState(false);
+  // Advanced options collapsible (HK May 21 2026): the 8 optional
+  // dropdowns live in a collapsed-by-default section so a Maria-
+  // persona (70 yr old, low tech) does not see them. She only sees
+  // the required Name / Email / Phone confirmation and the Import
+  // button. Power users with mapped service/membership columns can
+  // open this to verify or adjust.
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   function preflightCheck() {
-    // Only relevant if service column is mapped
-    if (!(mapping.service >= 0)) return null;
-
-    // Distinct values in the service column for this import
-    const distinctServices = new Set();
-    for (const row of rows) {
-      const val = (row[mapping.service] || '').trim();
-      if (val) distinctServices.add(val.toLowerCase());
+    // Generic risky-column checker. Returns a warning object if the
+    // distinct values in `colIndex` look like names or count exceeds
+    // the threshold, otherwise null. Applied to BOTH the service
+    // column and the membership plan column since both have silent
+    // auto-create paths.
+    function checkColumn(colIndex, kind, keywordRegex, threshold = 30) {
+      if (!(colIndex >= 0)) return null;
+      const distinct = new Set();
+      for (const row of rows) {
+        const val = (row[colIndex] || '').trim();
+        if (val) distinct.add(val.toLowerCase());
+      }
+      const distinctCount = distinct.size;
+      const sample = Array.from(distinct).slice(0, 8);
+      const looksLikeNames = sample.length > 0 && sample.every(v => {
+        const words = v.split(/\s+/).filter(Boolean);
+        const noKeyword = !keywordRegex.test(v);
+        const shortish = words.length <= 2 && v.length < 25;
+        return noKeyword && shortish;
+      });
+      const tooManyDistinct = distinctCount >= threshold;
+      if (looksLikeNames || tooManyDistinct) {
+        return { kind, distinctCount, sample, looksLikeNames, tooManyDistinct };
+      }
+      return null;
     }
-    const distinctCount = distinctServices.size;
 
-    // Sample of values to inspect
-    const sample = Array.from(distinctServices).slice(0, 8);
-
-    // Heuristic: does the service column look like client names?
-    // Names are typically single-word, short, capitalized, no
-    // service keywords. Real services have words like "massage",
-    // "min", "minute", "session", "deep", "tissue", "swedish",
-    // "facial", "stone", "prenatal", "couples".
+    // Service column: real services contain words like 'massage',
+    // 'minute', 'session', etc.
     const SERVICE_KEYWORDS = /\b(massage|minute|min|session|deep|tissue|swedish|facial|stone|prenatal|couples|sport|relaxation|therapy|treatment|reiki|aromatherapy|reflexology|trigger|cup|hot|cold|chair|sauna|infrared)\b/i;
-    const looksLikeNames = sample.length > 0 && sample.every(v => {
-      const words = v.split(/\s+/).filter(Boolean);
-      const noKeyword = !SERVICE_KEYWORDS.test(v);
-      const shortish = words.length <= 2 && v.length < 25;
-      return noKeyword && shortish;
-    });
+    // Membership column: real plans contain words like 'monthly',
+    // 'annual', 'silver', 'gold', 'premium', 'basic', 'unlimited',
+    // 'membership', 'plan', or pricing terms.
+    const MEMBERSHIP_KEYWORDS = /\b(monthly|annual|yearly|silver|gold|platinum|bronze|premium|basic|standard|unlimited|membership|plan|tier|level|package|subscription|deluxe|elite|vip|founder)\b/i;
 
-    // Threshold: a single solo therapist almost never has more than
-    // 20 distinct services. 30+ distinct from one import is a strong
-    // signal something is mis-mapped.
-    const tooManyDistinct = distinctCount >= 30;
+    const warnings = [];
+    const svc = checkColumn(mapping.service, 'service', SERVICE_KEYWORDS, 30);
+    if (svc) warnings.push(svc);
+    const mem = checkColumn(mapping.membershipPlan, 'membershipPlan', MEMBERSHIP_KEYWORDS, 10);
+    if (mem) warnings.push(mem);
 
-    if (looksLikeNames || tooManyDistinct) {
-      return {
-        distinctCount,
-        sample,
-        looksLikeNames,
-        tooManyDistinct,
-      };
-    }
-    return null;
+    return warnings.length > 0 ? warnings : null;
   }
 
   async function runImport() {
@@ -712,43 +737,137 @@ export default function ImportClients({ therapist, onComplete }) {
               })()}
             </div>
 
-            {/* Column mapping */}
+            {/* Column mapping, REDESIGNED for Maria persona (HK May
+                21 2026). Old version showed 11 dropdowns at once which
+                overwhelmed Jackie. New version: required fields visible
+                with green-checkmark confirmation. Optional/risky fields
+                hidden in a collapsed Advanced section. Maria never sees
+                or touches the dangerous dropdowns. */}
             <div style={{ marginBottom:20 }}>
-              <div style={{ fontSize:12, fontWeight:700, color:C.gray, marginBottom:10 }}>
-                Column mapping, auto-detected, adjust if needed. Use <strong>Full Name</strong> if your file has first + last in ONE column.
-              </div>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }} className="bm-2col">
+              {/* What we found, required fields confirmation */}
+              <div style={{
+                background: '#F0FDF4',
+                border: '1.5px solid #BBF7D0',
+                borderRadius: 12,
+                padding: 14,
+                marginBottom: 12,
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 10 }}>
+                  What we found in your file:
+                </div>
                 {[
-                  { key:'fullName',  label:'Full Name *' },
-                  { key:'firstName', label:'First Name *' },
-                  { key:'lastName',  label:'Last Name' },
-                  { key:'email',     label:'Email' },
-                  { key:'phone',     label:'Phone' },
-                  { key:'notes',     label:'Notes' },
-                  { key:'lastVisit', label:'Last Visit Date' },
-                  { key:'visitCount',label:'Visit Count' },
-                  { key:'service',   label:'Service' },
-                  { key:'price',     label:'Price' },
-                  { key:'membershipPlan',    label:'Membership Plan' },
-                  { key:'membershipPrice',   label:'Membership $/mo' },
-                  { key:'membershipCredits', label:'Sessions/mo' },
-                  { key:'membershipRenewal', label:'Next Renewal' },
-                  { key:'membershipStatus',  label:'Membership Status' },
-                ].map(({ key, label }) => (
-                  <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize:12, color:C.gray, width:100, flexShrink:0 }}>{label}</span>
-                    <select value={mapping[key] >= 0 ? mapping[key] : -1}
-                      onChange={e => setMapping(m => ({ ...m, [key]: parseInt(e.target.value) }))}
-                      style={{ flex:1, padding:'6px 8px', border:`1.5px solid ${C.light}`, borderRadius:6, fontSize:12, outline:'none', background:'#fff' }}>
-                      <option value={-1}>skip</option>
-                      {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
-                    </select>
+                  { key: 'name', label: 'Names', got: (mapping.firstName >= 0 || mapping.fullName >= 0) },
+                  { key: 'email', label: 'Email addresses', got: mapping.email >= 0 },
+                  { key: 'phone', label: 'Phone numbers', got: mapping.phone >= 0 },
+                  { key: 'lastVisit', label: 'Last visit dates', got: mapping.lastVisit >= 0 },
+                ].map(({ key, label, got }) => (
+                  <div key={key} style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    fontSize: 13,
+                    color: got ? '#166534' : '#92400E',
+                    marginBottom: 4,
+                  }}>
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 18,
+                      height: 18,
+                      borderRadius: '50%',
+                      background: got ? '#16A34A' : '#FBBF24',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 800,
+                      flexShrink: 0,
+                    }}>
+                      {got ? '✓' : '–'}
+                    </span>
+                    <span>{got ? `${label}: yes` : `${label}: not found in your file`}</span>
                   </div>
                 ))}
               </div>
+
+              {/* If required field (name) is missing, surface a prompt */}
               {mapping.fullName < 0 && mapping.firstName < 0 && (
-                <div style={{ marginTop:10, fontSize:11.5, color:'#92400E', background:'#FFFBEB', border:'1px solid #FDE68A', borderRadius:8, padding:'8px 10px', lineHeight:1.5 }}>
-                  Map either <strong>Full Name</strong> (single column) or <strong>First Name</strong> (split columns) before importing.
+                <div style={{
+                  marginBottom: 12,
+                  fontSize: 13,
+                  color: '#92400E',
+                  background: '#FFFBEB',
+                  border: '1.5px solid #FDE68A',
+                  borderRadius: 10,
+                  padding: 12,
+                  lineHeight: 1.55,
+                }}>
+                  <strong>We could not find a name column.</strong> Open the section below and tell us which column has your client names.
+                </div>
+              )}
+
+              {/* Advanced section, collapsed by default */}
+              <button
+                type="button"
+                onClick={() => setShowAdvanced(v => !v)}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: 'transparent',
+                  border: `1px solid ${C.light}`,
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: C.gray,
+                  cursor: 'pointer',
+                  marginBottom: showAdvanced ? 10 : 0,
+                }}
+              >
+                <span>{showAdvanced ? 'Hide' : 'Show'} advanced column mapping</span>
+                <span style={{ fontSize: 12 }}>{showAdvanced ? '▲' : '▼'}</span>
+              </button>
+
+              {showAdvanced && (
+                <div style={{
+                  background: '#FBFAF4',
+                  border: `1px solid ${C.light}`,
+                  borderRadius: 10,
+                  padding: 14,
+                }}>
+                  <div style={{ fontSize:12, color:C.gray, marginBottom:10, lineHeight: 1.55 }}>
+                    Only change these if you know which CSV column matches. <strong>If unsure, leave them as &quot;skip&quot;</strong>: your clients will still import correctly.
+                  </div>
+                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }} className="bm-2col">
+                    {[
+                      { key:'fullName',  label:'Full Name' },
+                      { key:'firstName', label:'First Name' },
+                      { key:'lastName',  label:'Last Name' },
+                      { key:'email',     label:'Email' },
+                      { key:'phone',     label:'Phone' },
+                      { key:'notes',     label:'Notes' },
+                      { key:'lastVisit', label:'Last Visit Date' },
+                      { key:'visitCount',label:'Visit Count' },
+                      { key:'service',   label:'Service' },
+                      { key:'price',     label:'Price' },
+                      { key:'membershipPlan',    label:'Membership Plan' },
+                      { key:'membershipPrice',   label:'Membership $/mo' },
+                      { key:'membershipCredits', label:'Sessions/mo' },
+                      { key:'membershipRenewal', label:'Next Renewal' },
+                      { key:'membershipStatus',  label:'Membership Status' },
+                    ].map(({ key, label }) => (
+                      <div key={key} style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontSize:12, color:C.gray, width:100, flexShrink:0 }}>{label}</span>
+                        <select value={mapping[key] >= 0 ? mapping[key] : -1}
+                          onChange={e => setMapping(m => ({ ...m, [key]: parseInt(e.target.value) }))}
+                          style={{ flex:1, padding:'6px 8px', border:`1.5px solid ${C.light}`, borderRadius:6, fontSize:12, outline:'none', background:'#fff' }}>
+                          <option value={-1}>skip</option>
+                          {headers.map((h, i) => <option key={i} value={i}>{h}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -789,95 +908,113 @@ export default function ImportClients({ therapist, onComplete }) {
               {rows.length > 5 && <div style={{ fontSize:11, color:C.gray, marginTop:6 }}>...and {rows.length - 5} more clients</div>}
             </div>
 
-            {/* Pre-flight warning (HK May 21 2026 Jackie incident). If
-                the mapping looks dangerous (service column contains
-                client names, or would create 30+ distinct services),
-                we block the import and force a deliberate confirm. */}
-            {importWarning && (
-              <div style={{
-                marginBottom: 16,
-                background: '#FEF2F2',
-                border: '2px solid #FCA5A5',
-                borderRadius: 12,
-                padding: 16,
-              }}>
-                <div style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: '#991B1B',
-                  marginBottom: 8,
+            {/* Pre-flight warnings (HK May 21 2026 Jackie incident).
+                preflightCheck() returns an array of warnings, one per
+                risky column (service, membershipPlan). Each gets its
+                own banner with column-specific guidance and a one-tap
+                fix that sets the offending dropdown to skip. */}
+            {importWarning && Array.isArray(importWarning) && importWarning.map((w, idx) => {
+              const isService = w.kind === 'service';
+              const colLabel = isService ? 'Service' : 'Membership Plan';
+              const reasonText = w.looksLikeNames
+                ? `Your ${colLabel} column has values that look like client names, not ${isService ? 'services' : 'membership plans'}. If you continue, MyBodyMap will create ${w.distinctCount} new ${isService ? 'services' : 'memberships'} in your account, one per unique value.`
+                : `This import would create ${w.distinctCount} new ${isService ? 'services' : 'memberships'} in your account. That is a lot for a solo practice and usually means the ${colLabel} column is pointing at the wrong CSV column.`;
+              const examples = isService
+                ? 'a column called "Massage Type" or "Service"'
+                : 'a column called "Plan" or "Subscription Tier"';
+              return (
+                <div key={w.kind} style={{
+                  marginBottom: 16,
+                  background: '#FEF2F2',
+                  border: '2px solid #FCA5A5',
+                  borderRadius: 12,
+                  padding: 16,
                 }}>
-                  Wait. Something looks off with the Service column.
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: '#991B1B',
+                    marginBottom: 8,
+                  }}>
+                    Wait. Something looks off with the {colLabel} column.
+                  </div>
+                  <div style={{
+                    fontSize: 13,
+                    color: '#7F1D1D',
+                    lineHeight: 1.55,
+                    marginBottom: 10,
+                  }}>
+                    {reasonText}
+                  </div>
+                  <div style={{
+                    fontSize: 12,
+                    color: '#7F1D1D',
+                    marginBottom: 12,
+                    fontStyle: 'italic',
+                  }}>
+                    Sample values from your {colLabel} column: {w.sample.map(s => `"${s}"`).join(', ')}
+                  </div>
+                  <div style={{
+                    fontSize: 12.5,
+                    color: '#7F1D1D',
+                    lineHeight: 1.55,
+                    marginBottom: 12,
+                    background: '#FFFBEB',
+                    border: '1px solid #FDE68A',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                  }}>
+                    <strong>What to do:</strong> scroll up, find the <strong>{colLabel}</strong> dropdown, and set it to <strong>skip</strong>. Or pick a CSV column that actually contains {isService ? 'service' : 'plan'} names (like {examples}).
+                  </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        if (isService) {
+                          setMapping(m => ({ ...m, service: -1, price: -1 }));
+                        } else {
+                          setMapping(m => ({ ...m, membershipPlan: -1, membershipPrice: -1, membershipCredits: -1, membershipRenewal: -1, membershipStatus: -1 }));
+                        }
+                        // Remove this warning from the array
+                        setImportWarning(prev => Array.isArray(prev) ? prev.filter((_, i) => i !== idx) : null);
+                      }}
+                      style={{
+                        background: 'linear-gradient(135deg, #2A5741, #1F4030)',
+                        color: '#fff',
+                        border: 'none',
+                        padding: '10px 18px',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Set {colLabel} to skip
+                    </button>
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: 13,
-                  color: '#7F1D1D',
-                  lineHeight: 1.55,
-                  marginBottom: 10,
-                }}>
-                  {importWarning.looksLikeNames
-                    ? `Your Service column has values that look like client names, not services. If you continue, MyBodyMap will create ${importWarning.distinctCount} new services in your account, one per unique value in that column.`
-                    : `This import would create ${importWarning.distinctCount} new services in your account. That is a lot for a solo practice and usually means the Service column is mapped to the wrong CSV column.`}
-                </div>
-                <div style={{
-                  fontSize: 12,
-                  color: '#7F1D1D',
-                  marginBottom: 12,
-                  fontStyle: 'italic',
-                }}>
-                  Sample values from your Service column: {importWarning.sample.map(s => `"${s}"`).join(', ')}
-                </div>
-                <div style={{
-                  fontSize: 12.5,
-                  color: '#7F1D1D',
-                  lineHeight: 1.55,
-                  marginBottom: 12,
-                  background: '#FFFBEB',
-                  border: '1px solid #FDE68A',
-                  borderRadius: 8,
-                  padding: '10px 12px',
-                }}>
-                  <strong>What to do:</strong> scroll up, find the <strong>Service</strong> dropdown, and set it to <strong>skip</strong>. Or pick the CSV column that actually contains service names (like "Massage Type" or "Service").
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    onClick={() => {
-                      setImportWarning(null);
-                      setMapping(m => ({ ...m, service: -1, price: -1 }));
-                    }}
-                    style={{
-                      background: 'linear-gradient(135deg, #2A5741, #1F4030)',
-                      color: '#fff',
-                      border: 'none',
-                      padding: '10px 18px',
-                      borderRadius: 999,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Set Service to skip and continue
-                  </button>
-                  <button
-                    onClick={() => {
-                      setImportWarning(null);
-                      setImportConfirmed(true);
-                      setTimeout(() => runImport(), 0);
-                    }}
-                    style={{
-                      background: 'transparent',
-                      color: '#991B1B',
-                      border: '1.5px solid #FCA5A5',
-                      padding: '10px 18px',
-                      borderRadius: 999,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    I checked, import anyway
-                  </button>
-                </div>
+              );
+            })}
+            {importWarning && Array.isArray(importWarning) && importWarning.length > 0 && (
+              <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={() => {
+                    setImportWarning(null);
+                    setImportConfirmed(true);
+                    setTimeout(() => runImport(), 0);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: '#991B1B',
+                    border: '1.5px solid #FCA5A5',
+                    padding: '8px 14px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  I checked everything, import anyway
+                </button>
               </div>
             )}
 
@@ -951,6 +1088,39 @@ export default function ImportClients({ therapist, onComplete }) {
             <p style={{ fontSize:13, color:C.gray, marginBottom:20, lineHeight:1.6 }}>
               Visit history has been preserved where available, lapsed detection and pattern intelligence will work immediately for imported clients.
             </p>
+
+            {results.created > 0 && (
+              <div style={{
+                background: '#FFFBEB',
+                border: '1.5px solid #FDE68A',
+                borderRadius: 12,
+                padding: '14px 18px',
+                marginBottom: 14,
+                textAlign: 'left',
+              }}>
+                <div style={{ fontSize: 13, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>
+                  📋 Next: set up your services
+                </div>
+                <div style={{ fontSize: 13, color: '#1F2937', lineHeight: 1.6, marginBottom: 12 }}>
+                  Your clients are in, but clients cannot book online until you add the services you offer (60 min massage, 75 min massage, and so on). It takes about 2 minutes.
+                </div>
+                <button
+                  onClick={() => { window.location.href = '/dashboard/settings#services'; }}
+                  style={{
+                    background: '#B45309',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 10,
+                    padding: '9px 18px',
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Set up my services →
+                </button>
+              </div>
+            )}
 
             {results.created > 0 && (
               <div style={{
