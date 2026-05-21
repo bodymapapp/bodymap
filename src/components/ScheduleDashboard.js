@@ -1965,6 +1965,13 @@ export default function ScheduleDashboard({ therapist }) {
   const [blockedDays, setBlockedDays] = useState([]);
   const [showBlockPanel, setShowBlockPanel] = useState(false);
   const [blockDate, setBlockDate] = useState('');
+  // Multi-day block support (HK May 21 2026 from Jackie request).
+  // She works 3 weeks on, 10 days off. Single-day blocks were too
+  // painful for vacations. When blockEndDate is set and different
+  // from blockDate, addBlockedDay() loops the range and creates one
+  // blocked_days row per date. When empty, behavior is the same as
+  // before (single-day block).
+  const [blockEndDate, setBlockEndDate] = useState('');
   const [blockNote, setBlockNote] = useState('');
   const [blockStartTime, setBlockStartTime] = useState('');
   const [blockEndTime, setBlockEndTime] = useState('');
@@ -2004,6 +2011,18 @@ export default function ScheduleDashboard({ therapist }) {
 
     const useArgs = args && typeof args === 'object' && args.date;
     const skipConflictCheck = !!(args && args.skipConflictCheck);
+
+    // Multi-day range short-circuit (HK May 21 2026 from Jackie ask
+    // 'block off 10 days at a time'). When the inline form has a
+    // blockEndDate set that is AFTER blockDate, iterate the range and
+    // insert one full-day blocked_days row per date. Conflict check
+    // runs per-date so the therapist sees ALL clashes across the
+    // range before confirming. Partial-time blocks are not supported
+    // for multi-day; the use case is vacations = full days off.
+    const hasRange = !useArgs && blockEndDate && blockEndDate > blockDate;
+    if (hasRange && blockMode === 'full') {
+      return await addBlockedDayRange(skipConflictCheck);
+    }
     const payload = useArgs
       ? {
           therapist_id: therapist.id,
@@ -2119,6 +2138,109 @@ export default function ScheduleDashboard({ therapist }) {
   async function removeBlockedDay(id) {
     await supabase.from('blocked_days').delete().eq('id', id);
     setBlockedDays(prev => prev.filter(d => d.id !== id));
+  }
+
+  // Multi-day block range insert (HK May 21 2026, supports the 10-day
+  // vacation use case Jackie raised). Walks the inclusive range from
+  // blockDate to blockEndDate, creating one full-day blocked_days row
+  // per date. Conflict check runs across the full range first; if any
+  // bookings clash on any date in the range we surface them all in
+  // the pending-conflicts banner and require explicit confirmation
+  // before proceeding. After confirmation the inserts go one by one
+  // (so a mid-range error does not silently leave partial state).
+  async function addBlockedDayRange(skipConflictCheck) {
+    const toDate = d => new Date(d + 'T12:00:00');
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const start = toDate(blockDate);
+    const end = toDate(blockEndDate);
+    if (end < start) {
+      setBlockError('End date must be on or after start date.');
+      return null;
+    }
+    // Build full list of dates in the range, inclusive both ends
+    const dates = [];
+    for (let cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
+      dates.push(fmt(cur));
+    }
+    // Safety cap: do not let a typo create thousands of blocks
+    if (dates.length > 90) {
+      setBlockError(`That range covers ${dates.length} days. The maximum is 90 days at a time. Please split into smaller ranges.`);
+      return null;
+    }
+    const note = blockNote.trim() || null;
+
+    // Pre-check ALL dates in the range for booking conflicts. Same
+    // approach as single-day: surface clashes inline, wait for the
+    // therapist to confirm before writing anything.
+    if (!skipConflictCheck) {
+      const { data: clashes } = await supabase
+        .from('bookings')
+        .select('id, client_name, start_time, end_time, status, booking_date')
+        .eq('therapist_id', therapist.id)
+        .in('booking_date', dates)
+        .in('status', ['confirmed', 'pending-approval', 'pending-deposit']);
+      if (Array.isArray(clashes) && clashes.length > 0) {
+        setPendingBlockConflicts({
+          date: `${blockDate} to ${blockEndDate}`,
+          partial: false,
+          blockStart: null,
+          blockEnd: null,
+          note,
+          useArgs: false,
+          isRange: true,
+          rangeStart: blockDate,
+          rangeEnd: blockEndDate,
+          conflicts: clashes
+            .slice()
+            .sort((a,b) => {
+              const dc = (a.booking_date || '').localeCompare(b.booking_date || '');
+              if (dc !== 0) return dc;
+              return (a.start_time || '').localeCompare(b.start_time || '');
+            })
+            .map(b => ({
+              id: b.id,
+              client_name: b.client_name,
+              start_time: b.start_time,
+              status: b.status,
+              booking_date: b.booking_date,
+            })),
+        });
+        return null;
+      }
+    }
+
+    setBlockSaving(true);
+    const inserted = [];
+    let failedCount = 0;
+    for (const d of dates) {
+      const { data, error } = await supabase.from('blocked_days')
+        .insert({ therapist_id: therapist.id, date: d, note })
+        .select().single();
+      if (error) {
+        failedCount++;
+        console.error('[addBlockedDayRange] insert failed for', d, error);
+      } else if (data) {
+        inserted.push(data);
+      }
+    }
+    if (inserted.length === 0) {
+      setBlockError('Could not save the block range. Please try again.');
+      setBlockSaving(false);
+      return null;
+    }
+    setBlockedDays(prev => [...prev, ...inserted].sort((a,b)=>{
+      const dc = a.date.localeCompare(b.date);
+      if (dc !== 0) return dc;
+      return (a.start_time || '').localeCompare(b.start_time || '');
+    }));
+    setBlockDate(''); setBlockEndDate(''); setBlockNote(''); setBlockStartTime(''); setBlockEndTime('');
+    setBlockMode('full');
+    setPendingBlockConflicts(null);
+    setBlockSaving(false);
+    if (failedCount > 0) {
+      setBlockError(`Blocked ${inserted.length} of ${dates.length} days. ${failedCount} could not be saved (possibly already blocked).`);
+    }
+    return inserted;
   }
 
   async function fetchBookings() {
@@ -2561,6 +2683,42 @@ export default function ScheduleDashboard({ therapist }) {
                 minWidth: 150,
               }}
             />
+            {/* Multi-day range support (HK May 21 2026, Jackie ask for
+                3-weeks-on-10-days-off blocks). The 'to' input shows only
+                for full-day blocks. Vacations are typically full days,
+                so partial-time multi-day blocks are intentionally NOT
+                supported. The 'to' input is optional: empty = single-day
+                block, same as before. */}
+            {blockMode === 'full' && (
+              <>
+                <span style={{
+                  fontFamily: 'Georgia, serif',
+                  fontStyle: 'italic',
+                  fontSize: 14,
+                  color: '#6B7280',
+                }}>to</span>
+                <input
+                  type="date"
+                  value={blockEndDate}
+                  onChange={(e) => setBlockEndDate(e.target.value)}
+                  min={blockDate || new Date().toISOString().slice(0, 10)}
+                  aria-label="End date (optional, for multi-day blocks)"
+                  placeholder="(optional)"
+                  style={{
+                    padding: '8px 12px',
+                    border: `1.5px solid #E8E4DC`,
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#1F4030',
+                    outline: 'none',
+                    background: '#FBFAF4',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    minWidth: 150,
+                  }}
+                />
+              </>
+            )}
           </div>
 
           {/* Reason row, full width. Optional. Inline with the rest of
