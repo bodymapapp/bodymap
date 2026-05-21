@@ -2607,106 +2607,67 @@ export default function ScheduleDashboard({ therapist }) {
             </div>
           </div>
 
-          {/* Inline composition row. Reads as a sentence:
-                "from [time] to [time] on [date] · [reason]    [Block]"
-              In full-day mode, the times collapse and it becomes:
-                "all of [date] · [reason]    [Block]"
-              Mobile reflow: each chunk wraps to its own line gracefully
-              with consistent vertical rhythm. */}
-          <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 10,
-            alignItems: 'center',
-            marginBottom: blockError ? 12 : 6,
-          }}>
-            {blockMode === 'partial' && (
-              <>
-                <span style={{
-                  fontFamily: 'Georgia, serif',
-                  fontStyle: 'italic',
-                  fontSize: 14,
-                  color: '#6B7280',
-                }}>from</span>
-                <InlineTimeInput
-                  value={blockStartTime}
-                  onChange={(t) => { setBlockStartTime(t); setBlockError(''); }}
-                  placeholder="10:00 AM"
-                  ariaLabel="Start time of blocked window"
-                  width={108}
-                />
-                <span style={{
-                  fontFamily: 'Georgia, serif',
-                  fontStyle: 'italic',
-                  fontSize: 14,
-                  color: '#6B7280',
-                }}>to</span>
-                <InlineTimeInput
-                  value={blockEndTime}
-                  onChange={(t) => { setBlockEndTime(t); setBlockError(''); }}
-                  placeholder="2:00 PM"
-                  ariaLabel="End time of blocked window"
-                  width={108}
-                />
-              </>
-            )}
-            {blockMode === 'full' && (
-              <span style={{
-                fontFamily: 'Georgia, serif',
-                fontStyle: 'italic',
-                fontSize: 14,
-                color: '#6B7280',
-              }}>all of</span>
-            )}
-            <span style={{
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              fontSize: 14,
-              color: '#6B7280',
-            }}>on</span>
-            <input
-              type="date"
-              value={blockDate}
-              onChange={(e) => setBlockDate(e.target.value)}
-              min={new Date().toISOString().slice(0, 10)}
-              aria-label="Date to block"
-              style={{
-                padding: '8px 12px',
-                border: `1.5px solid ${blockDate ? '#E8E4DC' : '#FCA5A5'}`,
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 600,
-                color: '#1F4030',
-                outline: 'none',
-                background: '#FBFAF4',
-                fontFamily: 'system-ui, -apple-system, sans-serif',
-                minWidth: 150,
-              }}
-            />
-            {/* Multi-day range support (HK May 21 2026, Jackie ask for
-                3-weeks-on-10-days-off blocks). The 'to' input shows only
-                for full-day blocks. Vacations are typically full days,
-                so partial-time multi-day blocks are intentionally NOT
-                supported. The 'to' input is optional: empty = single-day
-                block, same as before. */}
-            {blockMode === 'full' && (
-              <>
-                <span style={{
-                  fontFamily: 'Georgia, serif',
-                  fontStyle: 'italic',
-                  fontSize: 14,
-                  color: '#6B7280',
-                }}>to</span>
+          {/* Stacked input layout (HK May 21 2026 redesign from
+              Jackie's screenshot: prior layout collapsed badly on
+              mobile, with 'to' orphaned at end of line and the second
+              date dropping to its own row). Now: each input is a
+              labeled, full-width row. No more prose-style filler
+              words. Reason pills replace the open text input as the
+              primary path, with a free-text fallback. */}
+
+          {/* Partial-mode time-range row (only when blockMode is
+              'partial'). Two stacked time pickers with explicit
+              From / To labels. */}
+          {blockMode === 'partial' && (
+            <div style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                    From time
+                  </div>
+                  <InlineTimeInput
+                    value={blockStartTime}
+                    onChange={(t) => { setBlockStartTime(t); setBlockError(''); }}
+                    placeholder="10:00 AM"
+                    ariaLabel="Start time of blocked window"
+                    width={'100%'}
+                  />
+                </div>
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                    To time
+                  </div>
+                  <InlineTimeInput
+                    value={blockEndTime}
+                    onChange={(t) => { setBlockEndTime(t); setBlockError(''); }}
+                    placeholder="2:00 PM"
+                    ariaLabel="End time of blocked window"
+                    width={'100%'}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Date row(s). Full-day mode shows From + To (optional).
+              Partial mode shows a single date input. */}
+          <div style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                  {blockMode === 'full' ? 'From date' : 'On date'}
+                </div>
                 <input
                   type="date"
-                  value={blockEndDate}
-                  onChange={(e) => setBlockEndDate(e.target.value)}
-                  min={blockDate || new Date().toISOString().slice(0, 10)}
-                  aria-label="End date (optional, for multi-day blocks)"
-                  placeholder="(optional)"
+                  value={blockDate}
+                  onChange={(e) => setBlockDate(e.target.value)}
+                  min={new Date().toISOString().slice(0, 10)}
+                  aria-label="Date to block"
                   style={{
-                    padding: '8px 12px',
-                    border: `1.5px solid #E8E4DC`,
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: '10px 12px',
+                    border: `1.5px solid ${blockDate ? '#E8E4DC' : '#FCA5A5'}`,
                     borderRadius: 10,
                     fontSize: 14,
                     fontWeight: 600,
@@ -2714,46 +2675,136 @@ export default function ScheduleDashboard({ therapist }) {
                     outline: 'none',
                     background: '#FBFAF4',
                     fontFamily: 'system-ui, -apple-system, sans-serif',
-                    minWidth: 150,
                   }}
                 />
-              </>
-            )}
+              </div>
+              {blockMode === 'full' && (
+                <div style={{ flex: '1 1 140px', minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+                    To date <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#9CA3AF' }}>(optional)</span>
+                  </div>
+                  <input
+                    type="date"
+                    value={blockEndDate}
+                    onChange={(e) => setBlockEndDate(e.target.value)}
+                    min={blockDate || new Date().toISOString().slice(0, 10)}
+                    aria-label="End date (optional, for multi-day blocks)"
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      padding: '10px 12px',
+                      border: '1.5px solid #E8E4DC',
+                      borderRadius: 10,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: '#1F4030',
+                      outline: 'none',
+                      background: '#FBFAF4',
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Reason row, full width. Optional. Inline with the rest of
-              the composition but on its own line so longer reasons
-              don't crowd the time/date controls. */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            marginBottom: 16,
-          }}>
-            <span style={{
-              fontFamily: 'Georgia, serif',
-              fontStyle: 'italic',
-              fontSize: 14,
-              color: '#6B7280',
-              flexShrink: 0,
-            }}>because</span>
+          {/* Live preview of what will be blocked. Helps the therapist
+              confirm 'yes that's what I want' before tapping the
+              button. Visible only when at least the From date is set. */}
+          {blockDate && (
+            <div style={{
+              marginBottom: 14,
+              padding: '10px 14px',
+              background: '#F0F7F2',
+              border: '1px solid #C8E0CC',
+              borderRadius: 10,
+              fontSize: 13,
+              color: '#1F4030',
+              lineHeight: 1.55,
+            }}>
+              {(() => {
+                // Build a human preview of what's being blocked
+                const fmtDate = (s) => {
+                  const d = new Date(s + 'T12:00:00');
+                  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                };
+                const fmtTime = (t) => {
+                  if (!t) return '';
+                  const [hh, mm] = t.split(':').map(Number);
+                  const ampm = hh >= 12 ? 'PM' : 'AM';
+                  const h12 = hh % 12 === 0 ? 12 : hh % 12;
+                  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;
+                };
+                if (blockMode === 'partial') {
+                  if (!blockStartTime || !blockEndTime) {
+                    return <span style={{ color: '#92400E' }}>Choose a start and end time to see the preview.</span>;
+                  }
+                  return <><strong>Will block:</strong> {fmtDate(blockDate)} from {fmtTime(blockStartTime)} to {fmtTime(blockEndTime)}.</>;
+                }
+                if (blockEndDate && blockEndDate > blockDate) {
+                  const start = new Date(blockDate + 'T12:00:00');
+                  const end = new Date(blockEndDate + 'T12:00:00');
+                  const days = Math.round((end - start) / 86400000) + 1;
+                  return <><strong>Will block {days} days:</strong> {fmtDate(blockDate)} through {fmtDate(blockEndDate)}.</>;
+                }
+                return <><strong>Will block:</strong> all of {fmtDate(blockDate)}.</>;
+              })()}
+            </div>
+          )}
+
+          {/* Reason row. Quick-pick pills above the free-text input.
+              Most therapists pick from the common set; power users
+              can still type their own. */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 6 }}>
+              Reason <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#9CA3AF' }}>(optional)</span>
+            </div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+              {(blockMode === 'partial'
+                ? ['Lunch', 'Errand', 'Personal', 'Family', 'Other']
+                : ['Vacation', 'Personal day', 'Sick', 'Conference', 'Family', 'Other']
+              ).map((preset) => {
+                const isActive = blockNote === preset;
+                return (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setBlockNote(isActive ? '' : preset)}
+                    style={{
+                      background: isActive ? '#2A5741' : '#fff',
+                      color: isActive ? '#fff' : '#1F4030',
+                      border: `1.5px solid ${isActive ? '#2A5741' : '#E8E4DC'}`,
+                      borderRadius: 999,
+                      padding: '6px 12px',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      WebkitTapHighlightColor: 'transparent',
+                      transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                    }}
+                  >
+                    {preset}
+                  </button>
+                );
+              })}
+            </div>
             <input
               type="text"
               value={blockNote}
               onChange={(e) => setBlockNote(e.target.value)}
-              placeholder={blockMode === 'partial' ? 'lunch, errand, school pickup' : 'vacation, personal day, conference'}
+              placeholder={blockMode === 'partial' ? 'or type your own reason' : 'or type your own reason'}
               aria-label="Reason for blocking time (optional)"
               style={{
-                flex: 1,
-                padding: '8px 12px',
+                width: '100%',
+                boxSizing: 'border-box',
+                padding: '9px 12px',
                 border: '1.5px solid #E8E4DC',
                 borderRadius: 10,
-                fontSize: 14,
+                fontSize: 13.5,
                 color: '#1F2937',
                 outline: 'none',
                 background: '#FBFAF4',
                 fontFamily: 'system-ui, -apple-system, sans-serif',
-                fontStyle: 'italic',
               }}
               onFocus={(e) => { e.target.style.background = '#fff'; e.target.style.borderColor = '#2A5741'; }}
               onBlur={(e) => { e.target.style.background = '#FBFAF4'; e.target.style.borderColor = '#E8E4DC'; }}
@@ -2931,7 +2982,16 @@ export default function ScheduleDashboard({ therapist }) {
               onMouseUp={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
-              {blockSaving ? 'Blocking…' : (blockMode === 'partial' ? 'Block this time' : 'Block this day')}
+              {blockSaving ? 'Blocking…' : (() => {
+                if (blockMode === 'partial') return 'Block this time';
+                if (blockEndDate && blockEndDate > blockDate) {
+                  const start = new Date(blockDate + 'T12:00:00');
+                  const end = new Date(blockEndDate + 'T12:00:00');
+                  const days = Math.round((end - start) / 86400000) + 1;
+                  return `Block these ${days} days`;
+                }
+                return 'Block this day';
+              })()}
             </button>
           </div>
 
