@@ -21,16 +21,24 @@ function generateSlots(start, end, dur, booked, bufferMins = 0) {
   let cur=sh*60+sm; const endMin=eh*60+em;
   while(cur+dur<=endMin){
     const hh=String(Math.floor(cur/60)).padStart(2,'0'), mm=String(cur%60).padStart(2,'0');
-    const se=`${String(Math.floor((cur+dur)/60)).padStart(2,'0')}:${String((cur+dur)%60).padStart(2,'0')}`;
-    // Check conflict including buffer: a slot conflicts if it overlaps with any booked slot + their buffer
+    const slotEndMins = cur + dur;
+    const se=`${String(Math.floor(slotEndMins/60)).padStart(2,'0')}:${String(slotEndMins%60).padStart(2,'0')}`;
+    // Check conflict including buffer on BOTH sides of each existing
+    // booking. HK fix May 19 2026 from Candice report: prior version
+    // only added buffer AFTER the existing booking, so a new slot
+    // could land RIGHT BEFORE an existing booking with zero gap.
+    // Now: a new slot conflicts if it overlaps the window from
+    // (existingStart - buffer) to (existingEnd + buffer).
+    const slotStartMins = cur;
     const conflict=booked.some(b=>{
-      const bookedStart = b.start_time.slice(0,5);
-      const bookedEndMins = b.end_time ? 
-        (parseInt(b.end_time.slice(0,2))*60 + parseInt(b.end_time.slice(3,5))) :
-        (parseInt(b.start_time.slice(0,2))*60 + parseInt(b.start_time.slice(3,5)) + dur);
-      const bookedEndWithBuffer = bookedEndMins + bufferMins;
-      const bookedEndStr = `${String(Math.floor(bookedEndWithBuffer/60)).padStart(2,'0')}:${String(bookedEndWithBuffer%60).padStart(2,'0')}`;
-      return !(se <= bookedStart || `${hh}:${mm}` >= bookedEndStr);
+      const bookedStartMins = parseInt(b.start_time.slice(0,2))*60 + parseInt(b.start_time.slice(3,5));
+      const bookedEndMins = b.end_time
+        ? (parseInt(b.end_time.slice(0,2))*60 + parseInt(b.end_time.slice(3,5)))
+        : (bookedStartMins + dur);
+      const blockStart = bookedStartMins - bufferMins;
+      const blockEnd   = bookedEndMins   + bufferMins;
+      // Overlap test: two intervals overlap iff NOT (a ends <= b starts OR a starts >= b ends).
+      return !(slotEndMins <= blockStart || slotStartMins >= blockEnd);
     });
     if(!conflict) slots.push({start:`${hh}:${mm}`,end:se,display:fmt12(`${hh}:${mm}`),minutes:cur});
     cur+=30;
@@ -752,6 +760,7 @@ export default function BookingPage() {
   const [partner,setPartner]=useState({name:'',email:''});
   const [partnerErrors,setPartnerErrors]=useState({});
   const [errors,setErrors]=useState({});
+  const [submitError,setSubmitError]=useState(null);
   const [submitting,setSubmitting]=useState(false);
 
   // Booking-policies gate (Ashley Scalzulli May 2026). When therapist
@@ -1624,6 +1633,57 @@ export default function BookingPage() {
 
   async function submit() {
     setSubmitting(true);
+
+    // Server-side guards (HK May 19 2026 from Candice report). Catch
+    // clients who landed on a cached old version of this page where
+    // a service was public OR a date was bookable, but the therapist
+    // has since flipped it. Re-fetch current state and reject if the
+    // current data says this booking should not be allowed.
+    //
+    // Three checks:
+    //   1. The service is still active AND not private. If a
+    //      therapist marked a service private after the client
+    //      already saw it as public, the cached page would still
+    //      let them submit. This rejects that.
+    //   2. The booking date is not on a full-day block. Same cache
+    //      story.
+    //   3. The booking time is not inside a partial-day block.
+    try {
+      const [{ data: svcCheck }, { data: bdCheck }] = await Promise.all([
+        supabase.from('services').select('active, visibility, archived_at').eq('id', svc.id).maybeSingle(),
+        supabase.from('blocked_days').select('start_time, end_time').eq('therapist_id', therapist.id).eq('date', date),
+      ]);
+
+      if (!svcCheck || svcCheck.archived_at || !svcCheck.active) {
+        setSubmitting(false);
+        setSubmitError('This service is no longer available. Please refresh the page and try again.');
+        return;
+      }
+      if (svcCheck.visibility === 'private') {
+        setSubmitting(false);
+        setSubmitError('This service is no longer available for online booking. Please contact the therapist directly to book.');
+        return;
+      }
+      const fullDayBlock = (bdCheck || []).find(b => !b.start_time && !b.end_time);
+      if (fullDayBlock) {
+        setSubmitting(false);
+        setSubmitError('The therapist has marked this day unavailable. Please refresh the page and pick a different day.');
+        return;
+      }
+      const partialBlock = (bdCheck || []).find(b => b.start_time && b.end_time && slot.start < b.end_time.slice(0,5) && slot.end > b.start_time.slice(0,5));
+      if (partialBlock) {
+        setSubmitting(false);
+        setSubmitError('That time is no longer available. Please refresh the page and pick a different time.');
+        return;
+      }
+    } catch (e) {
+      // If the guard query fails, fall through. We do not want a
+      // network blip to block a legitimate booking. The therapist
+      // can still reject in their dashboard if anything weird gets
+      // through.
+      console.warn('[booking-guard] check failed, proceeding:', e);
+    }
+
     // Snapshot add-on data for the booking. This is captured at booking time
     // so future changes to add-on prices do not retroactively change what the
     // client agreed to. Stored as JSONB for easy read.
@@ -3844,6 +3904,11 @@ export default function BookingPage() {
             {paymentError&&(
               <div style={{marginTop:12,background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px',fontSize:13,color:'#991B1B',lineHeight:1.5}}>
                 ⚠️ <strong>Deposit error:</strong> {paymentError}
+              </div>
+            )}
+            {submitError&&(
+              <div style={{marginTop:12,background:'#FEF2F2',border:'1.5px solid #FECACA',borderRadius:10,padding:'14px',fontSize:13,color:'#991B1B',lineHeight:1.5}}>
+                ⚠️ {submitError}
               </div>
             )}
           </div>

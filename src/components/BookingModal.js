@@ -198,8 +198,11 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       const slotEnd   = addMins(slotStart, dur);
 
       const conflict = conflictPool.some(b => {
-        const bs = parseInt(b.start_time) * 60 + parseInt(b.start_time.slice(3));
-        const be = parseInt(b.end_time)   * 60 + parseInt(b.end_time.slice(3)) + bufferMins;
+        // Two-sided buffer (HK May 19 2026, Candice fix): block slots
+        // adjacent on BOTH sides of each existing booking, not just
+        // after. Mirrors the matching fix in BookingPage.generateSlots.
+        const bs = (parseInt(b.start_time) * 60 + parseInt(b.start_time.slice(3))) - bufferMins;
+        const be = (parseInt(b.end_time)   * 60 + parseInt(b.end_time.slice(3))) + bufferMins;
         const ss = m, se = m + dur;
         return ss < be && se > bs;
       });
