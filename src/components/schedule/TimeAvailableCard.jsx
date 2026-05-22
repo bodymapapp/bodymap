@@ -19,6 +19,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { computeAllInsights } from '../../lib/insights/deepInsights';
 
 const C = {
   forest:     '#1F3A2C',
@@ -269,12 +270,30 @@ function computeBookableWindows(allAppts, scope = 'weekly', today = new Date()) 
   return { windows, totalMinutes: totalMin };
 }
 
-export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, lapsedClients = [], onParentAction }) {
+export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, lapsedClients = [], memberClientIds = [], onParentAction }) {
   const navigate = useNavigate();
   const { windows, totalMinutes } = computeBookableWindows(allAppts, scope, today || new Date());
   const hoursOpen = totalMinutes / 60;
-  const strategies = pickStrategies(hoursOpen, lapsedCount);
   const scopeLabel = scope === 'today' ? 'today' : scope === 'monthly' ? 'this month' : 'this week';
+
+  // Deep insights (HK May 22 2026 Tier 4): compute care-framed
+  // suggestions from the therapist's actual data instead of the
+  // shallow generic tips the previous strategy library returned.
+  // Falls back to the legacy lapsed-regulars CTA if no deep
+  // insights fire (early days for a new therapist with little
+  // data).
+  const deepInsights = computeAllInsights({
+    appointments: allAppts,
+    today: today || new Date(),
+    openHoursToday: hoursOpen,
+    memberClientIds,
+  });
+
+  // Show deep insights if any fired. Otherwise show the legacy
+  // shallow strategies so the card never renders empty.
+  const strategies = deepInsights.length > 0
+    ? deepInsights
+    : pickStrategies(hoursOpen, lapsedCount);
 
   const isFullyBooked = totalMinutes === 0;
 
@@ -283,6 +302,46 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
   // button is not rendered for them). Per design principle: no
   // alert popups, no 'coming soon' notes, no fake actions.
   function runStrategy(s) {
+    // Deep insight actions (HK May 22 2026 Tier 4). Each carries
+    // an actionPayload.clients list. We deep-link to outreach with
+    // the specific clients pre-selected, same pattern as the
+    // existing lapsed-clients deep link (commit 68ef35ba).
+    if (s.action === 'first_session_checkin' || s.action === 'cadence_drift' || s.action === 'top_clients_quiet') {
+      const clientList = s.actionPayload?.clients || [];
+      if (clientList.length > 0) {
+        // Map each insight to a tone-appropriate default template
+        const templates = {
+          first_session_checkin: {
+            subject: 'Just checking in',
+            body: `Hi {{first_name}},\n\nIt has been a couple of weeks since your first session and I wanted to say hello. No pressure at all, just checking in. If you would like to book again, here is a quick link: {{rebook_link}}\n\nTake care,\n{{therapist_name}}`,
+          },
+          cadence_drift: {
+            subject: 'Thinking of you',
+            body: `Hi {{first_name}},\n\nIt has been a little longer than usual since I have seen you. Just wanted to send a warm note. If you would like to find a time, here is the link: {{rebook_link}}\n\nTake care,\n{{therapist_name}}`,
+          },
+          top_clients_quiet: {
+            subject: 'It has been a while',
+            body: `Hi {{first_name}},\n\nI have been thinking about you. It has been a while since your last visit and I wanted to make sure everything is well. If you would like to come in, here is a quick link: {{rebook_link}}\n\nWarmly,\n{{therapist_name}}`,
+          },
+        };
+        const tpl = templates[s.action];
+        navigate('/dashboard/outreach', {
+          state: {
+            openLapsedReachout: true,
+            lapsedRecipients: clientList.map(c => ({
+              id: c.id,
+              first_name: (c.name || '').split(' ')[0] || 'there',
+              last_name: (c.name || '').split(' ').slice(1).join(' ') || '',
+              name: c.name,
+              email: c.email,
+              phone: c.phone,
+            })),
+            templateOverride: tpl,
+          },
+        });
+        return;
+      }
+    }
     switch (s.action) {
       case 'outreach':
         // HK May 22 2026: deep-link to outreach with the SPECIFIC
