@@ -30,6 +30,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import CheckoutModal from './CheckoutModal';
+import ImportedDataFootnote from './ImportedDataFootnote';
 
 // ─── Design tokens ─────────────────────────────────────────────────
 // Matches the mockup. Cream backgrounds, forest/sage palette, rose
@@ -3102,6 +3103,7 @@ export default function BillingDashboardV2({ sessions, therapist, onRefundClick 
           fontSize: 13, color: T.gray500, fontWeight: 500,
           margin: '4px 0 0 0',
         }}>{TODAY.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+        <ImportedDataFootnote therapistId={therapist?.id} metricType="revenue" />
       </div>
 
       {/* Phase 19: pending membership renewals. Hidden when none.
