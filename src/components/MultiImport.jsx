@@ -144,7 +144,7 @@ export default function MultiImport({ therapist, onComplete }) {
             resolve({ fileName: f.name, headers: [], rows: [], detected: null, error: 'File appears empty' });
             return;
           }
-          const detected = detectCsvType(headers);
+          const detected = detectCsvType(headers, rows);
           resolve({ fileName: f.name, headers, rows, detected, error: null });
         } catch (e) {
           resolve({ fileName: f.name, headers: [], rows: [], detected: null, error: 'Could not parse CSV' });
