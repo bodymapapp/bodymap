@@ -170,6 +170,41 @@ export default function MultiImport({ therapist, onComplete }) {
     return () => window.removeEventListener('beforeunload', handler);
   }, [importing]);
 
+  // Rotating friendly tips during import (HK May 22 2026: 'say
+  // something funny like go get a cup of coffee or water'). Keeps
+  // the wait feeling intentional rather than dead. Rotates every 5
+  // seconds. Pool of tips picked at random on each rotation to
+  // avoid the same therapist seeing the same sequence twice.
+  const TIPS = [
+    'Now would be a great time to grab a coffee.',
+    'Or a glass of water. Hydration is a love language.',
+    'Stretch your neck. You earned it.',
+    'This might be a good moment to take three deep breaths.',
+    'Pet a dog if one is nearby. Cat works too.',
+    'Look out a window for 20 seconds. Real, science-backed eye rest.',
+    'We are gently waking up your client records one at a time.',
+    'Every row we read is a future session that lands cleanly.',
+    'You are doing the hard part of switching platforms. We respect that.',
+    'If you have a houseplant, this is a good moment to thank it.',
+    'Think of one client you are excited to message after this.',
+    'Roll your shoulders back five times. Yes, right now.',
+    'Your CSV had real, thoughtful data in it. Nice work over there.',
+    'We are being careful with your data. Slow is smooth, smooth is fast.',
+    'Almost there. Or maybe not. But the vibes are immaculate.',
+  ];
+  const [tipIdx, setTipIdx] = useState(0);
+  React.useEffect(() => {
+    if (!importing) return;
+    // Start with a random tip so two imports in a row don't show
+    // the same first one
+    setTipIdx(Math.floor(Math.random() * TIPS.length));
+    const interval = setInterval(() => {
+      setTipIdx(prev => (prev + 1 + Math.floor(Math.random() * 3)) % TIPS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [importing]);
+
   async function readFile(f) {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -780,8 +815,33 @@ export default function MultiImport({ therapist, onComplete }) {
             </div>
           </>
         )}
-        <div style={{ fontSize: 12, color: C.gray, marginTop: 20, fontStyle: 'italic' }}>
-          This can take 30 to 90 seconds depending on size. Please don't close this page.
+        {/* Rotating friendly tip (HK May 22 2026). Refreshes every
+            5 seconds so the wait feels intentional. */}
+        <div style={{
+          marginTop: 28,
+          padding: '14px 18px',
+          background: C.cream,
+          border: `1px solid ${C.border}`,
+          borderRadius: 12,
+          maxWidth: 380,
+          marginLeft: 'auto',
+          marginRight: 'auto',
+          fontSize: 13.5,
+          color: C.ink,
+          fontStyle: 'italic',
+          lineHeight: 1.5,
+          minHeight: 44,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'opacity 0.3s',
+        }}
+          key={tipIdx}
+        >
+          ☕ {TIPS[tipIdx]}
+        </div>
+        <div style={{ fontSize: 11.5, color: C.gray, marginTop: 14, fontStyle: 'italic' }}>
+          Please keep this tab open while we work.
         </div>
       </div>
     );
