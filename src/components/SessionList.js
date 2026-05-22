@@ -5,6 +5,7 @@ import { getSampleSessions } from "../data/sampleClients";
 import BookingModal from "./BookingModal";
 import ClientPackageBalance from "./ClientPackageBalance";
 import { getStripePublishableKey } from "../lib/paymentMode";
+import { formatUSPhone } from "../lib/formatters/phone";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -661,7 +662,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
               <div style={{ background: "#F0FDF4", border: "1.5px solid #86EFAC", borderRadius: 12, padding: "12px 16px", marginBottom: 14 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#16A34A", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Keep this record (primary)</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: C.darkGray }}>{client.name}</div>
-                <div style={{ fontSize: 12, color: C.gray }}>{client.email || client.phone || "No contact on file"}</div>
+                <div style={{ fontSize: 12, color: C.gray }}>{client.email || formatUSPhone(client.phone) || "No contact on file"}</div>
               </div>
 
               {/* Search for duplicate */}
@@ -680,7 +681,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
                       style={{ padding: "10px 14px", borderRadius: 10, border: `1.5px solid ${mergeTarget?.id === r.id ? "#DC2626" : C.lightGray}`,
                         background: mergeTarget?.id === r.id ? "#FEF2F2" : "#fff", cursor: "pointer", transition: "all 0.15s" }}>
                       <div style={{ fontSize: 14, fontWeight: 700, color: mergeTarget?.id === r.id ? "#DC2626" : C.darkGray }}>{r.name}</div>
-                      <div style={{ fontSize: 12, color: C.gray }}>{r.email || r.phone || "No contact"} · Added {new Date(r.created_at).toLocaleDateString()}</div>
+                      <div style={{ fontSize: 12, color: C.gray }}>{r.email || formatUSPhone(r.phone) || "No contact"} · Added {new Date(r.created_at).toLocaleDateString()}</div>
                     </div>
                   ))}
                 </div>
@@ -690,7 +691,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
                 <div style={{ background: "#FEF2F2", border: "1.5px solid #FECACA", borderRadius: 12, padding: "12px 16px", marginBottom: 6 }}>
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#DC2626", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 4 }}>Duplicate to delete after merge</div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: "#991B1B" }}>{mergeTarget.name}</div>
-                  <div style={{ fontSize: 12, color: "#DC2626" }}>{mergeTarget.email || mergeTarget.phone || "No contact on file"}</div>
+                  <div style={{ fontSize: 12, color: "#DC2626" }}>{mergeTarget.email || formatUSPhone(mergeTarget.phone) || "No contact on file"}</div>
                 </div>
               )}
 

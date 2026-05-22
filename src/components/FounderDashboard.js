@@ -13,6 +13,7 @@ import { supabase } from "../lib/supabase";
 import { useAuth } from "../contexts/AuthContext";
 import FounderMassSms from "./FounderMassSms";
 import AiCostCard from "./AiCostCard";
+import { formatUSPhone } from "../lib/formatters/phone";
 
 const ADMIN_EMAILS = new Set([
   "bodymap01@gmail.com",
@@ -1723,7 +1724,7 @@ function Row({ t, idx, firstColCell, updateFlag, onAfterSend, isSelected, onTogg
       <td style={{ padding: "8px 10px", whiteSpace: "nowrap", fontSize: 12 }}>
         {t.phone ? (
           <div>
-            <div style={{ color: C.dark, fontWeight: 600 }}>{formatPhoneDisplay(t.phone)}</div>
+            <div style={{ color: C.dark, fontWeight: 600 }}>{formatUSPhone(t.phone)}</div>
             <a
               href={`tel:${t.phone.replace(/\D/g, "")}`}
               style={{ fontSize: 11, color: C.sage, textDecoration: "none" }}
@@ -2155,16 +2156,9 @@ function daysAgoNumeric(iso) {
   return Math.floor((Date.now() - new Date(iso).getTime()) / DAY);
 }
 
-function formatPhoneDisplay(raw) {
-  const digits = (raw || "").replace(/\D/g, "");
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  return raw;
-}
+// formatPhoneDisplay removed; the canonical formatter lives in
+// src/lib/formatters/phone.js as formatUSPhone (Design Principle 16).
+// All three usages below now call formatUSPhone directly.
 
 // The 5 onboarding steps mirror OnboardingChecklist.js. Column keys map to
 // the t.steps bitmap set in fetchAll().
@@ -2389,7 +2383,7 @@ function ActivationRow({ t, idx, updateFlag, onAfterSend }) {
         {t.phone && (
           <div style={{ fontSize: 11, color: C.sage, marginTop: 2 }}>
             <a href={`tel:${(t.phone || "").replace(/\D/g, "")}`} style={{ color: C.sage, textDecoration: "none" }}>
-              {formatPhoneDisplay(t.phone)}
+              {formatUSPhone(t.phone)}
             </a>
           </div>
         )}
@@ -3534,7 +3528,7 @@ function CommsLogGrid({ rows, updateFlag, onAfterBackfill, queuedCells, toggleCe
                     {t.phone && (
                       <div style={{ fontSize: 11, color: C.sage, marginTop: 2 }}>
                         <a href={"tel:" + (t.phone || "").replace(/\D/g, "")} style={{ color: C.sage, textDecoration: "none" }}>
-                          {formatPhoneDisplay(t.phone)}
+                          {formatUSPhone(t.phone)}
                         </a>
                       </div>
                     )}

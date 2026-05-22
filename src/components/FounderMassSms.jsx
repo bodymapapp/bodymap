@@ -24,6 +24,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { formatUSPhone } from "../lib/formatters/phone";
 
 const C = {
   forest: "#2A5741",
@@ -196,7 +197,7 @@ function AccountAudit({ therapists, includeAdmins }) {
                   {" · "}
                   <span style={{ color: C.gray }}>{t.email || "(no email)"}</span>
                   {" · "}
-                  <span style={{ color: C.gray }}>{t.phone || "(no phone)"}</span>
+                  <span style={{ color: C.gray }}>{formatUSPhone(t.phone) || "(no phone)"}</span>
                 </span>
                 {t.isAdmin && <span style={{ background: C.gold, color: "#fff", padding: "1px 5px", borderRadius: 3, fontSize: 9, fontWeight: 700 }}>YOU</span>}
                 {t.isDummy && !t.isAdmin && <span style={{ background: "#9CA3AF", color: "#fff", padding: "1px 5px", borderRadius: 3, fontSize: 9, fontWeight: 700 }}>TEST</span>}

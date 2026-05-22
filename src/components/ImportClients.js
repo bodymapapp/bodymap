@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { formatUSPhone } from '../lib/formatters/phone';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -964,7 +965,7 @@ export default function ImportClients({ therapist, onComplete }) {
                       <tr key={i} style={{ borderBottom:`1px solid ${C.light}` }}>
                         <td style={{ padding:'8px 10px', color:C.dark, fontWeight:600 }}>{name}</td>
                         <td style={{ padding:'8px 10px', color:C.gray }}>{get(mapping.email)}</td>
-                        <td style={{ padding:'8px 10px', color:C.gray }}>{get(mapping.phone)}</td>
+                        <td style={{ padding:'8px 10px', color:C.gray }}>{formatUSPhone(get(mapping.phone))}</td>
                         <td style={{ padding:'8px 10px', color:C.gray, maxWidth:120, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{get(mapping.notes)}</td>
                         <td style={{ padding:'8px 10px', color:C.gray }}>{get(mapping.lastVisit)}</td>
                       </tr>
