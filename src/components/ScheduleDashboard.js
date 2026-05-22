@@ -1468,58 +1468,279 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
           })}
         </div>
       ) : (
-        /* DESKTOP: 7-col grid */
-        <div className="bm-weekly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:6}}>
-          {weekDays.map((d,i)=>{
-            const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
-            const isToday=sameDay(d,today);
-            const block = blockedFor(d);
-            const dayBg = block.fullDay ? '#FEF3C7' : 'transparent';
-            const dayBorderStyle = block.fullDay
-              ? `1.5px solid #FBBF24`
-              : block.partial
-                ? `1.5px dashed #B5D4BE`
-                : '1.5px dashed #E5E7EB';
-            return (
-              <div key={i} style={{minHeight:90}}>
-                <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':block.fullDay?'#FEF3C7':'transparent',color:isToday?'#fff':block.fullDay?'#92400E':'#6B7280'}}>
-                  <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{DAY_NAMES[i]}</div>
-                  <div style={{fontSize:13,fontWeight:600}}>{d.getDate()}</div>
-                  {block.fullDay && !isToday && <div style={{fontSize:9,fontWeight:700,marginTop:2}}>🌿 OFF</div>}
-                </div>
-                {dayAppts.length===0
-                  ? <div style={{height:40,border:dayBorderStyle,borderRadius:8,background:dayBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:block.fullDay?'#92400E':block.partial?'#5C7A66':'transparent',fontWeight:600}}>
-                      {block.fullDay ? 'Blocked' : block.partial ? 'Partial' : ''}
+        /* DESKTOP: Outlook-style time grid (HK May 22 2026 Tier 3).
+           Time runs vertically on the left; each day is a column;
+           sessions are positioned absolutely by their start time
+           with height proportional to duration. Blocked windows
+           render as amber bands behind sessions. Today's column
+           gets a soft sage tint to anchor the eye. */
+        (() => {
+          // Compute the visible time window. Default 7am to 9pm.
+          // Expand to fit any appointment outside that range.
+          const allStarts = APPTS.map(a => t2m(a.time)).filter(n => n > 0);
+          const allEnds = APPTS.map(a => t2m(a.time) + (a.duration || 60)).filter(n => n > 0);
+          const DEFAULT_START = 7 * 60;  // 7am
+          const DEFAULT_END   = 21 * 60; // 9pm
+          const minStart = allStarts.length ? Math.min(DEFAULT_START, Math.min(...allStarts) - 30) : DEFAULT_START;
+          const maxEnd   = allEnds.length ? Math.max(DEFAULT_END, Math.max(...allEnds) + 30) : DEFAULT_END;
+          const winStart = Math.max(0, Math.floor(minStart / 60) * 60);     // round to hour
+          const winEnd   = Math.min(24*60, Math.ceil(maxEnd / 60) * 60);
+          const PX_PER_MIN = 0.85;
+          const winHeight = (winEnd - winStart) * PX_PER_MIN;
+          const hourLines = [];
+          for (let m = winStart; m <= winEnd; m += 60) hourLines.push(m);
+
+          function fmtHour(mins) {
+            const h = Math.floor(mins / 60);
+            if (h === 0) return '12 AM';
+            if (h === 12) return '12 PM';
+            return h > 12 ? `${h-12} PM` : `${h} AM`;
+          }
+
+          // Compute "now" line if today is in the visible week
+          const nowMin = today.getHours() * 60 + today.getMinutes();
+          const todayColIdx = weekDays.findIndex(d => sameDay(d, today));
+
+          return (
+            <div style={{
+              background: '#fff',
+              border: '1px solid #F3F4F6',
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}>
+              {/* Day-of-week header row */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '52px repeat(7, 1fr)',
+                borderBottom: '1px solid #E5E7EB',
+                background: '#FAFAF7',
+              }}>
+                <div /> {/* time gutter spacer */}
+                {weekDays.map((d, i) => {
+                  const dayAppts = APPTS.filter(a => sameDay(a.date, d));
+                  const realCount = dayAppts.filter(a => !a.preview).length;
+                  const isToday = sameDay(d, today);
+                  const block = blockedFor(d);
+                  return (
+                    <div key={i} style={{
+                      padding: '10px 8px',
+                      borderLeft: '1px solid #F3F4F6',
+                      textAlign: 'center',
+                      background: isToday ? '#F0FDF4' : 'transparent',
+                    }}>
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        color: isToday ? '#16A34A' : block.fullDay ? '#92400E' : '#6B7280',
+                      }}>
+                        {DAY_NAMES[i]}
+                      </div>
+                      <div style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: isToday ? '#16A34A' : block.fullDay ? '#92400E' : '#1F2937',
+                        marginTop: 1,
+                      }}>
+                        {d.getDate()}
+                      </div>
+                      <div style={{
+                        fontSize: 10,
+                        color: isToday ? '#16A34A' : block.fullDay ? '#92400E' : '#9CA3AF',
+                        marginTop: 2,
+                        fontWeight: 600,
+                      }}>
+                        {block.fullDay
+                          ? '🌿 Off'
+                          : realCount > 0
+                            ? `${realCount} ${realCount === 1 ? 'session' : 'sessions'}`
+                            : block.partial ? 'Partial block' : '·'}
+                      </div>
                     </div>
-                  :<div style={{display:'flex',flexDirection:'column',gap:3}}>
-                    {dayAppts.map(appt=>{
-                      const st=STATUS[appt.status]||STATUS['pending-intake'];
-                      return (
-                        <div key={appt.id} onClick={()=>setSelected(appt)}
-                          style={{background:appt.preview?'#F9FAFB':st.bg,
-                            borderLeft:`3px solid ${appt.preview?'#D1D5DB':st.dot}`,
-                            borderRadius:6,padding:'5px 7px',cursor:'pointer',
-                            opacity:appt.preview?0.45:1,
-                            boxShadow:appt.preview?'none':'0 1px 3px rgba(0,0,0,0.06)',
-                            transition:'all 0.15s'}}
-                          onMouseEnter={e=>{if(!appt.preview)e.currentTarget.style.transform='translateY(-1px)';}}
-                          onMouseLeave={e=>{e.currentTarget.style.transform='none';}}>
-                          <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:2}}>
-                            <div style={{width:18,height:18,borderRadius:'50%',background:appt.preview?'#D1D5DB':ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:8,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
-                            <div style={{fontSize:10,fontWeight:700,color:appt.preview?'#C4C4C4':st.color}}>{appt.time}</div>
-                          </div>
-                          <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client.split(' ')[0]}</div>
-                          <div style={{fontSize:10,color:appt.preview?'#D1D5DB':'#6B7280',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.service||'Session'}</div>
-                          <div style={{fontSize:9,fontWeight:600,color:appt.preview?'#D1D5DB':st.color,marginTop:1}}>{st.icon} {appt.preview?'Preview':st.label}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                }
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+
+              {/* Time grid body */}
+              <div style={{
+                position: 'relative',
+                display: 'grid',
+                gridTemplateColumns: '52px repeat(7, 1fr)',
+                height: winHeight,
+                overflow: 'auto',
+              }}>
+                {/* Time gutter */}
+                <div style={{ position: 'relative', borderRight: '1px solid #F3F4F6' }}>
+                  {hourLines.map((m, idx) => (
+                    <div key={idx} style={{
+                      position: 'absolute',
+                      top: (m - winStart) * PX_PER_MIN,
+                      right: 6,
+                      fontSize: 10,
+                      color: '#9CA3AF',
+                      transform: 'translateY(-50%)',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {fmtHour(m)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* 7 day columns */}
+                {weekDays.map((d, dayIdx) => {
+                  const dayAppts = APPTS.filter(a => sameDay(a.date, d));
+                  const isToday = sameDay(d, today);
+                  const block = blockedFor(d);
+                  // Pull blocked windows for this date (partial blocks)
+                  const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  const dayBlockRows = (blockedDays || []).filter(b => b.date === dateStr);
+
+                  return (
+                    <div key={dayIdx} style={{
+                      position: 'relative',
+                      borderLeft: '1px solid #F3F4F6',
+                      background: isToday ? 'rgba(134, 239, 172, 0.06)' : block.fullDay ? 'rgba(254, 243, 199, 0.45)' : 'transparent',
+                    }}>
+                      {/* Hour gridlines */}
+                      {hourLines.map((m, idx) => (
+                        <div key={idx} style={{
+                          position: 'absolute',
+                          top: (m - winStart) * PX_PER_MIN,
+                          left: 0, right: 0,
+                          borderTop: '1px solid #F3F4F6',
+                          pointerEvents: 'none',
+                        }} />
+                      ))}
+
+                      {/* Blocked windows (partial blocks) */}
+                      {dayBlockRows.filter(b => b.start_time && b.end_time).map((b, bIdx) => {
+                        const startM = parseInt(b.start_time.slice(0, 2), 10) * 60 + parseInt(b.start_time.slice(3, 5), 10);
+                        const endM = parseInt(b.end_time.slice(0, 2), 10) * 60 + parseInt(b.end_time.slice(3, 5), 10);
+                        return (
+                          <div key={`block-${bIdx}`}
+                            title={b.reason || 'Blocked'}
+                            style={{
+                              position: 'absolute',
+                              top: Math.max(0, (startM - winStart) * PX_PER_MIN),
+                              left: 2, right: 2,
+                              height: Math.max(8, (endM - startM) * PX_PER_MIN),
+                              background: 'repeating-linear-gradient(45deg, #FEF3C7, #FEF3C7 6px, #FDE68A 6px, #FDE68A 12px)',
+                              border: '1px solid #FBBF24',
+                              borderRadius: 4,
+                              opacity: 0.55,
+                              pointerEvents: 'none',
+                            }}/>
+                        );
+                      })}
+
+                      {/* Full-day block label */}
+                      {block.fullDay && (
+                        <div style={{
+                          position: 'absolute',
+                          top: 12,
+                          left: 0, right: 0,
+                          textAlign: 'center',
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: '#92400E',
+                          letterSpacing: '0.04em',
+                          pointerEvents: 'none',
+                        }}>
+                          🌿 Day off
+                        </div>
+                      )}
+
+                      {/* "Now" line if today */}
+                      {isToday && nowMin >= winStart && nowMin <= winEnd && (
+                        <div style={{
+                          position: 'absolute',
+                          top: (nowMin - winStart) * PX_PER_MIN,
+                          left: -3, right: 0,
+                          height: 2,
+                          background: '#DC2626',
+                          zIndex: 4,
+                          pointerEvents: 'none',
+                        }}>
+                          <div style={{
+                            position: 'absolute',
+                            left: -6, top: -4,
+                            width: 10, height: 10,
+                            borderRadius: '50%',
+                            background: '#DC2626',
+                          }}/>
+                        </div>
+                      )}
+
+                      {/* Appointments */}
+                      {dayAppts.map(appt => {
+                        const startM = t2m(appt.time);
+                        const duration = appt.duration || 60;
+                        const top = Math.max(0, (startM - winStart) * PX_PER_MIN);
+                        const height = Math.max(20, duration * PX_PER_MIN);
+                        const st = STATUS[appt.status] || STATUS['pending-intake'];
+                        return (
+                          <div key={appt.id}
+                            onClick={() => !appt.preview && setSelected(appt)}
+                            style={{
+                              position: 'absolute',
+                              top, height,
+                              left: 3, right: 3,
+                              background: appt.preview ? '#F9FAFB' : st.bg,
+                              borderLeft: `3px solid ${appt.preview ? '#D1D5DB' : st.dot}`,
+                              borderRadius: 5,
+                              padding: '4px 6px',
+                              cursor: appt.preview ? 'default' : 'pointer',
+                              opacity: appt.preview ? 0.5 : 1,
+                              overflow: 'hidden',
+                              boxShadow: appt.preview ? 'none' : '0 1px 2px rgba(0,0,0,0.08)',
+                              transition: 'transform 0.12s',
+                              zIndex: 2,
+                            }}
+                            onMouseEnter={e => { if (!appt.preview) e.currentTarget.style.transform = 'translateY(-1px)'; }}
+                            onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}>
+                            <div style={{
+                              fontSize: 10,
+                              fontWeight: 700,
+                              color: appt.preview ? '#C4C4C4' : st.color,
+                              lineHeight: 1.1,
+                              marginBottom: 1,
+                            }}>
+                              {appt.time}
+                            </div>
+                            <div style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              color: appt.preview ? '#C4C4C4' : '#111827',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              lineHeight: 1.2,
+                            }}>
+                              {appt.client.split(' ')[0]}
+                            </div>
+                            {height > 40 && (
+                              <div style={{
+                                fontSize: 9.5,
+                                color: appt.preview ? '#D1D5DB' : '#6B7280',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                marginTop: 1,
+                              }}>
+                                {appt.service || 'Session'}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()
       )}
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
     </div>
