@@ -151,6 +151,21 @@ export default function MultiImport({ therapist, onComplete }) {
   const [existingServices, setExistingServices] = useState([]);
   const [fuzzyMatches, setFuzzyMatches] = useState(new Map());
   const [mergeOverrides, setMergeOverrides] = useState(new Map());
+  // First-time welcome dismissal (HK May 22 2026 item A). Persisted
+  // in localStorage so a therapist who has dismissed it once does
+  // not see it again on this browser. Reset the key
+  // 'mbm.import.firstTimeDismissed' in DevTools to bring it back.
+  const [firstTimeDismissed, setFirstTimeDismissed] = useState(() => {
+    try {
+      return localStorage.getItem('mbm.import.firstTimeDismissed') === '1';
+    } catch {
+      return false;
+    }
+  });
+  const dismissFirstTime = () => {
+    setFirstTimeDismissed(true);
+    try { localStorage.setItem('mbm.import.firstTimeDismissed', '1'); } catch {}
+  };
   const fileInputRef = useRef(null);
 
   // Browser warning during import (HK May 21 evening): if the user
@@ -858,6 +873,70 @@ export default function MultiImport({ therapist, onComplete }) {
           Drop your CSV files from MassageBook, Vagaro, GlossGenius, Mindbody, Square, or anywhere else. We'll figure out which is which (clients, appointments) and merge them together. You can drop multiple files at once.
         </p>
       </div>
+
+      {/* First-time welcome card (HK May 22 2026, item A). Maria-
+          persona safety: many therapists open this screen and don't
+          know what a CSV is, where to get it, or what to expect. The
+          card lays out the journey in plain language. Dismissable;
+          once dismissed it stays gone for this browser. */}
+      {!firstTimeDismissed && (
+        <div style={{
+          background: '#F0F9F4',
+          border: '1.5px solid #B5D4BE',
+          borderRadius: 12,
+          padding: 16,
+          marginBottom: 18,
+          position: 'relative',
+        }}>
+          <button
+            onClick={dismissFirstTime}
+            aria-label="Dismiss this guide"
+            style={{
+              position: 'absolute',
+              top: 10,
+              right: 12,
+              background: 'transparent',
+              border: 'none',
+              color: C.gray,
+              fontSize: 18,
+              cursor: 'pointer',
+              lineHeight: 1,
+              padding: 4,
+            }}
+          >
+            ×
+          </button>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.forest, marginBottom: 8 }}>
+            First time here?
+          </div>
+          <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginBottom: 10 }}>
+            Most practice platforms let you export your data as CSV files. Usually under <strong>Settings → Export</strong> or <strong>Reports → Export</strong>. The CSVs typically come as:
+            <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>
+              <li>A <strong>client list</strong> with names, emails, phones, addresses</li>
+              <li>An <strong>appointment history</strong> with past sessions and dates</li>
+              <li>Sometimes both, sometimes split into multiple files</li>
+            </ul>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.ink, lineHeight: 1.6, marginBottom: 10 }}>
+            Drop whatever you have below. We'll classify each file automatically and show you a preview before writing anything. You can change your mind at any point.
+          </div>
+          <details style={{ fontSize: 12, color: C.gray, lineHeight: 1.55 }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 600, color: C.forest, userSelect: 'none' }}>
+              Where to find exports on common platforms
+            </summary>
+            <div style={{ marginTop: 8, paddingLeft: 4, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div><strong>Vagaro:</strong> Settings → Reports → Customer Export</div>
+              <div><strong>MassageBook:</strong> Reports → Client List → Export</div>
+              <div><strong>Acuity:</strong> Clients → Export (top right)</div>
+              <div><strong>GlossGenius:</strong> Settings → Reports → Client Export</div>
+              <div><strong>Square Appointments:</strong> Customers → More → Export</div>
+              <div><strong>Mindbody:</strong> Reports → Client List → Excel/CSV</div>
+              <div><strong>Jane App:</strong> Reports → Clients → Download CSV</div>
+              <div><strong>Paper or Google Sheets:</strong> File → Download → CSV</div>
+            </div>
+          </details>
+        </div>
+      )}
 
       {/* Drag-and-drop + file picker, both visible (Maria-persona +
           power user side-by-side per design principle #11) */}

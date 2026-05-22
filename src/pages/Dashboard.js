@@ -4605,7 +4605,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span>✅</span>
                   <div>
-                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Stripe · Online engine</div>
+                    <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Stripe · Connected</div>
                     <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, memberships, cards on file all enabled</div>
                   </div>
                 </div>
@@ -4737,7 +4737,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span>✅</span>
                     <div>
-                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · Online engine</div>
+                      <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · Connected</div>
                       <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, cards on file, and memberships all enabled. Membership renewals after the first month appear as a one-tap Charge action on your Billing dashboard.</div>
                     </div>
                   </div>
