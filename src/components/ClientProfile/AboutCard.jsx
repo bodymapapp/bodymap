@@ -50,7 +50,15 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
   const [email, setEmail] = useState(client?.email || '');
   const [phone, setPhone] = useState(client?.phone || '');
   const [notes, setNotes] = useState(client?.notes || '');
-  // 'name' | 'email' | 'phone' | 'notes' | null for the soft 'saved' ghost
+  // Address fields (HK May 22 2026 item H of A-J). The schema gained
+  // line1/line2/city/state/zip/country May 21 evening; this is the
+  // UI surface that lets therapists view and edit them. All optional.
+  const [addressLine1, setAddressLine1] = useState(client?.address_line1 || '');
+  const [addressLine2, setAddressLine2] = useState(client?.address_line2 || '');
+  const [city, setCity] = useState(client?.city || '');
+  const [state, setState] = useState(client?.state || '');
+  const [zip, setZip] = useState(client?.zip || '');
+  // 'name' | 'email' | 'phone' | 'notes' | 'address_line1' | etc
   const [justSaved, setJustSaved] = useState(null);
   // 'name' | etc for inline error message
   const [errorOn, setErrorOn] = useState(null);
@@ -62,6 +70,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     setEmail(client?.email || '');
     setPhone(client?.phone || '');
     setNotes(client?.notes || '');
+    setAddressLine1(client?.address_line1 || '');
+    setAddressLine2(client?.address_line2 || '');
+    setCity(client?.city || '');
+    setState(client?.state || '');
+    setZip(client?.zip || '');
   }, [client?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pulse animation when the hero pencil button is tapped. Outer
@@ -113,6 +126,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
     if (field === 'email') payload.email = value.trim().toLowerCase() || null;
     if (field === 'phone') payload.phone = value.trim() || null;
     if (field === 'notes') payload.notes = value.trim() || null;
+    if (field === 'address_line1') payload.address_line1 = value.trim() || null;
+    if (field === 'address_line2') payload.address_line2 = value.trim() || null;
+    if (field === 'city')  payload.city  = value.trim() || null;
+    if (field === 'state') payload.state = value.trim() || null;
+    if (field === 'zip')   payload.zip   = value.trim() || null;
 
     const { error } = await supabase
       .from('clients')
@@ -127,6 +145,11 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
       if (field === 'email') setEmail(client?.email || '');
       if (field === 'phone') setPhone(client?.phone || '');
       if (field === 'notes') setNotes(client?.notes || '');
+      if (field === 'address_line1') setAddressLine1(client?.address_line1 || '');
+      if (field === 'address_line2') setAddressLine2(client?.address_line2 || '');
+      if (field === 'city')  setCity(client?.city || '');
+      if (field === 'state') setState(client?.state || '');
+      if (field === 'zip')   setZip(client?.zip || '');
       return;
     }
 
@@ -177,6 +200,25 @@ export default function AboutCard({ client, onUpdated, pulse = false }) {
         error={errorOn === 'phone' ? errorMsg : ''}
         type="tel"
         placeholder="Add phone"
+      />
+      {/* Address (HK May 22 2026 item H). Collapsible because most
+          therapists don't need to see it at a glance for every client.
+          Tap "Address" header to expand; tap a field to edit. */}
+      <AddressBlock
+        line1={addressLine1}
+        setLine1={setAddressLine1}
+        line2={addressLine2}
+        setLine2={setAddressLine2}
+        city={city}
+        setCity={setCity}
+        state={state}
+        setState={setState}
+        zip={zip}
+        setZip={setZip}
+        saveField={saveField}
+        justSaved={justSaved}
+        errorOn={errorOn}
+        errorMsg={errorMsg}
       />
       <RowMultiline
         label="Notes"
@@ -435,6 +477,148 @@ function RowMultiline({ label, value, setValue, onSave, justSaved, error, placeh
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// AddressBlock: collapsible group of address fields (line1, line2,
+// city, state, zip). Collapsed by default since most therapists
+// don't need to see addresses on every glance. Tap the header to
+// expand. Each field is a tap-to-edit Row that saves independently
+// via the parent's saveField. HK May 22 2026 item H of A-J.
+//
+// When any address field has a value, the header summary shows a
+// short preview (e.g. "Nashville, TN 37212") so therapists can see
+// the city without expanding.
+function AddressBlock({
+  line1, setLine1,
+  line2, setLine2,
+  city, setCity,
+  state, setState,
+  zip, setZip,
+  saveField, justSaved, errorOn, errorMsg,
+}) {
+  const [open, setOpen] = useState(false);
+  const hasAny = !!(line1 || line2 || city || state || zip);
+  const summary = hasAny
+    ? [city, state].filter(Boolean).join(', ') + (zip ? ` ${zip}` : '')
+    : '';
+
+  return (
+    <div style={{
+      borderRadius: 10,
+      background: C.cream,
+      marginTop: 4,
+      marginBottom: 4,
+      overflow: 'hidden',
+    }}>
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        aria-expanded={open}
+        style={{
+          width: '100%',
+          background: 'transparent',
+          border: 'none',
+          padding: '10px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+        }}
+      >
+        <div style={{
+          width: 36, height: 36, borderRadius: 8,
+          background: open ? '#D4E6DA' : '#F0EBE0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, flexShrink: 0,
+        }}>
+          📍
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>
+            Address
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: C.muted,
+            marginTop: 2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}>
+            {hasAny ? (summary || 'Address on file') : 'Add an address (optional)'}
+          </div>
+        </div>
+        <div style={{
+          width: 32, height: 32, borderRadius: 999,
+          background: open ? C.forest : '#E8DFD0',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+          transition: 'background 0.15s',
+        }}>
+          <span style={{
+            color: '#fff',
+            fontSize: 14,
+            fontWeight: 800,
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 0.18s',
+            display: 'block',
+            lineHeight: 1,
+          }}>⌄</span>
+        </div>
+      </button>
+      {open && (
+        <div style={{ padding: '4px 8px 10px 8px' }}>
+          <Row
+            label="Street address"
+            value={line1}
+            setValue={setLine1}
+            onSave={(v) => saveField('address_line1', v)}
+            justSaved={justSaved === 'address_line1'}
+            error={errorOn === 'address_line1' ? errorMsg : ''}
+            placeholder="123 Main St"
+          />
+          <Row
+            label="Apt / Suite"
+            value={line2}
+            setValue={setLine2}
+            onSave={(v) => saveField('address_line2', v)}
+            justSaved={justSaved === 'address_line2'}
+            error={errorOn === 'address_line2' ? errorMsg : ''}
+            placeholder="Apt 4B (optional)"
+          />
+          <Row
+            label="City"
+            value={city}
+            setValue={setCity}
+            onSave={(v) => saveField('city', v)}
+            justSaved={justSaved === 'city'}
+            error={errorOn === 'city' ? errorMsg : ''}
+            placeholder="Nashville"
+          />
+          <Row
+            label="State"
+            value={state}
+            setValue={setState}
+            onSave={(v) => saveField('state', v)}
+            justSaved={justSaved === 'state'}
+            error={errorOn === 'state' ? errorMsg : ''}
+            placeholder="TN"
+          />
+          <Row
+            label="Zip"
+            value={zip}
+            setValue={setZip}
+            onSave={(v) => saveField('zip', v)}
+            justSaved={justSaved === 'zip'}
+            error={errorOn === 'zip' ? errorMsg : ''}
+            placeholder="37212"
+          />
+        </div>
+      )}
     </div>
   );
 }
