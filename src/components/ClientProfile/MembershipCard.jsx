@@ -944,7 +944,7 @@ export default function MembershipCard({ client, therapist }) {
           </button>
 
           <div style={{ fontSize: 10.5, color: C.gray, marginTop: 7, lineHeight: 1.5 }}>
-            MyBodyMap holds the membership record and reminds you each renewal day. You charge using Checkout (card on file, Venmo, cash, or whatever fits). Stripe Connect billing arrives in a later phase.
+            MyBodyMap holds the membership record and reminds you each renewal day. Renewals charge automatically through Stripe, or appear as a one-tap Charge action through Square. Cash, Venmo, and other offline payments can be recorded too.
           </div>
         </div>
       )}

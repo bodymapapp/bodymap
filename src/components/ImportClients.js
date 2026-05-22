@@ -330,9 +330,12 @@ export default function ImportClients({ therapist, onComplete }) {
     // resolveServiceId: look up existing, otherwise auto-create with
     // the price + credits we found in the CSV. The newly-created
     // membership has stripe_price_id = NULL because we don't have
-    // a Stripe price yet for migrated plans. Therapist sees a
-    // "Connect Stripe billing" prompt on the membership page after
-    // import to finish wiring up recurring charges.
+    // a Stripe price yet for migrated plans. Same applies to
+    // square_plan_variation_id when therapist later sells via
+    // Square. Therapist sees a 'connect a processor' prompt on
+    // the membership page after import to finish wiring up
+    // recurring charges (either Stripe for auto-renew or Square
+    // for one-tap monthly Charge).
     const membershipCache = new Map();
     async function resolveMembershipId(planName, monthlyPrice, monthlyCredits) {
       if (!planName) return null;
@@ -361,7 +364,7 @@ export default function ImportClients({ therapist, onComplete }) {
           name: planName,
           monthly_price: monthlyPrice || 0,
           monthly_session_credits: monthlyCredits || 1,
-          description: 'Imported plan, edit details and connect Stripe billing to enable recurring charges.',
+          description: 'Imported plan, edit details and connect a payment processor (Stripe or Square) to enable recurring charges.',
           active: true,
         })
         .select('id')
@@ -580,8 +583,9 @@ export default function ImportClients({ therapist, onComplete }) {
         // tied to this client. stripe_subscription_id is NULL because
         // the recurring billing is still on the therapist's old
         // platform (GlossGenius, Vagaro, etc). After import, therapist
-        // sees a "Connect Stripe billing" CTA on each migrated
-        // subscription to wire up MyBodyMap-side recurring charges.
+        // sees a 'connect billing' CTA on each migrated subscription
+        // so they can wire up MyBodyMap-side recurring charges via
+        // Stripe (auto-renew) or Square (one-tap monthly Charge).
         //
         // Idempotency: if a subscription with status='active' already
         // exists for this client+plan, skip rather than duplicate.

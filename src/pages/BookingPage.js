@@ -2349,20 +2349,31 @@ export default function BookingPage() {
                 count and lowest-price hint give clients a reason to
                 tap without forcing them to scroll a long list. */}
             {(() => {
-              // Memberships are Stripe-only by capability. Square cannot
-              // do auto-renewing subscriptions reliably (per
-              // BILLING_STRATEGY.md capability matrix). Hide memberships
-              // from the booking page if therapist has no Stripe so
-              // clients never hit a Square membership error path.
-              const hasStripeForMembership = !!therapist?.stripe_account_id;
+              // Memberships work with BOTH Stripe and Square per the
+              // BILLING_STRATEGY.md capability matrix (May 2026). Stripe
+              // does fully automatic recurring renewals; Square charges
+              // the first month automatically and then the therapist
+              // gets a one-tap Charge action each month for subsequent
+              // renewals (recurringRenewal: limited). HK May 22 2026:
+              // updated from the prior 'Stripe-only memberships' gate
+              // which was contradicted by the backend (purchase-
+              // membership edge function already routes to either
+              // processor). Visible whenever therapist has EITHER
+              // processor connected. Hidden only when neither is.
+              const hasProcessorForMembership =
+                !!therapist?.stripe_account_id ||
+                !!therapist?.square_access_token;
               // Always show memberships if the therapist has defined any,
-              // even when Stripe is not connected. In that case the cards
-              // render in a disabled state with a 'Stripe required' badge,
-              // so the therapist (looking at their own booking page) sees
-              // exactly what is missing instead of having memberships
-              // silently disappear. Ashley Scalzulli May 2026: her booking
-              // page hid memberships because she only had Square, and she
-              // assumed Square itself was broken.
+              // even when no processor is connected. In that case the
+              // cards render in a disabled state with a 'connect a
+              // processor' badge, so the therapist (looking at their own
+              // booking page) sees exactly what is missing instead of
+              // having memberships silently disappear. Ashley Scalzulli
+              // May 2026: her booking page hid memberships because she
+              // only had Square, and she assumed Square itself was
+              // broken. (That specific case is now fixed by allowing
+              // Square purchases above; this fallback applies when
+              // NEITHER processor is connected.)
               const visibleMemberships = membershipsList;
               const showOffers = packagesList.length > 0 || visibleMemberships.length > 0;
               if (!showOffers) return null;
@@ -2372,7 +2383,7 @@ export default function BookingPage() {
                   // Only count PURCHASABLE memberships toward the price
                   // shown on the collapsed offers card, so 'from $X' is
                   // never quoting a disabled item.
-                  const purchasableMemberships = hasStripeForMembership ? visibleMemberships : [];
+                  const purchasableMemberships = hasProcessorForMembership ? visibleMemberships : [];
                   const totalCount = packagesList.length + purchasableMemberships.length;
                   const allPrices = [
                     ...packagesList.map(p => Number(p.price)),
@@ -2503,26 +2514,26 @@ export default function BookingPage() {
                     {visibleMemberships.map((m) => (
                       <button
                         key={m.id}
-                        onClick={() => hasStripeForMembership ? openOffer('membership', m) : null}
-                        disabled={!hasStripeForMembership}
+                        onClick={() => hasProcessorForMembership ? openOffer('membership', m) : null}
+                        disabled={!hasProcessorForMembership}
                         style={{
-                          background: hasStripeForMembership ? '#F0F9F4' : '#F5F5F0',
-                          border: `1.5px solid ${hasStripeForMembership ? '#B5D4BE' : '#D9D5C9'}`,
+                          background: hasProcessorForMembership ? '#F0F9F4' : '#F5F5F0',
+                          border: `1.5px solid ${hasProcessorForMembership ? '#B5D4BE' : '#D9D5C9'}`,
                           borderRadius: 14,
                           padding: '14px 16px',
                           textAlign: 'left',
-                          cursor: hasStripeForMembership ? 'pointer' : 'not-allowed',
+                          cursor: hasProcessorForMembership ? 'pointer' : 'not-allowed',
                           width: '100%',
                           transition: 'all 0.15s',
-                          opacity: hasStripeForMembership ? 1 : 0.72,
+                          opacity: hasProcessorForMembership ? 1 : 0.72,
                         }}
                         onMouseEnter={(e) => {
-                          if (!hasStripeForMembership) return;
+                          if (!hasProcessorForMembership) return;
                           e.currentTarget.style.borderColor = C.forest;
                           e.currentTarget.style.transform = 'translateY(-1px)';
                         }}
                         onMouseLeave={(e) => {
-                          if (!hasStripeForMembership) return;
+                          if (!hasProcessorForMembership) return;
                           e.currentTarget.style.borderColor = '#B5D4BE';
                           e.currentTarget.style.transform = 'none';
                         }}
@@ -2541,7 +2552,7 @@ export default function BookingPage() {
                                 {m.description}
                               </div>
                             )}
-                            {hasStripeForMembership ? (
+                            {hasProcessorForMembership ? (
                               <div style={{ fontSize: 10, color: C.gray, fontStyle: 'italic', marginTop: 6 }}>
                                 Memberships subscribe directly · not cart-eligible
                               </div>
@@ -2561,12 +2572,12 @@ export default function BookingPage() {
                                 letterSpacing: '0.04em',
                               }}>
                                 <span>🔒</span>
-                                <span>Stripe required for monthly auto-renew</span>
+                                <span>Connect Stripe or Square to enable</span>
                               </div>
                             )}
                           </div>
                           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                            <div style={{ fontSize: 18, fontWeight: 700, color: hasStripeForMembership ? C.forest : C.gray }}>${Number(m.monthly_price).toFixed(0)}</div>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: hasProcessorForMembership ? C.forest : C.gray }}>${Number(m.monthly_price).toFixed(0)}</div>
                             <div style={{ fontSize: 10, color: C.gray }}>per month</div>
                           </div>
                         </div>
@@ -4023,8 +4034,11 @@ export default function BookingPage() {
       {/* OFFER PURCHASE MODAL.
           Opens when client taps a package or membership card. Collects
           name + email + phone, then sends them to hosted Stripe Checkout
-          or Square Payment Link. Memberships are Stripe-only (membership
-          cards only render for Stripe-connected therapists).
+          or Square Payment Link. Both packages and memberships route
+          through whichever processor the therapist has connected (Stripe
+          preferred when both, Square when only Square; routing logic
+          lives in the purchase-package and purchase-membership edge
+          functions per BILLING_STRATEGY.md).
 
           DESIGN NOTE: backdrop tap does NOT close the modal. Once the
           client has started typing, an accidental tap outside should
@@ -4112,7 +4126,12 @@ export default function BookingPage() {
               </button>
             </div>
             <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
-              You'll be sent to a secure {therapist?.stripe_account_id && offerModal.type === 'membership' ? 'Stripe' : (therapist?.stripe_account_id ? 'Stripe' : 'Square')} checkout to enter your card and complete the purchase.
+              {/* Processor name derived to match purchase-membership/
+                  purchase-package edge-function routing: prefer Stripe
+                  when both are connected, fall back to Square when only
+                  Square is. HK May 22 2026: membership branch updated
+                  from 'Stripe-only' to match the actual backend logic. */}
+              You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card and complete the purchase.
             </p>
           </div>
         </div>

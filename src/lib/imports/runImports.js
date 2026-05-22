@@ -116,7 +116,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
         name: planName,
         monthly_price: monthlyPrice || 0,
         monthly_session_credits: monthlyCredits || 1,
-        description: 'Imported plan, edit details and connect Stripe billing to enable recurring charges.',
+        description: 'Imported plan, edit details and connect a payment processor (Stripe or Square) to enable recurring charges.',
         active: true,
       })
       .select('id')

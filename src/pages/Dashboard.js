@@ -4571,7 +4571,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 8 }}>
               <span style={{ fontSize: 14, lineHeight: 1 }}>⬛</span>
               <div style={{ flex: 1 }}>
-                <strong style={{ color: '#2A5741' }}>Square</strong> · deposits, packages, cards on file. Fees: 2.9% + 30¢ for online, 2.6% + 10¢ for in-person Square Reader (paid to Square directly). For memberships, connect Stripe.
+                <strong style={{ color: '#2A5741' }}>Square</strong> · deposits, packages, cards on file, memberships (one-tap monthly Charge for renewals). Fees: 2.9% + 30¢ for online, 2.6% + 10¢ for in-person Square Reader (paid to Square directly). For fully automatic membership auto-renew, connect Stripe instead.
               </div>
             </div>
             <div style={{ marginTop: 8, color: '#6B7280', borderTop: '1px solid #D1E5D9', paddingTop: 8, fontSize: 10, lineHeight: 1.55 }}>
