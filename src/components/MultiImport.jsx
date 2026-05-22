@@ -132,6 +132,11 @@ export default function MultiImport({ therapist, onComplete }) {
   const [results, setResults] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  // Preview state (HK May 21 2026 evening): after files are dropped
+  // and classified, the therapist gets one more screen showing
+  // what's about to happen with first-10-row sample tables. They
+  // confirm before any database write.
+  const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
 
   async function readFile(f) {
@@ -446,6 +451,176 @@ export default function MultiImport({ therapist, onComplete }) {
     );
   }
 
+  // ── PREVIEW SCREEN (HK May 21 evening): show what's about to
+  // happen before the database write. Therapist confirms or
+  // cancels. Renders a small sample table for each file with the
+  // detected mapping applied. ──
+  if (showPreview && !importing && !results) {
+    const totalRows = files.reduce((sum, f) => sum + f.rows.length, 0);
+    const clientFileCount = files.filter(f => f.detected?.type === 'clients').length;
+    const apptFileCount = files.filter(f => f.detected?.type === 'appointments').length;
+
+    return (
+      <div style={{ padding: 20 }}>
+        <div style={{ marginBottom: 18 }}>
+          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 19, fontWeight: 700, color: C.forest, margin: '0 0 6px' }}>
+            Preview before importing
+          </h3>
+          <p style={{ fontSize: 13, color: C.gray, margin: 0, lineHeight: 1.55 }}>
+            Here's what we'll bring into your account. Look at the first few rows of each file to make sure things landed in the right columns. Tap Import to confirm, or Back to adjust.
+          </p>
+        </div>
+
+        <div style={{
+          background: C.greenLight,
+          border: `1.5px solid ${C.greenBorder}`,
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 16,
+          fontSize: 13.5,
+          color: C.ink,
+          lineHeight: 1.7,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 6, color: C.green }}>About to import</div>
+          {clientFileCount > 0 && (
+            <div>📋 <strong>{clientFileCount}</strong> client roster file{clientFileCount === 1 ? '' : 's'}</div>
+          )}
+          {apptFileCount > 0 && (
+            <div>📅 <strong>{apptFileCount}</strong> appointment history file{apptFileCount === 1 ? '' : 's'}</div>
+          )}
+          <div style={{ marginTop: 6 }}>
+            <strong>{totalRows}</strong> total row{totalRows === 1 ? '' : 's'} across all files
+          </div>
+        </div>
+
+        {files.map((f, idx) => {
+          if (!f.detected || f.detected.type === 'unknown') return null;
+          const m = f.detected.mapping;
+          const isClient = f.detected.type === 'clients';
+          const preview = f.rows.slice(0, 5);
+
+          const get = (row, col) => col >= 0 && col < row.length ? (row[col] || '').trim() : '';
+
+          // Columns to show in preview, by type
+          const cols = isClient ? [
+            { label: 'Name', render: (r) => {
+              const fn = get(r, m.firstName);
+              const ln = get(r, m.lastName);
+              const full = get(r, m.fullName);
+              return [fn, ln].filter(Boolean).join(' ') || full || '-';
+            }},
+            { label: 'Email', render: (r) => get(r, m.email) || '-' },
+            { label: 'Phone', render: (r) => get(r, m.phone) || '-' },
+            { label: 'City', render: (r) => get(r, m.city) || '-' },
+            { label: 'State', render: (r) => get(r, m.state) || '-' },
+            { label: 'Zip', render: (r) => get(r, m.zip) || '-' },
+          ] : [
+            { label: 'Client', render: (r) => get(r, m.clientName) || '-' },
+            { label: 'Service', render: (r) => get(r, m.service) || '-' },
+            { label: 'Date', render: (r) => get(r, m.date) || '-' },
+            { label: 'Time', render: (r) => get(r, m.startTime) || '-' },
+            { label: 'Duration', render: (r) => {
+              const d = get(r, m.duration);
+              return d ? `${d} min` : '-';
+            }},
+            { label: 'Email', render: (r) => get(r, m.clientEmail) || '-' },
+            { label: 'Phone', render: (r) => get(r, m.clientPhone) || '-' },
+          ];
+
+          return (
+            <div key={idx} style={{
+              background: C.white,
+              border: `1px solid ${C.border}`,
+              borderRadius: 10,
+              padding: 12,
+              marginBottom: 14,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>{f.fileName}</div>
+                <div style={{ fontSize: 11.5, color: C.gray }}>
+                  showing first {preview.length} of {f.rows.length} rows
+                </div>
+              </div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                  <thead>
+                    <tr style={{ background: C.beige }}>
+                      {cols.map(c => (
+                        <th key={c.label} style={{
+                          padding: '7px 10px',
+                          textAlign: 'left',
+                          fontWeight: 700,
+                          color: C.gray,
+                          borderBottom: `1px solid ${C.light}`,
+                          whiteSpace: 'nowrap',
+                        }}>{c.label}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((r, ri) => (
+                      <tr key={ri} style={{ borderBottom: `1px solid ${C.light}` }}>
+                        {cols.map(c => (
+                          <td key={c.label} style={{
+                            padding: '7px 10px',
+                            color: C.ink,
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: 200,
+                          }}>{c.render(r)}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })}
+
+        {/* Confirmation actions */}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => { setShowPreview(false); runAll(); }}
+            style={{
+              flex: '2 1 200px',
+              background: 'linear-gradient(135deg, #2A5741, #1F4030)',
+              color: '#fff',
+              border: 'none',
+              padding: '14px 24px',
+              borderRadius: 999,
+              fontSize: 15,
+              fontWeight: 700,
+              cursor: 'pointer',
+              boxShadow: '0 2px 10px rgba(42, 87, 65, 0.25)',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Looks good, import now
+          </button>
+          <button
+            onClick={() => setShowPreview(false)}
+            style={{
+              flex: '1 1 120px',
+              background: 'transparent',
+              color: C.gray,
+              border: `1.5px solid ${C.light}`,
+              padding: '14px 24px',
+              borderRadius: 999,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── IMPORTING (progress) SCREEN ──
   if (importing) {
     return (
@@ -572,10 +747,10 @@ export default function MultiImport({ therapist, onComplete }) {
         </div>
       )}
 
-      {/* Import button */}
+      {/* Import button: shows preview before commit */}
       {files.length > 0 && files.every(f => !f.error && f.detected?.type !== 'unknown') && (
         <button
-          onClick={runAll}
+          onClick={() => setShowPreview(true)}
           style={{
             width: '100%',
             background: 'linear-gradient(135deg, #2A5741, #1F4030)',
@@ -591,7 +766,7 @@ export default function MultiImport({ therapist, onComplete }) {
             WebkitTapHighlightColor: 'transparent',
           }}
         >
-          Import {files.reduce((sum, f) => sum + f.rows.length, 0)} row{files.reduce((sum, f) => sum + f.rows.length, 0) === 1 ? '' : 's'} from {files.length} file{files.length === 1 ? '' : 's'}
+          Preview {files.reduce((sum, f) => sum + f.rows.length, 0)} row{files.reduce((sum, f) => sum + f.rows.length, 0) === 1 ? '' : 's'} from {files.length} file{files.length === 1 ? '' : 's'}
         </button>
       )}
 
