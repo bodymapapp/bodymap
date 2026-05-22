@@ -345,6 +345,84 @@ the value normally. Swapped to InlineSaveNumberInput same day.
 
 ---
 
+## 14. One way in, not two. The platform splits implementation paths transparently, never the user.
+
+When a user has data they want to bring into the platform, there
+must be ONE button. If implementation splits into multiple paths
+(client vs appointment vs services), the platform decides which
+path to run based on what the user uploaded, not by asking the
+user to choose.
+
+May 21 2026, Jackie ran the appointment import on her appointment-
+history CSV. It worked: 124 appointments created, 466 client stubs
+auto-created from the appointment rows. But her clients had no
+email or phone, because the appointment CSV doesn't include
+contact info per row, only client name. The actual contact info
+lived in a SEPARATE client-list CSV she didn't know to upload.
+
+The product is currently asking the user "which kind of import is
+this?" That question reveals an implementation detail (two code
+paths) that the user has no way to answer. Maria-persona therapists
+don't know whether a given CSV is "a client list" or "an
+appointment list," they just know it's "their data from
+MassageBook."
+
+**The rule:** import flows present one button. The platform
+detects file types by header inspection and routes accordingly.
+Multiple files at once is the norm, not the exception, because
+real exports often come as separate CSVs per data type.
+
+**Apply more broadly:** anywhere the product asks the user to
+choose between implementation-flavored options (which processor
+to use? which import type? which template?), step back. Either
+the choice is meaningful to the user (in which case label it in
+user-language, not implementation-language), or it's not (in
+which case decide for them and remove the choice).
+
+**Incident log:**
+- May 21 2026: Jackie email/phone gap. Two-tab Client vs Appointment
+import surface trapped a non-technical user. Unified import flow
+queued as BLOCK_PLAN item #13.
+
+---
+
+## 15. HIPAA-aware support. Never ask a therapist to send you their client data over a non-clinical channel.
+
+When debugging requires access to a therapist's data, the right
+pattern is to build the user-side button or query that lets the
+therapist operate on their own data with their consent. Their
+data stays in their environment; we operate server-side via
+their action.
+
+May 21 2026, HK was about to ask Jackie to send her client-list
+CSV over Facebook Messenger so we could merge it into her
+account. HK caught it and pushed back: that data is HIPAA-
+protected and shouldn't leave her possession via DM. The right
+move was to ship a user-side button she taps, instead.
+
+**The rule:** never request raw client data (names, contact
+info, session notes, intake responses, body map data) via DM,
+email, screenshot, or any non-clinical channel. If we need to
+operate on a therapist's data, we build:
+- A user-side button that lets them upload or trigger the
+  operation
+- OR a self-serve SQL preview they can run themselves to see
+  what would happen
+- OR (last resort) a founder-side admin tool that operates
+  server-side with their explicit recorded consent
+
+**Apply broadly:** this applies to debugging too. If we suspect
+a bug in someone's data, don't ask them to paste it into chat.
+Build a diagnostic that runs in their session, surfaces the
+relevant info, and shows them what we need to know.
+
+**Incident log:**
+- May 21 2026: Jackie email/phone gap debugging. HK caught the
+HIPAA exposure before sending the request. Unified import flow
+(BLOCK_PLAN #13) is the user-side button solution.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
@@ -359,6 +437,8 @@ the value normally. Swapped to InlineSaveNumberInput same day.
 - **Before committing any UI change:** check rule #11 (mobile-first).
 - **Before adding a code path that auto-creates database rows from user input:** check rule #12.
 - **Before adding any therapist-facing numeric input:** check rule #13.
+- **Before designing any flow that asks the user to choose between implementation-flavored options:** check rule #14.
+- **Before asking a therapist to share their data via DM, email, or screenshot for debugging:** check rule #15.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The
