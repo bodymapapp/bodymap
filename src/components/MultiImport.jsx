@@ -140,6 +140,23 @@ export default function MultiImport({ therapist, onComplete }) {
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef(null);
 
+  // Browser warning during import (HK May 21 evening): if the user
+  // tries to close the tab mid-import, surface the native browser
+  // confirm prompt. This is the modern web's equivalent of "are
+  // you sure?". Resumable imports are the better long-term answer
+  // and queued in BLOCK_PLAN; this protects against accidental
+  // close in the meantime.
+  React.useEffect(() => {
+    if (!importing) return;
+    const handler = (e) => {
+      e.preventDefault();
+      e.returnValue = 'Import is still running. Closing this tab now may leave your data partially imported.';
+      return e.returnValue;
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [importing]);
+
   async function readFile(f) {
     return new Promise((resolve) => {
       const reader = new FileReader();

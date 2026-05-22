@@ -2330,8 +2330,9 @@ export default function ScheduleDashboard({ therapist }) {
       // design choice. Real therapists like Jackie book weekly
       // standing clients up to a year out, so 60 days hid roughly 80%
       // of her real schedule. 365 covers a full year forward + 365
-      // back of history. Explicit .limit(2000) keeps the query safe
-      // for busy therapists with 1000+ bookings/year.
+      // back of history. Explicit .limit(5000) keeps the query safe
+      // for busy therapists with several years of imported history
+      // (raised from 2000 May 21 2026 evening per HK).
       const future = new Date(today); future.setDate(today.getDate() + 365);
 
       const { data: bookings, error } = await supabase
@@ -2343,7 +2344,7 @@ export default function ScheduleDashboard({ therapist }) {
         .lte('booking_date', toDateStr(future))
         .order('booking_date')
         .order('start_time')
-        .limit(2000);
+        .limit(5000);
 
       if (error || !bookings?.length) { setRealBookings([]); setPendingApprovalBookings([]); setLoading(false); return; }
 
