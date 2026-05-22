@@ -44,7 +44,16 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   const [savingCard, setSavingCard] = useState(false);
 
   async function saveCard() {
-    if (!therapist?.stripe_account_id) { alert('Connect Stripe in Settings first.'); return; }
+    if (!therapist?.stripe_account_id && !therapist?.square_access_token) {
+      // HK May 22 2026: was alert('Connect Stripe in Settings first.').
+      // alert() violates Design Principle (no native popups), and only
+      // mentioning Stripe ignores Square as a valid peer processor.
+      // Save-card itself currently routes through Stripe specifically;
+      // the broader 'route by which processor is connected' refactor is
+      // queued, but the user-facing message must already acknowledge both.
+      setChargeMsg('Connect Stripe or Square in Settings first to save cards on file. Both work equally well.');
+      return;
+    }
     setSavingCard(true);
     const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
     const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;

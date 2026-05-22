@@ -123,12 +123,14 @@ export default function MembershipsCard({ therapist }) {
       <p style={{ fontSize:'11px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em', color:C.gray, margin:'0 0 6px 0' }}>Memberships</p>
       <p style={{ fontSize:'12px', color:C.gray, margin:'0 0 16px 0', lineHeight:1.5 }}>Recurring monthly plans. Members get included sessions and optional discounts. Define tiers here; sign clients up from their profile.</p>
 
-      {/* Memberships need a Stripe connection. Square does not support
-          our subscription flow reliably (per BILLING_STRATEGY.md). If
-          the therapist only has Square, surface a clear inline banner
-          rather than letting them define memberships that no client
-          can actually buy. */}
-      {!therapist?.stripe_account_id && (
+      {/* Memberships work with both Stripe and Square, but Stripe
+          has fully automated renewals while Square requires the
+          therapist to tap Charge each month (per BILLING_STRATEGY.md
+          capability matrix: Square recurringRenewal = limited). If
+          NEITHER is connected, surface a clear inline banner.
+          HK May 22 2026: copy updated to acknowledge both processors
+          and the honest renewal tradeoff. */}
+      {!therapist?.stripe_account_id && !therapist?.square_access_token && (
         <div style={{
           background: '#FEF3C7',
           border: '1.5px solid #FCD34D',
@@ -139,8 +141,26 @@ export default function MembershipsCard({ therapist }) {
           color: '#78350F',
           lineHeight: 1.55,
         }}>
-          <div style={{ fontWeight: 700, marginBottom: 4 }}>Connect Stripe to sell memberships</div>
-          Memberships require Stripe (recurring monthly billing, auto-renewal, dunning). You can still define tiers below for planning, but clients will not see them on your booking page until Stripe is connected. Connect Stripe in Settings · Payments.
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Connect Stripe or Square to sell memberships</div>
+          Memberships need a card processor to charge clients each month. You can still define tiers below for planning, but clients will not see them on your booking page until you connect one. Connect Stripe or Square in Settings · Payments.
+        </div>
+      )}
+
+      {/* Square-only therapists: memberships work but renewals are
+          manual. Set expectations up front so it's not a surprise. */}
+      {!therapist?.stripe_account_id && therapist?.square_access_token && (
+        <div style={{
+          background: '#F0F9FF',
+          border: '1.5px solid #BAE6FD',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginBottom: 14,
+          fontSize: 12,
+          color: '#075985',
+          lineHeight: 1.55,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>Memberships work on Square with one note</div>
+          Square memberships charge the first month automatically. After that, monthly renewals appear in your dashboard as a one-tap Charge action rather than running silently. If you want fully hands-off recurring billing, connect Stripe as well in Settings · Payments.
         </div>
       )}
 
