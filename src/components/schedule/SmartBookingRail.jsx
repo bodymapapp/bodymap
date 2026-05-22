@@ -779,6 +779,7 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
           scope={scope}
           today={today}
           lapsedCount={rebookWatch ? rebookWatch.length : 0}
+          lapsedClients={rebookWatch || []}
           onParentAction={(id) => {
             if (id === 'open-time-off' && typeof onOpenTimeOff === 'function') {
               onOpenTimeOff();

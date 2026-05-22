@@ -269,7 +269,7 @@ function computeBookableWindows(allAppts, scope = 'weekly', today = new Date()) 
   return { windows, totalMinutes: totalMin };
 }
 
-export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, onParentAction }) {
+export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, lapsedClients = [], onParentAction }) {
   const navigate = useNavigate();
   const { windows, totalMinutes } = computeBookableWindows(allAppts, scope, today || new Date());
   const hoursOpen = totalMinutes / 60;
@@ -285,7 +285,30 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
   function runStrategy(s) {
     switch (s.action) {
       case 'outreach':
-        navigate('/dashboard/outreach');
+        // HK May 22 2026: deep-link to outreach with the SPECIFIC
+        // lapsed clients pre-selected. Previously this dumped the
+        // therapist on the quick-send picker, losing the 'these 3
+        // clients' context. Now Outreach opens the send modal
+        // directly with those recipients filled in. If for some
+        // reason lapsedClients was not passed (legacy callers), we
+        // fall back to the old behavior.
+        if (lapsedClients && lapsedClients.length > 0) {
+          navigate('/dashboard/outreach', {
+            state: {
+              openLapsedReachout: true,
+              lapsedRecipients: lapsedClients.map(c => ({
+                id: c.client_id || c.id,
+                first_name: c.first_name || (c.name || '').split(' ')[0] || 'there',
+                last_name: c.last_name || (c.name || '').split(' ').slice(1).join(' ') || '',
+                name: c.name,
+                email: c.email,
+                phone: c.phone,
+              })).filter(r => r.id),
+            },
+          });
+        } else {
+          navigate('/dashboard/outreach');
+        }
         return;
       case 'reviewRequest':
         navigate('/dashboard/clients');

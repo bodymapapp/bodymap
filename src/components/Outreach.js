@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { db, supabase } from '../lib/supabase';
 import QuickSendBlocks from './QuickSendBlocks';
+import QuickSendModal from './QuickSendModal';
 import CloseButton from './CloseButton';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
@@ -62,6 +64,8 @@ const OPERATORS = [
 ];
 
 export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) {
+  const location = useLocation();
+  const navigate = useNavigate();
   // Read URL query params for deep-link defaults (e.g. /dashboard/outreach?template=wemoved&segment=all)
   const initialQuery = (() => {
     if (typeof window === 'undefined') return {};
@@ -73,6 +77,37 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   })();
 
   const initialTemplate = TEMPLATES.find(t => t.id === initialQuery.template) || TEMPLATES[0];
+
+  // HK May 22 2026: detect deep-link from Schedule > Growth insights
+  // > Reach out to lapsed regulars. When that nav state is present,
+  // open QuickSendModal directly with the 3 lapsed clients filled
+  // in. Saves the therapist from re-finding them in the picker. The
+  // template is a soft check-in tone (care-framed per 70yr persona).
+  const [lapsedReachoutModal, setLapsedReachoutModal] = useState(() => {
+    const s = location?.state;
+    if (s && s.openLapsedReachout && Array.isArray(s.lapsedRecipients) && s.lapsedRecipients.length > 0) {
+      // Clear the nav state immediately so a refresh does not re-open
+      // the modal. The setter below fires after the first render.
+      return {
+        recipients: s.lapsedRecipients,
+        template: {
+          id: 'lapsed_checkin',
+          name: 'Check in with lapsed clients',
+          subject: 'Thinking of you',
+          body: `Hi {{first_name}},\n\nIt's been a little while since I've seen you and I wanted to say hello. No pressure at all, just checking in. If you'd like to book a session, here's a quick link: {{rebook_link}}\n\nTake care,\n{{therapist_name}}`,
+          audience_preset: 'lapsed_regulars',
+        },
+      };
+    }
+    return null;
+  });
+  useEffect(() => {
+    // Clear the nav state so refresh/back-button doesn't re-open
+    if (location?.state?.openLapsedReachout) {
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [therapist, setTherapist] = useState(therapistProp);
   const [clients, setClients]     = useState([]);
@@ -443,6 +478,21 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
 
   return (
     <div style={{ paddingBottom: window.innerWidth < 768 ? 120 : 0 }}>
+      {/* HK May 22 2026: when arriving from Schedule > Growth
+          insights > Reach out, open the QuickSendModal directly
+          with the lapsed clients pre-filled. No template picker,
+          no audience picker. The therapist tapped 'reach out to
+          these 3' and they get exactly that. */}
+      {lapsedReachoutModal && (
+        <QuickSendModal
+          template={lapsedReachoutModal.template}
+          therapist={therapist}
+          recipients={lapsedReachoutModal.recipients}
+          onClose={() => setLapsedReachoutModal(null)}
+          onSent={() => setLapsedReachoutModal(null)}
+        />
+      )}
+
       <div style={{ marginBottom:24 }}>
         <h2 style={{ fontFamily:'Georgia,serif', fontSize:22, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>Smart Outreach</h2>
         <p style={{ fontSize:13, color:C.gray, margin:0 }}>Send a personal message to a group of clients in one shot. Each one is addressed by name.</p>
