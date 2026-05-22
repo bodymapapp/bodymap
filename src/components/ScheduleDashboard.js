@@ -1294,7 +1294,7 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
   );
 }
 
-function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh }) {
+function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
   const APPTS=appointments||[];
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
@@ -1307,6 +1307,25 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
   const DAY_NAMES_FULL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
   const weekAppts=APPTS.filter(a=>a.date>=weekStart&&a.date<addDays(weekStart,7));
   const realWeek=weekAppts.filter(a=>!a.preview);
+
+  // Blocked-day classification (HK May 22 2026 Tier 1 item 2).
+  // Returns { fullDay: bool, partial: bool, reasons: [string] }
+  // - fullDay = at least one row covers the whole day (no start/end)
+  // - partial = at least one row with a start_time/end_time window
+  // Both flags can be true (e.g. all-day off PLUS a separate hour
+  // block). Reasons get concatenated for the tooltip / aria label.
+  function blockedFor(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const rows = (blockedDays || []).filter(b => b.date === dateStr);
+    if (!rows.length) return { fullDay: false, partial: false, reasons: [] };
+    const fullDay = rows.some(b => !b.start_time && !b.end_time);
+    const partial = rows.some(b => b.start_time || b.end_time);
+    const reasons = rows.map(b => b.reason).filter(Boolean);
+    return { fullDay, partial, reasons };
+  }
   return (
     <div>
       {/* Legend, collapsible. Off by default for vertical space. */}
@@ -1371,21 +1390,50 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
             const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
             const realDayAppts=dayAppts.filter(a=>!a.preview);
             const isToday=sameDay(d,today);
+            const block = blockedFor(d);
+            const isFullBlocked = block.fullDay;
+            // Border + header tint reflect: today (green) > blocked
+            // (amber for full, sage for partial) > default
+            const borderColor = isToday ? '#86EFAC'
+              : isFullBlocked ? '#FBBF24'
+              : block.partial ? '#B5D4BE'
+              : '#F3F4F6';
+            const headerBg = isToday ? '#F0FDF4'
+              : isFullBlocked ? '#FEF3C7'
+              : block.partial ? '#F0F9F4'
+              : '#FAFAF7';
+            const headerBorder = isToday ? '#BBF7D0'
+              : isFullBlocked ? '#FDE68A'
+              : block.partial ? '#D4E6DA'
+              : '#F3F4F6';
             return (
-              <div key={i} style={{background:'#fff',borderRadius:12,overflow:'hidden',border:`1.5px solid ${isToday?'#86EFAC':'#F3F4F6'}`,boxShadow:isToday?'0 1px 3px rgba(22,163,74,0.08)':'none'}}>
+              <div key={i} style={{background:'#fff',borderRadius:12,overflow:'hidden',border:`1.5px solid ${borderColor}`,boxShadow:isToday?'0 1px 3px rgba(22,163,74,0.08)':'none'}}>
                 {/* Day header row */}
-                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:isToday?'#F0FDF4':'#FAFAF7',borderBottom:dayAppts.length>0?`1px solid ${isToday?'#BBF7D0':'#F3F4F6'}`:'none'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:headerBg,borderBottom:(dayAppts.length>0||isFullBlocked||block.partial)?`1px solid ${headerBorder}`:'none'}}>
                   <div style={{display:'flex',alignItems:'baseline',gap:8}}>
-                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:isToday?'#16A34A':'#6B7280'}}>{DAY_NAMES_FULL[i]}</div>
-                    <div style={{fontSize:15,fontWeight:700,color:isToday?'#16A34A':'#1F2937'}}>{d.getMonth()+1}/{d.getDate()}</div>
+                    <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'0.06em',color:isToday?'#16A34A':isFullBlocked?'#92400E':'#6B7280'}}>{DAY_NAMES_FULL[i]}</div>
+                    <div style={{fontSize:15,fontWeight:700,color:isToday?'#16A34A':isFullBlocked?'#92400E':'#1F2937'}}>{d.getMonth()+1}/{d.getDate()}</div>
                     {isToday && <div style={{fontSize:10,fontWeight:700,color:'#16A34A',background:'#DCFCE7',borderRadius:20,padding:'2px 8px'}}>Today</div>}
+                    {!isToday && isFullBlocked && <div style={{fontSize:10,fontWeight:700,color:'#92400E',background:'#FDE68A',borderRadius:20,padding:'2px 8px'}}>🌿 Time off</div>}
                   </div>
-                  <div style={{fontSize:11,color:isToday?'#16A34A':'#9CA3AF',fontWeight:600}}>
-                    {realDayAppts.length===0?'No sessions':`${realDayAppts.length} ${realDayAppts.length===1?'session':'sessions'}`}
+                  <div style={{fontSize:11,color:isToday?'#16A34A':isFullBlocked?'#92400E':'#9CA3AF',fontWeight:600}}>
+                    {isFullBlocked && realDayAppts.length===0
+                      ? 'Day blocked'
+                      : realDayAppts.length===0
+                        ? (block.partial ? 'Partial block' : 'No sessions')
+                        : `${realDayAppts.length} ${realDayAppts.length===1?'session':'sessions'}`}
                   </div>
                 </div>
-                {/* Appointment rows */}
-                {dayAppts.length===0
+                {/* Appointment rows (or block message) */}
+                {dayAppts.length===0 && isFullBlocked
+                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#92400E',fontStyle:'italic',textAlign:'center'}}>
+                      {block.reasons.length ? block.reasons[0] : 'You blocked this day off. Booking page will not offer it.'}
+                    </div>
+                  : dayAppts.length===0 && block.partial
+                  ? <div style={{padding:'14px 16px',fontSize:12,color:'#5C7A66',fontStyle:'italic',textAlign:'center'}}>
+                      Part of this day is blocked. Booking page only offers the open windows.
+                    </div>
+                  : dayAppts.length===0
                   ? <div style={{padding:'14px 16px',fontSize:12,color:'#B4B4B4',fontStyle:'italic',textAlign:'center'}}>Open day</div>
                   : <div style={{display:'flex',flexDirection:'column'}}>
                       {dayAppts.map((appt,idx)=>{
@@ -1425,14 +1473,24 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
           {weekDays.map((d,i)=>{
             const dayAppts=APPTS.filter(a=>sameDay(a.date,d));
             const isToday=sameDay(d,today);
+            const block = blockedFor(d);
+            const dayBg = block.fullDay ? '#FEF3C7' : 'transparent';
+            const dayBorderStyle = block.fullDay
+              ? `1.5px solid #FBBF24`
+              : block.partial
+                ? `1.5px dashed #B5D4BE`
+                : '1.5px dashed #E5E7EB';
             return (
               <div key={i} style={{minHeight:90}}>
-                <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':'transparent',color:isToday?'#fff':'#6B7280'}}>
+                <div style={{textAlign:'center',padding:'7px 4px',borderRadius:8,marginBottom:5,background:isToday?'#2A5741':block.fullDay?'#FEF3C7':'transparent',color:isToday?'#fff':block.fullDay?'#92400E':'#6B7280'}}>
                   <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase'}}>{DAY_NAMES[i]}</div>
                   <div style={{fontSize:13,fontWeight:600}}>{d.getDate()}</div>
+                  {block.fullDay && !isToday && <div style={{fontSize:9,fontWeight:700,marginTop:2}}>🌿 OFF</div>}
                 </div>
                 {dayAppts.length===0
-                  ?<div style={{height:40,border:'1.5px dashed #E5E7EB',borderRadius:8}}/>
+                  ? <div style={{height:40,border:dayBorderStyle,borderRadius:8,background:dayBg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:10,color:block.fullDay?'#92400E':block.partial?'#5C7A66':'transparent',fontWeight:600}}>
+                      {block.fullDay ? 'Blocked' : block.partial ? 'Partial' : ''}
+                    </div>
                   :<div style={{display:'flex',flexDirection:'column',gap:3}}>
                     {dayAppts.map(appt=>{
                       const st=STATUS[appt.status]||STATUS['pending-intake'];
@@ -1468,7 +1526,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh })
   );
 }
 
-function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }) {
+function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
   const APPTS=appointments||[];
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
@@ -1479,6 +1537,21 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
   const offset=firstDay===0?6:firstDay-1;
   const calDays=[...Array(offset).fill(null),...Array.from({length:daysInMonth},(_,i)=>new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i+1))];
   const selAppts=APPTS.filter(a=>sameDay(a.date,selDate));
+
+  // Blocked-day classification, same shape as WeeklyView. Reused
+  // here so the monthly grid cells get the same visual cues.
+  function blockedFor(d) {
+    if (!d) return { fullDay: false, partial: false, reasons: [] };
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth()+1).padStart(2,'0');
+    const dd = String(d.getDate()).padStart(2,'0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    const rows = (blockedDays || []).filter(b => b.date === dateStr);
+    if (!rows.length) return { fullDay: false, partial: false, reasons: [] };
+    const fullDay = rows.some(b => !b.start_time && !b.end_time);
+    const partial = rows.some(b => b.start_time || b.end_time);
+    return { fullDay, partial, reasons: rows.map(b => b.reason).filter(Boolean) };
+  }
   return (
     <div>
       {/* Legend */}
@@ -1544,14 +1617,37 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh }
           const da=APPTS.filter(a=>sameDay(a.date,d));
           const ra=da.filter(a=>!a.preview);
           const isToday=sameDay(d,today),isSel=sameDay(d,selDate);
+          const block = blockedFor(d);
+          // Background priority: selected > today > full-block > partial-block > default
+          // Border priority: selected > today > full-block > partial-block > default
+          const cellBg = isSel ? '#2A5741'
+            : isToday ? '#F0FDF4'
+            : block.fullDay ? '#FEF3C7'
+            : '#fff';
+          const cellBorder = isSel ? '#2A5741'
+            : isToday ? '#86EFAC'
+            : block.fullDay ? '#FBBF24'
+            : block.partial ? '#B5D4BE'
+            : '#F3F4F6';
+          const dateColor = isSel ? '#fff'
+            : isToday ? '#16A34A'
+            : block.fullDay ? '#92400E'
+            : '#6B7280';
           return (
             <div key={i} onClick={()=>setSelDate(d)}
-              style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:isSel?'#2A5741':isToday?'#F0FDF4':'#fff',border:`1.5px solid ${isSel?'#2A5741':isToday?'#86EFAC':'#F3F4F6'}`,transition:'all 0.1s'}}>
-              <div style={{fontSize:11,fontWeight:600,color:isSel?'#fff':isToday?'#16A34A':'#6B7280',marginBottom:2}}>{d.getDate()}</div>
+              style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:cellBg,border:`1.5px solid ${cellBorder}`,transition:'all 0.1s',position:'relative'}}>
+              <div style={{fontSize:11,fontWeight:600,color:dateColor,marginBottom:2}}>{d.getDate()}</div>
+              {block.fullDay && !isSel && (
+                <div style={{position:'absolute',top:3,right:3,fontSize:9,lineHeight:1}} title="Day blocked off">🌿</div>
+              )}
               {ra.length>0&&<div style={{fontSize:11,fontWeight:700,color:isSel?'#fff':'#1F2937'}}>{window.innerWidth<640?`${ra.length}×`:`${ra.length} appt${ra.length>1?'s':''}`}</div>}
+              {ra.length===0 && block.fullDay && !isSel && (
+                <div style={{fontSize:10,fontWeight:600,color:'#92400E',marginTop:2}}>Off</div>
+              )}
               <div style={{display:'flex',gap:2,marginTop:2}}>
                 {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
                 {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
+                {block.partial && !block.fullDay && !isSel && <div style={{width:5,height:5,borderRadius:'50%',background:'#6B9E80'}} title="Partial block"/>}
               </div>
             </div>
           );
@@ -3386,8 +3482,8 @@ export default function ScheduleDashboard({ therapist }) {
             {/* RIGHT PANE: tab-selected calendar/insights view. */}
             <div style={{ minWidth: 0 }}>
               {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime}/>}
-              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
-              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings}/>}
+              {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
+              {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
               {subView==='yearly'  &&(
                 <div style={{background:'#fff',border:'1px solid #EDE6D6',borderRadius:18,padding:'40px 24px',textAlign:'center',boxShadow:'0 1px 3px rgba(31, 65, 49, 0.06)'}}>
                   <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:24,fontWeight:600,color:'#1F4131',marginBottom:8,letterSpacing:'-0.01em'}}>Yearly view, coming soon</div>
