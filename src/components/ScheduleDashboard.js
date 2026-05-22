@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
@@ -1676,6 +1676,260 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
         </div>
       }
       {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
+    </div>
+  );
+}
+
+function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
+  // 12-month at-a-glance heatmap. Each month is a mini-grid of day
+  // cells colored by booking density. Time-off days show an amber
+  // dot. Below the grid: 'busiest months' and 'quietest months'
+  // ranked, plus the year's total session count.
+  //
+  // HK May 22 2026 Tier 2: design choice is scrolling year view
+  // (no drill-down) over a tap-to-zoom pattern. For the 70yo
+  // persona, at-a-glance is more valuable than interaction depth.
+  // The Monthly tab handles details.
+  const APPTS = appointments || [];
+  const [yearOffset, setYearOffset] = useState(0);
+  const viewYear = today.getFullYear() + yearOffset;
+  const monthStart = new Date(viewYear, 0, 1);
+
+  // Pre-compute per-day booking count for the entire year so we
+  // can render the 12 mini-months without re-filtering each cell.
+  const countsByDate = useMemo(() => {
+    const m = {};
+    APPTS.forEach(a => {
+      if (a.preview || a.external) return;
+      const d = a.date;
+      if (!d || d.getFullYear() !== viewYear) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      m[key] = (m[key] || 0) + 1;
+    });
+    return m;
+  }, [APPTS, viewYear]);
+
+  const blockedByDate = useMemo(() => {
+    const m = {};
+    (blockedDays || []).forEach(b => {
+      // b.date is a YYYY-MM-DD string
+      if (typeof b.date === 'string' && b.date.startsWith(String(viewYear))) {
+        const isFullDay = !b.start_time && !b.end_time;
+        m[b.date] = isFullDay ? 'full' : 'partial';
+      }
+    });
+    return m;
+  }, [blockedDays, viewYear]);
+
+  // Per-month stats for ranking
+  const monthStats = useMemo(() => {
+    const stats = Array.from({ length: 12 }, () => ({ count: 0, days: 0 }));
+    Object.entries(countsByDate).forEach(([dateStr, n]) => {
+      const m = parseInt(dateStr.slice(5, 7), 10) - 1;
+      stats[m].count += n;
+      stats[m].days += 1;
+    });
+    return stats;
+  }, [countsByDate]);
+
+  const yearTotal = monthStats.reduce((s, m) => s + m.count, 0);
+  const monthsWithData = monthStats.map((s, i) => ({ ...s, monthIdx: i })).filter(s => s.count > 0);
+  const busiest = [...monthsWithData].sort((a, b) => b.count - a.count).slice(0, 2);
+  const quietest = [...monthsWithData].sort((a, b) => a.count - b.count).slice(0, 2);
+
+  // Color scale: sage gradient based on booking density
+  function densityColor(count, isBlocked) {
+    if (isBlocked === 'full') return '#FEF3C7';
+    if (count === 0) return '#F5F0E8';
+    if (count === 1) return '#D4E6DA';
+    if (count === 2) return '#A8CCB5';
+    if (count <= 4) return '#6B9E80';
+    return '#2A5741';
+  }
+
+  const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const DAY_LETTERS = ['M','T','W','T','F','S','S'];
+
+  return (
+    <div>
+      {/* Year nav */}
+      <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:18}}>
+        <button onClick={()=>setYearOffset(y=>y-1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>← {viewYear-1}</button>
+        <div style={{textAlign:'center'}}>
+          <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:24,fontWeight:600,color:'#1F4131',letterSpacing:'-0.01em'}}>{viewYear}</div>
+          <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>
+            {yearTotal === 0
+              ? 'No sessions yet'
+              : `${yearTotal} session${yearTotal===1?'':'s'} across the year`}
+          </div>
+        </div>
+        <button onClick={()=>setYearOffset(y=>y+1)} style={{background:'#fff',border:'1.5px solid #E5E7EB',borderRadius:8,padding:'8px 16px',fontSize:13,fontWeight:600,cursor:'pointer',color:'#1F2937'}}>{viewYear+1} →</button>
+      </div>
+
+      {/* Legend */}
+      <div style={{display:'flex',alignItems:'center',gap:14,padding:'10px 14px',background:'#fff',borderRadius:10,border:'1px solid #F3F4F6',marginBottom:14,flexWrap:'wrap'}}>
+        <span style={{fontSize:11,fontWeight:700,color:'#374151',letterSpacing:'0.06em'}}>SESSIONS PER DAY</span>
+        <div style={{display:'flex',alignItems:'center',gap:6}}>
+          {[
+            {bg:'#F5F0E8',label:'0'},
+            {bg:'#D4E6DA',label:'1'},
+            {bg:'#A8CCB5',label:'2'},
+            {bg:'#6B9E80',label:'3-4'},
+            {bg:'#2A5741',label:'5+'},
+          ].map(({bg,label}) => (
+            <div key={label} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+              <div style={{width:14,height:14,borderRadius:3,background:bg,border:'1px solid #E5E7EB'}}/>
+              <span style={{fontSize:9,color:'#9CA3AF'}}>{label}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{display:'flex',alignItems:'center',gap:5,marginLeft:6}}>
+          <div style={{width:14,height:14,borderRadius:3,background:'#FEF3C7',border:'1px solid #FDE68A'}}/>
+          <span style={{fontSize:11,color:'#6B7280'}}>Time off</span>
+        </div>
+      </div>
+
+      {/* 12-month grid */}
+      <div style={{
+        display:'grid',
+        gridTemplateColumns:'repeat(auto-fit, minmax(170px, 1fr))',
+        gap:14,
+        marginBottom:20,
+      }}>
+        {MONTH_NAMES.map((monthName, mIdx) => {
+          const monthDate = new Date(viewYear, mIdx, 1);
+          const daysInMonth = new Date(viewYear, mIdx+1, 0).getDate();
+          const firstDay = new Date(viewYear, mIdx, 1).getDay();
+          const offset = firstDay === 0 ? 6 : firstDay - 1;
+          const cells = [
+            ...Array(offset).fill(null),
+            ...Array.from({length: daysInMonth}, (_, i) => i+1),
+          ];
+          const isCurrentMonth = monthDate.getMonth() === today.getMonth() && viewYear === today.getFullYear();
+          const stats = monthStats[mIdx];
+
+          return (
+            <div key={mIdx} style={{
+              background:'#fff',
+              border:`1.5px solid ${isCurrentMonth ? '#86EFAC' : '#F3F4F6'}`,
+              borderRadius:12,
+              padding:'12px 12px 10px',
+              boxShadow: isCurrentMonth ? '0 1px 3px rgba(22,163,74,0.08)' : 'none',
+            }}>
+              {/* Month header */}
+              <div style={{display:'flex',alignItems:'baseline',justifyContent:'space-between',marginBottom:8}}>
+                <div style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: 13.5,
+                  fontWeight: 700,
+                  color: isCurrentMonth ? '#16A34A' : '#1F4131',
+                }}>
+                  {monthName}
+                </div>
+                <div style={{fontSize:10.5,color:'#9CA3AF',fontWeight:600}}>
+                  {stats.count === 0 ? '·' : `${stats.count}`}
+                </div>
+              </div>
+              {/* Day letter header */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:3}}>
+                {DAY_LETTERS.map((dl,i) => (
+                  <div key={i} style={{fontSize:8,color:'#C7CDD6',textAlign:'center',fontWeight:600}}>{dl}</div>
+                ))}
+              </div>
+              {/* Day cells */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+                {cells.map((day, i) => {
+                  if (day === null) return <div key={i} />;
+                  const dateStr = `${viewYear}-${String(mIdx+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                  const count = countsByDate[dateStr] || 0;
+                  const blocked = blockedByDate[dateStr];
+                  const isToday = today.getFullYear() === viewYear && today.getMonth() === mIdx && today.getDate() === day;
+                  return (
+                    <div
+                      key={i}
+                      title={`${monthName} ${day}: ${count} session${count===1?'':'s'}${blocked === 'full' ? ' (blocked)' : blocked === 'partial' ? ' (partial block)' : ''}`}
+                      style={{
+                        aspectRatio: '1',
+                        background: densityColor(count, blocked),
+                        borderRadius: 2,
+                        border: isToday ? '1.5px solid #2A5741' : (blocked === 'partial' ? '1px solid #FDE68A' : 'none'),
+                        position: 'relative',
+                      }}
+                    >
+                      {blocked === 'partial' && (
+                        <div style={{
+                          position:'absolute',
+                          top:1, right:1,
+                          width:3, height:3,
+                          borderRadius:'50%',
+                          background:'#D97706',
+                        }}/>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Year stats summary */}
+      {yearTotal > 0 && (
+        <div style={{
+          background:'#fff',
+          border:'1px solid #F3F4F6',
+          borderRadius:14,
+          padding:'14px 16px',
+          marginBottom:14,
+        }}>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',color:'#6B7280',marginBottom:10,textTransform:'uppercase'}}>
+            Your year in rhythm
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12}}>
+            <div>
+              <div style={{fontSize:11,color:'#9CA3AF',marginBottom:2}}>Total sessions</div>
+              <div style={{fontFamily:'Georgia, serif',fontSize:20,fontWeight:700,color:'#1F4131'}}>{yearTotal}</div>
+            </div>
+            {busiest.length > 0 && (
+              <div>
+                <div style={{fontSize:11,color:'#9CA3AF',marginBottom:2}}>Busiest stretch</div>
+                <div style={{fontFamily:'Georgia, serif',fontSize:14,fontWeight:600,color:'#1F4131'}}>
+                  {busiest.map(b => MONTH_NAMES[b.monthIdx]).join(', ')}
+                </div>
+                <div style={{fontSize:10.5,color:'#9CA3AF',marginTop:1}}>
+                  {busiest[0].count} session{busiest[0].count===1?'':'s'} in {MONTH_NAMES[busiest[0].monthIdx]}
+                </div>
+              </div>
+            )}
+            {quietest.length > 0 && quietest[0].monthIdx !== busiest[0]?.monthIdx && (
+              <div>
+                <div style={{fontSize:11,color:'#9CA3AF',marginBottom:2}}>Quietest stretch</div>
+                <div style={{fontFamily:'Georgia, serif',fontSize:14,fontWeight:600,color:'#1F4131'}}>
+                  {quietest.map(q => MONTH_NAMES[q.monthIdx]).join(', ')}
+                </div>
+                <div style={{fontSize:10.5,color:'#9CA3AF',marginTop:1}}>
+                  Good window for rest, learning, or outreach
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {yearTotal === 0 && (
+        <div style={{
+          background:'#FEFCE8',
+          border:'1px solid #FDE68A',
+          borderRadius:10,
+          padding:'14px 16px',
+          fontSize:12.5,
+          color:'#78350F',
+          lineHeight:1.55,
+        }}>
+          <strong>No sessions on record for {viewYear} yet.</strong> Once bookings start appearing on your schedule, this view will show your year at a glance: which months you were busiest, where you took time off, and the rhythm of your practice across seasons.
+        </div>
+      )}
     </div>
   );
 }
@@ -3484,12 +3738,7 @@ export default function ScheduleDashboard({ therapist }) {
               {subView==='today'   &&<TimelineView therapist={therapist} allAppts={allAppts} dayOffset={dayOffset} setDayOffset={setDayOffset} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays} onCreateBlock={addBlockedDay} onScheduleAtTime={setPendingBookingTime}/>}
               {subView==='weekly'  &&<WeeklyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
               {subView==='monthly' &&<MonthlyView therapist={therapist} appointments={allAppts} today={today} onReschedule={setRescheduleAppt} onRefresh={fetchBookings} blockedDays={blockedDays}/>}
-              {subView==='yearly'  &&(
-                <div style={{background:'#fff',border:'1px solid #EDE6D6',borderRadius:18,padding:'40px 24px',textAlign:'center',boxShadow:'0 1px 3px rgba(31, 65, 49, 0.06)'}}>
-                  <div style={{fontFamily:"'Cormorant Garamond', Georgia, serif",fontSize:24,fontWeight:600,color:'#1F4131',marginBottom:8,letterSpacing:'-0.01em'}}>Yearly view, coming soon</div>
-                  <div style={{fontSize:13,color:'#6B7280',fontStyle:'italic',lineHeight:1.55,maxWidth:420,margin:'0 auto',fontFamily:'Georgia, serif'}}>A 12-month overview of bookings, busiest weeks, and seasonal patterns. In the meantime, your Insights tab covers cohort and retention trends.</div>
-                </div>
-              )}
+              {subView==='yearly'  &&<YearlyView therapist={therapist} appointments={allAppts} today={today} blockedDays={blockedDays}/>}
               {subView==='insights'&&<InsightsView appointments={allAppts}/>}
             </div>
           </div>
