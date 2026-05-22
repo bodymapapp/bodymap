@@ -155,7 +155,7 @@ export function detectCsvType(headers, rows = []) {
       date: pickColumn(findLoose(h, 'date'), 'date'),
       startTime: pickColumn(findLoose(h, 'start time', 'time', 'start'), 'time'),
       duration: findLoose(h, 'duration', 'length', 'minutes'),
-      price: findStrict(h, 'price', 'amount', 'cost', 'session price'),
+      price: pickColumn(findStrict(h, 'price', 'amount', 'cost', 'session price'), 'currency'),
       notes: findLoose(h, 'notes', 'note', 'comments'),
       // SOAP-style columns (HK May 21 evening). If the CSV exports
       // session notes split across S/O/A/P columns, capture each
@@ -182,7 +182,7 @@ export function detectCsvType(headers, rows = []) {
       type: 'services',
       mapping: {
         name: findLoose(h, 'service name', 'name'),
-        price: findStrict(h, 'price', 'amount', 'cost'),
+        price: pickColumn(findStrict(h, 'price', 'amount', 'cost'), 'currency'),
         duration: findLoose(h, 'duration', 'length', 'minutes'),
         description: findLoose(h, 'description', 'desc'),
       },
@@ -210,7 +210,7 @@ export function detectCsvType(headers, rows = []) {
       zip: pickColumn(findLoose(h, 'zip code', 'zip', 'postal code', 'postcode'), 'zip'),
       country: findStrict(h, 'country', 'country code'),
       service: findStrict(h, 'service', 'treatment', 'appointment type', 'session type'),
-      price: findStrict(h, 'price', 'amount', 'session price', 'fee', 'cost'),
+      price: pickColumn(findStrict(h, 'price', 'amount', 'session price', 'fee', 'cost'), 'currency'),
       membershipPlan: findStrict(h, 'plan', 'plan name', 'membership plan', 'membership'),
       membershipPrice: findStrict(h, 'monthly', 'membership price', 'plan price'),
       membershipCredits: findStrict(h, 'sessions per month', 'credits', 'monthly credits', 'monthly sessions'),
