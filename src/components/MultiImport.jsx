@@ -521,12 +521,81 @@ export default function MultiImport({ therapist, onComplete }) {
           </div>
         ))}
 
+        {/* Quick navigation to where the imported data lives (HK May
+            22 2026 item J of A-J). Replaces the dead-end 'great, now
+            what?' moment after a successful import. Only renders
+            links for sections that actually got new data. */}
+        {(results.clientsCreated > 0 || results.clientsUpdated > 0 || results.appointmentsCreated > 0) && (
+          <div style={{
+            marginTop: 18,
+            paddingTop: 18,
+            borderTop: `1px solid ${C.light}`,
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: 8,
+          }}>
+            <div style={{ fontSize: 11.5, color: C.gray, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', width: '100%', marginBottom: 4 }}>
+              See what landed
+            </div>
+            {(results.clientsCreated > 0 || results.clientsUpdated > 0) && (
+              <a
+                href="/dashboard"
+                style={{
+                  background: '#fff',
+                  border: `1.5px solid ${C.forest}`,
+                  color: C.forest,
+                  padding: '8px 16px',
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span>👥</span>
+                <span>View clients</span>
+              </a>
+            )}
+            {results.appointmentsCreated > 0 && (
+              <a
+                href="/dashboard/schedule"
+                style={{
+                  background: '#fff',
+                  border: `1.5px solid ${C.forest}`,
+                  color: C.forest,
+                  padding: '8px 16px',
+                  borderRadius: 999,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  WebkitTapHighlightColor: 'transparent',
+                }}
+              >
+                <span>📅</span>
+                <span>View schedule</span>
+              </a>
+            )}
+          </div>
+        )}
+
         <button
           onClick={reset}
           style={{
             marginTop: 16,
-            background: C.forest, color: '#fff', border: 'none',
-            padding: '12px 24px', borderRadius: 999, fontSize: 14, fontWeight: 700, cursor: 'pointer',
+            background: 'transparent',
+            border: `1.5px solid ${C.light}`,
+            color: C.gray,
+            padding: '10px 22px',
+            borderRadius: 999,
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
           }}
         >
           Import more files
