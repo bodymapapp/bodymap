@@ -1424,6 +1424,157 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
                         : `${realDayAppts.length} ${realDayAppts.length===1?'session':'sessions'}`}
                   </div>
                 </div>
+
+                {/* Horizontal time-strip (HK May 22 2026 Tier 3
+                    mobile companion to the desktop Outlook grid).
+                    7am-9pm strip with mini-bars for sessions and
+                    amber bands for blocks. Visual at-a-glance
+                    rhythm of the day without expanding the card. */}
+                {(() => {
+                  const STRIP_START = 7 * 60;  // 7am
+                  const STRIP_END = 21 * 60;   // 9pm
+                  const STRIP_RANGE = STRIP_END - STRIP_START;
+                  // Skip strip on fully blocked days (the badge says it)
+                  if (isFullBlocked && realDayAppts.length === 0) return null;
+                  // Skip strip on totally empty open days
+                  if (dayAppts.length === 0 && !block.partial) return null;
+
+                  const dateStrLocal = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                  const dayBlockRows = (blockedDays || []).filter(b => b.date === dateStrLocal && b.start_time && b.end_time);
+
+                  function pctLeft(mins) {
+                    return Math.max(0, Math.min(100, ((mins - STRIP_START) / STRIP_RANGE) * 100));
+                  }
+                  function pctWidth(startMins, endMins) {
+                    const left = pctLeft(startMins);
+                    const right = pctLeft(endMins);
+                    return Math.max(1.5, right - left);
+                  }
+
+                  return (
+                    <div style={{
+                      padding: '8px 14px 4px',
+                      background: '#FFFFFF',
+                      borderBottom: '1px dashed #E5E7EB',
+                    }}>
+                      {/* Strip bar */}
+                      <div style={{
+                        position: 'relative',
+                        height: 22,
+                        background: '#F5F0E8',
+                        borderRadius: 4,
+                        overflow: 'hidden',
+                      }}>
+                        {/* Hour ticks (every 3 hours: 7, 10, 1pm, 4pm, 7pm) */}
+                        {[10, 13, 16, 19].map(h => (
+                          <div key={h} style={{
+                            position: 'absolute',
+                            top: 0, bottom: 0,
+                            left: `${pctLeft(h * 60)}%`,
+                            width: 1,
+                            background: 'rgba(120, 100, 70, 0.12)',
+                          }} />
+                        ))}
+
+                        {/* Partial blocks (amber bands) */}
+                        {dayBlockRows.map((b, bi) => {
+                          const sM = parseInt(b.start_time.slice(0,2),10)*60 + parseInt(b.start_time.slice(3,5),10);
+                          const eM = parseInt(b.end_time.slice(0,2),10)*60 + parseInt(b.end_time.slice(3,5),10);
+                          return (
+                            <div key={`b${bi}`}
+                              title={b.reason || 'Blocked'}
+                              style={{
+                                position: 'absolute',
+                                top: 2, bottom: 2,
+                                left: `${pctLeft(sM)}%`,
+                                width: `${pctWidth(sM, eM)}%`,
+                                background: 'repeating-linear-gradient(45deg, #FEF3C7, #FEF3C7 4px, #FDE68A 4px, #FDE68A 8px)',
+                                border: '1px solid #FBBF24',
+                                borderRadius: 2,
+                                opacity: 0.7,
+                              }}
+                            />
+                          );
+                        })}
+
+                        {/* Session bars */}
+                        {realDayAppts.map(appt => {
+                          const sM = (() => {
+                            const t = appt.time || '';
+                            const m = /(\d+):?(\d*)\s*(am|pm)?/i.exec(t);
+                            if (!m) return -1;
+                            let h = parseInt(m[1],10);
+                            const mins = parseInt(m[2] || '0', 10);
+                            const ap = (m[3] || '').toLowerCase();
+                            if (ap === 'pm' && h < 12) h += 12;
+                            if (ap === 'am' && h === 12) h = 0;
+                            return h * 60 + mins;
+                          })();
+                          if (sM < 0) return null;
+                          const dur = appt.duration || 60;
+                          const eM = sM + dur;
+                          const st = STATUS[appt.status] || STATUS['pending-intake'];
+                          return (
+                            <div key={`a${appt.id}`}
+                              title={`${appt.time} · ${appt.client}`}
+                              style={{
+                                position: 'absolute',
+                                top: 2, bottom: 2,
+                                left: `${pctLeft(sM)}%`,
+                                width: `${pctWidth(sM, eM)}%`,
+                                background: st.dot || '#6B9E80',
+                                borderRadius: 2,
+                                opacity: 0.85,
+                                cursor: 'pointer',
+                              }}
+                              onClick={(e) => { e.stopPropagation(); setSelected(appt); }}
+                            />
+                          );
+                        })}
+
+                        {/* "Now" line if today */}
+                        {isToday && (() => {
+                          const nowM = today.getHours() * 60 + today.getMinutes();
+                          if (nowM < STRIP_START || nowM > STRIP_END) return null;
+                          return (
+                            <div style={{
+                              position: 'absolute',
+                              top: 0, bottom: 0,
+                              left: `${pctLeft(nowM)}%`,
+                              width: 2,
+                              background: '#DC2626',
+                              boxShadow: '0 0 4px rgba(220,38,38,0.4)',
+                            }} />
+                          );
+                        })()}
+                      </div>
+
+                      {/* Time scale labels */}
+                      <div style={{
+                        position: 'relative',
+                        height: 12,
+                        marginTop: 1,
+                      }}>
+                        {['7a','10a','1p','4p','7p','9p'].map((label, idx) => {
+                          const hour = [7,10,13,16,19,21][idx];
+                          return (
+                            <div key={label} style={{
+                              position: 'absolute',
+                              left: `${pctLeft(hour * 60)}%`,
+                              transform: idx === 0 ? 'translateX(0)' : idx === 5 ? 'translateX(-100%)' : 'translateX(-50%)',
+                              fontSize: 8.5,
+                              color: '#9CA3AF',
+                              fontWeight: 600,
+                            }}>
+                              {label}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {/* Appointment rows (or block message) */}
                 {dayAppts.length===0 && isFullBlocked
                   ? <div style={{padding:'14px 16px',fontSize:12,color:'#92400E',fontStyle:'italic',textAlign:'center'}}>
