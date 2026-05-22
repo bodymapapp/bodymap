@@ -101,6 +101,14 @@ export function detectCsvType(headers) {
       notes: findLoose(h, 'notes', 'note', 'comments'),
       visitCount: findLoose(h, 'visit count', 'visits', 'appointment count'),
       lastVisit: findLoose(h, 'last visit', 'last appointment', 'last seen'),
+      // Address fields (HK May 21 2026 evening, Jackie CSV had full
+      // contact addresses; persona-driven decision to capture them).
+      addressLine1: findLoose(h, 'address line 1', 'address1', 'address', 'street address', 'street'),
+      addressLine2: findLoose(h, 'address line 2', 'address2', 'apartment', 'apt', 'suite', 'unit'),
+      city: findLoose(h, 'city', 'town'),
+      state: findStrict(h, 'state', 'region', 'province'),
+      zip: findLoose(h, 'zip code', 'zip', 'postal code', 'postcode'),
+      country: findStrict(h, 'country', 'country code'),
       service: findStrict(h, 'service', 'treatment', 'appointment type', 'session type'),
       price: findStrict(h, 'price', 'amount', 'session price', 'fee', 'cost'),
       membershipPlan: findStrict(h, 'plan', 'plan name', 'membership plan', 'membership'),

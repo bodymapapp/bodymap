@@ -162,6 +162,15 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
     const lastVisit = get(mapping.lastVisit) || null;
     const visitCount = parseInt(get(mapping.visitCount)) || null;
 
+    // Address fields (HK May 21 2026 evening, Jackie CSV had full
+    // home addresses; persona-driven capture). All optional.
+    const addressLine1 = get(mapping.addressLine1) || null;
+    const addressLine2 = get(mapping.addressLine2) || null;
+    const city         = get(mapping.city) || null;
+    const state        = get(mapping.state) || null;
+    const zip          = get(mapping.zip) || null;
+    const country      = get(mapping.country) || null;
+
     const serviceName = get(mapping.service) || null;
     const priceRaw    = get(mapping.price) || null;
     const sessionPrice = priceRaw ? parseFloat(priceRaw.replace(/[^0-9.]/g, '')) : null;
@@ -195,34 +204,41 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
       let client = null;
 
       // Existing client lookup: email > phone > name (case-insensitive)
+      const selectCols = 'id, email, phone, address_line1, address_line2, city, state, zip, country';
       if (email) {
         const { data: byEmail } = await supabase
-          .from('clients').select('id, email, phone')
+          .from('clients').select(selectCols)
           .eq('therapist_id', therapist.id).eq('email', email).maybeSingle();
         if (byEmail) client = byEmail;
       }
       if (!client && phone) {
         const { data: byPhone } = await supabase
-          .from('clients').select('id, email, phone')
+          .from('clients').select(selectCols)
           .eq('therapist_id', therapist.id).eq('phone', phone).maybeSingle();
         if (byPhone) client = byPhone;
       }
       if (!client) {
         const { data: byName } = await supabase
-          .from('clients').select('id, email, phone')
+          .from('clients').select(selectCols)
           .eq('therapist_id', therapist.id).ilike('name', name).maybeSingle();
         if (byName) client = byName;
       }
 
       if (client) {
-        // UPSERT: fill in missing email/phone on the existing record.
-        // This is the path that solves Jackie's email/phone gap: she
-        // re-uploads her client roster CSV, the runtime matches her
-        // appointment-auto-created stubs by name, and fills in the
-        // missing contact info.
+        // UPSERT: fill in missing email/phone/address on the existing
+        // record. This is the path that solves Jackie's email/phone gap
+        // and now also fills addresses. Existing values are never
+        // overwritten (Design Principle: re-importing keeps therapist's
+        // most-recent manual edits).
         const updates = {};
         if (email && !client.email) updates.email = email;
         if (phone && !client.phone) updates.phone = phone;
+        if (addressLine1 && !client.address_line1) updates.address_line1 = addressLine1;
+        if (addressLine2 && !client.address_line2) updates.address_line2 = addressLine2;
+        if (city && !client.city) updates.city = city;
+        if (state && !client.state) updates.state = state;
+        if (zip && !client.zip) updates.zip = zip;
+        if (country && !client.country) updates.country = country;
         if (Object.keys(updates).length) {
           await supabase.from('clients').update(updates).eq('id', client.id);
         }
@@ -230,14 +246,20 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
         skippedRows.push({
           row,
           reason: 'already_exists',
-          details: `Client ${name || email || phone} already in your account${Object.keys(updates).length ? ' (filled in ' + Object.keys(updates).join(' + ') + ')' : ''}`,
+          details: `Client ${name || email || phone} already in your account${Object.keys(updates).length ? ' (filled in ' + Object.keys(updates).join(', ') + ')' : ''}`,
         });
       } else {
-        // Insert new client
+        // Insert new client with all available fields
         const payload = { therapist_id: therapist.id, name };
         if (email) payload.email = email;
         if (phone) payload.phone = phone;
         if (notes) payload.notes = notes;
+        if (addressLine1) payload.address_line1 = addressLine1;
+        if (addressLine2) payload.address_line2 = addressLine2;
+        if (city) payload.city = city;
+        if (state) payload.state = state;
+        if (zip) payload.zip = zip;
+        if (country) payload.country = country;
 
         const { data: newClient, error: insertErr } = await supabase
           .from('clients').insert(payload).select('id').single();
