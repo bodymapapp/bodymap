@@ -423,6 +423,54 @@ HIPAA exposure before sending the request. Unified import flow
 
 ---
 
+## 16. Stored data and displayed data are separate concerns. Store canonical, display human.
+
+When the system holds data that has both a stable internal form
+and a human-readable form, store the stable form and convert at
+the display boundary. Never store the display form.
+
+May 21 2026, Jackie's phone numbers landed in Supabase as
+`5734801030` (digits-only normalized form, stored that way to
+prevent duplicate clients from format mismatches like
+`(573) 480-1030` vs `573-480-1030`). But the dashboard rendered
+the stored value as `5734801030`, which is unreadable.
+
+The fix is not to store `(573) 480-1030`. That would re-introduce
+the duplicate-on-import problem. The fix is to store the
+canonical form and apply a formatter at the display layer:
+`formatUSPhone('5734801030')` returns `(573) 480-1030`.
+
+**The rule:** for any data type that has a normalized storage
+form AND a human-readable display form, use two functions:
+- `normalizeX(input)` to convert anything-shaped to canonical
+  storage. Called at the boundary (CSV import, user input).
+- `formatX(canonical)` to convert canonical to display. Called
+  at the boundary (UI render, email composition).
+
+Never store the display form. Never display the canonical form.
+
+**Apply to:**
+- Phone numbers: `normalizePhone()` strips to digits;
+  `formatUSPhone()` renders as `(573) 480-1030`
+- Dates: store as ISO `2026-05-21`; display as `May 21, 2026`
+- Currency: store as integer cents; display as `$45.00`
+- Email: store lowercased; display as-typed (preserve case if
+  the user has a preference) or just lowercased
+- Times: store as `HH:MM:00` 24-hour; display as `2:30 PM`
+
+**Boundary discipline:** the formatter lives in
+`src/lib/formatters/`. Don't sprinkle inline formatting like
+`'$' + (price/100).toFixed(2)` throughout components. Import
+the formatter.
+
+**Incident log:**
+- May 21 2026: Phone storage in Jackie's account. Created
+`formatUSPhone` and `normalizePhone` in `src/lib/formatters/phone.js`.
+Applied to ClientList + import preview screen. Other display
+sites (ClientProfile, SessionDetail, etc.) to follow as touched.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
@@ -439,6 +487,7 @@ HIPAA exposure before sending the request. Unified import flow
 - **Before adding any therapist-facing numeric input:** check rule #13.
 - **Before designing any flow that asks the user to choose between implementation-flavored options:** check rule #14.
 - **Before asking a therapist to share their data via DM, email, or screenshot for debugging:** check rule #15.
+- **Before storing or displaying data with both canonical and human-readable forms:** check rule #16.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The

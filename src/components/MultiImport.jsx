@@ -28,6 +28,7 @@ import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { parseCSV, detectCsvType } from '../lib/imports/detectCsvType';
 import { runClientImport, runAppointmentImport } from '../lib/imports/runImports';
+import { formatUSPhone } from '../lib/formatters/phone';
 
 const C = {
   forest: '#2A5741',
@@ -510,7 +511,7 @@ export default function MultiImport({ therapist, onComplete }) {
               return [fn, ln].filter(Boolean).join(' ') || full || '-';
             }},
             { label: 'Email', render: (r) => get(r, m.email) || '-' },
-            { label: 'Phone', render: (r) => get(r, m.phone) || '-' },
+            { label: 'Phone', render: (r) => formatUSPhone(get(r, m.phone)) || '-' },
             { label: 'City', render: (r) => get(r, m.city) || '-' },
             { label: 'State', render: (r) => get(r, m.state) || '-' },
             { label: 'Zip', render: (r) => get(r, m.zip) || '-' },
@@ -524,7 +525,7 @@ export default function MultiImport({ therapist, onComplete }) {
               return d ? `${d} min` : '-';
             }},
             { label: 'Email', render: (r) => get(r, m.clientEmail) || '-' },
-            { label: 'Phone', render: (r) => get(r, m.clientPhone) || '-' },
+            { label: 'Phone', render: (r) => formatUSPhone(get(r, m.clientPhone)) || '-' },
           ];
 
           return (

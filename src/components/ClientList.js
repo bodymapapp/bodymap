@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { db } from "../lib/supabase";
 import AddClientModal from "./AddClientModal";
+import { formatUSPhone } from "../lib/formatters/phone";
 
 const C = {
   sage: "#6B9E80", forest: "#2A5741", beige: "#F5F0E8",
@@ -423,7 +424,7 @@ function ClientCard({ client, onSelect, initials, avatarColor, highlight, lapsed
             {client.name}
           </p>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{client.phone || client.email || "-"}</p>
+            <p style={{ fontSize: "12px", color: C.gray, margin: 0 }}>{formatUSPhone(client.phone) || client.email || "-"}</p>
             {client.phone && !isArchived && (
               <button onClick={e => { e.stopPropagation(); navigator.clipboard.writeText(client.phone); setCopiedPhone(true); setTimeout(() => setCopiedPhone(false), 2000); }}
                 style={{ background: copiedPhone ? "#2A5741" : "#F3F4F6", border: "none", borderRadius: "4px", padding: "2px 6px", fontSize: "10px", fontWeight: "600", color: copiedPhone ? "white" : "#6B7280", cursor: "pointer", flexShrink: 0 }}>
@@ -536,7 +537,7 @@ function LockedClientCard({ client, initials, avatarColor }) {
           </div>
           <div>
             <p style={{ fontSize: "15px", fontWeight: "700", margin: "0 0 2px 0" }}>{client.name}</p>
-            <p style={{ fontSize: "12px", margin: 0 }}>{client.phone || "-"}</p>
+            <p style={{ fontSize: "12px", margin: 0 }}>{formatUSPhone(client.phone) || "-"}</p>
           </div>
         </div>
       </div>
