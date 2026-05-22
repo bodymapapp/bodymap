@@ -161,6 +161,44 @@ export async function ensureStartersSeeded(therapistId) {
   return { ok: true, seeded: toInsert.length };
 }
 
+// HK May 22 2026: ensure ONE ad-hoc 'custom' template exists per
+// therapist. This row is the persistent anchor for the Custom
+// Send flow on the Outreach page. The body/subject of this row
+// get overwritten on each send (so the most-recent custom message
+// is remembered as a draft for next time). The audience_preset is
+// 'custom_selection' which the edge function recognizes as a no-op
+// (recipient list comes from override_recipient_ids instead).
+//
+// Idempotent: safe to call multiple times. If the row already
+// exists (matched by therapist_id + starter_key='custom_anchor'),
+// it returns the existing id without writing.
+export async function ensureCustomAnchor(therapistId) {
+  if (!therapistId) return null;
+  const { data: existing } = await supabase
+    .from('outreach_templates')
+    .select('id')
+    .eq('therapist_id', therapistId)
+    .eq('starter_key', 'custom_anchor')
+    .is('deleted_at', null)
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+  const { data: created } = await supabase
+    .from('outreach_templates')
+    .insert({
+      therapist_id: therapistId,
+      label: 'Custom send',
+      subject: '',
+      body: '',
+      audience_preset: 'custom_selection',
+      is_starter: false,
+      starter_key: 'custom_anchor',
+      display_order: -1,
+    })
+    .select('id')
+    .single();
+  return created?.id || null;
+}
+
 // Reset a starter template back to the original wording. Looks up
 // the starter_key in STARTER_TEMPLATES and writes the original
 // label/subject/body/audience_preset back to the existing row.

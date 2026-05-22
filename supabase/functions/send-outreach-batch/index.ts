@@ -237,7 +237,7 @@ serve(async (req) => {
   if (!SERVICE_ROLE_KEY) return respond({ error: 'SUPABASE_SERVICE_ROLE_KEY not set' }, 500);
 
   try {
-    const { template_id, therapist_id } = await req.json();
+    const { template_id, therapist_id, override_recipient_ids, override_subject, override_body } = await req.json();
     if (!template_id || !therapist_id) return respond({ error: 'Missing template_id or therapist_id' }, 400);
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
@@ -262,11 +262,43 @@ serve(async (req) => {
 
     if (thErr || !therapist) return respond({ error: 'Therapist not found' }, 404);
 
-    // Fetch recipients server-side (do not trust frontend list)
-    const recipients = await getRecipients(supabase, therapist_id, template.audience_preset);
+    // HK May 22 2026: Custom Send path. When override_recipient_ids
+    // is provided (frontend Custom card flow), use those clients
+    // directly instead of the template's audience_preset. Security:
+    // we still query the DB ourselves with the therapist scope so
+    // we cannot be tricked into sending to other therapists' clients.
+    // override_subject/body let the Custom flow use ad-hoc content
+    // without permanently mutating any template row.
+    let recipients;
+    if (Array.isArray(override_recipient_ids) && override_recipient_ids.length > 0) {
+      const { data: rows } = await supabase
+        .from('clients')
+        .select('id, name, email')
+        .eq('therapist_id', therapist_id)
+        .in('id', override_recipient_ids);
+      recipients = (rows || [])
+        .filter((r: any) => r.email)
+        .map((r: any) => ({
+          client_id: r.id,
+          name: r.name,
+          email: (r.email || '').toLowerCase().trim(),
+          first_name: deriveFirstName(r.name),
+        }));
+    } else {
+      recipients = await getRecipients(supabase, therapist_id, template.audience_preset);
+    }
     if (recipients.length === 0) {
       return respond({ sent: 0, skipped_recent: 0, skipped_unsubscribed: 0, failed: 0 });
     }
+
+    // Use override content if provided (Custom Send path), else
+    // fall back to the template's stored content.
+    const effectiveSubject = (typeof override_subject === 'string' && override_subject.length > 0)
+      ? override_subject
+      : template.subject;
+    const effectiveBody = (typeof override_body === 'string' && override_body.length > 0)
+      ? override_body
+      : template.body;
 
     // Re-send protection: look up sends of this template in last 14 days
     const protectionCutoff = new Date();
@@ -289,8 +321,8 @@ serve(async (req) => {
         continue;
       }
 
-      const renderedSubject = renderTokens(template.subject, recipient, therapist);
-      const renderedBody = renderTokens(template.body, recipient, therapist);
+      const renderedSubject = renderTokens(effectiveSubject, recipient, therapist);
+      const renderedBody = renderTokens(effectiveBody, recipient, therapist);
       const html = plainTextToHtml(renderedBody);
 
       try {

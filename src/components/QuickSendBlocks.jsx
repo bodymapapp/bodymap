@@ -33,6 +33,7 @@ import {
   STARTER_TEMPLATES,
 } from '../lib/outreachQuicksend';
 import QuickSendModal from './QuickSendModal';
+import CustomQuickSendModal from './CustomQuickSendModal';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', warmYellow:'#FEF3C7', warmYellowBorder:'#FCD34D' };
 
@@ -43,6 +44,17 @@ export default function QuickSendBlocks({ therapist }) {
   const [openMenuId, setOpenMenuId] = useState(null);
   const [modalTemplate, setModalTemplate] = useState(null);
   const [hasDeletedStarters, setHasDeletedStarters] = useState(false);
+  // HK May 22 2026 Tier 1 item 3: Custom Send modal state. Opens
+  // when the therapist taps the first card on the row. Two-step
+  // picker + composer flow.
+  const [customOpen, setCustomOpen] = useState(false);
+  // Custom send flow (HK May 22 2026): therapist taps the Custom
+  // card, picks any combination of clients, then writes whatever
+  // they want. customPickerOpen toggles the picker; customRecipients
+  // is the chosen list passed to QuickSendModal. The blank template
+  // gets a sensible default subject + body the therapist edits.
+  const [customPickerOpen, setCustomPickerOpen] = useState(false);
+  const [customRecipients, setCustomRecipients] = useState(null);
 
   useEffect(() => {
     if (!therapist?.id) return;
@@ -185,6 +197,47 @@ export default function QuickSendBlocks({ therapist }) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: 12,
       }}>
+        {/* Custom card (HK May 22 2026): always first. Lets therapist
+            pick any clients and write any message. Visually
+            differentiated with a dashed sage border so it reads as
+            'compose anything' rather than 'preset template'. */}
+        <button
+          onClick={() => setCustomOpen(true)}
+          style={{
+            position: 'relative',
+            background: '#FAFAF6',
+            border: `1.5px dashed ${C.sage}`,
+            borderRadius: 16,
+            padding: '18px 18px 16px',
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            transition: 'background 0.15s, border-color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.background = '#F2F7F3'; e.currentTarget.style.borderColor = C.forest; }}
+          onMouseLeave={e => { e.currentTarget.style.background = '#FAFAF6'; e.currentTarget.style.borderColor = C.sage; }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{
+              width: 44, height: 44, borderRadius: 12,
+              background: '#fff',
+              border: `1.5px solid ${C.sage}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 22, flexShrink: 0,
+            }}>
+              ✍️
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14.5, fontWeight: 700, color: C.dark, marginBottom: 2 }}>
+                Custom message
+              </div>
+              <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.45 }}>
+                Pick one or more clients and write whatever you'd like to say.
+              </div>
+            </div>
+          </div>
+        </button>
+
         {templates.map(t => {
           const count = counts[t.id];
           const isLoadingCount = count === undefined;
@@ -306,6 +359,340 @@ export default function QuickSendBlocks({ therapist }) {
           onSent={handleSent}
         />
       )}
+
+      {/* Step 1 of custom send: pick clients */}
+      {customPickerOpen && (
+        <CustomClientPicker
+          therapist={therapist}
+          onCancel={() => setCustomPickerOpen(false)}
+          onPicked={(recipients) => {
+            setCustomPickerOpen(false);
+            setCustomRecipients(recipients);
+          }}
+        />
+      )}
+
+      {/* Step 2 of custom send: compose. Same QuickSendModal as the
+          template path, but with a blank template the therapist
+          fills in inline. recipients are pre-set, so the modal
+          shows 'Will send to N clients' from the start. */}
+      {customRecipients && (
+        <QuickSendModal
+          template={{
+            id: 'custom_send',
+            name: 'Custom message',
+            subject: '',
+            body: 'Hi {{first_name}},\n\n\n\nTake care,\n{{therapist_name}}',
+            audience_preset: 'custom',
+          }}
+          therapist={therapist}
+          recipients={customRecipients}
+          onClose={() => setCustomRecipients(null)}
+          onSent={() => setCustomRecipients(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
+// CustomClientPicker (HK May 22 2026): a focused modal for the
+// Custom send flow. Therapist can search by name, multi-select,
+// and confirm. Returns { id, first_name, last_name, name, email,
+// phone } shaped recipients the QuickSendModal expects.
+//
+// Design choices:
+//   - Search box at top, no fuzzy matching (substring on name+email
+//     is plenty for solo-practice scale)
+//   - Each row has a checkbox-style tile, taps anywhere on the row
+//     to toggle
+//   - 'Select all matching' pill at top when search is active
+//   - 'Continue with N selected' button, disabled at 0
+//   - 'Cancel' returns to the quick-send blocks
+//   - Honors the 70yr persona: large hit targets, plain language,
+//     no jargon, no power-user shortcuts
+// ─────────────────────────────────────────────────────────────────
+function CustomClientPicker({ therapist, onCancel, onPicked }) {
+  const [allClients, setAllClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState(() => new Set());
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!therapist?.id) { setLoading(false); return; }
+      const { data } = await supabase
+        .from('clients')
+        .select('id, name, email, phone')
+        .eq('therapist_id', therapist.id)
+        .order('name', { ascending: true });
+      if (cancelled) return;
+      setAllClients(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [therapist?.id]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? allClients.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q))
+    : allClients;
+
+  function toggle(id) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function selectAllVisible() {
+    setSelected(prev => {
+      const next = new Set(prev);
+      filtered.forEach(c => next.add(c.id));
+      return next;
+    });
+  }
+  function clearAll() {
+    setSelected(new Set());
+  }
+
+  function confirm() {
+    if (selected.size === 0) return;
+    const chosen = allClients
+      .filter(c => selected.has(c.id))
+      .map(c => {
+        const parts = (c.name || '').split(/\s+/);
+        return {
+          id: c.id,
+          first_name: parts[0] || 'there',
+          last_name: parts.slice(1).join(' ') || '',
+          name: c.name,
+          email: c.email,
+          phone: c.phone,
+        };
+      });
+    onPicked(chosen);
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: 'rgba(20,30,25,0.4)',
+      display: 'flex',
+      alignItems: 'flex-end',
+      justifyContent: 'center',
+      zIndex: 1000,
+    }}>
+      <div style={{
+        background: '#fff',
+        width: '100%',
+        maxWidth: 560,
+        maxHeight: '90vh',
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+        display: 'flex',
+        flexDirection: 'column',
+        boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '16px 20px 12px',
+          borderBottom: `1px solid ${C.light}`,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+            <div style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 18,
+              fontWeight: 700,
+              color: C.dark,
+            }}>
+              Pick clients
+            </div>
+            <button
+              onClick={onCancel}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: C.gray,
+                fontSize: 22,
+                cursor: 'pointer',
+                padding: 0,
+                lineHeight: 1,
+              }}
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.45, marginBottom: 12 }}>
+            Tap each client you'd like to include. {selected.size > 0 && <strong style={{ color: C.forest }}>{selected.size} selected</strong>}
+          </div>
+          <input
+            type="text"
+            placeholder="Search by name or email"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              fontSize: 14,
+              border: `1.5px solid ${C.light}`,
+              borderRadius: 10,
+              outline: 'none',
+              fontFamily: 'inherit',
+              boxSizing: 'border-box',
+            }}
+          />
+          {q && filtered.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button
+                onClick={selectAllVisible}
+                style={{
+                  background: '#fff',
+                  border: `1px solid ${C.sage}`,
+                  color: C.forest,
+                  padding: '5px 12px',
+                  borderRadius: 999,
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Select all {filtered.length} matching
+              </button>
+              {selected.size > 0 && (
+                <button
+                  onClick={clearAll}
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${C.light}`,
+                    color: C.gray,
+                    padding: '5px 12px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Clear selection
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* List */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+          {loading ? (
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: C.gray }}>
+              Loading your clients...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: C.gray }}>
+              {q ? `No clients match "${query}"` : 'No clients yet. Add some from the Clients tab.'}
+            </div>
+          ) : (
+            filtered.map(c => {
+              const isSelected = selected.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => toggle(c.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    width: '100%',
+                    padding: '12px 20px',
+                    background: isSelected ? '#F0F9F4' : 'transparent',
+                    border: 'none',
+                    borderBottom: `1px solid ${C.light}`,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  {/* Checkbox tile */}
+                  <div style={{
+                    width: 22, height: 22, borderRadius: 6,
+                    border: `2px solid ${isSelected ? C.forest : C.light}`,
+                    background: isSelected ? C.forest : '#fff',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 13, fontWeight: 700,
+                    flexShrink: 0,
+                  }}>
+                    {isSelected ? '✓' : ''}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 14, fontWeight: 600, color: C.dark,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>
+                      {c.name || '(no name)'}
+                    </div>
+                    {(c.email || c.phone) && (
+                      <div style={{
+                        fontSize: 11.5, color: C.gray, marginTop: 1,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {c.email || c.phone}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '12px 16px',
+          borderTop: `1px solid ${C.light}`,
+          display: 'flex',
+          gap: 10,
+          background: '#FAFAF6',
+        }}>
+          <button
+            onClick={onCancel}
+            style={{
+              background: 'transparent',
+              border: `1.5px solid ${C.light}`,
+              color: C.gray,
+              padding: '11px 18px',
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={confirm}
+            disabled={selected.size === 0}
+            style={{
+              flex: 1,
+              background: selected.size === 0 ? C.light : C.forest,
+              border: 'none',
+              color: '#fff',
+              padding: '11px 18px',
+              borderRadius: 999,
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {selected.size === 0
+              ? 'Pick at least one client'
+              : `Continue with ${selected.size} selected →`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
