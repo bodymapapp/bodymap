@@ -3101,6 +3101,14 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     setOpenRow(prev => prev === id ? null : id);
   }, []);
 
+  // Inline confirm for Square disconnect (HK May 22 2026, replaces
+  // window.confirm per house design rule). Tapping Disconnect once
+  // reveals a Confirm/Cancel pair; second tap on Confirm executes.
+  const [squareDisconnectConfirm, setSquareDisconnectConfirm] = React.useState(false);
+  // Inline error message for Square OAuth failure (HK May 22 2026,
+  // replaces alert per house design rule).
+  const [squareConnectError, setSquareConnectError] = React.useState(null);
+
   // Within 4.3 'Booking & cancellation policies' the two policy cards
   // are individually collapsible so therapists can focus on one at a
   // time. Default: both collapsed when 4.3 opens. State is a Set so
@@ -4535,7 +4543,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
               : therapist?.stripe_account_connected
               ? "Stripe connected · all online features active"
               : therapist?.square_connected
-              ? "Square connected · all online features active"
+              ? "Square connected · most features active, memberships use manual monthly renewal"
               : "Connect Stripe or Square to take online payments"
           }
           status={(therapist?.stripe_account_connected || therapist?.square_connected) ? "done" : "attn"}
@@ -4730,15 +4738,68 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     <span>✅</span>
                     <div>
                       <div style={{ fontSize:'12px', fontWeight:'700', color:'#2A5741' }}>Square · Online engine</div>
-                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, cards on file all enabled. Memberships use Stripe.</div>
+                      <div style={{ fontSize:'11px', color:'#6B7280' }}>Deposits, packages, cards on file, and memberships all enabled. Membership renewals after the first month appear as a one-tap Charge action on your Billing dashboard.</div>
                     </div>
                   </div>
-                  <button onClick={async () => {
-                    if (!window.confirm('Disconnect Square?')) return;
-                    await updateProfile({ square_access_token: null, square_merchant_id: null, square_location_id: null, square_connected: false });
-                  }} style={{ background:'transparent', border:'1px solid #EF4444', color:'#EF4444', borderRadius:8, padding:'5px 12px', fontSize:'12px', fontWeight:'600', cursor:'pointer' }}>
-                    Disconnect
-                  </button>
+                  {squareDisconnectConfirm ? (
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: '#6B7280', marginRight: 4 }}>Disconnect?</span>
+                      <button
+                        onClick={async () => {
+                          setSquareDisconnectConfirm(false);
+                          await updateProfile({
+                            square_access_token: null,
+                            square_merchant_id: null,
+                            square_location_id: null,
+                            square_connected: false,
+                          });
+                        }}
+                        style={{
+                          background: '#EF4444',
+                          border: '1px solid #EF4444',
+                          color: '#fff',
+                          borderRadius: 8,
+                          padding: '5px 12px',
+                          fontSize: '12px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Yes, disconnect
+                      </button>
+                      <button
+                        onClick={() => setSquareDisconnectConfirm(false)}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid #C7CDD6',
+                          color: '#6B7280',
+                          borderRadius: 8,
+                          padding: '5px 10px',
+                          fontSize: '12px',
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setSquareDisconnectConfirm(true)}
+                      style={{
+                        background: 'transparent',
+                        border: '1px solid #EF4444',
+                        color: '#EF4444',
+                        borderRadius: 8,
+                        padding: '5px 12px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -4807,12 +4868,44 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
                     window.location.reload();
                   }
                 }, { once: true });
-              } else alert('Error: ' + JSON.stringify(data));
+              } else setSquareConnectError(data?.error ? String(data.error) : 'Could not start Square connection. Please try again.');
             }} style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, background:'#fff', color:'#000', border:'1.5px solid #000', borderRadius:10, padding:'12px 16px', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
               ⬛ Connect Square
             </button>
+            {squareConnectError && (
+              <div style={{
+                marginTop: 8,
+                background: '#FEF2F2',
+                border: '1px solid #FCA5A5',
+                borderRadius: 8,
+                padding: '8px 12px',
+                fontSize: 11.5,
+                color: '#991B1B',
+                lineHeight: 1.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+              }}>
+                <span style={{ flex: 1 }}>{squareConnectError}</span>
+                <button
+                  onClick={() => setSquareConnectError(null)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#991B1B',
+                    fontSize: 14,
+                    cursor: 'pointer',
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                  aria-label="Dismiss error"
+                >
+                  ×
+                </button>
+              </div>
+            )}
             <p style={{ fontSize: 10, color: '#6B7280', textAlign: 'center', margin: '6px 0 0', lineHeight: 1.5 }}>
-              Square handles all online features the same as Stripe. Pick whichever you already use, or connect both.
+              Square handles deposits, packages, cards on file, and memberships with one-tap monthly renewals. For fully automatic recurring billing, connect Stripe. Pick whichever you already use, or connect both.
             </p>
           </>)}
 

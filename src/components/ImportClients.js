@@ -1191,7 +1191,7 @@ export default function ImportClients({ therapist, onComplete }) {
                 lineHeight:1.6,
               }}>
                 <strong>✅ {results.membershipsCreated} active membership{results.membershipsCreated !== 1 ? 's' : ''} migrated.</strong>
-                {' '}Plans appear under Billing → Memberships. To start recurring Stripe charges for these members, open each subscription and tap "Connect billing".
+                {' '}Plans appear under Billing → Memberships. To start recurring charges for these members, open each subscription and tap "Connect billing" (Stripe auto-renews, Square charges with a one-tap monthly action).
                 {results.membershipsFailed > 0 && (
                   <div style={{ marginTop: 6, color: '#92400E' }}>
                     {results.membershipsFailed} membership row{results.membershipsFailed !== 1 ? 's' : ''} couldn't be created. Check the console for details.

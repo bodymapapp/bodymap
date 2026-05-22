@@ -280,7 +280,7 @@ export default function PaymentRouting({ therapist, onSaved }) {
         borderRadius: 10, padding: '14px 16px', fontSize: 12, color: C.muted,
         lineHeight: 1.5,
       }}>
-        Square handles all online payments (deposits, card-on-file, packages). For memberships with the broadest feature set, also connect Stripe in Settings → Payments.
+        Square handles deposits, card-on-file, packages, and memberships (with one-tap monthly renewals). For fully automatic membership auto-renew, also connect Stripe in Settings → Payments.
       </div>
     );
   }
