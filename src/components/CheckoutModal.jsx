@@ -718,87 +718,7 @@ export default function CheckoutModal({
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
-        {!therapist?.stripe_account_id ? (
-          // HK May 22 2026: Stripe-not-connected check moved here per
-          // Design Principle 'buttons must be tappable, no grayed-out
-          // halfway state'. Previously: therapist could fill out the
-          // whole checkout flow then hit a red error pill on submit.
-          // Now: if Stripe isn't connected, we surface the only
-          // meaningful action (Connect Stripe) right away. No amount
-          // picker, no tip picker, no delivery picker, because none of
-          // those choices matter until Stripe is wired up.
-          <>
-            <div style={headerStyle}>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
-                  Checkout
-                </div>
-                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {appt?.client || client?.name}
-                  {appt?.service ? ` · ${appt.service}` : ''}
-                </div>
-              </div>
-              <CloseButton onClick={onClose} label="Close" />
-            </div>
-            <div style={bodyStyle}>
-              <div style={{
-                padding: '24px 20px',
-                background: '#FEF7E8',
-                border: '1.5px solid #F0D89C',
-                borderRadius: 14,
-                textAlign: 'center',
-              }}>
-                <div style={{ fontSize: 32, marginBottom: 10 }}>💳</div>
-                <div style={{
-                  fontFamily: 'Georgia, serif',
-                  fontSize: 19,
-                  fontWeight: 600,
-                  color: '#7A4F0D',
-                  marginBottom: 8,
-                }}>
-                  Connect Stripe to send payment requests
-                </div>
-                <div style={{
-                  fontSize: 13.5,
-                  color: '#78350F',
-                  lineHeight: 1.55,
-                  marginBottom: 18,
-                  maxWidth: 380,
-                  marginLeft: 'auto',
-                  marginRight: 'auto',
-                }}>
-                  To collect payments and send checkout links, connect your Stripe account. It takes about a minute. We do not charge any platform fee.
-                </div>
-                <a
-                  href="/dashboard/stripe-connect"
-                  onClick={() => { if (onClose) onClose(); }}
-                  style={{
-                    display: 'inline-block',
-                    background: 'linear-gradient(135deg, #2A5741, #1F4030)',
-                    color: '#fff',
-                    padding: '12px 26px',
-                    borderRadius: 999,
-                    fontSize: 14,
-                    fontWeight: 700,
-                    textDecoration: 'none',
-                    boxShadow: '0 2px 10px rgba(42, 87, 65, 0.25)',
-                  }}
-                >
-                  Connect Stripe
-                </a>
-              </div>
-              <div style={{
-                marginTop: 14,
-                fontSize: 12,
-                color: C.inkSoft,
-                textAlign: 'center',
-                lineHeight: 1.5,
-              }}>
-                Once connected, this checkout will let you charge cards on file, send SMS or email payment links, and mark sessions as paid.
-              </div>
-            </div>
-          </>
-        ) : step === 'success' ? (
+        {step === 'success' ? (
           <>
             <div style={headerStyle}>
               <div style={{ flex: 1, minWidth: 0 }}>
@@ -843,6 +763,8 @@ export default function CheckoutModal({
                   onMarkPaid={() => setStep('offline')}
                   isSubscription={isSubscription}
                   validAmount={validAmount}
+                  stripeConnected={!!therapist?.stripe_account_id}
+                  onClose={onClose}
                 />
               )}
 
@@ -1123,62 +1045,111 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount, stripeConnected, onClose }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
         How is the client paying?
       </div>
-      {cardOnFile && (
-        <MethodButton
-          onClick={onCardOnFile}
-          disabled={!validAmount}
-          icon="💳"
-          title="Card on file"
-          subtitle={`${cardOnFile.brand} ending in ${cardOnFile.last4}`}
-          primary
-        />
-      )}
-      {/* New card entry is booking-only in V1. For subscriptions the
-          therapist would use 'Send pay link' (Phase 19.2) or charge a
-          card on file. */}
-      {!isSubscription && (
-        <MethodButton
-          onClick={onCardNew}
-          disabled={!validAmount}
-          icon="🪪"
-          title="Enter new card"
-          subtitle="Type card number now"
-          primary={!cardOnFile}
-        />
-      )}
-      {/* Send pay link (Phase 19.4): now supports both bookings AND
-          subscriptions. The edge function create-payment-link accepts
-          either booking_id or member_subscription_id. The link's line
-          item label adapts ('Massage session' vs 'Monthly Member
-          renewal'). */}
-      <MethodButton
-        onClick={onSendLink}
-        disabled={!validAmount}
-        icon="📲"
-        title="Send pay link"
-        subtitle="Text or email a one-time link"
-      />
-      {/* Mark as paid (offline): folded in from the prior
-          MarkAsPaidModal in Phase 19. Same flow for bookings AND
-          subscriptions: therapist records that the money was
-          collected outside the platform (cash, Venmo, etc).
-          HK May 19 2026: Mark as paid allows $0 (trade sessions,
-          comped sessions, paid-before-switchover sessions). The
-          card and pay link paths still require a positive amount
-          since Stripe cannot charge $0. */}
+
+      {/* Mark as paid: always available. Cash, check, Venmo, Zelle,
+          trade, or paid-before-switching-over scenarios. This is the
+          critical path for therapists who don't take card payments,
+          OR who haven't connected Stripe yet but still need to record
+          a session as paid. HK May 22 2026: must NEVER be hidden by
+          Stripe connection state. */}
       <MethodButton
         onClick={onMarkPaid}
         icon="💵"
         title="Mark as paid"
-        subtitle="Cash, Venmo, Zelle, trade, or paid before switching over"
-        primary={isSubscription && !cardOnFile}
+        subtitle="Cash, check, Venmo, Zelle, trade, or other offline payment"
+        primary={!stripeConnected || (isSubscription && !cardOnFile)}
       />
+
+      {/* Card-based methods: shown only when Stripe is connected. When
+          not connected, we surface a clear Connect-Stripe CTA below so
+          the therapist understands WHY card options aren't here and
+          how to unlock them. HK May 22 2026: replaces the previous
+          'gate the whole modal' approach which broke offline recording. */}
+      {stripeConnected ? (
+        <>
+          {cardOnFile && (
+            <MethodButton
+              onClick={onCardOnFile}
+              disabled={!validAmount}
+              icon="💳"
+              title="Card on file"
+              subtitle={`${cardOnFile.brand} ending in ${cardOnFile.last4}`}
+              primary
+            />
+          )}
+          {/* New card entry is booking-only in V1. For subscriptions the
+              therapist would use 'Send pay link' (Phase 19.2) or charge a
+              card on file. */}
+          {!isSubscription && (
+            <MethodButton
+              onClick={onCardNew}
+              disabled={!validAmount}
+              icon="🪪"
+              title="Enter new card"
+              subtitle="Type card number now"
+              primary={!cardOnFile}
+            />
+          )}
+          {/* Send pay link (Phase 19.4): now supports both bookings AND
+              subscriptions. The edge function create-payment-link accepts
+              either booking_id or member_subscription_id. The link's line
+              item label adapts ('Massage session' vs 'Monthly Member
+              renewal'). */}
+          <MethodButton
+            onClick={onSendLink}
+            disabled={!validAmount}
+            icon="📲"
+            title="Send pay link"
+            subtitle="Text or email a one-time link"
+          />
+        </>
+      ) : (
+        <div style={{
+          marginTop: 4,
+          padding: '14px 16px',
+          background: '#FEF7E8',
+          border: '1.5px dashed #F0D89C',
+          borderRadius: 12,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 8,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ fontSize: 18 }}>💳</div>
+            <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7A4F0D' }}>
+              Want to take card payments too?
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, color: '#78350F', lineHeight: 1.5 }}>
+            Connect Stripe to charge cards on file, accept new cards in person, and send SMS or email pay links. We do not charge any platform fee. About a minute to set up.
+          </div>
+          <a
+            href="/dashboard/stripe-connect"
+            onClick={() => { if (onClose) onClose(); }}
+            style={{
+              alignSelf: 'flex-start',
+              marginTop: 2,
+              background: '#fff',
+              color: '#7A4F0D',
+              border: '1px solid #F0D89C',
+              padding: '7px 14px',
+              borderRadius: 999,
+              fontSize: 12.5,
+              fontWeight: 700,
+              textDecoration: 'none',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            Connect Stripe →
+          </a>
+        </div>
+      )}
     </div>
   );
 }
