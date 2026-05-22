@@ -206,6 +206,66 @@ export default function MultiImport({ therapist, onComplete }) {
     setUnfinishedImports(listUnfinishedImports(therapist?.id));
   }
 
+  // Undo state (HK May 22 2026 item D). Three local states:
+  //   undoConfirm:  null | true (confirm pill state, two-tap pattern)
+  //   undoBusy:     true while delete is in flight
+  //   undoResult:   null | { deletedClients, deletedBookings, deletedSubs }
+  //                 or { error: '...' } when something goes wrong
+  // The Undo button is hidden after success (and after expiry).
+  const [undoConfirm, setUndoConfirm] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
+  const [undoResult, setUndoResult] = useState(null);
+  // Tick state so the 10-minute expiry timer re-renders. Updated
+  // every 30 seconds via a useEffect set up only when results exist.
+  const [, setNowTick] = useState(0);
+  React.useEffect(() => {
+    if (!results?.importBatchId) return;
+    const t = setInterval(() => setNowTick(n => n + 1), 30 * 1000);
+    return () => clearInterval(t);
+  }, [results?.importBatchId]);
+
+  async function executeUndo() {
+    if (!results?.importBatchId || !therapist?.id) return;
+    setUndoBusy(true);
+    setUndoConfirm(false);
+    try {
+      // Order matters: delete dependent rows first (subs, bookings),
+      // then clients. If a foreign-key cascade is set up later, this
+      // ordering becomes redundant but harmless.
+      const { count: subCount, error: subErr } = await supabase
+        .from('member_subscriptions')
+        .delete({ count: 'exact' })
+        .eq('therapist_id', therapist.id)
+        .eq('import_batch_id', results.importBatchId);
+
+      const { count: bookingCount, error: bookingErr } = await supabase
+        .from('bookings')
+        .delete({ count: 'exact' })
+        .eq('therapist_id', therapist.id)
+        .eq('import_batch_id', results.importBatchId);
+
+      const { count: clientCount, error: clientErr } = await supabase
+        .from('clients')
+        .delete({ count: 'exact' })
+        .eq('therapist_id', therapist.id)
+        .eq('import_batch_id', results.importBatchId);
+
+      if (subErr || bookingErr || clientErr) {
+        setUndoResult({ error: (subErr || bookingErr || clientErr).message });
+      } else {
+        setUndoResult({
+          deletedClients: clientCount || 0,
+          deletedBookings: bookingCount || 0,
+          deletedSubs: subCount || 0,
+        });
+      }
+    } catch (e) {
+      setUndoResult({ error: e?.message || 'Undo failed unexpectedly' });
+    } finally {
+      setUndoBusy(false);
+    }
+  }
+
   // Browser warning during import (HK May 21 evening): if the user
   // tries to close the tab mid-import, surface the native browser
   // confirm prompt. This is the modern web's equivalent of "are
@@ -339,6 +399,13 @@ export default function MultiImport({ therapist, onComplete }) {
     setImporting(true);
     setProgress({ phase: 'starting', current: 0, total: 0 });
 
+    // Generate ONE batch id for this entire import run (HK May 22
+    // 2026 item D). All rows created across all files in this run
+    // get the same id stamped on them so 'Undo this import' deletes
+    // every row from this run, not just the last file.
+    const importBatchId = generateRunId();
+    const importStartedAt = Date.now();
+
     // Order: clients first (so appointments can cross-reference),
     // then appointments. Services-only files are not yet handled
     // through this path (rare; therapists usually configure these
@@ -361,6 +428,9 @@ export default function MultiImport({ therapist, onComplete }) {
       membershipsCreated: 0,
       membershipsFailed: 0,
       perFile: [],
+      // Batch identity for undo support (HK May 22 2026 item D)
+      importBatchId,
+      importStartedAt,
     };
 
     // ── Clients first ──
@@ -374,6 +444,7 @@ export default function MultiImport({ therapist, onComplete }) {
           supabase, therapist, f.headers, f.rows, f.detected.mapping,
           {
             onProgress: (p) => setProgress({ ...p, fileName: f.fileName }),
+            importBatchId,
             resumeFrom: cp?.currentRow || 0,
             seedCounts: cp?.counts || null,
             seedSkippedRows: cp?.skippedRows || null,
@@ -427,6 +498,7 @@ export default function MultiImport({ therapist, onComplete }) {
           {
             onProgress: (p) => setProgress({ ...p, fileName: f.fileName }),
             serviceMergeOverrides: mergeOverrides,
+            importBatchId,
             resumeFrom: cp?.currentRow || 0,
             seedCounts: cp?.counts || null,
             seedSkippedRows: cp?.skippedRows || null,
@@ -516,6 +588,9 @@ export default function MultiImport({ therapist, onComplete }) {
     setFiles([]);
     setResults(null);
     setProgress(null);
+    setUndoConfirm(false);
+    setUndoResult(null);
+    setUndoBusy(false);
   }
 
   // ── RESULTS SCREEN ──
@@ -664,6 +739,132 @@ export default function MultiImport({ therapist, onComplete }) {
                 <span>View schedule</span>
               </a>
             )}
+          </div>
+        )}
+
+        {/* Undo this import (HK May 22 2026 item D). Visible for
+            10 minutes after import. After undo succeeds, replaces
+            itself with a green confirmation. After expiry, the
+            block disappears (rows can still be deleted manually
+            but the convenience undo is gone). */}
+        {results.importBatchId && !undoResult && (() => {
+          const EXPIRY_MS = 10 * 60 * 1000;
+          const elapsed = Date.now() - (results.importStartedAt || 0);
+          const remainingMs = EXPIRY_MS - elapsed;
+          if (remainingMs <= 0) return null;
+          const remainingMin = Math.ceil(remainingMs / 60000);
+          const totalRows = (results.clientsCreated || 0) + (results.appointmentsCreated || 0) + (results.membershipsCreated || 0);
+          if (totalRows === 0) return null;
+          return (
+            <div style={{
+              marginTop: 16,
+              paddingTop: 16,
+              borderTop: `1px solid ${C.light}`,
+            }}>
+              <div style={{ fontSize: 11.5, color: C.gray, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8 }}>
+                Made a mistake?
+              </div>
+              {!undoConfirm ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => setUndoConfirm(true)}
+                    disabled={undoBusy}
+                    style={{
+                      background: 'transparent',
+                      border: `1.5px solid ${C.red || '#EF4444'}`,
+                      color: C.red || '#EF4444',
+                      padding: '8px 16px',
+                      borderRadius: 999,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      cursor: undoBusy ? 'wait' : 'pointer',
+                    }}
+                  >
+                    Undo this import
+                  </button>
+                  <span style={{ fontSize: 11.5, color: C.gray, fontStyle: 'italic' }}>
+                    available for {remainingMin} more minute{remainingMin === 1 ? '' : 's'}
+                  </span>
+                </div>
+              ) : (
+                <div style={{
+                  background: '#FEF2F2',
+                  border: `1.5px solid ${C.redBorder || '#FECACA'}`,
+                  borderRadius: 10,
+                  padding: 12,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: '#991B1B', marginBottom: 6 }}>
+                    Delete everything this import created?
+                  </div>
+                  <div style={{ fontSize: 12, color: '#7F1D1D', marginBottom: 10, lineHeight: 1.55 }}>
+                    This will permanently delete the {results.clientsCreated || 0} client{results.clientsCreated === 1 ? '' : 's'}, {results.appointmentsCreated || 0} appointment{results.appointmentsCreated === 1 ? '' : 's'}, and {results.membershipsCreated || 0} membership{results.membershipsCreated === 1 ? '' : 's'} created in this run. Clients that existed before this import (and only got fields filled in) are NOT touched. Manual edits to imported clients ARE lost.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={executeUndo}
+                      disabled={undoBusy}
+                      style={{
+                        background: C.red || '#EF4444',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '8px 16px',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        cursor: undoBusy ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {undoBusy ? 'Deleting...' : 'Yes, delete everything'}
+                    </button>
+                    <button
+                      onClick={() => setUndoConfirm(false)}
+                      disabled={undoBusy}
+                      style={{
+                        background: 'transparent',
+                        border: `1.5px solid ${C.light}`,
+                        color: C.gray,
+                        padding: '8px 16px',
+                        borderRadius: 999,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: undoBusy ? 'wait' : 'pointer',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {undoResult && !undoResult.error && (
+          <div style={{
+            marginTop: 16,
+            background: '#F0FDF4',
+            border: '1.5px solid #86EFAC',
+            borderRadius: 10,
+            padding: 12,
+            fontSize: 13,
+            color: '#14532D',
+            lineHeight: 1.55,
+          }}>
+            <strong>Import undone.</strong> Removed {undoResult.deletedClients} client{undoResult.deletedClients === 1 ? '' : 's'}, {undoResult.deletedBookings} appointment{undoResult.deletedBookings === 1 ? '' : 's'}, and {undoResult.deletedSubs} membership{undoResult.deletedSubs === 1 ? '' : 's'}.
+          </div>
+        )}
+        {undoResult?.error && (
+          <div style={{
+            marginTop: 16,
+            background: '#FEF2F2',
+            border: '1.5px solid #FCA5A5',
+            borderRadius: 10,
+            padding: 12,
+            fontSize: 13,
+            color: '#991B1B',
+            lineHeight: 1.55,
+          }}>
+            <strong>Undo failed:</strong> {undoResult.error}. You can manually delete the imported clients from the Clients tab if needed.
           </div>
         )}
 

@@ -291,6 +291,9 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
         if (state) payload.state = state;
         if (zip) payload.zip = zip;
         if (country) payload.country = country;
+        // Stamp the import batch id so this row can be undone as
+        // part of the whole batch (HK May 22 2026 item D).
+        if (opts.importBatchId) payload.import_batch_id = opts.importBatchId;
 
         const { data: newClient, error: insertErr } = await supabase
           .from('clients').insert(payload).select('id').single();
@@ -339,6 +342,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
               deposit_required: false,
               deposit_amount: 0,
               deposit_paid: false,
+              import_batch_id: opts.importBatchId || null,
             });
           }
         }
@@ -366,6 +370,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
               deposit_required: false,
               deposit_amount: 0,
               deposit_paid: false,
+              import_batch_id: opts.importBatchId || null,
             });
           }
         }
@@ -421,6 +426,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
                   monthly_price: finalPrice,
                   monthly_session_credits: finalCredits,
                   current_credits: finalCredits,
+                  import_batch_id: opts.importBatchId || null,
                 });
               if (subErr) {
                 console.error('[import] could not create member subscription:', subErr);
@@ -625,6 +631,7 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
           email: p.clientEmail,
           phone: p.clientPhone,
           imported_from: 'Appointment Import',
+          import_batch_id: opts.importBatchId || null,
           _signature: sig,
         });
       }
@@ -796,6 +803,7 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
         deposit_required: false,
         deposit_amount: 0,
         deposit_paid: false,
+        import_batch_id: opts.importBatchId || null,
       });
       if (error) {
         failed++;
