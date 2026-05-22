@@ -29,6 +29,7 @@ import { supabase } from '../lib/supabase';
 import { parseCSV, detectCsvType } from '../lib/imports/detectCsvType';
 import { runClientImport, runAppointmentImport } from '../lib/imports/runImports';
 import { formatUSPhone } from '../lib/formatters/phone';
+import { detectFuzzyMatches } from '../lib/imports/fuzzyServiceMatch';
 
 const C = {
   forest: '#2A5741',
@@ -138,6 +139,18 @@ export default function MultiImport({ therapist, onComplete }) {
   // what's about to happen with first-10-row sample tables. They
   // confirm before any database write.
   const [showPreview, setShowPreview] = useState(false);
+  // Fuzzy service match state (HK May 21 evening, full version):
+  // when the preview opens, fetch existing services and check
+  // each new service name against them. Surface matches with merge
+  // controls. User decisions (mergeOverrides) get passed to the
+  // runner so it uses the merge target instead of auto-creating.
+  // Shape:
+  //   fuzzyMatches: Map<newServiceName, Array<{ id, name, score, reason }>>
+  //   mergeOverrides: Map<newServiceName, existingServiceId>
+  //     where 'skip' means 'create new, do not merge'.
+  const [existingServices, setExistingServices] = useState([]);
+  const [fuzzyMatches, setFuzzyMatches] = useState(new Map());
+  const [mergeOverrides, setMergeOverrides] = useState(new Map());
   const fileInputRef = useRef(null);
 
   // Browser warning during import (HK May 21 evening): if the user
@@ -295,7 +308,10 @@ export default function MultiImport({ therapist, onComplete }) {
       try {
         const r = await runAppointmentImport(
           supabase, therapist, f.headers, f.rows, f.detected.mapping,
-          { onProgress: (p) => setProgress({ ...p, fileName: f.fileName }) }
+          {
+            onProgress: (p) => setProgress({ ...p, fileName: f.fileName }),
+            serviceMergeOverrides: mergeOverrides,
+          }
         );
         aggregate.appointmentsCreated += r.created;
         aggregate.appointmentsSkipped += r.skipped;
@@ -597,6 +613,107 @@ export default function MultiImport({ therapist, onComplete }) {
           );
         })}
 
+        {/* Fuzzy service match section (HK May 21 evening, full version).
+            Surface near-matches the therapist may want to merge instead
+            of creating duplicates. Each row shows the new name, the
+            existing match(es), and merge controls. */}
+        {fuzzyMatches.size > 0 && (
+          <div style={{
+            background: '#FEF7E8',
+            border: '1.5px solid #F0D89C',
+            borderRadius: 12,
+            padding: 16,
+            marginBottom: 16,
+          }}>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#92400E', marginBottom: 6 }}>
+              {fuzzyMatches.size} new service name{fuzzyMatches.size === 1 ? '' : 's'} look similar to your existing services
+            </div>
+            <div style={{ fontSize: 12.5, color: '#78350F', lineHeight: 1.55, marginBottom: 14 }}>
+              Tap "Use this one" to merge into the existing service. Tap "Create as new" to keep them separate. If you skip, we create as new.
+            </div>
+            {[...fuzzyMatches.entries()].map(([newName, matches]) => {
+              const currentOverride = mergeOverrides.get(newName);
+              return (
+                <div key={newName} style={{
+                  background: '#fff',
+                  border: '1px solid #F0D89C',
+                  borderRadius: 10,
+                  padding: 12,
+                  marginBottom: 10,
+                }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 8 }}>
+                    From your CSV: <span style={{ fontStyle: 'italic' }}>"{newName}"</span>
+                  </div>
+                  {matches.map(m => (
+                    <div key={m.id} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      padding: '8px 10px',
+                      background: currentOverride === m.id ? '#F0FDF4' : C.cream,
+                      border: `1.5px solid ${currentOverride === m.id ? C.greenBorder : C.border}`,
+                      borderRadius: 8,
+                      marginBottom: 6,
+                    }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>{m.name}</div>
+                        <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                          {m.reason} · {Math.round(m.score * 100)}% similar
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setMergeOverrides(prev => {
+                          const next = new Map(prev);
+                          if (currentOverride === m.id) {
+                            next.delete(newName);
+                          } else {
+                            next.set(newName, m.id);
+                          }
+                          return next;
+                        })}
+                        style={{
+                          background: currentOverride === m.id ? C.green : C.forest,
+                          color: '#fff',
+                          border: 'none',
+                          padding: '7px 14px',
+                          borderRadius: 999,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {currentOverride === m.id ? '✓ Will merge' : 'Use this one'}
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => setMergeOverrides(prev => {
+                      const next = new Map(prev);
+                      next.set(newName, 'skip');
+                      return next;
+                    })}
+                    style={{
+                      marginTop: 4,
+                      background: 'transparent',
+                      color: C.gray,
+                      border: `1px solid ${C.light}`,
+                      padding: '6px 12px',
+                      borderRadius: 999,
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {currentOverride === 'skip' ? '✓ Create as new' : 'Create as new'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {/* Confirmation actions */}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button
@@ -768,7 +885,46 @@ export default function MultiImport({ therapist, onComplete }) {
       {/* Import button: shows preview before commit */}
       {files.length > 0 && files.every(f => !f.error && f.detected?.type !== 'unknown') && (
         <button
-          onClick={() => setShowPreview(true)}
+          onClick={async () => {
+            // Fetch existing services for fuzzy matching, then collect
+            // all new service names from the dropped files and check
+            // for near-matches.
+            const { data: services } = await supabase
+              .from('services')
+              .select('id, name')
+              .eq('therapist_id', therapist.id)
+              .eq('active', true);
+            const existing = services || [];
+            setExistingServices(existing);
+
+            // Collect new service names from appointment files
+            const newServiceNames = new Set();
+            for (const f of files) {
+              if (f.detected?.type !== 'appointments') continue;
+              const m = f.detected.mapping;
+              if (m.service < 0) continue;
+              for (const row of f.rows) {
+                const v = (row[m.service] || '').trim();
+                if (v) newServiceNames.add(v);
+              }
+            }
+
+            // Filter out names that already match exactly (case-insensitive)
+            const existingNamesLower = new Set(existing.map(s => s.name.toLowerCase().trim()));
+            const trulyNew = [...newServiceNames].filter(n =>
+              !existingNamesLower.has(n.toLowerCase().trim())
+            );
+
+            // Detect fuzzy matches for the truly new names
+            const matches = detectFuzzyMatches(trulyNew, existing, { threshold: 0.70 });
+            setFuzzyMatches(matches);
+
+            // Default: no merge overrides set; if therapist takes no
+            // action, we create the new services as standalone.
+            setMergeOverrides(new Map());
+
+            setShowPreview(true);
+          }}
           style={{
             width: '100%',
             background: 'linear-gradient(135deg, #2A5741, #1F4030)',

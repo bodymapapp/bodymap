@@ -426,7 +426,7 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
 
 export async function runAppointmentImport(supabase, therapist, headers, rows, mapping, opts = {}) {
   const onProgress = opts.onProgress || (() => {});
-  const { servicePricesByName = new Map() } = opts;
+  const { servicePricesByName = new Map(), serviceMergeOverrides = new Map() } = opts;
 
   let created = 0, skipped = 0, failed = 0, clientsCreated = 0;
   const skippedRows = [];
@@ -640,6 +640,16 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
     if (!serviceName) return null;
     const key = serviceName.toLowerCase().trim();
     if (serviceCache.has(key)) return serviceCache.get(key);
+
+    // Check fuzzy merge override first (HK May 21 evening, full
+    // fuzzy matching). If the therapist explicitly chose to merge
+    // this CSV name into an existing service id, use that id and
+    // skip the lookup / auto-create. 'skip' means create as new.
+    const overrideId = serviceMergeOverrides.get(serviceName);
+    if (overrideId && overrideId !== 'skip') {
+      serviceCache.set(key, overrideId);
+      return overrideId;
+    }
 
     const { data: existing } = await supabase
       .from('services').select('id')
