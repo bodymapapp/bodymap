@@ -474,7 +474,30 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
     const startTimeStr = get(row, mapping.startTime);
     const durationRaw = get(row, mapping.duration);
     const duration = durationRaw ? parseInt(durationRaw, 10) : 60;
-    const notes = get(row, mapping.notes) || null;
+    const baseNotes = get(row, mapping.notes) || null;
+
+    // SOAP-style notes (HK May 21 evening). If the CSV has separate
+    // S/O/A/P columns or a generic 'soap notes' column, compose them
+    // into a labeled text block stored in bookings.notes. Body-map
+    // structured import deferred (different schema, queued).
+    const soapSubjective = get(row, mapping.soapSubjective) || null;
+    const soapObjective  = get(row, mapping.soapObjective) || null;
+    const soapAssessment = get(row, mapping.soapAssessment) || null;
+    const soapPlan       = get(row, mapping.soapPlan) || null;
+    const soapFull       = get(row, mapping.soapFull) || null;
+
+    let notes = baseNotes;
+    const soapParts = [];
+    if (soapSubjective) soapParts.push(`S: ${soapSubjective}`);
+    if (soapObjective)  soapParts.push(`O: ${soapObjective}`);
+    if (soapAssessment) soapParts.push(`A: ${soapAssessment}`);
+    if (soapPlan)       soapParts.push(`P: ${soapPlan}`);
+    if (soapParts.length) {
+      const soapBlock = soapParts.join('\n');
+      notes = notes ? `${notes}\n\n[Imported SOAP]\n${soapBlock}` : `[Imported SOAP]\n${soapBlock}`;
+    } else if (soapFull) {
+      notes = notes ? `${notes}\n\n[Imported notes]\n${soapFull}` : `[Imported notes]\n${soapFull}`;
+    }
 
     if (!clientName || !dateStr) {
       skipped++;

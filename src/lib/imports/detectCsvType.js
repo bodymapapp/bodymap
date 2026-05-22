@@ -157,6 +157,16 @@ export function detectCsvType(headers, rows = []) {
       duration: findLoose(h, 'duration', 'length', 'minutes'),
       price: findStrict(h, 'price', 'amount', 'cost', 'session price'),
       notes: findLoose(h, 'notes', 'note', 'comments'),
+      // SOAP-style columns (HK May 21 evening). If the CSV exports
+      // session notes split across S/O/A/P columns, capture each
+      // index. The runner concatenates them into a single notes
+      // field labeled by section, since the bookings table has
+      // one notes column. Structured body-map import is queued.
+      soapSubjective: findLoose(h, 'subjective', 'soap subjective'),
+      soapObjective: findLoose(h, 'objective', 'soap objective'),
+      soapAssessment: findLoose(h, 'assessment', 'soap assessment'),
+      soapPlan: findLoose(h, 'plan', 'soap plan'),
+      soapFull: findLoose(h, 'soap notes', 'soap', 'session notes'),
     };
     return {
       type: 'appointments',
