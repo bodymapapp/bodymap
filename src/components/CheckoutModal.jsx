@@ -764,6 +764,7 @@ export default function CheckoutModal({
                   isSubscription={isSubscription}
                   validAmount={validAmount}
                   stripeConnected={!!therapist?.stripe_account_id}
+                  squareConnected={!!therapist?.square_access_token}
                   onClose={onClose}
                 />
               )}
@@ -1045,7 +1046,14 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount, stripeConnected, onClose }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount, stripeConnected, squareConnected, onClose }) {
+  // Either processor unlocks the card-based methods. HK May 22 2026:
+  // we support Stripe AND Square as equally first-class processors;
+  // the therapist picks whichever they already use, or connects both
+  // (Square is sometimes preferred by therapists who already have a
+  // Square POS for retail products at the front desk).
+  const hasProcessor = stripeConnected || squareConnected;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
@@ -1055,23 +1063,23 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
       {/* Mark as paid: always available. Cash, check, Venmo, Zelle,
           trade, or paid-before-switching-over scenarios. This is the
           critical path for therapists who don't take card payments,
-          OR who haven't connected Stripe yet but still need to record
-          a session as paid. HK May 22 2026: must NEVER be hidden by
-          Stripe connection state. */}
+          OR who haven't connected Stripe or Square yet but still need
+          to record a session as paid. HK May 22 2026: must NEVER be
+          hidden by processor connection state. */}
       <MethodButton
         onClick={onMarkPaid}
         icon="💵"
         title="Mark as paid"
         subtitle="Cash, check, Venmo, Zelle, trade, or other offline payment"
-        primary={!stripeConnected || (isSubscription && !cardOnFile)}
+        primary={!hasProcessor || (isSubscription && !cardOnFile)}
       />
 
-      {/* Card-based methods: shown only when Stripe is connected. When
-          not connected, we surface a clear Connect-Stripe CTA below so
-          the therapist understands WHY card options aren't here and
-          how to unlock them. HK May 22 2026: replaces the previous
-          'gate the whole modal' approach which broke offline recording. */}
-      {stripeConnected ? (
+      {/* Card-based methods: shown only when EITHER Stripe or Square
+          is connected. When neither is connected, we surface a clear
+          dual-CTA below so the therapist understands WHY card options
+          aren't here and how to unlock them. HK May 22 2026:
+          acknowledges both processors as equally valid. */}
+      {hasProcessor ? (
         <>
           {cardOnFile && (
             <MethodButton
@@ -1118,7 +1126,7 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
           borderRadius: 12,
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 10,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ fontSize: 18 }}>💳</div>
@@ -1127,27 +1135,53 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
             </div>
           </div>
           <div style={{ fontSize: 12.5, color: '#78350F', lineHeight: 1.5 }}>
-            Connect Stripe to charge cards on file, accept new cards in person, and send SMS or email pay links. We do not charge any platform fee. About a minute to set up.
+            Connect Stripe or Square to charge cards on file, accept new cards in person, and send SMS or email pay links. Pick whichever you already use, or connect both. We do not charge any platform fee.
           </div>
-          <a
-            href="/dashboard/stripe-connect"
-            onClick={() => { if (onClose) onClose(); }}
-            style={{
-              alignSelf: 'flex-start',
-              marginTop: 2,
-              background: '#fff',
-              color: '#7A4F0D',
-              border: '1px solid #F0D89C',
-              padding: '7px 14px',
-              borderRadius: 999,
-              fontSize: 12.5,
-              fontWeight: 700,
-              textDecoration: 'none',
-              WebkitTapHighlightColor: 'transparent',
-            }}
-          >
-            Connect Stripe →
-          </a>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+            <a
+              href="/dashboard/settings"
+              onClick={() => { if (onClose) onClose(); }}
+              style={{
+                background: '#fff',
+                color: '#7A4F0D',
+                border: '1px solid #F0D89C',
+                padding: '7px 14px',
+                borderRadius: 999,
+                fontSize: 12.5,
+                fontWeight: 700,
+                textDecoration: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>🟣</span> Connect Stripe
+            </a>
+            <a
+              href="/dashboard/settings"
+              onClick={() => { if (onClose) onClose(); }}
+              style={{
+                background: '#fff',
+                color: '#7A4F0D',
+                border: '1px solid #F0D89C',
+                padding: '7px 14px',
+                borderRadius: 999,
+                fontSize: 12.5,
+                fontWeight: 700,
+                textDecoration: 'none',
+                WebkitTapHighlightColor: 'transparent',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <span style={{ fontSize: 14 }}>⬛</span> Connect Square
+            </a>
+          </div>
+          <div style={{ fontSize: 11, color: '#92400E', fontStyle: 'italic', marginTop: 2 }}>
+            Settings opens in this tab.
+          </div>
         </div>
       )}
     </div>
