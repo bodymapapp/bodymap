@@ -703,6 +703,49 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
     return () => { cancelled = true; };
   }, [therapist?.id, upcomingBookings.map(b => b.clientId).join(',')]);
 
+  // Insight data wiring (HK May 22 2026 Tier 4): the deepInsights
+  // library covers all 7 insights, but two of them need data not
+  // present in allAppts: F (memberships) needs the list of clients
+  // who ARE current members, G (cancellations) needs counts of
+  // recently-cancelled bookings (fetchBookings excludes cancelled).
+  // We load both here and pass them down. Both refresh on therapist
+  // change; relatively cheap queries (filtered by therapist_id with
+  // indexed columns).
+  const [memberClientIds, setMemberClientIds] = useState([]);
+  const [cancelledLast30Count, setCancelledLast30Count] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadInsightData() {
+      if (!therapist?.id) return;
+      // F: list of client_ids who currently hold an active or
+      // past-due membership. Used by computeMembershipCandidates
+      // to filter OUT existing members from the candidate pool.
+      const { data: memberRows } = await supabase
+        .from('member_subscriptions')
+        .select('client_id')
+        .eq('therapist_id', therapist.id)
+        .in('status', ['active', 'past_due']);
+      if (cancelled) return;
+      setMemberClientIds((memberRows || []).map(r => r.client_id).filter(Boolean));
+      // G: count of cancelled bookings in the last 30 days. Used by
+      // computeCancellationFlag. We pass a count, not the rows,
+      // because the insight only needs the number.
+      const cutoff = new Date(today);
+      cutoff.setDate(cutoff.getDate() - 30);
+      const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const { count } = await supabase
+        .from('bookings')
+        .select('id', { count: 'exact', head: true })
+        .eq('therapist_id', therapist.id)
+        .eq('status', 'cancelled')
+        .gte('booking_date', toDateStr(cutoff));
+      if (cancelled) return;
+      setCancelledLast30Count(count || 0);
+    }
+    loadInsightData();
+    return () => { cancelled = true; };
+  }, [therapist?.id]);
+
   // Transform bookings + intel into briefing card shape.
   const upcoming = useMemo(() => {
     if (!upcomingBookings.length) {
@@ -780,6 +823,8 @@ export default function SmartBookingRail({ isMobile = false, therapist, allAppts
           today={today}
           lapsedCount={rebookWatch ? rebookWatch.length : 0}
           lapsedClients={rebookWatch || []}
+          memberClientIds={memberClientIds}
+          cancelledLast30Count={cancelledLast30Count}
           onParentAction={(id) => {
             if (id === 'open-time-off' && typeof onOpenTimeOff === 'function') {
               onOpenTimeOff();

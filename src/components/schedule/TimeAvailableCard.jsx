@@ -270,7 +270,7 @@ function computeBookableWindows(allAppts, scope = 'weekly', today = new Date()) 
   return { windows, totalMinutes: totalMin };
 }
 
-export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, lapsedClients = [], memberClientIds = [], onParentAction }) {
+export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', today, lapsedCount = 0, lapsedClients = [], memberClientIds = [], cancelledLast30Count = 0, onParentAction }) {
   const navigate = useNavigate();
   const { windows, totalMinutes } = computeBookableWindows(allAppts, scope, today || new Date());
   const hoursOpen = totalMinutes / 60;
@@ -287,6 +287,7 @@ export default function TimeAvailableCard({ allAppts = [], scope = 'weekly', tod
     today: today || new Date(),
     openHoursToday: hoursOpen,
     memberClientIds,
+    cancelledLast30Count,
   });
 
   // Show deep insights if any fired. Otherwise show the legacy

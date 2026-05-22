@@ -248,28 +248,18 @@ export function computeMembershipCandidates(appointments, memberClientIds, today
 }
 
 // Insight G: Cancellation flag.
-// Last-minute cancellations (within 24h) in the past 30 days.
-// Care-framed: 'sessions that did not happen' not 'revenue lost'.
-// Requires booking.status === 'cancelled' AND a cancelled_at
-// timestamp within 24h of start_time.
-export function computeCancellationFlag(appointments, today) {
-  if (!appointments?.length) return null;
-  const cutoff = new Date(today.getTime() - 30 * MS_PER_DAY);
-  // Note: appointments array on the rail does not include cancelled
-  // by default. This function assumes 'cancelled' bookings are
-  // passed in via a separate prop; if not present, returns null.
-  const cancelled = appointments.filter(a =>
-    a.status === 'cancelled' &&
-    a.date >= cutoff &&
-    a.cancelledLeadHours != null &&
-    a.cancelledLeadHours < 24
-  );
-  if (cancelled.length < 3) return null;
+// Last 30 days cancellations count. Care-framed: 'sessions that
+// did not happen' not 'revenue lost'. Takes a precomputed count
+// because the cancelled bookings are excluded from the schedule's
+// allAppts query (fetchBookings filters out status='cancelled').
+// The count is computed in SmartBookingRail and passed in.
+export function computeCancellationFlag(cancelledLast30Count) {
+  if (!cancelledLast30Count || cancelledLast30Count < 3) return null;
   return {
     id: 'cancellation_flag',
     icon: '⚬',
-    title: `${cancelled.length} sessions did not happen recently`,
-    why: `${cancelled.length} sessions were cancelled within their 24-hour window in the past 30 days. Worth a quiet look at whether something is changing for those clients.`,
+    title: `${cancelledLast30Count} sessions did not happen recently`,
+    why: `${cancelledLast30Count} sessions were cancelled in the past 30 days. Worth a quiet look at whether something is changing: weather, illness in a household, or just a moment for a gentle policy adjustment.`,
     action: null,
     wired: false,
   };
@@ -278,7 +268,7 @@ export function computeCancellationFlag(appointments, today) {
 // Driver: compute all 7, return the non-null ones, capped at 4.
 // Ordering is by signal strength so the most actionable lands at
 // the top of the surface.
-export function computeAllInsights({ appointments, today, openHoursToday, memberClientIds }) {
+export function computeAllInsights({ appointments, today, openHoursToday, memberClientIds, cancelledLast30Count }) {
   const t = today || new Date();
   const results = [];
   const insights = [
@@ -288,10 +278,14 @@ export function computeAllInsights({ appointments, today, openHoursToday, member
     computeMembershipCandidates(appointments, memberClientIds, t), // F
     computeDayOfWeekImbalance(appointments, t),      // E
     computeOpenTimeCare(openHoursToday),             // C
-    computeCancellationFlag(appointments, t),        // G
+    computeCancellationFlag(cancelledLast30Count),   // G
   ];
   for (const insight of insights) {
     if (insight) results.push(insight);
   }
-  return results.slice(0, 4);
+  // HK May 22 2026: show all firing insights (was capped at 4).
+  // The 70yo persona wants to see every observation that fires so
+  // they can pick which one to act on, rather than the system
+  // hiding signals.
+  return results;
 }
