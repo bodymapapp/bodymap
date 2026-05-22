@@ -30,6 +30,14 @@ import { parseCSV, detectCsvType } from '../lib/imports/detectCsvType';
 import { runClientImport, runAppointmentImport } from '../lib/imports/runImports';
 import { formatUSPhone } from '../lib/formatters/phone';
 import { detectFuzzyMatches } from '../lib/imports/fuzzyServiceMatch';
+import {
+  hashCsvContent,
+  saveCheckpoint,
+  loadCheckpoint,
+  clearCheckpoint,
+  listUnfinishedImports,
+  generateRunId,
+} from '../lib/imports/resumableState';
 
 const C = {
   forest: '#2A5741',
@@ -54,7 +62,7 @@ const C = {
 };
 
 function FileCard({ file, onRemove }) {
-  const { fileName, headers, rows, detected, error } = file;
+  const { fileName, headers, rows, detected, error, checkpoint } = file;
   const typeColor = {
     clients: { bg: '#E0F2FE', border: '#7DD3FC', text: '#075985', label: '👥 Client roster' },
     appointments: { bg: '#FEF3C7', border: '#FCD34D', text: '#92400E', label: '📅 Appointment history' },
@@ -120,6 +128,24 @@ function FileCard({ file, onRemove }) {
           {detected.reason}
         </div>
       )}
+      {checkpoint && (
+        <div style={{
+          marginTop: 8,
+          background: '#FEF3C7',
+          border: '1px solid #FCD34D',
+          borderRadius: 8,
+          padding: '6px 10px',
+          fontSize: 11.5,
+          color: '#78350F',
+          fontWeight: 600,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span>↻</span>
+          <span>Will resume from row {checkpoint.currentRow} of {checkpoint.rowCount}</span>
+        </div>
+      )}
       {error && (
         <div style={{ fontSize: 12, color: C.red, marginTop: 6 }}>{error}</div>
       )}
@@ -167,6 +193,18 @@ export default function MultiImport({ therapist, onComplete }) {
     try { localStorage.setItem('mbm.import.firstTimeDismissed', '1'); } catch {}
   };
   const fileInputRef = useRef(null);
+
+  // Unfinished imports detection (HK May 22 2026 item B). Scans
+  // localStorage on mount for any in-progress imports for this
+  // therapist. If any are found, renders a resume banner above
+  // the drop zone. Therapist can dismiss (clears the checkpoint)
+  // or re-drop the same file to resume.
+  const [unfinishedImports, setUnfinishedImports] = useState(() => {
+    return listUnfinishedImports(therapist?.id);
+  });
+  function refreshUnfinished() {
+    setUnfinishedImports(listUnfinishedImports(therapist?.id));
+  }
 
   // Browser warning during import (HK May 21 evening): if the user
   // tries to close the tab mid-import, surface the native browser
@@ -225,18 +263,22 @@ export default function MultiImport({ therapist, onComplete }) {
       const reader = new FileReader();
       reader.onload = (ev) => {
         try {
-          const { headers, rows } = parseCSV(ev.target.result);
+          const text = ev.target.result;
+          const fileHash = hashCsvContent(text);
+          const { headers, rows } = parseCSV(text);
           if (headers.length === 0 || rows.length === 0) {
-            resolve({ fileName: f.name, headers: [], rows: [], detected: null, error: 'File appears empty' });
+            resolve({ fileName: f.name, fileHash, headers: [], rows: [], detected: null, error: 'File appears empty' });
             return;
           }
           const detected = detectCsvType(headers, rows);
-          resolve({ fileName: f.name, headers, rows, detected, error: null });
+          // Check if this exact file was partially imported before
+          const checkpoint = loadCheckpoint(therapist?.id, fileHash);
+          resolve({ fileName: f.name, fileHash, headers, rows, detected, error: null, checkpoint });
         } catch (e) {
-          resolve({ fileName: f.name, headers: [], rows: [], detected: null, error: 'Could not parse CSV' });
+          resolve({ fileName: f.name, fileHash: null, headers: [], rows: [], detected: null, error: 'Could not parse CSV' });
         }
       };
-      reader.onerror = () => resolve({ fileName: f.name, headers: [], rows: [], detected: null, error: 'File read failed' });
+      reader.onerror = () => resolve({ fileName: f.name, fileHash: null, headers: [], rows: [], detected: null, error: 'File read failed' });
       reader.readAsText(f);
     });
   }
@@ -324,10 +366,32 @@ export default function MultiImport({ therapist, onComplete }) {
     // ── Clients first ──
     for (const f of clientFiles) {
       try {
+        // Resume support: if this file has a checkpoint from a
+        // previous interrupted run, pick up where we left off.
+        const cp = f.checkpoint;
+        const runId = cp?.runId || generateRunId();
         const r = await runClientImport(
           supabase, therapist, f.headers, f.rows, f.detected.mapping,
-          { onProgress: (p) => setProgress({ ...p, fileName: f.fileName }) }
+          {
+            onProgress: (p) => setProgress({ ...p, fileName: f.fileName }),
+            resumeFrom: cp?.currentRow || 0,
+            seedCounts: cp?.counts || null,
+            seedSkippedRows: cp?.skippedRows || null,
+            seedFailedRows: cp?.failedRows || null,
+            onCheckpoint: (state) => {
+              saveCheckpoint(therapist?.id, f.fileHash, {
+                ...state,
+                fileName: f.fileName,
+                fileType: 'clients',
+                runId,
+                startedAt: cp?.startedAt || Date.now(),
+                mapping: f.detected.mapping,
+              });
+            },
+          }
         );
+        // File completed; clear its checkpoint
+        clearCheckpoint(therapist?.id, f.fileHash);
         aggregate.clientsCreated += r.created;
         aggregate.clientsSkipped += r.skipped;
         aggregate.clientsFailed += r.failed;
@@ -356,13 +420,31 @@ export default function MultiImport({ therapist, onComplete }) {
     // ── Then appointments (now that client roster is in) ──
     for (const f of appointmentFiles) {
       try {
+        const cp = f.checkpoint;
+        const runId = cp?.runId || generateRunId();
         const r = await runAppointmentImport(
           supabase, therapist, f.headers, f.rows, f.detected.mapping,
           {
             onProgress: (p) => setProgress({ ...p, fileName: f.fileName }),
             serviceMergeOverrides: mergeOverrides,
+            resumeFrom: cp?.currentRow || 0,
+            seedCounts: cp?.counts || null,
+            seedSkippedRows: cp?.skippedRows || null,
+            seedFailedRows: cp?.failedRows || null,
+            onCheckpoint: (state) => {
+              saveCheckpoint(therapist?.id, f.fileHash, {
+                ...state,
+                fileName: f.fileName,
+                fileType: 'appointments',
+                runId,
+                startedAt: cp?.startedAt || Date.now(),
+                mapping: f.detected.mapping,
+                mergeOverrides: Array.from(mergeOverrides.entries()),
+              });
+            },
           }
         );
+        clearCheckpoint(therapist?.id, f.fileHash);
         aggregate.appointmentsCreated += r.created;
         aggregate.appointmentsSkipped += r.skipped;
         aggregate.appointmentsFailed += r.failed;
@@ -394,6 +476,7 @@ export default function MultiImport({ therapist, onComplete }) {
     setProgress(null);
     setResults(aggregate);
     setImporting(false);
+    refreshUnfinished();
 
     // Track activation
     if (aggregate.clientsCreated > 0 && therapist?.id) {
@@ -942,6 +1025,72 @@ export default function MultiImport({ therapist, onComplete }) {
           Drop your CSV files from MassageBook, Vagaro, GlossGenius, Mindbody, Square, or anywhere else. We'll figure out which is which (clients, appointments) and merge them together. You can drop multiple files at once.
         </p>
       </div>
+
+      {/* Unfinished imports banner (HK May 22 2026 item B). Shows
+          when the therapist has previously started an import that
+          did not complete. They re-drop the same file and we resume
+          from where it stopped, OR they tap Discard to clear the
+          checkpoint and start fresh next time. */}
+      {unfinishedImports.length > 0 && (
+        <div style={{
+          background: '#FEF3C7',
+          border: '1.5px solid #FCD34D',
+          borderRadius: 12,
+          padding: 14,
+          marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: '#7A4F0D', marginBottom: 6 }}>
+            {unfinishedImports.length} unfinished import{unfinishedImports.length === 1 ? '' : 's'} from a previous session
+          </div>
+          <div style={{ fontSize: 12, color: '#78350F', lineHeight: 1.55, marginBottom: 10 }}>
+            Drop the same file{unfinishedImports.length === 1 ? '' : 's'} again to resume where you left off. We track your progress locally, so resuming continues from the exact row that was being processed.
+          </div>
+          {unfinishedImports.map((u, i) => {
+            const pct = u.rowCount > 0 ? Math.round((u.currentRow / u.rowCount) * 100) : 0;
+            const when = u.updatedAt ? new Date(u.updatedAt).toLocaleString() : 'unknown';
+            return (
+              <div key={i} style={{
+                background: '#fff',
+                border: '1px solid #F0D89C',
+                borderRadius: 8,
+                padding: 10,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {u.fileName || '(unknown file)'}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    {u.currentRow} of {u.rowCount} rows · {pct}% complete · last activity {when}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    clearCheckpoint(therapist?.id, u.fileHash);
+                    refreshUnfinished();
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid #C7CDD6',
+                    color: '#6B7280',
+                    padding: '5px 10px',
+                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Discard
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* First-time welcome card (HK May 22 2026, item A). Maria-
           persona safety: many therapists open this screen and don't

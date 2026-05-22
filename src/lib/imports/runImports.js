@@ -46,11 +46,23 @@ const normalizePhone = (p) => (p || '').replace(/\D/g, '');
 
 export async function runClientImport(supabase, therapist, headers, rows, mapping, opts = {}) {
   const onProgress = opts.onProgress || (() => {});
+  // Resumable import (HK May 22 2026 item B). If resumeFrom is set,
+  // we skip rows that already completed. Counts and skipped/failed
+  // arrays are seeded from the prior partial run via opts.seedCounts
+  // and opts.seedSkippedRows/seedFailedRows so the final summary
+  // reflects total progress, not just this resume slice.
+  // onCheckpoint(state) is called every 25 rows with the current
+  // accumulator state. The caller persists it via resumableState.js.
+  const resumeFrom = Number.isFinite(opts.resumeFrom) ? Math.max(0, opts.resumeFrom) : 0;
+  const onCheckpoint = opts.onCheckpoint || (() => {});
 
-  let created = 0, skipped = 0, failed = 0;
-  let membershipsCreated = 0, membershipsFailed = 0;
-  const skippedRows = [];
-  const failedRows = [];
+  let created = opts.seedCounts?.created || 0;
+  let skipped = opts.seedCounts?.skipped || 0;
+  let failed  = opts.seedCounts?.failed  || 0;
+  let membershipsCreated = opts.seedCounts?.membershipsCreated || 0;
+  let membershipsFailed  = opts.seedCounts?.membershipsFailed  || 0;
+  const skippedRows = Array.isArray(opts.seedSkippedRows) ? [...opts.seedSkippedRows] : [];
+  const failedRows  = Array.isArray(opts.seedFailedRows)  ? [...opts.seedFailedRows]  : [];
   const serviceCache = new Map();
   const membershipCache = new Map();
 
@@ -131,11 +143,30 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
   }
 
   for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+    // Resume support: rows before resumeFrom already completed in a
+    // prior run; skip them entirely. resumeFrom is exclusive ('next
+    // row to process'), so when resumeFrom is 250, we start at 250.
+    if (rowIdx < resumeFrom) continue;
+
     const row = rows[rowIdx];
     const get = (idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
 
     if (rowIdx % 25 === 0) {
       onProgress({ phase: 'importing-clients', current: rowIdx, total: rows.length });
+      // Checkpoint to localStorage. Caller persists this so a tab
+      // close lets us resume from here. We pass the next-row index
+      // (rowIdx + 1 would re-do the current row on resume; rowIdx
+      // means resume here, doing this row again. We pick rowIdx so
+      // a partially-processed row is replayed safely; the UPSERT
+      // logic makes that idempotent on the second try).
+      onCheckpoint({
+        phase: 'importing-clients',
+        currentRow: rowIdx,
+        rowCount: rows.length,
+        counts: { created, skipped, failed, membershipsCreated, membershipsFailed },
+        skippedRows,
+        failedRows,
+      });
     }
 
     // ── Build name from first/last or fullName ──
@@ -427,10 +458,21 @@ export async function runClientImport(supabase, therapist, headers, rows, mappin
 export async function runAppointmentImport(supabase, therapist, headers, rows, mapping, opts = {}) {
   const onProgress = opts.onProgress || (() => {});
   const { servicePricesByName = new Map(), serviceMergeOverrides = new Map() } = opts;
+  // Resumable import (HK May 22 2026 item B). For the appointment
+  // runner, resume happens at the booking-insertion phase (the
+  // long one). Earlier phases (parse, dedupe, batch client insert)
+  // are short enough to re-run safely. resumeFrom is interpreted
+  // as an index into the prepared-bookings array, not the raw
+  // rows array. counts seed from prior partial run.
+  const resumeFrom = Number.isFinite(opts.resumeFrom) ? Math.max(0, opts.resumeFrom) : 0;
+  const onCheckpoint = opts.onCheckpoint || (() => {});
 
-  let created = 0, skipped = 0, failed = 0, clientsCreated = 0;
-  const skippedRows = [];
-  const failedRows = [];
+  let created = opts.seedCounts?.created || 0;
+  let skipped = opts.seedCounts?.skipped || 0;
+  let failed  = opts.seedCounts?.failed  || 0;
+  let clientsCreated = opts.seedCounts?.clientsCreated || 0;
+  const skippedRows = Array.isArray(opts.seedSkippedRows) ? [...opts.seedSkippedRows] : [];
+  const failedRows  = Array.isArray(opts.seedFailedRows)  ? [...opts.seedFailedRows]  : [];
 
   // Helpers
   const get = (row, idx) => (idx >= 0 && idx < row.length) ? row[idx]?.trim() : '';
@@ -697,10 +739,26 @@ export async function runAppointmentImport(supabase, therapist, headers, rows, m
   }
 
   // ── Phase 7: insert bookings ──
-  onProgress({ phase: 'creating-bookings', current: 0, total: prepared.length });
+  onProgress({ phase: 'creating-bookings', current: resumeFrom, total: prepared.length });
   for (let idx = 0; idx < prepared.length; idx++) {
+    // Resume support: skip bookings already inserted in a prior run.
+    // Idempotency is ensured by the existingBookingKeys dedup set
+    // (loaded fresh each run from the bookings table), so even if
+    // resumeFrom was off by one, we would not double-insert.
+    if (idx < resumeFrom) continue;
+
     const p = prepared[idx];
-    if (idx % 25 === 0) onProgress({ phase: 'creating-bookings', current: idx, total: prepared.length });
+    if (idx % 25 === 0) {
+      onProgress({ phase: 'creating-bookings', current: idx, total: prepared.length });
+      onCheckpoint({
+        phase: 'creating-bookings',
+        currentRow: idx,
+        rowCount: prepared.length,
+        counts: { created, skipped, failed, clientsCreated },
+        skippedRows,
+        failedRows,
+      });
+    }
     if (!p._clientId) continue;
 
     const emailLower = p.clientEmail ? p.clientEmail.toLowerCase().trim() : null;
