@@ -31,6 +31,7 @@ import OnboardingChecklist from '../components/OnboardingChecklist';
 import CycleScheduling from '../components/CycleScheduling';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
+import UnifiedImport from '../components/UnifiedImport';
 import BMLogo from '../components/BMLogo';
 import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
@@ -3914,7 +3915,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"><path d="M12 4v10"/><path d="M8 8l4-4 4 4"/><rect x="4" y="14" width="16" height="6" rx="1"/></svg>}
         isOpen={openRow === 'import'}
         onToggle={toggleRow}
-      ><div className="bm-section-bare"><ImportClients therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
+      ><div className="bm-section-bare"><UnifiedImport therapist={therapist} onComplete={() => {}} /></div></CollapsibleSection>
       </>)}
       {matchesSearch('Booking & intake links', 'Share your booking link or QR codes for clients. Intake is part of the booking flow.', '1.3') && (<>
       <CollapsibleSection
