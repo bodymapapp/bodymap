@@ -718,7 +718,87 @@ export default function CheckoutModal({
   return (
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
-        {step === 'success' ? (
+        {!therapist?.stripe_account_id ? (
+          // HK May 22 2026: Stripe-not-connected check moved here per
+          // Design Principle 'buttons must be tappable, no grayed-out
+          // halfway state'. Previously: therapist could fill out the
+          // whole checkout flow then hit a red error pill on submit.
+          // Now: if Stripe isn't connected, we surface the only
+          // meaningful action (Connect Stripe) right away. No amount
+          // picker, no tip picker, no delivery picker, because none of
+          // those choices matter until Stripe is wired up.
+          <>
+            <div style={headerStyle}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
+                  Checkout
+                </div>
+                <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {appt?.client || client?.name}
+                  {appt?.service ? ` · ${appt.service}` : ''}
+                </div>
+              </div>
+              <CloseButton onClick={onClose} label="Close" />
+            </div>
+            <div style={bodyStyle}>
+              <div style={{
+                padding: '24px 20px',
+                background: '#FEF7E8',
+                border: '1.5px solid #F0D89C',
+                borderRadius: 14,
+                textAlign: 'center',
+              }}>
+                <div style={{ fontSize: 32, marginBottom: 10 }}>💳</div>
+                <div style={{
+                  fontFamily: 'Georgia, serif',
+                  fontSize: 19,
+                  fontWeight: 600,
+                  color: '#7A4F0D',
+                  marginBottom: 8,
+                }}>
+                  Connect Stripe to send payment requests
+                </div>
+                <div style={{
+                  fontSize: 13.5,
+                  color: '#78350F',
+                  lineHeight: 1.55,
+                  marginBottom: 18,
+                  maxWidth: 380,
+                  marginLeft: 'auto',
+                  marginRight: 'auto',
+                }}>
+                  To collect payments and send checkout links, connect your Stripe account. It takes about a minute. We do not charge any platform fee.
+                </div>
+                <a
+                  href="/dashboard/stripe-connect"
+                  onClick={() => { if (onClose) onClose(); }}
+                  style={{
+                    display: 'inline-block',
+                    background: 'linear-gradient(135deg, #2A5741, #1F4030)',
+                    color: '#fff',
+                    padding: '12px 26px',
+                    borderRadius: 999,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    textDecoration: 'none',
+                    boxShadow: '0 2px 10px rgba(42, 87, 65, 0.25)',
+                  }}
+                >
+                  Connect Stripe
+                </a>
+              </div>
+              <div style={{
+                marginTop: 14,
+                fontSize: 12,
+                color: C.inkSoft,
+                textAlign: 'center',
+                lineHeight: 1.5,
+              }}>
+                Once connected, this checkout will let you charge cards on file, send SMS or email payment links, and mark sessions as paid.
+              </div>
+            </div>
+          </>
+        ) : step === 'success' ? (
           <>
             <div style={headerStyle}>
               <div style={{ flex: 1, minWidth: 0 }}>
