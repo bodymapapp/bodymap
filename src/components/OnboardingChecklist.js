@@ -405,6 +405,30 @@ export default function OnboardingChecklist({ therapist, services, availability,
   // therapist's dashboard context intact and has a clear close.
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  // Ribbon (whole checklist) collapsed state. HK May 23 2026: 'The
+  // whole thing should be a collapsible under Onboarding ribbon.'
+  // Default open for new therapists, persists their choice. Once
+  // setup is fully complete, the panel auto-collapses anyway via
+  // the allDone special case at the top of render.
+  const [ribbonOpen, setRibbonOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem(`bm_onboarding_ribbon_${therapist?.id || 'anon'}`);
+    return stored === null ? true : stored === 'true';
+  });
+  function toggleRibbon() {
+    const next = !ribbonOpen;
+    setRibbonOpen(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`bm_onboarding_ribbon_${therapist?.id || 'anon'}`, String(next));
+    }
+  }
+
+  // Step 5 policies sub-list expansion. Per HK May 23 2026: 'Item 5
+  // should be collapsible so that it does not look so daunting.'
+  // Default closed. Therapist taps the row to expand the 5 toggles.
+  // Auto-opens if the user clicks the Review pill on the row.
+  const [policiesExpanded, setPoliciesExpanded] = useState(false);
+
   // Wrap parent onNavigate so we can intercept preview-booking and
   // show our own modal instead of letting the parent open a new tab.
   // The parent's stamp-only variant ('preview-booking-stamp') still
@@ -945,14 +969,24 @@ export default function OnboardingChecklist({ therapist, services, availability,
       <QuietGlow active={celebrate} />
 
       {/* Header: title + tiny subhead + circular progress ring on
-          the right. Single-row, asymmetric. Reference: Linear */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 14,
-        marginBottom: 18,
-      }}>
+          the right. Single-row, asymmetric. Reference: Linear.
+          HK May 23 2026: 'The whole thing should be a collapsible
+          under Onboarding ribbon.' Header is tappable; chevron
+          indicates state; body collapses when closed. */}
+      <button
+        onClick={toggleRibbon}
+        aria-expanded={ribbonOpen}
+        style={{
+          all: 'unset',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 14,
+          width: '100%',
+          cursor: 'pointer',
+          marginBottom: ribbonOpen ? 18 : 0,
+        }}
+      >
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontSize: 11,
@@ -985,9 +1019,18 @@ export default function OnboardingChecklist({ therapist, services, availability,
               : 'Complete these to start accepting clients online.'}
           </p>
         </div>
-        <ProgressRing done={done} total={total} size={56} />
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <ProgressRing done={done} total={total} size={56} />
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{
+            transition: 'transform 0.2s ease',
+            transform: ribbonOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </div>
+      </button>
 
+      {ribbonOpen && (<>
       {/* Steps as a single-column vertical timeline. Each row has:
           [icon dot / checkmark]  [step content]  [secondary action]
           Visual continuity via a thin sage line on the left connecting
@@ -1081,65 +1124,74 @@ export default function OnboardingChecklist({ therapist, services, availability,
                           {step.desc}
                         </div>
                       )}
+                      {/* Policies progress when collapsed. Tells the
+                          therapist how many of 5 are on without
+                          forcing them to expand. */}
+                      {isPoliciesStep && !policiesExpanded && (
+                        <div style={{
+                          fontSize: 12,
+                          color: '#6B7280',
+                          marginTop: 3,
+                          lineHeight: 1.5,
+                        }}>
+                          {policiesDone === 0
+                            ? 'Cancellation, deposit, agreement and 2 more. Tap Review to set.'
+                            : `${policiesDone} of ${policiesTotal} set. Tap Review to adjust.`}
+                        </div>
+                      )}
                     </div>
 
-                    {/* Trailing action. For incomplete non-policies
-                        active step: primary button. For incomplete
-                        non-active: ghost button. For complete: small
-                        Review pill. Policies step has no trailing
-                        button because the toggles ARE the action. */}
+                    {/* Unified Review pill. HK May 23 2026:
+                        'They should be always able to review whether
+                        complete or not. Different size of review
+                        button looks weird.' Same look, same size,
+                        regardless of step state. The visual emphasis
+                        on which step is active comes from the dot
+                        ring on the left, not from the button shape. */}
                     {!isPoliciesStep && (
-                      <>
-                        {!isChecked && isActive && (
-                          <button onClick={() => handleNavigate(step.view)} style={{
-                            background: '#2A5741',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: 9,
-                            padding: '8px 14px',
-                            fontSize: 12.5,
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                            boxShadow: '0 1px 3px rgba(42, 87, 65, 0.2)',
-                            transition: 'transform 0.15s ease',
-                          }}>
-                            {isImportStep ? 'Upload CSV' : step.action} →
-                          </button>
-                        )}
-                        {!isChecked && !isActive && (
-                          <button onClick={() => handleNavigate(step.view)} style={{
-                            background: 'transparent',
-                            color: '#2A5741',
-                            border: '1px solid #D8DDD0',
-                            borderRadius: 8,
-                            padding: '6px 12px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}>
-                            {isImportStep ? 'Upload CSV' : step.action}
-                          </button>
-                        )}
-                        {isChecked && step.view && (
-                          <button onClick={() => handleNavigate(step.view)} style={{
-                            background: 'transparent',
-                            color: '#6B7280',
-                            border: 'none',
-                            padding: '4px 6px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            whiteSpace: 'nowrap',
-                            flexShrink: 0,
-                          }}>
-                            Review
-                          </button>
-                        )}
-                      </>
+                      <button onClick={() => handleNavigate(step.view)} style={{
+                        background: 'transparent',
+                        color: '#2A5741',
+                        border: '1px solid #D8DDD0',
+                        borderRadius: 8,
+                        padding: '6px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        minWidth: 76,
+                        textAlign: 'center',
+                      }}>
+                        Review
+                      </button>
+                    )}
+                    {isPoliciesStep && (
+                      <button onClick={() => setPoliciesExpanded(v => !v)} style={{
+                        background: 'transparent',
+                        color: '#2A5741',
+                        border: '1px solid #D8DDD0',
+                        borderRadius: 8,
+                        padding: '6px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                        flexShrink: 0,
+                        minWidth: 76,
+                        textAlign: 'center',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                      }}>
+                        Review
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{
+                          transition: 'transform 0.2s ease',
+                          transform: policiesExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                        }}>
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </button>
                     )}
                   </div>
 
@@ -1189,8 +1241,11 @@ export default function OnboardingChecklist({ therapist, services, availability,
                   {/* Step 5: 5 inline policy toggles. Each is a real
                       ON/OFF connected to therapist columns. When ON,
                       reveals inline numeric editor for the key value.
-                      All 5 must be ON for the step to mark complete. */}
-                  {isPoliciesStep && (
+                      All 5 must be ON for the step to mark complete.
+                      HK May 23 2026: 'Item 5 should be collapsible
+                      so that it does not look so daunting.' Default
+                      closed; expands on Review tap. */}
+                  {isPoliciesStep && policiesExpanded && (
                     <div style={{
                       marginTop: isActive || !isChecked ? 10 : 8,
                       display: 'flex',
@@ -1307,6 +1362,7 @@ export default function OnboardingChecklist({ therapist, services, availability,
           Hide
         </button>
       </div>
+      </>)}
     </div>
     {previewOpen && <PreviewModal therapist={therapist} onClose={() => setPreviewOpen(false)} />}
     </>
