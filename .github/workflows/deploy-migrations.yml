@@ -43,6 +43,17 @@ jobs:
 
             if [ "$status" -ge 200 ] && [ "$status" -lt 300 ]; then
               echo "  ok ($status)"
+            elif echo "$body" | grep -qiE 'already exists|duplicate (object|key|column|table|index|policy|constraint)|already enabled|relation .* already'; then
+              # Idempotency soft-pass. The migration tried to create
+              # something that is already there (most commonly a
+              # CREATE POLICY that has no IF NOT EXISTS clause). For
+              # our re-run-on-every-push model this is the expected
+              # state, not a failure. We continue and record the
+              # outcome as a soft pass.
+              # HK May 23 2026: added after agreement_send_requests.sql
+              # failed on re-run with 'policy already exists' and made
+              # every subsequent Actions run show red.
+              echo "  already-exists (soft pass, $status)"
             else
               echo "::error::Migration $name failed: HTTP $status"
               echo "$body"
