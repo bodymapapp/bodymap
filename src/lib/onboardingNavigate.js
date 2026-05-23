@@ -73,12 +73,19 @@ export function buildOnboardingNavigate({ therapist, navigate, onTherapistUpdate
     // stamps the timestamp so the step auto-completes. The new-tab
     // open happens BEFORE the supabase update so any DB latency does
     // not delay the visual confirmation.
-    if (view === 'preview-booking') {
-      const custom = therapist?.custom_url || '';
-      const url = custom
-        ? `${window.location.origin}/book/${custom}`
-        : `${window.location.origin}/dashboard/settings#booking_page`;
-      window.open(url, '_blank', 'noopener,noreferrer');
+    //
+    // 'preview-booking-stamp' variant: same DB stamp but caller (the
+    // component) is handling the UI itself via modal, so we skip the
+    // window.open. Added May 23 2026 when HK flagged the new-tab open
+    // as a dead-end UX.
+    if (view === 'preview-booking' || view === 'preview-booking-stamp') {
+      if (view === 'preview-booking') {
+        const custom = therapist?.custom_url || '';
+        const url = custom
+          ? `${window.location.origin}/book/${custom}`
+          : `${window.location.origin}/dashboard/settings#booking_page`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
 
       if (!therapist?.id) return;
       try {
