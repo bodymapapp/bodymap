@@ -27,6 +27,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { AgreementRenderer } from '../PracticeAgreement';
+import { renderAgreementForClient, DEFAULT_PRACTICE_AGREEMENT } from '../../lib/practiceAgreement';
 
 const C = {
   forest:    '#2A5741',
@@ -54,11 +56,29 @@ export default function AgreementCard({ client, therapist }) {
   // has its own client picker the therapist would have to re-do).
   const [generating, setGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
+  // Phase 22 (HK May 23 2026): inline Preview block so the therapist
+  // can see what the client will see BEFORE sending. Previously the
+  // Send for signature button was the first and only interaction,
+  // which left therapists wondering 'what am I about to send'.
+  // Renders the live template (therapist.practice_agreement_text or
+  // the default) interpolated for THIS client using the same
+  // renderAgreementForClient helper the sign page uses, so preview
+  // and what-the-client-sees match exactly.
+  const [showPreview, setShowPreview] = useState(false);
 
   const isSigned = !!client?.practice_agreement_signed_at;
   const signerName = client?.practice_agreement_signer_name || null;
   const signedAt = client?.practice_agreement_signed_at || null;
   const snapshot = client?.practice_agreement_text_snapshot || '';
+
+  // Preview body. Falls back to DEFAULT_PRACTICE_AGREEMENT if the
+  // therapist has not customized the template yet. Interpolated with
+  // therapist + client context so {{business_name}}, {{client_name}}
+  // etc render real values, matching what the client will see when
+  // they open the signing link.
+  const previewTemplate = therapist?.practice_agreement_text || DEFAULT_PRACTICE_AGREEMENT;
+  const previewText = renderAgreementForClient(previewTemplate, { ...(therapist || {}), client_name: client?.name || '' });
+  const settingsHref = '/dashboard/settings#client_agreement';
 
   useEffect(() => {
     // Look up the most recent pending send_request for this client
@@ -370,7 +390,60 @@ export default function AgreementCard({ client, therapist }) {
           <div style={{ fontSize: 11, color: C.gray, marginTop: 10, lineHeight: 1.5 }}>
             If they have not received the email, the spam folder is the usual culprit. You can also share the link directly via text.
           </div>
+          <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${C.amberLine}` }}>
+            <button
+              onClick={() => setShowPreview(v => !v)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: C.amberDeep,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+                padding: 0,
+                textDecoration: 'underline',
+              }}
+            >
+              {showPreview ? 'Hide preview' : 'Preview what was sent'}
+            </button>
+          </div>
         </div>
+
+        {showPreview && (
+          <div style={{
+            background: C.paper,
+            border: `1px solid ${C.line}`,
+            borderRadius: 10,
+            padding: '14px 16px',
+            maxHeight: 420,
+            overflowY: 'auto',
+            marginTop: 10,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10, fontFamily: 'system-ui, sans-serif' }}>
+              What your client will see
+            </div>
+            <AgreementRenderer text={previewText} />
+            <div style={{
+              borderTop: `1px solid ${C.line}`,
+              marginTop: 14,
+              paddingTop: 10,
+              fontSize: 11.5,
+              color: C.gray,
+              lineHeight: 1.55,
+              textAlign: 'center',
+            }}>
+              This template applies to all your clients. Need to change it?{' '}
+              <a
+                href={settingsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: C.forest, fontWeight: 600, textDecoration: 'underline' }}
+              >
+                Edit template
+              </a>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -383,14 +456,71 @@ export default function AgreementCard({ client, therapist }) {
         border: `1px dashed ${C.line}`,
         borderRadius: 12,
         padding: '16px 18px',
-        textAlign: 'center',
       }}>
-        <div style={{ fontSize: 13, color: C.gray, marginBottom: 8, fontStyle: 'italic' }}>
+        <div style={{ fontSize: 13, color: C.gray, marginBottom: 6, fontStyle: 'italic', textAlign: 'center' }}>
           No signed agreement on file yet.
         </div>
-        <div style={{ fontSize: 12, color: C.gray, marginBottom: 12, lineHeight: 1.55 }}>
-          Send a signing link now, or the client will sign automatically at their next intake.
+        <div style={{ fontSize: 12, color: C.gray, marginBottom: 14, lineHeight: 1.55, textAlign: 'center' }}>
+          Take a look at what your client will see, then send the signing link.
         </div>
+
+        {/* Preview toggle: opens inline expandable block with the live
+            interpolated agreement text. Default closed so the card stays
+            short on first render. */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 12 }}>
+          <button
+            onClick={() => setShowPreview(v => !v)}
+            style={{
+              background: '#fff',
+              border: `1px solid ${C.line}`,
+              color: C.ink,
+              borderRadius: 8,
+              padding: '7px 14px',
+              fontSize: 12.5,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {showPreview ? 'Hide preview' : 'Preview agreement'}
+          </button>
+        </div>
+
+        {showPreview && (
+          <div style={{
+            background: C.paper,
+            border: `1px solid ${C.line}`,
+            borderRadius: 10,
+            padding: '14px 16px',
+            maxHeight: 420,
+            overflowY: 'auto',
+            marginBottom: 12,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10, fontFamily: 'system-ui, sans-serif' }}>
+              What your client will see
+            </div>
+            <AgreementRenderer text={previewText} />
+            <div style={{
+              borderTop: `1px solid ${C.line}`,
+              marginTop: 14,
+              paddingTop: 10,
+              fontSize: 11.5,
+              color: C.gray,
+              lineHeight: 1.55,
+              textAlign: 'center',
+            }}>
+              This template applies to all your clients. Need to change it?{' '}
+              <a
+                href={settingsHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: C.forest, fontWeight: 600, textDecoration: 'underline' }}
+              >
+                Edit template
+              </a>
+            </div>
+          </div>
+        )}
+
         {generateError && (
           <div style={{
             background: '#FEE2E2',
@@ -405,23 +535,26 @@ export default function AgreementCard({ client, therapist }) {
             {generateError}
           </div>
         )}
-        <button
-          onClick={generateLink}
-          disabled={generating || !client?.id}
-          style={{
-            display: 'inline-block',
-            background: generating ? '#9CA3AF' : C.forest,
-            color: '#fff',
-            border: 'none',
-            borderRadius: 8,
-            padding: '8px 16px',
-            fontSize: 12.5,
-            fontWeight: 700,
-            cursor: generating ? 'wait' : 'pointer',
-          }}
-        >
-          {generating ? 'Generating...' : 'Send for signature'}
-        </button>
+
+        <div style={{ textAlign: 'center' }}>
+          <button
+            onClick={generateLink}
+            disabled={generating || !client?.id}
+            style={{
+              display: 'inline-block',
+              background: generating ? '#9CA3AF' : C.forest,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 8,
+              padding: '8px 16px',
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: generating ? 'wait' : 'pointer',
+            }}
+          >
+            {generating ? 'Generating...' : 'Send for signature'}
+          </button>
+        </div>
       </div>
     </div>
   );
