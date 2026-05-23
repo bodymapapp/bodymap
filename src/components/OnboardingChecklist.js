@@ -414,12 +414,64 @@ function PreviewModal({ therapist, onClose }) {
   );
 }
 
-export default function OnboardingChecklist({ therapist, services, availability, sessions, clients, onNavigate }) {
+export default function OnboardingChecklist({ therapist, services: parentServices, availability: parentAvailability, sessions, clients: parentClients, onNavigate }) {
   // Three modes: 'focused' (default new behavior, one big step),
   // 'expanded' (full list, old behavior), 'collapsed' (thin bar).
   const [mode, setMode] = useState('focused');
   const [celebrate, setCelebrate] = useState(false);
   const prevDone = useRef(null);
+
+  // Self-fetch services, availability, clients count. The component
+  // used to read these directly from parent props but parent fetches
+  // were inconsistent:
+  //   - Settings page parent fetched services with id+price, availability with active
+  //   - Dashboard home parent fetched services with ONLY id (missing price),
+  //     causing the 'service' auto-detection to always return false
+  // Plus parent fetches don't refresh when underlying tables change,
+  // so adding a service or enabling a day didn't update the checklist
+  // until full page reload. HK May 23 2026: 'Even when services and
+  // hours are set, it is not showing complete.'
+  //
+  // Self-fetching with the right columns AND re-fetching on therapist
+  // updates fixes both. Parent-passed values seed initial state so
+  // the checklist still renders something on first paint before the
+  // fetch resolves.
+  const [selfServices, setSelfServices] = useState(parentServices || []);
+  const [selfAvailability, setSelfAvailability] = useState(parentAvailability || []);
+  const [selfClients, setSelfClients] = useState(parentClients || 0);
+  const [refreshTick, setRefreshTick] = useState(0);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!therapist?.id) return;
+    (async () => {
+      try {
+        const [svcRes, availRes, clientCountRes] = await Promise.all([
+          supabase.from('services').select('id, price').eq('therapist_id', therapist.id).is('archived_at', null),
+          supabase.from('availability').select('active').eq('therapist_id', therapist.id),
+          supabase.from('clients').select('id', { count: 'exact', head: true }).eq('therapist_id', therapist.id),
+        ]);
+        if (!mounted) return;
+        setSelfServices(svcRes.data || []);
+        setSelfAvailability(availRes.data || []);
+        setSelfClients(clientCountRes.count || 0);
+      } catch (e) {
+        console.error('[OnboardingChecklist] self-fetch failed:', e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [therapist?.id, therapist?.skipped_import_at, therapist?.booking_page_previewed_at, therapist?.practice_agreement_enabled, therapist?.deposit_enabled, therapist?.cancellation_policy_enabled, therapist?.buffer_enabled, therapist?.accept_tips, refreshTick]);
+
+  // Used by toggles to nudge a re-fetch after their own writes complete.
+  // Most policy writes also trigger __refresh on the parent which
+  // refetches therapist, which triggers the useEffect above. But for
+  // safety (and so toggling a non-therapist field still refreshes the
+  // checklist) we expose an internal bumpRefresh.
+  const bumpRefresh = () => setRefreshTick(t => t + 1);
+
+  const services = selfServices;
+  const availability = selfAvailability;
+  const clients = selfClients;
 
   // Preview modal state. Replaces the old new-tab open which felt
   // like a dead-end (HK May 23 2026: 'when I click on the review
@@ -606,7 +658,13 @@ export default function OnboardingChecklist({ therapist, services, availability,
 
   const checks = {
     import:   (clients||0) > 0 || !!therapist?.skipped_import_at,
-    service:  (services?.length || 0) > 0 && services.some(s => Number(s.price) > 0),
+    // service: any non-archived service exists. Previously required
+    // price > 0, but that broke when the parent's services fetch
+    // omitted the price column (home tab) and was overly strict
+    // anyway. The Services UI requires entering a price on insert,
+    // so service-with-price-0 is unusual; if it ever happens the
+    // therapist can adjust before booking.
+    service:  (services?.length || 0) > 0,
     hours:    availability?.some(a => a.active),
     preview:  !!therapist?.booking_page_previewed_at,
     policies: policiesDone === policiesTotal,
