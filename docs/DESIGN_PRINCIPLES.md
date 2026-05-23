@@ -468,6 +468,132 @@ the formatter.
 `formatUSPhone` and `normalizePhone` in `src/lib/formatters/phone.js`.
 Applied to ClientList + import preview screen. Other display
 sites (ClientProfile, SessionDetail, etc.) to follow as touched.
+- May 22 2026: Phone formatter sweep extended to SessionList,
+ImportClients preview, FounderDashboard (with consolidation:
+removed duplicate local `formatPhoneDisplay` function), and
+FounderMassSms. Intentionally NOT applied inside `<code>` tags
+on the founder debug surface (NotificationCompliance.jsx) because
+that surface shows canonical storage form for engineering debugging.
+The rule is about USER-facing display; debug surfaces are not user.
+
+---
+
+## 17. Care framing over revenue framing. The 70yo persona thinks relationally, not transactionally.
+
+Insights, prompts, summaries, and proactive suggestions in the
+therapist-facing UI must be framed in care + growth language, NOT
+revenue + conversion language. The persona is not running a SaaS
+metrics dashboard; they're running a practice they care about.
+
+**Concrete rules:**
+
+- "Linda has been away" beats "$420 of churn risk."
+- "Room for 4 clients today" beats "$480 of unrealized revenue."
+- "A warm note often lands here" beats "send a re-engagement campaign."
+- "Their absence usually means something" beats "lapsed-client recovery opportunity."
+- "Good window for rest, learning, or outreach" beats "underutilized capacity."
+- "Sessions that did not happen" beats "cancelled revenue."
+- "Membership might suit their rhythm" beats "increase MRR / recurring revenue."
+
+**What this rules out:**
+
+- Dollar amounts in proactive insights ("$N at risk", "$N this hour")
+- Funnel metaphors ("conversion", "pipeline", "lead", "deal")
+- Industrialized language ("retention rate", "churn", "LTV", "ARR")
+- Urgency framing as scarcity ("only 3 days left", "act now")
+- Achievement-game language ("unlock", "level up", "streak broken")
+
+**What it includes:**
+
+- Naming clients by name when relevant ("Sarah's first session was 14 days ago")
+- Soft conditional language ("often", "tends to", "usually", "might")
+- Specific time references in human units ("over a month", "two weeks", "her usual rhythm")
+- Optional next moves that respect the therapist's judgment ("worth a look", "if it feels right", "when the moment is yours")
+
+Dashboards and ledgers (Billing, Insights tab) can use revenue
+language because the therapist explicitly opened a money view.
+The Schedule and Outreach surfaces are practice-tending surfaces.
+
+**Incident log:**
+- May 22 2026: Tier 4 deep-insights surface (Schedule > Ways to use this).
+  HK pushed back on initial framing proposals that emphasized money
+  ("$480 of unrealized revenue", "top-client churn risk"). All 7
+  insights rewritten in care language before shipping. Codified
+  here so future insights, push notifications, and dashboard
+  surfaces don't quietly drift back toward transactional framing.
+
+---
+
+## 18. At-a-glance over interaction depth on read-only summary views.
+
+For surfaces where the therapist is scanning rather than acting
+(Yearly view, mobile day-strip on Weekly, dashboard summary cards),
+prefer dense visual information they can read in one second over
+tap-to-drill interactivity. The 70yo persona values seeing the
+pattern more than interacting with the data.
+
+**Concrete rules:**
+
+- Yearly view: render 12 mini-month heatmaps in a scrolling grid.
+  Do NOT make months tappable to drill into Monthly view; the
+  Monthly tab already exists for that. The Yearly view's job is to
+  show the year's shape, not be a navigation tree.
+- Weekly mobile day-cards: include a horizontal time-strip showing
+  sessions as colored mini-bars and blocks as amber bands. Tapping
+  a bar opens the session, but the strip is decorative, not
+  interactive-required.
+- Color and position carry the information, not labels and buttons.
+
+**What this rules out:**
+
+- Drill-into-detail patterns on summary views (extra cognitive load)
+- Hover-required interactions (the persona is on mobile, no hover)
+- Modal-stacking from a summary tile (each level is a new context)
+- Required taps to reveal what could be visible by default
+
+**Incident log:**
+- May 22 2026: Yearly view design choice. Initial proposal had
+  tappable months drilling into MonthlyView. Rejected in favor of
+  pure heatmap-with-stats. Same reasoning applied to mobile weekly:
+  added a non-interactive time-strip rather than expanding cards.
+
+---
+
+## 19. Force-with-lease is only safe when the remote SHA you're overwriting is one you've seen.
+
+`git push --force-with-lease` protects against overwriting work that
+the remote has and you don't, but only when you've actually fetched
+recently and confirmed what's on the remote. After a botched rebase
+or a commit landing in a parallel session, `--force-with-lease` can
+silently overwrite real work.
+
+**Concrete rules:**
+
+- Before any force push, run `git fetch origin main` and `git log
+  origin/main..HEAD` AND `git log HEAD..origin/main` to see exactly
+  what differs in both directions.
+- If `HEAD..origin/main` is non-empty, you have commits on origin
+  that you don't have locally. Force-pushing will drop them. STOP
+  and pull/merge first.
+- After any force push, immediately `git fetch && git log origin/main`
+  and confirm the commit you expected is gone (when intended) AND
+  the commits you wanted preserved are still there.
+- If you discover you overwrote a commit, recover it from `git reflog`
+  (the dropped commit is still in your local history for ~30 days)
+  and explicitly push that SHA: `git push origin <sha>:refs/heads/main
+  --force-with-lease`.
+
+**Incident log:**
+- May 22 2026: Resumable imports commit (B). During a normal rebase
+  flow my force-with-lease overwrote `3fa11eac` (CTIA-compliant SMS
+  language commit made in a parallel session). Recovered by finding
+  the SHA in local reflog, cherry-picking it onto my branch tip,
+  and re-pushing the combined HEAD with explicit SHA syntax. Both
+  commits ended up on main. The near-miss happened because I assumed
+  my local already had everything from origin; I had not fetched
+  recently enough to know about the parallel commit. The fix is
+  procedural: always fetch + compare BOTH directions before force-
+  pushing, not just one direction.
 
 ---
 
@@ -488,6 +614,9 @@ sites (ClientProfile, SessionDetail, etc.) to follow as touched.
 - **Before designing any flow that asks the user to choose between implementation-flavored options:** check rule #14.
 - **Before asking a therapist to share their data via DM, email, or screenshot for debugging:** check rule #15.
 - **Before storing or displaying data with both canonical and human-readable forms:** check rule #16.
+- **Before writing proactive insight/notification copy with dollar amounts or funnel language:** check rule #17.
+- **Before adding tap-to-drill interactions to a summary or year-overview surface:** check rule #18.
+- **Before any `git push --force-with-lease`:** check rule #19.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The

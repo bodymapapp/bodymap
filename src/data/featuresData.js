@@ -300,12 +300,12 @@ export const RIBBONS = [
     cards: [
       {
         id: "4.1",
-        name: "Today's schedule",
+        name: "Your schedule, four ways",
         body: [
-          "One screen, every appointment, color-coded by service. Tap a slot to see the client, their pre-session brief, last-session notes, and any flags.",
-          "The schedule that fits in your apron pocket.",
+          "Today: every appointment color-coded by service status, tap a slot for the full client picture. Weekly: an Outlook-style time grid on desktop and a horizontal time strip on phone so you see your day's rhythm at a glance. Monthly: every blocked day visually marked so vacations and time off never sneak up on you. Yearly: a twelve-month heatmap showing your busiest stretches and your quietest, with care-framed notes (\"good window for rest, learning, or outreach\") instead of revenue framing.",
+          "The schedule that fits in your apron pocket, scaled up to the whole year.",
         ],
-        meta: "Live updates · Drag to reschedule",
+        meta: "Today · Weekly · Monthly · Yearly · Time-off visible everywhere",
       },
       {
         id: "4.2",
@@ -343,6 +343,16 @@ export const RIBBONS = [
           "Desktop works. Phone works better.",
         ],
         meta: "iOS · Android · PWA installable",
+      },
+      {
+        id: "4.6",
+        name: "Insights that sound like a thoughtful colleague",
+        automated: true,
+        body: [
+          "Your schedule notices things and tells you about them in the language you'd use with a colleague over coffee. Sarah's first session was 14 days ago. Mary usually comes every 4 weeks; she's at 6. Linda has been away (and she's one of your most-frequent clients). Tuesdays fill quickly while Thursdays stay open. These four clients have been coming often lately, a membership might suit their rhythm.",
+          "No revenue framing. No conversion language. Just observations a thoughtful person would make, with a one-tap action to send a warm note when that's the right next move.",
+        ],
+        meta: "Seven observations · Care-framed · One-tap outreach when it fits",
       },
     ],
   },
@@ -426,6 +436,15 @@ export const RIBBONS = [
           "The feedback you actually want to see.",
         ],
         meta: "Aggregate-only view · Never per-session",
+      },
+      {
+        id: "5.7",
+        name: "Custom message to anyone",
+        body: [
+          "Five preset cards cover the most common moments (welcome a new client, miss-you for someone lapsed, ready when you are, package balance, special this month). The sixth card, Custom, lets you pick any clients and write whatever you want to say. Search by name or email, tap to add each one, write your message, send.",
+          "For when the moment is yours, not a template's.",
+        ],
+        meta: "Pick any clients · Write anything · Same machinery as templates",
       },
     ],
   },
@@ -564,11 +583,11 @@ export const RIBBONS = [
         id: "7.5",
         name: "Switch in minutes",
         body: [
-          "Coming from MassageBook, MindBody, Vagaro, Acuity, Square Appointments, or just a Google Sheet? Drop your CSV files (one or several at once) and we sort them out. Clients, appointments, services, we figure out what's what.",
-          "Designed for therapists who do not enjoy spreadsheets. The import checks every column for sanity before writing anything, refuses mappings that would create duplicate or fake records, and gives you a downloadable list of any rows it skipped and why.",
+          "Coming from MassageBook, MindBody, Vagaro, Acuity, Square Appointments, or just a Google Sheet? Drop your CSV files (one or several at once) and we sort them out. Clients, appointments, services, addresses, memberships, even your SOAP notes. We figure out what's what.",
+          "Designed for therapists who do not enjoy spreadsheets. Every column is checked for sanity before anything is written. A preview shows the first five rows of each file so you can confirm the mapping looks right. If your tab closes or wifi drops mid-import, drop the same file again and we resume from where you stopped. If you realize you imported the wrong CSV, tap Undo within ten minutes and everything from that batch comes right back out.",
           "We do the import for you on request. Reply to any email and we will help.",
         ],
-        meta: "Drop multiple CSVs at once · White-glove option",
+        meta: "Drop multiple CSVs · Resume if interrupted · Undo within 10 minutes · White-glove option",
       },
     ],
   },

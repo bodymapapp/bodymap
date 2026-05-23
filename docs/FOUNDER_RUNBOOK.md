@@ -34,11 +34,11 @@ This is a LIVING document. Updated at the end of any session that introduces new
 ### Mission
 Help solo licensed massage therapists retain and grow their client base by automating the practice-management work they currently do manually or through expensive, clunky competitors (Vagaro, MassageBook, ClinicSense). The northstar: make it impossible for a client not to return.
 
-### Current state (as of May 21, 2026)
+### Current state (as of May 22, 2026)
 - **Stage:** Pre-revenue beta with first real customers actively using the platform.
-- **Users:** Single-digit founding therapists onboarded for testing. Two active real customers as of May 21:
-  - **Candice Peek (Grounded Grace)**: signed up May 15. Three bugs reported and fixed May 19-21 (buffer two-sided, private services hidden, blocked-day RLS root cause). Real testimonial customer.
-  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. Catastrophic first import (1,988 fake records from one mis-mapped CSV column). Cleaned via SQL same day. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Surfaced 6+ real bugs and UX gaps in one day, every one of which became a shipped fix.
+- **Users:** Single-digit founding therapists onboarded for testing. Two active real customers:
+  - **Candice Peek (Grounded Grace)**: signed up May 15. Real testimonial customer. Multiple bugs reported and fixed May 19-21.
+  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Her single first import surfaced 10+ real bugs and UX gaps; every one became a shipped fix across May 21-22.
 - **Business form:** BodyMap LLC (Texas). HK is sole owner.
 - **Engineering:** Solo build via Claude. No human engineers retained.
 - **Funding:** Self-funded by HK from IBM income.
@@ -48,8 +48,10 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - Square payment integration achieves parity with Stripe (subject to Square activation by individual therapists)
 - Automated client retention: post-session AI brief, lapsed-client outreach, cancellation policy with auto-charge
 - Marketing surface: home + features pages with seven-ribbon taxonomy
-- **CSV import** (clients + appointments) with Maria-persona safety: pre-flight checks, strict column matching, phone normalization, downloadable skipped/failed rows. Survived a real catastrophic-mapping case (Jackie May 21) with cleanup-via-SQL.
-- **Schedule** loads 365 days back + 365 days forward. Multi-day blocks for vacations. Full-day blocks visible on timeline.
+- **CSV import** (clients + appointments) with Maria-persona safety: pre-flight checks, strict column matching, phone normalization, downloadable skipped/failed rows, **client-side resumable on interrupt via localStorage**, **undo-last-import via batch id within 10 minutes**, **fuzzy service matching with one-tap merge**, multi-file orchestration with preview, address fields, smart currency-content detection. Survived Jackie's catastrophic-mapping case May 21 and now meaningfully prevents the next one.
+- **Schedule** loads 365 days back + 365 days forward. Four scope tabs (today, weekly, monthly, yearly) all real and visually consistent. Desktop weekly is Outlook-style time grid. Mobile weekly has horizontal time-strips per day card. Monthly + Yearly show blocked days visually. Yearly is a 12-month sage-gradient heatmap.
+- **Schedule growth insights**: 7 care-framed practice observations fire from real data on the "Ways to use this" surface. Deep-link to outreach with named clients pre-selected.
+- **Outreach Quick send**: 5 preset templates plus a Custom card for picking any clients and writing anything.
 - **Notification system** Phase 15 wired for bookings, payments, refunds (May 18). Awaiting first real customer-driven activity to verify end-to-end.
 
 ### What's not working / unproven
@@ -57,7 +59,8 @@ Help solo licensed massage therapists retain and grow their client base by autom
 - Square activation friction: each therapist must complete identity + bank verification at squareup.com/activate before charges process
 - Therapist acquisition channel: currently word-of-mouth only via founder DMs (Katelynn et al.)
 - **Twilio A2P 10DLC Brand registration** stuck in review with TCR. Blocks all US SMS until cleared.
-- **Service-name fragmentation during appointment import.** When a CSV has service names that don't exactly match a therapist's existing services, we silently create duplicates at $0 price. Jackie hit this May 21. Pre-flight + price-entry step shipped same day, but fuzzy matching ("Restorative Relaxation Massage" should propose merge into "Relaxation Massage") is still pending.
+- **Two pending migrations to apply** in Supabase SQL Editor before HK's testing covers everything from May 22: `2026-05-21-clients-address-fields.sql` (address columns) and `2026-05-22-import-batch-id.sql` (batch tracking). Until applied, address fields don't save on client profile and undo-last-import fails on insert. Both idempotent (`IF NOT EXISTS`).
+- **Insight iteration after real-data review** pending: HK to view the 7 deep insights firing against the live account, prune any weak ones, tune copy, wire actions on currently-text-only entries (C, E, F, G).
 
 ---
 
@@ -195,7 +198,7 @@ npx vercel --prod --token=<token> --scope bodymapapps-projects
 ### Where to find credentials
 **Canonical source:** `ENVIRONMENT.md` in the repo root. Always check this BEFORE asking HK for any secret. If it's not in `ENVIRONMENT.md`, it doesn't exist or HK forgot to log it.
 
-### Critical credentials (current as of May 21, 2026)
+### Critical credentials (current as of May 22, 2026)
 - **GitHub PAT** (for code pushes): logged in `ENVIRONMENT.md`
 - **Vercel token** (for prod deploys, no expiry): logged in `ENVIRONMENT.md`
 - **Resend API key**: logged in `ENVIRONMENT.md`
@@ -411,6 +414,20 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
 
+### May 22, 2026 (evening, Schedule + Outreach sweep)
+- **Schedule weekly view rebuilt to Outlook-style time grid on desktop (commit `c5cef7cb`).** Previous weekly was a vertical list of day cards with appointment rows. Outlook-style means hour rows on left, day columns across, sessions positioned absolutely by start_time with height = duration, blocked windows as amber hashed bands, today's column tinted sage, "now" line in red. Window expands beyond default 7am-9pm if any booking falls outside. Mobile got a companion horizontal time-strip per day card (commit `b7ce28ff`) so phone users see the day's rhythm without an Outlook-style grid (too dense for 375px). Strip is decorative-not-required: bar taps open the session detail same as a row tap.
+- **Schedule Yearly view shipped (commit `9f72cffd`).** Replaces the long-standing "coming soon" placeholder with a real 12-month heatmap. Day cells colored by booking density on a sage gradient. Blocked days tinted amber. Year stats below (busiest stretch, quietest stretch, total). Care-framed copy on the quietest-stretch label ("Good window for rest, learning, or outreach") per the new Design Principle #17. Design choice per the new Design Principle #18: pure at-a-glance, no tap-to-drill, Monthly tab handles details.
+- **Schedule growth insights deepened: 7 care-framed observations (commits `c02973af`, `916de164`).** Replaces the prior shallow strategy library ("cluster slots", "offer 90-min sessions") with seven data-grounded insights computed every render: A first-session check-in, B cadence drift, C open time as welcome capacity, D top clients quiet, E day-of-week imbalance, F membership candidates, G cancellation flag. Three of them (A, B, D) deep-link to outreach modal with named clients pre-selected. F and G had data-wiring bugs in the parallel-session deepInsights library (F never filtered out current members, G tried to filter from a query that excluded cancelled); fixed by loading `memberClientIds` + `cancelledLast30Count` in SmartBookingRail and threading them through. Cap lifted from 4 to all firing. Framing throughout follows the new Design Principle #17 (care + growth, no money).
+- **NEW Design Principle #17: Care framing over revenue framing for the 70yo persona.** Codified after HK pushed back on initial insight proposals that used "$N at risk" / "conversion lever" language. Therapist-facing UI in proactive contexts (Schedule, Outreach, push notifications) must use care + growth language. Dashboards explicitly opened for money review (Billing, Insights tab) can use revenue language.
+- **NEW Design Principle #18: At-a-glance over interaction depth on read-only summary views.** Codified after the Yearly view design decision. Year-overview and mobile-summary surfaces should pack information visually rather than require taps. Tap-to-drill goes on detail views; summary views render everything visible.
+- **NEW Design Principle #19: Force-with-lease is only safe when the remote SHA you're overwriting is one you've seen.** Codified after a near-miss during the B resumable-imports push where my force-with-lease overwrote `3fa11eac` (CTIA-compliant SMS commit from a parallel session). Recovered by finding the SHA in local reflog and re-pushing the combined HEAD with explicit SHA syntax. New procedural rule: fetch + compare both directions BEFORE any force push.
+- **Outreach Quick Send Custom card shipped (commit `f82c20b6`).** Five preset starter templates already existed (welcome new, miss-you, ready-when-you-are, package balance, special this month). Custom card sits as the FIRST option, opens a CustomClientPicker → QuickSendModal flow. Picker has search by name/email, multi-select via large checkbox tiles, "select all matching" pill when a query is active. 70yo persona safety: large tap targets, plain copy, no power-user shortcuts. Recipients pass through QuickSendModal's existing `recipients` prop. No new backend wiring.
+- **Lapsed-clients deep link shipped (commit `68ef35ba`).** Previously, tapping the "Reach out to N lapsed regulars" button on the schedule growth insights navigated to /dashboard/outreach and dumped the therapist on the quick-send picker, losing the 3-client context. Now the navigation carries the specific clients in router state and Outreach opens QuickSendModal directly with them pre-loaded plus a care-framed template ("Thinking of you" subject, soft check-in body). The "industrialize the action, not the actor" lens applied to a small but high-frustration UX moment.
+- **Blocked-day visual cues unified across all schedule scopes (commit `dd1fd45f`).** Weekly day-cards on mobile + desktop now have amber borders and "🌿 Time off" badges. Monthly cells get amber tints with corner indicators. Partial blocks render with sage outlines. The cue that was already present on the desktop time grid for full days became a system pattern. Triggered by HK screenshot showing blocked days looking identical to genuinely open days.
+- **Settings Square language audit (commit `71304595`).** "Online engine" label on the Stripe + Square connected badges renamed to "Connected" (both processors, for symmetry). Memberships description rewritten to acknowledge Square (was Stripe-only stale copy). `window.confirm('Disconnect Square?')` replaced with inline-confirm pattern per the no-popups design rule. `alert('Error: ' + JSON.stringify(data))` on Square OAuth failure replaced with inline red error card. Multi-file copy sweep: Settings Dashboard, PaymentRouting, ImportClients success card, all aligned on accurate dual-processor framing.
+- **Square memberships frontend-backend drift fixed (commit `eed0e907`).** Backend (BILLING_STRATEGY capability matrix, purchase-membership and confirm-membership-purchase edge functions) already supported Square memberships with first-month full + one-tap monthly renewal. But BookingPage.js was hiding/disabling membership purchases for Square-only therapists with a "Stripe required" padlock. Fixed by replacing `hasStripeForMembership` with `hasProcessorForMembership` and sweeping 5 files for stale Stripe-only copy. Lesson logged: when a backend capability ships, sweep frontend gating + copy in the same change.
+- **Schedule weekly mobile UX gap closed (commit `b7ce28ff`).** The screenshot HK shared showed every weekday rendered as a flat list with "No sessions / Open day" text. Visually identical for genuinely-empty Wednesday and today's Friday. New horizontal time-strip per day card (when there are bookings or partial blocks) shows the day's rhythm at a glance: mini-bars per session positioned by start_time, amber bands for blocks, vertical red bar for "now". Hidden on fully-empty open days (nothing to show) and fully-blocked days (badge says it).
+
 ### May 21, 2026
 - **Schedule future window raised from 60 to 365 days.** The 60-day cap (set April 1 in commit f9bf30495 as a safe arbitrary number) hid 80% of Jackie's real bookings. Real therapists book weekly standing clients a year out. Past window stays at 365. Explicit `.limit(2000)` added for query safety.
 - **CSV imports now require Maria-friendly safety on every silent auto-create path.** Triggered by Jackie's catastrophic import (1,988 fake records from one mis-mapped column). Three protections now standard on both client and appointment imports: strict whole-word column matching, pre-flight checks for too-many-distinct or names-in-service-column, phone normalization to prevent duplicate clients. Plus a price-entry step before service auto-create runs. Any future silent-auto-create path must adopt these.
@@ -561,6 +578,50 @@ Major decisions made and the reasoning behind them. Append to this rather than o
 - **Pre-build any critical fixes you anticipate** before the break, deploy them
 - **Make sure Square activation is complete** (so therapists onboarding don't get blocked)
 - **Update the runbook** with anything you learned during the break that's not yet captured here
+
+### "I just force-pushed and lost a commit that was on origin/main"
+
+Symptom: a commit that was on `origin/main` from a parallel session, or from a teammate, is missing after a `git push --force-with-lease`. This is the near-miss from May 22 2026 where `3fa11eac` (CTIA-compliant SMS commit) almost got dropped during a B resumable-imports push.
+
+Recovery in 3 steps:
+
+1. **Find the dropped commit's SHA.** It's still in your local `reflog` for ~30 days. Run:
+   ```bash
+   git reflog --oneline -30 | head -50
+   ```
+   Look for the dropped commit by message. Copy its SHA.
+
+2. **Get it back onto your branch.** Cherry-pick:
+   ```bash
+   git cherry-pick <sha>
+   ```
+   Or, if the dropped commit is parent of the work you want to keep, reset:
+   ```bash
+   git reset --hard <sha>
+   ```
+   Verify locally with `git log --oneline -5` that both your work and the recovered commit are present.
+
+3. **Push explicitly with SHA syntax** (not just `git push`):
+   ```bash
+   git push origin <local-head-sha>:refs/heads/main --force-with-lease
+   ```
+   This makes the push intent unambiguous and overrides any stale tracking-branch state.
+
+4. **Verify the recovery:**
+   ```bash
+   git fetch origin main
+   git log origin/main --oneline -5
+   ```
+   Confirm both commits are now on the remote.
+
+**Prevention going forward** (Design Principle #19):
+Before any force push, fetch + compare both directions:
+```bash
+git fetch origin main
+git log origin/main..HEAD  # commits you have that origin doesn't
+git log HEAD..origin/main  # commits origin has that you don't
+```
+If the second list is non-empty, STOP and pull/merge first. Force-pushing with unmerged remote commits silently drops them.
 
 ### "I (HK) need to step away permanently or for several months"
 This is the worst-case scenario this document is written for. See the next section.
