@@ -88,6 +88,26 @@ export default function QuickSendModal({ template, therapist, recipients: passed
     // Step 2: POST to send-outreach-batch edge function
     try {
       const { data: { session } } = await supabase.auth.getSession();
+
+      // For the custom-send path, recipients were chosen explicitly
+      // by the therapist in CustomClientPicker and passed in via
+      // props. The edge function would otherwise recompute recipients
+      // from template.audience_preset, which for the custom anchor
+      // is 'custom_selection' (a no-op preset that returns nothing).
+      // Pass override_recipient_ids so the edge function uses our
+      // chosen list. Also pass override_subject/body in case the
+      // edits to the anchor row got swallowed by a race.
+      const isCustomSend = !!passedRecipients;
+      const requestBody = {
+        template_id: template.id,
+        therapist_id: therapist.id,
+      };
+      if (isCustomSend) {
+        requestBody.override_recipient_ids = recipients.map(r => r.id);
+        requestBody.override_subject = subject;
+        requestBody.override_body = body;
+      }
+
       const res = await fetch(
         `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/send-outreach-batch`,
         {
@@ -96,10 +116,7 @@ export default function QuickSendModal({ template, therapist, recipients: passed
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${session?.access_token}`,
           },
-          body: JSON.stringify({
-            template_id: template.id,
-            therapist_id: therapist.id,
-          }),
+          body: JSON.stringify(requestBody),
         }
       );
 

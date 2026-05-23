@@ -25,6 +25,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import {
   ensureStartersSeeded,
+  ensureCustomAnchor,
   getAudienceRecipients,
   AUDIENCE_LABELS,
   resetStarterToDefault,
@@ -51,6 +52,7 @@ export default function QuickSendBlocks({ therapist }) {
   // gets a sensible default subject + body the therapist edits.
   const [customPickerOpen, setCustomPickerOpen] = useState(false);
   const [customRecipients, setCustomRecipients] = useState(null);
+  const [customAnchorId, setCustomAnchorId] = useState(null);
 
   useEffect(() => {
     if (!therapist?.id) return;
@@ -361,30 +363,43 @@ export default function QuickSendBlocks({ therapist }) {
         <CustomClientPicker
           therapist={therapist}
           onCancel={() => setCustomPickerOpen(false)}
-          onPicked={(recipients) => {
+          onPicked={async (recipients) => {
             setCustomPickerOpen(false);
+            // Ensure the per-therapist custom anchor row exists in
+            // outreach_templates. Its UUID is what QuickSendModal
+            // will UPDATE on save and what the edge function will
+            // anchor the send to. HK May 23 2026: using a hardcoded
+            // string id 'custom_send' broke the UPDATE with 'invalid
+            // input syntax for type uuid'.
+            const anchorId = await ensureCustomAnchor(therapist.id);
+            if (!anchorId) {
+              console.error('[QuickSendBlocks] ensureCustomAnchor returned null');
+              return;
+            }
+            setCustomAnchorId(anchorId);
             setCustomRecipients(recipients);
           }}
         />
       )}
 
       {/* Step 2 of custom send: compose. Same QuickSendModal as the
-          template path, but with a blank template the therapist
-          fills in inline. recipients are pre-set, so the modal
-          shows 'Will send to N clients' from the start. */}
-      {customRecipients && (
+          template path, but with the persistent 'custom anchor'
+          template the therapist edits inline. recipients are
+          pre-set, so the modal shows 'Will send to N clients' from
+          the start. */}
+      {customRecipients && customAnchorId && (
         <QuickSendModal
           template={{
-            id: 'custom_send',
+            id: customAnchorId,
             name: 'Custom message',
             subject: '',
             body: 'Hi {{first_name}},\n\n\n\nTake care,\n{{therapist_name}}',
-            audience_preset: 'custom',
+            audience_preset: 'custom_selection',
           }}
           therapist={therapist}
           recipients={customRecipients}
-          onClose={() => setCustomRecipients(null)}
-          onSent={() => setCustomRecipients(null)}
+          onClose={() => { setCustomRecipients(null); setCustomAnchorId(null); }}
+          onSent={() => { setCustomRecipients(null); setCustomAnchorId(null); }}
         />
       )}
     </div>
