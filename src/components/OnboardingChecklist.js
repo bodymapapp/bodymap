@@ -447,11 +447,20 @@ export default function OnboardingChecklist({ therapist, services: parentService
     (async () => {
       try {
         const [svcRes, availRes, clientCountRes] = await Promise.all([
-          supabase.from('services').select('id, price').eq('therapist_id', therapist.id).is('archived_at', null),
+          // Any service row, no filter on archived or active. Step 2
+          // is 'did you set up services'; the therapist's later choice
+          // to archive or deactivate one doesn't undo that engagement.
+          // Earlier filters on .is('archived_at', null) (and parent
+          // loadStats's .eq('active', true)) caused false negatives:
+          // HK May 23 2026 reported services not auto-completing
+          // even with services set up.
+          supabase.from('services').select('id').eq('therapist_id', therapist.id),
           supabase.from('availability').select('active').eq('therapist_id', therapist.id),
           supabase.from('clients').select('id', { count: 'exact', head: true }).eq('therapist_id', therapist.id),
         ]);
         if (!mounted) return;
+        if (svcRes.error) console.error('[OnboardingChecklist] services fetch error:', svcRes.error);
+        if (availRes.error) console.error('[OnboardingChecklist] availability fetch error:', availRes.error);
         setSelfServices(svcRes.data || []);
         setSelfAvailability(availRes.data || []);
         setSelfClients(clientCountRes.count || 0);
