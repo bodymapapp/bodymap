@@ -33,7 +33,6 @@ import {
   STARTER_TEMPLATES,
 } from '../lib/outreachQuicksend';
 import QuickSendModal from './QuickSendModal';
-import CustomQuickSendModal from './CustomQuickSendModal';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC', warmYellow:'#FEF3C7', warmYellowBorder:'#FCD34D' };
 
@@ -45,9 +44,6 @@ export default function QuickSendBlocks({ therapist }) {
   const [modalTemplate, setModalTemplate] = useState(null);
   const [hasDeletedStarters, setHasDeletedStarters] = useState(false);
   // HK May 22 2026 Tier 1 item 3: Custom Send modal state. Opens
-  // when the therapist taps the first card on the row. Two-step
-  // picker + composer flow.
-  const [customOpen, setCustomOpen] = useState(false);
   // Custom send flow (HK May 22 2026): therapist taps the Custom
   // card, picks any combination of clients, then writes whatever
   // they want. customPickerOpen toggles the picker; customRecipients
@@ -202,7 +198,7 @@ export default function QuickSendBlocks({ therapist }) {
             differentiated with a dashed sage border so it reads as
             'compose anything' rather than 'preset template'. */}
         <button
-          onClick={() => setCustomOpen(true)}
+          onClick={() => setCustomPickerOpen(true)}
           style={{
             position: 'relative',
             background: '#FAFAF6',
