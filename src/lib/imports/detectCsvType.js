@@ -258,6 +258,119 @@ export function detectCsvType(headers, rows = []) {
   };
 }
 
+// Build a best-effort mapping for a user-chosen type when auto-detect
+// returned 'unknown'. HK May 23 2026: Candice flow. Two CSVs both got
+// classified as unknown (Back2Life export with 18 cols, MassageBook
+// export with 6 cols). Without this, the user has no way to proceed
+// past the staging screen since the Preview button is gated on
+// every-file-being-classified.
+//
+// This function never returns 'unknown'. It returns whatever mapping
+// fields we can extract for the requested type, with -1 for fields
+// we cannot find. The runner will skip rows where required fields
+// resolve to no data; the user can also adjust column mapping via
+// the legacy import path if this best-effort is too thin.
+export function buildMappingForType(type, headers, rows = []) {
+  const h = headers.map(x => x.toLowerCase().trim());
+
+  // Re-derive the sniffed-column map so pickColumn fallback works.
+  const sniffedByCol = new Map();
+  if (rows.length > 0) {
+    for (let i = 0; i < headers.length; i++) {
+      sniffedByCol.set(i, sniffColumnType(rows, i));
+    }
+  }
+  function pickColumn(headerIdx, sniffType) {
+    if (headerIdx >= 0) return headerIdx;
+    if (!rows.length) return -1;
+    for (const [idx, t] of sniffedByCol.entries()) {
+      if (t === sniffType) return idx;
+    }
+    return -1;
+  }
+
+  if (type === 'clients') {
+    const mapping = {
+      firstName: findLoose(h, 'first name', 'firstname', 'given name', 'client first'),
+      lastName: findLoose(h, 'last name', 'lastname', 'family name', 'client last'),
+      fullName: findLoose(h, 'client name', 'customer name', 'name'),
+      email: pickColumn(findLoose(h, 'email'), 'email'),
+      phone: pickColumn(findLoose(h, 'mobile', 'phone', 'cell'), 'phone'),
+      notes: findLoose(h, 'notes', 'note', 'comments'),
+      visitCount: findLoose(h, 'visit count', 'visits', 'appointment count'),
+      lastVisit: findLoose(h, 'last visit', 'last appointment', 'last seen'),
+      addressLine1: findLoose(h, 'address line 1', 'address1', 'address', 'street address', 'street'),
+      addressLine2: findLoose(h, 'address line 2', 'address2', 'apartment', 'apt', 'suite', 'unit'),
+      city: findLoose(h, 'city', 'town'),
+      state: pickColumn(findStrict(h, 'state', 'region', 'province'), 'state'),
+      zip: pickColumn(findLoose(h, 'zip code', 'zip', 'postal code', 'postcode'), 'zip'),
+      country: findStrict(h, 'country', 'country code'),
+      service: findStrict(h, 'service', 'treatment', 'appointment type', 'session type'),
+      price: pickColumn(findStrict(h, 'price', 'amount', 'session price', 'fee', 'cost'), 'currency'),
+      membershipPlan: findStrict(h, 'plan', 'plan name', 'membership plan', 'membership'),
+      membershipPrice: findStrict(h, 'monthly', 'membership price', 'plan price'),
+      membershipCredits: findStrict(h, 'sessions per month', 'credits', 'monthly credits', 'monthly sessions'),
+      membershipRenewal: findStrict(h, 'next renewal', 'renewal date', 'next billing', 'next charge'),
+      membershipStatus: findStrict(h, 'membership status', 'plan status', 'subscription status'),
+    };
+    // Only set fullName if no first+last found
+    if (mapping.firstName >= 0 || mapping.lastName >= 0) {
+      mapping.fullName = -1;
+    }
+    return {
+      type: 'clients',
+      mapping,
+      confidence: 'manual',
+      reason: 'Set manually by you',
+    };
+  }
+
+  if (type === 'appointments') {
+    return {
+      type: 'appointments',
+      mapping: {
+        clientName: findLoose(h, 'client name', 'customer name', 'name', 'client'),
+        clientEmail: pickColumn(findLoose(h, 'email'), 'email'),
+        clientPhone: pickColumn(findLoose(h, 'phone', 'mobile', 'cell'), 'phone'),
+        service: findStrict(h, 'service', 'treatment', 'appointment type', 'session type'),
+        date: pickColumn(findLoose(h, 'date'), 'date'),
+        startTime: pickColumn(findLoose(h, 'start time', 'time', 'start'), 'time'),
+        duration: findLoose(h, 'duration', 'length', 'minutes'),
+        price: pickColumn(findStrict(h, 'price', 'amount', 'cost', 'session price'), 'currency'),
+        notes: findLoose(h, 'notes', 'note', 'comments'),
+        soapSubjective: findLoose(h, 'subjective', 'soap subjective'),
+        soapObjective: findLoose(h, 'objective', 'soap objective'),
+        soapAssessment: findLoose(h, 'assessment', 'soap assessment'),
+        soapPlan: findLoose(h, 'plan', 'soap plan'),
+        soapFull: findLoose(h, 'soap notes', 'soap', 'session notes'),
+      },
+      confidence: 'manual',
+      reason: 'Set manually by you',
+    };
+  }
+
+  if (type === 'services') {
+    return {
+      type: 'services',
+      mapping: {
+        name: findLoose(h, 'service name', 'name'),
+        price: pickColumn(findStrict(h, 'price', 'amount', 'cost'), 'currency'),
+        duration: findLoose(h, 'duration', 'length', 'minutes'),
+        description: findLoose(h, 'description', 'desc'),
+      },
+      confidence: 'manual',
+      reason: 'Set manually by you',
+    };
+  }
+
+  return {
+    type: 'unknown',
+    mapping: {},
+    confidence: 'low',
+    reason: 'Unknown type passed to buildMappingForType',
+  };
+}
+
 // Parse a CSV string into { headers, rows }. Handles quoted fields,
 // commas inside quotes, and escaped quotes. Same parser as the
 // existing ImportClients.js uses.

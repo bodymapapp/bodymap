@@ -26,7 +26,7 @@
 
 import React, { useState, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import { parseCSV, detectCsvType } from '../lib/imports/detectCsvType';
+import { parseCSV, detectCsvType, buildMappingForType } from '../lib/imports/detectCsvType';
 import { runClientImport, runAppointmentImport } from '../lib/imports/runImports';
 import { formatUSPhone } from '../lib/formatters/phone';
 import { detectFuzzyMatches } from '../lib/imports/fuzzyServiceMatch';
@@ -61,7 +61,7 @@ const C = {
   greenBorder: '#86EFAC',
 };
 
-function FileCard({ file, onRemove }) {
+function FileCard({ file, onRemove, onSetType }) {
   const { fileName, headers, rows, detected, error, checkpoint } = file;
   const typeColor = {
     clients: { bg: '#E0F2FE', border: '#7DD3FC', text: '#075985', label: '👥 Client roster' },
@@ -69,6 +69,8 @@ function FileCard({ file, onRemove }) {
     services: { bg: '#FCE7F3', border: '#F9A8D4', text: '#9F1239', label: '🔧 Services list' },
     unknown: { bg: '#FEE2E2', border: '#FCA5A5', text: '#991B1B', label: '❓ Unknown' },
   }[detected?.type || 'unknown'];
+  const isUnknown = (detected?.type || 'unknown') === 'unknown';
+  const isManual = detected?.confidence === 'manual';
 
   return (
     <div style={{
@@ -120,12 +122,67 @@ function FileCard({ file, onRemove }) {
       {detected?.confidence === 'high' && (
         <span style={{ fontSize: 11, color: C.gray }}>auto-detected</span>
       )}
-      {detected?.confidence === 'low' && (
+      {detected?.confidence === 'low' && !isUnknown && (
         <span style={{ fontSize: 11, color: C.amber, fontWeight: 600 }}>low confidence, please verify</span>
+      )}
+      {isManual && (
+        <span style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>set by you</span>
       )}
       {detected?.reason && (
         <div style={{ fontSize: 11.5, color: C.gray, marginTop: 6, fontStyle: 'italic' }}>
           {detected.reason}
+        </div>
+      )}
+
+      {/* Manual classification. Shown when type is unknown OR when
+          already classified (as a 'change type' fallback). HK May 23
+          2026 (Candice fix): without this row, files that auto-detect
+          as unknown leave the user stuck at the staging screen with
+          no way to set the type and proceed.
+          Per HK rule: no dropdowns. Three buttons in a row. */}
+      {(isUnknown || isManual) && onSetType && (
+        <div style={{
+          marginTop: 12,
+          paddingTop: 12,
+          borderTop: `1px dashed ${C.light}`,
+        }}>
+          <div style={{
+            fontSize: 12,
+            color: C.gray,
+            fontWeight: 600,
+            marginBottom: 8,
+          }}>
+            {isUnknown ? 'This file is...' : 'Change type:'}
+          </div>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+            {[
+              { type: 'clients', label: 'Client roster' },
+              { type: 'appointments', label: 'Appointment history' },
+              { type: 'services', label: 'Services list' },
+            ].map(opt => {
+              const isCurrent = detected?.type === opt.type;
+              return (
+                <button
+                  key={opt.type}
+                  onClick={() => onSetType(opt.type)}
+                  disabled={isCurrent}
+                  style={{
+                    background: isCurrent ? C.forest : 'transparent',
+                    color: isCurrent ? '#fff' : C.forest,
+                    border: `1.5px solid ${C.forest}`,
+                    padding: '7px 13px',
+                    borderRadius: 999,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: isCurrent ? 'default' : 'pointer',
+                    opacity: isCurrent ? 0.95 : 1,
+                  }}
+                >
+                  {isCurrent ? `✓ ${opt.label}` : opt.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
       {checkpoint && (
@@ -385,11 +442,14 @@ export default function MultiImport({ therapist, onComplete }) {
   function overrideType(idx, newType) {
     setFiles(prev => prev.map((f, i) => {
       if (i !== idx) return f;
-      // Re-detect with the user's override forced
-      const headers = f.headers.map(x => x.toLowerCase().trim());
-      // Build a mapping appropriate for the chosen type by running
-      // detectCsvType and then forcing the type field
-      const detected = { ...f.detected, type: newType, confidence: 'high', reason: 'Set manually by you' };
+      // Build a real best-effort mapping for the chosen type using the
+      // file's headers + first few rows for content sniffing. Replaces
+      // the previous behavior which just flipped the type field
+      // without changing the mapping, leaving runImports with an
+      // empty mapping object and skipping every row.
+      // HK May 23 2026 (Candice fix): she had two files both classified
+      // as unknown, no UI to manually override.
+      const detected = buildMappingForType(newType, f.headers, f.rows);
       return { ...f, detected };
     }));
   }
@@ -1435,7 +1495,7 @@ export default function MultiImport({ therapist, onComplete }) {
             {files.length} file{files.length === 1 ? '' : 's'} ready
           </div>
           {files.map((f, i) => (
-            <FileCard key={i} file={f} onRemove={() => removeFile(i)} />
+            <FileCard key={i} file={f} onRemove={() => removeFile(i)} onSetType={(t) => overrideType(i, t)} />
           ))}
         </div>
       )}
@@ -1507,7 +1567,7 @@ export default function MultiImport({ therapist, onComplete }) {
           background: C.amberLight, border: `1.5px solid ${C.amberBorder}`,
           borderRadius: 10, padding: 12, marginBottom: 14, fontSize: 13, color: '#78350F',
         }}>
-          One or more files could not be auto-classified. You can remove them, or use Advanced import options below to set the mapping manually.
+          We could not figure out the type of one or more files. On each file above, tap whether it is a client roster, appointment history, or services list. Then keep going.
         </div>
       )}
 
