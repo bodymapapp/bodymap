@@ -28,6 +28,7 @@ import SeedDefaults from '../components/SeedDefaults';
 import InlineEditField from '../components/InlineEditField';
 import InlineEditDescription from '../components/InlineEditDescription';
 import OnboardingChecklist from '../components/OnboardingChecklist';
+import { buildOnboardingNavigate } from '../lib/onboardingNavigate';
 import CycleScheduling from '../components/CycleScheduling';
 import Outreach from '../components/Outreach';
 import ImportClients from '../components/ImportClients';
@@ -3090,9 +3091,45 @@ function ReferralCard({ therapist, C2 }) {
 }
 
 function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
-  const { updateProfile } = useAuth();
+  const { updateProfile, refreshTherapist } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // OnboardingChecklist data load. Mirrors the loadStats() in main
+  // Dashboard but scoped just to what the checklist needs. Keeps
+  // SettingsPanel self-contained without threading stats props in.
+  // HK May 23 2026: dual-placement decision, checklist renders both
+  // here (above 'How I practice') and on the home tab.
+  const [onboardingState, setOnboardingState] = React.useState({
+    services: [],
+    availability: [],
+    clients: 0,
+    sessions: 0,
+  });
+  React.useEffect(() => {
+    let mounted = true;
+    if (!therapist?.id) return;
+    (async () => {
+      try {
+        const [{ data: svc }, { data: avail }, { count: clientCount }, { count: sessionCount }] = await Promise.all([
+          supabase.from('services').select('id, price').eq('therapist_id', therapist.id).is('archived_at', null),
+          supabase.from('availability').select('active').eq('therapist_id', therapist.id),
+          supabase.from('clients').select('id', { count: 'exact', head: true }).eq('therapist_id', therapist.id),
+          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('therapist_id', therapist.id),
+        ]);
+        if (!mounted) return;
+        setOnboardingState({
+          services: svc || [],
+          availability: avail || [],
+          clients: clientCount || 0,
+          sessions: sessionCount || 0,
+        });
+      } catch (e) {
+        console.error('[SettingsPanel] onboarding state load failed:', e);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [therapist?.id, therapist?.skipped_import_at, therapist?.booking_page_previewed_at]);
 
   // Which row in Settings is currently expanded. null = all collapsed.
   // Mobile-first: collapsed by default to kill the endless vertical scroll.
@@ -3755,6 +3792,25 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
           </button>
         )}
+      </div>
+
+      {/* Setup checklist, dual-placement (also on dashboard home tab).
+          HK May 23 2026: surface the 5 setup steps above 'How I practice'
+          so therapists who land in Settings have a clear path forward
+          before they wade through the full settings tree. */}
+      <div style={{ marginBottom: 20 }}>
+        <OnboardingChecklist
+          therapist={therapist}
+          services={onboardingState.services}
+          availability={onboardingState.availability}
+          sessions={onboardingState.sessions}
+          clients={onboardingState.clients}
+          onNavigate={buildOnboardingNavigate({
+            therapist,
+            navigate,
+            onTherapistUpdated: () => { refreshTherapist && refreshTherapist(); },
+          })}
+        />
       </div>
 
       {groupMatches.practice && (<>
@@ -5620,7 +5676,7 @@ function LocationEditCard({ draft, setDraft, onSave, onCancel, saving, error, is
 
 
 export default function Dashboard({ view }) {
-  const { therapist, signOut } = useAuth();
+  const { therapist, signOut, refreshTherapist } = useAuth();
   const navigate = useNavigate();
   const { clientId, sessionId } = useParams();
   const isMobile = useMobile();
@@ -5937,7 +5993,11 @@ export default function Dashboard({ view }) {
                 availability={stats?.availability || []}
                 sessions={stats?.sessions || 0}
                 clients={stats?.clients || 0}
-                onNavigate={(v) => navigate(v ? `/dashboard/${v}` : '/dashboard')}
+                onNavigate={buildOnboardingNavigate({
+                  therapist,
+                  navigate,
+                  onTherapistUpdated: () => { refreshTherapist && refreshTherapist(); loadStats(); },
+                })}
               />
               <PhoneVerifyBanner therapist={therapist} navigate={navigate} />
               <ActivationNudge sessions={stats?.sessions || 0} />

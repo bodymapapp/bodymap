@@ -29,34 +29,47 @@ const STEPS = [
   // view values map to real /dashboard/* routes in App.js. Hashes like
   // 'settings#import' trigger auto-open of that collapsible section in
   // SettingsPanel via location.hash useEffect.
-  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. 2 minutes, no client left behind.', action:'Import Clients', view:'settings#import' },
-  { id:'service', icon:'🛁', label:'Add your first service',    desc:'Tell clients what you offer and at what price.',         action:'Review', view:'settings#services' },
-  { id:'hours',   icon:'🕐', label:'Set your working hours',    desc:'Clients can only book during your available times.',     action:'Review', view:'settings#services' },
-  { id:'stripe',  icon:'💳', label:'Connect Stripe (optional)', desc:'Accept deposits from new clients to protect your time.', action:'Go to Settings', view:'settings#payments' },
-  { id:'intake',  icon:'📋', label:'Send your first intake',    desc:'Book a client and send them the intake form. This is the moment it all clicks.', action:'Get my link', view:'settings#intake_qr' },
+  //
+  // Step 1 has a three-path branching UI (CSV upload, start fresh, need
+  // help) rendered inline in the focused view, not via this single
+  // action button. See focused-mode JSX below for the branching.
+  //
+  // HK May 23 2026: revised step list based on Maria-persona feedback
+  // and Jane App competitive research. Old steps were import/service/
+  // hours/stripe/intake. New steps emphasize: bring clients over,
+  // confirm services + hours, look at the booking page (educational,
+  // not configuration), set the agreement and policies.
+  { id:'import',  icon:'📥', label:'Move your clients over',    desc:'Import from Square, MassageBook, Vagaro or any CSV. Or start fresh if you\'re new.', action:'Import Clients', view:'settings#import' },
+  { id:'service', icon:'🛁', label:'Set up your services',      desc:'Tell clients what you offer and at what price.',         action:'Review', view:'settings#services' },
+  { id:'hours',   icon:'🕐', label:'Set your weekly hours',     desc:'Clients can only book during your available times.',     action:'Review', view:'settings#services' },
+  { id:'preview', icon:'👀', label:'Look at your booking page', desc:'See exactly what clients will see when they book.',      action:'Preview booking page', view:'preview-booking' },
+  { id:'policies',icon:'📋', label:'Set policies and agreement',desc:'Cancellation, deposit, and the agreement clients sign.', action:'Review', view:'settings#client_agreement' },
 ];
 
-function Confetti({ active }) {
-  const colors = ['#2A5741','#6B9E80','#C9A84C','#F5F0E8','#4CAF7D','#FBBF24'];
+function QuietGlow({ active }) {
+  // HK May 23 2026: replaced previous Confetti component with a much
+  // quieter celebration. Per HK direction: 'minor celebration moments
+  // not huge or flashy.' A sage glow ring expands around the panel
+  // for ~1.2s when a step completes, then settles. Conveys progress
+  // without infantilizing the therapist (Maria persona is 67yo).
   if (!active) return null;
   return (
-    <div style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:10 }}>
-      {Array.from({length:28}).map((_, i) => (
-        <div key={i} style={{
-          position:'absolute',
-          left:`${(i/28)*100 + (Math.random()-0.5)*10}%`,
-          top:'-10px',
-          width: 6+Math.random()*6,
-          height: 6+Math.random()*6,
-          borderRadius: Math.random()>0.5?'50%':2,
-          background: colors[i%colors.length],
-          animation:`bmConfettiFall ${0.7+Math.random()*0.9}s ease-in ${Math.random()*0.5}s forwards`,
-          transform:`rotate(${Math.random()*360}deg)`,
-          opacity:0,
-        }}/>
-      ))}
-      <style>{`@keyframes bmConfettiFall{0%{opacity:1;transform:translateY(0) rotate(0deg)}100%{opacity:0;transform:translateY(220px) rotate(360deg)}}`}</style>
-    </div>
+    <>
+      <div style={{
+        position: 'absolute',
+        inset: -2,
+        borderRadius: 18,
+        boxShadow: '0 0 0 0 rgba(107, 158, 128, 0.6)',
+        pointerEvents: 'none',
+        animation: 'bmQuietGlow 1.2s ease-out forwards',
+        zIndex: 0,
+      }} />
+      <style>{`@keyframes bmQuietGlow {
+        0%   { box-shadow: 0 0 0 0 rgba(107, 158, 128, 0.55); }
+        60%  { box-shadow: 0 0 0 12px rgba(107, 158, 128, 0.18); }
+        100% { box-shadow: 0 0 0 18px rgba(107, 158, 128, 0); }
+      }`}</style>
+    </>
   );
 }
 
@@ -67,12 +80,21 @@ export default function OnboardingChecklist({ therapist, services, availability,
   const [celebrate, setCelebrate] = useState(false);
   const prevDone = useRef(null);
 
+  // Auto-detection. Each step is a boolean derived from real state,
+  // so the green check is honest (based on what actually exists in the
+  // DB), not on the therapist clicking 'I did it'. Two steps need
+  // explicit timestamps because there is no data-shaped signal:
+  //   - import: clients > 0 OR skipped_import_at set
+  //   - preview: booking_page_previewed_at set
+  // Both columns added in supabase/migrations/setup_checklist.sql.
   const checks = {
-    import:  (clients||0)>0,
-    service: services?.length>0,
-    hours:   availability?.some(a=>a.active),
-    stripe:  !!therapist?.stripe_account_connected,
-    intake:  sessions>0,
+    import:   (clients||0) > 0 || !!therapist?.skipped_import_at,
+    service:  (services?.length || 0) > 0 && services.some(s => Number(s.price) > 0),
+    hours:    availability?.some(a => a.active),
+    preview:  !!therapist?.booking_page_previewed_at,
+    policies: !!therapist?.cancellation_policy_enabled
+              || !!therapist?.deposit_enabled
+              || !!therapist?.practice_agreement_text,
   };
   const done    = Object.values(checks).filter(Boolean).length;
   const total   = STEPS.length;
@@ -191,7 +213,7 @@ export default function OnboardingChecklist({ therapist, services, availability,
         position: 'relative',
         overflow: 'hidden',
       }}>
-        <Confetti active={celebrate} />
+        <QuietGlow active={celebrate} />
 
         <div style={{
           display: 'flex',
@@ -272,19 +294,80 @@ export default function OnboardingChecklist({ therapist, services, availability,
           </div>
         </div>
 
-        <button onClick={() => onNavigate(currentStep.view)} style={{
-          background: C.forest,
-          color: '#fff',
-          border: 'none',
-          borderRadius: 10,
-          padding: '11px 18px',
-          fontSize: 13,
-          fontWeight: 700,
-          cursor: 'pointer',
-          width: '100%',
-        }}>
-          {currentStep.action} →
-        </button>
+        {currentStep.id === 'import' ? (
+          // Three-path branching for Step 1, as agreed with HK May 23 2026.
+          // Primary action is the most common case (migrating therapists
+          // upload CSV). Secondary row covers brand-new therapists who
+          // have no data, and therapists who feel stuck and want human
+          // help. The 'Need help' path opens a prefilled mailto today;
+          // a future in-app disclaimer + import@ alias is queued as a
+          // BLOCK_PLAN follow-up.
+          <>
+            <button onClick={() => onNavigate(currentStep.view)} style={{
+              background: C.forest,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              padding: '11px 18px',
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: 'pointer',
+              width: '100%',
+            }}>
+              Upload CSV →
+            </button>
+            <div style={{
+              display: 'flex',
+              gap: 8,
+              marginTop: 10,
+              fontSize: 12,
+              color: C.gray,
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexWrap: 'wrap',
+            }}>
+              <span>Don't have data?</span>
+              <button onClick={() => onNavigate('import-skip')} style={{
+                background: 'transparent',
+                border: `1px solid ${C.sage}`,
+                color: C.forest,
+                borderRadius: 7,
+                padding: '5px 11px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                I'm starting fresh
+              </button>
+              <button onClick={() => onNavigate('import-help')} style={{
+                background: 'transparent',
+                border: `1px solid ${C.light}`,
+                color: C.dark,
+                borderRadius: 7,
+                padding: '5px 11px',
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}>
+                I need help
+              </button>
+            </div>
+          </>
+        ) : (
+          <button onClick={() => onNavigate(currentStep.view)} style={{
+            background: C.forest,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            padding: '11px 18px',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: 'pointer',
+            width: '100%',
+          }}>
+            {currentStep.action} →
+          </button>
+        )}
 
         {/* Progress dots: filled = done, outlined = not done, ring = current */}
         <div style={{
@@ -323,7 +406,7 @@ export default function OnboardingChecklist({ therapist, services, availability,
       position: 'relative',
       overflow: 'hidden',
     }}>
-      <Confetti active={celebrate} />
+      <QuietGlow active={celebrate} />
 
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
         <div>
@@ -372,8 +455,10 @@ export default function OnboardingChecklist({ therapist, services, availability,
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {STEPS.map(step => {
           const isChecked = checks[step.id];
+          const isImportStep = step.id === 'import';
           return (
-            <div key={step.id} style={{
+            <React.Fragment key={step.id}>
+              <div style={{
               display: 'flex', alignItems: 'center', gap: 12,
               padding: '10px 12px', borderRadius: 10,
               background: isChecked ? '#F0FDF4' : C.beige,
@@ -407,7 +492,7 @@ export default function OnboardingChecklist({ therapist, services, availability,
                   fontSize: 11, fontWeight: 700, cursor: 'pointer',
                   whiteSpace: 'nowrap', flexShrink: 0,
                 }}>
-                  {step.action} →
+                  {isImportStep ? 'Upload CSV →' : step.action + ' →'}
                 </button>
               )}
               {isChecked && step.view && (
@@ -421,6 +506,49 @@ export default function OnboardingChecklist({ therapist, services, availability,
                 </button>
               )}
             </div>
+            {/* Step 1 import: quiet secondary row beneath the main row,
+                only when not yet completed. Matches the focused view's
+                branching but more compact for the list-mode density. */}
+            {isImportStep && !isChecked && (
+              <div style={{
+                display: 'flex',
+                gap: 8,
+                alignItems: 'center',
+                paddingLeft: 50,
+                marginTop: -2,
+                marginBottom: 2,
+                fontSize: 11,
+                color: C.gray,
+                flexWrap: 'wrap',
+              }}>
+                <span>Don't have data?</span>
+                <button onClick={() => onNavigate('import-skip')} style={{
+                  background: 'transparent',
+                  border: `1px solid ${C.sage}`,
+                  color: C.forest,
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}>
+                  I'm starting fresh
+                </button>
+                <button onClick={() => onNavigate('import-help')} style={{
+                  background: 'transparent',
+                  border: `1px solid ${C.light}`,
+                  color: C.dark,
+                  borderRadius: 6,
+                  padding: '3px 8px',
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}>
+                  I need help
+                </button>
+              </div>
+            )}
+            </React.Fragment>
           );
         })}
       </div>
