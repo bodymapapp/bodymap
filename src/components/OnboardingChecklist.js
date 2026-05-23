@@ -121,13 +121,16 @@ function ProgressRing({ done, total, size = 56 }) {
   );
 }
 
-function PolicyToggle({ label, hint, settingsRef, enabled, onToggle, valueField, busy }) {
+function PolicyToggle({ label, hint, settingsRef, enabled, onToggle, valueField, busy, extraLink }) {
   // Single policy row inside Step 5. Toggle on the right, optional
   // inline value editor revealed when enabled, reference to the
   // detailed Settings location for everything else.
   // Per HK May 23 2026: 'Option B - toggle + smart inline. Toggle ON
   // expands a tiny inline form. Default values shown but editable.
   // Link to Settings X.Y for the rest.'
+  // HK May 23 2026 round 5: extraLink prop adds a context-specific
+  // deep link beside the label for toggles that need configuration
+  // beyond a single number (e.g. agreement text, cancellation rules).
   return (
     <div style={{
       padding: '12px 14px',
@@ -165,6 +168,25 @@ function PolicyToggle({ label, hint, settingsRef, enabled, onToggle, valueField,
             <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
               {hint}
             </div>
+          )}
+          {extraLink && (
+            <button
+              onClick={(e) => { e.stopPropagation(); extraLink.onClick(); }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#2A5741',
+                padding: '4px 0 0',
+                fontSize: 11.5,
+                fontWeight: 600,
+                cursor: 'pointer',
+                textDecoration: 'underline',
+                textAlign: 'left',
+                display: 'block',
+              }}
+            >
+              {extraLink.label}
+            </button>
           )}
         </div>
         <button
@@ -509,6 +531,10 @@ export default function OnboardingChecklist({ therapist, services, availability,
       patch: { practice_agreement_enabled: true },
       offPatch: { practice_agreement_enabled: false },
       fieldKey: 'practice_agreement_enabled',
+      extraLink: {
+        label: 'Edit agreement text →',
+        target: 'settings#client_agreement',
+      },
     },
     {
       id: 'deposit',
@@ -535,10 +561,14 @@ export default function OnboardingChecklist({ therapist, services, availability,
       hint: 'Late cancels and no-shows charged a percentage.',
       settingsRef: 'Settings 5.3',
       done: !!therapist?.cancellation_policy_enabled,
-      view: 'settings#cancellation_policy',
+      view: 'settings#cancellation',
       patch: { cancellation_policy_enabled: true },
       offPatch: { cancellation_policy_enabled: false },
       fieldKey: 'cancellation_policy_enabled',
+      extraLink: {
+        label: 'Customize windows and fees →',
+        target: 'settings#cancellation',
+      },
     },
     {
       id: 'buffer',
@@ -1289,23 +1319,13 @@ export default function OnboardingChecklist({ therapist, services, availability,
                             busy={busy}
                             onToggle={() => writeTherapist(sub.done ? sub.offPatch : sub.patch, sub.fieldKey)}
                             valueField={valueField}
+                            extraLink={sub.extraLink ? {
+                              label: sub.extraLink.label,
+                              onClick: () => handleNavigate(sub.extraLink.target),
+                            } : null}
                           />
                         );
                       })}
-                      <button onClick={() => handleNavigate(step.view)} style={{
-                        background: 'transparent',
-                        color: '#2A5741',
-                        border: 'none',
-                        padding: '4px 0',
-                        fontSize: 11.5,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        textDecoration: 'underline',
-                        alignSelf: 'flex-start',
-                        marginTop: 2,
-                      }}>
-                        Open full policy settings →
-                      </button>
                     </div>
                   )}
                 </div>

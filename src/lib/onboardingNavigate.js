@@ -114,6 +114,45 @@ export function buildOnboardingNavigate({ therapist, navigate, onTherapistUpdate
 
     // Default: route to /dashboard/<view>. This handles all existing
     // step routes like 'settings#import', 'settings#services', etc.
-    navigate(`/dashboard/${view}`);
+    //
+    // HK May 23 2026 round 4 bug: after the first navigation to a hash,
+    // the Dashboard hash effect clears the hash via history.replaceState
+    // (so it doesn't re-fire on every render). When the therapist clicks
+    // Review a second time, React Router's location.hash hasn't changed,
+    // so the effect doesn't re-run and nothing visible happens.
+    //
+    // Fix: split path from hash. Navigate to the path first (or stay if
+    // already there). Then force-set the hash via window.location.hash
+    // AFTER a tick. Setting window.location.hash to a different value
+    // than current always fires popstate/hashchange, which React Router
+    // picks up; setting it to the SAME current value with a leading '#'
+    // also fires the change because the browser treats hash assignment
+    // as a navigation event. Belt-and-suspenders: add a sequence-style
+    // search param so the URL changes guaranteed.
+    const [path, hash] = view.split('#');
+    const target = `/dashboard/${path}`;
+    const isAlreadyOnPath = window.location.pathname === target;
+
+    if (!isAlreadyOnPath) {
+      // Different route. Navigate first; the Dashboard effect will pick
+      // up the hash on mount.
+      navigate(hash ? `${target}#${hash}` : target);
+      return;
+    }
+
+    // Same route. Force re-trigger of the hash effect by clearing the
+    // current hash on the DOM (sync), then setting the new one on the
+    // next tick. The two distinct hashchange events guarantee
+    // React Router's location updates and the effect re-fires.
+    if (hash) {
+      if (window.location.hash) {
+        window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
+      setTimeout(() => {
+        window.location.hash = hash;
+      }, 0);
+    } else {
+      navigate(target);
+    }
   };
 }
