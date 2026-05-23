@@ -477,32 +477,34 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(20,30,25,0.4)',
+      background: 'rgba(20,30,25,0.55)',
       display: 'flex',
-      alignItems: 'flex-end',
+      alignItems: 'stretch',
       justifyContent: 'center',
-      zIndex: 1000,
+      // HK May 23 2026: was 1000, same as MobileBottomNav. Equal
+      // z-index meant the bottom nav sat on top of this modal's
+      // footer (Continue button) because it renders later in the DOM
+      // tree. Now 2000 so the picker is clearly above the tab bar.
+      zIndex: 2000,
     }}>
       <div style={{
         background: '#fff',
         width: '100%',
         maxWidth: 560,
-        maxHeight: '90vh',
-        borderTopLeftRadius: 20,
-        borderTopRightRadius: 20,
+        maxHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',
         boxShadow: '0 -8px 32px rgba(0,0,0,0.18)',
       }}>
         {/* Header */}
         <div style={{
-          padding: '16px 20px 12px',
+          padding: '18px 20px 14px',
           borderBottom: `1px solid ${C.light}`,
         }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
             <div style={{
               fontFamily: 'Georgia, serif',
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: 700,
               color: C.dark,
             }}>
@@ -514,17 +516,19 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
                 background: 'transparent',
                 border: 'none',
                 color: C.gray,
-                fontSize: 22,
+                fontSize: 26,
                 cursor: 'pointer',
                 padding: 0,
                 lineHeight: 1,
+                width: 32,
+                height: 32,
               }}
               aria-label="Close"
             >
               ×
             </button>
           </div>
-          <div style={{ fontSize: 12.5, color: C.gray, lineHeight: 1.45, marginBottom: 12 }}>
+          <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.45, marginBottom: 12 }}>
             Tap each client you'd like to include. {selected.size > 0 && <strong style={{ color: C.forest }}>{selected.size} selected</strong>}
           </div>
           <input
@@ -534,8 +538,8 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
             onChange={e => setQuery(e.target.value)}
             style={{
               width: '100%',
-              padding: '10px 12px',
-              fontSize: 14,
+              padding: '12px 14px',
+              fontSize: 15,
               border: `1.5px solid ${C.light}`,
               borderRadius: 10,
               outline: 'none',
@@ -551,9 +555,9 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
                   background: '#fff',
                   border: `1px solid ${C.sage}`,
                   color: C.forest,
-                  padding: '5px 12px',
+                  padding: '6px 12px',
                   borderRadius: 999,
-                  fontSize: 11.5,
+                  fontSize: 12,
                   fontWeight: 600,
                   cursor: 'pointer',
                 }}
@@ -567,9 +571,9 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
                     background: 'transparent',
                     border: `1px solid ${C.light}`,
                     color: C.gray,
-                    padding: '5px 12px',
+                    padding: '6px 12px',
                     borderRadius: 999,
-                    fontSize: 11.5,
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                   }}
@@ -581,14 +585,22 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
           )}
         </div>
 
-        {/* List */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '4px 0' }}>
+        {/* List. flex:1 so it eats available space. paddingBottom
+            includes the bottom nav clearance so the LAST row is
+            scrollable into view, not buried under the tab bar.
+            74 + safe-area + footer height (~64) = ~138 + safe-area */}
+        <div style={{
+          flex: 1,
+          overflowY: 'auto',
+          padding: '4px 0',
+          WebkitOverflowScrolling: 'touch',
+        }}>
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: C.gray }}>
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 14, color: C.gray }}>
               Loading your clients...
             </div>
           ) : filtered.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', fontSize: 13, color: C.gray }}>
+            <div style={{ padding: 24, textAlign: 'center', fontSize: 14, color: C.gray }}>
               {q ? `No clients match "${query}"` : 'No clients yet. Add some from the Clients tab.'}
             </div>
           ) : (
@@ -645,9 +657,19 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
           )}
         </div>
 
-        {/* Footer */}
+        {/* Footer. Bottom padding MUST include the height of the
+            MobileBottomNav (74px) plus the safe area inset so the
+            Continue button is tappable on real iOS / Android devices.
+            Without this padding the tab bar sits on top of the
+            Continue button even with the higher z-index, because the
+            modal extends edge-to-edge while the tab bar is overlaid
+            on the bottom 74+inset pixels of the screen.
+            HK May 23 2026: was previously hidden behind tab bar so
+            the Continue tap did nothing visible because there was
+            nothing to tap. */}
         <div style={{
           padding: '12px 16px',
+          paddingBottom: 'calc(12px + 74px + env(safe-area-inset-bottom, 0px))',
           borderTop: `1px solid ${C.light}`,
           display: 'flex',
           gap: 10,
@@ -659,9 +681,9 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
               background: 'transparent',
               border: `1.5px solid ${C.light}`,
               color: C.gray,
-              padding: '11px 18px',
+              padding: '12px 18px',
               borderRadius: 999,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 700,
               cursor: 'pointer',
             }}
@@ -675,17 +697,17 @@ function CustomClientPicker({ therapist, onCancel, onPicked }) {
               flex: 1,
               background: selected.size === 0 ? C.light : C.forest,
               border: 'none',
-              color: '#fff',
-              padding: '11px 18px',
+              color: selected.size === 0 ? C.gray : '#fff',
+              padding: '12px 18px',
               borderRadius: 999,
-              fontSize: 13,
+              fontSize: 14,
               fontWeight: 700,
               cursor: selected.size === 0 ? 'not-allowed' : 'pointer',
             }}
           >
             {selected.size === 0
               ? 'Pick at least one client'
-              : `Continue with ${selected.size} selected →`}
+              : `Continue with ${selected.size} →`}
           </button>
         </div>
       </div>
