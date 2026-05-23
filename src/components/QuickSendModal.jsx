@@ -172,24 +172,134 @@ export default function QuickSendModal({ template, therapist, recipients: passed
         </div>
 
         {result ? (
-          <div style={{ padding:'24px 0' }}>
-            <div style={{ fontSize:48, textAlign:'center', marginBottom:12 }}>✓</div>
-            <div style={{ fontFamily:'Georgia, serif', fontSize:20, fontWeight:700, color:C.dark, textAlign:'center', marginBottom:8 }}>
-              Sent {result.sent} email{result.sent === 1 ? '' : 's'}
+          <div style={{ padding:'8px 0 4px' }}>
+            {/* Hero: refined icon + tight headline. Not a giant 48px
+                checkmark which read as low-effort. Small filled
+                sage circle, white check, paired with a Georgia
+                serif headline. HK May 23 2026 redesign for stronger
+                visual confirmation. */}
+            <div style={{
+              display:'flex', alignItems:'center', gap:14,
+              padding:'4px 0 18px',
+              borderBottom:`1px solid ${C.light}`,
+              marginBottom:18,
+            }}>
+              <div style={{
+                width:42, height:42, borderRadius:'50%',
+                background:C.forest,
+                display:'flex', alignItems:'center', justifyContent:'center',
+                flexShrink:0,
+                boxShadow:'0 2px 8px rgba(42,87,65,0.25)',
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:'Georgia, serif', fontSize:20, fontWeight:700, color:C.dark, lineHeight:1.2 }}>
+                  Message sent
+                </div>
+                <div style={{ fontSize:13, color:C.gray, marginTop:3 }}>
+                  {result.sent === 1
+                    ? `Delivered to ${recipients?.[0]?.first_name || 'your client'}`
+                    : `Delivered to ${result.sent} clients`}
+                </div>
+              </div>
             </div>
+
+            {/* What went out: receipt-style card. Concrete content
+                builds trust. The therapist sees the actual subject
+                they sent, not just a number. */}
+            <div style={{
+              background:'#FAFAF6',
+              border:`1px solid ${C.light}`,
+              borderRadius:12,
+              padding:'14px 16px',
+              marginBottom:16,
+            }}>
+              <div style={{
+                fontSize:11, fontWeight:600, color:C.gray,
+                textTransform:'uppercase', letterSpacing:'0.07em',
+                marginBottom:6,
+              }}>
+                Subject line
+              </div>
+              <div style={{
+                fontSize:14.5, fontWeight:600, color:C.dark,
+                lineHeight:1.4,
+                overflow:'hidden', textOverflow:'ellipsis',
+                display:'-webkit-box',
+                WebkitLineClamp:2,
+                WebkitBoxOrient:'vertical',
+              }}>
+                {subject || '(no subject)'}
+              </div>
+            </div>
+
+            {/* Skipped/failed: only render when there are any.
+                Quiet, low-contrast, no scary red unless real fail. */}
             {(result.skipped_recent > 0 || result.skipped_unsubscribed > 0 || result.failed > 0) && (
-              <div style={{ fontSize:13, color:C.gray, textAlign:'center', lineHeight:1.6 }}>
-                {result.skipped_recent > 0 && <div>Skipped {result.skipped_recent} (received this template recently)</div>}
-                {result.skipped_unsubscribed > 0 && <div>Skipped {result.skipped_unsubscribed} (unsubscribed)</div>}
-                {result.failed > 0 && <div style={{ color:'#B91C1C' }}>{result.failed} failed</div>}
+              <div style={{
+                fontSize:12.5, color:C.gray, lineHeight:1.7,
+                padding:'12px 14px',
+                background:'#FFF8E7',
+                border:'1px solid #FCE7B5',
+                borderRadius:10,
+                marginBottom:16,
+              }}>
+                {result.skipped_recent > 0 && (
+                  <div>
+                    <strong style={{ color:'#92400E' }}>{result.skipped_recent} skipped</strong> (received this template recently)
+                  </div>
+                )}
+                {result.skipped_unsubscribed > 0 && (
+                  <div>
+                    <strong style={{ color:'#92400E' }}>{result.skipped_unsubscribed} skipped</strong> (unsubscribed)
+                  </div>
+                )}
+                {result.failed > 0 && (
+                  <div>
+                    <strong style={{ color:'#B91C1C' }}>{result.failed} failed</strong> to send. Check your settings or try again.
+                  </div>
+                )}
               </div>
             )}
-            <button onClick={handleClose} style={{
-              display:'block', margin:'18px auto 0', background:C.forest, color:C.white,
-              border:'none', borderRadius:10, padding:'11px 22px', fontSize:14, fontWeight:700, cursor:'pointer',
+
+            {/* Actions: two clear options. Primary closes & returns
+                to outreach for next send. Secondary closes silently. */}
+            <div style={{
+              display:'flex',
+              gap:10,
+              flexWrap:'wrap',
             }}>
-              Done
-            </button>
+              <button onClick={handleClose} style={{
+                flex:1,
+                minWidth:140,
+                background:C.forest,
+                color:C.white,
+                border:'none',
+                borderRadius:10,
+                padding:'12px 18px',
+                fontSize:14,
+                fontWeight:700,
+                cursor:'pointer',
+                boxShadow:'0 1px 3px rgba(42,87,65,0.2)',
+              }}>
+                Done
+              </button>
+            </div>
+
+            {/* Subtle reassurance under the buttons. Builds trust in
+                the system for the 70-year-old persona. */}
+            <div style={{
+              fontSize:11.5,
+              color:C.gray,
+              textAlign:'center',
+              marginTop:14,
+              lineHeight:1.5,
+            }}>
+              You can review every send in Outreach history.
+            </div>
           </div>
         ) : (
           <>

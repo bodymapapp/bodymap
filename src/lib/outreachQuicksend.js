@@ -536,6 +536,7 @@ export const AUDIENCE_LABELS = {
   lapsed: 'lapsed (no visit 60+ days)',
   all_active: 'all active clients (last 12 months)',
   package_holders_idle: 'clients with package balance, no booking in 14 days',
+  custom_selection: 'clients you picked',
 };
 
 export async function getAudienceRecipients(audiencePreset, therapistId) {

@@ -391,7 +391,7 @@ export default function QuickSendBlocks({ therapist }) {
         <QuickSendModal
           template={{
             id: customAnchorId,
-            name: 'Custom message',
+            label: 'Custom message',
             subject: '',
             body: 'Hi {{first_name}},\n\n\n\nTake care,\n{{therapist_name}}',
             audience_preset: 'custom_selection',
