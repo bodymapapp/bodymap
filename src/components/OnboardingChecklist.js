@@ -1,27 +1,25 @@
 // src/components/OnboardingChecklist.js
 //
-// Onboarding checklist - REDESIGNED May 7, 2026 per HK direction.
+// Setup Checklist component - REDESIGNED May 23, 2026 per HK direction.
 //
-// The previous version showed all 5 steps stacked tall, which felt
-// busy on the new-therapist dashboard where there are also clients,
-// sessions, and revenue widgets vying for attention.
+// Three view modes: focused (one big current step), collapsed (thin
+// bar), expanded (full list). Default is focused. Therapist controls.
 //
-// New design philosophy: focus on ONE step at a time.
-//   - Default state: show the current focused step large and friendly,
-//     with a small dot row underneath showing overall progress
-//   - Expanded state: show the full list (unchanged from before, still
-//     useful when the therapist wants to scan ahead)
-//   - Collapsed state: thin progress bar (unchanged from before, useful
-//     once mostly done and the therapist wants to dismiss)
+// Round 1 (May 7 2026): 5 steps in stacked boxes. Worked but ugly.
+// Round 2 (May 23 2026 round 1): added sub-items, preview modal, and
+//   completion summaries. Better but still stacked-boxes-ugly.
+// Round 3 (May 23 2026 round 2 = this version): Rank-1 redesign of
+//   expanded mode. Quiet completed rows, prominent active step, real
+//   inline policy toggles for Step 5 (no leaving the checklist),
+//   single accent color, no yellow banners, single column with
+//   timeline-style separators. Reference: Linear / Stripe / Notion.
 //
-// Three view modes total: focused (new), expanded (old behavior),
-// collapsed (existing). Default is focused. Therapist controls.
-//
-// Per HK design constraint: 'do not make it look busy. Keep it
-// visually quiet, expandable rather than always-expanded, with one
-// current focused step shown big and the others tucked away.'
+// Per HK design principle May 23 2026: 'Ship Rank-1 design on the
+// first try, not the third. Look up the best-in-class reference
+// before building. Avoid stacked-boxes-with-buttons defaults.'
 
 import React, { useState, useEffect, useRef } from 'react';
+import { supabase } from '../lib/supabase';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -72,6 +70,201 @@ function QuietGlow({ active }) {
     </>
   );
 }
+
+function ProgressRing({ done, total, size = 56 }) {
+  // Circular progress for the header. Single accent color, thin stroke,
+  // animated transition. Reference: Linear's project completion rings.
+  const stroke = 4;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = total > 0 ? done / total : 0;
+  const dashOffset = circumference * (1 - pct);
+  const ringColor = '#2A5741';
+  return (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="#E8E4DC"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke={ringColor}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={dashOffset}
+          style={{ transition: 'stroke-dashoffset 0.6s cubic-bezier(.4, .0, .2, 1)' }}
+        />
+      </svg>
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 13,
+        fontWeight: 700,
+        color: ringColor,
+        fontVariantNumeric: 'tabular-nums',
+      }}>
+        {done}/{total}
+      </div>
+    </div>
+  );
+}
+
+function PolicyToggle({ label, hint, settingsRef, enabled, onToggle, valueField, busy }) {
+  // Single policy row inside Step 5. Toggle on the right, optional
+  // inline value editor revealed when enabled, reference to the
+  // detailed Settings location for everything else.
+  // Per HK May 23 2026: 'Option B - toggle + smart inline. Toggle ON
+  // expands a tiny inline form. Default values shown but editable.
+  // Link to Settings X.Y for the rest.'
+  return (
+    <div style={{
+      padding: '12px 14px',
+      borderRadius: 10,
+      background: enabled ? '#FAFBF7' : '#FFFFFF',
+      border: `1px solid ${enabled ? '#D8DDD0' : '#EFEDE7'}`,
+      transition: 'all 0.2s ease',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: '#1A1A2E',
+              lineHeight: 1.3,
+            }}>
+              {label}
+            </span>
+            {settingsRef && (
+              <span style={{
+                fontSize: 10,
+                color: '#9CA3AF',
+                fontWeight: 500,
+                background: '#F5F3EE',
+                padding: '2px 6px',
+                borderRadius: 4,
+                letterSpacing: '0.02em',
+              }}>
+                {settingsRef}
+              </span>
+            )}
+          </div>
+          {hint && (
+            <div style={{ fontSize: 11.5, color: '#6B7280', marginTop: 2, lineHeight: 1.4 }}>
+              {hint}
+            </div>
+          )}
+        </div>
+        <button
+          onClick={onToggle}
+          disabled={busy}
+          aria-pressed={enabled}
+          style={{
+            width: 40,
+            height: 22,
+            borderRadius: 11,
+            background: enabled ? '#2A5741' : '#D1D5DB',
+            border: 'none',
+            position: 'relative',
+            cursor: busy ? 'wait' : 'pointer',
+            transition: 'background 0.2s ease',
+            flexShrink: 0,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <div style={{
+            position: 'absolute',
+            top: 2,
+            left: enabled ? 20 : 2,
+            width: 18,
+            height: 18,
+            borderRadius: '50%',
+            background: '#fff',
+            transition: 'left 0.18s cubic-bezier(.4,.0,.2,1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
+          }} />
+        </button>
+      </div>
+      {/* Inline editor slot. Child component renders the value field
+          here when enabled. Component decides what to render. */}
+      {enabled && valueField && (
+        <div style={{
+          marginTop: 10,
+          paddingTop: 10,
+          borderTop: '1px solid #EFEDE7',
+        }}>
+          {valueField}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InlineNumberField({ label, value, suffix, min, max, onCommit, busy }) {
+  // Editable numeric field for policy toggle inline editor.
+  // Commits on blur or Enter. No dropdowns (HK rule: no dropdowns in
+  // therapist-facing UI; use InlineSaveNumberInput pattern).
+  const [local, setLocal] = useState(value);
+  useEffect(() => { setLocal(value); }, [value]);
+  function commit() {
+    const n = Math.max(min || 0, Math.min(max || 999, Number(local) || 0));
+    setLocal(n);
+    if (n !== value) onCommit(n);
+  }
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12 }}>
+      <label style={{ color: '#6B7280', fontWeight: 500 }}>{label}</label>
+      <div style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        background: '#fff',
+        border: '1px solid #D8DDD0',
+        borderRadius: 7,
+        padding: '4px 8px',
+        gap: 4,
+      }}>
+        <input
+          type="number"
+          value={local}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.target.blur(); } }}
+          disabled={busy}
+          min={min}
+          max={max}
+          style={{
+            width: 44,
+            border: 'none',
+            outline: 'none',
+            background: 'transparent',
+            fontSize: 13,
+            fontWeight: 600,
+            color: '#1A1A2E',
+            textAlign: 'right',
+            fontVariantNumeric: 'tabular-nums',
+            padding: 0,
+          }}
+        />
+        {suffix && (
+          <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>{suffix}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 function PreviewModal({ therapist, onClose }) {
   // HK May 23 2026: replaces new-tab open which felt like a dead-end.
@@ -225,6 +418,37 @@ export default function OnboardingChecklist({ therapist, services, availability,
     onNavigate(view);
   }
 
+  // Step 5 inline toggles. Each toggle writes a single boolean (or a
+  // boolean + a default numeric value) directly to the therapist row
+  // and calls onTherapistUpdated so the checklist auto-redetects.
+  // Per HK May 23 2026 Option B: toggle ON applies sensible defaults
+  // and reveals a tiny inline editor for the most important value.
+  const [busyField, setBusyField] = useState(null);
+  async function writeTherapist(patch, fieldKey) {
+    if (!therapist?.id) return;
+    setBusyField(fieldKey);
+    try {
+      const { error } = await supabase
+        .from('therapists')
+        .update(patch)
+        .eq('id', therapist.id);
+      if (error) {
+        console.error('[onboarding toggle] failed:', fieldKey, error);
+        return;
+      }
+      // Parent helper handles refetching the therapist row so the
+      // toggle visually reflects the new state. We pass via onNavigate
+      // with a sentinel value the parent recognizes as a refresh.
+      // Simpler: call the existing helper-exposed refresh, which is
+      // wired through buildOnboardingNavigate's onTherapistUpdated.
+      onNavigate('__refresh');
+    } catch (e) {
+      console.error('[onboarding toggle] threw:', fieldKey, e);
+    } finally {
+      setBusyField(null);
+    }
+  }
+
   // Auto-detection. Each step is a boolean derived from real state,
   // so the green check is honest (based on what actually exists in the
   // DB), not on the therapist clicking 'I did it'. Two steps need
@@ -237,24 +461,90 @@ export default function OnboardingChecklist({ therapist, services, availability,
   // ALL three must be set to mark step complete. This is stricter than
   // 'any of three' on purpose. HK May 23 2026: a therapist who has set
   // only a deposit has not finished policies. They have started.
+  // Policies step has 5 toggles (HK May 23 2026: 'make it 5 toggles
+  // but amazing rank 1 design'). Each toggle writes a real boolean
+  // column on the therapist row and the corresponding settings panel
+  // has the full detail. Order: client agreement first per HK direction,
+  // then the four financial / operational policies.
+  //
+  // All 5 must be enabled for Step 5 to mark complete. This is
+  // stricter than 'any of N' on purpose. A therapist who has flipped
+  // 2 toggles has not finished setting policies. They have started.
+  //
+  // settingsRef strings match the feature taxonomy in BLOCK_PLAN.md so
+  // a therapist who wants the full detail of any policy can grep their
+  // way there from these reference codes.
   const policiesSubItems = [
     {
-      id: 'cancellation',
-      label: 'Cancellation policy',
-      done: !!therapist?.cancellation_policy_enabled,
-      view: 'settings#cancellation_policy',
+      id: 'agreement',
+      label: 'Client agreement',
+      hint: 'What every new client signs before their first session.',
+      settingsRef: 'Settings 5.1',
+      done: !!therapist?.practice_agreement_enabled,
+      view: 'settings#client_agreement',
+      patch: { practice_agreement_enabled: true },
+      offPatch: { practice_agreement_enabled: false },
+      fieldKey: 'practice_agreement_enabled',
     },
     {
       id: 'deposit',
       label: 'New client deposit',
+      hint: 'Hold the slot. Refundable on the first session.',
+      settingsRef: 'Settings 5.2',
       done: !!therapist?.deposit_enabled,
       view: 'settings#deposit',
+      patch: { deposit_enabled: true, deposit_percent: therapist?.deposit_percent || 25 },
+      offPatch: { deposit_enabled: false },
+      fieldKey: 'deposit_enabled',
+      numericField: {
+        column: 'deposit_percent',
+        label: 'Deposit',
+        suffix: '%',
+        value: therapist?.deposit_percent ?? 25,
+        min: 5,
+        max: 100,
+      },
     },
     {
-      id: 'agreement',
-      label: 'Client agreement',
-      done: !!therapist?.practice_agreement_text,
-      view: 'settings#client_agreement',
+      id: 'cancellation',
+      label: 'Cancellation policy',
+      hint: 'Late cancels and no-shows charged a percentage.',
+      settingsRef: 'Settings 5.3',
+      done: !!therapist?.cancellation_policy_enabled,
+      view: 'settings#cancellation_policy',
+      patch: { cancellation_policy_enabled: true },
+      offPatch: { cancellation_policy_enabled: false },
+      fieldKey: 'cancellation_policy_enabled',
+    },
+    {
+      id: 'buffer',
+      label: 'Buffer between sessions',
+      hint: 'Time blocked between bookings to reset.',
+      settingsRef: 'Settings 1.4',
+      done: !!therapist?.buffer_enabled,
+      view: 'settings#buffer',
+      patch: { buffer_enabled: true, buffer_minutes: therapist?.buffer_minutes || 15 },
+      offPatch: { buffer_enabled: false },
+      fieldKey: 'buffer_enabled',
+      numericField: {
+        column: 'buffer_minutes',
+        label: 'Buffer',
+        suffix: 'min',
+        value: therapist?.buffer_minutes ?? 15,
+        min: 0,
+        max: 120,
+      },
+    },
+    {
+      id: 'tips',
+      label: 'Accept tips',
+      hint: 'Clients can leave a tip on top of the session.',
+      settingsRef: 'Settings 5.5',
+      done: !!therapist?.accept_tips,
+      view: 'settings#tips',
+      patch: { accept_tips: true },
+      offPatch: { accept_tips: false },
+      fieldKey: 'accept_tips',
     },
   ];
   const policiesDone = policiesSubItems.filter(s => s.done).length;
@@ -614,233 +904,408 @@ export default function OnboardingChecklist({ therapist, services, availability,
     );
   }
 
-  // EXPANDED mode: full list (the original design)
+  // EXPANDED mode: Rank-1 redesign May 23 2026.
+  //
+  // Design philosophy (per HK direction May 23 2026):
+  //   1. Single column, single accent color (forest green #2A5741)
+  //   2. Quiet completed states. No strikethrough. No green-tinted
+  //      backgrounds. Completed items are just text + a small filled
+  //      circle. Completed-item summary text shown beneath label.
+  //   3. Prominent active step. Only one step is the 'current focus'
+  //      and it gets a brief description and primary action button.
+  //   4. Timeline-style visual: a vertical line on the left connects
+  //      all steps so they read as a journey, not a list of toggles.
+  //   5. No yellow 'pre-filled' banner. Replaced with one quiet line.
+  //   6. Header has a circular progress ring (not a thin bar).
+  //   7. Step 5 sub-items are 5 inline toggles with real ON/OFF.
+  //      Each toggle reveals an inline numeric editor when relevant.
+  //      Settings ref code (e.g. Settings 5.1) shown as a small chip
+  //      next to each toggle label for therapists who want the full
+  //      detail panel.
+  //
+  // Refs: Linear's onboarding (one-column, quiet completions, ring),
+  // Stripe Connect (vertical timeline), Notion's get-started widget.
+
+  // Active step = first incomplete step. Falls back to last step if
+  // all done (covered by the allDone special case above).
+  const activeStepId = currentStep ? currentStep.id : null;
+
   return (
     <>
     <div style={{
-      background: C.white,
-      border: `1.5px solid ${C.light}`,
-      borderRadius: 16,
-      padding: 20,
+      background: '#FFFFFF',
+      border: '1px solid #EFEDE7',
+      borderRadius: 18,
+      padding: '22px 22px 18px',
       marginBottom: 20,
-      boxShadow: '0 2px 12px rgba(42,87,65,0.08)',
+      boxShadow: '0 2px 10px rgba(20, 20, 25, 0.04)',
       position: 'relative',
       overflow: 'hidden',
     }}>
       <QuietGlow active={celebrate} />
 
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: C.sage, textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 3 }}>Getting Started</div>
-          <h3 style={{ fontFamily: 'Georgia, serif', fontSize: 18, fontWeight: 700, color: C.dark, margin: '0 0 2px' }}>
-            {allDone ? '🎉 You\'re all set!' : `${done} of ${total} steps complete`}
-          </h3>
-          {!allDone && <p style={{ fontSize: 12, color: C.gray, margin: 0 }}>Complete these to start accepting clients.</p>}
-          {allDone && <p style={{ fontSize: 12, color: C.sage, margin: 0, fontWeight: 600 }}>Your practice is ready. Time to grow.</p>}
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => changeMode('focused')} style={{
-            background: 'transparent',
-            border: 'none',
-            color: C.gray,
-            cursor: 'pointer',
-            fontSize: 12,
+      {/* Header: title + tiny subhead + circular progress ring on
+          the right. Single-row, asymmetric. Reference: Linear */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 14,
+        marginBottom: 18,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 11,
             fontWeight: 600,
-            whiteSpace: 'nowrap',
+            color: '#6B9E80',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            marginBottom: 4,
           }}>
-            Focus mode
-          </button>
+            Setup
+          </div>
+          <h3 style={{
+            fontFamily: 'Georgia, serif',
+            fontSize: 19,
+            fontWeight: 700,
+            color: '#1A1A2E',
+            margin: 0,
+            lineHeight: 1.2,
+          }}>
+            {allDone ? "You're ready to accept clients" : `${total - done} step${total - done === 1 ? '' : 's'} left`}
+          </h3>
+          <p style={{
+            fontSize: 12.5,
+            color: '#6B7280',
+            margin: '4px 0 0',
+            lineHeight: 1.45,
+          }}>
+            {allDone
+              ? 'Everything is set up. Share your booking page when ready.'
+              : 'Complete these to start accepting clients online.'}
+          </p>
+        </div>
+        <ProgressRing done={done} total={total} size={56} />
+      </div>
+
+      {/* Steps as a single-column vertical timeline. Each row has:
+          [icon dot / checkmark]  [step content]  [secondary action]
+          Visual continuity via a thin sage line on the left connecting
+          the dots. The active step has a slightly larger dot. */}
+      <div style={{ position: 'relative' }}>
+        {/* The connecting line. Positioned behind all dots, runs from
+            first dot to last dot, fades out at edges. */}
+        <div style={{
+          position: 'absolute',
+          left: 11,
+          top: 14,
+          bottom: 14,
+          width: 1.5,
+          background: 'linear-gradient(to bottom, transparent, #D8DDD0 12%, #D8DDD0 88%, transparent)',
+          pointerEvents: 'none',
+        }} />
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+          {STEPS.map((step, idx) => {
+            const isChecked = checks[step.id];
+            const isActive = step.id === activeStepId;
+            const isPoliciesStep = step.id === 'policies';
+            const isImportStep = step.id === 'import';
+            const summary = isChecked ? completionSummary(step.id) : '';
+
+            return (
+              <div key={step.id} style={{
+                display: 'flex',
+                gap: 14,
+                paddingTop: idx === 0 ? 0 : 14,
+                paddingBottom: idx === STEPS.length - 1 ? 0 : 14,
+                position: 'relative',
+              }}>
+                {/* Status dot. Filled forest if done. Sage ring if
+                    active. Empty gray if pending. */}
+                <div style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  background: isChecked ? '#2A5741' : '#FFFFFF',
+                  border: `1.5px solid ${isChecked ? '#2A5741' : (isActive ? '#6B9E80' : '#D8DDD0')}`,
+                  boxShadow: isActive && !isChecked ? '0 0 0 3px rgba(107, 158, 128, 0.18)' : 'none',
+                  transition: 'all 0.2s ease',
+                  marginTop: 2,
+                  zIndex: 1,
+                }}>
+                  {isChecked && (
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                  {!isChecked && isActive && (
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6B9E80' }} />
+                  )}
+                </div>
+
+                {/* Step content. Label, summary or description, and
+                    interactive surface (button or sub-items). */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 14,
+                        fontWeight: isActive ? 700 : 600,
+                        color: isChecked ? '#6B7280' : '#1A1A2E',
+                        lineHeight: 1.35,
+                      }}>
+                        {step.label}
+                      </div>
+                      {isChecked && summary && (
+                        <div style={{
+                          fontSize: 11.5,
+                          color: '#6B7280',
+                          marginTop: 2,
+                          lineHeight: 1.4,
+                        }}>
+                          {summary}
+                        </div>
+                      )}
+                      {!isChecked && isActive && step.desc && !isPoliciesStep && (
+                        <div style={{
+                          fontSize: 12,
+                          color: '#6B7280',
+                          marginTop: 3,
+                          lineHeight: 1.5,
+                        }}>
+                          {step.desc}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Trailing action. For incomplete non-policies
+                        active step: primary button. For incomplete
+                        non-active: ghost button. For complete: small
+                        Review pill. Policies step has no trailing
+                        button because the toggles ARE the action. */}
+                    {!isPoliciesStep && (
+                      <>
+                        {!isChecked && isActive && (
+                          <button onClick={() => handleNavigate(step.view)} style={{
+                            background: '#2A5741',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 9,
+                            padding: '8px 14px',
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                            boxShadow: '0 1px 3px rgba(42, 87, 65, 0.2)',
+                            transition: 'transform 0.15s ease',
+                          }}>
+                            {isImportStep ? 'Upload CSV' : step.action} →
+                          </button>
+                        )}
+                        {!isChecked && !isActive && (
+                          <button onClick={() => handleNavigate(step.view)} style={{
+                            background: 'transparent',
+                            color: '#2A5741',
+                            border: '1px solid #D8DDD0',
+                            borderRadius: 8,
+                            padding: '6px 12px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}>
+                            {isImportStep ? 'Upload CSV' : step.action}
+                          </button>
+                        )}
+                        {isChecked && step.view && (
+                          <button onClick={() => handleNavigate(step.view)} style={{
+                            background: 'transparent',
+                            color: '#6B7280',
+                            border: 'none',
+                            padding: '4px 6px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            whiteSpace: 'nowrap',
+                            flexShrink: 0,
+                          }}>
+                            Review
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
+
+                  {/* Step 1: import help affordance. Always visible.
+                      Quieter when checked. */}
+                  {isImportStep && (
+                    <div style={{
+                      display: 'flex',
+                      gap: 6,
+                      alignItems: 'center',
+                      marginTop: 8,
+                      flexWrap: 'wrap',
+                      fontSize: 11.5,
+                      color: '#9CA3AF',
+                      opacity: isChecked ? 0.7 : 1,
+                    }}>
+                      <span>{isChecked ? 'Need to import more or get help?' : "Don't have data?"}</span>
+                      {!isChecked && (
+                        <button onClick={() => handleNavigate('import-skip')} style={{
+                          background: 'transparent',
+                          border: '1px solid #D8DDD0',
+                          color: '#2A5741',
+                          borderRadius: 6,
+                          padding: '3px 8px',
+                          fontSize: 11.5,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}>
+                          I'm starting fresh
+                        </button>
+                      )}
+                      <button onClick={() => handleNavigate('import-help')} style={{
+                        background: 'transparent',
+                        border: '1px solid #EFEDE7',
+                        color: '#6B7280',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}>
+                        Email us
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Step 5: 5 inline policy toggles. Each is a real
+                      ON/OFF connected to therapist columns. When ON,
+                      reveals inline numeric editor for the key value.
+                      All 5 must be ON for the step to mark complete. */}
+                  {isPoliciesStep && (
+                    <div style={{
+                      marginTop: isActive || !isChecked ? 10 : 8,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                    }}>
+                      {!isChecked && isActive && (
+                        <div style={{
+                          fontSize: 12,
+                          color: '#6B7280',
+                          lineHeight: 1.5,
+                          marginBottom: 2,
+                        }}>
+                          {step.desc}
+                        </div>
+                      )}
+                      {policiesSubItems.map((sub) => {
+                        const numeric = sub.numericField;
+                        const busy = busyField === sub.fieldKey || busyField === numeric?.column;
+                        let valueField = null;
+                        if (sub.done && numeric) {
+                          valueField = (
+                            <InlineNumberField
+                              label={numeric.label}
+                              value={numeric.value}
+                              suffix={numeric.suffix}
+                              min={numeric.min}
+                              max={numeric.max}
+                              busy={busy}
+                              onCommit={(n) => writeTherapist({ [numeric.column]: n }, numeric.column)}
+                            />
+                          );
+                        }
+                        return (
+                          <PolicyToggle
+                            key={sub.id}
+                            label={sub.label}
+                            hint={sub.hint}
+                            settingsRef={sub.settingsRef}
+                            enabled={sub.done}
+                            busy={busy}
+                            onToggle={() => writeTherapist(sub.done ? sub.offPatch : sub.patch, sub.fieldKey)}
+                            valueField={valueField}
+                          />
+                        );
+                      })}
+                      <button onClick={() => handleNavigate(step.view)} style={{
+                        background: 'transparent',
+                        color: '#2A5741',
+                        border: 'none',
+                        padding: '4px 0',
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        textDecoration: 'underline',
+                        alignSelf: 'flex-start',
+                        marginTop: 2,
+                      }}>
+                        Open full policy settings →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      <div style={{ height: 5, background: C.light, borderRadius: 3, marginBottom: 14, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${(done/total)*100}%`,
-          background: `linear-gradient(90deg,${C.sage},${C.forest})`,
-          borderRadius: 3,
-          transition: 'width 0.5s ease',
-        }}/>
-      </div>
-
+      {/* Footer: quiet pre-filled note. Replaces the old loud yellow
+          banner. Single line, low contrast, only shown when any step
+          was already auto-detected as done on first render. */}
       {done > 0 && !allDone && (
         <div style={{
-          fontSize: 12, color: C.gray, lineHeight: 1.5,
-          background: '#FFF8E1', border: '1px solid #F0E5C0',
-          borderRadius: 8, padding: '10px 12px', marginBottom: 12,
+          marginTop: 18,
+          paddingTop: 14,
+          borderTop: '1px solid #EFEDE7',
+          fontSize: 11,
+          color: '#9CA3AF',
+          lineHeight: 1.5,
+          textAlign: 'center',
         }}>
-          ✨ Items already checked were pre-filled to get you started. Tap <strong>Review</strong> on any to customize for your practice.
+          Items already checked were detected from what's set up. Tap Review on any to adjust.
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {STEPS.map(step => {
-          const isChecked = checks[step.id];
-          const isImportStep = step.id === 'import';
-          const isPoliciesStep = step.id === 'policies';
-          const summary = isChecked ? completionSummary(step.id) : '';
-          return (
-            <React.Fragment key={step.id}>
-              <div style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              padding: '10px 12px', borderRadius: 10,
-              background: isChecked ? '#F0FDF4' : C.beige,
-              border: `1px solid ${isChecked ? '#86EFAC' : C.light}`,
-              transition: 'all 0.3s',
-            }}>
-              <div style={{
-                width: 32, height: 32, borderRadius: '50%',
-                background: isChecked ? C.forest : C.white,
-                border: `2px solid ${isChecked ? C.forest : C.light}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: isChecked ? 13 : 16, flexShrink: 0,
-                transition: 'all 0.3s',
-              }}>
-                {isChecked ? <span style={{ color: '#fff', fontWeight: 700 }}>✓</span> : step.icon}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13, fontWeight: 700,
-                  color: isChecked ? C.forest : C.dark,
-                  textDecoration: isChecked ? 'line-through' : 'none',
-                }}>
-                  {step.label}
-                </div>
-                {!isChecked && <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>{step.desc}</div>}
-                {/* Completion summary: shows the therapist WHAT was
-                    completed for this step so they can double-check.
-                    HK May 23 2026 ask: 'in the review I dont see
-                    what is complete once the task is complete.' */}
-                {isChecked && summary && (
-                  <div style={{ fontSize: 11, color: '#047857', marginTop: 2, fontWeight: 500 }}>
-                    {summary}
-                  </div>
-                )}
-              </div>
-              {!isChecked && (
-                <button onClick={() => handleNavigate(step.view)} style={{
-                  background: C.forest, color: '#fff', border: 'none',
-                  borderRadius: 8, padding: '6px 12px',
-                  fontSize: 11, fontWeight: 700, cursor: 'pointer',
-                  whiteSpace: 'nowrap', flexShrink: 0,
-                }}>
-                  {isImportStep ? 'Upload CSV →' : step.action + ' →'}
-                </button>
-              )}
-              {isChecked && step.view && (
-                <button onClick={() => handleNavigate(step.view)} style={{
-                  background: 'transparent', color: C.forest,
-                  border: `1px solid ${C.forest}`, borderRadius: 8,
-                  padding: '5px 11px', fontSize: 11, fontWeight: 600,
-                  cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                }}>
-                  Review
-                </button>
-              )}
-            </div>
-            {/* Step 1 import: branching row below. Visible ALWAYS now
-                (even when checked) so a therapist who imported but
-                has more data, or who wants to ask for help post-hoc,
-                still has the link surface. Quietly styled when the
-                step is already done. */}
-            {isImportStep && (
-              <div style={{
-                display: 'flex',
-                gap: 8,
-                alignItems: 'center',
-                paddingLeft: 50,
-                marginTop: -2,
-                marginBottom: 2,
-                fontSize: 11,
-                color: C.gray,
-                flexWrap: 'wrap',
-                opacity: isChecked ? 0.65 : 1,
-              }}>
-                <span>{isChecked ? 'Need to import more or get help?' : "Don't have data?"}</span>
-                {!isChecked && (
-                  <button onClick={() => handleNavigate('import-skip')} style={{
-                    background: 'transparent',
-                    border: `1px solid ${C.sage}`,
-                    color: C.forest,
-                    borderRadius: 6,
-                    padding: '3px 8px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}>
-                    I'm starting fresh
-                  </button>
-                )}
-                <button onClick={() => handleNavigate('import-help')} style={{
-                  background: 'transparent',
-                  border: `1px solid ${C.light}`,
-                  color: C.dark,
-                  borderRadius: 6,
-                  padding: '3px 8px',
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}>
-                  {isChecked ? 'Email us for help' : 'I need help'}
-                </button>
-              </div>
-            )}
-            {/* Step 5 policies: sub-items rendered inline so the
-                therapist sees the 3 things that make policies
-                complete, with individual deep-links. Step is checked
-                only when all 3 sub-items are checked. */}
-            {isPoliciesStep && (
-              <div style={{
-                paddingLeft: 50,
-                marginTop: -2,
-                marginBottom: 4,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-              }}>
-                {policiesSubItems.map(sub => (
-                  <div key={sub.id} style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    fontSize: 11,
-                    color: sub.done ? '#047857' : C.gray,
-                  }}>
-                    <div style={{
-                      width: 14,
-                      height: 14,
-                      borderRadius: '50%',
-                      background: sub.done ? C.sage : 'transparent',
-                      border: `1.5px solid ${sub.done ? C.sage : C.light}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      {sub.done && <span style={{ color: '#fff', fontSize: 9, fontWeight: 700 }}>✓</span>}
-                    </div>
-                    <span style={{ fontWeight: sub.done ? 600 : 500 }}>{sub.label}</span>
-                    {!sub.done && (
-                      <button onClick={() => handleNavigate(sub.view)} style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: C.forest,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        padding: 0,
-                        textDecoration: 'underline',
-                      }}>
-                        Set up →
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-            </React.Fragment>
-          );
-        })}
+      {/* Mode toggles in footer right, small and quiet */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        gap: 14,
+        marginTop: done > 0 && !allDone ? 8 : 14,
+        paddingTop: done > 0 && !allDone ? 0 : 14,
+        borderTop: done > 0 && !allDone ? 'none' : '1px solid #EFEDE7',
+      }}>
+        <button onClick={() => changeMode('focused')} style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#9CA3AF',
+          cursor: 'pointer',
+          fontSize: 11,
+          fontWeight: 600,
+        }}>
+          Focus mode
+        </button>
+        <button onClick={() => changeMode('collapsed')} style={{
+          background: 'transparent',
+          border: 'none',
+          color: '#9CA3AF',
+          cursor: 'pointer',
+          fontSize: 11,
+          fontWeight: 600,
+        }}>
+          Hide
+        </button>
       </div>
     </div>
     {previewOpen && <PreviewModal therapist={therapist} onClose={() => setPreviewOpen(false)} />}

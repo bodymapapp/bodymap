@@ -27,6 +27,14 @@ export function buildOnboardingNavigate({ therapist, navigate, onTherapistUpdate
       return;
     }
 
+    // Sentinel: __refresh. The component just wrote something to the
+    // therapist row and wants the parent state refreshed without any
+    // navigation. Used by Step 5 policy toggles.
+    if (view === '__refresh') {
+      if (onTherapistUpdated) onTherapistUpdated();
+      return;
+    }
+
     // Step 1: 'I'm starting fresh'. Stamp the timestamp so the
     // checklist auto-detector treats Step 1 as complete. The
     // checklist re-reads from therapist prop, so we call back to
