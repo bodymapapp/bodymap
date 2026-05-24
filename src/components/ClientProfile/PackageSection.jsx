@@ -769,7 +769,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
                   type="text"
                   value={oneoffName}
                   onChange={e => setOneoffName(e.target.value)}
-                  placeholder="e.g. Christmas Gift - 12 sessions"
+                  placeholder="e.g. Wellness Series - 10 sessions"
                   style={inputStyle}
                 />
                 <div style={{ fontSize: 11, color: C.gray, marginTop: 4, lineHeight: 1.4 }}>
@@ -822,7 +822,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
                 type="text"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                placeholder="e.g. Christmas gift from husband"
+                placeholder="e.g. Paid in cash, custom pricing"
                 style={inputStyle}
               />
             </div>
