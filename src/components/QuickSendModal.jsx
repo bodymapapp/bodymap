@@ -35,6 +35,7 @@ export default function QuickSendModal({ template, therapist, recipients: passed
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
+  const [showRecipientList, setShowRecipientList] = useState(false);
 
   // Load recipients if not passed in. Block-level click already
   // computed this; modal-level fetch is a fallback for direct
@@ -303,18 +304,87 @@ export default function QuickSendModal({ template, therapist, recipients: passed
           </div>
         ) : (
           <>
-            {/* Recipient count banner */}
+            {/* Recipient count banner + expandable list */}
             <div style={{
               background: loading ? '#F9FAFB' : (recipients?.length === 0 ? '#FEF3C7' : '#F0FDF4'),
               border: `1.5px solid ${loading ? C.light : (recipients?.length === 0 ? '#FCD34D' : '#86EFAC')}`,
-              borderRadius:10, padding:'11px 14px', marginBottom:16, fontSize:13, fontWeight:600,
+              borderRadius:10, marginBottom:16,
               color: loading ? C.gray : (recipients?.length === 0 ? '#78350F' : '#166534'),
+              overflow:'hidden',
             }}>
-              {loading
-                ? 'Loading recipients...'
-                : recipients.length === 0
-                  ? 'No clients match this audience right now.'
-                  : `Will send to ${recipients.length} client${recipients.length === 1 ? '' : 's'}`}
+              <div
+                onClick={() => {
+                  if (loading || !recipients || recipients.length === 0) return;
+                  setShowRecipientList(v => !v);
+                }}
+                style={{
+                  padding:'11px 14px',
+                  fontSize:13, fontWeight:600,
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'space-between',
+                  cursor: (loading || !recipients || recipients.length === 0) ? 'default' : 'pointer',
+                  userSelect:'none',
+                }}
+              >
+                <span>
+                  {loading
+                    ? 'Loading recipients...'
+                    : recipients.length === 0
+                      ? 'No clients match this audience right now.'
+                      : `Will send to ${recipients.length} client${recipients.length === 1 ? '' : 's'}`}
+                </span>
+                {!loading && recipients && recipients.length > 0 && (
+                  <span style={{
+                    fontSize:11,
+                    fontWeight:600,
+                    opacity:0.8,
+                    display:'flex',
+                    alignItems:'center',
+                    gap:4,
+                  }}>
+                    {showRecipientList ? 'Hide' : 'View'}
+                    <span style={{
+                      display:'inline-block',
+                      transform: showRecipientList ? 'rotate(180deg)' : 'rotate(0deg)',
+                      transition:'transform 0.15s ease',
+                      fontSize:10,
+                    }}>▾</span>
+                  </span>
+                )}
+              </div>
+
+              {showRecipientList && recipients && recipients.length > 0 && (
+                <div style={{
+                  borderTop:`1px solid ${recipients?.length === 0 ? '#FCD34D' : '#86EFAC'}`,
+                  background:'rgba(255,255,255,0.55)',
+                  maxHeight:240,
+                  overflowY:'auto',
+                  WebkitOverflowScrolling:'touch',
+                }}>
+                  {recipients.map((r, idx) => (
+                    <div
+                      key={r.client_id || r.email || idx}
+                      style={{
+                        padding:'9px 14px',
+                        borderBottom: idx < recipients.length - 1 ? '1px solid rgba(22, 101, 52, 0.10)' : 'none',
+                        display:'flex',
+                        flexDirection:'column',
+                        gap:2,
+                      }}
+                    >
+                      <div style={{ fontSize:13, fontWeight:600, color:'#0F1F1A' }}>
+                        {r.name || r.email || 'Unnamed client'}
+                      </div>
+                      {r.qualifying_label && (
+                        <div style={{ fontSize:11.5, fontWeight:500, color:'#3F6B52', opacity:0.85 }}>
+                          {r.qualifying_label}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Subject */}

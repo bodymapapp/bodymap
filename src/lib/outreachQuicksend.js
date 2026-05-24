@@ -268,15 +268,38 @@ function deriveFirstName(fullName) {
   return space > 0 ? trimmed.slice(0, space) : trimmed;
 }
 
-function shapeRecipients(rows) {
+function shapeRecipients(rows, labelMap = null) {
+  // labelMap is an optional Map<emailLowercase, "Last visit: 18 days ago">.
+  // When present, each recipient gets a qualifying_label field used in
+  // QuickSendModal to show WHO is in the audience and WHY they qualify.
   return (rows || [])
     .filter(r => r.email)
-    .map(r => ({
-      client_id: r.id,
-      name: r.name,
-      email: r.email,
-      first_name: deriveFirstName(r.name),
-    }));
+    .map(r => {
+      const emailKey = r.email ? r.email.toLowerCase().trim() : '';
+      const qualifying_label = labelMap ? (labelMap.get(emailKey) || '') : '';
+      return {
+        client_id: r.id,
+        name: r.name,
+        email: r.email,
+        first_name: deriveFirstName(r.name),
+        qualifying_label,
+      };
+    });
+}
+
+// Helper: compute "X days ago" from an ISO date string. Returns
+// "today" if 0, or "X days ago" / "X weeks ago" / "X months ago".
+function daysAgoLabel(isoDate) {
+  if (!isoDate) return '';
+  const then = new Date(isoDate);
+  const now = new Date();
+  const diffDays = Math.floor((now - then) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return 'in the future';
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return '1 day ago';
+  if (diffDays < 14) return `${diffDays} days ago`;
+  if (diffDays < 60) return `${Math.floor(diffDays / 7)} weeks ago`;
+  return `${Math.floor(diffDays / 30)} months ago`;
 }
 
 // Helper: lowercase + dedupe a list of email strings (some may be
@@ -317,7 +340,7 @@ async function audienceNewClients(therapistId) {
 
   const { data, error } = await supabase
     .from('clients')
-    .select('id, name, email')
+    .select('id, name, email, created_at')
     .eq('therapist_id', therapistId)
     .gte('created_at', cutoff.toISOString());
 
@@ -325,7 +348,15 @@ async function audienceNewClients(therapistId) {
     console.error('[audience new_clients]', error);
     return [];
   }
-  return shapeRecipients(data);
+
+  // Build label map: "Joined X days ago"
+  const labelMap = new Map();
+  for (const c of (data || [])) {
+    if (!c.email) continue;
+    const e = c.email.toLowerCase().trim();
+    labelMap.set(e, `Joined ${daysAgoLabel(c.created_at)}`);
+  }
+  return shapeRecipients(data, labelMap);
 }
 
 async function audienceReturningRecent(therapistId) {
@@ -351,10 +382,11 @@ async function audienceReturningRecent(therapistId) {
   const recentEmails = normalizeEmails(recentBookings);
   if (recentEmails.length === 0) return [];
 
-  // Step 2: count total sessions for each of those emails
+  // Step 2: count total sessions for each of those emails AND get
+  // the latest booking_date per email (for the qualifying label).
   const { data: allBookings, error: allErr } = await supabase
     .from('bookings')
-    .select('client_email')
+    .select('client_email, booking_date')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
     .in('client_email', recentEmails);
@@ -364,12 +396,16 @@ async function audienceReturningRecent(therapistId) {
     return [];
   }
 
-  // Count per email
+  // Count per email + track latest booking date
   const counts = {};
+  const latestDate = {};
   for (const b of (allBookings || [])) {
     if (!b.client_email) continue;
     const e = b.client_email.toLowerCase().trim();
     counts[e] = (counts[e] || 0) + 1;
+    if (!latestDate[e] || b.booking_date > latestDate[e]) {
+      latestDate[e] = b.booking_date;
+    }
   }
   const qualifyingEmails = Object.entries(counts)
     .filter(([, c]) => c >= 2)
@@ -377,8 +413,16 @@ async function audienceReturningRecent(therapistId) {
 
   if (qualifyingEmails.length === 0) return [];
 
+  // Build label: "5 visits · last 18 days ago"
+  const labelMap = new Map();
+  for (const e of qualifyingEmails) {
+    const visits = counts[e];
+    const lastLabel = daysAgoLabel(latestDate[e]);
+    labelMap.set(e, `${visits} visits · last ${lastLabel}`);
+  }
+
   const clients = await clientsByEmails(therapistId, qualifyingEmails);
-  return shapeRecipients(clients);
+  return shapeRecipients(clients, labelMap);
 }
 
 async function audienceLapsed(therapistId) {
@@ -389,9 +433,10 @@ async function audienceLapsed(therapistId) {
   cutoff.setDate(cutoff.getDate() - 60);
 
   // Step 1: all distinct emails that have ever booked with this therapist
+  // (capture the latest booking_date so we can build "last visit" label)
   const { data: everBooked, error: everErr } = await supabase
     .from('bookings')
-    .select('client_email')
+    .select('client_email, booking_date')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled');
 
@@ -400,7 +445,16 @@ async function audienceLapsed(therapistId) {
     return [];
   }
 
-  const everEmails = normalizeEmails(everBooked);
+  // Compute latest booking_date per email
+  const latestDate = {};
+  for (const b of (everBooked || [])) {
+    if (!b.client_email) continue;
+    const e = b.client_email.toLowerCase().trim();
+    if (!latestDate[e] || b.booking_date > latestDate[e]) {
+      latestDate[e] = b.booking_date;
+    }
+  }
+  const everEmails = Object.keys(latestDate);
   if (everEmails.length === 0) return [];
 
   // Step 2: emails that booked in the last 60 days
@@ -422,8 +476,14 @@ async function audienceLapsed(therapistId) {
   const lapsedEmails = everEmails.filter(e => !recentEmails.has(e));
   if (lapsedEmails.length === 0) return [];
 
+  // Build label: "Last visit: 4 months ago"
+  const labelMap = new Map();
+  for (const e of lapsedEmails) {
+    labelMap.set(e, `Last visit: ${daysAgoLabel(latestDate[e])}`);
+  }
+
   const clients = await clientsByEmails(therapistId, lapsedEmails);
-  return shapeRecipients(clients);
+  return shapeRecipients(clients, labelMap);
 }
 
 async function audienceAllActive(therapistId) {
@@ -436,7 +496,7 @@ async function audienceAllActive(therapistId) {
 
   const { data: recentBookings, error } = await supabase
     .from('bookings')
-    .select('client_email')
+    .select('client_email, booking_date')
     .eq('therapist_id', therapistId)
     .neq('status', 'cancelled')
     .gte('booking_date', cutoff.toISOString().split('T')[0]);
@@ -446,11 +506,26 @@ async function audienceAllActive(therapistId) {
     return [];
   }
 
-  const emails = normalizeEmails(recentBookings);
+  // Compute latest booking_date per email
+  const latestDate = {};
+  for (const b of (recentBookings || [])) {
+    if (!b.client_email) continue;
+    const e = b.client_email.toLowerCase().trim();
+    if (!latestDate[e] || b.booking_date > latestDate[e]) {
+      latestDate[e] = b.booking_date;
+    }
+  }
+  const emails = Object.keys(latestDate);
   if (emails.length === 0) return [];
 
+  // Build label
+  const labelMap = new Map();
+  for (const e of emails) {
+    labelMap.set(e, `Last visit: ${daysAgoLabel(latestDate[e])}`);
+  }
+
   const clients = await clientsByEmails(therapistId, emails);
-  return shapeRecipients(clients);
+  return shapeRecipients(clients, labelMap);
 }
 
 async function audiencePackageHoldersIdle(therapistId) {
@@ -461,6 +536,8 @@ async function audiencePackageHoldersIdle(therapistId) {
   // Step 1: client_id list with package balance > 0. The
   // package_purchases table DOES have client_id since it is the
   // forward-mapped purchases (per PurchasesPanel.jsx convention).
+  // Sum sessions_remaining per client (a client may have multiple
+  // package purchases).
   const { data: packageRows, error: pkgErr } = await supabase
     .from('package_purchases')
     .select('client_id, sessions_remaining')
@@ -472,7 +549,16 @@ async function audiencePackageHoldersIdle(therapistId) {
     return [];
   }
 
-  const packageClientIds = [...new Set((packageRows || []).map(p => p.client_id).filter(Boolean))];
+  // Aggregate sessions_remaining per client
+  const sessionsPerClient = new Map();
+  for (const p of (packageRows || [])) {
+    if (!p.client_id) continue;
+    sessionsPerClient.set(
+      p.client_id,
+      (sessionsPerClient.get(p.client_id) || 0) + (p.sessions_remaining || 0)
+    );
+  }
+  const packageClientIds = [...sessionsPerClient.keys()];
   if (packageClientIds.length === 0) return [];
 
   // Step 2: get the emails of those clients (to bridge to bookings)
@@ -493,11 +579,12 @@ async function audiencePackageHoldersIdle(therapistId) {
   }
   if (pkgEmails.length === 0) return [];
 
-  // Step 3: filter out anyone who booked in the last 14 days
-  // (joined by client_email since bookings has no client_id)
+  // Step 3: filter out anyone who booked in the last 14 days,
+  // AND capture latest booking_date for the remaining clients.
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - 14);
 
+  // First: emails with recent bookings (these get filtered out)
   const { data: recentBookings } = await supabase
     .from('bookings')
     .select('client_email')
@@ -513,13 +600,46 @@ async function audiencePackageHoldersIdle(therapistId) {
   });
   if (idleIds.length === 0) return [];
 
+  const idleEmails = idleIds.map(id => idToEmail.get(id)).filter(Boolean);
+
+  // Second: latest booking_date for the idle clients (may be empty
+  // if client has package but never booked)
+  const { data: allBookings } = await supabase
+    .from('bookings')
+    .select('client_email, booking_date')
+    .eq('therapist_id', therapistId)
+    .neq('status', 'cancelled')
+    .in('client_email', idleEmails);
+
+  const latestDate = {};
+  for (const b of (allBookings || [])) {
+    if (!b.client_email) continue;
+    const e = b.client_email.toLowerCase().trim();
+    if (!latestDate[e] || b.booking_date > latestDate[e]) {
+      latestDate[e] = b.booking_date;
+    }
+  }
+
+  // Build label per email: "3 sessions left · last visit 4 weeks ago"
+  // Fall back to just sessions count if never booked.
+  const labelMap = new Map();
+  for (const id of idleIds) {
+    const email = idToEmail.get(id);
+    if (!email) continue;
+    const remaining = sessionsPerClient.get(id) || 0;
+    const last = latestDate[email];
+    const sessionsLabel = `${remaining} session${remaining === 1 ? '' : 's'} left`;
+    const visitLabel = last ? ` · last visit ${daysAgoLabel(last)}` : '';
+    labelMap.set(email, sessionsLabel + visitLabel);
+  }
+
   const { data: clients } = await supabase
     .from('clients')
     .select('id, name, email')
     .eq('therapist_id', therapistId)
     .in('id', idleIds);
 
-  return shapeRecipients(clients);
+  return shapeRecipients(clients, labelMap);
 }
 
 const AUDIENCE_FUNCTIONS = {
