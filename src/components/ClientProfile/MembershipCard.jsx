@@ -25,6 +25,7 @@ import PackageSection from './PackageSection';
 const C = {
   forest:    '#2A5741',
   sage:      '#5C7A4F',
+  sageBg:    '#E8F0EA',
   amber:     '#B87840',
   amberPale: '#FAF6EE',
   ink:       '#1F2937',
@@ -811,14 +812,15 @@ export default function MembershipCard({ client, therapist }) {
                         }
                       }}
                       style={{
-                        background: cancelArmedSubId === sub.id ? '#FEF2F2' : 'transparent',
-                        border: cancelArmedSubId === sub.id ? '1px solid #FCA5A5' : 'none',
-                        color: C.danger,
-                        fontSize: 11,
-                        fontWeight: 600,
+                        background: cancelArmedSubId === sub.id ? C.danger : '#fff',
+                        border: cancelArmedSubId === sub.id ? `1px solid ${C.danger}` : `1px solid ${C.line}`,
+                        color: cancelArmedSubId === sub.id ? '#fff' : C.danger,
+                        fontSize: 12,
+                        fontWeight: cancelArmedSubId === sub.id ? 700 : 600,
                         cursor: 'pointer',
-                        padding: cancelArmedSubId === sub.id ? '4px 10px' : 0,
-                        borderRadius: 6,
+                        padding: '7px 13px',
+                        borderRadius: 8,
+                        fontFamily: 'inherit',
                       }}
                     >
                       {cancelArmedSubId === sub.id
@@ -831,14 +833,24 @@ export default function MembershipCard({ client, therapist }) {
             );
           })}
         </div>
-      ) : (
-        <div style={{ fontSize: 12.5, color: C.gray, marginBottom: 14, fontStyle: 'italic' }}>
-          No membership on file. Add one below if this client is on a recurring plan.
-        </div>
-      )}
+      ) : null}
 
-      {/* Add-membership form */}
-      {activePlans.length === 0 ? (
+      {/* Active packages render here, after active memberships, so
+          the therapist sees all active commitments grouped together.
+          PackageSection with section='active' renders only active
+          package cards. */}
+      <PackageSection
+        client={client}
+        therapist={therapist}
+        hasMembership={subs.some(s => s.status === 'active')}
+        section="active"
+      />
+
+      {/* Add-membership form. HK direction May 24 2026: one
+          membership max per client. If an active membership exists,
+          do not render the add-membership affordance at all - the
+          therapist edits or cancels the existing one. */}
+      {subs.filter(s => s.status === 'active').length > 0 ? null : activePlans.length === 0 ? (
         <div style={{
           background: C.amberPale,
           border: `1px solid ${C.line}`,
@@ -881,12 +893,12 @@ export default function MembershipCard({ client, therapist }) {
               width: 28,
               height: 28,
               borderRadius: 7,
-              background: membershipAddExpanded ? '#fff' : '#F5F0E8',
+              background: membershipAddExpanded ? '#fff' : C.sageBg,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: 13,
-              color: C.amber,
+              color: C.forest,
               fontWeight: 700,
               flexShrink: 0,
             }}>
@@ -894,7 +906,7 @@ export default function MembershipCard({ client, therapist }) {
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, lineHeight: 1.1 }}>
-                {subs.filter(s => s.status === 'active').length > 0 ? 'Add another membership' : 'Add a membership'}
+                Add a membership
               </div>
               <div style={{ fontSize: 10.5, color: C.gray, marginTop: 2 }}>
                 Monthly recurring plan with renewals
@@ -1080,6 +1092,15 @@ export default function MembershipCard({ client, therapist }) {
         </div>
       )}
 
+      {/* Add-package form, rendered after Add-membership so both add
+          affordances sit together visually. */}
+      <PackageSection
+        client={client}
+        therapist={therapist}
+        hasMembership={subs.some(s => s.status === 'active')}
+        section="add"
+      />
+
       {/* Phase 2 (HK May 24 2026): Membership history. Canceled
           subscriptions render here in muted style, separated from
           the active membership area above. Always visible per HK
@@ -1146,17 +1167,14 @@ export default function MembershipCard({ client, therapist }) {
         </div>
       )}
 
-      {/* Packages section. HK direction May 24 2026: client profile
-          should let the therapist add and manage packages alongside
-          memberships, not just memberships. PackageSection is a
-          self-contained orchestrator that loads its own data and
-          handles add/cancel. hasMembership is passed in so it knows
-          whether to default the Add form to expanded (when nothing
-          exists yet) or collapsed. */}
+      {/* Package history renders last, paired conceptually with
+          membership history above. PackageSection with
+          section='history' renders only the history list. */}
       <PackageSection
         client={client}
         therapist={therapist}
         hasMembership={subs.some(s => s.status === 'active')}
+        section="history"
       />
 
       {/* Renewal charge modal (Phase 19.4). Opens when therapist taps

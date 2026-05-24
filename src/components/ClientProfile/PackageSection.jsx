@@ -83,7 +83,18 @@ const labelStyle = {
   fontWeight: 600,
 };
 
-export default function PackageSection({ client, therapist, hasMembership }) {
+// Section prop allows the caller to render only one of the three
+// inner pieces (active cards, add form, history). When omitted,
+// renders all three together. This lets MembershipCard interleave
+// active package cards alongside active membership cards, and
+// package history alongside membership history, while still keeping
+// add-package form below add-membership form.
+//
+// Trade-off: when rendered as 3 separate instances, data is fetched
+// 3 times (once per instance). For this scale (a few rows per
+// query) the cost is acceptable. Real lift would be moving the
+// data hook up into a shared parent.
+export default function PackageSection({ client, therapist, hasMembership, section }) {
   // Active packages and history
   const [packages, setPackages] = useState([]);
   const [allPlans, setAllPlans] = useState([]);
@@ -312,7 +323,7 @@ export default function PackageSection({ client, therapist, hasMembership }) {
   if (loading) {
     return (
       <div style={{ padding: '12px 4px', color: C.gray, fontSize: 13 }}>
-        Loading packages...
+        Loading packages…
       </div>
     );
   }
@@ -320,10 +331,16 @@ export default function PackageSection({ client, therapist, hasMembership }) {
   const activePackages = packages.filter(p => p.status === 'active');
   const historyPackages = packages.filter(p => p.status !== 'active');
 
+  // section: undefined or 'all' renders all 3 parts. Specific values
+  // render only that part. Used by MembershipCard to interleave order.
+  const showActive = !section || section === 'all' || section === 'active';
+  const showAdd = !section || section === 'all' || section === 'add';
+  const showHistory = !section || section === 'all' || section === 'history';
+
   return (
-    <div style={{ marginTop: activePackages.length > 0 || hasMembership ? 14 : 0 }}>
+    <div style={{ marginTop: showActive && (activePackages.length > 0 || hasMembership) ? 14 : 0 }}>
       {/* Active package cards */}
-      {activePackages.length > 0 && activePackages.map(pkg => {
+      {showActive && activePackages.length > 0 && activePackages.map(pkg => {
         const counts = computeCounts(pkg);
         const armed = cancelArmedId === pkg.id;
         const pct = counts.total > 0
@@ -462,13 +479,12 @@ export default function PackageSection({ client, therapist, hasMembership }) {
                   type="button"
                   onClick={() => cancelPackage(pkg.id)}
                   style={{
-                    flex: 1,
                     background: C.danger,
                     color: '#fff',
-                    border: 'none',
-                    borderRadius: 7,
-                    padding: '7px 10px',
-                    fontSize: 11.5,
+                    border: `1px solid ${C.danger}`,
+                    borderRadius: 8,
+                    padding: '7px 13px',
+                    fontSize: 12,
                     fontWeight: 700,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
@@ -481,13 +497,12 @@ export default function PackageSection({ client, therapist, hasMembership }) {
                   type="button"
                   onClick={() => setCancelArmedId(pkg.id)}
                   style={{
-                    flex: 1,
                     background: '#fff',
                     color: C.danger,
                     border: `1px solid ${C.line}`,
-                    borderRadius: 7,
-                    padding: '7px 10px',
-                    fontSize: 11.5,
+                    borderRadius: 8,
+                    padding: '7px 13px',
+                    fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
                     fontFamily: 'inherit',
@@ -515,13 +530,15 @@ export default function PackageSection({ client, therapist, hasMembership }) {
         );
       })}
 
-      {/* Add a package - collapsible */}
+      {/* Add a package - collapsible. Tints gold when expanded to
+          match the package accent color, mirroring how the membership
+          add form tints cream/amber when expanded. */}
+      {showAdd && (
       <div
         style={{
-          background: addExpanded ? C.amberPale : '#fff',
-          border: `1px ${addExpanded ? 'solid' : 'dashed'} ${addExpanded ? '#E5DCC4' : C.line}`,
+          background: addExpanded ? C.goldBg : '#fff',
+          border: `1px ${addExpanded ? 'solid' : 'dashed'} ${addExpanded ? C.goldSoft : C.line}`,
           borderRadius: 10,
-          padding: addExpanded ? 0 : '0',
           marginBottom: 10,
           overflow: 'hidden',
         }}
@@ -547,7 +564,7 @@ export default function PackageSection({ client, therapist, hasMembership }) {
             width: 28,
             height: 28,
             borderRadius: 7,
-            background: addExpanded ? '#fff' : C.beige,
+            background: addExpanded ? '#fff' : C.goldBg,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -773,9 +790,10 @@ export default function PackageSection({ client, therapist, hasMembership }) {
           </div>
         )}
       </div>
+      )}
 
       {/* History */}
-      {historyPackages.length > 0 && (
+      {showHistory && historyPackages.length > 0 && (
         <div style={{ marginTop: 14 }}>
           <div style={{
             fontSize: 10.5,
