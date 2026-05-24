@@ -60,10 +60,21 @@ export const S = {
   xxxl: 40,
 };
 
-// Format helpers — used in multiple sections so factored here.
+// Format helpers, used in multiple sections so factored here.
+//
+// HK May 23 2026 (Jacquie incident): formatShortDate used to parse
+// date-only strings as UTC midnight ('YYYY-MM-DDT00:00:00Z') which
+// then got converted to local time by toLocaleDateString, shifting
+// the calendar day backward by one for any user west of UTC. Jacquie
+// in Missouri (UTC-5) saw all her Monday appointments rendered as
+// Sunday. Fix: parse date-only as local noon, which is the same
+// calendar day across every timezone.
 export function formatShortDate(iso) {
   if (!iso) return '';
-  const d = new Date(iso.length === 10 ? iso + 'T00:00:00Z' : iso);
+  // Date-only strings (YYYY-MM-DD, length 10) get parsed as local
+  // noon to avoid the timezone-shift bug. Longer ISO strings already
+  // carry timezone info and parse correctly.
+  const d = iso.length === 10 ? new Date(iso + 'T12:00:00') : new Date(iso);
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 

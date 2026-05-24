@@ -1,5 +1,6 @@
 // src/lib/supabase.js
 import { createClient } from '@supabase/supabase-js';
+import { daysSinceDateOnly, todayLocalIso } from './dateHelpers';
 
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
@@ -170,7 +171,7 @@ export const db = {
       const sortedBookings = [...counted].sort((a, b) => (b.booking_date || '').localeCompare(a.booking_date || ''));
       const lastBooking = sortedBookings[0];
       const daysSince = lastBooking?.booking_date
-        ? Math.floor((Date.now() - new Date(lastBooking.booking_date + 'T00:00:00Z').getTime()) / 86400000)
+        ? daysSinceDateOnly(lastBooking.booking_date)
         : null;
 
       const sessions = sessionsByClient.get(c.id) || [];
@@ -288,10 +289,10 @@ export const db = {
     const lastVisit = sortedByDate[0];
     const lastVisitDate = lastVisit?.booking_date || null;
     const daysSinceVisit = lastVisitDate
-      ? Math.floor((Date.now() - new Date(lastVisitDate + 'T00:00:00Z').getTime()) / 86400000)
+      ? daysSinceDateOnly(lastVisitDate)
       : null;
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = todayLocalIso();
     const futureBookings = bookings.filter(b => b.booking_date >= todayStr && (!b.status || ['confirmed'].includes(b.status))).sort((a, b) => (a.booking_date || '').localeCompare(b.booking_date || ''));
     const nextBooking = futureBookings[0] || null;
 

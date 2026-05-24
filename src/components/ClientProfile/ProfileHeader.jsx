@@ -15,6 +15,7 @@
 
 import React from 'react';
 import { C, F, S, initials, avatarColor, formatMonthYear } from './tokens';
+import { parseDateOnly, todayLocalIso, tomorrowLocalIso } from '../../lib/dateHelpers';
 
 // Inline SVGs for tooling icons. Better contrast and weight control
 // than emoji. Each is sized 18px stroke-1.6 to match a calm, premium
@@ -145,9 +146,13 @@ export default function ProfileHeader({
   const subline = (() => {
     if (state.key === 'booked' && stats?.nextBooking) {
       const dateStr = stats.nextBooking.booking_date;
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const tomorrowStr = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      const when = dateStr === todayStr ? 'today' : dateStr === tomorrowStr ? 'tomorrow' : new Date(dateStr + 'T00:00:00Z').toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+      const todayStr = todayLocalIso();
+      const tomorrowStr = tomorrowLocalIso();
+      const when = dateStr === todayStr
+        ? 'today'
+        : dateStr === tomorrowStr
+          ? 'tomorrow'
+          : parseDateOnly(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
       const time = stats.nextBooking.start_time ? stats.nextBooking.start_time.slice(0, 5) : '';
       return `Next visit ${when}${time ? ' at ' + time : ''}`;
     }
