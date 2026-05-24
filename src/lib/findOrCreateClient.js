@@ -15,16 +15,27 @@
 //   connects to that client ID in client lifetime.'
 //
 // Behavior:
-//   1. Normalizes email to lowercase + trim.
-//   2. Looks up an existing clients row by (therapist_id, ilike email).
-//      ilike is case-insensitive; we use it to defend against legacy
-//      mixed-case rows. Returns the OLDEST matching row when multiple
-//      exist (older = the canonical one in any future merge process).
-//   3. If none found, inserts a new clients row with name + email +
-//      optional phone, returns the new id.
-//   4. If no email provided, returns null. Caller decides whether
-//      that is acceptable (rare admin/external cases). bookings.client_id
-//      is nullable.
+//   1. Normalizes email to lowercase + trim, phone to last-10 digits.
+//   2. If email is provided: look up by (therapist_id, ilike email).
+//      ilike is case-insensitive; defends against legacy mixed-case
+//      rows. Returns the OLDEST matching row when multiple exist.
+//      Create a new clients row with name + email + optional phone
+//      if no match.
+//   3. If no email but phone is provided (walk-ins, phone-only clients,
+//      paper-form transcriptions): look up by phone last-10 digits
+//      scoped to therapist_id. If match, return that id. If not,
+//      create a new clients row with name + phone (no email).
+//   4. If neither email nor phone is provided, return null. Caller
+//      decides whether that is acceptable (rare admin/external cases).
+//      bookings.client_id is nullable.
+//
+// Phase 13.9 (May 24 2026): phone fallback added after Terra reported
+// "Client record missing on this charge" on 11 bookings, all with
+// empty client_email + a phone number. The prior version of this
+// function returned null whenever email was missing, which caused
+// every walk-in/phone-only booking to insert with NULL client_id and
+// surface the broken-checkout error weeks later when the therapist
+// tried to record payment. See FOUNDER_RUNBOOK Procedure 10.
 //
 // Idempotency:
 //   Two concurrent callers with the same (therapist, email) could both
@@ -58,62 +69,120 @@ export async function findOrCreateClient({ supabase, therapist_id, name, email, 
   if (!therapist_id) throw new Error('findOrCreateClient: therapist_id is required');
 
   const normalizedEmail = (email || '').toString().trim().toLowerCase();
-  if (!normalizedEmail) {
-    // No email = no way to dedup. Caller may proceed with null client_id.
+  const normalizedPhone = phone
+    ? phone.toString().replace(/\D/g, '').slice(-10)
+    : '';
+
+  // No identifying info at all: caller proceeds with null client_id.
+  // Truly anonymous bookings are rare but valid (admin-created walk-in
+  // with no contact info, gift-cert redemption flows, etc).
+  if (!normalizedEmail && !normalizedPhone) {
     return null;
   }
 
-  // Step 1: try to find an existing matching clients row.
-  const { data: existing, error: findErr } = await supabase
+  // ── Path A: We have an email. Look up by email, create if missing. ──
+  if (normalizedEmail) {
+    const { data: existing, error: findErr } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('therapist_id', therapist_id)
+      .ilike('email', normalizedEmail)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (findErr) {
+      // We do not throw here. The lookup failing should not block a
+      // booking from being created. Return null and let the caller
+      // proceed without a client_id; the booking will still have
+      // client_name + client_email and can be backfilled later.
+      console.warn('findOrCreateClient: email lookup failed', findErr);
+      return null;
+    }
+
+    if (existing?.id) return existing.id;
+
+    const { data: created, error: insertErr } = await supabase
+      .from('clients')
+      .insert({
+        therapist_id,
+        name: (name || '').toString().trim() || 'Client',
+        email: normalizedEmail,
+        phone: phone ? phone.toString().trim() : null,
+      })
+      .select('id')
+      .single();
+
+    if (insertErr) {
+      // Race condition guard: if a parallel call beat us to the insert
+      // and the database has a unique constraint, we will hit a 23505
+      // duplicate-key error. Re-fetch the existing row in that case.
+      if (insertErr.code === '23505') {
+        const { data: refetch } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('therapist_id', therapist_id)
+          .ilike('email', normalizedEmail)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (refetch?.id) return refetch.id;
+      }
+      console.warn('findOrCreateClient: insert failed', insertErr);
+      return null;
+    }
+
+    return created?.id || null;
+  }
+
+  // ── Path B: No email but we have a phone. ─────────────────────────
+  //
+  // Phase 13.9 (May 24 2026): without this fallback, walk-in bookings
+  // and paper-form transcriptions (where the therapist has a phone
+  // but no email) silently inserted with NULL client_id. Real customer
+  // Terra hit this 11 times via CSV import + therapist-entered bookings.
+  // Look up by normalized last-10 digits scoped to this therapist, then
+  // create-by-phone if no match. See FOUNDER_RUNBOOK Procedure 10.
+  //
+  // Phone uniqueness within a single therapist's client list is a
+  // strong fingerprint. The match query strips all non-digits from
+  // both sides, then compares last 10. Matches CSV-import variations
+  // like '+14693166244, 469-316-6244, (469) 316-6244, 4693166244.
+  const { data: existingByPhone, error: phoneFindErr } = await supabase
     .from('clients')
-    .select('id')
+    .select('id, phone')
     .eq('therapist_id', therapist_id)
-    .ilike('email', normalizedEmail)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .not('phone', 'is', null);
 
-  if (findErr) {
-    // We do not throw here. The lookup failing should not block a
-    // booking from being created. Return null and let the caller
-    // proceed without a client_id; the booking will still have
-    // client_name + client_email and can be backfilled later.
-    console.warn('findOrCreateClient: lookup failed', findErr);
+  if (phoneFindErr) {
+    console.warn('findOrCreateClient: phone lookup failed', phoneFindErr);
     return null;
   }
 
-  if (existing?.id) return existing.id;
+  const match = (existingByPhone || []).find(c => {
+    const digits = (c.phone || '').replace(/\D/g, '').slice(-10);
+    return digits === normalizedPhone;
+  });
+  if (match?.id) return match.id;
 
-  // Step 2: no existing row, create one.
-  const { data: created, error: insertErr } = await supabase
+  // No existing client by phone: create one with whatever info we have.
+  // This is the canonical "walk-in" case. Better to have a real client
+  // row with phone-only than an orphan booking we cannot charge against.
+  const { data: createdByPhone, error: createByPhoneErr } = await supabase
     .from('clients')
     .insert({
       therapist_id,
       name: (name || '').toString().trim() || 'Client',
-      email: normalizedEmail,
-      phone: phone ? phone.toString().trim() : null,
+      email: null,
+      phone: phone.toString().trim(),
     })
     .select('id')
     .single();
 
-  if (insertErr) {
-    // Race condition guard: if a parallel call beat us to the insert
-    // and the database has a unique constraint, we will hit a 23505
-    // duplicate-key error. Re-fetch the existing row in that case.
-    if (insertErr.code === '23505') {
-      const { data: refetch } = await supabase
-        .from('clients')
-        .select('id')
-        .eq('therapist_id', therapist_id)
-        .ilike('email', normalizedEmail)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (refetch?.id) return refetch.id;
-    }
-    console.warn('findOrCreateClient: insert failed', insertErr);
+  if (createByPhoneErr) {
+    console.warn('findOrCreateClient: phone-based insert failed', createByPhoneErr);
     return null;
   }
 
-  return created?.id || null;
+  return createdByPhone?.id || null;
 }

@@ -857,6 +857,75 @@ To prevent recurrence:
 - Pick ONE auth method for Stripe and never use the other
 - Recommended: email plus password with a saved password manager entry, since Google OAuth introduces this duplicate-identity risk
 
+### Procedure 10: Booking shows "Client record missing on this charge"
+
+Discovered May 24 2026 evening. Real customer Terra hit this 11 times across her 3 business accounts. The CheckoutModal renders red error text "Client record missing on this charge" below the payment buttons when `bookings.client_id` is NULL for that row. Therapist cannot proceed with the charge until something links the booking to a client.
+
+Symptoms this is happening:
+- Therapist messages support: "I cannot charge for this booking"
+- CheckoutModal shows red text under the Record-as-paid button
+- Bookings list shows the appointment with a client name displayed (from `bookings.client_name` text column), but the underlying `client_id` foreign key is NULL
+- Affected bookings often have empty `client_email` and a phone number in any format
+
+Root cause:
+`src/lib/findOrCreateClient.js` only looked up clients by email until Phase 13.9 (May 24 2026). When the caller (BookingModal, BookingPage, runImports, ImportClients) passed a row without email, the helper returned null and the booking was inserted with `client_id: null`. This silently broke checkout for any walk-in client, phone-only client, or imported row where the CSV did not carry email through.
+
+Affected booking creation paths before the fix:
+- `src/components/BookingModal.js` line 287 (therapist-created booking from schedule slide-over)
+- `src/pages/BookingPage.js` line 1769 (public booking page)
+- `src/lib/imports/runImports.js` line 791 (unified CSV import, partially guarded by `if (!p._clientId) continue;` at line 769 which skipped the booking entirely; safer but lossy)
+- `src/components/ImportClients.js` line 1856 (legacy CSV import path; `.filter(p => p._clientId)` at line 1847 since May 10 also drops the booking entirely)
+
+Phase 13.9 fix:
+`findOrCreateClient` now has two paths. Path A (email-based) is unchanged. Path B (new): when email is missing but phone is present, normalize both sides to last-10 digits, scope the lookup to `therapist_id`, return the matching client's id. If no match, create a new clients row with name + phone (no email). Only returns null when both email AND phone are missing (truly anonymous booking, rare). All four booking-creation paths automatically inherit the fix since they all call this helper.
+
+To diagnose the bug on a live therapist:
+
+```sql
+-- Count broken bookings per therapist
+SELECT t.business_name, t.email, COUNT(*) AS broken_bookings
+FROM bookings b
+JOIN therapists t ON t.id = b.therapist_id
+WHERE b.client_id IS NULL
+  AND b.status != 'cancelled'
+GROUP BY t.business_name, t.email
+ORDER BY broken_bookings DESC;
+```
+
+To repair existing broken bookings (Terra-style backfill):
+
+```sql
+-- For one therapist, list each broken booking with three candidate matches
+-- (email, phone last-10, name LOWER) so we can pick the right link.
+SELECT b.id AS booking_id, b.client_name, b.client_phone, b.booking_date,
+  (SELECT c.id FROM clients c
+    WHERE c.therapist_id = b.therapist_id
+      AND LOWER(c.email) = LOWER(b.client_email)
+      AND b.client_email IS NOT NULL AND b.client_email <> ''
+    LIMIT 1) AS match_by_email,
+  (SELECT c.id FROM clients c
+    WHERE c.therapist_id = b.therapist_id
+      AND regexp_replace(COALESCE(c.phone,''), '\D', '', 'g')
+        = regexp_replace(COALESCE(b.client_phone,''), '\D', '', 'g')
+      AND b.client_phone IS NOT NULL AND b.client_phone <> ''
+    LIMIT 1) AS match_by_phone,
+  (SELECT c.id FROM clients c
+    WHERE c.therapist_id = b.therapist_id
+      AND LOWER(c.name) = LOWER(b.client_name)
+    LIMIT 1) AS match_by_name
+FROM bookings b
+WHERE b.therapist_id = 'TARGET_THERAPIST_UUID'
+  AND b.client_id IS NULL
+  AND b.status != 'cancelled'
+ORDER BY b.booking_date DESC;
+```
+
+Decision rule: when phone AND name both return the same client_id, link is safe. When only phone matches and name is different, verify with a preview SQL that joins the candidate client back so the operator can confirm "same person, fuller name in client record" (booking might have first name only, client record has both). Only when neither phone nor name matches: hold for therapist input. Never auto-create a client just to link a booking; ask the therapist whether to add the client themself first.
+
+After applying the per-booking UPDATEs, audit_log captures every change for reversal if anything looks wrong.
+
+Structural fix queued (Priority 0 item H in BLOCK_PLAN.md): add `NOT NULL` constraint on `bookings.client_id` once the existing NULL rows are backfilled across all therapists. After that constraint exists, any future code path that tries to insert NULL will fail loudly at the database boundary rather than silently producing a broken row that surfaces weeks later.
+
 ### Stripe Dashboard configuration (canonical state)
 
 If you ever need to restore Stripe Dashboard settings to working state:
