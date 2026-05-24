@@ -113,10 +113,19 @@ function PurchaseRow({ row, kind, therapistId, onRefunded }) {
 
   if (kind === 'package') {
     title = row.package_name || 'Package';
-    subtitle = `${row.sessions_remaining ?? '?'} of ${row.sessions_purchased ?? '?'} sessions left`;
+    // HK direction May 24 2026: show all 4 numbers prominently
+    // Total / Used / Booked / Available. Available is what the
+    // therapist most often wants to know ("can I sell or book more?").
+    const total = row.sessions_purchased ?? 0;
+    const used = row.sessions_used ?? 0;
+    const booked = row.sessions_booked ?? 0;
+    const available = row.sessions_available ?? Math.max(0, total - used - booked);
+    subtitle = `${available} available · ${booked} booked · ${used} used of ${total}`;
     detailRows = [
-      ['Sessions purchased', row.sessions_purchased],
-      ['Sessions remaining', row.sessions_remaining],
+      ['Total sessions', total],
+      ['Used (completed)', used],
+      ['Booked (future)', booked],
+      ['Available to book', available],
       ['Price paid', formatPrice(row.price_paid)],
       ['Expires', row.expires_at ? formatDate(row.expires_at) : 'Never'],
       ['Payment id', row.stripe_payment_id || '—'],
@@ -330,6 +339,58 @@ export default function PurchasesPanel({ therapistId }) {
       const flatSubs = (subRes.data || []).map((r) => ({
         ...r, membership_name: r.memberships?.name || 'Membership',
       }));
+
+      // For packages, we want to show 4 numbers: total purchased, used,
+      // booked-not-completed, available-to-book. The first comes from
+      // the row. The other three come from joining to bookings by
+      // client_email AND the booking date must be on or after when the
+      // package was purchased (so older completed sessions on the same
+      // client aren't counted against this purchase).
+      //
+      // HK direction May 24 2026: real customer concern (Candice's
+      // Michelle conversion) - therapists need to see "how many can
+      // she still book?" not just "how many are remaining" because
+      // remaining doesn't account for already-on-the-calendar bookings.
+      if (flatPkgs.length > 0) {
+        const today = new Date().toISOString().split('T')[0];
+        const emails = [...new Set(
+          flatPkgs.map((p) => (p.client_email || '').toLowerCase().trim()).filter(Boolean)
+        )];
+
+        let bookings = [];
+        if (emails.length > 0) {
+          const { data: bks } = await supabase
+            .from('bookings')
+            .select('client_email, booking_date, status')
+            .eq('therapist_id', therapistId)
+            .in('client_email', emails);
+          bookings = bks || [];
+        }
+
+        // For each package row, compute counts scoped to its client_email
+        // and the package's purchased_at date.
+        for (const pkg of flatPkgs) {
+          const email = (pkg.client_email || '').toLowerCase().trim();
+          const purchasedAt = pkg.purchased_at
+            ? new Date(pkg.purchased_at).toISOString().split('T')[0]
+            : '1970-01-01';
+
+          let used = 0;
+          let booked = 0;
+          for (const b of bookings) {
+            if ((b.client_email || '').toLowerCase().trim() !== email) continue;
+            if (!b.booking_date || b.booking_date < purchasedAt) continue;
+            if (b.status === 'completed') used += 1;
+            else if (b.status === 'confirmed' && b.booking_date >= today) booked += 1;
+          }
+          pkg.sessions_used = used;
+          pkg.sessions_booked = booked;
+          // available = purchased - used - booked, clamped at 0 so we
+          // never show negative if data is in a weird state.
+          const purchased = Number(pkg.sessions_purchased || 0);
+          pkg.sessions_available = Math.max(0, purchased - used - booked);
+        }
+      }
 
       setPackages(flatPkgs);
       setSubscriptions(flatSubs);

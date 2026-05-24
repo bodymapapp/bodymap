@@ -45,16 +45,21 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
     async function load() {
       // 1. Active package purchases for this client.
-      //    The schema already stores sessions_remaining as a computed
-      //    counter, decremented when a booking redeems against the
-      //    purchase. So we don't need to count package_redemptions
-      //    rows; we just read sessions_remaining directly.
-      //    Joined package.name + package.session_count for display.
+      //    HK direction May 24 2026: instead of trusting the
+      //    sessions_remaining computed counter (which only reflects
+      //    completed bookings), we compute three numbers from real
+      //    booking history:
+      //      - used = bookings with status=completed on/after purchase
+      //      - booked = bookings with status=confirmed and date >= today
+      //      - available = purchased - used - booked
+      //    This matches what therapists actually want to see: "can she
+      //    still book?" not just "what's left on paper?"
       const { data: purchases } = await supabase
         .from('package_purchases')
         .select(`
           id, status, purchased_at, expires_at,
           sessions_purchased, sessions_remaining,
+          client_email,
           package:packages(id, name, session_count)
         `)
         .eq('client_id', clientId)
@@ -75,18 +80,55 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
         .eq('status', 'active')
         .order('current_period_end', { ascending: false });
 
+      // 3. Bookings for this client - needed for used/booked counts.
+      //    Bookings link by client_email rather than client_id.
+      const purchaseEmails = [...new Set(
+        (purchases || []).map(p => (p.client_email || '').toLowerCase().trim()).filter(Boolean)
+      )];
+
+      let bookings = [];
+      if (purchaseEmails.length > 0) {
+        const { data: bks } = await supabase
+          .from('bookings')
+          .select('client_email, booking_date, status')
+          .eq('therapist_id', therapistId)
+          .in('client_email', purchaseEmails);
+        bookings = bks || [];
+      }
+
       if (cancelled) return;
 
-      // Compose package list using the DB's precomputed counters.
-      const pkgList = (purchases || []).map(p => ({
-        id: p.id,
-        name: p.package?.name || 'Session pack',
-        total: p.sessions_purchased || p.package?.session_count || 0,
-        used: (p.sessions_purchased || 0) - (p.sessions_remaining || 0),
-        remaining: p.sessions_remaining || 0,
-        expires_at: p.expires_at,
-        purchased_at: p.purchased_at,
-      })).filter(p => p.total > 0);
+      const today = new Date().toISOString().split('T')[0];
+
+      // Compose package list with the 4-number breakdown per purchase.
+      const pkgList = (purchases || []).map(p => {
+        const email = (p.client_email || '').toLowerCase().trim();
+        const purchasedAt = p.purchased_at
+          ? new Date(p.purchased_at).toISOString().split('T')[0]
+          : '1970-01-01';
+
+        let used = 0;
+        let booked = 0;
+        for (const b of bookings) {
+          if ((b.client_email || '').toLowerCase().trim() !== email) continue;
+          if (!b.booking_date || b.booking_date < purchasedAt) continue;
+          if (b.status === 'completed') used += 1;
+          else if (b.status === 'confirmed' && b.booking_date >= today) booked += 1;
+        }
+        const total = p.sessions_purchased || p.package?.session_count || 0;
+        const available = Math.max(0, total - used - booked);
+
+        return {
+          id: p.id,
+          name: p.package?.name || 'Session pack',
+          total,
+          used,
+          booked,
+          available,
+          expires_at: p.expires_at,
+          purchased_at: p.purchased_at,
+        };
+      }).filter(p => p.total > 0);
 
       setPackages(pkgList);
       setMemberships(memberRows || []);
@@ -154,9 +196,13 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
 
       {/* Packages */}
       {packages.map(p => {
-        const pct = p.total > 0 ? Math.round((p.remaining / p.total) * 100) : 0;
-        const isLow = p.remaining > 0 && p.remaining <= 1;
-        const isEmpty = p.remaining === 0;
+        // HK direction May 24 2026: 4-number breakdown
+        // Available is the big number (what therapist can still book/sell).
+        // Progress bar reflects (used + booked) / total = "committed" sessions.
+        const committed = p.used + p.booked;
+        const pct = p.total > 0 ? Math.round((committed / p.total) * 100) : 0;
+        const isLow = p.available > 0 && p.available <= 1;
+        const isEmpty = p.available === 0;
         return (
           <div key={p.id} style={{
             background: '#FAF7EE',
@@ -183,7 +229,7 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
                 background: '#EFE7D2',
                 borderRadius: 4,
                 overflow: 'hidden',
-                marginBottom: 6,
+                marginBottom: 8,
               }}>
                 <div style={{
                   width: `${pct}%`,
@@ -192,19 +238,27 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
                   transition: 'width 0.25s ease-out',
                 }}/>
               </div>
+              {/* 4-number breakdown */}
               <div style={{
-                fontSize: 12,
+                fontSize: 11.5,
                 color: C.inkSoft,
-                display: 'flex', justifyContent: 'space-between', gap: 6, flexWrap: 'wrap',
+                display: 'flex',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginBottom: 4,
               }}>
-                <span>{p.used} used</span>
-                {p.expires_at && (
-                  <span>Expires {formatDate(p.expires_at)}</span>
-                )}
+                <span><strong style={{ color: C.forest }}>{p.total}</strong> total</span>
+                <span><strong style={{ color: C.forest }}>{p.used}</strong> used</span>
+                <span><strong style={{ color: C.forest }}>{p.booked}</strong> booked</span>
               </div>
+              {p.expires_at && (
+                <div style={{ fontSize: 11, color: C.inkSoft }}>
+                  Expires {formatDate(p.expires_at)}
+                </div>
+              )}
             </div>
 
-            {/* The number you actually want to see: big remaining count */}
+            {/* The number you actually want to see: big available count */}
             <div style={{ textAlign: 'right', minWidth: 90, flexShrink: 0 }}>
               <div style={{
                 fontFamily: 'Georgia, serif',
@@ -213,7 +267,7 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
                 lineHeight: 1,
                 fontVariantNumeric: 'tabular-nums',
               }}>
-                {p.remaining}
+                {p.available}
               </div>
               <div style={{
                 fontSize: 11,
@@ -223,7 +277,7 @@ export default function ClientPackageBalance({ clientId, therapistId }) {
                 letterSpacing: '0.06em',
                 fontWeight: 600,
               }}>
-                of {p.total} left
+                available
               </div>
             </div>
           </div>
