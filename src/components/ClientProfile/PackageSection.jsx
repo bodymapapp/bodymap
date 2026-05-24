@@ -403,7 +403,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
     });
     const { error: err } = await supabase
       .from('package_purchases')
-      .update({ status: 'cancelled' })
+      .update({ status: 'canceled' })
       .eq('id', purchaseId);
     if (err) {
       // Inline error: lives on the package row itself, no browser dialog.
@@ -413,7 +413,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
     if (refetch) {
       refetch();
     } else {
-      setLocalPackages(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'cancelled' } : p));
+      setLocalPackages(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'canceled' } : p));
     }
     setCancelArmedId(null);
   }
@@ -522,11 +522,12 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             }}>
               <div>
                 <div style={{
-                  height: 7,
+                  height: 10,
                   background: C.beigeDeep,
-                  borderRadius: 4,
+                  border: `1px solid #DCD0AC`,
+                  borderRadius: 5,
                   overflow: 'hidden',
-                  marginBottom: 6,
+                  marginBottom: 7,
                 }}>
                   <div style={{
                     width: `${pct}%`,
@@ -830,7 +831,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
               display: 'flex',
               alignItems: 'flex-start',
               gap: 10,
-              marginBottom: 12,
+              marginBottom: 8,
               cursor: 'pointer',
               fontSize: 12,
               color: C.ink,
@@ -843,9 +844,24 @@ export default function PackageSection({ client, therapist, hasMembership, secti
                 style={{ cursor: 'pointer', flexShrink: 0, marginTop: 2 }}
               />
               <span style={{ flex: 1, minWidth: 0 }}>
-                Already paid (don't remind me to collect)
+                Client has already paid me (record this package on file)
               </span>
             </label>
+
+            {!alreadyPaid && (
+              <div style={{
+                background: '#FEF3C7',
+                border: '1px solid #FCD34D',
+                borderRadius: 8,
+                padding: '8px 11px',
+                fontSize: 11.5,
+                color: '#78350F',
+                lineHeight: 1.5,
+                marginBottom: 10,
+              }}>
+                To charge a client's card for a package right now, share your booking link. The client can purchase the package from there and it lands on their account automatically.
+              </div>
+            )}
 
             {error && (
               <div style={{
@@ -865,17 +881,17 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             <button
               type="button"
               onClick={addPackage}
-              disabled={submitting}
+              disabled={submitting || !alreadyPaid}
               style={{
                 width: '100%',
-                background: submitting ? '#D1D5DB' : C.forest,
+                background: (submitting || !alreadyPaid) ? '#D1D5DB' : C.forest,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
                 padding: '9px 12px',
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: submitting ? 'not-allowed' : 'pointer',
+                cursor: (submitting || !alreadyPaid) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
               }}
             >
@@ -883,7 +899,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             </button>
 
             <div style={{ fontSize: 10.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
-              All sessions land on her balance right away. As she books and you mark sessions complete, the count goes down.
+              All sessions land on the client's balance right away. As they book and you mark sessions complete, the count goes down.
             </div>
           </div>
         )}
@@ -929,8 +945,8 @@ export default function PackageSection({ client, therapist, hasMembership, secti
                 <span style={{
                   fontSize: 9,
                   fontWeight: 700,
-                  background: pkg.status === 'cancelled' ? '#FEE2E2' : '#FEF3C7',
-                  color: pkg.status === 'cancelled' ? '#991B1B' : '#78350F',
+                  background: pkg.status === 'canceled' ? '#FEE2E2' : '#FEF3C7',
+                  color: pkg.status === 'canceled' ? '#991B1B' : '#78350F',
                   padding: '2px 7px',
                   borderRadius: 99,
                   textTransform: 'uppercase',
