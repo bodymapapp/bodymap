@@ -809,7 +809,7 @@ export default function MembershipCard({ client, therapist }) {
             ))}
           </select>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 8 }}>
             <div>
               <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Next renewal</label>
               <input
@@ -900,14 +900,14 @@ export default function MembershipCard({ client, therapist }) {
             />
           </div>
 
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer', fontSize: 12, color: C.ink }}>
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, cursor: 'pointer', fontSize: 12, color: C.ink, lineHeight: 1.45 }}>
             <input
               type="checkbox"
               checked={firstMonthAlreadyPaid}
               onChange={e => setFirstMonthAlreadyPaid(e.target.checked)}
-              style={{ cursor: 'pointer' }}
+              style={{ cursor: 'pointer', flexShrink: 0, marginTop: 2 }}
             />
-            <span>First month already paid (skip the renewal reminder this period)</span>
+            <span style={{ flex: 1, minWidth: 0 }}>First month already paid (skip the renewal reminder this period)</span>
           </label>
 
           {error && (
