@@ -897,6 +897,40 @@ Reconciliation rule, full statement:
 
 Trade-off: if the same person enters their name differently across bookings (typo, short form, full name later), they get two client records. The therapist can merge via the consolidation UI (queued in BLOCK_PLAN). This is preferred to the alternative where two different humans get merged based on shared phone, which corrupts session history and is difficult to unwind cleanly.
 
+Worked example: husband and wife sharing a phone
+
+The household-phone case is the one most likely to trip up phone-based matching. Walk through what the helper does:
+
+```
+Booking 1: name="John Smith", phone="555-1234", no email
+  Path B: no email match (skipped), phone lookup returns no rows.
+  Action: CREATE client A {name:"John Smith", phone:"555-1234", email:NULL}
+  Result: bookings.client_id = A
+
+Booking 2: name="Jane Smith", phone="555-1234", no email
+  Path B: phone lookup finds A, but A.name="John Smith" != "Jane Smith".
+  Action: CREATE client B {name:"Jane Smith", phone:"555-1234", email:NULL}
+  Result: bookings.client_id = B
+
+Booking 3: name="John Smith", phone="555-1234", email="john@x.com"
+  Path A: email lookup finds no match.
+  Path A stub check: A.name="John Smith" matches AND A.phone matches AND A.email IS NULL.
+  Action: UPDATE A SET email='john@x.com'. Return A.
+  Result: bookings.client_id = A (existing, now enriched)
+
+Booking 4: name="Jane Smith", phone="555-1234", email="jane@x.com"
+  Path A: email lookup finds no match (A has john@x.com, B has email=NULL).
+  Path A stub check: B.name="Jane Smith" matches AND B.phone matches AND B.email IS NULL.
+  Action: UPDATE B SET email='jane@x.com'. Return B.
+  Result: bookings.client_id = B (existing, now enriched)
+```
+
+Final state: client A (John, full info) and client B (Jane, full info). Each spouse has clean session history under their own record, even though they share a phone and have the same last name.
+
+Same-day refinement: what happens when one spouse is already in the system with both email and phone, and the other spouse books without email? Same phone, different name. Path B phone lookup finds the first spouse but name does not match. Path B creates a new client for the second spouse. No commingling.
+
+
+
 To diagnose the bug on a live therapist:
 
 ```sql
