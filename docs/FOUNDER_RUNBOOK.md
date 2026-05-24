@@ -880,7 +880,22 @@ Phase 13.9 fix:
 `findOrCreateClient` now has two paths. Path A (email-based) is unchanged in its core: look up by email, return matching id, or create new. Path B (new): when email is missing but phone is present, normalize both sides to last-10 digits, scope the lookup to `therapist_id`, return the matching client's id. If no match, create a new clients row with name + phone (no email). Only returns null when both email AND phone are missing (truly anonymous booking, rare). All four booking-creation paths automatically inherit the fix since they all call this helper.
 
 Phase 13.10 fix (same-day refinement, May 24 2026):
-Path A now also checks phone before creating a new client. Real scenario it solves: a client books once with name + phone only (Path B creates a stub with `email = NULL`), then books again later with email + phone provided. Without the check, Path A would create a second client row for the same human. The reconciliation rule: when email lookup misses but phone is present, query phone-only stubs (rows where `email IS NULL`) scoped to therapist_id. If exactly one matches by phone last-10, update that stub with the newly-provided email and return its id. If the phone matches a client who already has a DIFFERENT email, treat them as two different people (family members, shared business line) and create a new row. Only the email field is patched; the name on the existing record is preserved. Therapist can edit the name in the UI if needed.
+Path A now also checks phone before creating a new client. Real scenario it solves: a client books once with name + phone only (Path B creates a stub with `email = NULL`), then books again later with email + phone provided. Without the check, Path A would create a second client row for the same human.
+
+Phase 13.11 fix (same-day, May 24 2026):
+Both Path A's stub enrichment and Path B's phone lookup now require **exact name match** in addition to phone match. This is critical for the household-phone case: husband and wife (or business partners sharing a line, or any two people in the same household) get separate client records, not a single merged one. Phone-only matching would silently link two humans into one client record, comingling their session notes, payments, intake forms, and history. That data corruption is much harder to unwind than the inverse problem of having one human in two records (which the therapist can fix with the consolidation UI).
+
+Reconciliation rule, full statement:
+- **Email matches existing client.** Return that id. No write.
+- **Email is new, phone matches a phone-only stub with the SAME name.** Enrich the stub with the email, return its id.
+- **Email is new, phone matches but name differs.** Treat as a different person. Create a new client.
+- **Email is new, no phone match.** Create new client with email + name + phone.
+- **No email, phone matches existing client with the SAME name.** Return matching id (same person, no email this time).
+- **No email, phone matches but name differs.** Create a new client (household sharing a phone).
+- **No email, no phone match.** Create new client with name + phone, no email.
+- **No email and no phone.** Return null (truly anonymous booking, rare admin case).
+
+Trade-off: if the same person enters their name differently across bookings (typo, short form, full name later), they get two client records. The therapist can merge via the consolidation UI (queued in BLOCK_PLAN). This is preferred to the alternative where two different humans get merged based on shared phone, which corrupts session history and is difficult to unwind cleanly.
 
 To diagnose the bug on a live therapist:
 

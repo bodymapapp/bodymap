@@ -108,32 +108,38 @@ export async function findOrCreateClient({ supabase, therapist_id, name, email, 
     // a stub with email=null), then the same person books again later
     // with email provided. Without this check, Path A would create a
     // second client row, duplicating the human. Enrichment rule:
-    // match on phone last-10 digits, only consider rows where email
-    // is null (phone-only stubs from prior incomplete bookings).
-    // Different existing email means a different person sharing the
-    // same phone (family, shared business line); we treat them as
-    // separate and proceed to create. See FOUNDER_RUNBOOK Procedure 10.
+    // match on phone last-10 digits AND exact lowercase name. The
+    // name requirement is critical: husband and wife (or any household
+    // sharing a phone) get separate client records, not a merged one.
+    // Phone match alone would silently link two humans into one. Only
+    // consider rows where email IS NULL (phone-only stubs from prior
+    // incomplete bookings); a stub that already has a different email
+    // belongs to a different person. See FOUNDER_RUNBOOK Procedure 10.
     if (normalizedPhone) {
       const { data: phoneStubs } = await supabase
         .from('clients')
-        .select('id, phone, email, created_at')
+        .select('id, name, phone, email, created_at')
         .eq('therapist_id', therapist_id)
         .is('email', null)
         .not('phone', 'is', null)
         .order('created_at', { ascending: true });
 
+      const normalizedNewName = (name || '').toString().trim().toLowerCase();
       const stub = (phoneStubs || []).find(c => {
         const digits = (c.phone || '').replace(/\D/g, '').slice(-10);
-        return digits === normalizedPhone;
+        const existingName = (c.name || '').trim().toLowerCase();
+        return digits === normalizedPhone
+          && existingName === normalizedNewName
+          && existingName !== ''
+          && normalizedNewName !== '';
       });
 
       if (stub?.id) {
-        // Found a phone-only stub for this person. Enrich with the
-        // newly-provided email and return the existing id. We only
-        // patch email (not name); the therapist can edit the name
-        // later if they want, and overwriting could clobber a name
-        // they prefer (e.g. "Sandy" they recognize vs "Sandra Lin"
-        // from this booking's form).
+        // Found a phone-only stub for this exact person (phone AND
+        // name match). Enrich with the newly-provided email and
+        // return the existing id. We only patch email (not name);
+        // the existing record may have a preferred display name the
+        // booking form would clobber.
         await supabase
           .from('clients')
           .update({ email: normalizedEmail })
@@ -181,16 +187,21 @@ export async function findOrCreateClient({ supabase, therapist_id, name, email, 
   // and paper-form transcriptions (where the therapist has a phone
   // but no email) silently inserted with NULL client_id. Real customer
   // Terra hit this 11 times via CSV import + therapist-entered bookings.
-  // Look up by normalized last-10 digits scoped to this therapist, then
-  // create-by-phone if no match. See FOUNDER_RUNBOOK Procedure 10.
+  // Look up by normalized last-10 digits AND exact lowercase name,
+  // scoped to this therapist. See FOUNDER_RUNBOOK Procedure 10.
   //
-  // Phone uniqueness within a single therapist's client list is a
-  // strong fingerprint. The match query strips all non-digits from
-  // both sides, then compares last 10. Matches CSV-import variations
-  // like '+14693166244, 469-316-6244, (469) 316-6244, 4693166244.
+  // Phase 13.11 (May 24 2026): the name requirement is critical.
+  // Husband and wife (or any household sharing a phone, or a business
+  // line shared by partners) get separate client records, not a
+  // merged one. Phone match alone would silently link two humans into
+  // one client record, comingling their session notes, charges, and
+  // history. That data corruption is hard to unwind. Conservatively:
+  // when phone matches but name does not, create a new client row.
+  // If the same person later enters their name differently, the
+  // therapist can merge via the consolidation UI.
   const { data: existingByPhone, error: phoneFindErr } = await supabase
     .from('clients')
-    .select('id, phone')
+    .select('id, name, phone')
     .eq('therapist_id', therapist_id)
     .not('phone', 'is', null);
 
@@ -199,9 +210,14 @@ export async function findOrCreateClient({ supabase, therapist_id, name, email, 
     return null;
   }
 
+  const normalizedNewName = (name || '').toString().trim().toLowerCase();
   const match = (existingByPhone || []).find(c => {
     const digits = (c.phone || '').replace(/\D/g, '').slice(-10);
-    return digits === normalizedPhone;
+    const existingName = (c.name || '').trim().toLowerCase();
+    return digits === normalizedPhone
+      && existingName === normalizedNewName
+      && existingName !== ''
+      && normalizedNewName !== '';
   });
   if (match?.id) return match.id;
 
