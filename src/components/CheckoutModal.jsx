@@ -1016,19 +1016,35 @@ export default function CheckoutModal({
                   therapist={therapist}
                   appt={appt}
                   onPicked={async (picked) => {
-                    // UPDATE bookings.client_id so the row is no
-                    // longer orphaned for future opens. Audit log
-                    // captures the change. If the update fails, we
-                    // still advance the in-memory state so the
-                    // therapist can proceed with this charge; the
-                    // booking can be reconciled later.
+                    // Link the booking AND overwrite the legacy text
+                    // columns so the schedule grid and slide-over
+                    // immediately reflect the picked client on refresh.
+                    // Before this, we only wrote client_id and the
+                    // therapist still saw the old client_name (e.g.
+                    // 'Test Picker Client') in the schedule. HK May 24
+                    // 2026: 'once I picked it up, it did not update
+                    // the Test Picker Client name to my name.'
                     if (appt?.id && picked?.id) {
                       await supabase
                         .from('bookings')
-                        .update({ client_id: picked.id })
+                        .update({
+                          client_id: picked.id,
+                          client_name: picked.name || appt.client || null,
+                          client_email: picked.email || appt.email || null,
+                          client_phone: picked.phone || appt.phone || null,
+                        })
                         .eq('id', appt.id);
                     }
                     setClient(picked);
+                    // Fire onPaid to nudge the parent slide-over to
+                    // refresh its payment list (existing wiring). This
+                    // also triggers the schedule grid refresh on its
+                    // next render cycle. The therapist may also need
+                    // to close the slide-over and re-open to see the
+                    // updated name in the header, depending on how
+                    // the parent caches appt prop; the underlying DB
+                    // row is now correct either way.
+                    if (typeof onPaid === 'function') onPaid();
                     setStep('method');
                   }}
                   onCancel={onClose}
@@ -1846,11 +1862,20 @@ function SelectClientStep({ therapist, appt, onPicked, onCancel }) {
   }, [therapist?.id]);
 
   const q = query.trim().toLowerCase();
+  const queryDigits = q.replace(/\D/g, '');
   const filtered = q
-    ? allClients.filter(c =>
-        (c.name || '').toLowerCase().includes(q) ||
-        (c.email || '').toLowerCase().includes(q) ||
-        (c.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '')))
+    ? allClients.filter(c => {
+        // Name + email substring match (always evaluated).
+        if ((c.name || '').toLowerCase().includes(q)) return true;
+        if ((c.email || '').toLowerCase().includes(q)) return true;
+        // Phone-digit match ONLY when the query has at least one
+        // digit. Otherwise "".includes("") returns true for every
+        // row and the whole filter collapses. Real bug: typing
+        // "Joy" returned every client because q.replace(/\D/,'')
+        // was '' and every phone "includes" ''. HK May 24 2026.
+        if (queryDigits && (c.phone || '').replace(/\D/g, '').includes(queryDigits)) return true;
+        return false;
+      })
     : allClients;
 
   async function handleCreate() {
