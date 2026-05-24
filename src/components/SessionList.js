@@ -3,7 +3,6 @@ import React, { useState, useEffect } from "react";
 import { db, supabase } from "../lib/supabase";
 import { getSampleSessions } from "../data/sampleClients";
 import BookingModal from "./BookingModal";
-import ClientPackageBalance from "./ClientPackageBalance";
 import { getStripePublishableKey } from "../lib/paymentMode";
 import { formatUSPhone } from "../lib/formatters/phone";
 
@@ -748,15 +747,17 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
       </div>
       )}
 
-      {/* Action buttons row + balance card.
-          Always visible (no compact gate), so the therapist keeps
-          Edit / Book Next / Merge / Archive access inside the
-          Sessions and SOAP notes section. ClientPackageBalance is
-          slim and informative; keeping it here is harmless even
-          though StatusStrip shows a summary balance tile above. */}
+      {/* Action buttons row.
+          Edit / Book Next / Merge / Archive access lives inside the
+          Sessions and SOAP notes section. The package + membership
+          balance display previously lived here (ClientPackageBalance)
+          but moved to its own dedicated 'Memberships & Packages'
+          section in the May 24 2026 redesign. Keeping a duplicate
+          here caused two display bugs: (1) it rendered inside the
+          wrong section visually, and (2) it didn't refresh when the
+          therapist cancelled a package or membership in the new
+          section, leaving stale 'active' rows on screen. */}
       <div style={{ marginBottom: "20px" }}>
-        <ClientPackageBalance clientId={client.id} therapistId={therapistId} />
-
         <div className="bm-client-actions" style={{
           display: "flex", alignItems: "center", gap: 8,
           flexWrap: "wrap",
