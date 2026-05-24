@@ -498,6 +498,16 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         <p style={{ fontSize:13, color:C.gray, margin:0 }}>Send a personal message to a group of clients in one shot. Each one is addressed by name.</p>
       </div>
 
+      {/* Section 1 header: Ready to send (Quick Sends) */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:700, color:C.dark, margin:'0 0 3px' }}>
+          Ready to send
+        </div>
+        <div style={{ fontSize:12.5, color:C.gray, lineHeight:1.5 }}>
+          Tap a campaign to send it now. We've pre-picked the audience and message.
+        </div>
+      </div>
+
       {/* Quick-send blocks at the top.
           HK direction May 9 2026: 5 preconfigured blocks for the
           most common outreach moments (welcome new clients, miss
@@ -507,13 +517,16 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
           template builder remains for therapists who need it. */}
       <QuickSendBlocks therapist={therapist} />
 
-      {/* Divider between quick-send and advanced */}
-      <div style={{ display:'flex', alignItems:'center', gap:12, margin:'8px 0 18px' }}>
-        <div style={{ flex:1, height:1, background:C.light }} />
-        <div style={{ fontSize:11, fontWeight:700, color:C.gray, textTransform:'uppercase', letterSpacing:'0.07em' }}>
-          Or build a custom campaign
+      {/* Section 2 header: Build your own (Custom Campaign).
+          HK direction May 25 2026: section break must be obvious -
+          two-section visual hierarchy instead of a thin divider. */}
+      <div style={{ marginTop:32, marginBottom:14 }}>
+        <div style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:700, color:C.dark, margin:'0 0 3px' }}>
+          Build your own
         </div>
-        <div style={{ flex:1, height:1, background:C.light }} />
+        <div style={{ fontSize:12.5, color:C.gray, lineHeight:1.5 }}>
+          Choose a custom audience, write your own message, send.
+        </div>
       </div>
 
       {/* Channel toggle */}
