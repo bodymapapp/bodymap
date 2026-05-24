@@ -1663,7 +1663,19 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
       <button
         type="button"
         onClick={onClose}
-        style={{ width: '100%', background: '#fff', color: C.forestDeep, border: `1.5px solid ${C.border}`, borderRadius: 12, padding: '12px 18px', fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>
+        style={{
+          width: '100%',
+          background: `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})`,
+          color: '#fff',
+          border: 'none',
+          borderRadius: 12,
+          padding: '14px 18px',
+          fontSize: 16,
+          fontWeight: 700,
+          cursor: 'pointer',
+          boxShadow: '0 2px 10px rgba(42,87,65,0.2)',
+          fontFamily: 'inherit',
+        }}>
         Done
       </button>
     </div>

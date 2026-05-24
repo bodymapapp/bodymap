@@ -1199,7 +1199,13 @@ export default function MembershipCard({ client, therapist }) {
           therapist={therapist}
           client={client}
           defaultAmountCents={renewalToCharge.renewal.amount_due_cents}
-          onClose={() => setRenewalToCharge(null)}
+          onClose={() => {
+            setRenewalToCharge(null);
+            setTimeout(() => {
+              const el = document.querySelector('[data-section-id="memberships-packages"]');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
           onPaid={() => { refreshRenewals(); }}
         />
       )}
@@ -1214,7 +1220,13 @@ export default function MembershipCard({ client, therapist }) {
           therapist={therapist}
           client={client}
           defaultAmountCents={Math.round(Number(adhocChargeSub.monthly_price) * 100)}
-          onClose={() => setAdhocChargeSub(null)}
+          onClose={() => {
+            setAdhocChargeSub(null);
+            setTimeout(() => {
+              const el = document.querySelector('[data-section-id="memberships-packages"]');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
           onPaid={() => { refreshRenewals(); }}
         />
       )}

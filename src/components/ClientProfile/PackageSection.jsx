@@ -1014,14 +1014,26 @@ export default function PackageSection({ client, therapist, hasMembership, secti
           membership checkout (Mark as paid, Card on file, Enter new
           card, Send pay link). On success, modal creates the
           package_purchases row + linked session_payments row, calls
-          onPackageCreated, and we refresh the list. */}
+          onPackageCreated, and we refresh the list. On close (Done),
+          scroll the page back to the Memberships & Packages section
+          so therapist sees the new package in context, not the
+          (now-collapsed) empty form area below it. */}
       {packageCheckoutContext && (
         <CheckoutModal
           packagePurchase={packageCheckoutContext}
           therapist={therapist}
           client={client}
           defaultAmountCents={Math.round(packageCheckoutContext.price * 100)}
-          onClose={() => setPackageCheckoutContext(null)}
+          onClose={() => {
+            setPackageCheckoutContext(null);
+            // Scroll to top of Memberships & Packages so the therapist
+            // lands in the right context after Done, not at the bottom
+            // of the (collapsed) add-form area which looks empty.
+            setTimeout(() => {
+              const el = document.querySelector('[data-section-id="memberships-packages"]');
+              if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 50);
+          }}
           onPackageCreated={() => {
             if (refetch) refetch();
             resetForm();

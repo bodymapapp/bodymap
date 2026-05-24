@@ -330,6 +330,7 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
             accent="membership"
             order={5}
             title="Memberships & Packages"
+            dataSectionId="memberships-packages"
             trailingLabel="What this client has bought"
             isOpen={openSections.membership}
             onToggle={() => toggle('membership')}
