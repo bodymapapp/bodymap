@@ -24,6 +24,7 @@
 //      folded in from the previous separate MarkAsPaidModal.
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
 import CloseButton from './CloseButton';
@@ -715,7 +716,14 @@ export default function CheckoutModal({
     padding: isMobileViewport ? '20px 20px 24px' : '20px 24px 24px',
   };
 
-  return (
+  // Phase 2 May 24 2026 (HK): wrap the modal return in createPortal so
+  // it mounts at document.body. Without this, the modal inherits the
+  // containing block of whatever ancestor has transform/filter/animation
+  // applied. ProfileSection has a 'bm-cp-rise' animation with translateY
+  // that creates a containing block, which constrained the modal to
+  // the ProfileSection card rather than the viewport. Result: modal
+  // looked cut off because page content above and below was visible.
+  return createPortal(
     <div style={overlayStyle} onClick={onClose}>
       <div style={sheetStyle} onClick={e => e.stopPropagation()}>
         {step === 'success' ? (
@@ -836,7 +844,8 @@ export default function CheckoutModal({
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
