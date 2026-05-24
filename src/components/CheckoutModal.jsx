@@ -27,6 +27,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { getStripePublishableKey } from '../lib/paymentMode';
+import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
 
 const C = {
@@ -73,7 +74,7 @@ export default function CheckoutModal({
   packagePurchase,      // NEW May 24 2026: { name, sessions, price, expiresAt, planId, oneoffPlanData } when adding/charging a package
   onPackageCreated,     // NEW May 24 2026: called with the created package_purchase row on success
   therapist,
-  client,
+  client: clientProp,
   defaultAmountCents,
   onClose,
   onPaid,
@@ -84,7 +85,26 @@ export default function CheckoutModal({
   const isSubscription = !!subscription;
   const isPackage = !!packagePurchase;
   const chargeContextOk = !!(appt || subscription || packagePurchase);
-  const [step, setStep] = useState('method'); // 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'offline' | 'success'
+
+  // Phase 13.12 (HK May 24 2026): inline client picker for booking
+  // charges. When CheckoutModal opens on an appt whose underlying
+  // bookings.client_id is NULL, the modal previously rendered a red
+  // "Client record missing on this charge" error and the therapist
+  // could not proceed without an operator running SQL to repair the
+  // booking. Now: if appt is present but clientProp is missing/no-id,
+  // we open in a new 'select_client' step that lets the therapist
+  // pick from their client list or add a new client inline. On
+  // confirm, we UPDATE bookings.client_id and advance to the method
+  // picker as if the booking had been linked properly all along.
+  //
+  // The local 'client' state shadows the prop so charge handlers do
+  // not need to change. When the therapist picks/creates a client,
+  // setClient(picked) and the rest of the modal sees it.
+  const [client, setClient] = useState(clientProp);
+  useEffect(() => { setClient(clientProp); }, [clientProp]);
+
+  const needsClientPicker = !!appt && !clientProp?.id;
+  const [step, setStep] = useState(needsClientPicker ? 'select_client' : 'method'); // 'select_client' | 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'offline' | 'success'
   const [amount, setAmount] = useState(((defaultAmountCents || 0) / 100).toFixed(2));
   const [tip, setTip] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -984,7 +1004,36 @@ export default function CheckoutModal({
 
             {/* Scrollable body */}
             <div style={bodyStyle}>
-              <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} therapist={therapist} />
+              {/* Amount input hidden during the inline client-picker
+                  prelude step. There is no point asking how much to
+                  charge before we have a client to charge against. */}
+              {step !== 'select_client' && (
+                <AmountRow amount={amount} setAmount={setAmount} tip={tip} setTip={setTip} totalCents={totalCents} therapist={therapist} />
+              )}
+
+              {step === 'select_client' && (
+                <SelectClientStep
+                  therapist={therapist}
+                  appt={appt}
+                  onPicked={async (picked) => {
+                    // UPDATE bookings.client_id so the row is no
+                    // longer orphaned for future opens. Audit log
+                    // captures the change. If the update fails, we
+                    // still advance the in-memory state so the
+                    // therapist can proceed with this charge; the
+                    // booking can be reconciled later.
+                    if (appt?.id && picked?.id) {
+                      await supabase
+                        .from('bookings')
+                        .update({ client_id: picked.id })
+                        .eq('id', appt.id);
+                    }
+                    setClient(picked);
+                    setStep('method');
+                  }}
+                  onCancel={onClose}
+                />
+              )}
 
               {step === 'method' && (
                 <MethodPicker
@@ -1745,3 +1794,315 @@ function OfflineForm({ method, setMethod, note, setNote, totalCents, onConfirm, 
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────────
+// SelectClientStep (HK May 24 2026, Phase 13.12)
+//
+// Inline recovery surface for the "Client record missing on this
+// charge" case. When a therapist opens checkout on a booking whose
+// underlying row has client_id = NULL, render this step BEFORE the
+// method picker so they can self-serve a fix.
+//
+// Two paths from here:
+//   1. Pick from existing clients. Search by name / email / phone.
+//      Confirm. We UPDATE bookings.client_id and advance.
+//   2. Add a new client inline. Name + email + phone (all optional
+//      individually; we just need one identifying field). Uses
+//      findOrCreateClient under the hood so existing clients with
+//      a matching email or phone+name get reused (no duplicate).
+//
+// Why this matters: this is the platform-level fix for the bug
+// Terra hit. Before, the only way to recover an orphan booking was
+// for an operator to run SQL. Now any therapist can do it
+// themselves in 10 seconds. See FOUNDER_RUNBOOK Procedure 10.
+// ─────────────────────────────────────────────────────────────────
+function SelectClientStep({ therapist, appt, onPicked, onCancel }) {
+  const [allClients, setAllClients] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
+
+  // Inline add-new state
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState(appt?.client || '');
+  const [newEmail, setNewEmail] = useState(appt?.email || '');
+  const [newPhone, setNewPhone] = useState(appt?.phone || '');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!therapist?.id) { setLoading(false); return; }
+      const { data } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('therapist_id', therapist.id)
+        .order('name', { ascending: true });
+      if (cancelled) return;
+      setAllClients(data || []);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [therapist?.id]);
+
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? allClients.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').replace(/\D/g, '').includes(q.replace(/\D/g, '')))
+    : allClients;
+
+  async function handleCreate() {
+    setCreateError(null);
+    if (!newName.trim() && !newEmail.trim() && !newPhone.trim()) {
+      setCreateError('Add a name, email, or phone to continue.');
+      return;
+    }
+    setCreating(true);
+    try {
+      const clientId = await findOrCreateClient({
+        supabase,
+        therapist_id: therapist.id,
+        name: newName.trim() || (appt?.client || 'Client'),
+        email: newEmail.trim(),
+        phone: newPhone.trim(),
+      });
+      if (!clientId) {
+        setCreateError('Could not save the client. Try again or pick from your list.');
+        return;
+      }
+      const { data: row } = await supabase
+        .from('clients')
+        .select('*')
+        .eq('id', clientId)
+        .single();
+      if (row) {
+        onPicked(row);
+      } else {
+        setCreateError('Saved, but could not load the new client. Refresh and try again.');
+      }
+    } catch (err) {
+      console.error('SelectClientStep.handleCreate failed', err);
+      setCreateError(err?.message || 'Could not save the client.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  return (
+    <div>
+      {/* Banner explaining what happened and what to do. Sage tint
+          keeps it friendly rather than alarming; this is a recovery
+          flow, not an error. */}
+      <div style={{
+        background: '#E8F0E8',
+        border: '1px solid #B8D4B8',
+        borderRadius: 12,
+        padding: '12px 14px',
+        marginBottom: 16,
+      }}>
+        <div style={{ fontWeight: 700, color: C.forestDeep, fontSize: 14, marginBottom: 4 }}>
+          This booking isn't connected to a client yet
+        </div>
+        <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.45 }}>
+          {appt?.client
+            ? `The booking shows "${appt.client}". Pick the matching client from your list, or add them as a new client.`
+            : 'Pick a client from your list, or add a new one to continue with this charge.'}
+        </div>
+      </div>
+
+      {!adding && (
+        <>
+          {/* Search */}
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search by name, email, or phone"
+            style={{
+              width: '100%',
+              padding: '12px 14px',
+              border: `1.5px solid ${C.border}`,
+              borderRadius: 10,
+              fontSize: 14,
+              boxSizing: 'border-box',
+              outline: 'none',
+              background: '#fff',
+              marginBottom: 12,
+              fontFamily: 'system-ui, -apple-system, sans-serif',
+            }}
+          />
+
+          {/* List */}
+          <div style={{
+            maxHeight: 280,
+            overflowY: 'auto',
+            border: `1px solid ${C.border}`,
+            borderRadius: 10,
+            background: '#fff',
+            marginBottom: 12,
+          }}>
+            {loading && (
+              <div style={{ padding: 16, fontSize: 13, color: C.inkSoft, textAlign: 'center' }}>Loading clients...</div>
+            )}
+            {!loading && filtered.length === 0 && (
+              <div style={{ padding: 16, fontSize: 13, color: C.inkSoft, textAlign: 'center' }}>
+                {q ? `No clients match "${query}".` : 'No clients in your list yet.'}
+              </div>
+            )}
+            {!loading && filtered.map(c => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => onPicked(c)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '12px 14px',
+                  border: 'none',
+                  borderBottom: `1px solid ${C.border}`,
+                  background: '#fff',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = '#F5F0E8'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+              >
+                <div style={{ fontWeight: 700, fontSize: 14, color: C.forestDeep }}>{c.name || 'Unnamed client'}</div>
+                <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 2 }}>
+                  {[c.email, c.phone].filter(Boolean).join(' · ') || 'No contact info'}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Add new + Cancel */}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              style={{
+                flex: 1,
+                background: '#fff',
+                color: C.forestDeep,
+                border: `1.5px solid ${C.forestDeep}`,
+                borderRadius: 10,
+                padding: '12px 14px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              + Add new client
+            </button>
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                background: 'transparent',
+                color: C.inkSoft,
+                border: 'none',
+                padding: '12px 14px',
+                fontSize: 14,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </>
+      )}
+
+      {adding && (
+        <div>
+          <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Add a new client
+          </div>
+          <input
+            type="text"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+            placeholder="Full name"
+            style={inputStyle}
+          />
+          <input
+            type="email"
+            value={newEmail}
+            onChange={e => setNewEmail(e.target.value)}
+            placeholder="Email (optional)"
+            style={inputStyle}
+          />
+          <input
+            type="tel"
+            value={newPhone}
+            onChange={e => setNewPhone(e.target.value)}
+            placeholder="Phone (optional)"
+            style={inputStyle}
+          />
+          {createError && (
+            <div style={{ fontSize: 13, color: '#DC2626', marginTop: 4, marginBottom: 8 }}>
+              {createError}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+            <button
+              type="button"
+              onClick={handleCreate}
+              disabled={creating}
+              style={{
+                flex: 1,
+                background: creating ? '#9CA3AF' : `linear-gradient(135deg, ${C.forestDeep}, ${C.forest})`,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                padding: '12px 14px',
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: creating ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+                boxShadow: '0 2px 10px rgba(42,87,65,0.2)',
+              }}
+            >
+              {creating ? 'Saving...' : 'Save and continue'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAdding(false); setCreateError(null); }}
+              disabled={creating}
+              style={{
+                background: 'transparent',
+                color: C.inkSoft,
+                border: 'none',
+                padding: '12px 14px',
+                fontSize: 14,
+                cursor: creating ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              Back
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Reusable input style for the add-new form. Matches the rest of
+// CheckoutModal's input fields.
+const inputStyle = {
+  width: '100%',
+  padding: '12px 14px',
+  border: '1.5px solid #E5DDD2',
+  borderRadius: 10,
+  fontSize: 14,
+  boxSizing: 'border-box',
+  outline: 'none',
+  background: '#fff',
+  marginBottom: 8,
+  fontFamily: 'system-ui, -apple-system, sans-serif',
+};
