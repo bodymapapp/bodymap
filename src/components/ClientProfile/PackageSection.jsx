@@ -192,6 +192,15 @@ export default function PackageSection({ client, therapist, hasMembership, secti
     return () => clearTimeout(t);
   }, [cancelArmedId]);
 
+  // Defensive: reset submitting on mount in case a prior unmount
+  // happened mid-async and left it stuck. HK May 24 2026: '3rd
+  // package failed with button disabled' bug. Without this, the
+  // Add button could stay disabled forever after a hot reload,
+  // route change, or remount-mid-await.
+  useEffect(() => {
+    setSubmitting(false);
+  }, []);
+
   useEffect(() => {
     // Skip local fetch if parent provided shared data.
     if (data) {
@@ -897,6 +906,23 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             >
               {submitting ? 'Saving…' : 'Add package'}
             </button>
+
+            {/* HK May 24 2026: visible reason when button is disabled,
+                so therapist sees what to fix instead of guessing. */}
+            {(submitting || !alreadyPaid) && (
+              <div style={{
+                fontSize: 11,
+                color: C.gray,
+                marginTop: 6,
+                fontStyle: 'italic',
+                textAlign: 'center',
+                lineHeight: 1.4,
+              }}>
+                {submitting
+                  ? 'Saving previous request…'
+                  : 'Check "Client has already paid me" above to enable this button.'}
+              </div>
+            )}
 
             <div style={{ fontSize: 10.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
               All sessions land on the client's balance right away. As they book and you mark sessions complete, the count goes down.
