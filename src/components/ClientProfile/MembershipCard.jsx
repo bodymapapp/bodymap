@@ -544,28 +544,79 @@ export default function MembershipCard({ client, therapist }) {
             const paymentStatus = getPaymentStatus(sub);
             const pending = pendingRenewals.find(r => r.member_subscription_id === sub.id);
             const isEditing = editingSubId === sub.id;
+            // Phase 2c (HK May 24 2026): Visual unification with PackageSection.
+            // Active membership rows now use the icon-tile + kicker + title +
+            // sub-line pattern matching active package cards. All existing
+            // logic below this header (edit form, charge buttons, action
+            // buttons) stays intact.
+            const subLine = (
+              <>
+                ${Number(sub.monthly_price).toFixed(2)}/mo · {sub.current_credits} of {sub.monthly_session_credits} session{sub.monthly_session_credits === 1 ? '' : 's'} available
+                {sub.renewal_day_of_month && (
+                  <> · Bills on the {sub.renewal_day_of_month}{ordinalSuffix(sub.renewal_day_of_month)}</>
+                )}
+              </>
+            );
             return (
               <div
                 key={sub.id}
                 style={{
-                  background: isActive ? '#FFFFFF' : '#F9FAFB',
-                  border: `1.5px solid ${isActive ? C.line : '#E5E7EB'}`,
-                  borderLeft: `4px solid ${isActive ? C.forest : C.gray}`,
+                  background: '#FFFFFF',
+                  border: `1.5px solid ${C.line}`,
+                  borderLeft: `4px solid ${C.forest}`,
                   borderRadius: 10,
                   padding: '12px 14px',
-                  marginBottom: 8,
+                  marginBottom: 10,
+                  boxShadow: '0 2px 6px rgba(42, 87, 65, 0.06)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, fontFamily: 'Georgia, serif' }}>
-                    {planName}
+                {/* Header row: icon tile + kicker + title + sub-line + status pill.
+                    Matches PackageSection active card pattern. */}
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: sub.notes && !isEditing ? 6 : 10 }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 8,
+                    background: 'linear-gradient(135deg, #E8F0EA 0%, #DCEDDF 100%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 18,
+                    flexShrink: 0,
+                  }}>
+                    📅
                   </div>
-                  {/* Phase 19.5: payment-status pill replaces the old
-                      status-only pill. Tells the therapist at a glance
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      fontSize: 10,
+                      fontWeight: 800,
+                      color: C.forest,
+                      letterSpacing: '0.14em',
+                      textTransform: 'uppercase',
+                      marginBottom: 3,
+                      lineHeight: 1,
+                    }}>
+                      Membership
+                    </div>
+                    <div style={{
+                      fontFamily: 'Georgia, serif',
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: C.ink,
+                      lineHeight: 1.25,
+                    }}>
+                      {planName}
+                    </div>
+                    <div style={{ fontSize: 12, color: C.gray, marginTop: 2, lineHeight: 1.4 }}>
+                      {subLine}
+                    </div>
+                  </div>
+                  {/* Phase 19.5 payment-status pill - retained position
+                      on the right. Tells the therapist at a glance
                       whether this client is paid, due, past due, or has
                       no renewal scheduled. */}
                   <span style={{
-                    fontSize: 10.5,
+                    fontSize: 9.5,
                     fontWeight: 700,
                     color: paymentStatus.color,
                     background: paymentStatus.bg,
@@ -575,24 +626,23 @@ export default function MembershipCard({ client, therapist }) {
                     textTransform: 'uppercase',
                     letterSpacing: '0.05em',
                     fontStyle: paymentStatus.italic ? 'italic' : 'normal',
+                    flexShrink: 0,
+                    whiteSpace: 'nowrap',
                   }}>
                     {paymentStatus.label}
                   </span>
                 </div>
-                <div style={{ fontSize: 12, color: C.gray, lineHeight: 1.55 }}>
-                  ${Number(sub.monthly_price).toFixed(2)}/mo · {sub.current_credits} of {sub.monthly_session_credits} session{sub.monthly_session_credits === 1 ? '' : 's'} available
-                  {sub.renewal_day_of_month && (
-                    <> · Bills on the {sub.renewal_day_of_month}{ordinalSuffix(sub.renewal_day_of_month)}</>
-                  )}
-                </div>
                 {sub.notes && !isEditing && (
-                  <div style={{ fontSize: 11.5, color: C.gray, fontStyle: 'italic', marginTop: 4, lineHeight: 1.5 }}>
+                  <div style={{ fontSize: 11.5, color: C.gray, fontStyle: 'italic', marginTop: 4, marginBottom: 6, marginLeft: 48, lineHeight: 1.5 }}>
                     {sub.notes}
                   </div>
                 )}
 
                 {/* Phase 19.5 inline edit form. Replaces the static
-                    row content when editingSubId matches this sub. */}
+                    row content when editingSubId matches this sub.
+                    Phase 2c (May 24): stacked vertically on mobile to
+                    match the Add a membership form, prevents the
+                    cramped two-column layout. */}
                 {isEditing && (
                   <div style={{
                     marginTop: 10,
@@ -601,7 +651,7 @@ export default function MembershipCard({ client, therapist }) {
                     border: `1px dashed ${C.line}`,
                     borderRadius: 10,
                   }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 8, marginBottom: 8 }}>
                       <div>
                         <label style={{ fontSize: 11, color: C.gray, display: 'block', marginBottom: 3 }}>Monthly price ($)</label>
                         <input

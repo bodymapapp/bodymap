@@ -90,7 +90,6 @@ export default function PackageSection({ client, therapist, hasMembership }) {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   // Add-package form
-  const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState('pick');  // 'pick' or 'create'
   const [planId, setPlanId] = useState('');
   const [sessions, setSessions] = useState('');
@@ -104,6 +103,10 @@ export default function PackageSection({ client, therapist, hasMembership }) {
   const [cancelArmedId, setCancelArmedId] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  // Per-package cancel error (keyed by package id) so we can display
+  // an inline banner instead of using window.alert. Design principle:
+  // never use browser dialogs.
+  const [cancelErrors, setCancelErrors] = useState({});
   // Whether the add form is expanded. Default expanded when nothing
   // exists yet (no memberships, no packages) so the therapist sees
   // the form immediately. Collapsed otherwise.
@@ -278,7 +281,6 @@ export default function PackageSection({ client, therapist, hasMembership }) {
       setPackages(reloaded || []);
 
       resetForm();
-      setAdding(false);
       setAddExpanded(false);
     } catch (e) {
       setError(e.message || 'Could not add the package.');
@@ -288,12 +290,19 @@ export default function PackageSection({ client, therapist, hasMembership }) {
   }
 
   async function cancelPackage(purchaseId) {
+    // Clear any prior error for this row before attempting.
+    setCancelErrors(prev => {
+      const next = { ...prev };
+      delete next[purchaseId];
+      return next;
+    });
     const { error: err } = await supabase
       .from('package_purchases')
       .update({ status: 'cancelled' })
       .eq('id', purchaseId);
     if (err) {
-      alert('Could not cancel: ' + err.message);
+      // Inline error: lives on the package row itself, no browser dialog.
+      setCancelErrors(prev => ({ ...prev, [purchaseId]: err.message }));
       return;
     }
     setPackages(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'cancelled' } : p));
@@ -488,6 +497,20 @@ export default function PackageSection({ client, therapist, hasMembership }) {
                 </button>
               )}
             </div>
+            {cancelErrors[pkg.id] && (
+              <div style={{
+                marginTop: 8,
+                padding: '7px 10px',
+                background: '#FEE2E2',
+                border: '1px solid #FCA5A5',
+                borderRadius: 7,
+                fontSize: 11.5,
+                color: '#991B1B',
+                lineHeight: 1.5,
+              }}>
+                Could not cancel: {cancelErrors[pkg.id]}
+              </div>
+            )}
           </div>
         );
       })}
