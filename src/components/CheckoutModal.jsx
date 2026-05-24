@@ -745,8 +745,36 @@ export default function CheckoutModal({
           </>
         ) : (
           <>
-            {/* Fixed header: title + subtitle + close. */}
+            {/* Fixed header: title + subtitle + back (in sub-steps) + close. */}
             <div style={headerStyle}>
+              {/* Back affordance: only render when in a sub-step (not
+                  the picker). Tap returns to picker. Always visible
+                  at top so user doesn't have to scroll to find it. */}
+              {step !== 'method' && (
+                <button
+                  type="button"
+                  onClick={() => setStep('method')}
+                  aria-label="Back to payment options"
+                  style={{
+                    minWidth: 44,
+                    minHeight: 44,
+                    padding: '8px 14px',
+                    marginRight: 4,
+                    background: '#fff',
+                    border: `1.5px solid ${C.border}`,
+                    borderRadius: 999,
+                    color: C.inkSoft,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    WebkitTapHighlightColor: 'transparent',
+                    flexShrink: 0,
+                  }}
+                >
+                  ← Back
+                </button>
+              )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: 'Georgia, serif', fontSize: 24, fontWeight: 400, color: C.forestDeep, letterSpacing: '-0.01em', lineHeight: 1.15 }}>
                   Checkout
