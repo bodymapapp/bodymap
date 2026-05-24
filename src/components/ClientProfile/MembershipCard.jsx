@@ -534,10 +534,10 @@ export default function MembershipCard({ client, therapist }) {
 
   return (
     <div style={{ padding: '6px 4px 4px' }}>
-      {/* Existing subscriptions */}
-      {subs.length > 0 ? (
+      {/* Existing active subscriptions */}
+      {subs.filter(s => s.status === 'active').length > 0 ? (
         <div style={{ marginBottom: 14 }}>
-          {subs.map(sub => {
+          {subs.filter(s => s.status === 'active').map(sub => {
             const plan = memberships.find(m => m.id === sub.membership_id);
             const planName = plan?.name || 'Unknown plan';
             const isActive = sub.status === 'active';
@@ -1027,6 +1027,72 @@ export default function MembershipCard({ client, therapist }) {
           </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Phase 2 (HK May 24 2026): Membership history. Canceled
+          subscriptions render here in muted style, separated from
+          the active membership area above. Always visible per HK
+          direction. */}
+      {subs.filter(s => s.status !== 'active').length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <div style={{
+            fontSize: 10.5,
+            color: C.gray,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            marginBottom: 6,
+            paddingLeft: 4,
+          }}>
+            Membership history
+          </div>
+          {subs.filter(s => s.status !== 'active').map(sub => {
+            const plan = memberships.find(m => m.id === sub.membership_id);
+            const planName = plan?.name || 'Unknown plan';
+            const canceledLabel = sub.canceled_at
+              ? new Date(sub.canceled_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+              : 'unknown date';
+            return (
+              <div
+                key={sub.id}
+                style={{
+                  background: '#FAFAF6',
+                  border: `1px solid ${C.line}`,
+                  borderLeft: `3px solid #D6D2C5`,
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  marginBottom: 6,
+                  opacity: 0.85,
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'space-between' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>
+                      {planName}
+                    </div>
+                    <div style={{ fontSize: 10.5, color: C.gray, marginTop: 2 }}>
+                      ${Number(sub.monthly_price).toFixed(2)}/mo · canceled {canceledLabel}
+                      {sub.notes && ` · ${sub.notes.length > 50 ? sub.notes.slice(0, 50) + '…' : sub.notes}`}
+                    </div>
+                  </div>
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    background: '#FEE2E2',
+                    color: '#991B1B',
+                    padding: '2px 7px',
+                    borderRadius: 99,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    flexShrink: 0,
+                  }}>
+                    Canceled
+                  </span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
