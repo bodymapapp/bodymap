@@ -23,7 +23,7 @@
 // inserts a row in `package_purchases` linking the purchase to the
 // client and plan.
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
 const C = {
@@ -94,12 +94,72 @@ const labelStyle = {
 // 3 times (once per instance). For this scale (a few rows per
 // query) the cost is acceptable. Real lift would be moving the
 // data hook up into a shared parent.
-export default function PackageSection({ client, therapist, hasMembership, section }) {
-  // Active packages and history
+// Hook: fetches all package data for a client + therapist + bookings
+// needed for the 4-number breakdown. Returns the data plus a refetch
+// function. MembershipCard calls this once and passes the result into
+// each PackageSection instance via the `data` prop, so the three
+// instances share state and adding a package in one triggers a
+// refresh visible in all three.
+export function usePackageData(client, therapist, hasMembership) {
   const [packages, setPackages] = useState([]);
   const [allPlans, setAllPlans] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refetchKey, setRefetchKey] = useState(0);
+
+  useEffect(() => {
+    if (!client?.id || !therapist?.id) return;
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const [pkgRes, plansRes, bkRes] = await Promise.all([
+        supabase
+          .from('package_purchases')
+          .select('id, status, purchased_at, expires_at, sessions_purchased, sessions_remaining, price_paid, client_email, package:packages(id, name)')
+          .eq('therapist_id', therapist.id)
+          .eq('client_id', client.id)
+          .order('purchased_at', { ascending: false }),
+        supabase
+          .from('packages')
+          .select('id, name, session_count, price, expires_in_days, visibility, active')
+          .eq('therapist_id', therapist.id)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('bookings')
+          .select('client_email, booking_date, status')
+          .eq('therapist_id', therapist.id)
+          .eq('client_email', client.email || ''),
+      ]);
+      if (cancelled) return;
+      setPackages(pkgRes.data || []);
+      setAllPlans(plansRes.data || []);
+      setBookings(bkRes.data || []);
+      setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [client?.id, client?.email, therapist?.id, refetchKey]);
+
+  const refetch = () => setRefetchKey(k => k + 1);
+
+  return { packages, allPlans, bookings, loading, refetch };
+}
+
+export default function PackageSection({ client, therapist, hasMembership, section, data }) {
+  // If `data` prop is passed in (3-instance sharing pattern from
+  // MembershipCard), use that. Otherwise this component owns its own
+  // data fetching (backward compat for any other consumer).
+  const [localPackages, setLocalPackages] = useState([]);
+  const [localAllPlans, setLocalAllPlans] = useState([]);
+  const [localBookings, setLocalBookings] = useState([]);
+  const [localLoading, setLocalLoading] = useState(true);
+
+  const packages = data ? data.packages : localPackages;
+  const allPlans = data ? data.allPlans : localAllPlans;
+  const bookings = data ? data.bookings : localBookings;
+  const loading = data ? data.loading : localLoading;
+  const refetch = data ? data.refetch : null;
+
   // Add-package form
   const [mode, setMode] = useState('pick');  // 'pick' or 'create'
   const [planId, setPlanId] = useState('');
@@ -122,6 +182,9 @@ export default function PackageSection({ client, therapist, hasMembership, secti
   // exists yet (no memberships, no packages) so the therapist sees
   // the form immediately. Collapsed otherwise.
   const [addExpanded, setAddExpanded] = useState(false);
+  // Track whether we've already set the addExpanded default. Without
+  // this the shared-data path would reset on every re-render.
+  const addExpandedInitialized = useRef(false);
 
   useEffect(() => {
     if (!cancelArmedId) return;
@@ -130,25 +193,38 @@ export default function PackageSection({ client, therapist, hasMembership, secti
   }, [cancelArmedId]);
 
   useEffect(() => {
+    // Skip local fetch if parent provided shared data.
+    if (data) {
+      // Compute defaults based on shared data when first available.
+      if (!data.loading) {
+        const activePackages = (data.packages || []).filter(p => p.status === 'active');
+        const noPackages = activePackages.length === 0;
+        // Only set the default once on initial mount (when addExpanded
+        // is still at its initial false value). After that, user
+        // controls it.
+        if (noPackages && !hasMembership && !addExpandedInitialized.current) {
+          setAddExpanded(true);
+        }
+        addExpandedInitialized.current = true;
+      }
+      return;
+    }
     if (!client?.id || !therapist?.id) return;
     let cancelled = false;
     async function load() {
-      setLoading(true);
+      setLocalLoading(true);
       const [pkgRes, plansRes, bkRes] = await Promise.all([
-        // All package purchases for this client (active + history)
         supabase
           .from('package_purchases')
           .select('id, status, purchased_at, expires_at, sessions_purchased, sessions_remaining, price_paid, client_email, package:packages(id, name)')
           .eq('therapist_id', therapist.id)
           .eq('client_id', client.id)
           .order('purchased_at', { ascending: false }),
-        // Available package plans for this therapist (for the picker)
         supabase
           .from('packages')
           .select('id, name, session_count, price, expires_in_days, visibility, active')
           .eq('therapist_id', therapist.id)
           .order('created_at', { ascending: false }),
-        // Bookings for the 4-number breakdown
         supabase
           .from('bookings')
           .select('client_email, booking_date, status')
@@ -156,18 +232,16 @@ export default function PackageSection({ client, therapist, hasMembership, secti
           .eq('client_email', client.email || ''),
       ]);
       if (cancelled) return;
-      setPackages(pkgRes.data || []);
-      setAllPlans(plansRes.data || []);
-      setBookings(bkRes.data || []);
-      // Default expanded if THIS client has nothing AND no membership exists.
-      // hasMembership prop tells us about memberships.
+      setLocalPackages(pkgRes.data || []);
+      setLocalAllPlans(plansRes.data || []);
+      setLocalBookings(bkRes.data || []);
       const noPackages = (pkgRes.data || []).filter(p => p.status === 'active').length === 0;
       setAddExpanded(noPackages && !hasMembership);
-      setLoading(false);
+      setLocalLoading(false);
     }
     load();
     return () => { cancelled = true; };
-  }, [client?.id, client?.email, therapist?.id, hasMembership]);
+  }, [client?.id, client?.email, therapist?.id, hasMembership, data]);
 
   // Compute the 4 numbers per package by joining bookings on email.
   function computeCounts(pkg) {
@@ -282,14 +356,20 @@ export default function PackageSection({ client, therapist, hasMembership, secti
         });
       if (purErr) throw new Error(purErr.message);
 
-      // Reload list
-      const { data: reloaded } = await supabase
-        .from('package_purchases')
-        .select('id, status, purchased_at, expires_at, sessions_purchased, sessions_remaining, price_paid, client_email, package:packages(id, name)')
-        .eq('therapist_id', therapist.id)
-        .eq('client_id', client.id)
-        .order('purchased_at', { ascending: false });
-      setPackages(reloaded || []);
+      // Reload list. If shared data is in use, ask parent to refetch
+      // (so all 3 PackageSection instances see the new data). If local
+      // state, update directly.
+      if (refetch) {
+        refetch();
+      } else {
+        const { data: reloaded } = await supabase
+          .from('package_purchases')
+          .select('id, status, purchased_at, expires_at, sessions_purchased, sessions_remaining, price_paid, client_email, package:packages(id, name)')
+          .eq('therapist_id', therapist.id)
+          .eq('client_id', client.id)
+          .order('purchased_at', { ascending: false });
+        setLocalPackages(reloaded || []);
+      }
 
       resetForm();
       setAddExpanded(false);
@@ -316,7 +396,11 @@ export default function PackageSection({ client, therapist, hasMembership, secti
       setCancelErrors(prev => ({ ...prev, [purchaseId]: err.message }));
       return;
     }
-    setPackages(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'cancelled' } : p));
+    if (refetch) {
+      refetch();
+    } else {
+      setLocalPackages(prev => prev.map(p => p.id === purchaseId ? { ...p, status: 'cancelled' } : p));
+    }
     setCancelArmedId(null);
   }
 

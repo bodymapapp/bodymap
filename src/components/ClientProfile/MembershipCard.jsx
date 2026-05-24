@@ -20,7 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import CheckoutModal from '../CheckoutModal';
-import PackageSection from './PackageSection';
+import PackageSection, { usePackageData } from './PackageSection';
 
 const C = {
   forest:    '#2A5741',
@@ -65,6 +65,13 @@ export default function MembershipCard({ client, therapist }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState(null);
+  // Phase 2 (HK May 24 2026): shared package data fetched once, passed
+  // into each of the 3 PackageSection instances below. Without this,
+  // adding a package in the "add" instance would not refresh the
+  // "active" instance, and the new card would not appear until full
+  // page reload.
+  const hasActiveMembership = subs.some(s => s.status === 'active');
+  const packageData = usePackageData(client, therapist, hasActiveMembership);
   // Phase 2 (HK May 24 2026): collapsible add-membership form. Mirrors
   // PackageSection's pattern. Defaults to expanded only when the client
   // has NO active membership AND NO active package - i.e. the very
@@ -842,8 +849,9 @@ export default function MembershipCard({ client, therapist }) {
       <PackageSection
         client={client}
         therapist={therapist}
-        hasMembership={subs.some(s => s.status === 'active')}
+        hasMembership={hasActiveMembership}
         section="active"
+        data={packageData}
       />
 
       {/* Add-membership form. HK direction May 24 2026: one
@@ -1097,8 +1105,9 @@ export default function MembershipCard({ client, therapist }) {
       <PackageSection
         client={client}
         therapist={therapist}
-        hasMembership={subs.some(s => s.status === 'active')}
+        hasMembership={hasActiveMembership}
         section="add"
+        data={packageData}
       />
 
       {/* Phase 2 (HK May 24 2026): Membership history. Canceled
@@ -1173,8 +1182,9 @@ export default function MembershipCard({ client, therapist }) {
       <PackageSection
         client={client}
         therapist={therapist}
-        hasMembership={subs.some(s => s.status === 'active')}
+        hasMembership={hasActiveMembership}
         section="history"
+        data={packageData}
       />
 
       {/* Renewal charge modal (Phase 19.4). Opens when therapist taps
