@@ -20,6 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import CheckoutModal from '../CheckoutModal';
+import PackageSection from './PackageSection';
 
 const C = {
   forest:    '#2A5741',
@@ -948,6 +949,19 @@ export default function MembershipCard({ client, therapist }) {
           </div>
         </div>
       )}
+
+      {/* Packages section. HK direction May 24 2026: client profile
+          should let the therapist add and manage packages alongside
+          memberships, not just memberships. PackageSection is a
+          self-contained orchestrator that loads its own data and
+          handles add/cancel. hasMembership is passed in so it knows
+          whether to default the Add form to expanded (when nothing
+          exists yet) or collapsed. */}
+      <PackageSection
+        client={client}
+        therapist={therapist}
+        hasMembership={subs.some(s => s.status === 'active')}
+      />
 
       {/* Renewal charge modal (Phase 19.4). Opens when therapist taps
           the Charge renewal button on an active subscription that has
