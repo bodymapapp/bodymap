@@ -230,6 +230,19 @@ export default function CheckoutModal({
   // constraint. For packages, the caller must have already created
   // the package_purchases row (so we have its id to reference here)
   // via createPackagePurchaseRow().
+  // For the success view: render a friendly "for June 2026" or similar
+  // when we have a renewal row to identify the cycle being paid. Falls
+  // back to "for this cycle" when we don't have the period_start info.
+  function renewalPeriodLabel(r) {
+    if (!r) return 'covered for this cycle';
+    if (r.period_start) {
+      const d = new Date(r.period_start + 'T12:00:00');
+      const monthName = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      return `paid for ${monthName}`;
+    }
+    return 'paid for this cycle';
+  }
+
   function buildPaymentContext(packagePurchaseId = null) {
     if (isSubscription) {
       return {
@@ -899,7 +912,27 @@ export default function CheckoutModal({
               <CloseButton onClick={onClose} label="Done" />
             </div>
             <div style={bodyStyle}>
-              <SuccessView detail={successDetail} onClose={onClose} linkUrl={linkUrl} linkDelivery={linkDelivery} clientPhone={client?.phone || appt?.phone} clientEmail={client?.email || appt?.email} therapistName={therapist?.business_name || therapist?.full_name} />
+              <SuccessView
+                detail={successDetail}
+                onClose={onClose}
+                linkUrl={linkUrl}
+                linkDelivery={linkDelivery}
+                clientPhone={client?.phone || appt?.phone}
+                clientEmail={client?.email || appt?.email}
+                therapistName={therapist?.business_name || therapist?.full_name}
+                isSubscription={isSubscription}
+                isPackage={isPackage}
+                contextName={
+                  isPackage ? packagePurchase?.name :
+                  isSubscription ? (subscription?.membership?.name || 'Membership') :
+                  null
+                }
+                contextDetail={
+                  isPackage ? `${packagePurchase?.sessions} sessions ready to use` :
+                  isSubscription ? renewalPeriodLabel(renewal) :
+                  null
+                }
+              />
             </div>
           </>
         ) : (
@@ -1560,28 +1593,47 @@ function ActionRow({ onBack, onConfirm, processing, confirmLabel, disabled }) {
   );
 }
 
-function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clientEmail, therapistName }) {
+function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clientEmail, therapistName, isSubscription, isPackage, contextName, contextDetail }) {
   const isLink = detail?.method === 'Payment link';
   const smsBody = `Hi from ${therapistName || 'your therapist'}. Here's your payment link for $${detail?.total}: ${linkUrl}`;
   const emailSubject = `Payment for your session with ${therapistName || 'your therapist'}`;
   const emailBody = `Hi,%0D%0A%0D%0AHere's your payment link for $${detail?.total}:%0D%0A%0D%0A${linkUrl}%0D%0A%0D%0AThank you!`;
 
+  // HK May 24 2026: context-aware success copy. Tells the therapist
+  // exactly what just happened in their business terms.
+  //   - Session: 'Charged $X' / 'Session recorded as paid'
+  //   - Membership: '[Plan name] paid for June 2026' or similar
+  //   - Package: '[Plan name] active' + '[N] sessions ready to use'
+  let headline;
+  let subline;
+  if (isLink) {
+    headline = 'Payment link ready';
+    subline = 'Send it to your client through their preferred channel.';
+  } else if (isPackage) {
+    headline = `${contextName || 'Package'} active`;
+    subline = `${detail?.method} · ${(detail?.detail ? detail.detail + ' · ' : '')}${contextDetail || 'Sessions ready to use'}.`;
+  } else if (isSubscription) {
+    headline = parseFloat(detail?.total) > 0
+      ? `Charged $${detail?.total}`
+      : `${contextName || 'Membership'} marked paid`;
+    subline = `${contextName || 'Membership'} ${contextDetail || 'paid for this cycle'}. ${detail?.method}${detail?.detail ? ' · ' + detail.detail : ''}.`;
+  } else {
+    headline = parseFloat(detail?.total) > 0
+      ? `Charged $${detail?.total}`
+      : 'Session recorded as paid';
+    subline = parseFloat(detail?.total) > 0
+      ? `${detail?.method} · ${detail?.detail}. Receipt emailed to client.`
+      : `${detail?.method}${detail?.detail ? ` · ${detail?.detail}` : ''}. No money exchanged.`;
+  }
+
   return (
     <div style={{ textAlign: 'center', padding: '12px 8px 8px' }}>
       <div style={{ fontSize: 56, marginBottom: 12 }}>{isLink ? '📲' : '✓'}</div>
       <div style={{ fontFamily: 'Georgia, serif', fontSize: 22, fontWeight: 400, color: C.forestDeep, marginBottom: 8 }}>
-        {isLink
-          ? 'Payment link ready'
-          : parseFloat(detail?.total) > 0
-            ? `Charged $${detail?.total}`
-            : 'Session recorded as paid'}
+        {headline}
       </div>
       <div style={{ fontSize: 14, color: C.inkSoft, marginBottom: 20 }}>
-        {isLink
-          ? 'Send it to your client through their preferred channel.'
-          : parseFloat(detail?.total) > 0
-            ? `${detail?.method} · ${detail?.detail}. Receipt emailed to client.`
-            : `${detail?.method}${detail?.detail ? ` · ${detail?.detail}` : ''}. No money exchanged.`}
+        {subline}
       </div>
       {isLink && (
         <div style={{ marginBottom: 18 }}>
