@@ -25,6 +25,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import CheckoutModal from '../CheckoutModal';
 
 const C = {
   forest:    '#2A5741',
@@ -186,6 +187,15 @@ export default function PackageSection({ client, therapist, hasMembership, secti
   // this the shared-data path would reset on every re-render.
   const addExpandedInitialized = useRef(false);
 
+  // HK May 24 2026: package checkout via CheckoutModal. When the
+  // therapist fills the add form and taps Charge $X, we open
+  // CheckoutModal with packagePurchase context. The modal handles
+  // all 4 payment methods (Mark as paid, Card on file, Enter new
+  // card, Send pay link) identically to session and membership
+  // checkout. On success, the modal calls onPackageCreated and we
+  // refresh the list.
+  const [packageCheckoutContext, setPackageCheckoutContext] = useState(null);
+
   useEffect(() => {
     if (!cancelArmedId) return;
     const t = setTimeout(() => setCancelArmedId(null), 4000);
@@ -299,6 +309,56 @@ export default function PackageSection({ client, therapist, hasMembership, secti
     setAlreadyPaid(true);
     setOneoffName('');
     setError(null);
+  }
+
+  // HK May 24 2026: unified package checkout via CheckoutModal.
+  // Validation lives in canOpenCheckout (used to enable/disable the
+  // button and produce the missing-fields hint). When valid, the
+  // therapist taps Charge, which packages the form values into a
+  // packagePurchase prop for CheckoutModal. The modal handles all
+  // payment methods (offline, card on file, new card, pay link) and
+  // creates the package_purchases row on success.
+  function canOpenCheckout() {
+    const sessionsNum = parseInt(sessions, 10);
+    const priceNum = parseFloat(price);
+    if (!sessionsNum || sessionsNum < 1) return false;
+    if (isNaN(priceNum) || priceNum < 0) return false;
+    if (mode === 'pick' && !planId) return false;
+    if (mode === 'create' && !oneoffName.trim()) return false;
+    return true;
+  }
+
+  function missingFieldHint() {
+    const missing = [];
+    if (mode === 'pick' && !planId) missing.push('package plan');
+    if (mode === 'create' && !oneoffName.trim()) missing.push('package name');
+    const sessionsNum = parseInt(sessions, 10);
+    if (!sessionsNum || sessionsNum < 1) missing.push('sessions');
+    const priceNum = parseFloat(price);
+    if (isNaN(priceNum) || priceNum < 0) missing.push('price');
+    if (missing.length === 0) return 'the required fields';
+    if (missing.length === 1) return missing[0];
+    return missing.slice(0, -1).join(', ') + ' and ' + missing[missing.length - 1];
+  }
+
+  function openCheckoutForPackage() {
+    if (!canOpenCheckout()) return;
+    const sessionsNum = parseInt(sessions, 10);
+    const priceNum = parseFloat(price);
+    const planName = mode === 'pick'
+      ? (allPlans.find(p => p.id === planId)?.name || 'Package')
+      : oneoffName.trim();
+    setPackageCheckoutContext({
+      name: planName,
+      sessions: sessionsNum,
+      price: priceNum,
+      expiresAt: expiresOn || null,
+      planId: mode === 'pick' ? planId : null,
+      oneoffPlanData: mode === 'create' ? {
+        name: oneoffName.trim(),
+        description: notes.trim() || null,
+      } : null,
+    });
   }
 
   async function addPackage() {
@@ -836,42 +896,6 @@ export default function PackageSection({ client, therapist, hasMembership, secti
               />
             </div>
 
-            <label style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 10,
-              marginBottom: 8,
-              cursor: 'pointer',
-              fontSize: 12,
-              color: C.ink,
-              lineHeight: 1.45,
-            }}>
-              <input
-                type="checkbox"
-                checked={alreadyPaid}
-                onChange={e => setAlreadyPaid(e.target.checked)}
-                style={{ cursor: 'pointer', flexShrink: 0, marginTop: 2 }}
-              />
-              <span style={{ flex: 1, minWidth: 0 }}>
-                Client has already paid me (record this package on file)
-              </span>
-            </label>
-
-            {!alreadyPaid && (
-              <div style={{
-                background: '#FEF3C7',
-                border: '1px solid #FCD34D',
-                borderRadius: 8,
-                padding: '8px 11px',
-                fontSize: 11.5,
-                color: '#78350F',
-                lineHeight: 1.5,
-                marginBottom: 10,
-              }}>
-                To charge a client's card for a package right now, share your booking link. The client can purchase the package from there and it lands on their account automatically.
-              </div>
-            )}
-
             {error && (
               <div style={{
                 background: '#FEE2E2',
@@ -889,27 +913,27 @@ export default function PackageSection({ client, therapist, hasMembership, secti
 
             <button
               type="button"
-              onClick={addPackage}
-              disabled={submitting || !alreadyPaid}
+              onClick={openCheckoutForPackage}
+              disabled={!canOpenCheckout()}
               style={{
                 width: '100%',
-                background: (submitting || !alreadyPaid) ? '#D1D5DB' : C.forest,
+                background: !canOpenCheckout() ? '#D1D5DB' : C.forest,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
-                padding: '9px 12px',
+                padding: '10px 12px',
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: (submitting || !alreadyPaid) ? 'not-allowed' : 'pointer',
+                cursor: !canOpenCheckout() ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
               }}
             >
-              {submitting ? 'Saving…' : 'Add package'}
+              {price && parseFloat(price) > 0
+                ? `Checkout $${parseFloat(price).toFixed(2)}`
+                : 'Checkout'}
             </button>
 
-            {/* HK May 24 2026: visible reason when button is disabled,
-                so therapist sees what to fix instead of guessing. */}
-            {(submitting || !alreadyPaid) && (
+            {!canOpenCheckout() && (
               <div style={{
                 fontSize: 11,
                 color: C.gray,
@@ -918,14 +942,12 @@ export default function PackageSection({ client, therapist, hasMembership, secti
                 textAlign: 'center',
                 lineHeight: 1.4,
               }}>
-                {submitting
-                  ? 'Saving previous request…'
-                  : 'Check "Client has already paid me" above to enable this button.'}
+                Fill in {missingFieldHint()} to continue.
               </div>
             )}
 
             <div style={{ fontSize: 10.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
-              All sessions land on the client's balance right away. As they book and you mark sessions complete, the count goes down.
+              Checkout opens with all payment options: Mark as paid (cash, Venmo, Zelle), Card on file, Enter new card, or Send pay link. Sessions land on the client's balance the moment payment is recorded.
             </div>
           </div>
         )}
@@ -985,6 +1007,31 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             </div>
           ))}
         </div>
+      )}
+      {/* HK May 24 2026: unified checkout for package purchases.
+          Opens when therapist taps Charge $X on the add form. The
+          modal shows the same 4 payment methods as session and
+          membership checkout (Mark as paid, Card on file, Enter new
+          card, Send pay link). On success, modal creates the
+          package_purchases row + linked session_payments row, calls
+          onPackageCreated, and we refresh the list. */}
+      {packageCheckoutContext && (
+        <CheckoutModal
+          packagePurchase={packageCheckoutContext}
+          therapist={therapist}
+          client={client}
+          defaultAmountCents={Math.round(packageCheckoutContext.price * 100)}
+          onClose={() => setPackageCheckoutContext(null)}
+          onPackageCreated={() => {
+            if (refetch) refetch();
+            resetForm();
+            setAddExpanded(false);
+          }}
+          onPaid={() => {
+            // onPackageCreated already handles refresh/reset; this is
+            // here for parity with the other CheckoutModal invocations.
+          }}
+        />
       )}
     </div>
   );

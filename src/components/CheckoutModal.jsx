@@ -70,17 +70,20 @@ export default function CheckoutModal({
   appt,
   subscription,         // NEW Phase 19: { id, monthly_price, membership: {name, ...}, ... } when charging a renewal
   renewal,              // NEW Phase 19: an optional member_subscription_renewals row to link this payment to
+  packagePurchase,      // NEW May 24 2026: { name, sessions, price, expiresAt, planId, oneoffPlanData } when adding/charging a package
+  onPackageCreated,     // NEW May 24 2026: called with the created package_purchase row on success
   therapist,
   client,
   defaultAmountCents,
   onClose,
   onPaid,
 }) {
-  // Two charge modes. Exactly one of appt or subscription must be set
-  // (enforced by callsites; this modal renders an error if both are
-  // unset).
+  // Three charge modes. Exactly one of appt, subscription, or
+  // packagePurchase must be set (enforced by callsites; this modal
+  // renders an error if all three are unset).
   const isSubscription = !!subscription;
-  const chargeContextOk = !!(appt || subscription);
+  const isPackage = !!packagePurchase;
+  const chargeContextOk = !!(appt || subscription || packagePurchase);
   const [step, setStep] = useState('method'); // 'method' | 'card_on_file' | 'card_new' | 'send_link' | 'offline' | 'success'
   const [amount, setAmount] = useState(((defaultAmountCents || 0) / 100).toFixed(2));
   const [tip, setTip] = useState('');
@@ -222,22 +225,106 @@ export default function CheckoutModal({
   const validAmount = amountCents > 0;
 
   // Build the session_payments row fields that link this payment to
-  // either a booking or a subscription renewal. Exactly one is set,
-  // per the session_payments_booking_xor_subscription CHECK constraint
-  // from the membership_renewal_v1 migration.
-  function buildPaymentContext() {
+  // a booking, subscription renewal, or package purchase. Exactly one
+  // is set, per the session_payments_charge_context_exactly_one CHECK
+  // constraint. For packages, the caller must have already created
+  // the package_purchases row (so we have its id to reference here)
+  // via createPackagePurchaseRow().
+  function buildPaymentContext(packagePurchaseId = null) {
     if (isSubscription) {
       return {
         booking_id: null,
         member_subscription_id: subscription.id,
         member_subscription_renewal_id: renewal?.id || null,
+        package_purchase_id: null,
+      };
+    }
+    if (isPackage) {
+      return {
+        booking_id: null,
+        member_subscription_id: null,
+        member_subscription_renewal_id: null,
+        package_purchase_id: packagePurchaseId,
       };
     }
     return {
       booking_id: appt.id,
       member_subscription_id: null,
       member_subscription_renewal_id: null,
+      package_purchase_id: null,
     };
+  }
+
+  // For package charges, create the package_purchases row. Returns
+  // the new row's id, or throws on error. Handles the "one-off plan"
+  // case (creates a private/inactive package plan first) and the
+  // "existing plan" case (uses the provided planId directly).
+  //
+  // Called BEFORE the payment is recorded so the session_payments
+  // row can reference the package_purchase_id. If the payment fails,
+  // the orphan package row stays in the DB - this is intentional:
+  // it shows up as a record so the therapist can either retry the
+  // charge or manually mark it paid. The package row's status starts
+  // as 'active' regardless because the sessions belong to the client
+  // the moment the row exists; tracking which package rows ARE NOT
+  // yet paid is a future enhancement.
+  async function createPackagePurchaseRow() {
+    if (!isPackage) throw new Error('createPackagePurchaseRow called without package context');
+    const pkg = packagePurchase;
+
+    let resolvedPlanId = pkg.planId;
+    // Inline one-off plan creation: insert a private/inactive plan
+    // first so the purchase row has something to reference.
+    if (!resolvedPlanId && pkg.oneoffPlanData) {
+      const { data: newPlan, error: planErr } = await supabase
+        .from('packages')
+        .insert({
+          therapist_id: therapist.id,
+          name: pkg.oneoffPlanData.name,
+          description: pkg.oneoffPlanData.description || null,
+          session_count: pkg.sessions,
+          price: pkg.price,
+          active: false,
+          visibility: 'private',
+          display_order: 0,
+        })
+        .select('id')
+        .single();
+      if (planErr) throw new Error('Could not create the one-off plan: ' + planErr.message);
+      resolvedPlanId = newPlan.id;
+    }
+    if (!resolvedPlanId) throw new Error('No package plan resolved.');
+
+    // Look up canonical client email (the prop may be missing it
+    // for clients without email on file). client_email is NOT NULL
+    // on package_purchases.
+    const { data: clientRow } = await supabase
+      .from('clients')
+      .select('email, name')
+      .eq('id', client.id)
+      .maybeSingle();
+    const resolvedEmail = (clientRow?.email || client?.email || '').trim() || 'no-email@local';
+    const resolvedName = clientRow?.name || client?.name || 'Client';
+
+    const { data: inserted, error: purErr } = await supabase
+      .from('package_purchases')
+      .insert({
+        therapist_id: therapist.id,
+        package_id: resolvedPlanId,
+        client_id: client.id,
+        client_email: resolvedEmail,
+        client_name: resolvedName,
+        sessions_purchased: pkg.sessions,
+        sessions_remaining: pkg.sessions,
+        price_paid: pkg.price,
+        status: 'active',
+        purchased_at: new Date().toISOString(),
+        expires_at: pkg.expiresAt ? new Date(pkg.expiresAt).toISOString() : null,
+      })
+      .select('*')
+      .single();
+    if (purErr) throw new Error(purErr.message);
+    return inserted;
   }
 
   // After a successful subscription payment, mark the linked renewal
@@ -274,8 +361,15 @@ export default function CheckoutModal({
     setProcessing(true);
     setErrorMsg(null);
     try {
+      // For packages: create the package_purchases row first so we
+      // can link the payment to it via package_purchase_id.
+      let packageRow = null;
+      if (isPackage) {
+        packageRow = await createPackagePurchaseRow();
+      }
+
       const { data: insertedPayment, error } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(),
+        ...buildPaymentContext(packageRow?.id || null),
         therapist_id: therapist.id,
         client_id: client.id,
         amount_cents: amountCents,
@@ -290,6 +384,9 @@ export default function CheckoutModal({
       if (insertedPayment?.id) {
         firePaymentNotification(insertedPayment.id);
         await resolveRenewalAsPaid(insertedPayment.id);
+      }
+      if (packageRow && onPackageCreated) {
+        onPackageCreated(packageRow);
       }
       setSuccessDetail({
         method: OFFLINE_METHODS.find(m => m.value === offlineMethod)?.label || 'Offline',
@@ -339,6 +436,9 @@ export default function CheckoutModal({
     try {
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+      const chargeDescription = isPackage
+        ? `${packagePurchase.name} - ${packagePurchase.sessions} sessions`
+        : `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
       const res = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
         method: 'POST',
         headers: {
@@ -352,7 +452,7 @@ export default function CheckoutModal({
           payment_method_id: cardOnFile.payment_method_id,
           amount_cents: amountCents,
           tip_cents: tipCents,
-          description: `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`,
+          description: chargeDescription,
           client_email: client.email || appt?.email,
           send_receipt: true,
         }),
@@ -361,6 +461,15 @@ export default function CheckoutModal({
       if (data.error) throw new Error(data.error);
       if (!data.success) throw new Error('Charge did not succeed');
 
+      // For packages: create the package_purchase row AFTER the charge
+      // succeeds. If we created it first and the charge failed, we'd
+      // leave an orphan paid-looking package row. Charge first, record
+      // second, link payment to the new row.
+      let packageRow = null;
+      if (isPackage) {
+        packageRow = await createPackagePurchaseRow();
+      }
+
       // Record in session_payments
       // Phase 15.2 (HK May 18 2026): capture the inserted id so we can
       // fire the payment_received notification right after. Prior to
@@ -368,7 +477,7 @@ export default function CheckoutModal({
       // charge-card doesn't notify (it's a pure provider call) and
       // the client-side insert was fire-and-forget.
       const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(),
+        ...buildPaymentContext(packageRow?.id || null),
         therapist_id: therapist.id,
         client_id: client.id,
         amount_cents: amountCents,
@@ -384,6 +493,9 @@ export default function CheckoutModal({
       if (insertedPayment?.id) {
         firePaymentNotification(insertedPayment.id);
         await resolveRenewalAsPaid(insertedPayment.id);
+      }
+      if (packageRow && onPackageCreated) {
+        onPackageCreated(packageRow);
       }
 
       setSuccessDetail({
@@ -497,6 +609,9 @@ export default function CheckoutModal({
 
       // Step 4: charge the now-saved card via charge-card with real
       // customer_id. Same path as 'Card on file' would take.
+      const chargeDescription = isPackage
+        ? `${packagePurchase.name} - ${packagePurchase.sessions} sessions`
+        : `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`;
       const chargeRes = await fetch(`${supabaseUrl}/functions/v1/charge-card`, {
         method: 'POST',
         headers: {
@@ -510,7 +625,7 @@ export default function CheckoutModal({
           payment_method_id: paymentMethodId,
           amount_cents: amountCents,
           tip_cents: tipCents,
-          description: `Session with ${therapist.business_name || therapist.full_name || 'your therapist'}`,
+          description: chargeDescription,
           client_email: client.email || appt?.email,
           send_receipt: true,
         }),
@@ -523,12 +638,19 @@ export default function CheckoutModal({
         ? `${cardBrand[0].toUpperCase()}${cardBrand.slice(1)} ${cardLast4}`
         : 'Card';
 
+      // For packages: create the package_purchase row AFTER charge
+      // succeeds so a failed charge doesn't leave an orphan row.
+      let packageRow = null;
+      if (isPackage) {
+        packageRow = await createPackagePurchaseRow();
+      }
+
       // Step 5: session_payments row, payment_method = stripe_card_new
       // since this is the 'entered fresh at checkout' code path even
       // though the card was also saved for future use.
       // Phase 15.2: capture id, fire payment_received notification.
       const { data: insertedPayment } = await supabase.from('session_payments').insert({
-        ...buildPaymentContext(),
+        ...buildPaymentContext(packageRow?.id || null),
         therapist_id: therapist.id,
         client_id: client.id,
         amount_cents: amountCents,
@@ -544,6 +666,9 @@ export default function CheckoutModal({
       if (insertedPayment?.id) {
         firePaymentNotification(insertedPayment.id);
         await resolveRenewalAsPaid(insertedPayment.id);
+      }
+      if (packageRow && onPackageCreated) {
+        onPackageCreated(packageRow);
       }
 
       setSuccessDetail({
@@ -568,7 +693,17 @@ export default function CheckoutModal({
     try {
       const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
       const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
-      // Phase 19.4: build payload for either booking or subscription mode.
+      // For packages: create the package_purchase row first so the
+      // pay link can reference it. The row starts 'active' (sessions
+      // already on the client's balance) - if the link is never paid,
+      // the therapist can manually cancel it. Same forgiving approach
+      // as a session that's marked as paid but pending in reality.
+      let packageRow = null;
+      if (isPackage) {
+        packageRow = await createPackagePurchaseRow();
+      }
+
+      // Phase 19.4: build payload for booking, subscription, or package mode.
       const payload: any = {
         therapist_id: therapist.id,
         amount_cents: amountCents,
@@ -578,9 +713,10 @@ export default function CheckoutModal({
       if (isSubscription) {
         payload.member_subscription_id = subscription.id;
         if (renewal?.id) payload.member_subscription_renewal_id = renewal.id;
-        // Friendly default label; the edge function overrides with the
-        // membership plan name when it loads the subscription.
         payload.service_name = 'Membership renewal';
+      } else if (isPackage) {
+        payload.package_purchase_id = packageRow?.id;
+        payload.service_name = `${packagePurchase.name} - ${packagePurchase.sessions} sessions`;
       } else {
         payload.booking_id = appt.id;
         payload.service_name = appt?.service || 'Massage session';
@@ -599,20 +735,9 @@ export default function CheckoutModal({
       const url = data.payment_link_url;
       setLinkUrl(url);
 
-      // Deliver the link via the chosen channel(s). For SMS we use
-      // the existing notify-booking-event path with a custom event
-      // type, but to keep this simple in v1 we fire a direct insert
-      // into a one-shot communication record OR call notifyClient.
-      // Simplest path that works today: just SMS or email directly
-      // through Twilio / Resend via the same fan-out the notification
-      // system uses. Since we don't yet have a dedicated edge function
-      // for 'send arbitrary message,' fall back to the manual approach:
-      // we surface the link to the therapist, they tap a button on
-      // their phone (sms: or mailto:) to send it. This is intentional:
-      // first delivery is therapist-mediated so the therapist owns the
-      // exact words. A later phase wires direct platform delivery.
-      // For now, just show the link + a 'Send via SMS' or 'Send via Email'
-      // button which uses sms: / mailto: URL handlers.
+      if (packageRow && onPackageCreated) {
+        onPackageCreated(packageRow);
+      }
 
       setSuccessDetail({
         method: 'Payment link',
@@ -780,7 +905,11 @@ export default function CheckoutModal({
                   Checkout
                 </div>
                 <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {appt?.client || client?.name} · {appt?.service || 'Session'}
+                  {appt?.client || client?.name} · {
+                    isPackage ? `${packagePurchase.name} (${packagePurchase.sessions} sessions)` :
+                    isSubscription ? (subscription.membership?.name || 'Membership') :
+                    (appt?.service || 'Session')
+                  }
                 </div>
               </div>
               <CloseButton onClick={onClose} label="Close" />
@@ -798,6 +927,7 @@ export default function CheckoutModal({
                   onSendLink={() => setStep('send_link')}
                   onMarkPaid={() => setStep('offline')}
                   isSubscription={isSubscription}
+                  isPackage={isPackage}
                   validAmount={validAmount}
                   stripeConnected={!!therapist?.stripe_account_id}
                   squareConnected={!!therapist?.square_access_token}
@@ -1083,7 +1213,7 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, validAmount, stripeConnected, squareConnected, onClose }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, isPackage, validAmount, stripeConnected, squareConnected, onClose }) {
   // Either processor unlocks the card-based methods. HK May 22 2026:
   // we support Stripe AND Square as equally first-class processors;
   // the therapist picks whichever they already use, or connects both
@@ -1128,31 +1258,37 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
               primary
             />
           )}
-          {/* New card entry is booking-only in V1. For subscriptions the
-              therapist would use 'Send pay link' (Phase 19.2) or charge a
-              card on file. */}
-          {!isSubscription && (
+          {/* HK May 24 2026: removed !isSubscription gate. All three
+              checkout contexts (session, membership, package) now
+              support Enter new card. The chargeNewCard handler is
+              context-aware: it saves the card to the client, charges
+              it, and records the right linking row. Identical UI
+              across all three. */}
+          <MethodButton
+            onClick={onCardNew}
+            disabled={!validAmount}
+            icon="🪪"
+            title="Enter new card"
+            subtitle="Type card number now"
+            primary={!cardOnFile}
+          />
+          {/* Send pay link (Phase 19.4): supports bookings AND
+              subscriptions. For packages, the create-payment-link
+              edge function doesn't yet accept package_purchase_id -
+              extending it is item 28b in BLOCK_PLAN, will land in a
+              follow-up. Until then, hide this option for package
+              checkout. The other three methods (Mark as paid, Card
+              on file, Enter new card) work identically across all
+              three contexts. */}
+          {!isPackage && (
             <MethodButton
-              onClick={onCardNew}
+              onClick={onSendLink}
               disabled={!validAmount}
-              icon="🪪"
-              title="Enter new card"
-              subtitle="Type card number now"
-              primary={!cardOnFile}
+              icon="📲"
+              title="Send pay link"
+              subtitle="Text or email a one-time link"
             />
           )}
-          {/* Send pay link (Phase 19.4): now supports both bookings AND
-              subscriptions. The edge function create-payment-link accepts
-              either booking_id or member_subscription_id. The link's line
-              item label adapts ('Massage session' vs 'Monthly Member
-              renewal'). */}
-          <MethodButton
-            onClick={onSendLink}
-            disabled={!validAmount}
-            icon="📲"
-            title="Send pay link"
-            subtitle="Text or email a one-time link"
-          />
         </>
       ) : (
         <div style={{
