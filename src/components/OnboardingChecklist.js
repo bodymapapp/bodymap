@@ -313,6 +313,8 @@ function PreviewModal({ therapist, onClose }) {
       display: 'flex',
       flexDirection: 'column',
       padding: 12,
+      paddingTop: 'max(12px, env(safe-area-inset-top))',
+      paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
     }}
     onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
@@ -360,7 +362,7 @@ function PreviewModal({ therapist, onClose }) {
                 Open in new tab
               </a>
             )}
-            <button onClick={onClose} style={{
+            <button type="button" onClick={onClose} style={{
               background: '#2A5741',
               color: '#fff',
               border: 'none',
