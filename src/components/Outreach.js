@@ -131,6 +131,10 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
   const [aiDrafting, setAiDrafting]     = useState(false);
   const [aiError, setAiError]           = useState(null);
   const [recentSends, setRecentSends]   = useState([]);
+  // HK May 25 2026: tabs at top instead of two-section scroll page.
+  // Quick send = preconfigured 2-tap sends. Build your own = custom
+  // campaign builder. Recent campaigns stays visible regardless.
+  const [activeTab, setActiveTab] = useState('quick_send');
   const messageRef = React.useRef(null);
 
   const twilioReady  = !!therapist?.twilio_phone_number;
@@ -498,48 +502,83 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         <p style={{ fontSize:13, color:C.gray, margin:0 }}>Send a personal message to a group of clients in one shot. Each one is addressed by name.</p>
       </div>
 
-      {/* Section 1 header: Ready to send (Quick Sends) */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:700, color:C.dark, margin:'0 0 3px' }}>
-          Ready to send
-        </div>
-        <div style={{ fontSize:12.5, color:C.gray, lineHeight:1.5 }}>
-          Tap a campaign to send it now. We've pre-picked the audience and message.
-        </div>
+      {/* Tabs: Quick send vs Build your own. HK May 25 2026.
+          Replaces the two-section scroll page. User sees one mode at
+          a time so the boundary is unambiguous. Recent campaigns
+          remains visible below tabs regardless of selection. */}
+      <div style={{
+        display:'flex',
+        gap:0,
+        marginBottom:8,
+        background:'#F5F3EE',
+        borderRadius:12,
+        padding:4,
+      }}>
+        <button
+          type="button"
+          onClick={() => setActiveTab('quick_send')}
+          style={{
+            flex:1, padding:'10px 8px', borderRadius:9, border:'none',
+            background: activeTab === 'quick_send' ? C.white : 'transparent',
+            color: activeTab === 'quick_send' ? C.forest : C.gray,
+            fontSize:13, fontWeight:700, cursor:'pointer',
+            boxShadow: activeTab === 'quick_send' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            transition: 'background 0.15s ease, color 0.15s ease',
+            fontFamily: 'inherit',
+          }}
+        >
+          🌿 Quick send
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('build_own')}
+          style={{
+            flex:1, padding:'10px 8px', borderRadius:9, border:'none',
+            background: activeTab === 'build_own' ? C.white : 'transparent',
+            color: activeTab === 'build_own' ? C.forest : C.gray,
+            fontSize:13, fontWeight:700, cursor:'pointer',
+            boxShadow: activeTab === 'build_own' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            transition: 'background 0.15s ease, color 0.15s ease',
+            fontFamily: 'inherit',
+          }}
+        >
+          ✍️ Build your own
+        </button>
       </div>
 
-      {/* Quick-send blocks at the top.
-          HK direction May 9 2026: 5 preconfigured blocks for the
-          most common outreach moments (welcome new clients, miss
-          you, ready when you are, package balance, special this
-          month). 2-click flow: tap block, modal opens, send.
-          Below this, the existing 'advanced' segment + filter +
-          template builder remains for therapists who need it. */}
-      <QuickSendBlocks therapist={therapist} />
-
-      {/* Section 2 header: Build your own (Custom Campaign).
-          HK direction May 25 2026: section break must be obvious -
-          two-section visual hierarchy instead of a thin divider. */}
-      <div style={{ marginTop:32, marginBottom:14 }}>
-        <div style={{ fontFamily:'Georgia,serif', fontSize:17, fontWeight:700, color:C.dark, margin:'0 0 3px' }}>
-          Build your own
-        </div>
-        <div style={{ fontSize:12.5, color:C.gray, lineHeight:1.5 }}>
-          Choose a custom audience, write your own message, send.
-        </div>
+      {/* Helper text under tabs */}
+      <div style={{
+        textAlign:'center',
+        fontSize:11.5,
+        color:C.gray,
+        marginBottom:20,
+        lineHeight:1.5,
+      }}>
+        {activeTab === 'quick_send'
+          ? 'Campaigns prepared for you. Tap one, review, send.'
+          : 'Pick a custom audience and write your own message.'}
       </div>
 
-      {/* Channel toggle */}
-      <div style={{ display:'flex', gap:8, marginBottom:20 }}>
-        {[{id:'email',label:'📧 Email'},{id:'sms',label:'💬 Text (SMS)'}].map(ch => (
-          <button key={ch.id} onClick={() => setChannel(ch.id)}
-            style={{ flex:1, padding:'10px', borderRadius:10, border:`1.5px solid ${channel===ch.id?C.forest:C.light}`, background:channel===ch.id?C.forest:'transparent', color:channel===ch.id?'#fff':C.gray, fontSize:14, fontWeight:700, cursor:'pointer' }}>
-            {ch.label}
-          </button>
-        ))}
-      </div>
+      {/* Quick send tab content: 5 preconfigured + custom anchor.
+          HK direction May 9 2026: 2-click flow per template. */}
+      {activeTab === 'quick_send' && (
+        <QuickSendBlocks therapist={therapist} />
+      )}
 
-      {channel === 'sms' && (
+      {/* Build your own tab content: channel toggle + 3-step builder. */}
+      {activeTab === 'build_own' && (
+        <>
+          {/* Channel toggle */}
+          <div style={{ display:'flex', gap:8, marginBottom:20 }}>
+            {[{id:'email',label:'📧 Email'},{id:'sms',label:'💬 Text (SMS)'}].map(ch => (
+              <button key={ch.id} onClick={() => setChannel(ch.id)}
+                style={{ flex:1, padding:'10px', borderRadius:10, border:`1.5px solid ${channel===ch.id?C.forest:C.light}`, background:channel===ch.id?C.forest:'transparent', color:channel===ch.id?'#fff':C.gray, fontSize:14, fontWeight:700, cursor:'pointer' }}>
+                {ch.label}
+              </button>
+            ))}
+          </div>
+
+          {channel === 'sms' && (
         <div style={{ background:C.beige, border:`1.5px solid ${C.light}`, borderRadius:10, padding:'14px 16px', marginBottom:16, fontSize:13, color:C.gray, lineHeight:1.6 }}>
           <div style={{ fontWeight:700, color:C.dark, marginBottom:4 }}>📱 How SMS works</div>
           Your clients receive texts from your dedicated practice number {therapist?.twilio_phone_number ? `(${therapist.twilio_phone_number})` : ''}. It is not your personal number, it is a number assigned to your practice via Twilio.
@@ -792,6 +831,8 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
         </button>
         {!testMode && <p style={{ fontSize:11, color:C.gray, textAlign:'center', marginTop:8 }}>Clients without a {channel==='sms'?'phone number':'email address'} are automatically skipped. Unsubscribed clients are skipped too.</p>}
       </div>
+        </>
+      )}
 
       {/* Recent campaigns history */}
       {recentSends.length > 0 && (
@@ -831,6 +872,7 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
                     if (s.subject) setSubject(s.subject);
                     setChannel(s.channel);
                     setTemplate('custom');
+                    setActiveTab('build_own');
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                     style={{ fontSize:11, fontWeight:600, color:C.forest, background:'transparent', border:'none', padding:'4px 0 0', cursor:'pointer' }}>
