@@ -338,6 +338,20 @@ export default function PackageSection({ client, therapist, hasMembership, secti
         resolvedPlanId = newPlan.id;
       }
 
+      // Look up the client's email from the database since the
+      // client object passed in via props may not have it. The
+      // package_purchases.client_email column is NOT NULL.
+      // Fallback: 'no-email@local' placeholder so the insert can
+      // succeed for clients who haven't provided an email yet.
+      // The booking-counts lookup will still work via client_id.
+      const { data: clientRow } = await supabase
+        .from('clients')
+        .select('email, name')
+        .eq('id', client.id)
+        .maybeSingle();
+      const resolvedEmail = (clientRow?.email || client.email || '').trim() || 'no-email@local';
+      const resolvedName = clientRow?.name || client.name || 'Client';
+
       // Create the purchase row.
       const { error: purErr } = await supabase
         .from('package_purchases')
@@ -345,8 +359,8 @@ export default function PackageSection({ client, therapist, hasMembership, secti
           therapist_id: therapist.id,
           package_id: resolvedPlanId,
           client_id: client.id,
-          client_email: client.email,
-          client_name: client.name,
+          client_email: resolvedEmail,
+          client_name: resolvedName,
           sessions_purchased: sessionsNum,
           sessions_remaining: sessionsNum,
           price_paid: priceNum,
