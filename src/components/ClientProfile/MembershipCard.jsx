@@ -64,6 +64,11 @@ export default function MembershipCard({ client, therapist }) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState(null);
+  // Phase 2 (HK May 24 2026): collapsible add-membership form. Mirrors
+  // PackageSection's pattern. Defaults to expanded only when the client
+  // has NO active membership AND NO active package - i.e. the very
+  // first commitment they're adding. Otherwise defaults to collapsed.
+  const [membershipAddExpanded, setMembershipAddExpanded] = useState(false);
   // Phase 19.4 (HK May 18 2026): pending renewals for THIS client.
   // Surfaced as 'Charge renewal' buttons on each active subscription
   // row so the therapist can resolve from here, not just from the
@@ -181,6 +186,29 @@ export default function MembershipCard({ client, therapist }) {
     })();
     return () => { mounted = false; };
   }, [client.id, therapist.id]);
+
+  // Phase 2 (HK May 24 2026): Compute whether the add-membership form
+  // should default to expanded. Logic: expand only when client has NO
+  // active membership AND NO active package. Otherwise stay collapsed.
+  useEffect(() => {
+    if (loading) return;
+    let cancelled = false;
+    (async () => {
+      const { data: pkgs } = await supabase
+        .from('package_purchases')
+        .select('id, status')
+        .eq('therapist_id', therapist.id)
+        .eq('client_id', client.id)
+        .eq('status', 'active');
+      if (cancelled) return;
+      const activePackageCount = (pkgs || []).length;
+      const activeSubCount = subs.filter(s => s.status === 'active').length;
+      // Default-expand only when client has nothing - they're adding
+      // their very first commitment.
+      setMembershipAddExpanded(activePackageCount === 0 && activeSubCount === 0);
+    })();
+    return () => { cancelled = true; };
+  }, [client.id, therapist.id, loading, subs]);
 
   // Re-fetch renewals after a charge resolves (called by CheckoutModal's
   // onPaid callback). Quick re-query rather than full reload.
@@ -774,15 +802,65 @@ export default function MembershipCard({ client, therapist }) {
         </div>
       ) : (
         <div style={{
-          background: C.amberPale,
-          border: `1px solid #E5DCC4`,
+          background: membershipAddExpanded ? C.amberPale : '#fff',
+          border: `1px ${membershipAddExpanded ? 'solid' : 'dashed'} ${membershipAddExpanded ? '#E5DCC4' : C.line}`,
           borderRadius: 10,
-          padding: '12px 14px',
+          overflow: 'hidden',
+          marginBottom: 10,
         }}>
-          <div style={{ fontSize: 11.5, fontWeight: 700, color: C.amber, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Add a membership
-          </div>
+          {/* Phase 2 (HK May 24 2026): collapsible toggle header.
+              Mirrors PackageSection's add-package collapse pattern.
+              Tap to expand the existing membership form. */}
+          <button
+            type="button"
+            onClick={() => setMembershipAddExpanded(v => !v)}
+            style={{
+              width: '100%',
+              background: 'transparent',
+              border: 'none',
+              padding: '11px 14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              textAlign: 'left',
+            }}
+          >
+            <div style={{
+              width: 28,
+              height: 28,
+              borderRadius: 7,
+              background: membershipAddExpanded ? '#fff' : '#F5F0E8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 13,
+              color: C.amber,
+              fontWeight: 700,
+              flexShrink: 0,
+            }}>
+              📅
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, lineHeight: 1.1 }}>
+                {subs.filter(s => s.status === 'active').length > 0 ? 'Add another membership' : 'Add a membership'}
+              </div>
+              <div style={{ fontSize: 10.5, color: C.gray, marginTop: 2 }}>
+                Monthly recurring plan with renewals
+              </div>
+            </div>
+            <span style={{
+              color: C.gray,
+              fontSize: 14,
+              transform: membershipAddExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform 0.15s',
+            }}>›</span>
+          </button>
 
+          {membershipAddExpanded && (
+            <div style={{ padding: '0 14px 14px', borderTop: `1px solid #E5DCC4` }}>
+              <div style={{ height: 10 }} />
           <select
             value={planId}
             onChange={e => {
@@ -947,6 +1025,8 @@ export default function MembershipCard({ client, therapist }) {
           <div style={{ fontSize: 10.5, color: C.gray, marginTop: 7, lineHeight: 1.5 }}>
             MyBodyMap holds the membership record and reminds you each renewal day. Renewals charge automatically through Stripe, or appear as a one-tap Charge action through Square. Cash, Venmo, and other offline payments can be recorded too.
           </div>
+            </div>
+          )}
         </div>
       )}
 
