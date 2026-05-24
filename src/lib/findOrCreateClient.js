@@ -102,6 +102,46 @@ export async function findOrCreateClient({ supabase, therapist_id, name, email, 
 
     if (existing?.id) return existing.id;
 
+    // Phase 13.10 (May 24 2026): before creating a new client, check
+    // whether a phone-only stub already exists for this person. Real
+    // scenario: first booking comes in name+phone only (Path B creates
+    // a stub with email=null), then the same person books again later
+    // with email provided. Without this check, Path A would create a
+    // second client row, duplicating the human. Enrichment rule:
+    // match on phone last-10 digits, only consider rows where email
+    // is null (phone-only stubs from prior incomplete bookings).
+    // Different existing email means a different person sharing the
+    // same phone (family, shared business line); we treat them as
+    // separate and proceed to create. See FOUNDER_RUNBOOK Procedure 10.
+    if (normalizedPhone) {
+      const { data: phoneStubs } = await supabase
+        .from('clients')
+        .select('id, phone, email, created_at')
+        .eq('therapist_id', therapist_id)
+        .is('email', null)
+        .not('phone', 'is', null)
+        .order('created_at', { ascending: true });
+
+      const stub = (phoneStubs || []).find(c => {
+        const digits = (c.phone || '').replace(/\D/g, '').slice(-10);
+        return digits === normalizedPhone;
+      });
+
+      if (stub?.id) {
+        // Found a phone-only stub for this person. Enrich with the
+        // newly-provided email and return the existing id. We only
+        // patch email (not name); the therapist can edit the name
+        // later if they want, and overwriting could clobber a name
+        // they prefer (e.g. "Sandy" they recognize vs "Sandra Lin"
+        // from this booking's form).
+        await supabase
+          .from('clients')
+          .update({ email: normalizedEmail })
+          .eq('id', stub.id);
+        return stub.id;
+      }
+    }
+
     const { data: created, error: insertErr } = await supabase
       .from('clients')
       .insert({

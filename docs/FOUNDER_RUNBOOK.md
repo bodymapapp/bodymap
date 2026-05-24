@@ -877,7 +877,10 @@ Affected booking creation paths before the fix:
 - `src/components/ImportClients.js` line 1856 (legacy CSV import path; `.filter(p => p._clientId)` at line 1847 since May 10 also drops the booking entirely)
 
 Phase 13.9 fix:
-`findOrCreateClient` now has two paths. Path A (email-based) is unchanged. Path B (new): when email is missing but phone is present, normalize both sides to last-10 digits, scope the lookup to `therapist_id`, return the matching client's id. If no match, create a new clients row with name + phone (no email). Only returns null when both email AND phone are missing (truly anonymous booking, rare). All four booking-creation paths automatically inherit the fix since they all call this helper.
+`findOrCreateClient` now has two paths. Path A (email-based) is unchanged in its core: look up by email, return matching id, or create new. Path B (new): when email is missing but phone is present, normalize both sides to last-10 digits, scope the lookup to `therapist_id`, return the matching client's id. If no match, create a new clients row with name + phone (no email). Only returns null when both email AND phone are missing (truly anonymous booking, rare). All four booking-creation paths automatically inherit the fix since they all call this helper.
+
+Phase 13.10 fix (same-day refinement, May 24 2026):
+Path A now also checks phone before creating a new client. Real scenario it solves: a client books once with name + phone only (Path B creates a stub with `email = NULL`), then books again later with email + phone provided. Without the check, Path A would create a second client row for the same human. The reconciliation rule: when email lookup misses but phone is present, query phone-only stubs (rows where `email IS NULL`) scoped to therapist_id. If exactly one matches by phone last-10, update that stub with the newly-provided email and return its id. If the phone matches a client who already has a DIFFERENT email, treat them as two different people (family members, shared business line) and create a new row. Only the email field is patched; the name on the existing record is preserved. Therapist can edit the name in the UI if needed.
 
 To diagnose the bug on a live therapist:
 
