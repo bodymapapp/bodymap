@@ -331,16 +331,50 @@ export default function CheckoutModal({
   // row as paid (if one was passed in). This is what clears the
   // reminder banner on the billing dashboard.
   async function resolveRenewalAsPaid(sessionPaymentId) {
-    if (!isSubscription || !renewal?.id) return;
+    if (!isSubscription) return;
+    // Path 1: explicit renewal prop passed in (the 'Charge renewal'
+    // button took us here). Resolve that exact row.
+    if (renewal?.id) {
+      try {
+        await supabase.from('member_subscription_renewals').update({
+          status: 'paid',
+          resolved_at: new Date().toISOString(),
+          resolved_by_therapist_id: therapist.id,
+          session_payment_id: sessionPaymentId,
+        }).eq('id', renewal.id);
+      } catch (e) {
+        console.warn('resolveRenewalAsPaid failed:', e);
+      }
+      return;
+    }
+    // Path 2: HK May 24 2026. Ad-hoc charge (no renewal prop). Look
+    // up any pending renewal for this subscription whose due_on is
+    // today or earlier. The therapist's payment intent is clearly to
+    // cover the current due cycle. Resolve the earliest such row.
+    // Without this, the ad-hoc charge records the payment correctly
+    // but leaves the renewal at 'pending', so the UI keeps showing
+    // 'due today' even though the therapist just got paid.
     try {
-      await supabase.from('member_subscription_renewals').update({
-        status: 'paid',
-        resolved_at: new Date().toISOString(),
-        resolved_by_therapist_id: therapist.id,
-        session_payment_id: sessionPaymentId,
-      }).eq('id', renewal.id);
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const { data: openRows } = await supabase
+        .from('member_subscription_renewals')
+        .select('id, due_on')
+        .eq('member_subscription_id', subscription.id)
+        .eq('status', 'pending')
+        .lte('due_on', todayStr)
+        .order('due_on', { ascending: true })
+        .limit(1);
+      const open = openRows?.[0];
+      if (open?.id) {
+        await supabase.from('member_subscription_renewals').update({
+          status: 'paid',
+          resolved_at: new Date().toISOString(),
+          resolved_by_therapist_id: therapist.id,
+          session_payment_id: sessionPaymentId,
+        }).eq('id', open.id);
+      }
     } catch (e) {
-      console.warn('resolveRenewalAsPaid failed:', e);
+      console.warn('resolveRenewalAsPaid (adhoc lookup) failed:', e);
     }
   }
 
