@@ -1622,7 +1622,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               med_note: null,
               client_notes: null,
               completed: false,
-              intake_added_by: 'waived',
+              intake_added_by: 'therapist_manual',
             })
             .select('*')
             .single();
@@ -2461,7 +2461,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                                     med_note: null,
                                     client_notes: null,
                                     completed: false,
-                                    intake_added_by: 'waived',
+                                    intake_added_by: 'therapist_manual',
                                   })
                                   .select('*')
                                   .single();

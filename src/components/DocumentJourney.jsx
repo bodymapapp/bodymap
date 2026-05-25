@@ -55,10 +55,14 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
   const isLocked = status === 'locked';
 
   const ringStyle = (() => {
-    if (isDone) return { background: C.sage, border: `2px solid ${C.sage}`, boxShadow: `0 2px 6px rgba(74,107,84,0.18), 0 0 0 2px ${C.sageBg}` };
-    if (isCurrent) return { background: C.white, border: `2.5px solid ${C.gold}`, boxShadow: `0 0 0 2px ${C.goldBg}, 0 2px 5px rgba(201,168,76,0.16)` };
-    if (isLocked) return { background: C.cream, border: `2px solid ${C.lineFaint}`, opacity: 0.7 };
-    return { background: C.white, border: `2px dashed ${C.muted}`, opacity: 0.85 };
+    // HK May 25 2026 round 6: all four circles are identical in size,
+    // border weight, and shape. Differentiation lives entirely in the
+    // background fill and the corner badge. No halo or extra shadow
+    // on any state, so the row reads as four equal-weight tiles.
+    if (isDone)    return { background: C.sage,  border: `2px solid ${C.sage}` };
+    if (isCurrent) return { background: C.white, border: `2px solid ${C.gold}` };
+    if (isLocked)  return { background: C.cream, border: `2px solid ${C.lineFaint}`, opacity: 0.55 };
+    return                  { background: C.white, border: `2px solid ${C.muted}`, opacity: 0.6 };
   })();
 
   const numColor = isDone ? C.white : isCurrent ? C.forest : C.muted;
