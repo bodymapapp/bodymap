@@ -69,6 +69,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   const [serviceId, setServiceId] = useState('');
   const [services, setServices]   = useState([]);
   const [availability, setAvail]  = useState([]);
+  // HK May 25 2026 (Phase 23): add-ons in therapist-initiated bookings.
+  // Public BookingPage already supports add-ons; the therapist-side
+  // modal was missing them, so therapists couldn't add the hot stones
+  // upcharge, CBD oil, etc when booking from the schedule.
+  // Loads from service_addons same query the public page uses.
+  // selectedAddonIds is a Set of addon UUIDs the therapist toggled on.
+  const [availableAddons, setAvailableAddons] = useState([]);
+  const [selectedAddonIds, setSelectedAddonIds] = useState(new Set(existingBooking?.addon_ids || []));
   // Phase 9.3 (HK May 18 2026): when launched from the long-press
   // 'block or event' confirm sheet, prefillDateTime carries the
   // date and start time the user pressed on. We seed `date` from
@@ -94,7 +102,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
   // Load services + availability + blocked days
   useEffect(() => {
     async function load() {
-      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }] = await Promise.all([
+      const [{ data: svcs }, { data: avail }, { data: blocked }, { data: locs }, { data: addons }] = await Promise.all([
         supabase.from('services').select('*').eq('therapist_id', therapist.id).eq('active', true).is('archived_at', null).order('sort_order', { ascending: true }).order('price', { ascending: true }),
         supabase.from('availability').select('*').eq('therapist_id', therapist.id).eq('active', true),
         // Phase 9.1: fetch start_time/end_time so partial-day blocks
@@ -102,9 +110,14 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         supabase.from('blocked_days').select('date, start_time, end_time').eq('therapist_id', therapist.id),
         // Multi-location: same fetch as the public booking page.
         supabase.from('therapist_locations').select('*').eq('therapist_id', therapist.id).eq('active', true).order('sort_order', { ascending: true }),
+        // Phase 23 (HK May 25 2026): add-ons for therapist-initiated
+        // bookings. Mirrors the public booking page fetch so the same
+        // set of add-ons is available everywhere.
+        supabase.from('service_addons').select('*').eq('therapist_id', therapist.id).eq('active', true).order('display_order').order('created_at'),
       ]);
       setServices(svcs || []);
       setAvail(avail || []);
+      setAvailableAddons(addons || []);
       // Split full-day vs partial. Full-day blocks the entire date in
       // the calendar (blockedDates Set). Partial gets bucketed by date
       // and used in slot generation as a pseudo-booking.
@@ -300,6 +313,12 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
           // no locations set up. Otherwise the picked location, or
           // primary by default.
           location_id:   locationId || null,
+          // Phase 23 (HK May 25 2026): persist selected add-ons +
+          // their aggregated price and extra-minutes on the booking
+          // row. Same columns the public BookingPage writes to.
+          addon_ids:           Array.from(selectedAddonIds),
+          addon_total_price:   addonTotalPrice,
+          addon_extra_minutes: addonExtraMinutes,
         }).select('id').single();
         if (e) throw e;
         bookingId = newBooking?.id || null;
@@ -351,6 +370,20 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
   const svc = services.find(s => s.id === serviceId);
   const title = isReschedule ? 'Reschedule Appointment' : isRebook ? 'Book Next Appointment' : 'Create Booking';
+
+  // Phase 23 (HK May 25 2026): compute selected-addon aggregates.
+  // Used both for the UI (live total + extra minutes) and the
+  // booking insert payload. Mirrors public BookingPage logic.
+  const selectedAddons = (availableAddons || []).filter(a => selectedAddonIds.has(a.id));
+  const addonTotalPrice = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
+  const addonExtraMinutes = selectedAddons.reduce((sum, a) => sum + Number(a.extra_minutes || 0), 0);
+  function toggleAddon(id) {
+    setSelectedAddonIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   // Build available dates: next 365 days, exclude blocked dates
   const avDows = availability.map(a => a.day_of_week);
@@ -532,6 +565,73 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
                   return visibleServices.map(renderServiceBtn);
                 })()}
               </div>
+            </div>
+          )}
+
+          {/* Add-ons (HK May 25 2026 Phase 23). Only renders when the
+              therapist has configured any add-ons in Settings →
+              Services → Add-ons. Multi-select toggle tiles, matches
+              the service-picker visual. Live aggregate at bottom
+              shows current total and extra minutes added. */}
+          {serviceId && availableAddons.length > 0 && (
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.07em', display: 'block', marginBottom: 8 }}>
+                Add-ons (optional)
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {availableAddons.map(a => {
+                  const isPicked = selectedAddonIds.has(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => toggleAddon(a.id)}
+                      style={{
+                        padding: '10px 14px',
+                        borderRadius: 10,
+                        border: `1.5px solid ${isPicked ? C.forest : C.border}`,
+                        background: isPicked ? '#F0FDF4' : '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ fontSize: 14, fontWeight: 600, color: isPicked ? C.forest : C.dark, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{
+                          width: 18, height: 18, borderRadius: 4,
+                          border: `1.5px solid ${isPicked ? C.forest : C.border}`,
+                          background: isPicked ? C.forest : '#fff',
+                          color: '#fff',
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700,
+                        }}>{isPicked ? '✓' : ''}</span>
+                        {a.name}
+                      </span>
+                      <span style={{ fontSize: 13, color: C.gray }}>
+                        +${Number(a.price || 0).toFixed(0)}
+                        {a.extra_minutes ? ` · +${a.extra_minutes} min` : ''}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedAddons.length > 0 && (
+                <div style={{
+                  marginTop: 8,
+                  fontSize: 12,
+                  color: C.forest,
+                  fontWeight: 600,
+                  background: '#F0FDF4',
+                  border: '1px solid #BBF7D0',
+                  borderRadius: 8,
+                  padding: '6px 10px',
+                }}>
+                  {selectedAddons.length} add-on{selectedAddons.length === 1 ? '' : 's'} · +${addonTotalPrice.toFixed(0)}
+                  {addonExtraMinutes ? ` · ${addonExtraMinutes} extra min` : ''}
+                </div>
+              )}
             </div>
           )}
 

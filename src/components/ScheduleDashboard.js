@@ -1311,7 +1311,26 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
-      <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'100vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column',paddingTop:'env(safe-area-inset-top, 0px)'}}>
+      {/* HK May 25 2026 (Phase 23): scroll fix. The outer container
+          is position:fixed with explicit top/bottom and overflowY:auto.
+          Children flow naturally without flex:1. The previous setup
+          gave body 'flex:1' which fought the parent's overflow boundary
+          when the cockpit panels grew tall, causing the scroll to die
+          past the checkout button. paddingBottom adds breathing room
+          below the last action so nothing sits flush against
+          home-indicator on iOS. Design principle #23 below. */}
+      <div style={{
+        position:'fixed',
+        top:0, right:0, bottom:0,
+        width:360, maxWidth:'100vw',
+        background:'#fff',
+        zIndex:301,
+        overflowY:'auto',
+        WebkitOverflowScrolling: 'touch',
+        boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',
+        paddingTop:'env(safe-area-inset-top, 0px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)',
+      }}>
         <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
           {/* Top row: avatar + name + close. displayAppt is used so
               if the user links a client via the ClientPicker inside
@@ -1504,7 +1523,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             </div>
           )}
         </div>
-        <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:14}}>
+        <div style={{padding:20,display:'flex',flexDirection:'column',gap:14}}>
           {/* HK May 25 2026 (Phase 20.1): cleaner status pills. Replaces
               the prior verbose 'Reminder sent / pending' line which
               read as if intake was pending. Now uses paid + reminder
