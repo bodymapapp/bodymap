@@ -3368,7 +3368,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
   const [pulseSent, setPulseSent] = React.useState(false);
 
   // Platform features master switch. Defaults TRUE so existing therapists are
-  // unchanged. Flipping to false hides Practice Assistant chat tab, pre-session
+  // unchanged. Flipping to false hides PracticeIQ chat tab, pre-session
   // brief buttons, and Practice Pulse from the dashboard. Data is preserved
   // -- flipping back to true restores all surfaces.
   const [aiEnabled, setAiEnabled] = React.useState(therapist?.ai_enabled !== false);
@@ -4288,7 +4288,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           </div>
         </div>
         {!aiEnabled && (
-          <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The Practice Assistant tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
+          <p style={{ fontSize:11, color:C2.gray, margin:'12px 0 0', fontStyle:'italic' }}>The PracticeIQ tab and pre-session brief buttons are hidden. Booking, intake, SOAP notes, billing, reminders, and schedule all stay on.</p>
         )}
       </div></CollapsibleSection>
       </>)}
@@ -6054,7 +6054,7 @@ export default function Dashboard({ view }) {
           {view === 'ai' && therapist && therapist.ai_enabled === false && (
             <div style={{ maxWidth: 560, margin: '40px auto', padding: '32px 24px', background: C.white, borderRadius: 14, border: `1.5px solid ${C.lightGray}`, textAlign: 'center' }}>
               <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: C.gray, marginBottom: 6 }}>Platform features off</div>
-              <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.forest, margin: '0 0 10px' }}>Practice Assistant is turned off.</h2>
+              <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: C.forest, margin: '0 0 10px' }}>PracticeIQ is turned off.</h2>
               <p style={{ fontSize: 14, color: C.gray, lineHeight: 1.6, margin: '0 0 20px' }}>You turned off Platform features in Settings. Turn them back on anytime to use the chat, pre-session briefs, and Practice Pulse digest. Your data is unchanged.</p>
               <button onClick={() => navigate('/dashboard/settings')}
                 style={{ background: C.forest, color: C.white, border: 'none', borderRadius: 999, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>

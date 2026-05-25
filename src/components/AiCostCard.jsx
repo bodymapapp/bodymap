@@ -227,7 +227,7 @@ export default function AiCostCard() {
               fontStyle: "italic",
               textAlign: "center",
             }}>
-              No AI calls this month yet. The counter will start populating as therapists use the Practice Assistant or other AI features.
+              No AI calls this month yet. The counter will start populating as therapists use the PracticeIQ or other AI features.
             </div>
           )}
 

@@ -96,7 +96,7 @@ The product features taxonomy is documented in `FEATURES_TAXONOMY.md` (seven rib
 | intake-forms-overview | 2.1 | Visual body map intake |
 | customizing-intake | 2.2 | Customize your intake |
 | session-notes-and-soap | 4.3 | Post-session SOAP notes |
-| ai-features-overview | 3.3 | Practice Assistant |
+| ai-features-overview | 3.3 | PracticeIQ |
 | mobile-app-pwa | 7.1 | Install to home screen |
 | switching-from-vagaro-massagebook | comparison | (cross-cutting) |
 | what-if-you-go-out-of-business | trust | (cross-cutting) |

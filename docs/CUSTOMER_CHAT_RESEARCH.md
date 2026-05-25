@@ -33,7 +33,7 @@ Two distinct user groups, two distinct purposes:
 - "Why didn't my client get their reminder?"
 - These are operational support questions. Retention-influencing.
 
-The Practice Assistant (already built) handles a different category: "show me my own client data, draft me an SMS." Different enough that it shouldn't be conflated with customer-service chat.
+The PracticeIQ (already built) handles a different category: "show me my own client data, draft me an SMS." Different enough that it shouldn't be conflated with customer-service chat.
 
 ---
 

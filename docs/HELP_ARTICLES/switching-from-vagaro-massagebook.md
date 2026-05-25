@@ -32,7 +32,7 @@ Most of our therapists came from Vagaro or MassageBook. The honest comparison.
 - MassageBook paywalls card-on-file at their higher tier. We include it on Bronze (free).
 - MassageBook UI has not been substantially updated in years.
 - MassageBook advertised price is $25/month. Real cost with the features you need is $70-$100. Our advertised Silver price is $19/month and that is the real price.
-- We have AI features (pre-session brief, post-session note draft, Practice Assistant chat). They do not.
+- We have AI features (pre-session brief, post-session note draft, PracticeIQ chat). They do not.
 
 ## What we do NOT do that competitors do
 

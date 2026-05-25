@@ -12,7 +12,7 @@ const TABS = [
 
 const MORE_ITEMS = [
   { id: 'settings', label: 'Settings',    sub: 'Hours, services, integrations',     emoji: '⚙️', gradient: 'linear-gradient(135deg,#EEF2FF,#E0E7FF)', border: '#C7D2FE' },
-  { id: 'ai',       label: 'Practice Assistant', sub: 'Ask anything about your practice', emoji: '🌿', gradient: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '#86EFAC' },
+  { id: 'ai',       label: 'PracticeIQ', sub: 'Ask anything about your practice', emoji: '🌿', gradient: 'linear-gradient(135deg,#F0FDF4,#DCFCE7)', border: '#86EFAC' },
   { id: 'gifts',    label: 'Gift Cards',  sub: 'Send joy to your clients',          emoji: '💝', gradient: 'linear-gradient(135deg,#FFF1F5,#FCE7F3)', border: '#FBCFE8' },
 ];
 
@@ -20,7 +20,7 @@ export default function MobileBottomNav({ active, onChange, unreadCount, onSignO
   const [showMore, setShowMore] = useState(false);
   const activeTab = ['ai','gifts','settings'].includes(active) ? 'more' : active;
 
-  // Hide Practice Assistant item when the therapist has turned Platform features off
+  // Hide PracticeIQ item when the therapist has turned Platform features off
   // in Settings. Other items stay visible. Defaults to visible when the
   // flag is undefined (existing therapists not yet migrated).
   const aiOff = therapist?.ai_enabled === false;

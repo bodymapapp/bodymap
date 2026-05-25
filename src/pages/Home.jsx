@@ -123,14 +123,14 @@ const RIBBONS = [
     demos: [
       { kind: "component", component: ThreeDotDocumentDemo, label: "Three-dot document system" },
       { kind: "component", component: PatternDemo, label: "Pattern detection" },
-      { kind: "component", component: AIDemo, label: "Practice Assistant chat" },
+      { kind: "component", component: AIDemo, label: "PracticeIQ chat" },
     ],
     layout: "demo-right",
     subFeatures: [
       "Three-dot document system: Intake, Pre-Session, Post-Session",
       "Longitudinal heatmaps across all sessions",
       "Full session history, instantly searchable",
-      "Practice Assistant: chat with your client data",
+      "PracticeIQ: chat with your client data",
       "Pattern detection on body areas trending up",
       "Practice Pulse: daily 6am morning brief",
     ],

@@ -14,7 +14,7 @@ const C = {
 
 function GrowthEngine() {
   const retention = [
-    { icon:"🔮", title:"Churn Prediction", desc:"Practice Assistant detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
+    { icon:"🔮", title:"Churn Prediction", desc:"PracticeIQ detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
     { icon:"📈", title:"Pressure Trend Alerts", desc:"When a client's pressure preference escalates (3→5 over 8 sessions), MyBodyMap flags it. You adjust before they find someone who does deep tissue better." },
     { icon:"💌", title:"Milestone Moments", desc:"10th session, 1-year anniversary, returning after a break - MyBodyMap identifies these moments and drafts a personalized message. Clients feel seen." },
     { icon:"🎁", title:"Re-engagement Campaigns", desc:"One tap launches a personalized outreach to all lapsed clients - not a mass text, a message that references their specific body history." },

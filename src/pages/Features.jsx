@@ -591,7 +591,7 @@ function AIDemo() {
   ];
 
   const [messages, setMessages] = useState([
-    { role:"assistant", content:"Hi! I'm Practice Assistant. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
+    { role:"assistant", content:"Hi! I'm PracticeIQ. In the dashboard, I have access to your actual client data - names, body maps, session history, revenue, and patterns.\n\nHere I'm running on a sample practice. Try the suggested questions to see exactly what I can do with real data. 🌿" }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -623,9 +623,9 @@ function AIDemo() {
         body:JSON.stringify({ messages:updated.map(m=>({role:m.role,content:m.content})), context:"", mode:"public" })
       });
       const data = await res.json();
-      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see Practice Assistant at its best." }]);
+      setMessages(p => [...p, { role:"assistant", content:data.content?.[0]?.text||"Try one of the suggested questions to see PracticeIQ at its best." }]);
     } catch {
-      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see Practice Assistant in action." }]);
+      setMessages(p => [...p, { role:"assistant", content:"Try one of the suggested questions below to see PracticeIQ in action." }]);
     }
     setLoading(false);
   };
@@ -637,7 +637,7 @@ function AIDemo() {
       <div style={{ background:`linear-gradient(135deg, ${C.forest}, #1A3A28)`, padding:"14px 20px", display:"flex", alignItems:"center", gap:10 }}>
         <div style={{ width:32, height:32, borderRadius:"50%", background:"rgba(255,255,255,0.15)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:16 }}>🌿</div>
         <div>
-          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>Practice Assistant</div>
+          <div style={{ fontSize:14, fontWeight:700, color:"#fff" }}>PracticeIQ</div>
           <div style={{ fontSize:11, color:"rgba(255,255,255,0.65)" }}>Powered by your real practice data</div>
         </div>
         <div style={{ marginLeft:"auto", background:"rgba(255,255,255,0.15)", borderRadius:20, padding:"3px 10px", fontSize:10, color:"#fff", fontWeight:700 }}>● Live Demo</div>
@@ -788,7 +788,7 @@ function AutomationHub() {
 // ── GROWTH ENGINE ─────────────────────────────────────────────────────────────
 function GrowthEngine() {
   const retention = [
-    { icon:"🔮", title:"Churn Prediction", desc:"Practice Assistant detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
+    { icon:"🔮", title:"Churn Prediction", desc:"PracticeIQ detects when a regular client breaks their visit pattern - 7 days before they would have ghosted. You reach out first." },
     { icon:"📈", title:"Pressure Trend Alerts", desc:"When a client's pressure preference escalates (3→5 over 8 sessions), MyBodyMap flags it. You adjust before they find someone who does deep tissue better." },
     { icon:"💌", title:"Milestone Moments", desc:"10th session, 1-year anniversary, returning after a break - MyBodyMap identifies these moments and drafts a personalized message. Clients feel seen." },
     { icon:"🎁", title:"Re-engagement Campaigns", desc:"One tap launches a personalized outreach to all lapsed clients - not a mass text, a message that references their specific body history." },
@@ -862,7 +862,7 @@ function SectionNav() {
     { id:"postsession",  label:"Post-Session",           n:12 },
     { id:"billing",      label:"Billing",                n:13 },
     { id:"gifts",        label:"Gift Cards",             n:14 },
-    { id:"ai",           label:"Practice Assistant",     n:15 },
+    { id:"ai",           label:"PracticeIQ",     n:15 },
     { id:"mobile",       label:"On Your Phone",          n:16 },
     { id:"automation",   label:"Automation",             n:17 },
     { id:"growth",       label:"Growth Engine",          n:18 },
@@ -1183,7 +1183,7 @@ export default function Features() {
                     { icon:"📍", title:"Body Area Frequency", desc:"Track exactly which areas clients focus on across every session. Lower back 9 of 10 visits isn't a preference - it's a chronic condition. Treat it accordingly." },
                     { icon:"📈", title:"Pressure Trend Tracking", desc:"When a client's pressure tolerance escalates from 3 to 5 over 8 sessions, MyBodyMap shows you the trend. You adapt before they have to ask." },
                     { icon:"⚠️", title:"Avoid Area Memory", desc:"A client avoided their knees every single session. Do you remember that after 6 months? MyBodyMap does. Permanently." },
-                    { icon:"🤖", title:"Pattern Summary", desc:"After each session, Practice Assistant summarizes what's changing in this client's body - in plain language, without you asking." },
+                    { icon:"🤖", title:"Pattern Summary", desc:"After each session, PracticeIQ summarizes what's changing in this client's body - in plain language, without you asking." },
                   ].map((f,i)=>(
                     <div key={i} style={{ display:"flex", gap:14 }}>
                       <div style={{ width:40, height:40, borderRadius:10, background:"rgba(107,158,128,0.15)", border:"1px solid rgba(107,158,128,0.2)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:18, flexShrink:0 }}>{f.icon}</div>
@@ -1874,12 +1874,12 @@ export default function Features() {
         <div style={{ maxWidth:1100, margin:"0 auto" }}>
           <FadeIn>
             <div style={{ textAlign:"center", marginBottom:60 }}>
-              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>Practice Assistant</div>
+              <div style={{ fontSize:13, fontWeight:700, color:C.sage, textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:12 }}>PracticeIQ</div>
               <h2 style={{ fontFamily:"Georgia, serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, color:C.dark, lineHeight:1.15, marginBottom:20 }}>
                 A Platform That Knows Your Clients.<br/>Not Just Massage in General.
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. The Practice Assistant does.
+                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. The PracticeIQ does.
               </p>
             </div>
           </FadeIn>
@@ -1909,7 +1909,7 @@ export default function Features() {
                   ))}
                 </div>
                 <div style={{ background:"#FEF3C7", borderRadius:12, padding:"14px 18px", fontSize:13, color:"#92400E", lineHeight:1.5 }}>
-                  💡 The demo uses sample data. When you're logged in, Practice Assistant has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
+                  💡 The demo uses sample data. When you're logged in, PracticeIQ has access to your real clients, sessions, body maps, and revenue - and answers from that context, not generic knowledge.
                 </div>
               </div>
             </FadeIn>

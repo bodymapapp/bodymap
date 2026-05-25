@@ -508,17 +508,54 @@ function LastSessionContent({ session, allSessions }) {
 }
 
 function PatternsContent({ allSessions }) {
-  // Compute zone frequency, pressure trend, cadence, conditions
-  const zoneCount = {};
+  // HK May 25 2026 (Phase 24e): pattern visualization upgraded from
+  // text-only to BodyDiagram heatmap overlay (front + back). THIS
+  // IS THE MOAT. Every other massage SaaS shows session notes one
+  // at a time. We aggregate ALL prior sessions into a single visual
+  // showing recurring focus + avoid zones with intensity scaled by
+  // frequency. Therapist sees the client's body story at a glance.
+
+  // Compute zone counts split front/back since BodyDiagram needs them
+  // separately. Track avoid zones too. Pressure + cadence stay below
+  // the visual as supporting text.
+  const frontCount = {};
+  const backCount = {};
+  const avoidFrontCount = {};
+  const avoidBackCount = {};
   const pressures = [];
   const dates = [];
   allSessions.forEach(s => {
-    (s.front_focus || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
-    (s.back_focus  || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
+    (s.front_focus || []).forEach(z => { frontCount[z] = (frontCount[z] || 0) + 1; });
+    (s.back_focus  || []).forEach(z => { backCount[z]  = (backCount[z] || 0) + 1; });
+    (s.front_avoid || []).forEach(z => { avoidFrontCount[z] = (avoidFrontCount[z] || 0) + 1; });
+    (s.back_avoid  || []).forEach(z => { avoidBackCount[z]  = (avoidBackCount[z] || 0) + 1; });
     if (s.pressure) pressures.push(s.pressure);
     if (s.created_at) dates.push(new Date(s.created_at));
   });
-  const topZones = Object.entries(zoneCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+  // Build heatmap inputs: { zoneId: { opacity 0-1, count } }.
+  // Opacity scales the dot size in BodyDiagram heatmap mode.
+  function buildHeatmap(counts) {
+    const max = Math.max(1, ...Object.values(counts));
+    const out = {};
+    Object.entries(counts).forEach(([id, count]) => {
+      // Translate session zone ids to body-diagram zone ids.
+      const { frontIds, backIds } = zonesToBodyDiagram([id]);
+      const opacity = count / max;
+      [...frontIds, ...backIds].forEach(diagId => {
+        out[diagId] = { opacity, count };
+      });
+    });
+    return out;
+  }
+  const heatFront = buildHeatmap(frontCount);
+  const heatBack  = buildHeatmap(backCount);
+  const heatAvoidFront = buildHeatmap(avoidFrontCount);
+  const heatAvoidBack  = buildHeatmap(avoidBackCount);
+
+  // Supporting text below the visual
+  const allZoneCount = { ...frontCount, ...backCount };
+  const topZones = Object.entries(allZoneCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
   const avgPressure = pressures.length ? Math.round(pressures.reduce((a, b) => a + b, 0) / pressures.length * 10) / 10 : null;
   let avgGap = null;
   if (dates.length >= 2) {
@@ -529,23 +566,72 @@ function PatternsContent({ allSessions }) {
     }
     if (gaps.length) avgGap = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
   }
+
+  const hasHeatData = Object.keys(heatFront).length > 0 || Object.keys(heatBack).length > 0;
+
   return (
-    <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.65 }}>
-      {topZones.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <strong>Recurring focus:</strong> {topZones.map(([z, n]) => `${zoneLabel(z)} (${n}×)`).join(', ')}
+    <div>
+      {hasHeatData && (
+        <div style={{
+          background: SO.cream,
+          border: `1px solid ${SO.border}`,
+          borderRadius: 12,
+          padding: '14px 12px 10px',
+          marginBottom: 12,
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            color: SO.inkSoft,
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase',
+            marginBottom: 10,
+            textAlign: 'center',
+          }}>
+            Body map across {allSessions.length} sessions
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, alignItems: 'flex-end' }}>
+            <div style={{ textAlign: 'center' }}>
+              <BodyDiagram
+                mode="heatmap"
+                heatmapFocus={heatFront}
+                heatmapAvoid={heatAvoidFront}
+                size="md"
+              />
+              <div style={{ fontSize: 10, fontWeight: 600, color: SO.inkMute, marginTop: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Front</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <BodyDiagram
+                mode="heatmap"
+                heatmapFocus={heatBack}
+                heatmapAvoid={heatAvoidBack}
+                size="md"
+              />
+              <div style={{ fontSize: 10, fontWeight: 600, color: SO.inkMute, marginTop: 4, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Back</div>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, color: SO.inkMute, marginTop: 8, textAlign: 'center', lineHeight: 1.45 }}>
+            Bigger circles = recurring zones. Sage = focus, rose = avoid.
+          </div>
         </div>
       )}
-      {avgPressure && (
-        <div style={{ marginBottom: 10 }}>
-          <strong>Avg pressure preference:</strong> {avgPressure}/5 ({pressureLabel(Math.round(avgPressure))})
-        </div>
-      )}
-      {avgGap && (
-        <div style={{ marginBottom: 10 }}>
-          <strong>Cadence:</strong> ~{avgGap} days between visits
-        </div>
-      )}
+      <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.65 }}>
+        {topZones.length > 0 && (
+          <div style={{ marginBottom: 8 }}>
+            <strong>Recurring focus:</strong> {topZones.map(([z, n]) => `${zoneLabel(z)} (${n}×)`).join(', ')}
+          </div>
+        )}
+        {avgPressure && (
+          <div style={{ marginBottom: 8 }}>
+            <strong>Avg pressure preference:</strong> {avgPressure}/5 ({pressureLabel(Math.round(avgPressure))})
+          </div>
+        )}
+        {avgGap && (
+          <div style={{ marginBottom: 8 }}>
+            <strong>Cadence:</strong> ~{avgGap} days between visits
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -560,7 +646,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
   //   - therapist_notes JSON with __soap=true: { S, O, A, P, private, noteToClient }
   //
   // Also added the dictation nudge from SessionDetail page and a
-  // 'Draft with practice assistant' button (no "AI" wording).
+  // 'Draft with PracticeIQ' button (no "AI" wording).
   const [privateNotes, setPrivateNotes] = useState(parsedSoap.private || (parsedSoap.isLegacy ? parsedSoap.legacyText : '') || '');
   const [S, setS] = useState(parsedSoap.S || '');
   const [O, setO] = useState(parsedSoap.O || '');
@@ -596,7 +682,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
 
   async function draftSoap() {
     if (!session?.id || !therapist?.ai_enabled) {
-      setDraftError("Practice assistant is off. Turn it on in Settings.");
+      setDraftError("PracticeIQ is off. Turn it on in Settings.");
       setTimeout(() => setDraftError(null), 4000);
       return;
     }
@@ -673,7 +759,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
       </div>
 
       {/* HK May 25 2026 (Phase 22): SOAP fields come FIRST. Private
-          notes is a summary the practice assistant can draft from
+          notes is a summary the PracticeIQ can draft from
           the SOAP content, so the input has to exist before the
           summary. Order: dictation nudge → SOAP → private notes
           (draftable) → save. */}
@@ -699,7 +785,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
       <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
 
       {/* Therapist's private notes - SUMMARY of the SOAP work above.
-          Practice assistant can draft from the SOAP fields when
+          PracticeIQ can draft from the SOAP fields when
           requested. Lives BELOW SOAP because the summary depends
           on the source. */}
       <div style={{
@@ -711,11 +797,11 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <span>Your private summary</span>
         <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
       </div>
-      {/* HK May 25 2026 (Phase 24d): Practice Assistant naming.
+      {/* HK May 25 2026 (Phase 24d): PracticeIQ naming.
           Renamed from "Draft from SOAP above" since the assistant
           may eventually do more (recap drafts, summaries, follow-up
           suggestions). PracticeIQ rebrand still under review;
-          using neutral 'Practice Assistant' label until then. */}
+          using neutral 'PracticeIQ' label until then. */}
       <div style={{ marginBottom: 8 }}>
         <Label>Private notes</Label>
         <div style={{
@@ -724,7 +810,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
           marginBottom: 10,
           lineHeight: 1.5,
         }}>
-          A quick summary for yourself. Tap Practice Assistant to draft one from your SOAP notes.
+          A quick summary for yourself. Tap PracticeIQ to draft one from your SOAP notes.
         </div>
         {therapist?.ai_enabled !== false && (
           <button
@@ -747,14 +833,14 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
               gap: 6,
             }}
           >
-            {drafting ? 'Drafting…' : '✨ Use Practice Assistant'}
+            {drafting ? 'Drafting…' : '✨ Use PracticeIQ'}
           </button>
         )}
       </div>
       <textarea
         value={privateNotes}
         onChange={e => setPrivateNotes(e.target.value)}
-        placeholder="Quick note for yourself: what you worked on, what to remember next time. Tap 'Draft from SOAP' to have the practice assistant write a summary."
+        placeholder="Quick note for yourself: what you worked on, what to remember next time. Tap 'Draft from SOAP' to have the PracticeIQ write a summary."
         style={{ ...fieldStyle, minHeight: 72 }}
       />
       {draftError && (
@@ -801,7 +887,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   // A1: Save Recap actually FIRES the email to the client via the
   //     send-post-session edge function (which reads public_notes
   //     and emails it). Therapist sees "Recap sent" confirmation.
-  // E:  Dictation nudge + 'Draft with practice assistant' button
+  // E:  Dictation nudge + 'Draft with PracticeIQ' button
   //     (no AI wording). Reuses the bodymap-ai edge function in
   //     'client' kind so it generates a warm note instead of
   //     clinical SOAP language.
@@ -887,7 +973,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 
   async function draftRecap() {
     if (!session?.id || therapist?.ai_enabled === false) {
-      setDraftError("Practice assistant is off. Turn it on in Settings.");
+      setDraftError("PracticeIQ is off. Turn it on in Settings.");
       setTimeout(() => setDraftError(null), 4000);
       return;
     }
@@ -964,7 +1050,7 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
               fontFamily: 'inherit',
             }}
           >
-            {drafting ? 'Drafting...' : '✨ Draft with practice assistant'}
+            {drafting ? 'Drafting...' : '✨ Draft with PracticeIQ'}
           </button>
         )}
       </div>
@@ -1330,7 +1416,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     brief: true,
     medical: medicalFlagsFired.length > 0,
     last_session: false,
-    patterns: false,
+    patterns: true, // Phase 24e: open by default - the body map heatmap is the moat
     record: !!currentSession?.completed,
     recap: !!currentSession?.completed && hasSoapContent,
     payment: false,
@@ -1816,12 +1902,43 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               lock until session date passes (or override). */}
           {!appt.preview && (
             <>
+              {/* HK May 25 2026 (Phase 24e): Collapse all / Expand all
+                  toggle. When all panels are open the slide-over is
+                  long; this gives a fast bird's-eye view of headers
+                  only, then the therapist taps to drill into any one. */}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'flex-end',
+                marginBottom: 2,
+              }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const anyOpen = Object.values(openSections).some(v => v === true);
+                    const allKeys = ['journey', 'brief', 'medical', 'last_session', 'patterns', 'record', 'recap', 'payment'];
+                    const next = {};
+                    for (const k of allKeys) next[k] = !anyOpen;
+                    setOpenSections(next);
+                  }}
+                  style={{
+                    background: 'transparent',
+                    color: SO.inkMute,
+                    border: 'none',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    padding: '4px 8px',
+                    borderRadius: 6,
+                    letterSpacing: '0.02em',
+                  }}
+                  title="Collapse or expand all sections"
+                >
+                  {Object.values(openSections).some(v => v === true) ? '↑ Collapse all' : '↓ Expand all'}
+                </button>
+              </div>
+
               {/* ─── Session Journey panel (4-dot timeline) ─── */}
-              {/* HK May 25 2026 (Phase 24d): journey is now its own
-                  collapsible ribbon, consistent with Brief / Medical
-                  / Last Session / Patterns. Open by default since it
-                  serves as orientation. Greyed when no intake yet
-                  (DocumentJourney handles its own placeholder). */}
               <CockpitSection
                 sectionKey="journey"
                 icon="🧭"
@@ -1868,6 +1985,32 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     }, 80);
                   }}
                 />
+                {/* HK May 25 2026 (Phase 24e): View full report link.
+                    Connects the journey to the existing SessionDetail
+                    page where each of the 4 docs can be viewed in
+                    full, printed, downloaded, or sent to client.
+                    Same URL pattern Dashboard uses internally. */}
+                {currentSession && displayAppt.clientId && (
+                  <div style={{ marginTop: 14, textAlign: 'center' }}>
+                    <a
+                      href={`/dashboard/clients/${displayAppt.clientId}/sessions/${currentSession.id}`}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        color: SO.forest,
+                        textDecoration: 'none',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        borderBottom: `1px solid ${SO.sageBg}`,
+                        paddingBottom: 2,
+                      }}
+                      title="Open full session report (print, download, send to client)"
+                    >
+                      View full report &amp; print options →
+                    </a>
+                  </div>
+                )}
               </CockpitSection>
 
               {/* ─── Brief panel (intake summary) ─── */}
@@ -1880,10 +2023,41 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 onToggle={() => toggleSection('brief')}
               >
                 {!intakeDone && (
-                  <EmptyStateCard
-                    icon="📋"
-                    body="Your client hasn't filled out their intake yet. Send them the link from below, or fill it out with them at the start of the session."
-                  />
+                  <>
+                    <EmptyStateCard
+                      icon="📋"
+                      body="Your client hasn't filled out their intake yet. Send them the link from below, or fill it out yourself at the start of the session."
+                    />
+                    {/* HK May 25 2026 (Phase 24e): therapist override.
+                        When the client is sitting in front of them and
+                        hasn't filled out the intake online, the
+                        therapist can open the form themselves and fill
+                        in zones/pressure/notes on the client's behalf.
+                        Opens the existing public intake URL prefilled
+                        with the booking's client + email + booking_id,
+                        so when saved the brief auto-populates here. */}
+                    <a
+                      href={intakeLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        marginTop: 10,
+                        background: SO.forest,
+                        color: '#fff',
+                        textDecoration: 'none',
+                        borderRadius: 10,
+                        padding: '10px 14px',
+                        fontSize: 13,
+                        fontWeight: 700,
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      ✍️ Fill intake on behalf of {appt.client?.split(' ')[0] || 'client'}
+                    </a>
+                  </>
                 )}
                 {intakeDone && currentSession && (
                   <>
@@ -2028,14 +2202,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 </CockpitSection>
               )}
 
-              {/* ─── Patterns panel (3+ sessions) ─── */}
-              {allSessions.length >= 3 && (
+              {/* ─── Body Map Patterns panel (2+ sessions) ─── */}
+              {/* HK May 25 2026 (Phase 24e): lowered threshold from 3
+                  to 2 sessions and renamed to 'Body Map Patterns' so
+                  the visual moat surfaces as soon as there's any
+                  history to overlay. Open by default for returning
+                  clients so the heatmap is immediately visible. */}
+              {allSessions.length >= 2 && (
                 <CockpitSection
                   sectionKey="patterns"
                   icon="📊"
-                  title="Patterns"
-                  subtitle={`${allSessions.length} sessions on file`}
-                  isOpen={openSections.patterns}
+                  title="Body Map Patterns"
+                  subtitle={`${allSessions.length} sessions overlaid`}
+                  isOpen={openSections.patterns !== false}
                   onToggle={() => toggleSection('patterns')}
                 >
                   <PatternsContent allSessions={allSessions} />

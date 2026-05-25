@@ -166,8 +166,8 @@ const ONLY_MBM = [
     photoId: "6.2",
   },
   {
-    id: "practice-assistant",
-    title: "Practice Assistant with your full client history",
+    id: "practice-iq",
+    title: "PracticeIQ with your full client history",
     body:
       "Ask anything in plain English. \"Which clients haven't booked in 60 days?\" \"Draft a re-engagement message to my Tuesday morning regulars.\" Answers in seconds, trained only on your practice, never shared across therapists.",
     proof:

@@ -6,7 +6,7 @@
 //
 // Per HK direction:
 //   - Mounted on Home, Features, Pricing only
-//   - NOT on Dashboard (therapists have Practice Assistant there)
+//   - NOT on Dashboard (therapists have PracticeIQ there)
 //   - NOT on auth pages (signup, login - distraction-free)
 //   - NOT on Founder Hub (internal)
 //

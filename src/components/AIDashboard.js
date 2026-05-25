@@ -223,7 +223,7 @@ ${clientSummaries.join('\n')}
 
       // Welcome message
       const businessName = therapist.business_name?.trim();
-      const assistantName = businessName ? `${businessName} Assistant` : 'My Practice Assistant';
+      const assistantName = businessName ? `${businessName} Assistant` : 'My PracticeIQ';
       setMessages([{
         role: 'assistant',
         content: `Hi ${therapist.full_name?.split(' ')[0] || 'there'}! 👋 I'm your ${assistantName}. I have access to your full practice data, ${(clients || []).length} clients, ${totalSessions} sessions. Ask me anything about your clients, schedule, revenue, or practice trends. You have 10 questions per month while we are in beta.`,
@@ -346,10 +346,10 @@ ${clientSummaries.join('\n')}
     ? (keyboardOpen ? `${viewportHeight - 90}px` : 'calc(100svh - 180px)')
     : '70vh';
 
-  // Branded assistant name. Falls back to "My Practice Assistant"
+  // Branded assistant name. Falls back to "My PracticeIQ"
   // when therapist has not set a business name.
   const businessName = therapist?.business_name?.trim();
-  const assistantName = businessName ? `${businessName} Assistant` : 'My Practice Assistant';
+  const assistantName = businessName ? `${businessName} Assistant` : 'My PracticeIQ';
 
   return (
     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: containerHeight, minHeight: isMobile ? 0 : 500, transition: 'height 0.2s ease' }}>

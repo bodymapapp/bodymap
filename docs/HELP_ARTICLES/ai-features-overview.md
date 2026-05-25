@@ -3,7 +3,7 @@ id: ai-features-overview
 title: What AI features does MyBodyMap have?
 category: Sessions and notes
 order: 2
-keywords: ai, artificial intelligence, practice assistant, claude, smart, automation
+keywords: ai, artificial intelligence, PracticeIQ, claude, smart, automation
 taxonomy: 3.3
 ---
 
@@ -15,7 +15,7 @@ MyBodyMap uses AI for specific, useful tasks. Not for buzzword reasons. Each AI 
 
 **Post-session note draft.** After a session, AI drafts your notes based on the intake, body map, and your prior notes. You edit and save. Saves five to ten minutes per session.
 
-**Practice Assistant chat.** A chat interface in your dashboard where you can ask questions about your own practice. "Which clients have not booked in 30 days? Draft an SMS to re-engage them." It uses your real client data to answer.
+**PracticeIQ chat.** A chat interface in your dashboard where you can ask questions about your own practice. "Which clients have not booked in 30 days? Draft an SMS to re-engage them." It uses your real client data to answer.
 
 **Pattern detection.** Across all of a client's sessions, AI surfaces recurring patterns. "Right shoulder consistently tight on Mondays" or "Lower back tension correlates with her stressful weeks." This is the longitudinal intelligence layer.
 
@@ -29,11 +29,11 @@ MyBodyMap uses AI for specific, useful tasks. Not for buzzword reasons. Each AI 
 - It does not see anything outside your practice. No data crosses between therapists.
 - It does not contact clients without your approval. Every AI draft requires you to click Send.
 - It does not make medical recommendations. We have never trained it on medical advice.
-- It does not answer questions outside MyBodyMap scope. If you ask the Practice Assistant about the weather, it politely declines.
+- It does not answer questions outside MyBodyMap scope. If you ask the PracticeIQ about the weather, it politely declines.
 
-## Practice Assistant rate limit
+## PracticeIQ rate limit
 
-While we are in beta (pre-paid subscriptions), the Practice Assistant chat is limited to ten questions per therapist per month. This will increase once Silver and Gold tiers convert to paid pricing. The other AI features (briefs, drafts, patterns, outreach) have no question cap.
+While we are in beta (pre-paid subscriptions), the PracticeIQ chat is limited to ten questions per therapist per month. This will increase once Silver and Gold tiers convert to paid pricing. The other AI features (briefs, drafts, patterns, outreach) have no question cap.
 
 ## Privacy
 
@@ -46,10 +46,10 @@ We do not train AI models on your client data. We do not let other therapists se
 
 ## Turning AI off
 
-Some therapists prefer to skip AI features. Settings, Practice features, toggle Practice Assistant and AI features off. The dashboard hides the AI surfaces and your data stops being sent to the AI vendor for those features. Booking, intake, notes, billing, reminders, and schedule all stay on.
+Some therapists prefer to skip AI features. Settings, Practice features, toggle PracticeIQ and AI features off. The dashboard hides the AI surfaces and your data stops being sent to the AI vendor for those features. Booking, intake, notes, billing, reminders, and schedule all stay on.
 
 ## Related articles
 
 - How do session notes and SOAP work?
-- What is the Practice Assistant chat?
+- What is the PracticeIQ chat?
 - Is my client data private?
