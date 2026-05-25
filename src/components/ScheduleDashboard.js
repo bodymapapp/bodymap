@@ -276,16 +276,55 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           {/* Top row: avatar + name + close. displayAppt is used so
               if the user links a client via the ClientPicker inside
               CheckoutModal, the name updates immediately without
-              waiting for a parent refresh. */}
+              waiting for a parent refresh. HK May 25 2026: the name +
+              avatar now link to the client profile page. Before this,
+              the therapist had to go to Clients and look up the name
+              manually after opening a session. Clickable cues: cursor
+              pointer + hover underline. Falls back to plain text when
+              the booking has no client_id (orphan booking that will
+              show the inline ClientPicker on Charge). */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-            <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
-            <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
-              {displayAppt.is_couples && displayAppt.partner_name && (
-                <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
-              )}
-              <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
-            </div>
+            {displayAppt.clientId ? (
+              <a
+                href={`/dashboard/clients/${displayAppt.clientId}`}
+                style={{
+                  display:'flex',
+                  alignItems:'center',
+                  gap:10,
+                  flex:1,
+                  minWidth:0,
+                  textDecoration:'none',
+                  color:'inherit',
+                  cursor:'pointer',
+                }}
+                onMouseEnter={e => { e.currentTarget.querySelector('.bm-slide-name').style.textDecoration = 'underline'; }}
+                onMouseLeave={e => { e.currentTarget.querySelector('.bm-slide-name').style.textDecoration = 'none'; }}
+                title="Open client profile"
+              >
+                <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div className="bm-slide-name" style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:6}}>
+                    {displayAppt.client}
+                    <span style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>›</span>
+                  </div>
+                  {displayAppt.is_couples && displayAppt.partner_name && (
+                    <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
+                  )}
+                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'} · Tap to open profile</div>
+                </div>
+              </a>
+            ) : (
+              <>
+                <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
+                  {displayAppt.is_couples && displayAppt.partner_name && (
+                    <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
+                  )}
+                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
+                </div>
+              </>
+            )}
             <CloseButton onClick={onClose} label="Close" />
           </div>
           {/* Time + status row */}
