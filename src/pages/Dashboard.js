@@ -37,6 +37,7 @@ import UnifiedImport from '../components/UnifiedImport';
 import BMLogo from '../components/BMLogo';
 import MobileBottomNav from '../components/MobileBottomNav';
 import PWAInstallBanner from '../components/PWAInstallBanner';
+import FloatingBookingChip from '../components/FloatingBookingChip';
 import { ActivationNudge, LapsedClientAlert, BookingLinkNudge } from '../components/MarketingNudges';
 import PurchasesPanel from '../components/PurchasesPanel';
 import PaymentRouting from '../components/PaymentRouting';
@@ -6185,6 +6186,14 @@ export default function Dashboard({ view }) {
 
       {/* PWA install banner */}
       <PWAInstallBanner therapist={therapist} />
+
+      {/* HK May 25 2026 (Work E): floating booking-link chip available
+          on every dashboard tab. Sage circle in the bottom-right by
+          default with a popover that exposes Open + Copy. Long-press
+          to drag to another corner; the choice persists per therapist.
+          Built as a generic chip so future iterations can expand it
+          into a PracticeIQ shortcut hub. */}
+      <FloatingBookingChip therapist={therapist} />
     </div>
   );
 }
