@@ -176,7 +176,16 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   // Document drawer state: which doc is open (1, 2, 3, 4) or null.
   // Drawer renders inline on the session detail page, replacing the
   // previous "open in new tab" behavior on the journey timeline.
-  const [drawerDoc, setDrawerDoc] = useState(null);
+  // HK May 25 2026 (Phase 24f): support ?doc=N URL param so direct
+  // shortcut links from the slide-over open the drawer for that doc.
+  const [drawerDoc, setDrawerDoc] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    const docParam = params.get('doc');
+    if (!docParam) return null;
+    const n = parseInt(docParam, 10);
+    return (n >= 1 && n <= 4) ? n : null;
+  });
 
   const soapCardRef = useRef(null);
   const [soapPulsing, setSoapPulsing] = useState(false);

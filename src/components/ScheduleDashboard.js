@@ -166,6 +166,103 @@ function EmptyStateCard({ icon, title, body, cta, ctaLabel }) {
   );
 }
 
+// ─── MicDictationButton ─────────────────────────────────────────
+// Web Speech API dictation for desktop. On phones the keyboard mic
+// already exists, so this is desktop-first. The button sits next to
+// a SOAP field label or textarea; tapping it starts speech recognition
+// and streams the transcript into the field via `onAppend`.
+//
+// HK May 25 2026 (Phase 24f): the missing piece for desktop SOAP
+// dictation. Replaces the iPhone keyboard-mic for non-mobile users.
+// Falls back to invisible if browser doesn't support recognition.
+function MicDictationButton({ onAppend, label = 'Dictate' }) {
+  const [supported, setSupported] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = React.useRef(null);
+
+  useEffect(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setSupported(false); return; }
+    setSupported(true);
+    const r = new SR();
+    r.continuous = true;
+    r.interimResults = false;  // only commit finalized phrases
+    r.lang = 'en-US';
+    r.onresult = (event) => {
+      let chunk = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          chunk += event.results[i][0].transcript;
+        }
+      }
+      if (chunk) onAppend(chunk.trim() + ' ');
+    };
+    r.onerror = (e) => {
+      // 'no-speech' is benign; ignore. Others log so we see why.
+      if (e.error !== 'no-speech' && e.error !== 'aborted') {
+        console.warn('[mic] error:', e.error);
+      }
+      setListening(false);
+    };
+    r.onend = () => setListening(false);
+    recognitionRef.current = r;
+    return () => { try { r.stop(); } catch (_) {} };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggle = () => {
+    const r = recognitionRef.current;
+    if (!r) return;
+    if (listening) {
+      try { r.stop(); } catch (_) {}
+      setListening(false);
+    } else {
+      try {
+        r.start();
+        setListening(true);
+      } catch (_) {
+        // 'already started' edge: stop then start.
+        try { r.stop(); } catch (_) {}
+        setTimeout(() => { try { r.start(); setListening(true); } catch (_) {} }, 100);
+      }
+    }
+  };
+
+  if (!supported) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      title={listening ? 'Stop dictation' : label}
+      style={{
+        width: 28, height: 28,
+        borderRadius: '50%',
+        border: listening ? '2px solid #DC2626' : `1px solid ${SO.border}`,
+        background: listening ? '#FEE2E2' : '#fff',
+        color: listening ? '#DC2626' : SO.forest,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        fontSize: 13,
+        fontFamily: 'inherit',
+        flexShrink: 0,
+        animation: listening ? 'bm-mic-pulse 1.4s ease-in-out infinite' : 'none',
+      }}
+      aria-label={listening ? 'Stop dictation' : 'Start dictation'}
+    >
+      {listening ? '⏺' : '🎙️'}
+      <style>{`
+        @keyframes bm-mic-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          50% { box-shadow: 0 0 0 6px rgba(220, 38, 38, 0); }
+        }
+      `}</style>
+    </button>
+  );
+}
+
 // Small uppercase eyebrow label used throughout the cockpit. Replaces
 // 17+ inline copies of the same style. Pulls from SO design tokens.
 function Label({ children, color }) {
@@ -755,7 +852,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         border: '1px solid #D6E0D4', borderRadius: 8,
         padding: '8px 12px', marginBottom: 14, lineHeight: 1.5,
       }}>
-        🎙️ Tap the microphone on your keyboard to dictate any field below. Speak it, we'll write it.
+        🎙️ On phone, tap the microphone on your keyboard. On desktop, tap the mic next to any field below.
       </div>
 
       {/* HK May 25 2026 (Phase 22): SOAP fields come FIRST. Private
@@ -775,13 +872,32 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
       </div>
 
-      <Label>S, Subjective</Label>
+      {/* Phase 24f: each field label paired with a MicDictationButton
+          on the right. Desktop users now have parity with phone where
+          the keyboard mic is built in. Pure UX: transcript appends to
+          the field; user can stop, edit, dictate more. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Label>S, Subjective</Label>
+        <MicDictationButton onAppend={(t) => setS(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Subjective" />
+      </div>
       <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
-      <Label>O, Objective</Label>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Label>O, Objective</Label>
+        <MicDictationButton onAppend={(t) => setO(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Objective" />
+      </div>
       <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
-      <Label>A, Assessment</Label>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Label>A, Assessment</Label>
+        <MicDictationButton onAppend={(t) => setA(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Assessment" />
+      </div>
       <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
-      <Label>P, Plan</Label>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <Label>P, Plan</Label>
+        <MicDictationButton onAppend={(t) => setP(prev => (prev ? prev + ' ' : '') + t)} label="Dictate Plan" />
+      </div>
       <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
 
       {/* Therapist's private notes - SUMMARY of the SOAP work above.
@@ -803,7 +919,10 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
           suggestions). PracticeIQ rebrand still under review;
           using neutral 'PracticeIQ' label until then. */}
       <div style={{ marginBottom: 8 }}>
-        <Label>Private notes</Label>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Label>Private notes</Label>
+          <MicDictationButton onAppend={(t) => setPrivateNotes(prev => (prev ? prev + ' ' : '') + t)} label="Dictate private notes" />
+        </div>
         <div style={{
           fontSize: 12,
           color: SO.inkMute,
@@ -1023,36 +1142,39 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   return (
     <div>
       <div style={{ fontSize: 12, color: '#2A5741', background: '#F4F6F2', border: '1px solid #D6E0D4', borderRadius: 8, padding: '8px 12px', marginBottom: 12, lineHeight: 1.5 }}>
-        🎙️ Tap the microphone on your keyboard to dictate. Speak it, we'll write it.
+        🎙️ On phone, tap the keyboard mic. On desktop, tap the mic next to the field.
       </div>
       <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
         A warm note your client receives by email after this session. Keep it short, kind, forward-looking.
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, gap: 8 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
           Message to client
         </div>
-        {therapist?.ai_enabled !== false && (
-          <button
-            type="button"
-            onClick={draftRecap}
-            disabled={drafting}
-            style={{
-              background: drafting ? '#E5DDD2' : '#fff',
-              border: '1px solid #D6E0D4',
-              borderRadius: 999,
-              padding: '4px 10px',
-              fontSize: 11,
-              fontWeight: 600,
-              color: '#2A5741',
-              cursor: drafting ? 'wait' : 'pointer',
-              fontFamily: 'inherit',
-            }}
-          >
-            {drafting ? 'Drafting...' : '✨ Draft with PracticeIQ'}
-          </button>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <MicDictationButton onAppend={(t) => setText(prev => (prev ? prev + ' ' : '') + t)} label="Dictate recap" />
+          {therapist?.ai_enabled !== false && (
+            <button
+              type="button"
+              onClick={draftRecap}
+              disabled={drafting}
+              style={{
+                background: drafting ? '#E5DDD2' : '#fff',
+                border: '1px solid #D6E0D4',
+                borderRadius: 999,
+                padding: '4px 10px',
+                fontSize: 11,
+                fontWeight: 600,
+                color: '#2A5741',
+                cursor: drafting ? 'wait' : 'pointer',
+                fontFamily: 'inherit',
+              }}
+            >
+              {drafting ? 'Drafting...' : '✨ Draft with PracticeIQ'}
+            </button>
+          )}
+        </div>
       </div>
 
       <textarea
@@ -1985,30 +2107,50 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     }, 80);
                   }}
                 />
-                {/* HK May 25 2026 (Phase 24e): View full report link.
-                    Connects the journey to the existing SessionDetail
-                    page where each of the 4 docs can be viewed in
-                    full, printed, downloaded, or sent to client.
-                    Same URL pattern Dashboard uses internally. */}
+                {/* HK May 25 2026 (Phase 24f): per-doc print/send
+                    shortcuts. Each of the 4 documents has its own
+                    direct link to the SessionDetail page with the
+                    DocumentDrawer pre-opened for that doc. From the
+                    drawer the therapist can email, SMS (doc 4),
+                    save PDF, copy image, share image. These are
+                    one-tap shortcuts so they don't have to navigate
+                    to SessionDetail and click a dot. */}
                 {currentSession && displayAppt.clientId && (
-                  <div style={{ marginTop: 14, textAlign: 'center' }}>
-                    <a
-                      href={`/dashboard/clients/${displayAppt.clientId}/sessions/${currentSession.id}`}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 6,
-                        color: SO.forest,
-                        textDecoration: 'none',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        borderBottom: `1px solid ${SO.sageBg}`,
-                        paddingBottom: 2,
-                      }}
-                      title="Open full session report (print, download, send to client)"
-                    >
-                      View full report &amp; print options →
-                    </a>
+                  <div style={{ marginTop: 14 }}>
+                    <Label>Print, share, or send</Label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {[
+                        { n: 1, label: '📋 Intake' },
+                        { n: 2, label: '🌿 Brief' },
+                        { n: 3, label: '✍️ Record' },
+                        { n: 4, label: '💌 Recap' },
+                      ].map(d => (
+                        <a
+                          key={d.n}
+                          href={`/dashboard/clients/${displayAppt.clientId}/sessions/${currentSession.id}?doc=${d.n}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            background: '#fff',
+                            color: SO.forest,
+                            border: '1.5px solid #D6E0D4',
+                            borderRadius: 999,
+                            padding: '6px 12px',
+                            fontSize: 11,
+                            fontWeight: 600,
+                            textDecoration: 'none',
+                            fontFamily: 'inherit',
+                          }}
+                          title={`Open ${d.label} with print, email, SMS, PDF options`}
+                        >
+                          {d.label}
+                        </a>
+                      ))}
+                    </div>
+                    <div style={{ fontSize: 11, color: SO.inkMute, marginTop: 8, lineHeight: 1.5 }}>
+                      Tap any doc to open print, email, SMS, PDF, and image options.
+                    </div>
                   </div>
                 )}
               </CockpitSection>
