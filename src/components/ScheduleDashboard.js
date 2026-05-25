@@ -1515,11 +1515,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
 
   // Combined intake completeness: did the client submit a meaningful
   // intake? Used to drive the document journey's intake-done state.
+  //
+  // HK May 25 2026: also honors an explicit waiver by the therapist
+  // (intake_waived_at). Some clients walk in without filling the form
+  // online and the therapist decides to proceed anyway. The waiver
+  // sets a timestamp on the booking row so the brief panel + journey
+  // dots stop nagging about a missing intake for that session.
+  const [intakeWaivedLocal, setIntakeWaivedLocal] = useState(!!appt.intake_waived_at);
   const intakeDone = !!(
     (currentSession?.front_focus && currentSession.front_focus.length) ||
     (currentSession?.back_focus && currentSession.back_focus.length) ||
     currentSession?.client_notes ||
-    currentSession?.pressure
+    currentSession?.pressure ||
+    intakeWaivedLocal
   );
 
   // Parse SOAP fields from therapist_notes JSON. Same format the
@@ -2225,7 +2233,92 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     >
                       ✍️ Fill intake on behalf of {appt.client?.split(' ')[0] || 'client'}
                     </a>
+
+                    {/* HK May 25 2026: waiver option. Therapist can
+                        decide to proceed without an intake for this
+                        session (client walked in, declined to fill,
+                        or has been a regular long enough to skip).
+                        Persists to bookings.intake_waived_at so the
+                        brief + journey dots stop showing 'intake
+                        missing' for this booking. Single click, soft
+                        confirm via the immediate state change. */}
+                    <div style={{ marginTop: 10 }}>
+                      <label style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        color: SO.inkMute,
+                      }}>
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={async () => {
+                            // Optimistic update so the panel reflects
+                            // the waiver immediately. If the UPDATE
+                            // fails we revert. The brief panel re-
+                            // renders since intakeDone now includes
+                            // the local waiver flag.
+                            setIntakeWaivedLocal(true);
+                            const { error } = await supabase
+                              .from('bookings')
+                              .update({ intake_waived_at: new Date().toISOString() })
+                              .eq('id', appt.id);
+                            if (error) {
+                              setIntakeWaivedLocal(false);
+                              console.warn('[intake-waive] failed', error);
+                            }
+                          }}
+                          style={{ cursor: 'pointer', accentColor: SO.forest }}
+                        />
+                        Or skip intake for this session
+                      </label>
+                    </div>
                   </>
+                )}
+                {intakeWaivedLocal && !(
+                  (currentSession?.front_focus && currentSession.front_focus.length) ||
+                  (currentSession?.back_focus && currentSession.back_focus.length) ||
+                  currentSession?.client_notes ||
+                  currentSession?.pressure
+                ) && (
+                  <div style={{
+                    padding: '10px 14px',
+                    background: '#F0F7F4',
+                    border: '1px solid #BFD8C9',
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: '#1F2937',
+                    lineHeight: 1.5,
+                  }}>
+                    Intake waived for this session. The brief and journey
+                    dots will not flag a missing intake.
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIntakeWaivedLocal(false);
+                        await supabase
+                          .from('bookings')
+                          .update({ intake_waived_at: null })
+                          .eq('id', appt.id);
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: SO.forest,
+                        fontWeight: 700,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: 0,
+                        marginLeft: 4,
+                        textDecoration: 'underline',
+                        fontFamily: 'inherit',
+                      }}
+                    >
+                      Undo
+                    </button>
+                  </div>
                 )}
                 {intakeDone && currentSession && (
                   <>
