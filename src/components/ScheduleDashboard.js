@@ -1633,12 +1633,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         .single();
       if (!alive) return;
       if (sErr) {
-        console.error('[auto-session] insert FAILED', {
-          error: sErr,
-          booking_id: appt.id,
-          client_id: appt.clientId,
-          therapist_id: therapist.id,
-        });
+        // Verbose inline logging so HK can read the actual constraint
+        // name/message in the console without expanding objects. The
+        // previous version printed {error: {...}} and the collapsed
+        // shape hid the diagnostic info.
+        console.error('[auto-session] insert FAILED:');
+        console.error('  code:', sErr.code);
+        console.error('  message:', sErr.message);
+        console.error('  details:', sErr.details);
+        console.error('  hint:', sErr.hint);
+        console.error('  booking_id:', appt.id);
+        console.error('  client_id:', appt.clientId);
+        console.error('  therapist_id:', therapist.id);
       } else if (created) {
         console.log('[auto-session] created', created.id);
         setCurrentSession(created);
@@ -2391,89 +2397,22 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                           type="checkbox"
                           checked={intakeWaivedLocal}
                           onChange={async () => {
-                            // Optimistic state. If anything below
-                            // fails we revert.
+                            // HK May 25 2026 round 8: waiver only flips
+                            // the booking's intake_waived_at flag. The
+                            // session row is auto-created by the mount
+                            // useEffect, so this onChange never touches
+                            // the sessions table. One source of truth,
+                            // no duplicate row risk.
                             setIntakeWaivedLocal(true);
-
-                            // HK May 25 2026: when therapist waives
-                            // intake, the session is happening now
-                            // (the whole point of waiving). Future-
-                            // session SOAP + Recap locks would still
-                            // block the editors otherwise, leaving
-                            // the cockpit half-locked even after the
-                            // waiver and the placeholder session row
-                            // were both in place. Override both so
-                            // SOAP and Recap are immediately editable.
-                            setRecordOverride(true);
-                            setRecapOverride(true);
-
-                            // 1. Flag the booking as waived.
                             const { error: bkErr } = await supabase
                               .from('bookings')
                               .update({ intake_waived_at: new Date().toISOString() })
                               .eq('id', appt.id);
                             if (bkErr) {
                               setIntakeWaivedLocal(false);
-                              setRecordOverride(false);
-                              setRecapOverride(false);
-                              console.warn('[intake-waive] booking update failed', bkErr);
-                              return;
-                            }
-
-                            // 2. Create a placeholder session row so
-                            // SOAP + Recap editors have a row id to
-                            // save against. If one already exists for
-                            // this booking, reuse it. Race-safe via
-                            // booking_id lookup before insert.
-                            if (!currentSession?.id) {
-                              const { data: existing } = await supabase
-                                .from('sessions')
-                                .select('*')
-                                .eq('booking_id', appt.id)
-                                .maybeSingle();
-                              if (existing?.id) {
-                                setCurrentSession(existing);
-                              } else {
-                                console.log('[intake-waive] inserting session for booking', appt.id);
-                                const { data: created, error: sErr } = await supabase
-                                  .from('sessions')
-                                  .insert({
-                                    therapist_id: therapist.id,
-                                    client_id: appt.clientId,
-                                    booking_id: appt.id,
-                                    front_focus: [],
-                                    back_focus: [],
-                                    front_avoid: [],
-                                    back_avoid: [],
-                                    pressure: null,
-                                    goal: null,
-                                    table_temp: 'warm',
-                                    room_temp: 'comfortable',
-                                    music: 'soft',
-                                    lighting: 'dim',
-                                    conversation: 'quiet',
-                                    draping: 'standard',
-                                    oil_pref: 'none',
-                                    med_flag: 'none',
-                                    med_note: null,
-                                    client_notes: null,
-                                    completed: false,
-                                    intake_added_by: 'therapist_manual',
-                                  })
-                                  .select('*')
-                                  .single();
-                                if (sErr) {
-                                  console.error('[intake-waive] session insert FAILED', {
-                                    error: sErr,
-                                    booking_id: appt.id,
-                                    client_id: appt.clientId,
-                                    therapist_id: therapist.id,
-                                  });
-                                } else if (created) {
-                                  console.log('[intake-waive] session created', created.id);
-                                  setCurrentSession(created);
-                                }
-                              }
+                              console.error('[intake-waive] booking update failed:');
+                              console.error('  code:', bkErr.code);
+                              console.error('  message:', bkErr.message);
                             }
                           }}
                           style={{ cursor: 'pointer', accentColor: SO.forest }}
