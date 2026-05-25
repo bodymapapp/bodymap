@@ -9,6 +9,9 @@ import CheckoutModal from './CheckoutModal';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
+import DocumentJourney from './DocumentJourney';
+import BodyDiagram from './BodyDiagram';
+import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -106,6 +109,181 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
       .order('created_at', { ascending: true });
     setPaymentRows(data || []);
   }
+
+  // ─── Cockpit data: intake, last session, patterns, medical flags ───
+  // HK May 25 2026 (Phase 20 cockpit redesign): the slide-over is the
+  // therapist's workspace before, during, and after a session. We load
+  // EVERYTHING this client's session prep needs in one effect so the
+  // sections below render without separate fetches each.
+  //
+  // What we load:
+  //   - currentSession: the sessions row for this booking (intake data
+  //     the CLIENT submitted: focus zones, pressure, preferences,
+  //     conditions, notes). Same row the SOAP fields write to.
+  //   - lastSession: the most recent OTHER session for this client
+  //     (returning-client context: what did we work on last time).
+  //   - allSessions: full history for pattern detection (zone
+  //     frequency, pressure trend, cadence).
+  const [currentSession, setCurrentSession] = useState(null);
+  const [lastSession, setLastSession] = useState(null);
+  const [allSessions, setAllSessions] = useState([]);
+  const [cockpitLoading, setCockpitLoading] = useState(true);
+  const [cockpitRefreshKey, setCockpitRefreshKey] = useState(0);
+
+  useEffect(() => {
+    if (!appt?.sessionId && !appt?.clientId) { setCockpitLoading(false); return; }
+    let alive = true;
+    (async () => {
+      setCockpitLoading(true);
+
+      // Current session for this booking (intake-done state). Pull
+      // the full row including SOAP fields so the Record panel can
+      // edit therapist_notes inline.
+      if (appt.sessionId) {
+        const { data: cs } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('id', appt.sessionId)
+          .single();
+        if (alive) setCurrentSession(cs || null);
+      }
+
+      // History for this client across all prior sessions. Used for
+      // last-session card AND pattern detection. Limit to 20 most
+      // recent; pattern signal stabilizes well before that.
+      if (appt.clientId) {
+        const { data: history } = await supabase
+          .from('sessions')
+          .select('id, booking_id, created_at, front_focus, back_focus, front_avoid, back_avoid, pressure, goal, table_temp, room_temp, music, lighting, conversation, draping, med_flag, med_note, client_notes, medical_conditions, therapist_notes, public_notes, completed')
+          .eq('therapist_id', therapist.id)
+          .eq('client_id', appt.clientId)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (!alive) return;
+        const allRows = history || [];
+        setAllSessions(allRows);
+        // Last session = first row that isn't the current session.
+        const others = allRows.filter(s => s.id !== appt.sessionId);
+        setLastSession(others.length ? others[0] : null);
+      }
+
+      if (alive) setCockpitLoading(false);
+    })();
+    return () => { alive = false; };
+  }, [appt?.id, appt?.sessionId, appt?.clientId, therapist?.id, cockpitRefreshKey]);
+
+  const refreshCockpit = () => setCockpitRefreshKey(k => k + 1);
+
+  // Combined intake completeness: did the client submit a meaningful
+  // intake? Used to drive the document journey's intake-done state.
+  const intakeDone = !!(
+    (currentSession?.front_focus && currentSession.front_focus.length) ||
+    (currentSession?.back_focus && currentSession.back_focus.length) ||
+    currentSession?.client_notes ||
+    currentSession?.pressure
+  );
+
+  // Parse SOAP fields from therapist_notes JSON. Same format the
+  // SessionDetail page writes. Fall back to plain-string legacy notes.
+  const parsedSoap = useMemo(() => {
+    if (!currentSession?.therapist_notes) return { S: '', O: '', A: '', P: '', noteToClient: '', isLegacy: false };
+    try {
+      const p = JSON.parse(currentSession.therapist_notes);
+      if (p && p.__soap) return { S: p.S || '', O: p.O || '', A: p.A || '', P: p.P || '', noteToClient: p.noteToClient || '', isLegacy: false };
+    } catch (_) { /* not JSON */ }
+    return { S: '', O: '', A: '', P: '', noteToClient: '', legacyText: currentSession.therapist_notes, isLegacy: true };
+  }, [currentSession?.therapist_notes]);
+
+  const hasSoapContent = !!(parsedSoap.S || parsedSoap.O || parsedSoap.A || parsedSoap.P);
+  const hasRecap = !!(currentSession?.public_notes || parsedSoap.noteToClient);
+
+  // Medical flags fired (red): pregnancy, recent surgery, conditions
+  // with HBP/diabetes/cancer/recent injury. Used both for the medical
+  // panel auto-expand AND for the insight line under status pills.
+  const medicalFlagsFired = useMemo(() => {
+    const flags = [];
+    if (!currentSession) return flags;
+    if (currentSession.med_flag && currentSession.med_flag !== 'none') flags.push({ key: currentSession.med_flag, label: 'Medical condition flagged' });
+    if (currentSession.med_note) flags.push({ key: 'med_note', label: currentSession.med_note });
+    if (Array.isArray(currentSession.medical_conditions) && currentSession.medical_conditions.length) {
+      currentSession.medical_conditions.forEach(c => flags.push({ key: c, label: c }));
+    }
+    return flags;
+  }, [currentSession]);
+
+  // ─── Cockpit panel open/close state ───
+  // Brief expanded by default for upcoming sessions; Record expanded
+  // by default after the session is marked complete. Therapist can
+  // override either way.
+  const [openSections, setOpenSections] = useState(() => ({
+    brief: true,
+    medical: medicalFlagsFired.length > 0,
+    last_session: false,
+    patterns: false,
+    record: !!currentSession?.completed,
+    recap: !!currentSession?.completed && hasSoapContent,
+    payment: false,
+  }));
+
+  // Re-bias defaults once cockpit data arrives. We only adjust auto-
+  // expansion for sections whose 'natural default' is data-driven
+  // (medical when flags fire, record when session is complete).
+  useEffect(() => {
+    if (cockpitLoading) return;
+    setOpenSections(prev => ({
+      ...prev,
+      medical: prev.medical || medicalFlagsFired.length > 0,
+      record: prev.record || !!currentSession?.completed,
+    }));
+  }, [cockpitLoading, currentSession?.completed, medicalFlagsFired.length]);
+
+  function toggleSection(key) {
+    setOpenSections(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  // ─── Pattern signal: the highest-impact insight to surface ───
+  // Order of priority: medical flag > cadence drift > zone recurrence
+  // > newcomer. We compute the single strongest one and show it
+  // under the status pills. If none qualify, the line is hidden.
+  const insightLine = useMemo(() => {
+    if (cockpitLoading) return null;
+    // 1. Active medical flag (most important for safety)
+    if (medicalFlagsFired.length > 0) {
+      const top = medicalFlagsFired[0];
+      return { icon: '⚠️', tone: 'warn', text: `Heads up: ${top.label}` };
+    }
+    // 2. New client welcome cue
+    if (!allSessions.length || allSessions.length === 1) {
+      return { icon: '🌱', tone: 'fresh', text: 'New client. Take time to welcome and set expectations.' };
+    }
+    // 3. Cadence drift (returned after a long gap)
+    if (allSessions.length >= 2 && lastSession?.created_at) {
+      const daysSinceLast = Math.floor((Date.now() - new Date(lastSession.created_at).getTime()) / 86400000);
+      const gaps = [];
+      for (let i = 1; i < Math.min(allSessions.length, 5); i++) {
+        gaps.push((new Date(allSessions[i - 1].created_at).getTime() - new Date(allSessions[i].created_at).getTime()) / 86400000);
+      }
+      const avgGap = gaps.reduce((a, b) => a + b, 0) / Math.max(gaps.length, 1);
+      if (avgGap > 0 && daysSinceLast > avgGap * 1.5) {
+        return { icon: '🕊', tone: 'soft', text: `Welcome back after ${daysSinceLast} days. Normal cadence here is ~${Math.round(avgGap)} days.` };
+      }
+    }
+    // 4. Zone recurrence (focus area mentioned in 3+ of last 4)
+    if (allSessions.length >= 3) {
+      const recent = allSessions.slice(0, 4);
+      const counts = {};
+      recent.forEach(s => {
+        (s.front_focus || []).forEach(z => { counts[z] = (counts[z] || 0) + 1; });
+        (s.back_focus  || []).forEach(z => { counts[z] = (counts[z] || 0) + 1; });
+      });
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      if (top && top[1] >= 3) {
+        return { icon: '🔁', tone: 'pattern', text: `${zoneLabel(top[0])} has come up in ${top[1]} of the last ${recent.length} sessions.` };
+      }
+    }
+    // 5. Returning warm: positive signal for returning clients with no flag
+    return { icon: '🌿', tone: 'soft', text: `Returning client · ${allSessions.length} session${allSessions.length === 1 ? '' : 's'} on file.` };
+  }, [cockpitLoading, allSessions, lastSession, medicalFlagsFired]);
 
   // Total paid + pending for this booking
   const paidTotalCents = paymentRows
