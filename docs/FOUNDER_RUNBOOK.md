@@ -414,6 +414,21 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
 
+### May 24, 2026 (evening, broken-bookings + cron rebuild marathon)
+
+- **Phase 13.9-13.11 findOrCreateClient rewrite (commits `c8692328`, `28e9eec3`, `dba1522c`, `4edb1ff1`).** Triggered by Terra Irving's report of "Client record missing on this charge" on 11 bookings across her two business accounts. Root cause: helper returned null whenever email was missing, causing every walk-in or phone-only booking to insert with NULL `client_id`. Fix: two-path lookup. Path A unchanged (email-first). Path B new: when email is missing but phone is present, look up by phone last-10 digits scoped to therapist_id. Phase 13.10 added stub enrichment so a phone-only client created on an earlier booking gets enriched with email rather than duplicated when same person books again with email. Phase 13.11 added the critical name-match requirement on all phone-based reconciliation. **Husband+wife sharing a phone is common; phone-only matching would silently merge two humans into one client record, comingling sessions, payments, intake forms. That data corruption is harder to unwind than the inverse (one human in two records, fixable via consolidation UI).** Trade-off accepted: same person entering name slightly differently across bookings gets two records, therapist merges later.
+- **Phase 13.12 inline ClientPicker in CheckoutModal (commits `e5fb1718`, `2da311c0`, `a1876e6c`).** Closes the loop: 13.9-13.11 prevents NEW broken bookings, ClientPicker recovers EXISTING broken ones without a support ping. When CheckoutModal opens an appt with NULL client_id, modal opens in `select_client` step before method picker. Sage banner, searchable list of therapist's clients (filtered by name, email, or normalized phone digits), plus "+ Add new client" inline form that calls findOrCreateClient under the hood. On pick or create: UPDATE bookings.client_id + client_name + client_email + client_phone, fire onClientLinked callback so the slide-over header re-renders immediately. **Resolves the self-serve gap for Candice's 3 future-dated broken bookings (HK directive: do not touch her account, she'll resolve via picker when she opens any of those bookings).**
+- **Package add-vs-charge split (commit `8d6d45d3`).** HK from screenshot: "When I add a package, it is asking for a checkout right away. It should first add the package just like we do in memberships." Memberships have Add membership → row created → separate Charge $X now button per cycle. Packages were doing both in one combined "Checkout $X" step which broke the mental model. Three changes: (a) form button renamed to "Add package", creates package_purchases row immediately with status='active', no payment, (b) each active package card gets a conditional "Charge $X" button next to Cancel, only shown when no succeeded session_payment is linked and price_paid > 0, (c) CheckoutModal createPackagePurchaseRow now handles existing-package mode: if `packagePurchase.id` is provided, skip the INSERT, refetch existing row, attach payment to it. Decision principle reinforced: payment flows go through CheckoutModal, never separate inline payment forms.
+- **Removed duplicate ClientPackageBalance from Sessions and SOAP notes (commit `7028885a`).** Was rendering inside Sessions section + showing stale "active" data after cancellation because the component loaded once on mount and never refetched. New dedicated Memberships & Packages section (May 24 redesign) handles both display and cancellation correctly. Decision: when redesign supersedes an embedded component, delete the embed in the same change, do not leave the old code as defensive dead code.
+- **Yearly view cells now clickable with day-detail modal (commit `01fac9cd`).** HK: "Those cells with shade of green should be clickable. Right now it is useless and no functionality." Heatmap cells with bookings render as `<button>`, opening a centered modal listing every appointment for that day (avatar, name, time, duration, service, status pill). Zero-booking cells stay non-clickable. Modal is intentionally read-only; actions live in Today/Monthly tabs to preserve the Yearly view's at-a-glance focus (Design Principle #18).
+- **Schedule empty-state copy fix (commit `638b14bd`).** HK: "We just brought in future appointments." Removed inaccurate "CSV imports bring over past visit history, not future appointments" line from both weekly and monthly empty states. Terra's CSV brought June and September 2026 bookings cleanly. Empty state now just shows next action ("Tap Book Appointment...").
+- **Cron audit and rebuild (item 27 in BLOCK_PLAN).** Diagnosed via `net._http_response`: every cron was 401ing silently for weeks. Two failure modes: missing Authorization header (4 crons) + stale Feb-2026-rotated anon JWTs (3 crons). Fix attempted via `ALTER DATABASE postgres SET app.settings.service_role_key` per the May 14 google-calendar template but blocked by Supabase Pro permissions (`42501: permission denied to set parameter`). Fell back to hardcoded service_role JWT per cron. Service_role keys expire 2087, so rotation maintenance is rare. All 6 crons rebuilt + duplicate `send-booking-reminders` deleted + `daily-signups-digest` URL bug fixed (was calling `/bodymap-ai`). Force-fired practice-pulse, got 200, email landed. **First real production validation tomorrow morning 9am UTC when send-reminders cron actually fires.** See Procedure 11 for full diagnostic flow.
+- **Practice Pulse logic switched from sessions to bookings (commit `4c170230`).** HK: "We should run the pulse based on the activity that day vs SOAP notes." Function was reading `sessions.created_at` for today's activity, but `sessions` only has rows when therapist writes SOAP notes (rare). Real activity lives in `bookings`. Rewrote activity gate to use bookings.booking_date + status filter for today, same approach for lapsed/due detection (single batched .in() query per therapist instead of per-client subqueries). Also added defensive `select('*')` on therapists and a `skipped` array in response (no_email, pulse_disabled, unsubscribed, nothing_to_report) so founder can audit who got skipped and why.
+- **NEW Design Principle #20: Cron-driven functions must surface skip reasons in their response.** Codified after `processed:0` returns gave zero diagnostic value. Every iteration that decides not to send must push a row to a `skipped` array with `{id, name, reason}`. Without this, the only diagnostic path is digging through function logs.
+- **NEW Design Principle #21: pg_cron "succeeded" status is not proof a function ran.** Codified after the cron audit revealed every cron was 401ing while pg_cron reported all runs as succeeded. The real truth is in `net._http_response.status_code`. Any cron-monitoring tool must query that table directly, not rely on `cron.job_run_details.status`.
+- **NEW Design Principle #22: Fix cron auth FIRST when auditing notifications, downstream errors only become visible after cron auth works.** Codified after fixing google-calendar-reverse-sync auth surfaced 2 pre-existing OAuth token issues (Candice missing calendar scope, HK token expired) that had been silently failing for weeks. Lesson: broken cron auth masks all downstream errors. Always fix auth first, then triage what newly-visible errors emerge.
+- **Sleep at 11pm Central with cron rebuild verified end-to-end and Practice Pulse email landed.** Decision: stop on a green commit. Tomorrow's followups in BLOCK_PLAN items 27b (daily-renewal-creation cron), 27c (SMS failure root cause), plus Google Calendar token reconnect flow for affected therapists.
+
 ### May 22, 2026 (evening, Schedule + Outreach sweep)
 - **Schedule weekly view rebuilt to Outlook-style time grid on desktop (commit `c5cef7cb`).** Previous weekly was a vertical list of day cards with appointment rows. Outlook-style means hour rows on left, day columns across, sessions positioned absolutely by start_time with height = duration, blocked windows as amber hashed bands, today's column tinted sage, "now" line in red. Window expands beyond default 7am-9pm if any booking falls outside. Mobile got a companion horizontal time-strip per day card (commit `b7ce28ff`) so phone users see the day's rhythm without an Outlook-style grid (too dense for 375px). Strip is decorative-not-required: bar taps open the session detail same as a row tap.
 - **Schedule Yearly view shipped (commit `9f72cffd`).** Replaces the long-standing "coming soon" placeholder with a real 12-month heatmap. Day cells colored by booking density on a sage gradient. Blocked days tinted amber. Year stats below (busiest stretch, quietest stretch, total). Care-framed copy on the quietest-stretch label ("Good window for rest, learning, or outreach") per the new Design Principle #17. Design choice per the new Design Principle #18: pure at-a-glance, no tap-to-drill, Monthly tab handles details.
@@ -1034,6 +1049,165 @@ If after running the above procedures the system is still misbehaving, two escal
 2. Read the Stripe Connect docs at `stripe.com/docs/connect`. The "Account Links," "OAuth," and "Account types" pages are the relevant ones.
 
 **End of Stripe Connect operations section.**
+
+### Procedure 11: pg_cron job 401s silently against edge functions
+
+Discovered May 24 2026 evening while investigating why Practice Pulse digest emails were not arriving and why Candice had no membership renewal rows. Symptom: cron job shows `status = succeeded` in `cron.job_run_details` but the edge function never ran, no logs, no emails. **pg_cron's "succeeded" only means the HTTP request was queued via pg_net, not that the function actually responded with 2xx.** The truth lives in `net._http_response`.
+
+#### Why this happens
+
+Supabase's edge function gateway requires a Bearer JWT in the Authorization header. pg_cron jobs run inside the database and have no automatic JWT injection. Three known broken patterns:
+
+1. **No Authorization header at all** → `401 UNAUTHORIZED_NO_AUTH_HEADER`. The cron's `headers` jsonb has no Authorization key.
+2. **Empty Bearer (from current_setting NULL)** → same 401. Crons that use `'Bearer ' || current_setting('app.settings.service_role_key', true)` will silently send `Bearer ` (just the literal word + space) when the setting is not configured. Per Procedure 11.1 below, `ALTER DATABASE postgres SET app.settings.service_role_key` is denied by Supabase's dashboard SQL editor with `42501: permission denied to set parameter`, so this pattern does not work in Supabase Pro out of the box.
+3. **Hardcoded JWT that is now stale** → `401 UNAUTHORIZED_INVALID_JWT_FORMAT`. Anon JWTs rotate periodically (Supabase rotated theirs in Feb 2026); any cron created before the rotation that hardcoded the old anon JWT now fails. Token decode reveals the issue: `iat` predates the rotation date.
+
+#### How to diagnose
+
+```sql
+-- Step 1: list every cron currently scheduled, with full command body
+SELECT jobid, jobname, schedule, active, command
+FROM cron.job
+ORDER BY jobname;
+
+-- Step 2: see actual HTTP response codes (not just pg_cron's "succeeded")
+SELECT
+  r.id,
+  r.status_code,
+  r.created,
+  CASE WHEN length(r.content::text) > 200 THEN substring(r.content::text, 1, 200) || '...' ELSE r.content::text END AS response_body
+FROM net._http_response r
+ORDER BY r.id DESC
+LIMIT 30;
+
+-- Step 3: see whether the per-database service_role_key setting is configured
+SELECT current_setting('app.settings.service_role_key', true) AS service_key_set;
+```
+
+If Step 2 shows 401s across multiple jobs, this procedure applies. If Step 3 returns NULL, the `current_setting`-based pattern will not work.
+
+#### Recommended fix: hardcoded service_role JWT per cron
+
+Service role keys are long-lived (Supabase issues with ~50 year expiry by default). Trade-off: if you ever rotate the service_role key, update each cron individually. Acceptable for the volume (6-10 crons typical).
+
+Get the service_role JWT from `https://supabase.com/dashboard/project/<ref>/settings/api`. Then for each cron, use this template:
+
+```sql
+SELECT cron.unschedule('<name>');  -- ignore error if it didn't exist
+SELECT cron.schedule(
+  '<name>',
+  '<schedule>',
+  $$
+  SELECT net.http_post(
+    url := 'https://<ref>.supabase.co/functions/v1/<function>',
+    headers := '{"Content-Type": "application/json", "Authorization": "Bearer <SERVICE_ROLE_JWT>"}'::jsonb,
+    body := '{}'::jsonb,
+    timeout_milliseconds := 30000
+  ) AS request_id;
+  $$
+);
+```
+
+After scheduling all jobs, verify with:
+
+```sql
+SELECT jobid, jobname, schedule, active FROM cron.job ORDER BY jobname;
+```
+
+Then force-fire one to confirm end-to-end:
+
+```sql
+-- Fire and remember the id this returns
+SELECT net.http_post(
+  url := 'https://<ref>.supabase.co/functions/v1/<function>',
+  headers := '{"Content-Type": "application/json", "Authorization": "Bearer <SERVICE_ROLE_JWT>"}'::jsonb,
+  body := '{}'::jsonb,
+  timeout_milliseconds := 30000
+) AS request_id;
+
+-- Wait ~5 seconds, then pull the specific response by id
+SELECT status_code, content::text FROM net._http_response WHERE id = <returned_id>;
+```
+
+Expected: status_code = 200, content includes whatever the function returns (processed, results, etc).
+
+#### Critical secondary bugs to watch for during a cron audit
+
+1. **Wrong URL.** Always verify the URL points to the correct edge function. The original `daily-signups-digest` cron pointed to `/bodymap-ai` instead of `/daily-signups-digest`, so even after auth was fixed, it called the wrong function entirely. Cross-reference each cron's URL against `supabase/functions/` directory.
+
+2. **Duplicate crons.** `send-booking-reminders` and `send-reminders-daily` were both scheduled, both pointing to `/send-reminders`. Delete one. Run `SELECT jobid, jobname FROM cron.job WHERE command LIKE '%<function_name>%';` to find duplicates by target function.
+
+3. **Schedule drift across timezones.** Cron uses UTC. A "9am UTC" send-reminders means 4am Central in winter, 3am Central in summer. Add a comment in the cron command body documenting the intended local time so future you doesn't have to recompute.
+
+#### Cross-verification via notification_log
+
+```sql
+-- 7-day fire log grouped by notification_type and channel
+SELECT
+  notification_type,
+  channel,
+  status,
+  COUNT(*) AS fires,
+  MIN(sent_at) AS first_fire,
+  MAX(sent_at) AS last_fire
+FROM notification_log
+WHERE sent_at >= NOW() - INTERVAL '7 days'
+GROUP BY notification_type, channel, status
+ORDER BY fires DESC;
+```
+
+If a cron-driven notification type (`practice_pulse`, `appointment_reminder`, `renewal_due`, `daily_signups`, `founder_digest`) shows 0 fires in 7 days, that cron is the suspect. If it shows fires but with `status = failed`, the cron is reaching the function but the function or downstream provider (Resend, Twilio) is failing.
+
+#### Side benefit: fixing cron auth surfaces hidden downstream errors
+
+Until cron auth is fixed, all per-therapist failures inside the function are invisible because the function never runs. Once auth is fixed, the function runs and returns real results, which exposes things like:
+- Expired Google OAuth tokens (HK Healing Hands token expired by May 24).
+- Missing OAuth scopes (Candice's Google account had only login scopes, not calendar.readonly).
+- Stale Twilio credentials, stale Resend keys, etc.
+
+Plan to triage these downstream errors AFTER fixing cron auth, not before. Fixing auth first is what makes them visible.
+
+### Procedure 11.1: ALTER DATABASE denied by Supabase SQL editor
+
+Trying `ALTER DATABASE postgres SET app.settings.service_role_key = '<key>'` from the dashboard SQL editor returns `42501: permission denied to set parameter`. The Supabase Pro plan's hosted role does not have ALTER DATABASE privileges on the platform-owned database.
+
+Workarounds in order of preference:
+1. **Hardcode service_role JWT per cron** (Procedure 11 recommended path). Long-lived JWT keeps maintenance low.
+2. **Open a Supabase support ticket** asking for the database-level setting to be configured. Some plans allow this on request.
+3. **Move secrets into Supabase Edge Function environment variables** and have the cron call a "router" function that injects auth from env. Adds one HTTP hop and a router function but centralizes the key.
+
+We chose #1 May 24 2026 because it works in 5 minutes with no support involvement and the JWT does not expire until 2087.
+
+### Procedure 11.2: Practice Pulse logic was checking the wrong table
+
+The Practice Pulse digest read `sessions.created_at` to detect "today's activity" but `sessions` rows are only created when a therapist writes SOAP notes (rare). Real activity lives in `bookings`. Same flaw applied to lapsed/due detection: it joined `clients.sessions(id, created_at)` instead of pulling per-client booking history.
+
+Fixed May 24 2026 (commit `4c170230`): activity gate now queries `bookings.booking_date = today` with status filter, and lapsed/due detection uses a single batched `bookings.in(client_ids).neq('status', 'cancelled')` query instead of per-client subqueries.
+
+Applies more broadly: any time you write a query that asks "did this therapist do X today," `bookings` is almost always the right table, not `sessions`. SOAP notes are optional and never the source of truth for activity.
+
+### Procedure 11.3: Surface skip reasons in cron-driven function responses
+
+If a cron-driven function decides not to send to certain therapists, the response should return WHY for each skipped one. Without this, all you see is `processed: 0` and have to read function logs or guess.
+
+Pattern:
+```typescript
+const skipped: Array<{ id: string, name: string, reason: string }> = [];
+
+for (const therapist of therapists || []) {
+  if (!therapist.email) {
+    skipped.push({ id: therapist.id, name: therapist.business_name, reason: 'no_email' });
+    continue;
+  }
+  // ... other skip reasons
+}
+
+return new Response(JSON.stringify({ processed: results.length, results, skipped }), { ... });
+```
+
+The `skipped` array tells you instantly whether the function skipped because of (a) opt-out, (b) configuration, (c) data quality, or (d) genuinely nothing to report.
+
+**End of cron audit procedures.**
 
 ## Edge function JWT verification (added May 17 2026)
 
