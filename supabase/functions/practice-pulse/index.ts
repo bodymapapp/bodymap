@@ -23,10 +23,19 @@ serve(async (req) => {
   const body = await req.json().catch(() => ({}));
   const singleTherapistId = body?.therapist_id || null;
 
-  // Fetch therapists (all or single)
-  let therapistQuery = supabase.from('therapists').select('id, full_name, business_name, email, custom_url, lapsed_days, practice_pulse_enabled, practice_pulse_email, email_unsubscribed');
+  // Fetch therapists (all or single). HK May 24 2026: practice_pulse_email
+  // was historically in this select; if the column does not exist the
+  // entire query silently returns null and the for-loop never runs
+  // (processed: 0 with no log). Switch to '*' so future column additions
+  // never break this loop. We only read the explicit fields below so the
+  // wider projection has no functional cost.
+  let therapistQuery = supabase.from('therapists').select('*');
   if (singleTherapistId) therapistQuery = therapistQuery.eq('id', singleTherapistId);
-  const { data: therapists } = await therapistQuery;
+  const { data: therapists, error: therapistsErr } = await therapistQuery;
+  if (therapistsErr) {
+    console.error('practice-pulse: therapists query failed', therapistsErr);
+    return new Response(JSON.stringify({ error: therapistsErr.message, processed: 0 }), { status: 500, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
 
   const today = new Date();
   const todayStr = today.toISOString().split('T')[0];
@@ -34,25 +43,34 @@ serve(async (req) => {
   const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
   const results = [];
+  // Per-therapist skip reasons for debug visibility. HK May 24 2026:
+  // 'how do we check that people are getting all the notifications.'
+  // Returning skip reasons in the response lets the founder dashboard
+  // see exactly why a given therapist did or did not receive Pulse on
+  // any given run.
+  const skipped: Array<{ id: string, name: string, reason: string }> = [];
 
   for (const therapist of therapists || []) {
-    if (!therapist.email) continue;
-    if (therapist.practice_pulse_enabled === false) continue;
-    // CAN-SPAM: skip anyone who unsubscribed
-    if (therapist.email_unsubscribed) continue;
+    if (!therapist.email) { skipped.push({ id: therapist.id, name: therapist.business_name || therapist.full_name || '?', reason: 'no_email' }); continue; }
+    if (therapist.practice_pulse_enabled === false) { skipped.push({ id: therapist.id, name: therapist.business_name || therapist.full_name || '?', reason: 'pulse_disabled' }); continue; }
+    if (therapist.email_unsubscribed) { skipped.push({ id: therapist.id, name: therapist.business_name || therapist.full_name || '?', reason: 'unsubscribed' }); continue; }
 
     const therapistName = therapist.business_name || therapist.full_name || 'Your Practice';
     const lapsedDays = therapist.lapsed_days || 60;
     const dashboardUrl = `https://mybodymap.app/dashboard`;
     const outreachUrl  = `https://mybodymap.app/dashboard/outreach`;
 
-    // 1. Sessions today
-    const { data: todaySessions } = await supabase
-      .from('sessions')
-      .select('id, completed, public_notes, clients(name, email), therapist_notes')
+    // 1. Bookings TODAY (real activity signal). HK May 24 2026: was
+    // reading from `sessions` table which holds SOAP notes that most
+    // therapists never write. bookings is the truth: did real
+    // appointments happen today on this therapist's calendar.
+    const { data: todayBookings } = await supabase
+      .from('bookings')
+      .select('id, client_name, client_id, start_time, status, services(name, duration)')
       .eq('therapist_id', therapist.id)
-      .gte('created_at', `${todayStr}T00:00:00Z`)
-      .lte('created_at', `${todayStr}T23:59:59Z`);
+      .eq('booking_date', todayStr)
+      .neq('status', 'cancelled')
+      .order('start_time');
 
     // 2. Bookings tomorrow
     const { data: tomorrowBookings } = await supabase
@@ -63,45 +81,82 @@ serve(async (req) => {
       .neq('status', 'cancelled')
       .order('start_time');
 
-    // 3. All clients with session data for lapsed/due detection
-    const { data: clients } = await supabase
+    // 3. Lapsed/due detection from BOOKINGS history (was sessions before).
+    // For every client, find their most recent non-cancelled booking and
+    // compute the gap pattern. Bookings reflect actual visits regardless
+    // of whether the therapist wrote SOAP notes afterward.
+    const { data: clientsWithBookings } = await supabase
       .from('clients')
-      .select('id, name, email, sessions(id, created_at)')
+      .select('id, name, email')
       .eq('therapist_id', therapist.id);
 
     const lapsedClients: any[] = [];
     const dueClients: any[] = [];
 
-    for (const client of clients || []) {
-      const sessions = (client.sessions || []).sort((a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-      if (!sessions.length) continue;
+    if (clientsWithBookings && clientsWithBookings.length > 0) {
+      // Pull last 10 bookings per client in one batched query
+      // (a single .in() with client_id list keeps this O(1) queries).
+      const clientIds = clientsWithBookings.map(c => c.id).filter(Boolean);
+      const { data: recentBookings } = await supabase
+        .from('bookings')
+        .select('client_id, booking_date, status')
+        .eq('therapist_id', therapist.id)
+        .in('client_id', clientIds)
+        .neq('status', 'cancelled')
+        .lte('booking_date', todayStr) // only count past visits, not future scheduled
+        .order('booking_date', { ascending: false });
 
-      const lastVisit = new Date(sessions[0].created_at);
-      const daysSince = Math.floor((today.getTime() - lastVisit.getTime()) / 86400000);
-
-      // Lapsed: crossed the threshold within the last 2 days (newly lapsed)
-      if (daysSince >= lapsedDays && daysSince < lapsedDays + 2) {
-        lapsedClients.push({ name: client.name, daysSince });
+      const byClient = new Map<string, string[]>();
+      for (const row of recentBookings || []) {
+        if (!row.client_id) continue;
+        const arr = byClient.get(row.client_id) || [];
+        if (arr.length < 10) arr.push(row.booking_date);
+        byClient.set(row.client_id, arr);
       }
 
-      // Due: has 2+ sessions, past 120% of avg interval
-      if (sessions.length >= 2) {
-        let totalGap = 0;
-        for (let i = 1; i < Math.min(sessions.length, 5); i++) {
-          totalGap += new Date(sessions[i-1].created_at).getTime() - new Date(sessions[i].created_at).getTime();
+      for (const client of clientsWithBookings) {
+        const dates = byClient.get(client.id) || [];
+        if (!dates.length) continue;
+
+        const lastVisit = new Date(`${dates[0]}T00:00:00Z`);
+        const daysSince = Math.floor((today.getTime() - lastVisit.getTime()) / 86400000);
+
+        // Lapsed: crossed the threshold within the last 2 days (newly lapsed).
+        if (daysSince >= lapsedDays && daysSince < lapsedDays + 2) {
+          lapsedClients.push({ name: client.name, daysSince });
         }
-        const avgDays = totalGap / Math.min(sessions.length - 1, 4) / 86400000;
-        if (daysSince >= avgDays * 1.2 && daysSince < lapsedDays) {
-          dueClients.push({ name: client.name, daysSince, avgDays: Math.round(avgDays) });
+
+        // Due: has 2+ past visits, past 120% of avg interval, before lapsed cutoff.
+        if (dates.length >= 2) {
+          let totalGap = 0;
+          for (let i = 1; i < Math.min(dates.length, 5); i++) {
+            totalGap += new Date(`${dates[i-1]}T00:00:00Z`).getTime() - new Date(`${dates[i]}T00:00:00Z`).getTime();
+          }
+          const avgDays = totalGap / Math.min(dates.length - 1, 4) / 86400000;
+          if (avgDays > 0 && daysSince >= avgDays * 1.2 && daysSince < lapsedDays) {
+            dueClients.push({ name: client.name, daysSince, avgDays: Math.round(avgDays) });
+          }
         }
       }
     }
 
     // Only send if there's something to report
-    const hasSomething = (todaySessions?.length || 0) > 0 || (tomorrowBookings?.length || 0) > 0 || lapsedClients.length > 0 || dueClients.length > 0;
-    if (!hasSomething && !singleTherapistId) continue;
+    const hasSomething = (todayBookings?.length || 0) > 0 || (tomorrowBookings?.length || 0) > 0 || lapsedClients.length > 0 || dueClients.length > 0;
+    if (!hasSomething && !singleTherapistId) {
+      skipped.push({ id: therapist.id, name: therapistName, reason: 'nothing_to_report' });
+      continue;
+    }
+
+    // Backwards compatibility: rename todayBookings -> todaySessions
+    // so the existing email HTML template (below) does not have to
+    // change. Same semantic: 'sessions that happened today'.
+    const todaySessions = (todayBookings || []).map(b => ({
+      id: b.id,
+      completed: ['completed', 'confirmed'].includes(b.status),
+      clients: { name: b.client_name, email: null },
+      public_notes: null,
+      therapist_notes: null,
+    }));
 
     const fmt12 = (t: string) => {
       const [h, m] = t.split(':').map(Number);
@@ -235,7 +290,7 @@ serve(async (req) => {
     results.push({ therapist: therapistName, email: therapist.email, status: res.ok ? 'sent' : 'failed', id: data.id, error: data.message });
   }
 
-  return new Response(JSON.stringify({ processed: results.length, results }), {
+  return new Response(JSON.stringify({ processed: results.length, results, skipped }), {
     headers: { ...cors, 'Content-Type': 'application/json' }
   });
 });
