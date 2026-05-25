@@ -10,6 +10,11 @@ import CheckoutModal from './CheckoutModal';
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
 import DocumentJourney from './DocumentJourney';
+import DocumentDrawer from './DocumentDrawer';
+import IntakeBrief from '../pages/IntakeBrief';
+import PreSessionBrief from '../pages/PreSessionBrief';
+import PostSessionBrief from '../pages/PostSessionBrief';
+import PostSessionSummary from '../pages/PostSessionSummary';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
@@ -1349,6 +1354,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // the nav overlays the last ~74px of slide-over content; we have to
   // pad the inner content to compensate.
   const isMobileW = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  // Inline DocumentDrawer state. HK May 25 2026: tapping a doc shortcut
+  // pill (Intake / Brief / Record / Recap) used to navigate to
+  // /dashboard/clients/cid/sessions/sid?doc=N which is a separate page,
+  // breaking the 70yo persona's mental model. Now the drawer mounts
+  // INSIDE the slide-over so the therapist stays on Schedule. zIndex
+  // on DocumentDrawer (998-999) is already higher than the slide-over
+  // (301) so it overlays correctly without further work.
+  const [drawerDoc, setDrawerDoc] = useState(null);
   // HK May 24 2026 (Phase 13.12b): the appt prop is owned by the
   // parent timeline. When the user picks a client via the inline
   // ClientPicker inside CheckoutModal, the database row updates but
@@ -2159,9 +2173,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         { n: 3, label: '✍️ Record' },
                         { n: 4, label: '💌 Recap' },
                       ].map(d => (
-                        <a
+                        <button
+                          type="button"
                           key={d.n}
-                          href={`/dashboard/clients/${displayAppt.clientId}/sessions/${currentSession.id}?doc=${d.n}`}
+                          onClick={() => setDrawerDoc(d.n)}
                           style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -2173,17 +2188,17 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                             padding: '6px 12px',
                             fontSize: 11,
                             fontWeight: 600,
-                            textDecoration: 'none',
+                            cursor: 'pointer',
                             fontFamily: 'inherit',
                           }}
                           title={`Open ${d.label} with print, email, SMS, PDF options`}
                         >
                           {d.label}
-                        </a>
+                        </button>
                       ))}
                     </div>
                     <div style={{ fontSize: 11, color: SO.inkMute, marginTop: 8, lineHeight: 1.5 }}>
-                      Tap any doc to open print, email, SMS, PDF, and image options.
+                      Tap any doc to open print, email, SMS, PDF, and image options right here.
                     </div>
                   </div>
                 )}
@@ -2982,6 +2997,45 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           onRefunded={() => { refreshPayments(); }}
         />
       )}
+      {/* HK May 25 2026 Work D: inline DocumentDrawer. Tapping any of
+          the 4 doc shortcut pills (Intake / Brief / Record / Recap)
+          opens the same DocumentDrawer experience that the
+          SessionDetail page uses, but mounted inline within the
+          slide-over so the therapist never leaves Schedule. zIndex
+          ordering: backdrop 998 + drawer 999 sit above slide-over
+          301, so the doc surface overlays cleanly. Doc renders into
+          the drawer body so all toolbar actions (Print, Email, SMS,
+          Save PDF, Copy/Share image) work without any navigation. */}
+      {drawerDoc != null && currentSession?.id && (() => {
+        const docMeta = {
+          1: { name: "Today's Intake",      url: `/brief/intake/${currentSession.id}`, Component: IntakeBrief },
+          2: { name: 'Pre-Session Brief',   url: `/brief/pre/${currentSession.id}`,    Component: PreSessionBrief },
+          3: { name: 'Post-Session Record', url: `/brief/post/${currentSession.id}`,   Component: PostSessionBrief },
+          4: { name: 'Your Recap',          url: `/recap/${currentSession.id}`,        Component: PostSessionSummary },
+        }[drawerDoc];
+        if (!docMeta) return null;
+        const Comp = docMeta.Component;
+        const drawerClient = {
+          id: displayAppt.clientId,
+          name: displayAppt.client,
+          email: displayAppt.client_email || clientRow?.email,
+          phone: displayAppt.client_phone || clientRow?.phone,
+        };
+        return (
+          <DocumentDrawer
+            open={true}
+            onClose={() => setDrawerDoc(null)}
+            docNumber={drawerDoc}
+            docName={docMeta.name}
+            docTotalParts={4}
+            fullPageUrl={`${window.location.origin}${docMeta.url}`}
+            client={drawerClient}
+            therapist={therapist}
+          >
+            <Comp sessionIdProp={currentSession.id} chrome="drawer" />
+          </DocumentDrawer>
+        );
+      })()}
     </>
   );
 }
