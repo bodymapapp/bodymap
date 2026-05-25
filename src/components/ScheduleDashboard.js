@@ -110,36 +110,108 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
 }
 
 function BodyMapPreview({ session }) {
-  const [showMap, setShowMap] = useState(false);
+  // HK May 25 2026 (Phase 21 polish): body map is the differentiation.
+  // Previously hidden behind a 'show body map' toggle and only rendered
+  // one silhouette. Now: BOTH silhouettes (front + back) side by side,
+  // visible by default, with distribution bar above when the client
+  // filled in their front_pct / top_pct / middle_pct / bottom_pct.
+  // No more tiny ▸ chevron; this is hero content for the cockpit.
   if (!session) return null;
   const focusZones = [...(session.front_focus || []), ...(session.back_focus || [])];
   const avoidZones = [...(session.front_avoid || []), ...(session.back_avoid || [])];
   const hasZones = focusZones.length || avoidZones.length;
   if (!hasZones) return null;
-  // zonesToBodyDiagram returns { frontIds, backIds } - the diagram-
-  // shaped IDs. BodyDiagram takes a flat focusAreas + avoidAreas
-  // (BodyDiagram itself handles which side an ID belongs to via the
-  // 'f-' / 'b-' prefix). So we just pass the combined ids.
   const focusMapped = zonesToBodyDiagram(focusZones);
   const avoidMapped = zonesToBodyDiagram(avoidZones);
-  const focusAreas = [...focusMapped.frontIds, ...focusMapped.backIds];
-  const avoidAreas = [...avoidMapped.frontIds, ...avoidMapped.backIds];
+  // Distribution percentages from intake (Lindsey #4 follow-up
+  // pattern: front_pct + top/middle/bottom on the back). Only
+  // render the bar when AT LEAST one is present and meaningful.
+  const hasFrontDist = typeof session.front_pct === 'number';
+  const hasBackDist = ['top_pct', 'middle_pct', 'bottom_pct'].some(k => typeof session[k] === 'number');
   return (
-    <div style={{ borderTop: '1px solid #F3F4F6', marginTop: 10, paddingTop: 12 }}>
-      <button
-        type="button"
-        onClick={() => setShowMap(v => !v)}
-        style={{
-          fontSize: 12, color: '#2A5741', fontWeight: 600,
-          background: 'transparent', border: 'none', cursor: 'pointer',
-          padding: '4px 0', fontFamily: 'inherit',
-        }}
-      >
-        {showMap ? '▾ Hide body map' : '▸ Show body map'}
-      </button>
-      {showMap && (
-        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
-          <BodyDiagram focusAreas={focusAreas} avoidAreas={avoidAreas} size="md" />
+    <div style={{ borderTop: '1px solid #F3F4F6', marginTop: 14, paddingTop: 14 }}>
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: '#6B7280',
+        letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 12,
+      }}>
+        Body map
+      </div>
+
+      {/* Front + Back side by side. Each silhouette gets its own
+          column with a 'Front' or 'Back' label above. zonesToBodyDiagram
+          gave us frontIds and backIds separately, so we can render
+          each silhouette with ONLY the matching zones. */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-around',
+        alignItems: 'flex-start',
+        gap: 10,
+        marginBottom: 10,
+      }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Front
+          </div>
+          <BodyDiagram
+            focusAreas={focusMapped.frontIds}
+            avoidAreas={avoidMapped.frontIds}
+            size="md"
+          />
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+            Back
+          </div>
+          <BodyDiagram
+            focusAreas={focusMapped.backIds}
+            avoidAreas={avoidMapped.backIds}
+            size="md"
+          />
+        </div>
+      </div>
+
+      {/* Distribution bars: front percent of total, then back's
+          top/middle/bottom split. The client filled these in during
+          intake when they cared about exactly where to spend time. */}
+      {(hasFrontDist || hasBackDist) && (
+        <div style={{ background: '#FAFAF7', borderRadius: 10, padding: '10px 12px', marginTop: 4 }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+            Time distribution
+          </div>
+          {hasFrontDist && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: hasBackDist ? 6 : 0 }}>
+              <div style={{ fontSize: 12, color: '#374151', minWidth: 64 }}>Front</div>
+              <div style={{ flex: 1, height: 8, background: '#E5E7EB', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{ width: `${session.front_pct}%`, height: '100%', background: '#2A5741' }} />
+              </div>
+              <div style={{ fontSize: 12, color: '#374151', fontWeight: 600, minWidth: 36, textAlign: 'right' }}>
+                {session.front_pct}%
+              </div>
+            </div>
+          )}
+          {hasBackDist && (
+            <>
+              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, marginTop: hasFrontDist ? 6 : 0 }}>
+                Back: top / middle / bottom
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, height: 8, borderRadius: 999, overflow: 'hidden', background: '#E5E7EB' }}>
+                {typeof session.top_pct === 'number' && session.top_pct > 0 && (
+                  <div style={{ flex: session.top_pct, background: '#4B8A6A', height: '100%' }} title={`Top ${session.top_pct}%`} />
+                )}
+                {typeof session.middle_pct === 'number' && session.middle_pct > 0 && (
+                  <div style={{ flex: session.middle_pct, background: '#2A5741', height: '100%' }} title={`Middle ${session.middle_pct}%`} />
+                )}
+                {typeof session.bottom_pct === 'number' && session.bottom_pct > 0 && (
+                  <div style={{ flex: session.bottom_pct, background: '#1F4030', height: '100%' }} title={`Bottom ${session.bottom_pct}%`} />
+                )}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#6B7280', marginTop: 4 }}>
+                <span>Top {session.top_pct || 0}%</span>
+                <span>Middle {session.middle_pct || 0}%</span>
+                <span>Bottom {session.bottom_pct || 0}%</span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -228,22 +300,38 @@ function PatternsContent({ allSessions }) {
   );
 }
 
-function RecordEditor({ session, parsedSoap, onSaved }) {
+function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) {
+  // HK May 25 2026 (Phase 21): restored the prior 'therapist's
+  // private notes' field that was distinct from SOAP. Free-form
+  // scratchpad that lives ALONGSIDE structured SOAP fields, not
+  // instead of them. Therapist who wants a quick note types here;
+  // therapist who wants full clinical documentation fills SOAP.
+  // Both can be filled. Saves to:
+  //   - therapist_notes JSON with __soap=true: { S, O, A, P, private, noteToClient }
+  //
+  // Also added the dictation nudge from SessionDetail page and a
+  // 'Draft with practice assistant' button (no "AI" wording).
+  const [privateNotes, setPrivateNotes] = useState(parsedSoap.private || (parsedSoap.isLegacy ? parsedSoap.legacyText : '') || '');
   const [S, setS] = useState(parsedSoap.S || '');
   const [O, setO] = useState(parsedSoap.O || '');
   const [A, setA] = useState(parsedSoap.A || '');
   const [P, setP] = useState(parsedSoap.P || '');
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState(null);
+
   useEffect(() => {
+    setPrivateNotes(parsedSoap.private || (parsedSoap.isLegacy ? parsedSoap.legacyText : '') || '');
     setS(parsedSoap.S || ''); setO(parsedSoap.O || ''); setA(parsedSoap.A || ''); setP(parsedSoap.P || '');
-  }, [parsedSoap.S, parsedSoap.O, parsedSoap.A, parsedSoap.P]);
+  }, [parsedSoap.private, parsedSoap.S, parsedSoap.O, parsedSoap.A, parsedSoap.P, parsedSoap.isLegacy, parsedSoap.legacyText]);
 
   async function save() {
     if (!session?.id) return;
     setSaving(true);
     const payload = {
       __soap: true,
+      private: privateNotes,
       S, O, A, P,
       noteToClient: parsedSoap.noteToClient || '',
     };
@@ -254,6 +342,56 @@ function RecordEditor({ session, parsedSoap, onSaved }) {
     setSaving(false);
     setSavedAt(new Date());
     if (onSaved) onSaved();
+  }
+
+  async function draftSoap() {
+    if (!session?.id || !therapist?.ai_enabled) {
+      setDraftError("Practice assistant is off. Turn it on in Settings.");
+      setTimeout(() => setDraftError(null), 4000);
+      return;
+    }
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error("Not signed in");
+      const lastCompleted = (allSessions || []).find(h => h.id !== session.id && h.completed);
+      const lastVisit = lastCompleted ? {
+        daysAgo: Math.round((new Date(session.created_at) - new Date(lastCompleted.created_at)) / (1000 * 60 * 60 * 24)),
+        pressure: lastCompleted.pressure,
+        focus: [...(lastCompleted.front_focus || []), ...(lastCompleted.back_focus || [])].slice(0, 4).join(", "),
+      } : null;
+      const sessionData = {
+        session: {
+          pressure: session.pressure, goal: session.goal,
+          front_focus: session.front_focus, back_focus: session.back_focus,
+          front_avoid: session.front_avoid, back_avoid: session.back_avoid,
+          client_notes: session.client_notes,
+        },
+        client: { name: 'client' },
+        soap: { S, O, A, P },
+        lastVisit,
+      };
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/bodymap-ai`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authSession.access_token}` },
+        body: JSON.stringify({ mode: "draft-note", kind: "private", sessionData }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setDraftError(data.error || data.message || "Could not draft notes. Try again.");
+        setTimeout(() => setDraftError(null), 5500);
+        return;
+      }
+      const text = data.draft || "";
+      setPrivateNotes(text);
+    } catch (err) {
+      setDraftError(err.message || "Could not draft notes. Try again.");
+      setTimeout(() => setDraftError(null), 5500);
+    } finally {
+      setDrafting(false);
+    }
   }
 
   const fieldStyle = {
@@ -274,19 +412,88 @@ function RecordEditor({ session, parsedSoap, onSaved }) {
 
   return (
     <div>
-      {parsedSoap.isLegacy && parsedSoap.legacyText && (
-        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#78350F', marginBottom: 10 }}>
-          Earlier notes saved in legacy format: <em>"{parsedSoap.legacyText}"</em>. Re-save below to upgrade.
+      {/* Narration nudge - the dictate tip lives at the top so the
+          70yo therapist sees it before staring at a blank field. */}
+      <div style={{
+        fontSize: 12, color: '#2A5741', background: '#F4F6F2',
+        border: '1px solid #D6E0D4', borderRadius: 8,
+        padding: '8px 12px', marginBottom: 14, lineHeight: 1.5,
+      }}>
+        🎙️ Tap the microphone on your keyboard to dictate any field below. Speak it, we'll write it.
+      </div>
+
+      {/* Therapist's private notes - the quick scratchpad. Lives at
+          the top because most therapists just want to jot a sentence
+          or two; SOAP below is for those who want clinical structure.
+          Practice-assistant draft button writes here. */}
+      <div style={{
+        fontSize: 11, fontWeight: 700, color: '#6B7280',
+        letterSpacing: '0.06em', textTransform: 'uppercase',
+        marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <span>Your private notes</span>
+        {therapist?.ai_enabled !== false && (
+          <button
+            type="button"
+            onClick={draftSoap}
+            disabled={drafting}
+            style={{
+              background: drafting ? '#E5DDD2' : '#fff',
+              border: '1px solid #D6E0D4',
+              borderRadius: 999,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#2A5741',
+              cursor: drafting ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+              textTransform: 'none',
+              letterSpacing: 0,
+            }}
+          >
+            {drafting ? 'Drafting...' : '✨ Draft with practice assistant'}
+          </button>
+        )}
+      </div>
+      <textarea
+        value={privateNotes}
+        onChange={e => setPrivateNotes(e.target.value)}
+        placeholder="Quick note for yourself: what you worked on, what to remember next time..."
+        style={{ ...fieldStyle, minHeight: 72 }}
+      />
+      {draftError && (
+        <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 10, marginTop: -4 }}>
+          {draftError}
         </div>
       )}
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Subjective</div>
-      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client said: pain, history, what they want" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Objective</div>
+
+      {parsedSoap.isLegacy && parsedSoap.legacyText && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#78350F', marginBottom: 10 }}>
+          Existing notes loaded above. Re-save to upgrade to the new structured format with SOAP fields below.
+        </div>
+      )}
+
+      {/* SOAP fields - optional structure for clinical documentation.
+          Therapist who only wants a quick note can ignore these. */}
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+        marginTop: 18, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+        <span>Optional: SOAP format</span>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>S, Subjective</div>
+      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>O, Objective</div>
       <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Assessment</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>A, Assessment</div>
       <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Plan</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>P, Plan</div>
       <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
         <button
           onClick={save}
@@ -315,16 +522,34 @@ function RecordEditor({ session, parsedSoap, onSaved }) {
   );
 }
 
-function RecapEditor({ session, parsedSoap, onSaved }) {
+function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onRebook }) {
+  // HK May 25 2026 (Phase 21): three upgrades to the recap.
+  // A1: Save Recap actually FIRES the email to the client via the
+  //     send-post-session edge function (which reads public_notes
+  //     and emails it). Therapist sees "Recap sent" confirmation.
+  // E:  Dictation nudge + 'Draft with practice assistant' button
+  //     (no AI wording). Reuses the bodymap-ai edge function in
+  //     'client' kind so it generates a warm note instead of
+  //     clinical SOAP language.
+  // G3: 'Book next session' button right inside this panel so the
+  //     therapist can close the loop in one screen (also present
+  //     in the bottom Actions row per G3).
   const initial = parsedSoap.noteToClient || session?.public_notes || '';
   const [text, setText] = useState(initial);
   const [saving, setSaving] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
+  const [sentAt, setSentAt] = useState(null);
+  const [sendError, setSendError] = useState(null);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState(null);
+
   useEffect(() => { setText(parsedSoap.noteToClient || session?.public_notes || ''); }, [parsedSoap.noteToClient, session?.public_notes]);
 
   async function save() {
     if (!session?.id) return;
     setSaving(true);
+    setSendError(null);
     let payload;
     try {
       const existing = JSON.parse(session.therapist_notes || '{}');
@@ -336,27 +561,145 @@ function RecapEditor({ session, parsedSoap, onSaved }) {
     } catch (_) {
       payload = { __soap: true, S: '', O: '', A: '', P: '', noteToClient: text };
     }
-    await supabase
+    const { error: updateError } = await supabase
       .from('sessions')
       .update({ therapist_notes: JSON.stringify(payload), public_notes: text })
       .eq('id', session.id);
-    setSaving(false);
+    if (updateError) {
+      setSaving(false);
+      setSendError('Could not save recap: ' + updateError.message);
+      return;
+    }
     setSavedAt(new Date());
-    if (onSaved) onSaved();
+
+    // A1: fire send-post-session. The edge function reads
+    // public_notes from the session row, builds a warm HTML email
+    // with the therapist's branding, sends via Resend, and logs
+    // to notification_log. If the therapist toggled post_session
+    // notifications off, the function returns skipped (still 200).
+    setSendingEmail(true);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error("Not signed in");
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/send-post-session`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession.access_token}`,
+        },
+        body: JSON.stringify({ session_id: session.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setSendError(data?.error || `Saved, but email failed (HTTP ${response.status}). Try again or it will go in the next batch.`);
+      } else if (data?.skipped) {
+        // Therapist disabled post-session notifications. Saved is
+        // still a success; we just tell them no email went.
+        setSentAt(null);
+      } else {
+        setSentAt(new Date());
+      }
+    } catch (err) {
+      setSendError('Saved, but email could not be sent: ' + (err?.message || 'Try again.'));
+    } finally {
+      setSendingEmail(false);
+      setSaving(false);
+      if (onSaved) onSaved();
+    }
+  }
+
+  async function draftRecap() {
+    if (!session?.id || therapist?.ai_enabled === false) {
+      setDraftError("Practice assistant is off. Turn it on in Settings.");
+      setTimeout(() => setDraftError(null), 4000);
+      return;
+    }
+    setDrafting(true);
+    setDraftError(null);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) throw new Error("Not signed in");
+      const lastCompleted = (allSessions || []).find(h => h.id !== session.id && h.completed);
+      const lastVisit = lastCompleted ? {
+        daysAgo: Math.round((new Date(session.created_at) - new Date(lastCompleted.created_at)) / (1000 * 60 * 60 * 24)),
+        pressure: lastCompleted.pressure,
+        focus: [...(lastCompleted.front_focus || []), ...(lastCompleted.back_focus || [])].slice(0, 4).join(", "),
+      } : null;
+      const sessionData = {
+        session: {
+          pressure: session.pressure, goal: session.goal,
+          front_focus: session.front_focus, back_focus: session.back_focus,
+          front_avoid: session.front_avoid, back_avoid: session.back_avoid,
+          client_notes: session.client_notes,
+        },
+        client: { name: 'client' },
+        soap: { S: parsedSoap.S, O: parsedSoap.O, A: parsedSoap.A, P: parsedSoap.P },
+        lastVisit,
+      };
+      const url = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/bodymap-ai`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${authSession.access_token}` },
+        body: JSON.stringify({ mode: "draft-note", kind: "client", sessionData }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setDraftError(data?.error || data?.message || "Could not draft. Try again.");
+        setTimeout(() => setDraftError(null), 5500);
+        return;
+      }
+      setText(data?.draft || "");
+    } catch (err) {
+      setDraftError(err.message || "Could not draft. Try again.");
+      setTimeout(() => setDraftError(null), 5500);
+    } finally {
+      setDrafting(false);
+    }
   }
 
   return (
     <div>
-      <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
-        Warm note to send the client. Keep it short, kind, forward-looking.
+      <div style={{ fontSize: 12, color: '#2A5741', background: '#F4F6F2', border: '1px solid #D6E0D4', borderRadius: 8, padding: '8px 12px', marginBottom: 12, lineHeight: 1.5 }}>
+        🎙️ Tap the microphone on your keyboard to dictate. Speak it, we'll write it.
       </div>
+      <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
+        A warm note your client receives by email after this session. Keep it short, kind, forward-looking.
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          Message to client
+        </div>
+        {therapist?.ai_enabled !== false && (
+          <button
+            type="button"
+            onClick={draftRecap}
+            disabled={drafting}
+            style={{
+              background: drafting ? '#E5DDD2' : '#fff',
+              border: '1px solid #D6E0D4',
+              borderRadius: 999,
+              padding: '4px 10px',
+              fontSize: 11,
+              fontWeight: 600,
+              color: '#2A5741',
+              cursor: drafting ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            {drafting ? 'Drafting...' : '✨ Draft with practice assistant'}
+          </button>
+        )}
+      </div>
+
       <textarea
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Thanks for coming in today. I worked on your right shoulder and gave you a doorway stretch to take home..."
         style={{
           width: '100%',
-          minHeight: 100,
+          minHeight: 120,
           padding: '10px 12px',
           border: '1px solid #E5DDD2',
           borderRadius: 8,
@@ -370,25 +713,59 @@ function RecapEditor({ session, parsedSoap, onSaved }) {
           marginBottom: 10,
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      {draftError && (
+        <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 10, marginTop: -4 }}>
+          {draftError}
+        </div>
+      )}
+      {sendError && (
+        <div style={{ fontSize: 12, color: '#B91C1C', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 10px', marginBottom: 10 }}>
+          {sendError}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <button
           onClick={save}
-          disabled={saving}
+          disabled={saving || sendingEmail}
           style={{
-            background: saving ? '#9CA3AF' : '#2A5741',
+            background: (saving || sendingEmail) ? '#9CA3AF' : '#2A5741',
             color: '#fff',
             border: 'none',
             borderRadius: 10,
             padding: '10px 16px',
             fontSize: 13,
             fontWeight: 700,
-            cursor: saving ? 'wait' : 'pointer',
+            cursor: (saving || sendingEmail) ? 'wait' : 'pointer',
             fontFamily: 'inherit',
           }}
         >
-          {saving ? 'Saving...' : 'Save recap'}
+          {sendingEmail ? 'Sending email...' : saving ? 'Saving...' : '💌 Save & send recap'}
         </button>
-        {savedAt && (
+        {onRebook && (
+          <button
+            onClick={onRebook}
+            style={{
+              background: '#fff',
+              color: '#2A5741',
+              border: '1.5px solid #D6E0D4',
+              borderRadius: 10,
+              padding: '9px 14px',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            📅 Book next session
+          </button>
+        )}
+        {sentAt && (
+          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
+            ✓ Sent at {sentAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </span>
+        )}
+        {savedAt && !sentAt && !sendingEmail && !sendError && (
           <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
             ✓ Saved at {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
           </span>
@@ -861,21 +1238,37 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             )}
             <CloseButton onClick={onClose} label="Close" />
           </div>
-          {/* Time + status row */}
+          {/* Time + status row. HK May 25 2026 (Phase 21 F1):
+              edit-time button moved INLINE next to the time text so
+              it's unambiguous what it edits. The previous top-right
+              ✏️ Edit was confusing once the slide-over filled with
+              many panels (looked like it might edit the whole record). */}
           <div style={{background:'#F9FAFB',borderRadius:10,padding:'10px 14px'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,flexWrap:'wrap'}}>
-              <div>
-                <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                  <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
+                  {!appt.preview && (
+                    <button onClick={()=>setEditTime(v=>!v)}
+                      style={{
+                        background:'transparent',
+                        border:'1px solid #D1D5DB',
+                        borderRadius:8,
+                        padding:'3px 8px',
+                        fontSize:11,
+                        fontWeight:600,
+                        color:'#6B7280',
+                        cursor:'pointer',
+                        fontFamily:'inherit',
+                      }}>
+                      {editTime ? 'Cancel' : '✏️ Edit time'}
+                    </button>
+                  )}
+                </div>
                 <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'}</div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                 <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
-                {!appt.preview && (
-                  <button onClick={()=>setEditTime(v=>!v)}
-                    style={{background:'transparent',border:'1px solid #D1D5DB',borderRadius:8,padding:'4px 8px',fontSize:11,fontWeight:600,color:'#6B7280',cursor:'pointer'}}>
-                    {editTime ? 'Cancel' : '✏️ Edit'}
-                  </button>
-                )}
               </div>
             </div>
           </div>
@@ -932,33 +1325,53 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             </div>
           )}
 
-          {/* HK May 25 2026 (Phase 20.2): DocumentJourney inline.
-              The 4 dots (Intake / Brief / Record / Recap) live HERE
-              in the slide-over, not on a separate page. Each dot is
-              tappable; we scroll to + auto-expand the matching panel
-              below. Same JourneyDot component used by SessionDetail
-              page, so visual is identical. */}
+          {/* HK May 25 2026 (Phase 21 C1): DocumentJourney inline,
+              touch-friendly. Added (a) an above-label 'Your 4-step
+              session journey' so the 70yo therapist sees what the
+              dots are for, (b) a 1.15x scale wrapper so dots are
+              easier to tap, (c) generous vertical padding so it
+              doesn't feel crowded among the panels below. Same
+              JourneyDot component still drives the visual, ensuring
+              consistency with SessionDetail page. */}
           {!appt.preview && currentSession && (
-            <div style={{marginTop:14}}>
-              <DocumentJourney
-                session={currentSession}
-                aiEnabled={therapist?.ai_enabled !== false}
-                onSelect={(dotNum) => {
-                  const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
-                  setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
-                  setTimeout(() => {
-                    const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }}
-                onSoapClick={() => {
-                  setOpenSections(prev => ({ ...prev, record: true }));
-                  setTimeout(() => {
-                    const el = document.querySelector('[data-cockpit-section="record"]');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }}
-              />
+            <div style={{ marginTop: 14 }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: '#6B7280',
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                marginBottom: 8,
+                paddingLeft: 4,
+              }}>
+                Session journey · tap a step to jump
+              </div>
+              <div style={{
+                transformOrigin: 'top left',
+                transform: 'scale(1.06)',
+                width: 'calc(100% / 1.06)',
+                paddingBottom: 6,
+              }}>
+                <DocumentJourney
+                  session={currentSession}
+                  aiEnabled={therapist?.ai_enabled !== false}
+                  onSelect={(dotNum) => {
+                    const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
+                    setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
+                    setTimeout(() => {
+                      const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }}
+                  onSoapClick={() => {
+                    setOpenSections(prev => ({ ...prev, record: true }));
+                    setTimeout(() => {
+                      const el = document.querySelector('[data-cockpit-section="record"]');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }}
+                />
+              </div>
             </div>
           )}
         </div>
@@ -1179,14 +1592,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               <CockpitSection
                 sectionKey="record"
                 icon="✍️"
-                title="Session record"
-                subtitle={hasSoapContent ? 'Notes saved · tap to edit' : 'Capture what happened'}
+                title="Session record · SOAP"
+                subtitle={hasSoapContent ? 'Notes saved · tap to edit' : '🎙️ Capture what happened, dictate or type'}
                 isOpen={openSections.record}
                 onToggle={() => toggleSection('record')}
               >
                 <RecordEditor
                   session={currentSession}
                   parsedSoap={parsedSoap}
+                  therapist={therapist}
+                  allSessions={allSessions}
                   onSaved={() => refreshCockpit()}
                 />
               </CockpitSection>
@@ -1204,7 +1619,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   <RecapEditor
                     session={currentSession}
                     parsedSoap={parsedSoap}
+                    therapist={therapist}
+                    allSessions={allSessions}
                     onSaved={() => refreshCockpit()}
+                    onRebook={() => { onClose(); onReschedule && onReschedule({ ...appt, isRebook: true }); }}
                   />
                 </CockpitSection>
               )}
@@ -1405,7 +1823,36 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
 
             {/* ─────────── QUIET ACTIONS CLUSTER ───────────
                 Reschedule, No-Show, Cancel: small ghost buttons in a row.
-                Lower visual weight than Checkout, but still accessible. */}
+                Lower visual weight than Checkout, but still accessible.
+                HK May 25 2026 (Phase 21 G3): when the session is
+                completed, a 'Book next session' button appears at
+                the top of this cluster (sage outline, not ghost) so
+                the therapist can close the loop. Also present inside
+                the Recap panel for the recap-writing moment. */}
+            {!appt.preview && !confirmCancel && currentSession?.completed && (
+              <button
+                onClick={() => onReschedule({ ...appt, isRebook: true })}
+                style={{
+                  width: '100%',
+                  marginTop: 6,
+                  background: '#fff',
+                  color: '#2A5741',
+                  border: '1.5px solid #D6E0D4',
+                  borderRadius: 12,
+                  padding: '11px 14px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 6,
+                }}
+              >
+                <span>📅</span> Book next session with {appt.client?.split(' ')[0] || 'this client'}
+              </button>
+            )}
             {!appt.preview && !confirmCancel && (
               <div style={{display:'flex',gap:6,marginTop:4,paddingTop:14,borderTop:'1px solid #F0EDE5'}}>
                 <button onClick={() => onReschedule(appt)}
