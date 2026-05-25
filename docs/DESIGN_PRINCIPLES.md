@@ -597,6 +597,81 @@ silently overwrite real work.
 
 ---
 
+## 20. Slide-overs and modals scroll end-to-end. paddingBottom on inner content, not the outer scroll container.
+
+**The recurring bug.** A `position: fixed` slide-over with `overflowY: auto` looks correct, but the user can't scroll to the last action. The trap is one of two patterns:
+1. A child marked `flex: 1` claims height proportional to content, fighting the parent's overflow boundary.
+2. `paddingBottom` is set on the OUTER scroll container, and WebKit lets content scroll past the padding instead of reserving scrollable space.
+
+**The rules.**
+- `overflowY: auto` belongs on the OUTER fixed container ONLY.
+- Children flow naturally without `flex: 1`.
+- `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 60px)` belongs on the INNER content div, not the outer scroll container.
+- `-webkit-overflow-scrolling: touch` for iOS momentum.
+- `overscroll-behavior: contain` to stop scroll chaining to the parent page.
+- When the slide-over is mounted, lock body scroll: `document.body.style.overflow = 'hidden'` in a useEffect, restore on cleanup.
+
+**Why it matters.** The 70yo therapist scrolls, hits a dead zone before Cancel/Reschedule, and concludes the page is broken. They don't dig: they bounce.
+
+**Incident log:**
+- May 25 2026, Phase 23: First attempted fix put paddingBottom on the outer scroll container with the safe-area calc. Looked correct in dev but in production WebKit scrolled past the padding so the last actions remained unreachable. HK escalated twice ("scroll between side panel and main panel gets confused...the cursor on the side panel, sometimes it is scrolling the main panel in the background"). Real fix in Phase 24c+24d: moved paddingBottom to inner content, added `overscroll-behavior: contain`, added body scroll lock. Verified end-to-end.
+
+---
+
+## 21. Approve + Deposit interaction must be wired or documented. Silent revenue loss is the worst failure mode.
+
+**The recurring trap.** When two product settings interact, the dev assumes the user understands the interaction. The user enables both, assumes both work, and silently loses money or trust until they catch on weeks later.
+
+**The rule.** When two settings have a non-obvious interaction, you must do one of three things, never zero:
+1. Wire the interaction so it's automatic (e.g. card-on-file at booking + auto-charge on approval).
+2. Surface a clear in-product warning in BOTH settings, the moment both are on, naming the manual workaround.
+3. Refuse to allow both (rare, but acceptable when the interaction would cause real harm).
+
+**Incident log:**
+- May 25 2026: Candice asked "how do I require a deposit, I thought I had that set up." Verified in DB: `deposit_enabled = true`, `deposit_percent = 30`, Stripe connected. Walked through her booking page and discovered she also had `require_approval = on`. The booking flow correctly skips the deposit at request time (so no refunds on declined requests), but the `booking-approval` edge function sets status to `confirmed` without ever charging the deposit. Comment in code: "the therapist sends a payment link after approving." No UI prompts the therapist to do this. Net effect: every first-time deposit Candice thought she was collecting was silently never charged. Discovered after weeks of production use. Phase 25a shipped a warning banner in Settings. Phase 25b (queued) wires card-on-file at booking time + auto-charge on approval as the real fix.
+
+---
+
+## 22. Pending-approval bookings are NOT the same as new bookings. Notification copy and CTAs must reflect the actual state.
+
+**The trap.** A booking exists with status `pending-approval`. The system fires its normal "new client signup" notification with copy like "Sarah just booked their first session with you." The therapist reads this as confirmed and is confused later when they realize they still had to approve it.
+
+**The rule.**
+- Every notification template must check status before composing copy.
+- `pending-approval` bookings get: "X wants to book" / "Approve or decline" / CTA → `/dashboard/schedule` (where the Pending Requests panel sits at top).
+- `confirmed` bookings get: "X just booked" / "View on schedule" / CTA → `/dashboard`.
+- Never reuse the `new_client_signup` template for both; skip it entirely for pending-approval since the "new booking REQUEST" email from the main path already covers the therapist.
+- CTAs that send the therapist to `/dashboard/clients` (the clients list) for a brand-new client land on an empty page because no client row exists yet. Always link to the action surface, not the data surface.
+
+**Incident log:**
+- May 25 2026: HK self-tested with Joy Client Demo 2 on an account with `require_approval` on. Received an email titled "First-time client: Joy Client Demo 2 just booked their first session with you" with a CTA "Open Clients" that landed on a blank page. The booking was actually pending HK's approval. Three problems: misleading copy, wrong CTA destination, duplicate of the proper pending-approval email that already fired. Phase 25a: skipped `new_client_signup` email when status is pending-approval, changed CTAs to `/dashboard/schedule`, button copy to "Review request."
+
+---
+
+## 23. Pre-collect what you'll need to charge later. Email-based payment links are fragile.
+
+**The trap.** A flow requires deferred payment (approval → deposit, no-show fee, cancellation charge). Dev plans: "we'll email a payment link when the time comes." Reality: email goes to spam, the client doesn't see it, the therapist has to chase, the payment never lands.
+
+**The rule.** When you know you'll need to charge a client later, capture the card on file the first time you have them in the booking flow. Use Stripe SetupIntent with `setup_future_usage='off_session'`, store the `payment_method_id` on the booking + client. When charge-time comes, fire off_session charge via existing infra. The only customer-facing artifact at that point is a receipt email, not a payment ask.
+
+**Why it matters.** A "click here to pay" email creates a fragile dependency chain: deliver → open → click → return to platform → enter card → confirm. Each step loses ~10-20% of users. A pre-captured card on file is a single API call with no client action.
+
+**Incident log:**
+- May 25 2026: Candice asked about deposits when she had approval also on. HK initially suggested "auto-create Stripe payment link on approve" but reflected "Sending a payment link is very old process as people may not get email or may not see it." Correct instinct. Phase 25b (queued) implements card-on-file at booking time + auto-charge on approval. Card-on-file infrastructure already exists in codebase (`card_required_first_timers` setting + `create-deposit` edge function with `setup_future_usage`); this is wiring not new infrastructure.
+
+---
+
+## 24. The mic button is a feature, not a metaphor. Wire Web Speech API for desktop SOAP.
+
+**The trap.** The original SOAP dictation copy said "Tap the microphone on your keyboard to dictate." That works on iOS (the keyboard has a built-in mic) but on desktop, there's no keyboard mic. Therapists working from a laptop saw the instruction, looked for a mic, and concluded the feature was missing.
+
+**The rule.** When you tell the user to "tap the mic," there must be a mic in the UI. Web Speech API (`window.SpeechRecognition` or `webkitSpeechRecognition`) supports continuous dictation in Chrome, Edge, Safari with stable APIs. Fall back to hiding the button silently on Firefox.
+
+**Incident log:**
+- May 25 2026: HK feedback "For SOAP, dictation is intuitive for phone as the record button is there on the keyboard. For desktop I am not clear myself on how to voice record it." Phase 24f shipped a `MicDictationButton` component using Web Speech API. Six mic buttons wired: S, O, A, P fields + Private notes + Recap message. Each button independent so therapist can dictate Subjective, stop, think, dictate Objective. Button hides itself if browser doesn't support recognition.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
@@ -617,6 +692,11 @@ silently overwrite real work.
 - **Before writing proactive insight/notification copy with dollar amounts or funnel language:** check rule #17.
 - **Before adding tap-to-drill interactions to a summary or year-overview surface:** check rule #18.
 - **Before any `git push --force-with-lease`:** check rule #19.
+- **Before building a `position: fixed` slide-over with scrollable content:** check rule #20.
+- **Before shipping two settings that interact non-obviously:** check rule #21.
+- **Before composing a notification template that fires across multiple booking statuses:** check rule #22.
+- **Before planning a flow that emails a payment link later:** check rule #23.
+- **Before writing copy that tells the user "tap the mic":** check rule #24.
 
 When breaking a rule is the right move (it sometimes is), document
 the exception inline AND add the rule's incident log here. The

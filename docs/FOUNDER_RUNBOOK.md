@@ -34,13 +34,14 @@ This is a LIVING document. Updated at the end of any session that introduces new
 ### Mission
 Help solo licensed massage therapists retain and grow their client base by automating the practice-management work they currently do manually or through expensive, clunky competitors (Vagaro, MassageBook, ClinicSense). The northstar: make it impossible for a client not to return.
 
-### Current state (as of May 22, 2026)
+### Current state (as of May 25, 2026)
 - **Stage:** Pre-revenue beta with first real customers actively using the platform.
-- **Users:** Single-digit founding therapists onboarded for testing. Two active real customers:
-  - **Candice Peek (Grounded Grace)**: signed up May 15. Real testimonial customer. Multiple bugs reported and fixed May 19-21.
-  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Her single first import surfaced 10+ real bugs and UX gaps; every one became a shipped fix across May 21-22.
-- **Business form:** BodyMap LLC (Texas). HK is sole owner.
-- **Engineering:** Solo build via Claude. No human engineers retained.
+- **Users:** Single-digit founding therapists onboarded for testing. Active real customers and contacts:
+  - **Candice Peek (Grounded Grace)**: signed up May 15. Real testimonial customer. Multiple bugs reported and fixed May 19-25. May 23 incident: comprehensive wipe ran against her therapist_id believing it was Jackie's; recovery took 7 hours via Supabase Pro daily backup. May 25 surfaced approve+deposit silent revenue bug (her config triggered the discovery); Phase 25a warning banner shipped, Phase 25b auto-charge fix queued.
+  - **Jackie Bodkin (Back2Life Restorative Massage)**: signed up May 20. By May 21 evening she had 466 clients + 124 confirmed appointments stretching to April 2027. Her single first import surfaced 10+ real bugs and UX gaps; every one became a shipped fix across May 21-22. May 25: asked how to change default `mailto:` handler to Gmail on iPhone; full Settings preference for custom email composer queued as BLOCK_PLAN item 34.
+  - **Terra Irving (Under the Trees / Healing Touch / Ponder Place Retreat)**: May 24 triage resolved 9 of 11 broken bookings (NULL client_id), 2 held for her input (Kare, Maria Cruz). Driver of Phase 13.9-13.11 findOrCreateClient rewrite. Reports continue to be acted on same-day.
+- **Business form:** BodyMap LLC (Wyoming, Texas operator HK). May 25: ToS + Privacy hardened additively (commit `bb2c0494`). E&O insurance + TX attorney consult queued as Priority 0.
+- **Engineering:** Solo build via Claude. No human engineers retained. The schedule slide-over is now the single primary work surface for the therapist between sessions (24 commits across Phases 20-25a delivered May 24-25).
 - **Funding:** Self-funded by HK from IBM income.
 
 ### What's working
@@ -413,6 +414,16 @@ Full competitive analysis: `research/competitive-analysis-2026-04.md` and `resea
 ## 14. Decision log
 
 Major decisions made and the reasoning behind them. Append to this rather than overwriting.
+
+### May 25, 2026 (evening, slide-over Phase 22-25a + deposit gap discovery)
+
+- **Slide-over schedule cockpit redesign complete through Phase 24f (24 commits across two sessions, May 24 evening + May 25 marathon).** Phases 20-21 built the data foundation and inline editors (BodyMapPreview rewrite with front+back silhouettes, RecordEditor with SOAP + private notes + draft button, RecapEditor with send wiring); Phases 22-24 added design tokens / Label component / responsive width / scroll-lock / heatmap moat visualization / PracticeIQ rebrand (54 in-app + 12 doc occurrences); Phase 24f wired Web Speech API dictation across all SOAP fields + per-doc print/send shortcuts that route through existing DocumentDrawer.jsx (which already had email/SMS/PDF/copy/share but was hidden behind journey-dot clicks on SessionDetail). Net result: the schedule slide-over is the single primary work surface for a therapist between sessions. The Body Map Patterns panel shows the longitudinal heatmap moat directly in context the moment a returning client's appointment is tapped (sage focus zones grow by frequency, rose avoid zones, threshold dropped from 3+ to 2+ sessions so the moat appears as early as session 2).
+- **Discovered May 25 2026: approve+deposit interaction silently drops deposits.** Triggered by Candice Peek's "how do I require a deposit" support ask. Her config: `deposit_enabled=true`, `deposit_percent=30`, Stripe connected, but ALSO `require_approval=on`. Booking page correctly skips deposit at request time (no refunds for declined requests), but `booking-approval` edge function (line 82) sets `newStatus = action === 'approve' ? 'confirmed' : 'cancelled'` with no deposit-collection branch. Comment in code at BookingPage.js:816 acknowledged the gap: "the therapist sends a payment link after approving." No UI prompted this, no automation, no follow-up. Every first-time deposit Candice thought she was collecting was silently never charged. **This is the worst kind of bug: silent, revenue-destroying, undocumented to the customer.** Phase 25a shipped (commit `a8e136d2`) surfaces the gap via Settings warning banner (yellow, only appears when both settings on) and fixes the misleading approval emails. Phase 25b (queued, ~1.5-2h) is the architectural fix: pre-collect card on file at booking time via SetupIntent + auto-charge deposit on approval via existing `create-deposit` infrastructure. **HK's instinct on the right fix was correct:** "Sending a payment link is very old process as people may not get email or may not see it." Pre-capturing the card and auto-charging avoids every fragile delivery hop.
+- **Skipped duplicate `new_client_signup` email when status is pending-approval.** HK self-tested the flow with Joy Client Demo 2 and got an email titled "First-time client: Joy Client Demo 2 just booked their first session with you" with CTA "Open Clients" that landed on a blank page. Booking was actually awaiting his approval. Three problems in one notification: misleading copy (booking wasn't actually booked), wrong CTA destination (/dashboard/clients is blank for a brand-new client because no client row exists yet), duplicate of the proper "New booking REQUEST" email the system was already sending from the main flow. Phase 25a fix: gate the `new_client_signup` emit on `!isPendingApproval`, change all approval-related CTAs to `/dashboard/schedule` where the Pending Requests panel sits at the top of the page. Button copy updated to "Review request" (pending) and "View on schedule" (confirmed). Codified as DESIGN_PRINCIPLES rule 22.
+- **Desktop SOAP dictation via Web Speech API (Phase 24f).** HK feedback: "For SOAP, dictation is intuitive for phone as the record button is there on the keyboard. For desktop I am not clear myself on how to voice record it." Created new `MicDictationButton` component using `window.SpeechRecognition || window.webkitSpeechRecognition` (continuous mode, English, no interim results to avoid jittery text). Wired six instances: S, O, A, P fields + Private notes in RecordEditor + Message-to-client in RecapEditor. Each independent so therapist can dictate one section, stop, think, continue. Button hides itself silently on Firefox (no SpeechRecognition support). Codified as DESIGN_PRINCIPLES rule 24 ("The mic button is a feature, not a metaphor").
+- **Per-doc print/send shortcuts revealed by infrastructure audit.** Investigated HK's ask "Mobile: print buttons for each of 4 docs + SMS option for doc 4". Discovered the entire toolbar (Email link, SMS link for doc 4 with `client.phone` check, Copy image, Share image, Save PDF) already existed in `DocumentDrawer.jsx` (lines 570-605), but was hidden behind a journey-dot click on SessionDetail with no entry point from the slide-over. **Lesson: before designing a new surface, search for whether the capability already lives somewhere else and just isn't discoverable.** Phase 24f fix: added 4 pill buttons (📋 Intake / 🌿 Brief / ✍️ Record / 💌 Recap) inside the Journey panel of the slide-over. Each links to `/dashboard/clients/{cid}/sessions/{sid}?doc=N`. SessionDetail now reads the `?doc=N` URL param on mount and auto-opens DocumentDrawer for that doc. One change to the entry surface, zero changes to the toolbar implementation. Time saved by reusing existing infra: ~3 hours.
+- **Slide-over scroll-past-Cancel bug fixed at root.** Persistent bug from Phase 23 through Phase 24c: therapist on iPhone could not reach the bottom of the slide-over (Cancel/Reschedule actions). Initial Phase 23 fix put `paddingBottom: calc(env(safe-area-inset-bottom, 0px) + 60px)` on the outer scroll container. Looked correct in dev but WebKit scrolled past the padding so the last actions remained unreachable in production. Real fix in Phase 24c+24d: moved `paddingBottom` to the INNER content div, added `overscroll-behavior: contain` to stop scroll chaining to the parent page, added body scroll lock (`document.body.style.overflow = 'hidden'` while open). Codified as DESIGN_PRINCIPLES rule 20.
+- **Founder Income Statement section shipped.** New section 9 on /founder page surfaces the operating P&L for the LLC: revenue lines (Vercel paid plan revenue, founding therapist trials), cost lines (Vercel hosting, Supabase Pro, Resend, Twilio, Stripe fees, Anthropic API, legal, insurance) self-seeded from prior chat context into a new `finance_line_items` table. Resend `error_message` column finally captured on failed sends (had been stuffed into body_snippet with `RESEND_ERROR` prefix). Surfaced an important discovery: all 105 prior "(no error logged)" rows in notification_log were 429 `rate_limit_exceeded` errors. Resend Pro upgrade does NOT raise the 5 req/sec limit; need to add 250ms throttle to `release-pending-emails` + `founder-fire-all-notifications` batch senders (queued as BLOCK_PLAN item 32).
 
 ### May 24, 2026 (evening, broken-bookings + cron rebuild marathon)
 
@@ -1238,6 +1249,55 @@ return new Response(JSON.stringify({ processed: results.length, results, skipped
 The `skipped` array tells you instantly whether the function skipped because of (a) opt-out, (b) configuration, (c) data quality, or (d) genuinely nothing to report.
 
 **End of cron audit procedures.**
+
+### Procedure 12: Therapist reports "deposit isn't working" - diagnose silent revenue loss from approve+deposit interaction
+
+Discovered May 25 2026 from Candice Peek's "how do I require a deposit, I thought I had that set up" support ask. When a therapist has BOTH `require_approval` AND `deposit_enabled` on, the platform silently never collects the deposit. Phase 25a surfaced this via a Settings warning banner; Phase 25b (queued) is the architectural fix. Until 25b ships, this procedure tells you how to confirm + remediate for the affected therapist.
+
+**Step 1: Confirm both settings are on.**
+
+```sql
+SELECT email, business_name, deposit_enabled, deposit_percent, require_approval, stripe_account_id IS NOT NULL AS has_stripe
+FROM therapists
+WHERE email = '{their_email}';
+```
+
+If `deposit_enabled = true` AND `require_approval = true` AND `has_stripe = true`, you have the interaction. Otherwise diagnose normally (deposit toggle off, Stripe disconnected, etc).
+
+**Step 2: Find affected bookings.**
+
+```sql
+SELECT b.id, b.client_name, b.client_email, b.booking_date, b.start_time, b.status, b.created_at, s.name AS service, s.price
+FROM bookings b
+LEFT JOIN services s ON s.id = b.service_id
+LEFT JOIN session_payments sp ON sp.booking_id = b.id
+WHERE b.therapist_id = '{therapist_uuid}'
+  AND b.created_at > '{date_they_enabled_both}'
+  AND b.status = 'confirmed'
+  AND sp.id IS NULL
+ORDER BY b.created_at DESC;
+```
+
+Any rows returned are bookings the therapist approved where the deposit was silently skipped. Each row is real money the therapist thought they collected.
+
+**Step 3: Decide on remediation per booking.**
+
+For each affected booking:
+- If the session has already happened and the client paid in person: no action, mark as expected.
+- If the session is upcoming and the client is a known repeat: optional, ask the therapist if they want to charge the deposit now via the slide-over Charge button.
+- If the session is upcoming and the client was a first-timer: tell the therapist they can charge the deposit now via the slide-over Charge button (Stripe card-on-file or send pay link), or accept the loss and chalk it up to the bug.
+
+**Step 4: Recommend immediate workaround until Phase 25b ships.**
+
+Two options for the therapist to choose:
+- **Option A:** Turn off `Approve new clients` in Settings → How I plug in → Booking page setup. Deposits will now collect at booking time as designed. They lose the approval-before-booking screen.
+- **Option B:** Keep both on, accept that they need to manually charge the deposit from the slide-over after approving each request. The Settings warning banner (shipped May 25 commit `a8e136d2`) makes this requirement visible.
+
+**Step 5: Note the customer in the queue for Phase 25b.**
+
+When Phase 25b ships, all therapists with both settings on should be re-emailed to confirm the auto-charge flow is now live and they no longer need to manually charge. Track in BLOCK_PLAN item 31.
+
+**Root cause:** `booking-approval` edge function at `supabase/functions/booking-approval/index.ts:82` sets `newStatus = action === 'approve' ? 'confirmed' : 'cancelled'` with no deposit-collection branch. Comment in `src/pages/BookingPage.js:816` acknowledged the gap ("the therapist sends a payment link after approving") but no UI implemented this. Phase 25b implementation note: pre-collect card on file at booking time via SetupIntent when both approval + deposit apply, store `payment_method_id` on the booking row, branch `booking-approval` to fire off_session charge via existing `create-deposit` infrastructure on approve, set status to `confirmed` only after charge succeeds. See DESIGN_PRINCIPLES rules 21 and 23.
 
 ## Edge function JWT verification (added May 17 2026)
 

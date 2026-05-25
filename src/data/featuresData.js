@@ -238,20 +238,22 @@ export const RIBBONS = [
         automated: true,
         body: [
           "See every body area a client has flagged over time, layered into a single visual. Spot the pattern emerging in their right shoulder over the last six months without scrolling through twelve session notes.",
+          "Surfaces in two places: on the client's profile under Patterns, and in the schedule slide-over the moment you tap a returning client's appointment. Front and back silhouettes side by side, recurring zones grow as bigger sage circles, avoid zones in rose. Visible from session two onwards.",
           'The kind of insight that makes a client say <em>"how did you know?"</em>',
         ],
-        meta: "Updates automatically · Shareable with client",
+        meta: "Updates automatically · Shareable with client · Visible from session 2",
       },
       {
         id: "3.2",
-        name: "The three-dot document system",
+        name: "The four-document system",
         automated: true,
         body: [
-          "Three documents around every session, generated as you work. The Intake captures what your client filled in: body map, eight preferences, conditions, every custom answer. The Pre-Session Brief, ready five minutes before the door opens, synthesizes today's request with what changed since last visit, the plan you wrote down, and the patterns across every prior visit (right shoulder requested 5 of 5 times, pressure climbing 2 to 4 over 10 weeks).",
-          "After the session, the system splits into two outputs from one set of notes. You get an archival record with SOAP, aftercare, and pattern updates. Your client gets a warm summary in their language: your note to them in italics, the zones you worked, the aftercare they should follow, and a one-tap rebooking link.",
+          "Four documents around every session, generated as you work. The Intake captures what your client filled in: body map, eight preferences, conditions, every custom answer. The Pre-Session Brief, ready five minutes before the door opens, synthesizes today's request with what changed since last visit, the plan you wrote down, and the patterns across every prior visit (right shoulder requested 5 of 5 times, pressure climbing 2 to 4 over 10 weeks).",
+          "After the session, the system splits into two outputs from one set of notes. You get an archival Session Record with SOAP, aftercare, and pattern updates. Your client gets a warm Recap in their language: your note to them in italics, the zones you worked, the aftercare they should follow, and a one-tap rebooking link.",
+          "Each of the four documents can be printed, saved as PDF, copied as an image, shared, or (for the Client Recap) sent via SMS, in one tap from the session slide-over. No navigating, no separate screens.",
           "Minimal time from you. Maximum insight per visit. The whole client journey, surfaced.",
         ],
-        meta: "Auto-generated · One page each · Print, PDF, or share by link",
+        meta: "Auto-generated · One page each · Print, PDF, share, SMS",
       },
       {
         id: "3.3",
@@ -321,10 +323,11 @@ export const RIBBONS = [
         id: "4.3",
         name: "Post-session SOAP notes",
         body: [
-          "Tap voice-to-text right after the session. Speak your observations. The platform structures them into proper SOAP format and files them under the client.",
+          "Speak your observations and the platform structures them into proper SOAP format under the client. On phone, tap the microphone built into your keyboard. On desktop, tap the small mic button next to any SOAP field (Subjective, Objective, Assessment, Plan) and dictate directly.",
+          "Each field has its own mic so you can dictate one section at a time, stop to think, then continue. Private notes summary draftable from your SOAP content with one tap of PracticeIQ.",
           "No more 30 minutes of paperwork at the end of the day.",
         ],
-        meta: "Voice or type · Auto-formatted",
+        meta: "Voice on phone + desktop · Auto-formatted · PracticeIQ summaries",
       },
       {
         id: "4.4",
