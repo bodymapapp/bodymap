@@ -827,6 +827,11 @@ export default function BookingPage() {
   // table. The booking row gets a snapshot of the payment_method_id
   // and customer_id at insert time.
   const [cardOnFileRequired,setCardOnFileRequired]=useState(false);
+  // Why card-on-file capture was triggered. Drives the visible copy
+  // (cancellation policy framing vs Phase 25b approval+deposit framing).
+  //   'cancellation'      legacy: only charged if a cancellation fee triggers
+  //   'approval-deposit'  Phase 25b: will be charged the moment therapist approves
+  const [cardCaptureReason,setCardCaptureReason]=useState('cancellation');
   const [cardSavedPaymentMethodId,setCardSavedPaymentMethodId]=useState(null);
   const [cardSavedCustomerId,setCardSavedCustomerId]=useState(null);
   const [cardSavedClientId,setCardSavedClientId]=useState(null);
@@ -1450,6 +1455,16 @@ export default function BookingPage() {
   // UI so we do not repeat numbers here, just the authorization frame.
   function cardMandateText() {
     const therapistName = therapist?.business_name || therapist?.full_name || 'the therapist';
+    if (cardCaptureReason === 'approval-deposit') {
+      const pct = therapist?.deposit_percent || 20;
+      return [
+        `By saving my card and submitting this booking request, I authorize ${therapistName} to charge this card for the ${pct}% deposit if my request is approved.`,
+        ``,
+        `My card is not charged when I submit the request. The deposit is charged automatically the moment ${therapistName} approves. If the request is declined, no charge is made.`,
+        ``,
+        `I can update or remove my card on file by contacting ${therapistName} directly.`,
+      ].join('\n');
+    }
     return [
       `By saving my card and confirming this booking, I authorize ${therapistName} to charge this card per the cancellation policy shown above if I cancel late, reschedule late, or do not show up to my appointment.`,
       ``,
@@ -1781,7 +1796,14 @@ export default function BookingPage() {
       notes: giftCert ? `🎁 Gift certificate applied: ${giftCert.code} ($${giftCert.remaining?.toFixed(0)} credit)` : '',
       status: requiresApproval ? 'pending-approval' : ((depositRequired || paymentMode === 'full') ? 'pending-deposit' : 'confirmed'),
       deposit_required: requiresApproval ? false : depositRequired,
-      deposit_amount: requiresApproval ? 0 : ((depositRequired || paymentMode === 'full') ? depositAmount : 0),
+      // Phase 25b: when approval+deposit are both on AND card-on-file was
+      // captured at booking time, persist the deposit amount on the row so
+      // booking-approval edge function knows exactly what to charge. Locks
+      // the price the client saw at request time. Legacy approval-only
+      // (no deposit) bookings stay at 0.
+      deposit_amount: requiresApproval
+        ? (cardSavedPaymentMethodId && therapist?.deposit_enabled ? depositAmount : 0)
+        : ((depositRequired || paymentMode === 'full') ? depositAmount : 0),
       deposit_paid: false,
       // Pay-in-full + tip persistence (Lindsey #2). pay_in_full is
       // true when client chose to pay the full session price upfront
@@ -3216,35 +3238,57 @@ export default function BookingPage() {
               // re-show if therapist has it enabled.
               setPaymentMode('deposit');
               setTipCents(0);
-              if(needsDeposit){
+              // Phase 25b: compute deposit amount also when this is the
+              // approval+deposit case so the booking row carries the cents
+              // to charge on approval (price is locked at booking time, not
+              // at approve time). Recomputed below in the gate, but we set
+              // it here too because the gate fires after this block.
+              const _approvalDepositMaybe = !!therapist.require_approval && !isRepeat && therapist.deposit_enabled && !giftCert;
+              if(needsDeposit || _approvalDepositMaybe){
                 const amt=Math.round((svc.price*(therapist.deposit_percent||20)/100)*100);
                 setDepositAmount(amt);
               }
 
-              // Cancellation policy Phase 2: card on file gating.
-              // The card capture flow is engaged when:
-              //   1. Therapist has the cancellation policy enabled
-              //   2. Therapist has Stripe connected
-              //   3. The relevant card_required toggle is on for this client class
-              //   4. We are not in approval-required mode (in that case, the
-              //      booking is pending-approval and the cancellation charge
-              //      cannot fire yet anyway; therapist can request the card
-              //      via payment link after she approves)
+              // Card-on-file gating. Two separate cases trigger card capture:
+              //
+              // CASE A: Cancellation policy (legacy, May 2026).
+              //   1. Therapist has cancellation policy enabled
+              //   2. The relevant card_required toggle is on for this client class
+              //   3. Approval is NOT also on (in that case the cancellation charge
+              //      cannot fire yet anyway, and the approval+deposit case below
+              //      handles the card capture for the deposit charge instead)
+              //
+              // CASE B: Approval + Deposit (Phase 25b, May 25 2026).
+              //   1. Therapist has require_approval on AND deposit_enabled on
+              //   2. Client is first-timer (returning clients book directly with
+              //      deposit charged at booking, no need for the saved-card path)
+              //   3. Not a gift certificate purchase
+              //   Card is saved at booking time, booking-approval edge function
+              //   charges the deposit off_session when the therapist approves.
+              //   Without this, deposits were silently never charged (real
+              //   production revenue bug discovered May 25 2026 with Candice Peek).
               const policy = therapist.cancellation_policy || {};
               const policyEnabled = !!therapist.cancellation_policy_enabled;
               const stripeReady = !!therapist.stripe_account_id;
               const squareReady = !!therapist.square_access_token;
               const policyRequiresFirstTimers = !!policy.card_required_first_timers;
               const policyRequiresRegulars = !!policy.card_required_regulars;
-              const wantsCard = policyEnabled && !needsApproval &&
+              const cancellationWantsCard = policyEnabled && !needsApproval &&
                 ((isRepeat && policyRequiresRegulars) || (!isRepeat && policyRequiresFirstTimers));
-              // Card capture now works with EITHER processor. The gate
-              // fires whenever the therapist policy wants a card AND
-              // any payment processor is connected. The init-card-setup
-              // edge function picks the right one based on
-              // payment_routing or auto-pick (Stripe wins ties).
-              const cardNeeded = wantsCard && (stripeReady || squareReady);
+              const approvalDepositCase = needsApproval && therapist.deposit_enabled && !giftCert;
+              const wantsCard = cancellationWantsCard || approvalDepositCase;
+              // Card capture works with EITHER processor. The init-card-setup
+              // edge function picks the right one via payment_routing or
+              // auto-pick (Stripe wins ties). Phase 25b additionally needs
+              // Stripe specifically since chargeSavedCard off_session is a
+              // Stripe path; if the therapist is Square-only and has
+              // approval+deposit on, fall back to no card (deposit will need
+              // manual collection on approve). Surface this in the diagnostic
+              // log so future debugging is easy.
+              const cardNeeded = wantsCard && (stripeReady || squareReady) &&
+                (!approvalDepositCase || stripeReady);
               setCardOnFileRequired(cardNeeded);
+              setCardCaptureReason(approvalDepositCase ? 'approval-deposit' : 'cancellation');
 
               // Diagnostic logging so HK / therapists can see exactly why
               // the card-on-file gate did or did not fire.
@@ -3777,14 +3821,16 @@ export default function BookingPage() {
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 14 }}>💳</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#78350F', letterSpacing: 0.3, textTransform: 'uppercase' }}>Card on file required</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#78350F', letterSpacing: 0.3, textTransform: 'uppercase' }}>{cardCaptureReason === 'approval-deposit' ? 'Card needed to submit request' : 'Card on file required'}</span>
                 </div>
 
                 {/* Compact one-liner. Full authorization text available
                     on tap. Keeps the legal teeth without the wall of
                     text. */}
                 <div style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.5, marginBottom: 10 }}>
-                  Save a card to confirm. Only charged if a fee triggers per the policy above.
+                  {cardCaptureReason === 'approval-deposit'
+                    ? `Save a card to submit your request. If approved, the ${therapist?.deposit_percent || 20}% deposit is charged automatically. If declined, no charge.`
+                    : 'Save a card to confirm. Only charged if a fee triggers per the policy above.'}
                 </div>
 
                 <details style={{ marginBottom: 10 }}>
@@ -3809,7 +3855,9 @@ export default function BookingPage() {
                     style={{ marginTop: 3, cursor: 'pointer' }}
                   />
                   <span style={{ fontSize: 12, color: '#1F2937', lineHeight: 1.5 }}>
-                    I agree and authorize this card if a fee triggers.
+                    {cardCaptureReason === 'approval-deposit'
+                      ? 'I agree and authorize the deposit charge if my request is approved.'
+                      : 'I agree and authorize this card if a fee triggers.'}
                   </span>
                 </label>
                 <button

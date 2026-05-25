@@ -26,6 +26,7 @@ This is a LIVING document. Updated at the end of any session that introduces new
 14. [Decision log — what was decided and why](#14-decision-log)
 15. [What to do if X breaks](#15-what-to-do-if-x-breaks)
 16. [Onboarding a human team](#16-onboarding-a-human-team)
+17. [Process flows](#17-process-flows)
 
 ---
 
@@ -745,9 +746,254 @@ If HK needs to fully offload work, here is how to do it.
 
 ---
 
-## Appendix A: File map
+## 17. Process flows
 
-The most important files to know:
+Therapist-facing diagrams of how a booking moves through MyBodyMap depending on which combination of settings is active. Read these top-to-bottom. Each one is a self-contained snapshot, safe to screenshot and send to a therapist asking how the platform handles their config.
+
+The three combinations:
+
+| Approve new clients | Require deposit | Diagram |
+|---|---|---|
+| ON | OFF | Flow A, request and approve |
+| OFF | ON | Flow B, book and pay |
+| ON | ON | Flow C, request, approve, auto-charge (Phase 25b) |
+
+### Flow A. Approval ON, Deposit OFF
+
+The client submits a request without any payment. The therapist reviews and approves or declines. On approve, the booking is confirmed and the client gets a confirmation email with an intake link. No card is captured at any point.
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
+  <defs>
+    <marker id="arrowA" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A5741"/>
+    </marker>
+  </defs>
+  <text x="300" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#1F2937" font-family="Georgia,serif">Flow A. Approval on, deposit off</text>
+  <text x="300" y="62" text-anchor="middle" font-size="13" fill="#6B7280">Request and approve. No payment at any step.</text>
+
+  <g transform="translate(60,90)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">1</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client picks time and service</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Browses your booking page, picks date and service.</text>
+  </g>
+  <line x1="300" y1="180" x2="300" y2="210" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowA)"/>
+
+  <g transform="translate(60,220)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">2</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client submits request</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Status: pending approval. No card, no charge.</text>
+  </g>
+  <line x1="300" y1="310" x2="300" y2="340" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowA)"/>
+
+  <g transform="translate(60,350)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">3</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">You review and approve or decline</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Pending Requests panel at the top of Schedule.</text>
+  </g>
+  <line x1="300" y1="440" x2="300" y2="470" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowA)"/>
+
+  <g transform="translate(60,480)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">4</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Status flips to confirmed</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Booking is locked in on your calendar.</text>
+  </g>
+  <line x1="300" y1="570" x2="300" y2="600" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowA)"/>
+
+  <g transform="translate(60,610)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">5</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client gets approval email with intake link</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">They fill the intake before the session.</text>
+  </g>
+
+  <text x="300" y="725" text-anchor="middle" font-size="11" fill="#9CA3AF">No money moves at any step in this flow.</text>
+</svg>
+
+### Flow B. Approval OFF, Deposit ON
+
+The client books directly. At the deposit step they enter a card and the deposit (a percent you set in Settings) is charged on the spot. The booking is confirmed immediately. Returning clients are not charged a deposit, only first-time clients.
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 760" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
+  <defs>
+    <marker id="arrowB" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A5741"/>
+    </marker>
+  </defs>
+  <text x="300" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#1F2937" font-family="Georgia,serif">Flow B. Approval off, deposit on</text>
+  <text x="300" y="62" text-anchor="middle" font-size="13" fill="#6B7280">Book and pay. Deposit charged at booking time.</text>
+
+  <g transform="translate(60,90)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">1</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client picks time and service</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Browses your booking page, picks date and service.</text>
+  </g>
+  <line x1="300" y1="180" x2="300" y2="210" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowB)"/>
+
+  <g transform="translate(60,220)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">2</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client enters card and pays deposit</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Stripe charges the percent you set in Settings.</text>
+  </g>
+  <line x1="300" y1="310" x2="300" y2="340" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowB)"/>
+
+  <g transform="translate(60,350)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">3</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Status flips to confirmed immediately</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Card is saved for future bookings.</text>
+  </g>
+  <line x1="300" y1="440" x2="300" y2="470" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowB)"/>
+
+  <g transform="translate(60,480)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">4</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client gets receipt and confirmation</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">You get a new-booking notification.</text>
+  </g>
+  <line x1="300" y1="570" x2="300" y2="600" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowB)"/>
+
+  <g transform="translate(60,610)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">5</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client fills intake before the session</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Intake link is in the confirmation email.</text>
+  </g>
+
+  <text x="300" y="725" text-anchor="middle" font-size="11" fill="#9CA3AF">Deposit is only charged to first-time clients. Returning clients are never re-charged.</text>
+</svg>
+
+### Flow C. Approval ON, Deposit ON (Phase 25b)
+
+Both settings on. The client saves a card when they submit their request, but the deposit is not charged yet. If you approve, the deposit is charged automatically from the saved card and the booking is confirmed. If you decline, no charge is made.
+
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 1080" style="max-width:100%;height:auto;background:#F5F0E8;border-radius:14px;font-family:system-ui,-apple-system,sans-serif;">
+  <defs>
+    <marker id="arrowC" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#2A5741"/>
+    </marker>
+    <marker id="arrowCred" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9CA3AF"/>
+    </marker>
+  </defs>
+  <text x="300" y="38" text-anchor="middle" font-size="20" font-weight="700" fill="#1F2937" font-family="Georgia,serif">Flow C. Approval on, deposit on</text>
+  <text x="300" y="62" text-anchor="middle" font-size="13" fill="#6B7280">Request, approve, auto-charge. Card pre-saved, deposit on approval.</text>
+
+  <g transform="translate(60,90)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">1</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client picks time and service</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Browses your booking page, picks date and service.</text>
+  </g>
+  <line x1="300" y1="180" x2="300" y2="210" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowC)"/>
+
+  <g transform="translate(60,220)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">2</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Client saves card to submit request</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">Card is saved via Stripe. No charge yet.</text>
+  </g>
+  <line x1="300" y1="310" x2="300" y2="340" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowC)"/>
+
+  <g transform="translate(60,350)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">3</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">Status: pending approval</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">You get an email. Request sits at top of Schedule.</text>
+  </g>
+  <line x1="300" y1="440" x2="300" y2="470" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowC)"/>
+
+  <g transform="translate(60,480)">
+    <rect width="480" height="80" rx="14" fill="#fff" stroke="#FDE68A" stroke-width="2"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">4</text>
+    <text x="70" y="34" font-size="15" font-weight="700" fill="#1F2937">You decide: approve or decline</text>
+    <text x="70" y="55" font-size="13" fill="#6B7280">One tap from the Pending Requests panel.</text>
+  </g>
+
+  <line x1="180" y1="570" x2="180" y2="610" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowC)"/>
+  <line x1="420" y1="570" x2="420" y2="610" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrowCred)"/>
+  <text x="180" y="600" text-anchor="middle" font-size="11" font-weight="700" fill="#2A5741">APPROVE</text>
+  <text x="420" y="600" text-anchor="middle" font-size="11" font-weight="700" fill="#6B7280">DECLINE</text>
+
+  <g transform="translate(20,620)">
+    <rect width="280" height="80" rx="14" fill="#F0F7F4" stroke="#2A5741" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">5a</text>
+    <text x="70" y="34" font-size="14" font-weight="700" fill="#1F2937">Deposit auto-charges</text>
+    <text x="70" y="53" font-size="11" fill="#374151">From saved card.</text>
+    <text x="70" y="67" font-size="11" fill="#374151">Status: confirmed.</text>
+  </g>
+
+  <g transform="translate(300,620)">
+    <rect width="280" height="80" rx="14" fill="#F9FAFB" stroke="#9CA3AF" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <circle cx="32" cy="40" r="18" fill="#9CA3AF"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">5b</text>
+    <text x="70" y="34" font-size="14" font-weight="700" fill="#1F2937">No charge made</text>
+    <text x="70" y="53" font-size="11" fill="#374151">Card not used.</text>
+    <text x="70" y="67" font-size="11" fill="#374151">Status: cancelled.</text>
+  </g>
+
+  <line x1="160" y1="710" x2="160" y2="745" stroke="#2A5741" stroke-width="2" marker-end="url(#arrowC)"/>
+  <line x1="440" y1="710" x2="440" y2="745" stroke="#9CA3AF" stroke-width="2" marker-end="url(#arrowCred)"/>
+
+  <g transform="translate(20,755)">
+    <rect width="280" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#2A5741"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">6a</text>
+    <text x="70" y="34" font-size="14" font-weight="700" fill="#1F2937">Client gets receipt</text>
+    <text x="70" y="53" font-size="11" fill="#374151">Approved and deposit charged.</text>
+    <text x="70" y="67" font-size="11" fill="#374151">Intake link included.</text>
+  </g>
+
+  <g transform="translate(300,755)">
+    <rect width="280" height="80" rx="14" fill="#fff" stroke="#BFD8C9" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#9CA3AF"/>
+    <text x="32" y="46" text-anchor="middle" font-size="16" font-weight="700" fill="#fff">6b</text>
+    <text x="70" y="34" font-size="14" font-weight="700" fill="#1F2937">Client gets polite decline</text>
+    <text x="70" y="53" font-size="11" fill="#374151">Your reason included if you wrote one.</text>
+    <text x="70" y="67" font-size="11" fill="#374151">No payment was taken.</text>
+  </g>
+
+  <g transform="translate(60,870)">
+    <rect width="480" height="80" rx="14" fill="#FFFBEB" stroke="#FDE68A" stroke-width="1.5"/>
+    <circle cx="32" cy="40" r="18" fill="#B87840"/>
+    <text x="32" y="46" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">!</text>
+    <text x="70" y="34" font-size="14" font-weight="700" fill="#1F2937">If the auto-charge fails</text>
+    <text x="70" y="53" font-size="12" fill="#374151">Status goes to pending-deposit, not confirmed.</text>
+    <text x="70" y="68" font-size="12" fill="#374151">Client gets a recovery email. You get an alert email.</text>
+  </g>
+
+  <text x="300" y="990" text-anchor="middle" font-size="11" fill="#9CA3AF">Card is captured up front so the deposit can be charged without the client needing to come back.</text>
+  <text x="300" y="1010" text-anchor="middle" font-size="11" fill="#9CA3AF">If you decline, the saved card is never charged.</text>
+</svg>
+
+### When to send each diagram
+
+A therapist asking "what happens when a client books with my current settings?" should receive whichever flow matches their config. Settings page already shows the active combination. If a therapist asks how to change behavior, walk them to the toggles in Booking page settings.
+
+If you (or future Claude) ship a new combination (for example, deposit ON for repeat clients), add a new flow here before merging the code. Therapists asking about the feature should be able to read its flow before they enable it.
+
+---
+
 
 | Path | What it is |
 |------|------------|

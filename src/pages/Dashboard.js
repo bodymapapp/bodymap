@@ -2056,17 +2056,14 @@ function ServicesAndAvailability({ therapist }) {
         onToggle={() => setOpenSubRow(openSubRow === 'deposit' ? null : 'deposit')}
       >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
-        {/* HK May 25 2026: surface the known interaction with Approve
-            new clients. When both are on, the booking page does NOT
-            collect the deposit at request time (it would be wasteful
-            if the therapist declines). The intended flow is that
-            after approval, the deposit is collected via card-on-file
-            charge. That auto-charge mechanism is in progress (Phase
-            25b queued); for now therapists need to manually charge
-            the deposit after approving. */}
+        {/* Phase 25b (May 25 2026): when both approval AND deposit are on,
+            MyBodyMap captures the client's card at booking time via
+            SetupIntent, then charges the deposit automatically the moment
+            the therapist approves. No manual step. Surface this so the
+            therapist understands the combined behavior. */}
         {depositEnabled && therapist?.require_approval && (
-          <p style={{ fontSize:'12px', color:'#92400E', background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:8, padding:'10px 12px', margin:'0 0 14px', lineHeight:1.55 }}>
-            ⚠️ Heads up: you also have <strong>Approve new clients</strong> on. With both enabled, the deposit is <strong>not</strong> automatically collected when the client requests a booking. After you approve, charge the deposit yourself from the session slide-over (Charge button). Auto-charge on approval is coming soon.
+          <p style={{ fontSize:'12px', color:'#1F2937', background:'#F0F7F4', border:'1px solid #BFD8C9', borderRadius:8, padding:'10px 12px', margin:'0 0 14px', lineHeight:1.55 }}>
+            🌿 You also have <strong>Approve new clients</strong> on. MyBodyMap captures the client's card when they submit a request. The moment you approve, the deposit is charged automatically. If you decline, no charge is made.
           </p>
         )}
         <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 14px', lineHeight:1.5 }}>
@@ -4100,7 +4097,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
           </button>
           <div style={{ flex:1 }}>
             <div style={{ fontSize:13, fontWeight:600, color:C2.darkGray }}>Approve new clients before they book</div>
-            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. Deposits are skipped on requests, you can charge after approving.</div>
+            <div style={{ fontSize:12, color:C2.gray, lineHeight:1.5, marginTop:3 }}>New clients submit a request. You see it on your Schedule page with Approve and Decline buttons. Returning clients book directly. If you also require a deposit, the client saves a card at request time and the deposit is charged automatically when you approve.</div>
           </div>
         </div>
 
