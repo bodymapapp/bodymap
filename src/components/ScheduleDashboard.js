@@ -2097,8 +2097,15 @@ function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
   // (no drill-down) over a tap-to-zoom pattern. For the 70yo
   // persona, at-a-glance is more valuable than interaction depth.
   // The Monthly tab handles details.
+  //
+  // HK May 24 2026 update: cells with bookings are now clickable.
+  // Tapping a green cell opens an inline popover showing every
+  // appointment for that day (client name, time, service, status).
+  // The popover is keyboard-dismissable and tap-outside-to-close.
+  // Cells with zero bookings remain decorative (no hover affordance).
   const APPTS = appointments || [];
   const [yearOffset, setYearOffset] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(null); // 'YYYY-MM-DD' or null
   const viewYear = today.getFullYear() + yearOffset;
   const monthStart = new Date(viewYear, 0, 1);
 
@@ -2251,10 +2258,42 @@ function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
                   const count = countsByDate[dateStr] || 0;
                   const blocked = blockedByDate[dateStr];
                   const isToday = today.getFullYear() === viewYear && today.getMonth() === mIdx && today.getDate() === day;
+                  const interactable = count > 0;
+                  if (interactable) {
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setSelectedDate(dateStr)}
+                        title={`${monthName} ${day}: ${count} session${count===1?'':'s'}${blocked === 'full' ? ' (blocked)' : blocked === 'partial' ? ' (partial block)' : ''}. Tap to see appointments.`}
+                        style={{
+                          aspectRatio: '1',
+                          background: densityColor(count, blocked),
+                          borderRadius: 2,
+                          border: isToday ? '1.5px solid #2A5741' : (blocked === 'partial' ? '1px solid #FDE68A' : 'none'),
+                          position: 'relative',
+                          padding: 0,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          WebkitTapHighlightColor: 'transparent',
+                        }}
+                      >
+                        {blocked === 'partial' && (
+                          <div style={{
+                            position:'absolute',
+                            top:1, right:1,
+                            width:3, height:3,
+                            borderRadius:'50%',
+                            background:'#D97706',
+                          }}/>
+                        )}
+                      </button>
+                    );
+                  }
                   return (
                     <div
                       key={i}
-                      title={`${monthName} ${day}: ${count} session${count===1?'':'s'}${blocked === 'full' ? ' (blocked)' : blocked === 'partial' ? ' (partial block)' : ''}`}
+                      title={`${monthName} ${day}: 0 sessions${blocked === 'full' ? ' (blocked)' : blocked === 'partial' ? ' (partial block)' : ''}`}
                       style={{
                         aspectRatio: '1',
                         background: densityColor(count, blocked),
@@ -2337,6 +2376,143 @@ function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
           <strong>No sessions on record for {viewYear} yet.</strong> Once bookings start appearing on your schedule, this view will show your year at a glance: which months you were busiest, where you took time off, and the rhythm of your practice across seasons.
         </div>
       )}
+
+      {/* Day-detail modal: opens when therapist taps a heatmap cell
+          with bookings. Lists every appointment for that day in a
+          read-only summary. Tap outside or the X to dismiss. Bookings
+          are read directly from the APPTS prop (same source the heatmap
+          counts use), so no re-fetch needed. HK May 24 2026: yearly
+          view was 'useless and no functionality' before this. Cells
+          with bookings are now actionable for drill-down. */}
+      {selectedDate && (() => {
+        const [yy, mm, dd] = selectedDate.split('-').map(Number);
+        const dateObj = new Date(yy, mm - 1, dd);
+        const dayAppts = APPTS.filter(a => {
+          if (!a.date) return false;
+          if (a.preview || a.external) return false;
+          return a.date.getFullYear() === yy
+            && (a.date.getMonth() + 1) === mm
+            && a.date.getDate() === dd;
+        }).sort((a, b) => {
+          const ta = a.startTime || a.time || '';
+          const tb = b.startTime || b.time || '';
+          return ta.localeCompare(tb);
+        });
+        return (
+          <>
+            <div onClick={() => setSelectedDate(null)} style={{
+              position:'fixed', inset:0,
+              background:'rgba(0,0,0,0.3)',
+              zIndex:300,
+              backdropFilter:'blur(2px)',
+            }}/>
+            <div style={{
+              position:'fixed',
+              top:'50%', left:'50%',
+              transform:'translate(-50%, -50%)',
+              width:'min(420px, 92vw)',
+              maxHeight:'82vh',
+              background:'#fff',
+              borderRadius:14,
+              boxShadow:'0 20px 50px rgba(0,0,0,0.18)',
+              zIndex:301,
+              overflow:'hidden',
+              display:'flex',
+              flexDirection:'column',
+            }}>
+              {/* Header */}
+              <div style={{
+                padding:'14px 16px',
+                borderBottom:'1px solid #F3F4F6',
+                display:'flex',
+                alignItems:'center',
+                justifyContent:'space-between',
+                gap:10,
+              }}>
+                <div>
+                  <div style={{fontFamily:'Georgia, serif', fontSize:18, fontWeight:700, color:'#1F4131'}}>
+                    {dateObj.toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })}
+                  </div>
+                  <div style={{fontSize:12, color:'#6B7280', marginTop:2}}>
+                    {dayAppts.length} appointment{dayAppts.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+                <CloseButton onClick={() => setSelectedDate(null)} label="Close" />
+              </div>
+              {/* Body */}
+              <div style={{
+                flex:1,
+                overflowY:'auto',
+                padding:'10px 12px 14px',
+              }}>
+                {dayAppts.length === 0 && (
+                  <div style={{fontSize:13, color:'#6B7280', textAlign:'center', padding:'20px 12px'}}>
+                    No appointments details available.
+                  </div>
+                )}
+                {dayAppts.map((a, idx) => {
+                  const st = STATUS[a.status] || STATUS['pending-intake'];
+                  return (
+                    <div key={a.id || idx} style={{
+                      display:'flex',
+                      alignItems:'flex-start',
+                      gap:10,
+                      padding:'10px 12px',
+                      borderBottom: idx === dayAppts.length - 1 ? 'none' : '1px solid #F3F4F6',
+                    }}>
+                      <div style={{
+                        width:36, height:36, borderRadius:'50%',
+                        background:ac(a.client),
+                        color:'#fff',
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'center',
+                        fontSize:12, fontWeight:700,
+                        flexShrink:0,
+                      }}>
+                        {initials(a.client)}
+                      </div>
+                      <div style={{flex:1, minWidth:0}}>
+                        <div style={{fontSize:14, fontWeight:700, color:'#1F2937', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap'}}>
+                          {a.client || 'Unnamed'}
+                        </div>
+                        <div style={{fontSize:12, color:'#6B7280', marginTop:2}}>
+                          {a.isAllDay ? 'All day' : (a.time || 'No time set')}
+                          {a.duration && !a.isAllDay ? ` · ${a.duration} min` : ''}
+                          {a.service ? ` · ${a.service}` : ''}
+                        </div>
+                        <div style={{
+                          display:'inline-block',
+                          marginTop:6,
+                          fontSize:10.5,
+                          fontWeight:700,
+                          padding:'2px 8px',
+                          borderRadius:99,
+                          background:st.bg,
+                          color:st.color,
+                          letterSpacing:'0.02em',
+                        }}>
+                          {st.icon} {st.label}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Footer hint */}
+              <div style={{
+                padding:'10px 14px',
+                borderTop:'1px solid #F3F4F6',
+                fontSize:11.5,
+                color:'#6B7280',
+                lineHeight:1.5,
+              }}>
+                For full details and actions, switch to the Monthly or Today view and tap any appointment.
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
