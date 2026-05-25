@@ -55,10 +55,10 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
   const isLocked = status === 'locked';
 
   const ringStyle = (() => {
-    if (isDone) return { background: C.sage, border: `2px solid ${C.sage}`, boxShadow: `0 2px 8px rgba(74,107,84,0.25), 0 0 0 4px ${C.sageBg}` };
-    if (isCurrent) return { background: C.white, border: `2.5px solid ${C.gold}`, boxShadow: `0 0 0 4px ${C.goldBg}, 0 2px 6px rgba(201,168,76,0.20)` };
-    if (isLocked) return { background: C.cream, border: `2px solid ${C.lineFaint}`, opacity: 0.55 };
-    return { background: C.white, border: `2px dashed ${C.muted}`, opacity: 0.7 };
+    if (isDone) return { background: C.sage, border: `2px solid ${C.sage}`, boxShadow: `0 2px 6px rgba(74,107,84,0.18), 0 0 0 2px ${C.sageBg}` };
+    if (isCurrent) return { background: C.white, border: `2.5px solid ${C.gold}`, boxShadow: `0 0 0 2px ${C.goldBg}, 0 2px 5px rgba(201,168,76,0.16)` };
+    if (isLocked) return { background: C.cream, border: `2px solid ${C.lineFaint}`, opacity: 0.7 };
+    return { background: C.white, border: `2px dashed ${C.muted}`, opacity: 0.85 };
   })();
 
   const numColor = isDone ? C.white : isCurrent ? C.forest : C.muted;
@@ -74,13 +74,19 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
       style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         background: C.white,
-        border: `1px solid ${isCurrent ? C.gold : C.lineFaint}`,
+        // HK May 25 2026 round 5: same outer container for all 4 dots
+        // so they read as the same component in different states. The
+        // earlier design swapped the outer border to gold for the
+        // current dot, which read as 'bigger' next to the others.
+        // Differentiation now lives entirely inside the circle (ring
+        // style + corner badge) so the row feels consistent.
+        border: `1px solid ${C.lineFaint}`,
         cursor: isLocked ? 'not-allowed' : 'pointer',
         padding: '8px 6px',
         gap: 7,
         position: 'relative', zIndex: 2,
         borderRadius: 12,
-        boxShadow: isCurrent ? `0 2px 8px ${C.goldBg}` : '0 1px 2px rgba(28,43,34,0.04)',
+        boxShadow: '0 1px 2px rgba(28,43,34,0.04)',
       }}
       aria-label={`${label}, ${statusText}, tap to open document`}
     >

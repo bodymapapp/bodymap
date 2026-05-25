@@ -1591,11 +1591,14 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           setCurrentSession(existing);
         } else if (appt.clientId && therapist?.id) {
           // No session row found, but waiver flag is set: the original
-          // INSERT must have failed. Try again now. Race-safe enough:
-          // the booking_id lookup above just returned nothing, and
-          // even if a parallel client also tries to insert, the worst
-          // case is two rows for the same booking which is benign
-          // (the cockpit reads the most recent one).
+          // INSERT must have failed. Try again with the full set of
+          // fields that AddClientModal uses. Some columns may have
+          // NOT NULL constraints with no defaults; including them
+          // explicitly is the safest path. HK May 25 2026 round 5:
+          // earlier attempts inserted only the FK fields and 'completed'
+          // which left the therapist stranded on bookings where some
+          // column had a NOT NULL constraint without a server default.
+          console.log('[waiver-recover] inserting session for booking', appt.id);
           const { data: created, error: sErr } = await supabase
             .from('sessions')
             .insert({
@@ -1606,6 +1609,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               back_focus: [],
               front_avoid: [],
               back_avoid: [],
+              pressure: null,
+              goal: null,
+              table_temp: 'warm',
+              room_temp: 'comfortable',
+              music: 'soft',
+              lighting: 'dim',
+              conversation: 'quiet',
+              draping: 'standard',
+              oil_pref: 'none',
+              med_flag: 'none',
+              med_note: null,
+              client_notes: null,
               completed: false,
               intake_added_by: 'waived',
             })
@@ -1613,16 +1628,28 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             .single();
           if (!alive) return;
           if (sErr) {
-            console.warn('[waiver-recover] session insert failed', sErr);
+            console.error('[waiver-recover] session insert FAILED', {
+              error: sErr,
+              booking_id: appt.id,
+              client_id: appt.clientId,
+              therapist_id: therapist.id,
+            });
           } else if (created) {
+            console.log('[waiver-recover] session created', created.id);
             setCurrentSession(created);
           }
+        } else {
+          console.warn('[waiver-recover] cannot insert session: missing prerequisites', {
+            booking_id: appt.id,
+            client_id: appt.clientId,
+            therapist_id: therapist?.id,
+          });
         }
       }
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appt?.id]);
+  }, [appt?.id, therapist?.id]);
 
   const intakeDone = !!(
     (currentSession?.front_focus && currentSession.front_focus.length) ||
@@ -2365,7 +2392,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                       }}>
                         <input
                           type="checkbox"
-                          checked={false}
+                          checked={intakeWaivedLocal}
                           onChange={async () => {
                             // Optimistic state. If anything below
                             // fails we revert.
@@ -2410,6 +2437,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                               if (existing?.id) {
                                 setCurrentSession(existing);
                               } else {
+                                console.log('[intake-waive] inserting session for booking', appt.id);
                                 const { data: created, error: sErr } = await supabase
                                   .from('sessions')
                                   .insert({
@@ -2420,14 +2448,32 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                                     back_focus: [],
                                     front_avoid: [],
                                     back_avoid: [],
+                                    pressure: null,
+                                    goal: null,
+                                    table_temp: 'warm',
+                                    room_temp: 'comfortable',
+                                    music: 'soft',
+                                    lighting: 'dim',
+                                    conversation: 'quiet',
+                                    draping: 'standard',
+                                    oil_pref: 'none',
+                                    med_flag: 'none',
+                                    med_note: null,
+                                    client_notes: null,
                                     completed: false,
                                     intake_added_by: 'waived',
                                   })
                                   .select('*')
                                   .single();
                                 if (sErr) {
-                                  console.warn('[intake-waive] session insert failed', sErr);
+                                  console.error('[intake-waive] session insert FAILED', {
+                                    error: sErr,
+                                    booking_id: appt.id,
+                                    client_id: appt.clientId,
+                                    therapist_id: therapist.id,
+                                  });
                                 } else if (created) {
+                                  console.log('[intake-waive] session created', created.id);
                                   setCurrentSession(created);
                                 }
                               }
