@@ -338,7 +338,12 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
         borderRadius: 14,
         padding: '12px 18px 14px',
         boxShadow: '0 1px 3px rgba(28,43,34,0.04)',
-        flex: 1, minWidth: 320,
+        // HK May 25 2026: minWidth 320 was clipping doc 4 (Recap) on
+        // narrow iPhones, since the cockpit content area can be ~290px
+        // on a 360px slide-over after padding. minWidth 0 lets the
+        // four-column grid shrink with the parent. The dot sizes are
+        // already reduced via the 520px media query.
+        flex: 1, minWidth: 0,
       }}>
       <style>{`
         .bm-journey-dot {
