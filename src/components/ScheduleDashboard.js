@@ -1544,112 +1544,109 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // dots stop nagging about a missing intake for that session.
   const [intakeWaivedLocal, setIntakeWaivedLocal] = useState(!!appt.intake_waived_at);
 
-  // HK May 25 2026 (round 3): waiver was not persisting across panel
-  // close/reopen because the parent's bookings query does not select
-  // intake_waived_at, so appt.intake_waived_at was always undefined
-  // when DetailPanel mounted. Same for the placeholder sessions row:
-  // appt.sessionId stayed null because the parent never refetched
-  // bookings after the waiver inserted a session row.
+  // HK May 25 2026 round 7: SOAP is now always accessible regardless
+  // of intake state. The session row is auto-created on DetailPanel
+  // mount whenever the booking has no session yet. The previous design
+  // gated SOAP behind intake submission OR a waiver checkbox which
+  // led to 6 rounds of debugging when the session-creation INSERT
+  // failed silently.
   //
-  // Round 4: also CREATE a session row if one is missing when the
-  // waiver flag is set. The earlier onChange would create a row, but
-  // if that INSERT silently failed (RLS, network blip, race) the
-  // therapist was stranded with intake_waived_at set but no session
-  // row to save SOAP against. This effect now fixes that case
-  // automatically the next time the panel mounts.
+  // New model: SOAP has no dependency on intake. Open a booking ->
+  // session row exists or gets created -> RecordEditor renders.
+  // Side effect to note: bookings the therapist opens flip to
+  // 'intake-done' on the schedule on next page load because a session
+  // row now exists for them. Mental model: opening the cockpit is
+  // engagement, the booking is considered prepped.
+  //
+  // The booking's intake_waived_at flag is still read for the brief
+  // panel + journey dot 1 state, but no longer drives SOAP at all.
   useEffect(() => {
     if (!appt?.id) return;
+    if (appt.preview) return;
     let alive = true;
     (async () => {
+      // Read the booking's intake_waived_at flag for the brief panel
+      // + journey state. Independent of session work below.
       const { data: bk } = await supabase
         .from('bookings')
         .select('intake_waived_at')
         .eq('id', appt.id)
         .maybeSingle();
       if (!alive) return;
-      if (bk?.intake_waived_at) {
-        setIntakeWaivedLocal(true);
-        // Waived session is by definition 'we are doing this now'
-        // so unlock SOAP + Recap as well, same semantics as the
-        // onChange path.
-        setRecordOverride(true);
-        setRecapOverride(true);
-        // Find or create the placeholder session row tied to this
-        // booking so SOAP + Recap editors have a row to save against.
-        // Prefer the existing row by booking_id over appt.sessionId
-        // since the parent may not have refetched after the original
-        // waiver onChange created the row.
-        const { data: existing } = await supabase
-          .from('sessions')
-          .select('*')
-          .eq('booking_id', appt.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        if (!alive) return;
-        if (existing) {
-          setCurrentSession(existing);
-        } else if (appt.clientId && therapist?.id) {
-          // No session row found, but waiver flag is set: the original
-          // INSERT must have failed. Try again with the full set of
-          // fields that AddClientModal uses. Some columns may have
-          // NOT NULL constraints with no defaults; including them
-          // explicitly is the safest path. HK May 25 2026 round 5:
-          // earlier attempts inserted only the FK fields and 'completed'
-          // which left the therapist stranded on bookings where some
-          // column had a NOT NULL constraint without a server default.
-          console.log('[waiver-recover] inserting session for booking', appt.id);
-          const { data: created, error: sErr } = await supabase
-            .from('sessions')
-            .insert({
-              therapist_id: therapist.id,
-              client_id: appt.clientId,
-              booking_id: appt.id,
-              front_focus: [],
-              back_focus: [],
-              front_avoid: [],
-              back_avoid: [],
-              pressure: null,
-              goal: null,
-              table_temp: 'warm',
-              room_temp: 'comfortable',
-              music: 'soft',
-              lighting: 'dim',
-              conversation: 'quiet',
-              draping: 'standard',
-              oil_pref: 'none',
-              med_flag: 'none',
-              med_note: null,
-              client_notes: null,
-              completed: false,
-              intake_added_by: 'therapist_manual',
-            })
-            .select('*')
-            .single();
-          if (!alive) return;
-          if (sErr) {
-            console.error('[waiver-recover] session insert FAILED', {
-              error: sErr,
-              booking_id: appt.id,
-              client_id: appt.clientId,
-              therapist_id: therapist.id,
-            });
-          } else if (created) {
-            console.log('[waiver-recover] session created', created.id);
-            setCurrentSession(created);
-          }
-        } else {
-          console.warn('[waiver-recover] cannot insert session: missing prerequisites', {
-            booking_id: appt.id,
-            client_id: appt.clientId,
-            therapist_id: therapist?.id,
-          });
-        }
+      if (bk?.intake_waived_at) setIntakeWaivedLocal(true);
+
+      // Ensure a session row exists for this booking. Skip if the
+      // parent already linked one, skip if we already loaded one in
+      // this DetailPanel mount.
+      if (appt.sessionId) return;
+      if (currentSession?.id) return;
+
+      const { data: existing } = await supabase
+        .from('sessions')
+        .select('*')
+        .eq('booking_id', appt.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!alive) return;
+      if (existing) {
+        setCurrentSession(existing);
+        return;
+      }
+
+      // No existing session. Auto-create an empty draft.
+      if (!appt.clientId || !therapist?.id) {
+        console.warn('[auto-session] cannot create: missing prerequisites', {
+          booking_id: appt.id,
+          client_id: appt.clientId,
+          therapist_id: therapist?.id,
+        });
+        return;
+      }
+      console.log('[auto-session] creating draft for booking', appt.id);
+      const { data: created, error: sErr } = await supabase
+        .from('sessions')
+        .insert({
+          therapist_id: therapist.id,
+          client_id: appt.clientId,
+          booking_id: appt.id,
+          front_focus: [],
+          back_focus: [],
+          front_avoid: [],
+          back_avoid: [],
+          pressure: null,
+          goal: null,
+          table_temp: 'warm',
+          room_temp: 'comfortable',
+          music: 'soft',
+          lighting: 'dim',
+          conversation: 'quiet',
+          draping: 'standard',
+          oil_pref: 'none',
+          med_flag: 'none',
+          med_note: null,
+          client_notes: null,
+          completed: false,
+          intake_added_by: 'therapist_manual',
+        })
+        .select('*')
+        .single();
+      if (!alive) return;
+      if (sErr) {
+        console.error('[auto-session] insert FAILED', {
+          error: sErr,
+          booking_id: appt.id,
+          client_id: appt.clientId,
+          therapist_id: therapist.id,
+        });
+      } else if (created) {
+        console.log('[auto-session] created', created.id);
+        setCurrentSession(created);
       }
     })();
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [appt?.id, therapist?.id]);
+  }, [appt?.id, appt?.sessionId, appt?.clientId, therapist?.id]);
 
   const intakeDone = !!(
     (currentSession?.front_focus && currentSession.front_focus.length) ||
@@ -2681,48 +2678,23 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </CockpitSection>
 
               {/* ─── Record panel (SOAP entry inline) ─── */}
-              {/* Phase 22: locked for future sessions unless the
-                  therapist hits 'I'm starting now'. Past existing
-                  content (hasSoapContent) keeps the editor visible
-                  so we never hide saved work. */}
+              {/* HK May 25 2026 round 7: SOAP is always accessible. No
+                  intake gate, no future-session gate. The session row
+                  is auto-created by the mount useEffect above. Empty
+                  state only shows during the brief loading window. */}
               <CockpitSection
                 sectionKey="record"
                 icon="✍️"
                 title="Session record · SOAP"
                 subtitle={
-                  isFutureSession && !recordOverride && !hasSoapContent
-                    ? `Unlocks on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
-                    : hasSoapContent
-                      ? 'Notes saved · tap to edit'
-                      : '🎙️ Capture what happened, dictate or type'
+                  hasSoapContent
+                    ? 'Notes saved · tap to edit'
+                    : '🎙️ Capture what happened, dictate or type'
                 }
                 isOpen={openSections.record}
                 onToggle={() => toggleSection('record')}
               >
-                {!currentSession ? (
-                  /* No session yet. If the therapist already waived
-                     intake but the session row hasn't loaded yet,
-                     show a friendly transitional message instead of
-                     the 'awaiting client intake' lock copy, which
-                     reads like the waiver did nothing. */
-                  intakeWaivedLocal ? (
-                    <EmptyStateCard
-                      icon="🌿"
-                      body="Setting up this session. SOAP will be editable in a moment."
-                    />
-                  ) : (
-                    <EmptyStateCard
-                      icon="✍️"
-                      body="The SOAP record unlocks once your client fills out their intake. You can capture session notes here right after the appointment."
-                    />
-                  )
-                ) : isFutureSession && !recordOverride && !hasSoapContent ? (
-                  <LockedFutureSessionPanel
-                    apptDate={appt.date}
-                    kind="record"
-                    onOverride={() => setRecordOverride(true)}
-                  />
-                ) : (
+                {currentSession ? (
                   <>
                     <RecordEditor
                       session={currentSession}
@@ -2752,6 +2724,11 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                       View full Session Record →
                     </button>
                   </>
+                ) : (
+                  <EmptyStateCard
+                    icon="🌿"
+                    body="Loading session..."
+                  />
                 )}
               </CockpitSection>
 
