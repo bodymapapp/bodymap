@@ -11,6 +11,7 @@ import CheckoutModal from './CheckoutModal';
 import RefundModal from './RefundModal';
 import DocumentJourney from './DocumentJourney';
 import DocumentDrawer from './DocumentDrawer';
+import DocErrorBoundary from './DocErrorBoundary';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
@@ -1542,6 +1543,55 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // sets a timestamp on the booking row so the brief panel + journey
   // dots stop nagging about a missing intake for that session.
   const [intakeWaivedLocal, setIntakeWaivedLocal] = useState(!!appt.intake_waived_at);
+
+  // HK May 25 2026 (round 3): waiver was not persisting across panel
+  // close/reopen because the parent's bookings query does not select
+  // intake_waived_at, so appt.intake_waived_at was always undefined
+  // when DetailPanel mounted. Same for the placeholder sessions row:
+  // appt.sessionId stayed null because the parent never refetched
+  // bookings after the waiver inserted a session row.
+  //
+  // Fix: DetailPanel reads both directly from the database on mount.
+  // One small read of the booking's intake_waived_at + one fallback
+  // sessions query by booking_id. The waiver state survives the
+  // round-trip and the session row created for the waiver is loaded
+  // so SOAP and Recap have a row to save against.
+  useEffect(() => {
+    if (!appt?.id) return;
+    let alive = true;
+    (async () => {
+      const { data: bk } = await supabase
+        .from('bookings')
+        .select('intake_waived_at')
+        .eq('id', appt.id)
+        .maybeSingle();
+      if (!alive) return;
+      if (bk?.intake_waived_at) {
+        setIntakeWaivedLocal(true);
+        // Waived session is by definition 'we are doing this now'
+        // so unlock SOAP + Recap as well, same semantics as the
+        // onChange path.
+        setRecordOverride(true);
+        setRecapOverride(true);
+        // Also load the placeholder/related session row from sessions
+        // by booking_id if the parent didn't include sessionId on
+        // this appt. This is the row the waiver onChange created.
+        if (!appt.sessionId) {
+          const { data: sess } = await supabase
+            .from('sessions')
+            .select('*')
+            .eq('booking_id', appt.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (alive && sess) setCurrentSession(sess);
+        }
+      }
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appt?.id]);
+
   const intakeDone = !!(
     (currentSession?.front_focus && currentSession.front_focus.length) ||
     (currentSession?.back_focus && currentSession.back_focus.length) ||
@@ -3052,18 +3102,20 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             client={drawerClient}
             therapist={therapist}
           >
-            <React.Suspense fallback={
-              <div style={{
-                padding: '40px 24px',
-                textAlign: 'center',
-                color: '#6B7F72',
-                fontSize: 13,
-              }}>
-                Loading document...
-              </div>
-            }>
-              <Comp sessionIdProp={currentSession.id} chrome="drawer" />
-            </React.Suspense>
+            <DocErrorBoundary docName={docMeta.name}>
+              <React.Suspense fallback={
+                <div style={{
+                  padding: '40px 24px',
+                  textAlign: 'center',
+                  color: '#6B7F72',
+                  fontSize: 13,
+                }}>
+                  Loading document...
+                </div>
+              }>
+                <Comp sessionIdProp={currentSession.id} chrome="drawer" />
+              </React.Suspense>
+            </DocErrorBoundary>
           </DocumentDrawer>
         );
       })()}

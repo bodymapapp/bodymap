@@ -6111,12 +6111,11 @@ export default function Dashboard({ view }) {
           </div>
         </div>
       </div>
-      {(view === 'clients' || view === 'sessions' || view === 'session-detail') && (
-        <button onClick={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
-          style={{ position: 'fixed', bottom: isMobile ? 'calc(94px + env(safe-area-inset-bottom, 0px))' : '32px', right: isMobile ? '16px' : '32px', background: '#2A5741', color: 'white', border: 'none', borderRadius: '50px', padding: isMobile ? '14px 22px' : '16px 28px', fontSize: isMobile ? '14px' : '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 8px 24px rgba(42,87,65,0.4)', display: 'flex', alignItems: 'center', gap: '10px', zIndex: 999 }}>
-          🔗 Share booking link
-        </button>
-      )}
+      {/* HK May 25 2026: removed the standalone 'Share booking link'
+          pill floater on Clients/Sessions/Session-Detail views.
+          FloatingBookingChip mounted below now handles the same job
+          on every tab. The chip's popover surfaces 'Send via SMS'
+          which opens the same modal kept here. */}
       {/* Share booking link modal.
           HK May 14 2026: the URL we share IS the booking page URL.
           Intake is a step inside that booking flow. We were labeling
@@ -6189,11 +6188,14 @@ export default function Dashboard({ view }) {
 
       {/* HK May 25 2026 (Work E): floating booking-link chip available
           on every dashboard tab. Sage circle in the bottom-right by
-          default with a popover that exposes Open + Copy. Long-press
-          to drag to another corner; the choice persists per therapist.
-          Built as a generic chip so future iterations can expand it
-          into a PracticeIQ shortcut hub. */}
-      <FloatingBookingChip therapist={therapist} />
+          default with a popover that exposes Open + Copy + Send via
+          SMS. Long-press to drag to another corner; the choice
+          persists per therapist. Built as a generic chip so future
+          iterations can expand it into a PracticeIQ shortcut hub. */}
+      <FloatingBookingChip
+        therapist={therapist}
+        onSendSms={() => { setShowSendModal(true); setSendPhone(''); setSendCopied(false); }}
+      />
     </div>
   );
 }

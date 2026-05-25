@@ -36,7 +36,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { openExternal } from '../lib/openExternal';
 import BMLogo from './BMLogo';
 
-const LONG_PRESS_MS = 450;
+// HK May 25 2026 round 2: dragging used to require a 450ms long-press
+// which felt unresponsive ('almost felt like chip does not move at
+// all until I read the 0.5 second cue'). Replaced with instant
+// movement detection: once the pointer moves more than DRAG_THRESHOLD
+// pixels while the chip is pressed, drag begins immediately. A
+// tap that does not move enough is still treated as a click that
+// opens the popover. This is the natural touch/drag pattern.
+const DRAG_THRESHOLD = 5;
 const CHIP_SIZE = 48;
 
 // Default position: bottom-right, above mobile bottom nav.
@@ -102,7 +109,7 @@ function popoverStyle(x, y) {
   };
 }
 
-export default function FloatingBookingChip({ therapist }) {
+export default function FloatingBookingChip({ therapist, onSendSms }) {
   const customUrl = therapist?.custom_url;
   const bookingUrl = customUrl ? `${window.location.origin}/book/${customUrl}` : null;
 
@@ -114,10 +121,9 @@ export default function FloatingBookingChip({ therapist }) {
   const [copied, setCopied] = useState(false);
   const [dragging, setDragging] = useState(false);
 
-  const longPressTimer = useRef(null);
   const containerRef = useRef(null);
-  const dragStartRef = useRef(null);
-  const moveRef = useRef(false);
+  const pressStartRef = useRef(null);  // { x, y } at mousedown
+  const draggedRef = useRef(false);     // tracks whether this gesture became a drag
 
   // Update mobile detection on resize so default position recomputes.
   // Also re-clamp current position so the chip stays in view after
@@ -153,47 +159,53 @@ export default function FloatingBookingChip({ therapist }) {
     };
   }, [open]);
 
-  // ── Drag mechanics ────────────────────────────────────────────────
-  // Long-press starts drag. While dragging, follow the pointer.
-  // Release leaves the chip wherever the user let go (free position).
+  // ── Drag mechanics: instant on movement ───────────────────────────
+  // mousedown/touchstart records the start position. mousemove during
+  // press: if motion exceeds DRAG_THRESHOLD pixels, drag begins
+  // immediately (no timer). mouseup ends drag and saves position; if
+  // no drag happened, the click handler opens the popover.
 
-  const startLongPress = useCallback((clientX, clientY) => {
-    if (longPressTimer.current) clearTimeout(longPressTimer.current);
-    dragStartRef.current = { x: clientX, y: clientY };
-    moveRef.current = false;
-    longPressTimer.current = setTimeout(() => {
-      setDragging(true);
-      setPos({ x: clientX - CHIP_SIZE / 2, y: clientY - CHIP_SIZE / 2 });
-      try { navigator.vibrate?.(15); } catch (_) {}
-    }, LONG_PRESS_MS);
+  const onPressStart = useCallback((clientX, clientY) => {
+    pressStartRef.current = { x: clientX, y: clientY };
+    draggedRef.current = false;
   }, []);
 
-  const cancelLongPress = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  // Track pointer while dragging. Mouse + touch unified.
+  // Global move + up listeners run whenever the chip is pressed,
+  // regardless of whether a drag has started yet. They check the
+  // distance from the press-start point to decide whether to begin
+  // a drag.
   useEffect(() => {
-    if (!dragging) return;
+    if (!pressStartRef.current && !dragging) return undefined;
     const onMove = (e) => {
       const t = e.touches?.[0] || e;
+      const start = pressStartRef.current;
+      if (!start) return;
+      const dx = t.clientX - start.x;
+      const dy = t.clientY - start.y;
+      const moved = Math.hypot(dx, dy);
+      if (!dragging && moved < DRAG_THRESHOLD) return;
+      if (!dragging) {
+        // Crossed threshold: start dragging immediately. Vibrate on
+        // supported devices to confirm.
+        setDragging(true);
+        draggedRef.current = true;
+        try { navigator.vibrate?.(10); } catch (_) {}
+      }
       setPos(clampToViewport(t.clientX - CHIP_SIZE / 2, t.clientY - CHIP_SIZE / 2));
-      moveRef.current = true;
       if (e.touches) e.preventDefault();
     };
     const onUp = () => {
-      setDragging(false);
-      // Save the final position. Use a small timeout so the latest
-      // setPos from the last mousemove has settled into state.
-      setTimeout(() => {
-        setPos(p => {
-          savePos(therapist?.id, p.x, p.y);
-          return p;
-        });
-      }, 0);
+      const wasDragging = dragging;
+      pressStartRef.current = null;
+      if (wasDragging) {
+        setDragging(false);
+        setTimeout(() => {
+          setPos(p => {
+            savePos(therapist?.id, p.x, p.y);
+            return p;
+          });
+        }, 0);
+      }
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -209,20 +221,12 @@ export default function FloatingBookingChip({ therapist }) {
 
   if (!bookingUrl) return null;
 
-  const handleChipClick = (e) => {
-    // If we just finished a drag, swallow the click so the popover
-    // doesn't open on release.
-    if (dragging || moveRef.current) {
-      moveRef.current = false;
+  const handleChipClick = () => {
+    // If the gesture became a drag, swallow the click so the popover
+    // does not open on release.
+    if (draggedRef.current) {
+      draggedRef.current = false;
       return;
-    }
-    if (dragStartRef.current) {
-      const dx = Math.abs((e.clientX || 0) - dragStartRef.current.x);
-      const dy = Math.abs((e.clientY || 0) - dragStartRef.current.y);
-      if (dx > 4 || dy > 4) {
-        dragStartRef.current = null;
-        return;
-      }
     }
     setOpen(v => !v);
   };
@@ -230,6 +234,11 @@ export default function FloatingBookingChip({ therapist }) {
   const handleOpenBooking = () => {
     openExternal(bookingUrl);
     setOpen(false);
+  };
+
+  const handleSendSms = () => {
+    setOpen(false);
+    if (onSendSms) onSendSms();
   };
 
   const handleCopy = async () => {
@@ -302,6 +311,30 @@ export default function FloatingBookingChip({ therapist }) {
             <span style={{ fontSize: 16, color: '#2A5741' }}>↗</span>
             Open booking page
           </button>
+          {onSendSms && (
+            <button
+              type="button"
+              onClick={handleSendSms}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                width: '100%',
+                background: 'transparent',
+                border: 'none',
+                padding: '10px 12px',
+                borderRadius: 8,
+                fontSize: 13, fontWeight: 600,
+                color: '#1F2937',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                textAlign: 'left',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F6F2'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+            >
+              <span style={{ fontSize: 16, color: '#2A5741' }}>💬</span>
+              Send via SMS
+            </button>
+          )}
           <button
             type="button"
             onClick={handleCopy}
@@ -331,28 +364,26 @@ export default function FloatingBookingChip({ therapist }) {
             borderTop: '1px solid #F3F0E8',
             marginTop: 4,
           }}>
-            Hold to drag anywhere.
+            Drag the chip to move it anywhere.
           </div>
         </div>
       )}
 
       {/* Chip body. Sage-only gradient (no near-black anchor) so the
           surface reads as a tool, not a hole. Brightens visibly when
-          dragging so HK can confirm the long-press registered. */}
+          dragging so the gesture is confirmed. Drag starts the moment
+          the pointer moves a few pixels while pressed: no long-press
+          timer. A still tap opens the popover. */}
       <button
         type="button"
         aria-label="Booking link tools"
-        title="Booking link tools (hold to drag)"
+        title="Booking link tools (drag to reposition)"
         onClick={handleChipClick}
-        onMouseDown={(e) => startLongPress(e.clientX, e.clientY)}
-        onMouseUp={cancelLongPress}
-        onMouseLeave={cancelLongPress}
+        onMouseDown={(e) => onPressStart(e.clientX, e.clientY)}
         onTouchStart={(e) => {
           const t = e.touches[0];
-          startLongPress(t.clientX, t.clientY);
+          onPressStart(t.clientX, t.clientY);
         }}
-        onTouchEnd={cancelLongPress}
-        onTouchCancel={cancelLongPress}
         style={{
           width: CHIP_SIZE, height: CHIP_SIZE,
           borderRadius: '50%',
