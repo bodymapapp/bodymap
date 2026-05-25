@@ -42,6 +42,358 @@ const makeSample = (today) => [
   {id:'s7',client:'Jess M.',   time:'3:00 PM', duration:60,date:addDays(today,4),status:'pending-intake',sessions:2, preview:true,service:'Deep Tissue',    focus:[],notes:''},
 ];
 
+// ═════════════════════════════════════════════════════════════════
+// Cockpit section helpers (HK May 25 2026, Phase 20)
+// Shared building blocks for the slide-over redesign: collapsible
+// section card, body-map preview, last-session summary, patterns
+// readout, and inline SOAP/recap editors.
+// ═════════════════════════════════════════════════════════════════
+
+function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
+  return (
+    <div
+      data-cockpit-section={sectionKey}
+      style={{
+        background: warn ? '#FFFBEB' : '#fff',
+        border: warn ? '1px solid #FDE68A' : '1px solid #E5DDD2',
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '12px 14px',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+          fontFamily: 'inherit',
+        }}
+      >
+        <div style={{
+          width: 36, height: 36, borderRadius: 8,
+          background: isOpen ? '#EEF3EE' : '#F5F0E8',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 16, flexShrink: 0,
+        }}>
+          {icon}
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', lineHeight: 1.3 }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{subtitle}</div>}
+        </div>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: isOpen ? '#2A5741' : '#EEF3EE',
+          color: isOpen ? '#fff' : '#2A5741',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 14, flexShrink: 0,
+          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.18s ease, background 0.18s ease',
+        }}>
+          ▾
+        </div>
+      </button>
+      {isOpen && (
+        <div style={{ padding: '0 14px 14px' }}>
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BodyMapPreview({ session }) {
+  const [showMap, setShowMap] = useState(false);
+  if (!session) return null;
+  const hasZones = (session.front_focus || []).length || (session.back_focus || []).length || (session.front_avoid || []).length || (session.back_avoid || []).length;
+  if (!hasZones) return null;
+  const diagramData = zonesToBodyDiagram({
+    front_focus: session.front_focus || [],
+    back_focus: session.back_focus || [],
+    front_avoid: session.front_avoid || [],
+    back_avoid: session.back_avoid || [],
+  });
+  return (
+    <div style={{ borderTop: '1px solid #F3F4F6', marginTop: 10, paddingTop: 12 }}>
+      <button
+        type="button"
+        onClick={() => setShowMap(v => !v)}
+        style={{
+          fontSize: 12, color: '#2A5741', fontWeight: 600,
+          background: 'transparent', border: 'none', cursor: 'pointer',
+          padding: '4px 0', fontFamily: 'inherit',
+        }}
+      >
+        {showMap ? '▾ Hide body map' : '▸ Show body map'}
+      </button>
+      {showMap && (
+        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
+          <BodyDiagram {...diagramData} size={160} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LastSessionContent({ session }) {
+  let soap = { S: '', O: '', A: '', P: '', noteToClient: '' };
+  let isLegacy = false;
+  try {
+    const p = JSON.parse(session.therapist_notes || '');
+    if (p && p.__soap) soap = p;
+  } catch (_) { isLegacy = true; }
+  const hasSoap = !!(soap.S || soap.O || soap.A || soap.P);
+  const focusZones = [...(session.front_focus || []), ...(session.back_focus || [])];
+  return (
+    <div>
+      {focusZones.length > 0 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Focused on</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>
+            {focusZones.map(z => zoneLabel(z)).join(', ')}
+          </div>
+        </div>
+      )}
+      {hasSoap && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your notes (Plan)</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, fontStyle: 'italic' }}>
+            {soap.P || soap.A || soap.O || soap.S || ''}
+          </div>
+        </div>
+      )}
+      {isLegacy && session.therapist_notes && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your notes</div>
+          <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, fontStyle: 'italic' }}>
+            {session.therapist_notes}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PatternsContent({ allSessions }) {
+  // Compute zone frequency, pressure trend, cadence, conditions
+  const zoneCount = {};
+  const pressures = [];
+  const dates = [];
+  allSessions.forEach(s => {
+    (s.front_focus || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
+    (s.back_focus  || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
+    if (s.pressure) pressures.push(s.pressure);
+    if (s.created_at) dates.push(new Date(s.created_at));
+  });
+  const topZones = Object.entries(zoneCount).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const avgPressure = pressures.length ? Math.round(pressures.reduce((a, b) => a + b, 0) / pressures.length * 10) / 10 : null;
+  let avgGap = null;
+  if (dates.length >= 2) {
+    const sorted = dates.slice().sort((a, b) => b.getTime() - a.getTime());
+    const gaps = [];
+    for (let i = 1; i < Math.min(sorted.length, 6); i++) {
+      gaps.push((sorted[i - 1].getTime() - sorted[i].getTime()) / 86400000);
+    }
+    if (gaps.length) avgGap = Math.round(gaps.reduce((a, b) => a + b, 0) / gaps.length);
+  }
+  return (
+    <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.65 }}>
+      {topZones.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <strong>Recurring focus:</strong> {topZones.map(([z, n]) => `${zoneLabel(z)} (${n}×)`).join(', ')}
+        </div>
+      )}
+      {avgPressure && (
+        <div style={{ marginBottom: 10 }}>
+          <strong>Avg pressure preference:</strong> {avgPressure}/5 ({pressureLabel(Math.round(avgPressure))})
+        </div>
+      )}
+      {avgGap && (
+        <div style={{ marginBottom: 10 }}>
+          <strong>Cadence:</strong> ~{avgGap} days between visits
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RecordEditor({ session, parsedSoap, onSaved }) {
+  const [S, setS] = useState(parsedSoap.S || '');
+  const [O, setO] = useState(parsedSoap.O || '');
+  const [A, setA] = useState(parsedSoap.A || '');
+  const [P, setP] = useState(parsedSoap.P || '');
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  useEffect(() => {
+    setS(parsedSoap.S || ''); setO(parsedSoap.O || ''); setA(parsedSoap.A || ''); setP(parsedSoap.P || '');
+  }, [parsedSoap.S, parsedSoap.O, parsedSoap.A, parsedSoap.P]);
+
+  async function save() {
+    if (!session?.id) return;
+    setSaving(true);
+    const payload = {
+      __soap: true,
+      S, O, A, P,
+      noteToClient: parsedSoap.noteToClient || '',
+    };
+    await supabase
+      .from('sessions')
+      .update({ therapist_notes: JSON.stringify(payload), completed: true })
+      .eq('id', session.id);
+    setSaving(false);
+    setSavedAt(new Date());
+    if (onSaved) onSaved();
+  }
+
+  const fieldStyle = {
+    width: '100%',
+    minHeight: 56,
+    padding: '10px 12px',
+    border: '1px solid #E5DDD2',
+    borderRadius: 8,
+    fontSize: 13,
+    lineHeight: 1.55,
+    fontFamily: 'inherit',
+    outline: 'none',
+    resize: 'vertical',
+    boxSizing: 'border-box',
+    background: '#FAFAF7',
+    marginBottom: 10,
+  };
+
+  return (
+    <div>
+      {parsedSoap.isLegacy && parsedSoap.legacyText && (
+        <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#78350F', marginBottom: 10 }}>
+          Earlier notes saved in legacy format: <em>"{parsedSoap.legacyText}"</em>. Re-save below to upgrade.
+        </div>
+      )}
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Subjective</div>
+      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client said: pain, history, what they want" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Objective</div>
+      <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Assessment</div>
+      <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>Plan</div>
+      <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            background: saving ? '#9CA3AF' : '#2A5741',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: saving ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {saving ? 'Saving...' : 'Save session record'}
+        </button>
+        {savedAt && (
+          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
+            ✓ Saved at {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RecapEditor({ session, parsedSoap, onSaved }) {
+  const initial = parsedSoap.noteToClient || session?.public_notes || '';
+  const [text, setText] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
+  useEffect(() => { setText(parsedSoap.noteToClient || session?.public_notes || ''); }, [parsedSoap.noteToClient, session?.public_notes]);
+
+  async function save() {
+    if (!session?.id) return;
+    setSaving(true);
+    let payload;
+    try {
+      const existing = JSON.parse(session.therapist_notes || '{}');
+      if (existing && existing.__soap) {
+        payload = { ...existing, noteToClient: text };
+      } else {
+        payload = { __soap: true, S: '', O: '', A: '', P: '', noteToClient: text };
+      }
+    } catch (_) {
+      payload = { __soap: true, S: '', O: '', A: '', P: '', noteToClient: text };
+    }
+    await supabase
+      .from('sessions')
+      .update({ therapist_notes: JSON.stringify(payload), public_notes: text })
+      .eq('id', session.id);
+    setSaving(false);
+    setSavedAt(new Date());
+    if (onSaved) onSaved();
+  }
+
+  return (
+    <div>
+      <div style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.6, marginBottom: 8 }}>
+        Warm note to send the client. Keep it short, kind, forward-looking.
+      </div>
+      <textarea
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder="Thanks for coming in today. I worked on your right shoulder and gave you a doorway stretch to take home..."
+        style={{
+          width: '100%',
+          minHeight: 100,
+          padding: '10px 12px',
+          border: '1px solid #E5DDD2',
+          borderRadius: 8,
+          fontSize: 13,
+          lineHeight: 1.55,
+          fontFamily: 'inherit',
+          outline: 'none',
+          resize: 'vertical',
+          boxSizing: 'border-box',
+          background: '#FAFAF7',
+          marginBottom: 10,
+        }}
+      />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          onClick={save}
+          disabled={saving}
+          style={{
+            background: saving ? '#9CA3AF' : '#2A5741',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 10,
+            padding: '10px 16px',
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: saving ? 'wait' : 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          {saving ? 'Saving...' : 'Save recap'}
+        </button>
+        {savedAt && (
+          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
+            ✓ Saved at {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // HK May 24 2026 (Phase 13.12b): the appt prop is owned by the
   // parent timeline. When the user picks a client via the inline
@@ -523,6 +875,37 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </div>
             </div>
           </div>
+
+          {/* HK May 25 2026 (Phase 20.1): single highest-priority
+              insight line under the status row. Surfaces medical
+              flags, cadence drift, recurring focus zones, or warm
+              new-client cues. Computed in insightLine memo above.
+              Hidden when cockpit is still loading or there is truly
+              nothing to surface (rare). */}
+          {!appt.preview && insightLine && (
+            <div style={{
+              display:'flex',
+              alignItems:'flex-start',
+              gap:8,
+              marginTop:10,
+              padding:'10px 12px',
+              borderRadius:10,
+              background: insightLine.tone === 'warn' ? '#FEF3C7' : insightLine.tone === 'pattern' ? '#FFFBEB' : insightLine.tone === 'fresh' ? '#ECFDF5' : '#F0F7F1',
+              border: insightLine.tone === 'warn' ? '1px solid #FDE68A' : '1px solid #DCE7DC',
+            }}>
+              <span style={{fontSize:14, lineHeight:1.3}}>{insightLine.icon}</span>
+              <div style={{
+                fontSize:12.5,
+                color: insightLine.tone === 'warn' ? '#78350F' : '#374151',
+                lineHeight:1.5,
+                fontWeight: insightLine.tone === 'warn' ? 700 : 500,
+                flex:1,
+              }}>
+                {insightLine.text}
+              </div>
+            </div>
+          )}
+
           {editTime && !appt.preview && (
             <div style={{background:'#F0FDF4',border:'1.5px solid #86EFAC',borderRadius:10,padding:'14px 16px',margin:'0 0 0 0'}}>
               <div style={{fontSize:12,fontWeight:700,color:'#2A5741',marginBottom:10}}>Edit session times</div>
@@ -544,42 +927,294 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </button>
             </div>
           )}
+
+          {/* HK May 25 2026 (Phase 20.2): DocumentJourney inline.
+              The 4 dots (Intake / Brief / Record / Recap) live HERE
+              in the slide-over, not on a separate page. Each dot is
+              tappable; we scroll to + auto-expand the matching panel
+              below. Same JourneyDot component used by SessionDetail
+              page, so visual is identical. */}
+          {!appt.preview && currentSession && (
+            <div style={{marginTop:14}}>
+              <DocumentJourney
+                session={currentSession}
+                aiEnabled={therapist?.ai_enabled !== false}
+                onSelect={(dotNum) => {
+                  const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
+                  setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
+                  setTimeout(() => {
+                    const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }}
+                onSoapClick={() => {
+                  setOpenSections(prev => ({ ...prev, record: true }));
+                  setTimeout(() => {
+                    const el = document.querySelector('[data-cockpit-section="record"]');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }}
+              />
+            </div>
+          )}
         </div>
         <div style={{flex:1,padding:20,display:'flex',flexDirection:'column',gap:14}}>
-          {/* Status chips row: deposit + reminder + notes
-              Collapsed from heavyweight cards into inline horizontal chips
-              so they don't compete with the action buttons below. */}
-          {!appt.preview && (appt.deposit_required || true) && (
+          {/* HK May 25 2026 (Phase 20.1): cleaner status pills. Replaces
+              the prior verbose 'Reminder sent / pending' line which
+              read as if intake was pending. Now uses paid + reminder
+              + deposit as compact pills, only shown when relevant. */}
+          {!appt.preview && (
             <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center'}}>
+              {paidTotalCents > 0 && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:700,border:'1px solid #BBF7D0'}}>
+                  <span>💚</span> Paid ${(paidTotalCents / 100).toFixed(0)}
+                </span>
+              )}
               {appt.deposit_required && (
                 <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:appt.deposit_paid?'#F0FDF4':'#FEF3C7',color:appt.deposit_paid?'#15803D':'#92400E',fontSize:11,fontWeight:600,border:`1px solid ${appt.deposit_paid?'#BBF7D0':'#FDE68A'}`}}>
                   <span style={{fontSize:11}}>{appt.deposit_paid?'✓':'⏳'}</span>
-                  {appt.deposit_paid?`Deposit paid · $${((appt.deposit_amount||0)/100).toFixed(0)}`:`Deposit pending · $${((appt.deposit_amount||0)/100).toFixed(0)}`}
+                  {appt.deposit_paid?`Deposit paid`:`Deposit pending`}
                 </span>
               )}
-              <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:appt.reminder_sent?'#F0FDF4':'#F3F4F6',color:appt.reminder_sent?'#15803D':'#6B7280',fontSize:11,fontWeight:600,border:`1px solid ${appt.reminder_sent?'#BBF7D0':'#E5E7EB'}`}}>
-                <span style={{fontSize:11}}>{appt.reminder_sent?'✓':'⏱'}</span>
-                {appt.reminder_sent?'Reminder sent':'Reminder pending'}
-              </span>
+              {/* Reminder pill: show 'Reminded' (green) if sent, hide
+                  otherwise. The prior 'Reminder pending' label looked
+                  like an intake issue and confused the therapist.
+                  When the cron fires the 24h reminder, this flips. */}
+              {appt.reminder_sent && (
+                <span style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',borderRadius:999,background:'#F0FDF4',color:'#15803D',fontSize:11,fontWeight:600,border:'1px solid #BBF7D0'}}>
+                  <span>🔔</span> Reminded
+                </span>
+              )}
             </div>
           )}
           {appt.notes && <div style={{background:'#FFFBEB',border:'1px solid #FCD34D',borderRadius:10,padding:'10px 14px',fontSize:13,color:'#92400E',lineHeight:1.5,fontFamily:'Georgia, serif',fontStyle:'italic'}}>{appt.notes}</div>}
+
+          {/* ══════════════════════════════════════════════════════════
+              COCKPIT PANELS (HK May 25 2026 Phase 20.3-20.9)
+              The therapist's full session context lives here. Each
+              section is a CockpitSection (collapsible card with icon,
+              title, count badge, chevron). Default open/close state
+              is computed above in openSections useState. Tap any
+              header to toggle that section. DocumentJourney dots
+              auto-scroll + auto-expand the matching panel.
+              ══════════════════════════════════════════════════════════ */}
+
+          {!appt.preview && currentSession && (
+            <>
+              {/* ─── Brief panel (intake summary) ─── */}
+              <CockpitSection
+                sectionKey="brief"
+                icon="🌿"
+                title="Today's Brief"
+                subtitle={intakeDone ? "What this client wants today" : "Intake not yet submitted"}
+                isOpen={openSections.brief}
+                onToggle={() => toggleSection('brief')}
+              >
+                {!intakeDone && (
+                  <div style={{fontSize:13, color:'#6B7280', lineHeight:1.6, padding:'8px 0'}}>
+                    Your client hasn't filled out their intake yet. Send them the link from below, or fill it out with them at the start of the session.
+                  </div>
+                )}
+                {intakeDone && currentSession && (
+                  <>
+                    {/* Focus zones */}
+                    {((currentSession.front_focus || []).length > 0 || (currentSession.back_focus || []).length > 0) && (
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Focus areas</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                          {(currentSession.front_focus || []).map((z, i) => (
+                            <span key={`ff-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#DCFCE7', color:'#15803D', fontSize:12, fontWeight:600, border:'1px solid #BBF7D0'}}>
+                              {zoneLabel(z)}
+                            </span>
+                          ))}
+                          {(currentSession.back_focus || []).map((z, i) => (
+                            <span key={`bf-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#DCFCE7', color:'#15803D', fontSize:12, fontWeight:600, border:'1px solid #BBF7D0'}}>
+                              {zoneLabel(z)} (back)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Avoid zones */}
+                    {((currentSession.front_avoid || []).length > 0 || (currentSession.back_avoid || []).length > 0) && (
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Avoid</div>
+                        <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
+                          {(currentSession.front_avoid || []).map((z, i) => (
+                            <span key={`fa-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#FEF2F2', color:'#991B1B', fontSize:12, fontWeight:600, border:'1px solid #FECACA'}}>
+                              {zoneLabel(z)}
+                            </span>
+                          ))}
+                          {(currentSession.back_avoid || []).map((z, i) => (
+                            <span key={`ba-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#FEF2F2', color:'#991B1B', fontSize:12, fontWeight:600, border:'1px solid #FECACA'}}>
+                              {zoneLabel(z)} (back)
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Pressure */}
+                    {currentSession.pressure && (
+                      <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, minWidth:80}}>Pressure</div>
+                        <div style={{display:'flex', alignItems:'center', gap:4}}>
+                          {[1,2,3,4,5].map(n => (
+                            <span key={n} style={{
+                              width:14, height:14, borderRadius:'50%',
+                              background: n <= currentSession.pressure ? '#2A5741' : '#E5E7EB',
+                              display:'inline-block',
+                            }}/>
+                          ))}
+                          <span style={{marginLeft:8, fontSize:13, color:'#374151', fontWeight:600}}>
+                            {pressureLabel(currentSession.pressure)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Goal */}
+                    {currentSession.goal && (
+                      <div style={{marginBottom:14, display:'flex', alignItems:'flex-start', gap:10}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, minWidth:80, paddingTop:2}}>Goal</div>
+                        <div style={{fontSize:13, color:'#374151', flex:1, lineHeight:1.5}}>{goalLabel(currentSession.goal)}</div>
+                      </div>
+                    )}
+
+                    {/* Preferences (compact line) */}
+                    {(currentSession.room_temp || currentSession.music || currentSession.conversation || currentSession.draping) && (
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Preferences</div>
+                        <div style={{fontSize:13, color:'#374151', lineHeight:1.6}}>
+                          {[
+                            currentSession.room_temp && preferenceLabel('room_temp', currentSession.room_temp),
+                            currentSession.music && preferenceLabel('music', currentSession.music),
+                            currentSession.lighting && preferenceLabel('lighting', currentSession.lighting),
+                            currentSession.conversation && preferenceLabel('conversation', currentSession.conversation),
+                            currentSession.draping && preferenceLabel('draping', currentSession.draping),
+                            currentSession.oil_pref && preferenceLabel('oil_pref', currentSession.oil_pref),
+                          ].filter(Boolean).join(' · ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Client notes */}
+                    {currentSession.client_notes && (
+                      <div style={{marginBottom:14}}>
+                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Notes from client</div>
+                        <div style={{fontSize:13, color:'#374151', lineHeight:1.6, fontStyle:'italic', background:'#FAFAFA', padding:'10px 12px', borderRadius:8, border:'1px solid #F3F4F6'}}>
+                          "{currentSession.client_notes}"
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Body map (collapsible inside the panel) */}
+                    <BodyMapPreview session={currentSession} />
+                  </>
+                )}
+              </CockpitSection>
+
+              {/* ─── Medical flags panel ─── */}
+              {(medicalFlagsFired.length > 0 || currentSession?.med_flag === 'none') && (
+                <CockpitSection
+                  sectionKey="medical"
+                  icon={medicalFlagsFired.length > 0 ? "⚠️" : "🩺"}
+                  title="Medical flags"
+                  subtitle={medicalFlagsFired.length > 0 ? `${medicalFlagsFired.length} flagged` : "None flagged"}
+                  isOpen={openSections.medical}
+                  onToggle={() => toggleSection('medical')}
+                  warn={medicalFlagsFired.length > 0}
+                >
+                  {medicalFlagsFired.length === 0 && (
+                    <div style={{fontSize:13, color:'#6B7280', lineHeight:1.6, padding:'4px 0'}}>
+                      Client reported no medical concerns on intake.
+                    </div>
+                  )}
+                  {medicalFlagsFired.length > 0 && (
+                    <ul style={{margin:0, padding:'0 0 0 18px'}}>
+                      {medicalFlagsFired.map((f, i) => (
+                        <li key={i} style={{fontSize:13, color:'#78350F', lineHeight:1.65, marginBottom:4}}>
+                          {f.label}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </CockpitSection>
+              )}
+
+              {/* ─── Last session panel (returning clients only) ─── */}
+              {lastSession && (
+                <CockpitSection
+                  sectionKey="last_session"
+                  icon="📝"
+                  title="Last session"
+                  subtitle={lastSession.created_at ? `${Math.floor((Date.now() - new Date(lastSession.created_at).getTime()) / 86400000)} days ago` : ''}
+                  isOpen={openSections.last_session}
+                  onToggle={() => toggleSection('last_session')}
+                >
+                  <LastSessionContent session={lastSession} />
+                </CockpitSection>
+              )}
+
+              {/* ─── Patterns panel (3+ sessions) ─── */}
+              {allSessions.length >= 3 && (
+                <CockpitSection
+                  sectionKey="patterns"
+                  icon="📊"
+                  title="Patterns"
+                  subtitle={`${allSessions.length} sessions on file`}
+                  isOpen={openSections.patterns}
+                  onToggle={() => toggleSection('patterns')}
+                >
+                  <PatternsContent allSessions={allSessions} />
+                </CockpitSection>
+              )}
+
+              {/* ─── Record panel (SOAP entry inline) ─── */}
+              <CockpitSection
+                sectionKey="record"
+                icon="✍️"
+                title="Session record"
+                subtitle={hasSoapContent ? 'Notes saved · tap to edit' : 'Capture what happened'}
+                isOpen={openSections.record}
+                onToggle={() => toggleSection('record')}
+              >
+                <RecordEditor
+                  session={currentSession}
+                  parsedSoap={parsedSoap}
+                  onSaved={() => refreshCockpit()}
+                />
+              </CockpitSection>
+
+              {/* ─── Recap panel (warm message to client) ─── */}
+              {currentSession?.completed && (
+                <CockpitSection
+                  sectionKey="recap"
+                  icon="💌"
+                  title="Client recap"
+                  subtitle={hasRecap ? 'Recap saved · tap to view' : 'Send a warm note to client'}
+                  isOpen={openSections.recap}
+                  onToggle={() => toggleSection('recap')}
+                >
+                  <RecapEditor
+                    session={currentSession}
+                    parsedSoap={parsedSoap}
+                    onSaved={() => refreshCockpit()}
+                  />
+                </CockpitSection>
+              )}
+            </>
+          )}
+
           <div style={{display:'flex',flexDirection:'column',gap:14}}>
-            {/* Intake-done state: Open Session Record (primary teal/forest)
-                + Open Pre-Session Brief (sage ghost). Vertically stacked
-                because both are equally legitimate next steps. */}
-            {appt.status==='intake-done' && appt.sessionId && appt.clientId && (
-              <a href={`/dashboard/clients/${appt.clientId}/sessions/${appt.sessionId}`}
-                style={{display:'block',background:'#2A5741',color:'#fff',borderRadius:12,padding:'13px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center',letterSpacing:'0.01em'}}>
-                Open Session Record
-              </a>
-            )}
-            {appt.status==='intake-done' && appt.sessionId && appt.clientId && therapist?.ai_enabled !== false && (
-              <a href={`/brief/pre/${appt.sessionId}`} target="_blank" rel="noreferrer"
-                style={{display:'block',background:'transparent',color:'#2A5741',border:'1.5px solid #D6E0D4',borderRadius:12,padding:'11px 16px',fontSize:14,fontWeight:600,textDecoration:'none',textAlign:'center'}}>
-                Open Pre-Session Brief
-              </a>
-            )}
+            {/* HK May 25 2026 (Phase 20.11): the old 'Open Session
+                Record' and 'Open Pre-Session Brief' buttons were
+                removed here. The Brief panel above shows the intake
+                inline; the Record panel above edits SOAP notes inline.
+                Therapists no longer need to leave the slide-over to
+                view or write a session. Legacy SessionDetail page
+                URL still works for deep-linked / printable views. */}
             {/* Pending-intake state: Send Intake (sage tone, NOT solid forest
                 so it doesn't compete with Checkout below). Paired with Copy Link
                 in a horizontal row for compactness. */}
