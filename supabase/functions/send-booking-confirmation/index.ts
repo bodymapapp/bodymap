@@ -225,6 +225,11 @@ serve(async (req) => {
     const servicePrice = service?.price;
     const intakeUrl = `https://mybodymap.app/${therapist.custom_url}?name=${encodeURIComponent(clientName)}&email=${encodeURIComponent(clientEmail || "")}&booking_id=${booking.id}`;
     const dashboardUrl = `https://mybodymap.app/dashboard`;
+    // HK May 25 2026: pending-approval bookings should send the
+    // therapist to /dashboard/schedule where the Pending Requests
+    // panel lives at the top, NOT /dashboard which is the home tab.
+    // Confirmed bookings still go to home dashboard.
+    const therapistCtaUrl = `https://mybodymap.app/dashboard/schedule`;
     const status = booking.status || "confirmed";
     const isPendingApproval = status === "pending-approval";
 
@@ -440,7 +445,7 @@ serve(async (req) => {
         ${booking.client_phone ? `<br/><strong>Phone:</strong> <a href="tel:${escapeHtml(booking.client_phone)}" style="color:${C.forest};">${escapeHtml(booking.client_phone)}</a>` : ""}
       </div>
 
-      <a href="${dashboardUrl}" style="display:inline-block;background:${C.forest};color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open dashboard</a>
+      <a href="${isPendingApproval ? therapistCtaUrl : dashboardUrl}" style="display:inline-block;background:${C.forest};color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">${isPendingApproval ? "Review request" : "Open dashboard"}</a>
 
       <div style="font-size:11px;color:${C.gray};margin-top:24px;line-height:1.6;">
         You are getting this because "New booking came in" is on in your notification settings.
@@ -485,11 +490,16 @@ serve(async (req) => {
     // Definition: count all bookings for this therapist with the
     // same client_email (case-insensitive). If count is exactly 1,
     // this is the first one, and we treat the client as new.
-    // Pending-approval bookings count because they represent the
-    // first contact regardless of approval outcome.
+    // HK May 25 2026: SKIP this notification when the booking is
+    // pending-approval. Previously it fired regardless, and the copy
+    // said "just booked their first session with you" - which is
+    // misleading when the booking is actually awaiting therapist
+    // approval. The therapist already received a "New booking
+    // REQUEST" email from the main flow above. Firing this duplicate
+    // confused therapists into thinking the booking was confirmed.
     try {
       const normalizedEmail = (booking.client_email || "").trim().toLowerCase();
-      if (normalizedEmail) {
+      if (normalizedEmail && !isPendingApproval) {
         const { count } = await supabase
           .from("bookings")
           .select("id", { count: "exact", head: true })
@@ -508,7 +518,7 @@ serve(async (req) => {
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6B9E80;margin-bottom:8px;">✨ First-time client</div>
       <h1 style="font-family:Georgia,serif;font-size:24px;font-weight:700;color:#2A5741;margin:0 0 6px;">${escapeHtml(clientName)}</h1>
       <p style="font-size:14px;color:#6B7280;margin:0 0 18px;line-height:1.6;">${summary}</p>
-      <a href="https://mybodymap.app/dashboard/clients" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Clients</a>
+      <a href="https://mybodymap.app/dashboard/schedule" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">View on schedule</a>
       <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
         You are getting this because "New client signup" is on in your notification settings.
       </div>
@@ -521,7 +531,7 @@ serve(async (req) => {
             title,
             body: summary,
             icon: "✨",
-            linkUrl: "/dashboard/clients",
+            linkUrl: "/dashboard/schedule",
             payload: {
               client_name: clientName,
               client_email: clientEmail,

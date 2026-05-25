@@ -2056,6 +2056,19 @@ function ServicesAndAvailability({ therapist }) {
         onToggle={() => setOpenSubRow(openSubRow === 'deposit' ? null : 'deposit')}
       >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 8px' }}>Require first-time clients to pay a deposit when booking. Repeat clients are never charged.</p>
+        {/* HK May 25 2026: surface the known interaction with Approve
+            new clients. When both are on, the booking page does NOT
+            collect the deposit at request time (it would be wasteful
+            if the therapist declines). The intended flow is that
+            after approval, the deposit is collected via card-on-file
+            charge. That auto-charge mechanism is in progress (Phase
+            25b queued); for now therapists need to manually charge
+            the deposit after approving. */}
+        {depositEnabled && therapist?.require_approval && (
+          <p style={{ fontSize:'12px', color:'#92400E', background:'#FEF3C7', border:'1px solid #FDE68A', borderRadius:8, padding:'10px 12px', margin:'0 0 14px', lineHeight:1.55 }}>
+            ⚠️ Heads up: you also have <strong>Approve new clients</strong> on. With both enabled, the deposit is <strong>not</strong> automatically collected when the client requests a booking. After you approve, charge the deposit yourself from the session slide-over (Charge button). Auto-charge on approval is coming soon.
+          </p>
+        )}
         <p style={{ fontSize:'11px', color:C2.gray, background:C2.beige, borderRadius:8, padding:'8px 10px', margin:'0 0 14px', lineHeight:1.5 }}>
           💡 Prefer Square or cash? Keep deposits off, clients pay you directly at the session. MyBodyMap handles scheduling, intake, and reminders regardless.
         </p>
