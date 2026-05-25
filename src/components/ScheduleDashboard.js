@@ -1551,11 +1551,12 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // appt.sessionId stayed null because the parent never refetched
   // bookings after the waiver inserted a session row.
   //
-  // Fix: DetailPanel reads both directly from the database on mount.
-  // One small read of the booking's intake_waived_at + one fallback
-  // sessions query by booking_id. The waiver state survives the
-  // round-trip and the session row created for the waiver is loaded
-  // so SOAP and Recap have a row to save against.
+  // Round 4: also CREATE a session row if one is missing when the
+  // waiver flag is set. The earlier onChange would create a row, but
+  // if that INSERT silently failed (RLS, network blip, race) the
+  // therapist was stranded with intake_waived_at set but no session
+  // row to save SOAP against. This effect now fixes that case
+  // automatically the next time the panel mounts.
   useEffect(() => {
     if (!appt?.id) return;
     let alive = true;
@@ -1573,18 +1574,49 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         // onChange path.
         setRecordOverride(true);
         setRecapOverride(true);
-        // Also load the placeholder/related session row from sessions
-        // by booking_id if the parent didn't include sessionId on
-        // this appt. This is the row the waiver onChange created.
-        if (!appt.sessionId) {
-          const { data: sess } = await supabase
+        // Find or create the placeholder session row tied to this
+        // booking so SOAP + Recap editors have a row to save against.
+        // Prefer the existing row by booking_id over appt.sessionId
+        // since the parent may not have refetched after the original
+        // waiver onChange created the row.
+        const { data: existing } = await supabase
+          .from('sessions')
+          .select('*')
+          .eq('booking_id', appt.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (!alive) return;
+        if (existing) {
+          setCurrentSession(existing);
+        } else if (appt.clientId && therapist?.id) {
+          // No session row found, but waiver flag is set: the original
+          // INSERT must have failed. Try again now. Race-safe enough:
+          // the booking_id lookup above just returned nothing, and
+          // even if a parallel client also tries to insert, the worst
+          // case is two rows for the same booking which is benign
+          // (the cockpit reads the most recent one).
+          const { data: created, error: sErr } = await supabase
             .from('sessions')
+            .insert({
+              therapist_id: therapist.id,
+              client_id: appt.clientId,
+              booking_id: appt.id,
+              front_focus: [],
+              back_focus: [],
+              front_avoid: [],
+              back_avoid: [],
+              completed: false,
+              intake_added_by: 'waived',
+            })
             .select('*')
-            .eq('booking_id', appt.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (alive && sess) setCurrentSession(sess);
+            .single();
+          if (!alive) return;
+          if (sErr) {
+            console.warn('[waiver-recover] session insert failed', sErr);
+          } else if (created) {
+            setCurrentSession(created);
+          }
         }
       }
     })();
@@ -2170,9 +2202,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 icon="🧭"
                 title="Session journey"
                 subtitle={
-                  !currentSession ? "Awaiting client intake"
-                    : currentSession.completed ? "Session complete"
-                    : intakeDone ? "Intake filled, ready for session"
+                  currentSession?.completed ? "Session complete"
+                    : intakeDone ? (intakeWaivedLocal ? "Intake waived, ready for session" : "Intake filled, ready for session")
                     : "Awaiting client intake"
                 }
                 isOpen={openSections.journey !== false}
@@ -2574,9 +2605,172 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
 
                     {/* Body map (collapsible inside the panel) */}
                     <BodyMapPreview session={currentSession} />
+
+                    {/* HK May 25 2026 (round 4): distinction between
+                        summary panel and full doc. The cockpit
+                        sections are summarized views; the full
+                        document opens in the inline drawer. */}
+                    <button
+                      type="button"
+                      onClick={() => setDrawerDoc(2)}
+                      style={{
+                        marginTop: 14,
+                        background: 'transparent',
+                        border: '1px dashed #D6E0D4',
+                        borderRadius: 10,
+                        padding: '9px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: SO.forest,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        width: '100%',
+                        textAlign: 'center',
+                      }}
+                    >
+                      View full Pre-Session Brief →
+                    </button>
                   </>
                 )}
               </CockpitSection>
+
+              {/* ─── Record panel (SOAP entry inline) ─── */}
+              {/* Phase 22: locked for future sessions unless the
+                  therapist hits 'I'm starting now'. Past existing
+                  content (hasSoapContent) keeps the editor visible
+                  so we never hide saved work. */}
+              <CockpitSection
+                sectionKey="record"
+                icon="✍️"
+                title="Session record · SOAP"
+                subtitle={
+                  isFutureSession && !recordOverride && !hasSoapContent
+                    ? `Unlocks on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                    : hasSoapContent
+                      ? 'Notes saved · tap to edit'
+                      : '🎙️ Capture what happened, dictate or type'
+                }
+                isOpen={openSections.record}
+                onToggle={() => toggleSection('record')}
+              >
+                {!currentSession ? (
+                  /* No session yet. If the therapist already waived
+                     intake but the session row hasn't loaded yet,
+                     show a friendly transitional message instead of
+                     the 'awaiting client intake' lock copy, which
+                     reads like the waiver did nothing. */
+                  intakeWaivedLocal ? (
+                    <EmptyStateCard
+                      icon="🌿"
+                      body="Setting up this session. SOAP will be editable in a moment."
+                    />
+                  ) : (
+                    <EmptyStateCard
+                      icon="✍️"
+                      body="The SOAP record unlocks once your client fills out their intake. You can capture session notes here right after the appointment."
+                    />
+                  )
+                ) : isFutureSession && !recordOverride && !hasSoapContent ? (
+                  <LockedFutureSessionPanel
+                    apptDate={appt.date}
+                    kind="record"
+                    onOverride={() => setRecordOverride(true)}
+                  />
+                ) : (
+                  <>
+                    <RecordEditor
+                      session={currentSession}
+                      parsedSoap={parsedSoap}
+                      therapist={therapist}
+                      allSessions={allSessions}
+                      onSaved={() => refreshCockpit()}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setDrawerDoc(3)}
+                      style={{
+                        marginTop: 14,
+                        background: 'transparent',
+                        border: '1px dashed #D6E0D4',
+                        borderRadius: 10,
+                        padding: '9px 14px',
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: SO.forest,
+                        cursor: 'pointer',
+                        fontFamily: 'inherit',
+                        width: '100%',
+                        textAlign: 'center',
+                      }}
+                    >
+                      View full Session Record →
+                    </button>
+                  </>
+                )}
+              </CockpitSection>
+
+              {/* ─── Recap panel (warm message to client) ─── */}
+              {/* Phase 22: same gate. Recap only appears when the
+                  session is marked complete OR there's an existing
+                  recap to view (preserve saved content). For future
+                  sessions the therapist can still override and write
+                  one early, though sending the email is the wrong
+                  move pre-session, hence the locked default. */}
+              {(currentSession?.completed || hasRecap || (isFutureSession && recapOverride)) && (
+                <CockpitSection
+                  sectionKey="recap"
+                  icon="💌"
+                  title="Client recap"
+                  subtitle={
+                    isFutureSession && !recapOverride && !hasRecap
+                      ? `Sends after the session on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                      : hasRecap
+                        ? 'Recap saved · tap to view'
+                        : 'Send a warm note to client'
+                  }
+                  isOpen={openSections.recap}
+                  onToggle={() => toggleSection('recap')}
+                >
+                  {isFutureSession && !recapOverride && !hasRecap ? (
+                    <LockedFutureSessionPanel
+                      apptDate={appt.date}
+                      kind="recap"
+                      onOverride={() => setRecapOverride(true)}
+                    />
+                  ) : (
+                    <>
+                      <RecapEditor
+                        session={currentSession}
+                        parsedSoap={parsedSoap}
+                        therapist={therapist}
+                        allSessions={allSessions}
+                        onSaved={() => refreshCockpit()}
+                        onRebook={() => { onClose(); onReschedule && onReschedule({ ...appt, isRebook: true }); }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDrawerDoc(4)}
+                        style={{
+                          marginTop: 14,
+                          background: 'transparent',
+                          border: '1px dashed #D6E0D4',
+                          borderRadius: 10,
+                          padding: '9px 14px',
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: SO.forest,
+                          cursor: 'pointer',
+                          fontFamily: 'inherit',
+                          width: '100%',
+                          textAlign: 'center',
+                        }}
+                      >
+                        View full Client Recap →
+                      </button>
+                    </>
+                  )}
+                </CockpitSection>
+              )}
 
               {/* ─── Medical flags panel ─── */}
               {(medicalFlagsFired.length > 0 || currentSession?.med_flag === 'none') && (
@@ -2637,91 +2831,6 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   onToggle={() => toggleSection('patterns')}
                 >
                   <PatternsContent allSessions={allSessions} />
-                </CockpitSection>
-              )}
-
-              {/* ─── Record panel (SOAP entry inline) ─── */}
-              {/* Phase 22: locked for future sessions unless the
-                  therapist hits 'I'm starting now'. Past existing
-                  content (hasSoapContent) keeps the editor visible
-                  so we never hide saved work. */}
-              <CockpitSection
-                sectionKey="record"
-                icon="✍️"
-                title="Session record · SOAP"
-                subtitle={
-                  isFutureSession && !recordOverride && !hasSoapContent
-                    ? `Unlocks on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
-                    : hasSoapContent
-                      ? 'Notes saved · tap to edit'
-                      : '🎙️ Capture what happened, dictate or type'
-                }
-                isOpen={openSections.record}
-                onToggle={() => toggleSection('record')}
-              >
-                {!currentSession ? (
-                  /* No session yet: intake not submitted. Show
-                     EmptyStateCard so the panel exists and explains
-                     what unlocks it. */
-                  <EmptyStateCard
-                    icon="✍️"
-                    body="The SOAP record unlocks once your client fills out their intake. You can capture session notes here right after the appointment."
-                  />
-                ) : isFutureSession && !recordOverride && !hasSoapContent ? (
-                  <LockedFutureSessionPanel
-                    apptDate={appt.date}
-                    kind="record"
-                    onOverride={() => setRecordOverride(true)}
-                  />
-                ) : (
-                  <RecordEditor
-                    session={currentSession}
-                    parsedSoap={parsedSoap}
-                    therapist={therapist}
-                    allSessions={allSessions}
-                    onSaved={() => refreshCockpit()}
-                  />
-                )}
-              </CockpitSection>
-
-              {/* ─── Recap panel (warm message to client) ─── */}
-              {/* Phase 22: same gate. Recap only appears when the
-                  session is marked complete OR there's an existing
-                  recap to view (preserve saved content). For future
-                  sessions the therapist can still override and write
-                  one early, though sending the email is the wrong
-                  move pre-session, hence the locked default. */}
-              {(currentSession?.completed || hasRecap || (isFutureSession && recapOverride)) && (
-                <CockpitSection
-                  sectionKey="recap"
-                  icon="💌"
-                  title="Client recap"
-                  subtitle={
-                    isFutureSession && !recapOverride && !hasRecap
-                      ? `Sends after the session on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
-                      : hasRecap
-                        ? 'Recap saved · tap to view'
-                        : 'Send a warm note to client'
-                  }
-                  isOpen={openSections.recap}
-                  onToggle={() => toggleSection('recap')}
-                >
-                  {isFutureSession && !recapOverride && !hasRecap ? (
-                    <LockedFutureSessionPanel
-                      apptDate={appt.date}
-                      kind="recap"
-                      onOverride={() => setRecapOverride(true)}
-                    />
-                  ) : (
-                    <RecapEditor
-                      session={currentSession}
-                      parsedSoap={parsedSoap}
-                      therapist={therapist}
-                      allSessions={allSessions}
-                      onSaved={() => refreshCockpit()}
-                      onRebook={() => { onClose(); onReschedule && onReschedule({ ...appt, isRebook: true }); }}
-                    />
-                  )}
                 </CockpitSection>
               )}
             </>

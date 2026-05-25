@@ -160,22 +160,19 @@ export default function FloatingBookingChip({ therapist, onSendSms }) {
   }, [open]);
 
   // ── Drag mechanics: instant on movement ───────────────────────────
-  // mousedown/touchstart records the start position. mousemove during
-  // press: if motion exceeds DRAG_THRESHOLD pixels, drag begins
-  // immediately (no timer). mouseup ends drag and saves position; if
-  // no drag happened, the click handler opens the popover.
+  // mousedown/touchstart records the start position AND attaches the
+  // window-level move/up listeners directly. Earlier this lived in a
+  // useEffect gated on pressStartRef.current, but refs do not trigger
+  // re-renders so the effect never re-ran when press began. HK reported
+  // 'chip does not drag at all' May 25 2026 round 4. Fix: attach
+  // listeners inline in the press-start handler.
 
   const onPressStart = useCallback((clientX, clientY) => {
     pressStartRef.current = { x: clientX, y: clientY };
     draggedRef.current = false;
-  }, []);
 
-  // Global move + up listeners run whenever the chip is pressed,
-  // regardless of whether a drag has started yet. They check the
-  // distance from the press-start point to decide whether to begin
-  // a drag.
-  useEffect(() => {
-    if (!pressStartRef.current && !dragging) return undefined;
+    let isDraggingNow = false;
+
     const onMove = (e) => {
       const t = e.touches?.[0] || e;
       const start = pressStartRef.current;
@@ -183,10 +180,9 @@ export default function FloatingBookingChip({ therapist, onSendSms }) {
       const dx = t.clientX - start.x;
       const dy = t.clientY - start.y;
       const moved = Math.hypot(dx, dy);
-      if (!dragging && moved < DRAG_THRESHOLD) return;
-      if (!dragging) {
-        // Crossed threshold: start dragging immediately. Vibrate on
-        // supported devices to confirm.
+      if (!isDraggingNow && moved < DRAG_THRESHOLD) return;
+      if (!isDraggingNow) {
+        isDraggingNow = true;
         setDragging(true);
         draggedRef.current = true;
         try { navigator.vibrate?.(10); } catch (_) {}
@@ -194,11 +190,18 @@ export default function FloatingBookingChip({ therapist, onSendSms }) {
       setPos(clampToViewport(t.clientX - CHIP_SIZE / 2, t.clientY - CHIP_SIZE / 2));
       if (e.touches) e.preventDefault();
     };
+
     const onUp = () => {
-      const wasDragging = dragging;
       pressStartRef.current = null;
-      if (wasDragging) {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onUp);
+      window.removeEventListener('touchcancel', onUp);
+      if (isDraggingNow) {
         setDragging(false);
+        // Save the final position after React flushes the last
+        // setPos from move events.
         setTimeout(() => {
           setPos(p => {
             savePos(therapist?.id, p.x, p.y);
@@ -207,17 +210,13 @@ export default function FloatingBookingChip({ therapist, onSendSms }) {
         }, 0);
       }
     };
+
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
     window.addEventListener('touchmove', onMove, { passive: false });
     window.addEventListener('touchend', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('touchend', onUp);
-    };
-  }, [dragging, therapist?.id]);
+    window.addEventListener('touchcancel', onUp);
+  }, [therapist?.id]);
 
   if (!bookingUrl) return null;
 
