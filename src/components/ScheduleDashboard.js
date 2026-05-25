@@ -2241,7 +2241,17 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                         Persists to bookings.intake_waived_at so the
                         brief + journey dots stop showing 'intake
                         missing' for this booking. Single click, soft
-                        confirm via the immediate state change. */}
+                        confirm via the immediate state change.
+
+                        ALSO creates a placeholder sessions row tied
+                        to this booking so SOAP + Recap editors have
+                        a row to save against. Without this, the
+                        editors mount but their save() functions bail
+                        on missing session.id, and HK reported that
+                        the post-waiver reveal felt feeble: nothing
+                        actually became editable. Creating the
+                        session row at waiver-time is what makes the
+                        cockpit truly come alive. */}
                     <div style={{ marginTop: 10 }}>
                       <label style={{
                         display: 'inline-flex',
@@ -2255,19 +2265,56 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                           type="checkbox"
                           checked={false}
                           onChange={async () => {
-                            // Optimistic update so the panel reflects
-                            // the waiver immediately. If the UPDATE
-                            // fails we revert. The brief panel re-
-                            // renders since intakeDone now includes
-                            // the local waiver flag.
+                            // Optimistic state. If anything below
+                            // fails we revert.
                             setIntakeWaivedLocal(true);
-                            const { error } = await supabase
+
+                            // 1. Flag the booking as waived.
+                            const { error: bkErr } = await supabase
                               .from('bookings')
                               .update({ intake_waived_at: new Date().toISOString() })
                               .eq('id', appt.id);
-                            if (error) {
+                            if (bkErr) {
                               setIntakeWaivedLocal(false);
-                              console.warn('[intake-waive] failed', error);
+                              console.warn('[intake-waive] booking update failed', bkErr);
+                              return;
+                            }
+
+                            // 2. Create a placeholder session row so
+                            // SOAP + Recap editors have a row id to
+                            // save against. If one already exists for
+                            // this booking, reuse it. Race-safe via
+                            // booking_id lookup before insert.
+                            if (!currentSession?.id) {
+                              const { data: existing } = await supabase
+                                .from('sessions')
+                                .select('*')
+                                .eq('booking_id', appt.id)
+                                .maybeSingle();
+                              if (existing?.id) {
+                                setCurrentSession(existing);
+                              } else {
+                                const { data: created, error: sErr } = await supabase
+                                  .from('sessions')
+                                  .insert({
+                                    therapist_id: therapist.id,
+                                    client_id: appt.clientId,
+                                    booking_id: appt.id,
+                                    front_focus: [],
+                                    back_focus: [],
+                                    front_avoid: [],
+                                    back_avoid: [],
+                                    completed: false,
+                                    intake_added_by: 'waived',
+                                  })
+                                  .select('*')
+                                  .single();
+                                if (sErr) {
+                                  console.warn('[intake-waive] session insert failed', sErr);
+                                } else if (created) {
+                                  setCurrentSession(created);
+                                }
+                              }
                             }
                           }}
                           style={{ cursor: 'pointer', accentColor: SO.forest }}
@@ -2283,42 +2330,68 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   currentSession?.client_notes ||
                   currentSession?.pressure
                 ) && (
-                  <div style={{
-                    padding: '10px 14px',
-                    background: '#F0F7F4',
-                    border: '1px solid #BFD8C9',
-                    borderRadius: 10,
-                    fontSize: 12,
-                    color: '#1F2937',
-                    lineHeight: 1.5,
-                  }}>
-                    Intake waived for this session. The brief and journey
-                    dots will not flag a missing intake.
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setIntakeWaivedLocal(false);
-                        await supabase
-                          .from('bookings')
-                          .update({ intake_waived_at: null })
-                          .eq('id', appt.id);
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: SO.forest,
-                        fontWeight: 700,
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        padding: 0,
-                        marginLeft: 4,
-                        textDecoration: 'underline',
-                        fontFamily: 'inherit',
-                      }}
-                    >
-                      Undo
-                    </button>
-                  </div>
+                  <>
+                    <style>{`
+                      @keyframes bmWaiverReveal {
+                        0%   { opacity: 0; transform: translateY(-6px) scale(0.98); }
+                        60%  { opacity: 1; transform: translateY(0) scale(1.01); }
+                        100% { opacity: 1; transform: translateY(0) scale(1); }
+                      }
+                      @keyframes bmReadyPulse {
+                        0%, 100% { box-shadow: 0 0 0 0 rgba(42,87,65,0.0); }
+                        50%      { box-shadow: 0 0 0 6px rgba(42,87,65,0.08); }
+                      }
+                      .bm-waiver-reveal {
+                        animation: bmWaiverReveal 0.45s ease-out, bmReadyPulse 2.2s ease-in-out 0.35s 2;
+                      }
+                    `}</style>
+                    <div className="bm-waiver-reveal" style={{
+                      background: 'linear-gradient(135deg, #F0F7F4 0%, #E8F4EC 100%)',
+                      border: '1.5px solid #BFD8C9',
+                      borderRadius: 12,
+                      padding: '14px 16px',
+                      marginTop: 6,
+                    }}>
+                      <div style={{
+                        fontSize: 11, fontWeight: 700,
+                        color: '#2A5741',
+                        letterSpacing: '0.14em',
+                        textTransform: 'uppercase',
+                        marginBottom: 6,
+                      }}>
+                        🌿 Ready for session
+                      </div>
+                      <div style={{
+                        fontSize: 13, color: '#1F2937', lineHeight: 1.55,
+                        marginBottom: 10,
+                      }}>
+                        Intake waived. SOAP fields, private notes, and the client recap below are all editable now.
+                      </div>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setIntakeWaivedLocal(false);
+                          await supabase
+                            .from('bookings')
+                            .update({ intake_waived_at: null })
+                            .eq('id', appt.id);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: SO.inkMute,
+                          fontWeight: 600,
+                          fontSize: 11,
+                          cursor: 'pointer',
+                          padding: 0,
+                          textDecoration: 'underline',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        Undo waiver
+                      </button>
+                    </div>
+                  </>
                 )}
                 {intakeDone && currentSession && (
                   <>
