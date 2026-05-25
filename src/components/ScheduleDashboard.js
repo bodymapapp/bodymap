@@ -180,7 +180,21 @@ function MicDictationButton({ onAppend, label = 'Dictate' }) {
   const [listening, setListening] = useState(false);
   const recognitionRef = React.useRef(null);
 
+  // Mobile detection. The in-app mic is desktop-only by design (phones
+  // have a keyboard mic). iOS Safari technically exposes
+  // webkitSpeechRecognition but the continuous-mode API is unreliable:
+  // HK reported May 25 2026 that tapping a mic on iPhone hangs the
+  // entire slide-over and never records. So we treat any touch device
+  // or narrow viewport as mobile and skip the button entirely. The
+  // existing hint copy on the SOAP card already tells phone users to
+  // tap the keyboard mic, so nothing is lost by hiding the in-app one.
+  const isMobile = typeof window !== 'undefined' && (
+    window.matchMedia?.('(max-width: 768px)')?.matches ||
+    ('ontouchstart' in window && window.matchMedia?.('(pointer: coarse)')?.matches)
+  );
+
   useEffect(() => {
+    if (isMobile) { setSupported(false); return; }
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { setSupported(false); return; }
     setSupported(true);
