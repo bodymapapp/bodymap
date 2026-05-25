@@ -49,61 +49,156 @@ const makeSample = (today) => [
 // readout, and inline SOAP/recap editors.
 // ═════════════════════════════════════════════════════════════════
 
+// SVG chevron used in CockpitSection. Stroke-weighted, rotates
+// smoothly on open. Replaces the prior ▾ unicode triangle which
+// was thin and read as a decorative glyph rather than a control.
+function ChevronIcon({ open, color = '#fff' }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke={color}
+      strokeWidth="2.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{
+        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+        transition: 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
+      }}
+      aria-hidden="true"
+    >
+      <polyline points="3 5 7 9 11 5" />
+    </svg>
+  );
+}
+
 function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
+  // HK May 25 2026 (Phase 22): visual upgrade for collapsibles.
+  // Previously the row looked indistinguishable from a heading.
+  // Now: collapsed state gets a soft cream tint that reads as
+  // 'tap me'; expanded state goes white. Hover lifts subtly on
+  // desktop. SVG chevron replaces unicode triangle. The pill
+  // background colors come from the Billing DeepDiveCard pattern.
+  const [hover, setHover] = useState(false);
+  const cardBg = warn
+    ? '#FFFBEB'
+    : isOpen
+      ? '#fff'
+      : (hover ? '#F8F2E5' : '#FCF8EE');
+  const borderColor = warn ? '#FDE68A' : isOpen ? '#D6E0D4' : '#E5DDD2';
+
   return (
     <div
       data-cockpit-section={sectionKey}
       style={{
-        background: warn ? '#FFFBEB' : '#fff',
-        border: warn ? '1px solid #FDE68A' : '1px solid #E5DDD2',
-        borderRadius: 12,
+        background: cardBg,
+        border: `1px solid ${borderColor}`,
+        borderRadius: 14,
         overflow: 'hidden',
+        transition: 'background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease',
+        boxShadow: isOpen ? '0 2px 6px rgba(28,43,34,0.04)' : (hover ? '0 1px 3px rgba(28,43,34,0.05)' : 'none'),
       }}
     >
       <button
         type="button"
         onClick={onToggle}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
         style={{
           width: '100%',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
-          padding: '12px 14px',
+          padding: '14px 16px',
           background: 'transparent',
           border: 'none',
           cursor: 'pointer',
           textAlign: 'left',
           fontFamily: 'inherit',
+          WebkitTapHighlightColor: 'transparent',
         }}
+        aria-expanded={isOpen}
       >
         <div style={{
-          width: 36, height: 36, borderRadius: 8,
-          background: isOpen ? '#EEF3EE' : '#F5F0E8',
+          width: 38, height: 38, borderRadius: 10,
+          background: isOpen ? '#EEF3EE' : '#F0E7D4',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 16, flexShrink: 0,
+          fontSize: 17, flexShrink: 0,
+          transition: 'background 0.18s ease',
         }}>
           {icon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#1F2937', lineHeight: 1.3 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 2 }}>{subtitle}</div>}
+          <div style={{
+            fontSize: 14.5,
+            fontWeight: 700,
+            color: '#1F2937',
+            lineHeight: 1.3,
+            letterSpacing: '-0.005em',
+          }}>{title}</div>
+          {subtitle && <div style={{ fontSize: 12, color: '#6B7280', marginTop: 3, lineHeight: 1.4 }}>{subtitle}</div>}
         </div>
         <div style={{
-          width: 32, height: 32, borderRadius: '50%',
+          width: 34, height: 34, borderRadius: '50%',
           background: isOpen ? '#2A5741' : '#EEF3EE',
           color: isOpen ? '#fff' : '#2A5741',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 14, flexShrink: 0,
-          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.18s ease, background 0.18s ease',
+          flexShrink: 0,
+          transition: 'background 0.22s ease, box-shadow 0.22s ease',
+          boxShadow: isOpen ? '0 2px 6px rgba(42,87,65,0.20)' : 'none',
         }}>
-          ▾
+          <ChevronIcon open={isOpen} color={isOpen ? '#fff' : '#2A5741'} />
         </div>
       </button>
       {isOpen && (
-        <div style={{ padding: '0 14px 14px' }}>
+        <div style={{ padding: '0 16px 16px' }}>
           {children}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Locked state shown inside Record + Recap panels when the
+// appointment is in the future. The 70yo therapist gets a clear
+// reason why the panel isn't editable, plus a small override for
+// the edge cases (testing, exceptional pre-fill, etc).
+function LockedFutureSessionPanel({ apptDate, onOverride, kind }) {
+  const friendlyDate = apptDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) || 'a future date';
+  const copy = kind === 'recap'
+    ? `Recap goes out after the session. This session is ${friendlyDate}, so the message field unlocks then.`
+    : `Session notes go in after the session. This session is ${friendlyDate}, so the record unlocks then.`;
+  return (
+    <div style={{
+      background: '#F9F5EE',
+      border: '1px dashed #D6CDB8',
+      borderRadius: 10,
+      padding: '14px 14px',
+      textAlign: 'left',
+    }}>
+      <div style={{ fontSize: 13, color: '#5B4F3A', lineHeight: 1.55, marginBottom: 10 }}>
+        🔒 {copy}
+      </div>
+      {onOverride && (
+        <button
+          type="button"
+          onClick={onOverride}
+          style={{
+            background: 'transparent',
+            color: '#6B5B3A',
+            border: '1px solid #D6CDB8',
+            borderRadius: 999,
+            padding: '6px 12px',
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          I'm starting now, unlock this
+        </button>
       )}
     </div>
   );
@@ -422,16 +517,51 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         🎙️ Tap the microphone on your keyboard to dictate any field below. Speak it, we'll write it.
       </div>
 
-      {/* Therapist's private notes - the quick scratchpad. Lives at
-          the top because most therapists just want to jot a sentence
-          or two; SOAP below is for those who want clinical structure.
-          Practice-assistant draft button writes here. */}
+      {/* HK May 25 2026 (Phase 22): SOAP fields come FIRST. Private
+          notes is a summary the practice assistant can draft from
+          the SOAP content, so the input has to exist before the
+          summary. Order: dictation nudge → SOAP → private notes
+          (draftable) → save. */}
+
+      {/* SOAP fields - structured clinical documentation. */}
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+        marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+        <span>SOAP record</span>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+      </div>
+
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>S, Subjective</div>
+      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>O, Objective</div>
+      <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>A, Assessment</div>
+      <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
+      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>P, Plan</div>
+      <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
+
+      {/* Therapist's private notes - SUMMARY of the SOAP work above.
+          Practice assistant can draft from the SOAP fields when
+          requested. Lives BELOW SOAP because the summary depends
+          on the source. */}
+      <div style={{
+        fontSize: 10, fontWeight: 700, color: '#9CA3AF',
+        letterSpacing: '0.1em', textTransform: 'uppercase',
+        marginTop: 8, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
+      }}>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+        <span>Your private summary</span>
+        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
+      </div>
       <div style={{
         fontSize: 11, fontWeight: 700, color: '#6B7280',
         letterSpacing: '0.06em', textTransform: 'uppercase',
         marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
-        <span>Your private notes</span>
+        <span>Private notes (a quick summary for yourself)</span>
         {therapist?.ai_enabled !== false && (
           <button
             type="button"
@@ -451,14 +581,14 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
               letterSpacing: 0,
             }}
           >
-            {drafting ? 'Drafting...' : '✨ Draft with practice assistant'}
+            {drafting ? 'Drafting...' : '✨ Draft from SOAP'}
           </button>
         )}
       </div>
       <textarea
         value={privateNotes}
         onChange={e => setPrivateNotes(e.target.value)}
-        placeholder="Quick note for yourself: what you worked on, what to remember next time..."
+        placeholder="Quick note for yourself: what you worked on, what to remember next time. Tap 'Draft from SOAP' to have the practice assistant write a summary."
         style={{ ...fieldStyle, minHeight: 72 }}
       />
       {draftError && (
@@ -466,33 +596,11 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
           {draftError}
         </div>
       )}
-
       {parsedSoap.isLegacy && parsedSoap.legacyText && (
         <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: 8, padding: '8px 10px', fontSize: 12, color: '#78350F', marginBottom: 10 }}>
-          Existing notes loaded above. Re-save to upgrade to the new structured format with SOAP fields below.
+          Older free-form notes loaded into the private summary above. Re-save to keep them in the new format.
         </div>
       )}
-
-      {/* SOAP fields - optional structure for clinical documentation.
-          Therapist who only wants a quick note can ignore these. */}
-      <div style={{
-        fontSize: 10, fontWeight: 700, color: '#9CA3AF',
-        letterSpacing: '0.1em', textTransform: 'uppercase',
-        marginTop: 18, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
-      }}>
-        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
-        <span>Optional: SOAP format</span>
-        <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
-      </div>
-
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>S, Subjective</div>
-      <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>O, Objective</div>
-      <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>A, Assessment</div>
-      <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>P, Plan</div>
-      <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
         <button
@@ -906,6 +1014,27 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   }, [appt?.id, appt?.sessionId, appt?.clientId, therapist?.id, cockpitRefreshKey]);
 
   const refreshCockpit = () => setCockpitRefreshKey(k => k + 1);
+
+  // HK May 25 2026 (Phase 22): future-session gate for Record + Recap.
+  // SOAP notes + warm recap to client only make sense AFTER the
+  // appointment has happened. We compare appt.date (set to midnight)
+  // against today's midnight. Same-day = unlocked (therapist often
+  // fills notes during/right after the session). Strict-future = locked
+  // with a clear message and an 'I'm starting now' override.
+  const isFutureSession = useMemo(() => {
+    if (!appt?.date) return false;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const apptDay = new Date(appt.date);
+    apptDay.setHours(0, 0, 0, 0);
+    return apptDay.getTime() > today.getTime();
+  }, [appt?.date]);
+
+  const [recordOverride, setRecordOverride] = useState(false);
+  const [recapOverride, setRecapOverride] = useState(false);
+  // Whenever the appt changes, reset overrides so a future session
+  // does not stay 'unlocked' when the user clicks a different one.
+  useEffect(() => { setRecordOverride(false); setRecapOverride(false); }, [appt?.id]);
 
   // Combined intake completeness: did the client submit a meaningful
   // intake? Used to drive the document journey's intake-done state.
@@ -1589,41 +1718,79 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               )}
 
               {/* ─── Record panel (SOAP entry inline) ─── */}
+              {/* Phase 22: locked for future sessions unless the
+                  therapist hits 'I'm starting now'. Past existing
+                  content (hasSoapContent) keeps the editor visible
+                  so we never hide saved work. */}
               <CockpitSection
                 sectionKey="record"
                 icon="✍️"
                 title="Session record · SOAP"
-                subtitle={hasSoapContent ? 'Notes saved · tap to edit' : '🎙️ Capture what happened, dictate or type'}
+                subtitle={
+                  isFutureSession && !recordOverride && !hasSoapContent
+                    ? `Unlocks on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                    : hasSoapContent
+                      ? 'Notes saved · tap to edit'
+                      : '🎙️ Capture what happened, dictate or type'
+                }
                 isOpen={openSections.record}
                 onToggle={() => toggleSection('record')}
               >
-                <RecordEditor
-                  session={currentSession}
-                  parsedSoap={parsedSoap}
-                  therapist={therapist}
-                  allSessions={allSessions}
-                  onSaved={() => refreshCockpit()}
-                />
-              </CockpitSection>
-
-              {/* ─── Recap panel (warm message to client) ─── */}
-              {currentSession?.completed && (
-                <CockpitSection
-                  sectionKey="recap"
-                  icon="💌"
-                  title="Client recap"
-                  subtitle={hasRecap ? 'Recap saved · tap to view' : 'Send a warm note to client'}
-                  isOpen={openSections.recap}
-                  onToggle={() => toggleSection('recap')}
-                >
-                  <RecapEditor
+                {isFutureSession && !recordOverride && !hasSoapContent ? (
+                  <LockedFutureSessionPanel
+                    apptDate={appt.date}
+                    kind="record"
+                    onOverride={() => setRecordOverride(true)}
+                  />
+                ) : (
+                  <RecordEditor
                     session={currentSession}
                     parsedSoap={parsedSoap}
                     therapist={therapist}
                     allSessions={allSessions}
                     onSaved={() => refreshCockpit()}
-                    onRebook={() => { onClose(); onReschedule && onReschedule({ ...appt, isRebook: true }); }}
                   />
+                )}
+              </CockpitSection>
+
+              {/* ─── Recap panel (warm message to client) ─── */}
+              {/* Phase 22: same gate. Recap only appears when the
+                  session is marked complete OR there's an existing
+                  recap to view (preserve saved content). For future
+                  sessions the therapist can still override and write
+                  one early, though sending the email is the wrong
+                  move pre-session, hence the locked default. */}
+              {(currentSession?.completed || hasRecap || (isFutureSession && recapOverride)) && (
+                <CockpitSection
+                  sectionKey="recap"
+                  icon="💌"
+                  title="Client recap"
+                  subtitle={
+                    isFutureSession && !recapOverride && !hasRecap
+                      ? `Sends after the session on ${appt.date?.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}`
+                      : hasRecap
+                        ? 'Recap saved · tap to view'
+                        : 'Send a warm note to client'
+                  }
+                  isOpen={openSections.recap}
+                  onToggle={() => toggleSection('recap')}
+                >
+                  {isFutureSession && !recapOverride && !hasRecap ? (
+                    <LockedFutureSessionPanel
+                      apptDate={appt.date}
+                      kind="recap"
+                      onOverride={() => setRecapOverride(true)}
+                    />
+                  ) : (
+                    <RecapEditor
+                      session={currentSession}
+                      parsedSoap={parsedSoap}
+                      therapist={therapist}
+                      allSessions={allSessions}
+                      onSaved={() => refreshCockpit()}
+                      onRebook={() => { onClose(); onReschedule && onReschedule({ ...appt, isRebook: true }); }}
+                    />
+                  )}
                 </CockpitSection>
               )}
             </>
