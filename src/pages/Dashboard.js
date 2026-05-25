@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db, supabase } from '../lib/supabase';
+import { openExternalClick } from '../lib/openExternal';
 import { isSampleId, isSampleSessionId, getSampleClient, getSampleSession, buildSampleProfile } from '../data/sampleClients';
 import ClientList from '../components/ClientList';
 import SessionList from '../components/SessionList';
@@ -160,6 +161,7 @@ function LinkRow({ label, sublabel, url, C2 }) {
           href={url}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={openExternalClick(url)}
           style={{
             background: '#fff',
             color: C2.darkGray,
@@ -2589,12 +2591,15 @@ function ServicesAndAvailability({ therapist }) {
           route which lands on BookingPage with the slot picker first.
           The bare /<slug> route goes to ClientIntake (the intake form),
           which is wrong for "see what clients see when they book". */}
-      {therapist?.custom_url && (
+      {therapist?.custom_url && (() => {
+        const previewUrl = `/book/${therapist.custom_url}?preview=1${services?.[0]?.id ? `&service=${services[0].id}` : ''}`;
+        return (
         <div style={{ marginTop:12 }}>
           <a
-            href={`/book/${therapist.custom_url}?preview=1${services?.[0]?.id ? `&service=${services[0].id}` : ''}`}
+            href={previewUrl}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={openExternalClick(previewUrl)}
             style={{
               display:'flex', alignItems:'center', gap:8,
               padding:'10px 14px',
@@ -2608,7 +2613,8 @@ function ServicesAndAvailability({ therapist }) {
             </span>
           </a>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -2908,6 +2914,7 @@ function BookingEmbedPanel({ customUrl }) {
               href={bookingUrl}
               target="_blank"
               rel="noreferrer"
+              onClick={openExternalClick(bookingUrl)}
               style={{
                 background: '#fff',
                 border: '1.5px solid #E8E4DC',
@@ -6132,6 +6139,7 @@ export default function Dashboard({ view }) {
                 href={`${window.location.origin}/book/${therapist?.custom_url}`}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={openExternalClick(`${window.location.origin}/book/${therapist?.custom_url}`)}
                 style={{ fontSize: '14px', fontWeight: '600', color: '#2A5741', margin: 0, wordBreak: 'break-all', textDecoration: 'underline', textDecorationColor: 'rgba(42,87,65,0.3)', textUnderlineOffset: 3 }}
               >
                 {window.location.origin}/book/{therapist?.custom_url}

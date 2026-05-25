@@ -12,6 +12,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { openExternalClick } from '../lib/openExternal';
 import { useAuth } from '../contexts/AuthContext';
 import InlineEditField from './InlineEditField';
 
@@ -155,6 +156,7 @@ function QRPanel({ title, subtitle, url, filename, businessName, C2, highlighted
               href={url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={openExternalClick(url)}
               style={{
                 color: '#2A5741',
                 textDecoration: 'underline',

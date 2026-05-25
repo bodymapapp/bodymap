@@ -20,6 +20,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { openExternalClick } from '../lib/openExternal';
 
 const C = { forest:'#2A5741', sage:'#6B9E80', beige:'#F5F0E8', white:'#FFFFFF', dark:'#1A1A2E', gray:'#6B7280', light:'#E8E4DC' };
 
@@ -352,6 +353,7 @@ function PreviewModal({ therapist, onClose }) {
                 href={bookingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={openExternalClick(bookingUrl)}
                 style={{
                   fontSize: 12,
                   color: '#2A5741',
