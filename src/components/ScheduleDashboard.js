@@ -1342,6 +1342,13 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
 }
 
 function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
+  // Mobile detection for paddingBottom that clears the mobile bottom nav
+  // (74px) so the Cancel button doesn't get cut off. HK reported May 25
+  // 2026 that the cancel link was sitting behind the bottom nav on
+  // iPhone. The slide-over zIndex (301) is below the bottom nav (999) so
+  // the nav overlays the last ~74px of slide-over content; we have to
+  // pad the inner content to compensate.
+  const isMobileW = typeof window !== 'undefined' && window.innerWidth < 768;
   // HK May 24 2026 (Phase 13.12b): the appt prop is owned by the
   // parent timeline. When the user picks a client via the inline
   // ClientPicker inside CheckoutModal, the database row updates but
@@ -1983,7 +1990,9 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         </div>
         <div style={{
           padding: 20,
-          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)',
+          paddingBottom: isMobileW
+            ? 'calc(74px + env(safe-area-inset-bottom, 0px) + 32px)'
+            : 'calc(env(safe-area-inset-bottom, 0px) + 60px)',
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
