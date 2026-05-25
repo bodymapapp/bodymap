@@ -1394,8 +1394,11 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
           this (imported history may be sparse and that's not
           confusing). HK May 14 2026: 'past weeks are there, but
           there's nothing after today for the coming weeks' from
-          Candice. The empty state was correct (CSV imports don't
-          carry future bookings) but read as a sync bug. */}
+          Candice. The empty state read as a sync bug. HK May 24
+          2026: removed the 'CSV imports don't carry future bookings'
+          line because imports DO carry future bookings - Terra's
+          CSV brought in June and September 2026 appointments. The
+          old wording was wrong and misleading. */}
       {realWeek.length === 0 && weekOffset >= 0 && (
         <div style={{
           background:'#FEFCE8',
@@ -1410,7 +1413,7 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
           <div style={{fontSize:18, lineHeight:1, marginTop:2}}>🌱</div>
           <div style={{flex:1, fontSize:12.5, color:'#78350F', lineHeight:1.55}}>
             <strong style={{color:'#78350F'}}>No bookings yet for {weekOffset===0?'this week':weekOffset===1?'next week':'this week'}.</strong>{' '}
-            CSV imports bring over past visit history, not future appointments. To fill your week, tap <strong>Book Appointment</strong> at the top of the page to add bookings manually, or share your booking link so clients can book themselves.
+            Tap <strong>Book Appointment</strong> at the top of the page to add a booking, or share your booking link so clients can book themselves.
           </div>
         </div>
       )}
@@ -2004,7 +2007,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
               <div style={{fontSize:18, lineHeight:1, marginTop:2}}>🌱</div>
               <div style={{flex:1, fontSize:12.5, color:'#78350F', lineHeight:1.55}}>
                 <strong style={{color:'#78350F'}}>No bookings yet for {fmtMonth(viewMonth)}.</strong>{' '}
-                CSV imports bring over past visit history, not future appointments. To fill your month, tap <strong>Book Appointment</strong> at the top to add bookings manually, or share your booking link so clients can book themselves.
+                Tap <strong>Book Appointment</strong> at the top to add a booking, or share your booking link so clients can book themselves.
               </div>
             </div>
           );
