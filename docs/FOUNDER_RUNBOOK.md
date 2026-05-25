@@ -491,7 +491,37 @@ Major decisions made and the reasoning behind them. Append to this rather than o
 
 ---
 
-## 15. What to do if X breaks
+## 14b. Income statement (living cost & revenue ledger)
+
+A founder-only page at `/founder` → "Income Statement" tracks every recurring cost and revenue line. It's the single source of truth for what MyBodyMap actually costs to run and how that compares to what it earns.
+
+**How it stays current.** Claude appends new line items to the `SEED_LINES` array in `src/pages/FounderIncomeStatement.jsx` whenever a chat reveals a new cost (a subscription you added, a vendor you switched, a legal/insurance commitment). The next time you open the page, the new lines are auto-inserted into `finance_line_items` and shown to you with a "Confirm $" placeholder. You inline-edit to confirm, and the entry becomes live.
+
+**What to do when you accrue a new cost not yet on the page.**
+1. Mention it in a chat with Claude ("I just signed up for X, $Y/month").
+2. Claude appends a new entry to `SEED_LINES`.
+3. Open `/founder` → Income Statement. The new line appears with "Confirm $". Click to set the actual amount.
+
+**Status field semantics.**
+- `active`: recurring monthly cost that's currently being incurred. Counts toward expenses subtotal.
+- `queued`: committed to do but not yet incurred (e.g. Resend Pro upgrade pending, E&O insurance not yet purchased).
+- `future`: speculative or future-potential expenses (e.g. TX foreign LLC qualification if attorney recommends).
+- `paused`: was active, now paused (e.g. canceled subscription).
+
+Only `active` rows roll up into the "Net monthly" tile. Queued and future are surfaced separately so HK can see what's coming.
+
+**Categories.** Revenue, Infrastructure, Insurance, Legal & Compliance. Adding a new category requires editing `CATEGORY_ORDER` in the component.
+
+**Manual entries.** If you want to add a one-off line that doesn't fit the seed pattern (e.g. a one-time consultant invoice), insert it directly via SQL:
+```sql
+INSERT INTO finance_line_items (key, category, label, monthly_cost, status, notes)
+VALUES ('consultant_july', 'Legal & Compliance', 'Consultant invoice July 2026', 1500, 'paused', 'One-time engagement, July 2026');
+```
+Mark such rows as `paused` so they don't roll up into the monthly subtotal (since they're not recurring).
+
+**Migration to enable editing.** The page renders in read-only mode until the `finance_line_items` table exists. Run `supabase/migrations/finance_line_items.sql` once in the Supabase SQL editor. After that, all edits persist.
+
+
 
 ### "Stripe payments stopped working for some therapists"
 1. Check Stripe dashboard for any platform-level alerts

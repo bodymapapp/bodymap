@@ -207,7 +207,8 @@ ${!isPending ? `<div style="background:#F0FDF4;border:1px solid #86EFAC;border-r
       status: clientResult.ok ? "sent" : "failed",
       provider_id: clientResult.id || null,
       subject: clientSubject,
-      body_snippet: clientResult.ok ? `${serviceName} on ${apt.date}` : `RESEND_${clientResult.status}: ${(clientResult.error || "").slice(0, 200)}`,
+      body_snippet: clientResult.ok ? `${serviceName} on ${apt.date}` : null,
+      error_message: clientResult.ok ? null : `HTTP ${clientResult.status}: ${(clientResult.error || "no body").slice(0, 400)}`,
       booking_id: booking.id,
     });
 
@@ -254,7 +255,8 @@ ${booking.client_phone ? `<br/><strong>Phone:</strong> <a href="tel:${escapeHtml
         status: therapistResult.ok ? "sent" : "failed",
         provider_id: therapistResult.id || null,
         subject: therapistSubject,
-        body_snippet: therapistResult.ok ? `${clientName} booked ${serviceName} on ${apt.date}` : `RESEND_${therapistResult.status}: ${(therapistResult.error || "").slice(0, 200)}`,
+        body_snippet: therapistResult.ok ? `${clientName} booked ${serviceName} on ${apt.date}` : null,
+        error_message: therapistResult.ok ? null : `HTTP ${therapistResult.status}: ${(therapistResult.error || "no body").slice(0, 400)}`,
         booking_id: booking.id,
       });
 

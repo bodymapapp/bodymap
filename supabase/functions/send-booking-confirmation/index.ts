@@ -371,7 +371,14 @@ serve(async (req) => {
           status: sendResult.ok ? "sent" : "failed",
           provider_id: sendResult.id || null,
           subject,
-          body_snippet: sendResult.ok ? `${serviceName} on ${apt.date}` : `RESEND_ERROR: ${(sendResult.errorBody || "").slice(0, 200)}`,
+          body_snippet: sendResult.ok ? `${serviceName} on ${apt.date}` : null,
+          // HK May 25 2026: error_message captures the Resend error
+          // body so we can diagnose failures from the audit query
+          // instead of inferring from body_snippet (which was the
+          // prior workaround). status=failed without an
+          // error_message used to leave us flying blind on 100+
+          // production failures this month.
+          error_message: sendResult.ok ? null : `HTTP ${sendResult.status}: ${(sendResult.errorBody || "no body").slice(0, 400)}`,
           booking_id: booking.id,
         }).then((r: any) => { if (r.error) console.error("[log] insert failed", r.error); });
       }
@@ -462,7 +469,8 @@ serve(async (req) => {
           status: sendResult.ok ? "sent" : "failed",
           provider_id: sendResult.id || null,
           subject,
-          body_snippet: sendResult.ok ? `${clientName} booked ${serviceName} on ${apt.date}` : `RESEND_ERROR: ${(sendResult.errorBody || "").slice(0, 200)}`,
+          body_snippet: sendResult.ok ? `${clientName} booked ${serviceName} on ${apt.date}` : null,
+          error_message: sendResult.ok ? null : `HTTP ${sendResult.status}: ${(sendResult.errorBody || "no body").slice(0, 400)}`,
           booking_id: booking.id,
         }).then((r: any) => { if (r.error) console.error("[log] insert failed", r.error); });
       }
