@@ -182,7 +182,40 @@ function Connector({ leftDone, rightDone }) {
 export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null, onSelect = null }) {
   const [pressedDot, setPressedDot] = React.useState(null);
 
-  if (!session) return null;
+  // HK May 25 2026 (Phase 24d): when there's no session yet (intake
+  // not submitted), render the journey anyway with all dots in
+  // 'waiting' state. Previously this returned null which hid the
+  // journey entirely for pending-intake bookings - the therapist
+  // saw an empty slide-over with no orientation. Now: 4 greyed
+  // dots showing 'Intake awaiting client' at position 1, the rest
+  // pending. Same visual rhythm regardless of state.
+  if (!session) {
+    const placeholderStates = [
+      { n: 1, label: 'Intake',         status: 'current', statusText: 'Awaiting client' },
+      { n: 2, label: 'Pre-Session',    status: 'waiting', statusText: 'Unlocks after intake' },
+      { n: 3, label: 'Post-Session',   status: 'waiting', statusText: 'After your session' },
+      { n: 4, label: 'Client Recap',   status: 'waiting', statusText: 'After your session' },
+    ];
+    return (
+      <div style={{ position: 'relative' }}>
+        <div style={{
+          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+          gap: 4, paddingTop: 18, paddingBottom: 4, opacity: 0.7,
+        }}>
+          {placeholderStates.map((s) => (
+            <JourneyDot
+              key={s.n}
+              n={s.n}
+              label={s.label}
+              status={s.status}
+              statusText={s.statusText}
+              onClick={() => onSelect && onSelect(s.n)}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const sessionId = session.id;
   const completed = !!session.completed;

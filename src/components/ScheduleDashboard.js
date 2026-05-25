@@ -423,7 +423,7 @@ function BodyMapPreview({ session }) {
   );
 }
 
-function LastSessionContent({ session }) {
+function LastSessionContent({ session, allSessions }) {
   let soap = { S: '', O: '', A: '', P: '', noteToClient: '' };
   let isLegacy = false;
   try {
@@ -432,6 +432,50 @@ function LastSessionContent({ session }) {
   } catch (_) { isLegacy = true; }
   const hasSoap = !!(soap.S || soap.O || soap.A || soap.P);
   const focusZones = [...(session.front_focus || []), ...(session.back_focus || [])];
+
+  // Phase 24d (HK May 25 2026): pattern intelligence inline.
+  // When a client has 2+ sessions on file we surface a compact
+  // pattern summary right inside Last Session so the therapist sees
+  // recurring zones and pressure preference without scrolling down
+  // to the dedicated Patterns panel. The standalone Patterns panel
+  // still exists for 3+ sessions with full breakdown.
+  const showPatternHint = (allSessions || []).length >= 2;
+  let patternBits = null;
+  if (showPatternHint) {
+    const zoneCount = {};
+    const pressures = [];
+    (allSessions || []).forEach(s => {
+      (s.front_focus || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
+      (s.back_focus || []).forEach(z => { zoneCount[z] = (zoneCount[z] || 0) + 1; });
+      if (s.pressure) pressures.push(s.pressure);
+    });
+    const topZones = Object.entries(zoneCount).sort((a, b) => b[1] - a[1]).slice(0, 2);
+    const avgPressure = pressures.length ? (pressures.reduce((a, b) => a + b, 0) / pressures.length) : null;
+    if (topZones.length || avgPressure) {
+      patternBits = (
+        <div style={{
+          marginTop: 10,
+          padding: '10px 12px',
+          background: SO.sageBg,
+          borderRadius: 8,
+          fontSize: 12,
+          color: SO.forest,
+          lineHeight: 1.55,
+        }}>
+          <div style={{ fontWeight: 700, marginBottom: 4 }}>
+            📊 {(allSessions || []).length} sessions on file
+          </div>
+          {topZones.length > 0 && (
+            <div>Recurring: {topZones.map(([z, n]) => `${zoneLabel(z)} (${n}×)`).join(', ')}</div>
+          )}
+          {avgPressure && (
+            <div>Usual pressure: {pressureLabel(Math.round(avgPressure))} ({avgPressure.toFixed(1)}/5)</div>
+          )}
+        </div>
+      );
+    }
+  }
+
   return (
     <div>
       {focusZones.length > 0 && (
@@ -458,6 +502,7 @@ function LastSessionContent({ session }) {
           </div>
         </div>
       )}
+      {patternBits}
     </div>
   );
 }
@@ -666,12 +711,11 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <span>Your private summary</span>
         <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
       </div>
-      {/* HK May 25 2026 (Phase 24c): label and Draft button were
-          previously crammed into a single row on a 360px slide-over
-          and read as cluttered. Now stacked: label sits on its own
-          line, then a generous flex row with the textarea label on
-          the left and the Draft button on the right at proper
-          touch-target size. */}
+      {/* HK May 25 2026 (Phase 24d): Practice Assistant naming.
+          Renamed from "Draft from SOAP above" since the assistant
+          may eventually do more (recap drafts, summaries, follow-up
+          suggestions). PracticeIQ rebrand still under review;
+          using neutral 'Practice Assistant' label until then. */}
       <div style={{ marginBottom: 8 }}>
         <Label>Private notes</Label>
         <div style={{
@@ -680,7 +724,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
           marginBottom: 10,
           lineHeight: 1.5,
         }}>
-          A quick summary for yourself. Use the button on the right to have the practice assistant draft one from your SOAP notes above.
+          A quick summary for yourself. Tap Practice Assistant to draft one from your SOAP notes.
         </div>
         {therapist?.ai_enabled !== false && (
           <button
@@ -703,7 +747,7 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
               gap: 6,
             }}
           >
-            {drafting ? 'Drafting…' : '✨ Draft from SOAP above'}
+            {drafting ? 'Drafting…' : '✨ Use Practice Assistant'}
           </button>
         )}
       </div>
@@ -773,6 +817,8 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   const [sendError, setSendError] = useState(null);
   const [drafting, setDrafting] = useState(false);
   const [draftError, setDraftError] = useState(null);
+  // Phase 24d: two-step confirm before sending the recap email.
+  const [confirmSend, setConfirmSend] = useState(false);
 
   useEffect(() => { setText(parsedSoap.noteToClient || session?.public_notes || ''); }, [parsedSoap.noteToClient, session?.public_notes]);
 
@@ -954,53 +1000,121 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
         </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <button
-          onClick={save}
-          disabled={saving || sendingEmail}
-          style={{
-            background: (saving || sendingEmail) ? '#9CA3AF' : '#2A5741',
-            color: '#fff',
-            border: 'none',
-            borderRadius: 10,
-            padding: '10px 16px',
-            fontSize: 13,
-            fontWeight: 700,
-            cursor: (saving || sendingEmail) ? 'wait' : 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          {sendingEmail ? 'Sending email...' : saving ? 'Saving...' : '💌 Save & send recap'}
-        </button>
-        {onRebook && (
+      {/* HK May 25 2026 (Phase 24d): two-step send confirm with
+          prominent sent state. Previous: one-click Save & send with
+          a small "Sent at TIME" hint that was easy to miss. Now:
+          first tap → confirm card showing client email + Send/Cancel.
+          After send → replaces the whole row with a green Sent card
+          showing recipient + time. SMS option queued (blocked by
+          A2P approval), text-only for now. */}
+      {sentAt ? (
+        <div style={{
+          background: SO.okBg,
+          border: `1.5px solid ${SO.okBorder}`,
+          borderRadius: 10,
+          padding: '12px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}>
+          <div style={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: SO.ok, color: '#fff',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 16, flexShrink: 0,
+          }}>✓</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: SO.ok }}>
+              Recap sent
+            </div>
+            <div style={{ fontSize: 11, color: '#166534', marginTop: 2 }}>
+              {sentAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              {session?.client_email ? ` · ${session.client_email}` : ''}
+            </div>
+          </div>
+          {onRebook && (
+            <button
+              onClick={onRebook}
+              style={{
+                background: '#fff',
+                color: SO.forest,
+                border: '1.5px solid #D6E0D4',
+                borderRadius: 999,
+                padding: '6px 12px',
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                flexShrink: 0,
+              }}
+            >
+              📅 Book next
+            </button>
+          )}
+        </div>
+      ) : confirmSend ? (
+        <div style={{
+          background: '#F9F5EE',
+          border: `1.5px solid #E5DDD2`,
+          borderRadius: 10,
+          padding: '14px 14px',
+        }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: SO.ink, marginBottom: 6 }}>
+            Send recap to client?
+          </div>
+          <div style={{ fontSize: 12, color: SO.inkMute, marginBottom: 12, lineHeight: 1.5 }}>
+            We'll email this recap to <strong>{session?.client_email || 'your client'}</strong>. SMS option coming soon.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => { setConfirmSend(false); save(); }}
+              disabled={saving || sendingEmail}
+              style={{
+                ...btnPrimary,
+                flex: 1,
+                opacity: (saving || sendingEmail) ? 0.6 : 1,
+                cursor: (saving || sendingEmail) ? 'wait' : 'pointer',
+              }}
+            >
+              {sendingEmail ? 'Sending…' : saving ? 'Saving…' : '💌 Send email'}
+            </button>
+            <button
+              onClick={() => setConfirmSend(false)}
+              disabled={saving || sendingEmail}
+              style={{ ...btnSecondary, padding: '9px 14px' }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button
-            onClick={onRebook}
+            onClick={() => setConfirmSend(true)}
+            disabled={!text.trim()}
             style={{
-              background: '#fff',
-              color: '#2A5741',
-              border: '1.5px solid #D6E0D4',
-              borderRadius: 10,
-              padding: '9px 14px',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
+              ...btnPrimary,
+              opacity: !text.trim() ? 0.5 : 1,
+              cursor: !text.trim() ? 'not-allowed' : 'pointer',
             }}
           >
-            📅 Book next session
+            💌 Save & send recap
           </button>
-        )}
-        {sentAt && (
-          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
-            ✓ Sent at {sentAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-          </span>
-        )}
-        {savedAt && !sentAt && !sendingEmail && !sendError && (
-          <span style={{ fontSize: 12, color: '#15803D', fontWeight: 600 }}>
-            ✓ Saved at {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-          </span>
-        )}
-      </div>
+          {onRebook && (
+            <button
+              onClick={onRebook}
+              style={{ ...btnSecondary, padding: '9px 14px' }}
+            >
+              📅 Book next session
+            </button>
+          )}
+          {savedAt && !sentAt && !sendingEmail && !sendError && (
+            <span style={{ fontSize: 12, color: SO.ok, fontWeight: 600 }}>
+              ✓ Saved at {savedAt.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1018,6 +1132,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // naturally on the next interaction.
   const [displayAppt, setDisplayAppt] = useState(appt);
   useEffect(() => { setDisplayAppt(appt); }, [appt]);
+
+  // HK May 25 2026 (Phase 24d): body scroll lock. When the slide-over
+  // is open, scrolling on the dimmed backdrop should NOT scroll the
+  // schedule grid behind it. Without this, the user moves their
+  // cursor onto the side panel but their wheel still scrolls the
+  // main page, which feels broken. Combined with overscroll-behavior:
+  // contain on the panel itself, scrolls now stay where the cursor is.
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prevOverflow; };
+  }, []);
 
   const st = STATUS[displayAppt.status]||STATUS['pending-intake'];
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
@@ -1200,6 +1326,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   // by default after the session is marked complete. Therapist can
   // override either way.
   const [openSections, setOpenSections] = useState(() => ({
+    journey: true,
     brief: true,
     medical: medicalFlagsFired.length > 0,
     last_session: false,
@@ -1440,13 +1567,22 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           the bottom (content can scroll past the padding). Real
           fix: NO padding on the outer container, paddingBottom on
           the inner content area where last action sits. */}
+      {/* HK May 25 2026 (Phase 24d): responsive width.
+          Mobile (<=720px): 100vw (full screen, what mobile already did).
+          Tablet/desktop: min(560px, 48vw) - meaningful width on
+          desktop, no longer the embarrassing 20% strip.
+          overscroll-behavior:contain stops scroll chaining so when
+          the user hits top/bottom of the panel, the main page doesn't
+          scroll behind it. */}
       <div style={{
         position:'fixed',
         top:0, right:0, bottom:0,
-        width:360, maxWidth:'100vw',
+        width: 'min(560px, max(360px, 40vw))',
+        maxWidth:'100vw',
         background:'#fff',
         zIndex:301,
         overflowY:'auto',
+        overscrollBehavior: 'contain',
         WebkitOverflowScrolling: 'touch',
         boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',
         paddingTop:'env(safe-area-inset-top, 0px)',
@@ -1618,52 +1754,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             </div>
           )}
 
-          {/* HK May 25 2026 (Phase 24c): DocumentJourney restored.
-              Core competency: the four-dot visual is how we show
-              the whole client journey at a glance. Rendered here at
-              its natural width (no transform scale hack); the
-              component was always responsive, the prior scale was
-              over-engineering. Sits between status pills and the
-              first panel, with generous vertical breathing room. */}
-          {!appt.preview && (
-            <div style={{
-              marginTop: 16,
-              padding: '14px 4px 6px',
-              background: 'linear-gradient(180deg, transparent 0%, #FAF7F0 100%)',
-              borderRadius: 12,
-            }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: SO.inkSoft,
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                marginBottom: 10,
-                paddingLeft: 6,
-              }}>
-                Session journey
-              </div>
-              <DocumentJourney
-                session={currentSession}
-                aiEnabled={therapist?.ai_enabled !== false}
-                onSelect={(dotNum) => {
-                  const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
-                  setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
-                  setTimeout(() => {
-                    const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }}
-                onSoapClick={() => {
-                  setOpenSections(prev => ({ ...prev, record: true }));
-                  setTimeout(() => {
-                    const el = document.querySelector('[data-cockpit-section="record"]');
-                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }, 80);
-                }}
-              />
-            </div>
-          )}
+          {/* Phase 24d: Session journey moved into the cockpit section
+              list below, as its own collapsible. HK feedback: should be
+              consistent with Today's Brief / Medical Flags / Last
+              Session pattern. */}
         </div>
         <div style={{
           padding: 20,
@@ -1722,6 +1816,60 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               lock until session date passes (or override). */}
           {!appt.preview && (
             <>
+              {/* ─── Session Journey panel (4-dot timeline) ─── */}
+              {/* HK May 25 2026 (Phase 24d): journey is now its own
+                  collapsible ribbon, consistent with Brief / Medical
+                  / Last Session / Patterns. Open by default since it
+                  serves as orientation. Greyed when no intake yet
+                  (DocumentJourney handles its own placeholder). */}
+              <CockpitSection
+                sectionKey="journey"
+                icon="🧭"
+                title="Session journey"
+                subtitle={
+                  !currentSession ? "Awaiting client intake"
+                    : currentSession.completed ? "Session complete"
+                    : intakeDone ? "Intake filled, ready for session"
+                    : "Awaiting client intake"
+                }
+                isOpen={openSections.journey !== false}
+                onToggle={() => toggleSection('journey')}
+              >
+                {!currentSession && (
+                  <div style={{
+                    fontSize: 12,
+                    color: SO.inkMute,
+                    lineHeight: 1.5,
+                    marginBottom: 12,
+                    padding: '8px 12px',
+                    background: SO.cream,
+                    border: `1px dashed #D6CDB8`,
+                    borderRadius: 8,
+                  }}>
+                    Journey will activate once your client fills their intake. Prior session history is still available below.
+                  </div>
+                )}
+                <DocumentJourney
+                  session={currentSession}
+                  aiEnabled={therapist?.ai_enabled !== false}
+                  onSelect={(dotNum) => {
+                    const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
+                    setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
+                    setTimeout(() => {
+                      const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }}
+                  onSoapClick={() => {
+                    setOpenSections(prev => ({ ...prev, record: true }));
+                    setTimeout(() => {
+                      const el = document.querySelector('[data-cockpit-section="record"]');
+                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }, 80);
+                  }}
+                />
+              </CockpitSection>
+
               {/* ─── Brief panel (intake summary) ─── */}
               <CockpitSection
                 sectionKey="brief"
@@ -1876,7 +2024,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   isOpen={openSections.last_session}
                   onToggle={() => toggleSection('last_session')}
                 >
-                  <LastSessionContent session={lastSession} />
+                  <LastSessionContent session={lastSession} allSessions={allSessions} />
                 </CockpitSection>
               )}
 
