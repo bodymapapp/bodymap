@@ -305,6 +305,21 @@ export default function CheckoutModal({
     if (!isPackage) throw new Error('createPackagePurchaseRow called without package context');
     const pkg = packagePurchase;
 
+    // Existing-package mode (HK May 24 2026): if the package was
+    // already added to the client's balance via PackageSection's
+    // 'Add package' button, the row already exists and we just need
+    // its id to attach a session_payment. Skip the insert entirely.
+    // Refetch the row so the success view shows accurate data.
+    if (pkg.id) {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('package_purchases')
+        .select('*')
+        .eq('id', pkg.id)
+        .single();
+      if (fetchErr) throw new Error(fetchErr.message);
+      return existing;
+    }
+
     let resolvedPlanId = pkg.planId;
     // Inline one-off plan creation: insert a private/inactive plan
     // first so the purchase row has something to reference.

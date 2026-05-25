@@ -105,6 +105,7 @@ export function usePackageData(client, therapist, hasMembership) {
   const [packages, setPackages] = useState([]);
   const [allPlans, setAllPlans] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [paidPackageIds, setPaidPackageIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [refetchKey, setRefetchKey] = useState(0);
 
@@ -132,9 +133,29 @@ export function usePackageData(client, therapist, hasMembership) {
           .eq('client_email', client.email || ''),
       ]);
       if (cancelled) return;
+
+      // Determine which active packages already have a succeeded
+      // payment recorded against them. Drives the conditional
+      // "Charge $X" button on each card (only shown when the package
+      // is unpaid). HK May 24 2026: split add vs. charge so the flow
+      // matches memberships (which separate add from charge).
+      const activePkgIds = (pkgRes.data || [])
+        .filter(p => p.status === 'active')
+        .map(p => p.id);
+      let paidIds = new Set();
+      if (activePkgIds.length > 0) {
+        const { data: paymentsForPkgs } = await supabase
+          .from('session_payments')
+          .select('package_purchase_id, status')
+          .in('package_purchase_id', activePkgIds)
+          .eq('status', 'succeeded');
+        paidIds = new Set((paymentsForPkgs || []).map(p => p.package_purchase_id));
+      }
+
       setPackages(pkgRes.data || []);
       setAllPlans(plansRes.data || []);
       setBookings(bkRes.data || []);
+      setPaidPackageIds(paidIds);
       setLoading(false);
     }
     load();
@@ -143,7 +164,7 @@ export function usePackageData(client, therapist, hasMembership) {
 
   const refetch = () => setRefetchKey(k => k + 1);
 
-  return { packages, allPlans, bookings, loading, refetch };
+  return { packages, allPlans, bookings, paidPackageIds, loading, refetch };
 }
 
 export default function PackageSection({ client, therapist, hasMembership, section, data }) {
@@ -158,6 +179,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
   const packages = data ? data.packages : localPackages;
   const allPlans = data ? data.allPlans : localAllPlans;
   const bookings = data ? data.bookings : localBookings;
+  const paidPackageIds = data ? (data.paidPackageIds || new Set()) : new Set();
   const loading = data ? data.loading : localLoading;
   const refetch = data ? data.refetch : null;
 
@@ -641,7 +663,43 @@ export default function PackageSection({ client, therapist, hasMembership, secti
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {/* Charge button: only shown when this package has no
+                  succeeded session_payments row yet. HK May 24 2026:
+                  splits the add-vs-charge flow to mirror memberships.
+                  Tapping opens CheckoutModal in existing-package mode
+                  (packagePurchase carries the id, modal skips the
+                  insert step and just records the payment against
+                  this row). */}
+              {!paidPackageIds.has(pkg.id) && pkg.price_paid > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPackageCheckoutContext({
+                      id: pkg.id,
+                      name: pkg.package?.name || 'Package',
+                      sessions: pkg.sessions_purchased,
+                      price: parseFloat(pkg.price_paid),
+                      expiresAt: pkg.expires_at,
+                      planId: pkg.package?.id || null,
+                    });
+                  }}
+                  style={{
+                    background: C.forest,
+                    color: '#fff',
+                    border: `1px solid ${C.forest}`,
+                    borderRadius: 8,
+                    padding: '7px 13px',
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                >
+                  Charge ${parseFloat(pkg.price_paid).toFixed(2)}
+                </button>
+              )}
+
               {armed ? (
                 <button
                   type="button"
@@ -913,24 +971,22 @@ export default function PackageSection({ client, therapist, hasMembership, secti
 
             <button
               type="button"
-              onClick={openCheckoutForPackage}
-              disabled={!canOpenCheckout()}
+              onClick={addPackage}
+              disabled={!canOpenCheckout() || submitting}
               style={{
                 width: '100%',
-                background: !canOpenCheckout() ? '#D1D5DB' : C.forest,
+                background: (!canOpenCheckout() || submitting) ? '#D1D5DB' : C.forest,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 8,
                 padding: '10px 12px',
                 fontSize: 13,
                 fontWeight: 700,
-                cursor: !canOpenCheckout() ? 'not-allowed' : 'pointer',
+                cursor: (!canOpenCheckout() || submitting) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
               }}
             >
-              {price && parseFloat(price) > 0
-                ? `Checkout $${parseFloat(price).toFixed(2)}`
-                : 'Checkout'}
+              {submitting ? 'Saving…' : 'Add package'}
             </button>
 
             {!canOpenCheckout() && (
@@ -947,7 +1003,7 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             )}
 
             <div style={{ fontSize: 10.5, color: C.gray, marginTop: 8, lineHeight: 1.5 }}>
-              Checkout opens with all payment options: Mark as paid (cash, Venmo, Zelle), Card on file, Enter new card, or Send pay link. Sessions land on the client's balance the moment payment is recorded.
+              Adds the package to this client's balance. After it's added, you can charge for it any time using the Charge button on the package card. HK May 24 2026: matches the membership flow (add first, charge separately).
             </div>
           </div>
         )}
@@ -1035,13 +1091,17 @@ export default function PackageSection({ client, therapist, hasMembership, secti
             }, 50);
           }}
           onPackageCreated={() => {
+            // New-package mode: created a fresh package_purchases row.
+            // Refresh and collapse the add form.
             if (refetch) refetch();
             resetForm();
             setAddExpanded(false);
           }}
           onPaid={() => {
-            // onPackageCreated already handles refresh/reset; this is
-            // here for parity with the other CheckoutModal invocations.
+            // Existing-package mode (or any charge completion): refresh
+            // so the just-charged package moves out of the unpaid list
+            // and the Charge button disappears from its card.
+            if (refetch) refetch();
           }}
         />
       )}
