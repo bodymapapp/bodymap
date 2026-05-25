@@ -9,7 +9,6 @@ import CheckoutModal from './CheckoutModal';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
-import DocumentJourney from './DocumentJourney';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
@@ -48,6 +47,123 @@ const makeSample = (today) => [
 // section card, body-map preview, last-session summary, patterns
 // readout, and inline SOAP/recap editors.
 // ═════════════════════════════════════════════════════════════════
+
+// ═════════════════════════════════════════════════════════════════
+// Slide-over design tokens (HK May 25 2026, Phase 24 world-class).
+// Reduces 4 competing typographic levels, 3+ spacing values, and 4
+// button variants into a single coherent system. Every new cockpit
+// element MUST use these tokens. Outside the cockpit, components can
+// still use their own scales (this is local to the slide-over).
+// ═════════════════════════════════════════════════════════════════
+const SO = {
+  // Spacing scale (matches Tailwind 1 / 2 / 3 / 4 / 6 multiples for
+  // future migration). Use only these values for padding and gap.
+  spaceXs: 4,
+  spaceSm: 8,
+  spaceMd: 12,
+  spaceLg: 16,
+  spaceXl: 24,
+
+  // Typography (3 levels, no more). 14px baseline.
+  titleSize: 15,
+  titleWeight: 700,
+  labelSize: 11,
+  labelWeight: 700,
+  labelTracking: '0.06em',
+  bodySize: 13,
+  bodyWeight: 500,
+  bodyLine: 1.55,
+
+  // Color palette. Pulled together from disparate hex values across
+  // the cockpit. Anything not in here should not appear in the
+  // slide-over.
+  ink:     '#1F2937',
+  inkMute: '#6B7280',
+  inkSoft: '#9CA3AF',
+  border:  '#E5DDD2',
+  card:    '#fff',
+  cream:   '#FCF8EE',
+  creamHi: '#F8F2E5',
+  forest:  '#2A5741',
+  sage:    '#6B9E80',
+  sageBg:  '#EEF3EE',
+  warn:    '#92400E',
+  warnBg:  '#FEF3C7',
+  warnBorder: '#FDE68A',
+  ok:      '#15803D',
+  okBg:    '#DCFCE7',
+  okBorder: '#BBF7D0',
+};
+
+// Two button variants only. Anywhere else in the slide-over that
+// renders a button must use one of these.
+const btnPrimary = {
+  background: SO.forest,
+  color: '#fff',
+  border: 'none',
+  borderRadius: 10,
+  padding: '10px 16px',
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  letterSpacing: '0.005em',
+};
+const btnSecondary = {
+  background: '#fff',
+  color: SO.forest,
+  border: '1.5px solid #D6E0D4',
+  borderRadius: 10,
+  padding: '9px 14px',
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+};
+
+// Unified empty-state / locked-state pattern. Soft cream card with
+// dashed border, icon, copy, optional CTA. Used for: pending-intake
+// (client hasn't filled intake yet), future-session lock, no-history
+// (returning client has no prior sessions visible), and any other
+// 'intentionally not here yet' state. Reads as 'this is fine,
+// nothing's broken' rather than 'something failed.'
+function EmptyStateCard({ icon, title, body, cta, ctaLabel }) {
+  return (
+    <div style={{
+      background: SO.cream,
+      border: `1px dashed #D6CDB8`,
+      borderRadius: 10,
+      padding: '14px 14px',
+      textAlign: 'left',
+    }}>
+      <div style={{
+        fontSize: SO.bodySize,
+        color: '#5B4F3A',
+        lineHeight: SO.bodyLine,
+        marginBottom: cta ? 10 : 0,
+      }}>
+        {icon ? <span style={{ marginRight: 6 }}>{icon}</span> : null}
+        {title && <strong style={{ color: SO.ink, fontWeight: 700 }}>{title}{body ? ': ' : ''}</strong>}
+        {body}
+      </div>
+      {cta && (
+        <button type="button" onClick={cta} style={{
+          background: 'transparent',
+          color: '#6B5B3A',
+          border: '1px solid #D6CDB8',
+          borderRadius: 999,
+          padding: '6px 12px',
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>
+          {ctaLabel}
+        </button>
+      )}
+    </div>
+  );
+}
 
 // SVG chevron used in CockpitSection. Stroke-weighted, rotates
 // smoothly on open. Replaces the prior ▾ unicode triangle which
@@ -162,45 +278,21 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
 }
 
 // Locked state shown inside Record + Recap panels when the
-// appointment is in the future. The 70yo therapist gets a clear
-// reason why the panel isn't editable, plus a small override for
-// the edge cases (testing, exceptional pre-fill, etc).
+// appointment is in the future. Reuses the unified EmptyStateCard
+// pattern so the visual language is consistent with other 'not yet'
+// states across the cockpit.
 function LockedFutureSessionPanel({ apptDate, onOverride, kind }) {
   const friendlyDate = apptDate?.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) || 'a future date';
   const copy = kind === 'recap'
     ? `Recap goes out after the session. This session is ${friendlyDate}, so the message field unlocks then.`
     : `Session notes go in after the session. This session is ${friendlyDate}, so the record unlocks then.`;
   return (
-    <div style={{
-      background: '#F9F5EE',
-      border: '1px dashed #D6CDB8',
-      borderRadius: 10,
-      padding: '14px 14px',
-      textAlign: 'left',
-    }}>
-      <div style={{ fontSize: 13, color: '#5B4F3A', lineHeight: 1.55, marginBottom: 10 }}>
-        🔒 {copy}
-      </div>
-      {onOverride && (
-        <button
-          type="button"
-          onClick={onOverride}
-          style={{
-            background: 'transparent',
-            color: '#6B5B3A',
-            border: '1px solid #D6CDB8',
-            borderRadius: 999,
-            padding: '6px 12px',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}
-        >
-          I'm starting now, unlock this
-        </button>
-      )}
-    </div>
+    <EmptyStateCard
+      icon="🔒"
+      body={copy}
+      cta={onOverride}
+      ctaLabel="I'm starting now, unlock this"
+    />
   );
 }
 
@@ -1342,45 +1434,70 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               pointer + hover underline. Falls back to plain text when
               the booking has no client_id (orphan booking that will
               show the inline ClientPicker on Charge). */}
+          {/* HK May 25 2026 (Phase 24): confident header. The 'Tap
+              to open profile' hint felt apologetic. Now: a real
+              outline button on the right says 'View profile' so the
+              affordance is visible and unambiguous. Avatar + name
+              are still tappable for fast access. */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
             {displayAppt.clientId ? (
-              <a
-                href={`/dashboard/clients/${displayAppt.clientId}`}
-                style={{
-                  display:'flex',
-                  alignItems:'center',
-                  gap:10,
-                  flex:1,
-                  minWidth:0,
-                  textDecoration:'none',
-                  color:'inherit',
-                  cursor:'pointer',
-                }}
-                onMouseEnter={e => { e.currentTarget.querySelector('.bm-slide-name').style.textDecoration = 'underline'; }}
-                onMouseLeave={e => { e.currentTarget.querySelector('.bm-slide-name').style.textDecoration = 'none'; }}
-                title="Open client profile"
-              >
-                <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div className="bm-slide-name" style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:6}}>
-                    {displayAppt.client}
-                    <span style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>›</span>
+              <>
+                <a
+                  href={`/dashboard/clients/${displayAppt.clientId}`}
+                  style={{
+                    display:'flex',
+                    alignItems:'center',
+                    gap:10,
+                    flex:1,
+                    minWidth:0,
+                    textDecoration:'none',
+                    color:'inherit',
+                    cursor:'pointer',
+                  }}
+                  title="Open client profile"
+                >
+                  <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:16,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                      {displayAppt.client}
+                    </div>
+                    {displayAppt.is_couples && displayAppt.partner_name && (
+                      <div style={{fontSize:12,color:SO.sage,fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
+                    )}
+                    <div style={{fontSize:12,color:SO.inkMute}}>
+                      {appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}
+                    </div>
                   </div>
-                  {displayAppt.is_couples && displayAppt.partner_name && (
-                    <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
-                  )}
-                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'} · Tap to open profile</div>
-                </div>
-              </a>
+                </a>
+                <a
+                  href={`/dashboard/clients/${displayAppt.clientId}`}
+                  style={{
+                    background: '#fff',
+                    color: SO.forest,
+                    border: '1.5px solid #D6E0D4',
+                    borderRadius: 999,
+                    padding: '6px 12px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'inherit',
+                    flexShrink: 0,
+                  }}
+                  title="Open client profile"
+                >
+                  View profile ›
+                </a>
+              </>
             ) : (
               <>
                 <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
+                  <div style={{fontSize:16,fontWeight:700,color:SO.ink,fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
                   {displayAppt.is_couples && displayAppt.partner_name && (
-                    <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
+                    <div style={{fontSize:12,color:SO.sage,fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
                   )}
-                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
+                  <div style={{fontSize:12,color:SO.inkMute}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
                 </div>
               </>
             )}
@@ -1473,55 +1590,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             </div>
           )}
 
-          {/* HK May 25 2026 (Phase 21 C1): DocumentJourney inline,
-              touch-friendly. Added (a) an above-label 'Your 4-step
-              session journey' so the 70yo therapist sees what the
-              dots are for, (b) a 1.15x scale wrapper so dots are
-              easier to tap, (c) generous vertical padding so it
-              doesn't feel crowded among the panels below. Same
-              JourneyDot component still drives the visual, ensuring
-              consistency with SessionDetail page. */}
-          {!appt.preview && currentSession && (
-            <div style={{ marginTop: 14 }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: '#6B7280',
-                letterSpacing: '0.1em',
-                textTransform: 'uppercase',
-                marginBottom: 8,
-                paddingLeft: 4,
-              }}>
-                Session journey · tap a step to jump
-              </div>
-              <div style={{
-                transformOrigin: 'top left',
-                transform: 'scale(1.06)',
-                width: 'calc(100% / 1.06)',
-                paddingBottom: 6,
-              }}>
-                <DocumentJourney
-                  session={currentSession}
-                  aiEnabled={therapist?.ai_enabled !== false}
-                  onSelect={(dotNum) => {
-                    const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
-                    setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
-                    setTimeout(() => {
-                      const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 80);
-                  }}
-                  onSoapClick={() => {
-                    setOpenSections(prev => ({ ...prev, record: true }));
-                    setTimeout(() => {
-                      const el = document.querySelector('[data-cockpit-section="record"]');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 80);
-                  }}
-                />
-              </div>
-            </div>
-          )}
+          {/* HK May 25 2026 (Phase 24): DocumentJourney removed from
+              slide-over. Reason: the 4 panels (Brief, Record, Recap,
+              and the Medical/Last-Session/Patterns context cards)
+              already communicate session progression through their
+              open/closed state, subtitles, and content. A separate
+              4-dot timeline competed visually rather than helping,
+              and the desktop-designed component had to be scaled
+              with a CSS transform hack to fit a 360px slide-over.
+              SessionDetail page still uses DocumentJourney where it
+              belongs (a full-width page context). */}
         </div>
         <div style={{padding:20,display:'flex',flexDirection:'column',gap:14}}>
           {/* HK May 25 2026 (Phase 20.1): cleaner status pills. Replaces
@@ -1576,9 +1654,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 onToggle={() => toggleSection('brief')}
               >
                 {!intakeDone && (
-                  <div style={{fontSize:13, color:'#6B7280', lineHeight:1.6, padding:'8px 0'}}>
-                    Your client hasn't filled out their intake yet. Send them the link from below, or fill it out with them at the start of the session.
-                  </div>
+                  <EmptyStateCard
+                    icon="📋"
+                    body="Your client hasn't filled out their intake yet. Send them the link from below, or fill it out with them at the start of the session."
+                  />
                 )}
                 {intakeDone && currentSession && (
                   <>
@@ -1692,9 +1771,10 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   warn={medicalFlagsFired.length > 0}
                 >
                   {medicalFlagsFired.length === 0 && (
-                    <div style={{fontSize:13, color:'#6B7280', lineHeight:1.6, padding:'4px 0'}}>
-                      Client reported no medical concerns on intake.
-                    </div>
+                    <EmptyStateCard
+                      icon="🩺"
+                      body="Client reported no medical concerns on intake."
+                    />
                   )}
                   {medicalFlagsFired.length > 0 && (
                     <ul style={{margin:0, padding:'0 0 0 18px'}}>
@@ -2040,19 +2120,19 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </button>
             )}
             {!appt.preview && !confirmCancel && (
-              <div style={{display:'flex',gap:6,marginTop:4,paddingTop:14,borderTop:'1px solid #F0EDE5'}}>
+              <div style={{display:'flex',gap:8,marginTop:4,paddingTop:14,borderTop:`1px solid ${SO.border}`}}>
                 <button onClick={() => onReschedule(appt)}
-                  style={{flex:1,background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
                   <span style={{fontSize:12}}>📅</span> Reschedule
                 </button>
                 {canMarkNoShow && (
                   <button onClick={() => openCancelFlow({ isNoShow: true })}
-                    style={{flex:1,background:'transparent',color:'#6B7280',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                    style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, color:SO.warn, borderColor:SO.warnBorder, display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
                     <span style={{fontSize:12}}>🚫</span> No-show
                   </button>
                 )}
                 <button onClick={() => openCancelFlow()}
-                  style={{flex:1,background:'transparent',color:'#9CA3AF',border:'1px solid #E5E7EB',borderRadius:10,padding:'9px 8px',fontSize:12,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
+                  style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, color:SO.inkMute, borderColor:'#E5E7EB', display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
                   <span style={{fontSize:12}}>✕</span> Cancel
                 </button>
               </div>
