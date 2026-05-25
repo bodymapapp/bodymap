@@ -11,12 +11,18 @@ import CheckoutModal from './CheckoutModal';
 import RefundModal from './RefundModal';
 import DocumentJourney from './DocumentJourney';
 import DocumentDrawer from './DocumentDrawer';
-import IntakeBrief from '../pages/IntakeBrief';
-import PreSessionBrief from '../pages/PreSessionBrief';
-import PostSessionBrief from '../pages/PostSessionBrief';
-import PostSessionSummary from '../pages/PostSessionSummary';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
+
+// HK May 25 2026: the 4 doc page components are heavy (each pulls in
+// body diagram + html2canvas dependencies via DocumentDrawer's
+// children). Loading them at module-init time made the Schedule tab
+// noticeably slower per HK's report. Lazy import these instead; they
+// only load when the therapist actually taps a doc shortcut pill.
+const IntakeBrief = React.lazy(() => import('../pages/IntakeBrief'));
+const PreSessionBrief = React.lazy(() => import('../pages/PreSessionBrief'));
+const PostSessionBrief = React.lazy(() => import('../pages/PostSessionBrief'));
+const PostSessionSummary = React.lazy(() => import('../pages/PostSessionSummary'));
 
 const addDays = (d,n) => { const x=new Date(d); x.setDate(x.getDate()+n); return x; };
 const sameDay = (a,b) => a.toDateString()===b.toDateString();
@@ -2284,6 +2290,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                             // fails we revert.
                             setIntakeWaivedLocal(true);
 
+                            // HK May 25 2026: when therapist waives
+                            // intake, the session is happening now
+                            // (the whole point of waiving). Future-
+                            // session SOAP + Recap locks would still
+                            // block the editors otherwise, leaving
+                            // the cockpit half-locked even after the
+                            // waiver and the placeholder session row
+                            // were both in place. Override both so
+                            // SOAP and Recap are immediately editable.
+                            setRecordOverride(true);
+                            setRecapOverride(true);
+
                             // 1. Flag the booking as waived.
                             const { error: bkErr } = await supabase
                               .from('bookings')
@@ -2291,6 +2309,8 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                               .eq('id', appt.id);
                             if (bkErr) {
                               setIntakeWaivedLocal(false);
+                              setRecordOverride(false);
+                              setRecapOverride(false);
                               console.warn('[intake-waive] booking update failed', bkErr);
                               return;
                             }
@@ -3032,7 +3052,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             client={drawerClient}
             therapist={therapist}
           >
-            <Comp sessionIdProp={currentSession.id} chrome="drawer" />
+            <React.Suspense fallback={
+              <div style={{
+                padding: '40px 24px',
+                textAlign: 'center',
+                color: '#6B7F72',
+                fontSize: 13,
+              }}>
+                Loading document...
+              </div>
+            }>
+              <Comp sessionIdProp={currentSession.id} chrome="drawer" />
+            </React.Suspense>
           </DocumentDrawer>
         );
       })()}

@@ -1,136 +1,140 @@
 // src/components/FloatingBookingChip.jsx
 //
-// A small floating sage chip that gives one-tap access to the
-// therapist's public booking page from any dashboard tab.
+// A small floating chip that gives one-tap access to the therapist's
+// public booking page from any dashboard tab.
 //
 // Why this exists: HK feedback May 25 2026 - 'For booking page
 // everywhere, why cant we just have the floating share booking link
 // in all tabs vs just the clients tab? For mobile, could be also a
 // floating tab on the bottom but small in shape? Something like most
-// of the AI softwares have today for ex in Grammarly or Copilot.'
+// of the AI softwares have today for ex in Grammarly or Copilot. Also
+// in future it could be a small little floating link for PracticeIQ
+// within which they can have the booking link on top.'
 //
-// Pattern reference: Grammarly + Microsoft Copilot use a small
-// always-available floating utility chip in the corner. Distinct
-// from a primary FAB (Floating Action Button) because the chip is
-// not the page's main action; it's a tool that lives alongside
-// content and never competes with it.
+// Pattern reference: Grammarly + Microsoft Copilot floating utility
+// chip. Distinct from a primary FAB because the chip is a tool that
+// lives alongside content, not the page's main action.
 //
 // Behavior:
 //   - Default position: bottom-right corner, above mobile bottom nav
-//   - Tap: opens a small popover above the chip with two actions
+//   - Sage circle with the MyBodyMap paired-leaf logo (not a generic
+//     icon). HK May 25 2026: 'just have mybodymap logo vs some random
+//     chain looking thing in it'.
+//   - Tap: opens a small popover with two actions
 //     1. Open booking page (uses openExternal so iOS PWAs route
 //        through Safari rather than hijacking the URL)
 //     2. Copy booking link to clipboard
-//   - Long-press (mouse hold or touch hold >450ms): enters drag mode
-//     The chip becomes draggable and on release snaps to the nearest
-//     of the 4 viewport corners. Position persists in localStorage
-//     per therapist id so the next visit remembers the choice.
-//
-// Future-friendly: the component renders a generic chip. The icon +
-// popover contents are exposed via props so a future iteration can
-// host PracticeIQ quick chat, share link to client, or other tool
-// shortcuts from the same anchor.
-//
-// HK May 25 2026 (Work E).
+//   - Long-press (450ms): enters drag mode. Chip lifts and brightens.
+//     The chip follows the pointer and stays where it's released.
+//     ANYWHERE on the screen, not just snapped to corners. HK
+//     explicitly asked for free positioning May 25 2026.
+//   - Position persists per therapist in localStorage so the next
+//     visit remembers the choice. On resize the chip clamps back into
+//     the viewport so it never ends up off-screen.
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { openExternal } from '../lib/openExternal';
+import BMLogo from './BMLogo';
 
-// 4 corners: br = bottom-right (default), bl = bottom-left,
-// tr = top-right, tl = top-left.
-const CORNERS = ['br', 'bl', 'tr', 'tl'];
-const DEFAULT_CORNER = 'br';
 const LONG_PRESS_MS = 450;
+const CHIP_SIZE = 48;
 
-function loadCorner(therapistId) {
-  if (!therapistId) return DEFAULT_CORNER;
-  try {
-    const v = localStorage.getItem(`bm:chip-corner:${therapistId}`);
-    return CORNERS.includes(v) ? v : DEFAULT_CORNER;
-  } catch (_) {
-    return DEFAULT_CORNER;
-  }
+// Default position: bottom-right, above mobile bottom nav.
+function defaultPos(isMobile) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const mobileBottomNav = 90;
+  const desktopBottom = 24;
+  const side = 16;
+  return {
+    x: w - CHIP_SIZE - side,
+    y: h - CHIP_SIZE - (isMobile ? mobileBottomNav : desktopBottom),
+  };
 }
 
-function saveCorner(therapistId, corner) {
+function loadPos(therapistId, isMobile) {
+  if (!therapistId) return defaultPos(isMobile);
+  try {
+    const raw = localStorage.getItem(`bm:chip-pos:${therapistId}`);
+    if (!raw) return defaultPos(isMobile);
+    const parsed = JSON.parse(raw);
+    if (typeof parsed?.x === 'number' && typeof parsed?.y === 'number') {
+      return clampToViewport(parsed.x, parsed.y);
+    }
+  } catch (_) { /* fall through */ }
+  return defaultPos(isMobile);
+}
+
+function savePos(therapistId, x, y) {
   if (!therapistId) return;
   try {
-    localStorage.setItem(`bm:chip-corner:${therapistId}`, corner);
+    localStorage.setItem(`bm:chip-pos:${therapistId}`, JSON.stringify({ x, y }));
   } catch (_) { /* storage disabled, ignore */ }
 }
 
-// Snap any (x, y) point to the nearest viewport corner. Used at the
-// end of a drag gesture so the chip always lands cleanly in a corner.
-function snapCorner(x, y) {
+// Keep the chip inside the visible viewport so it can never end up
+// off-screen after a resize or rotation. 4px gutter on each edge.
+function clampToViewport(x, y) {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  const left = x < w / 2;
-  const top = y < h / 2;
-  if (top && left) return 'tl';
-  if (top && !left) return 'tr';
-  if (!top && left) return 'bl';
-  return 'br';
+  const minX = 4;
+  const minY = 4;
+  const maxX = w - CHIP_SIZE - 4;
+  const maxY = h - CHIP_SIZE - 4;
+  return {
+    x: Math.max(minX, Math.min(maxX, x)),
+    y: Math.max(minY, Math.min(maxY, y)),
+  };
 }
 
-// Style for a given corner, accounting for mobile bottom nav (74px)
-// and the iOS safe-area inset. Bottom corners sit above the nav so
-// the chip is never overlapped by it.
-function cornerStyle(corner, isMobile) {
-  const mobileBottom = `calc(90px + env(safe-area-inset-bottom, 0px))`;
-  const desktopBottom = 24;
-  const topInset = isMobile ? 80 : 80;
-  const side = 16;
-  switch (corner) {
-    case 'tl': return { top: topInset, left: side, right: 'auto', bottom: 'auto' };
-    case 'tr': return { top: topInset, right: side, left: 'auto', bottom: 'auto' };
-    case 'bl': return { bottom: isMobile ? mobileBottom : desktopBottom, left: side, right: 'auto', top: 'auto' };
-    case 'br':
-    default:   return { bottom: isMobile ? mobileBottom : desktopBottom, right: side, left: 'auto', top: 'auto' };
-  }
-}
-
-// Popover anchor direction: corner determines which way the popover
-// expands so it never opens off-screen.
-function popoverStyle(corner) {
-  const baseShift = 56; // chip diameter + small gap
-  switch (corner) {
-    case 'tl': return { top: baseShift, left: 0 };
-    case 'tr': return { top: baseShift, right: 0 };
-    case 'bl': return { bottom: baseShift, left: 0 };
-    case 'br':
-    default:   return { bottom: baseShift, right: 0 };
-  }
+// Popover position relative to the chip. If the chip is in the top
+// half of the screen, popover drops down; bottom half, popover rises
+// up. Same for left/right so the popover stays on-screen.
+function popoverStyle(x, y) {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const baseGap = CHIP_SIZE + 8;
+  const dropDown = y < h / 2;
+  const alignRight = x > w / 2;
+  return {
+    [dropDown ? 'top' : 'bottom']: baseGap,
+    [alignRight ? 'right' : 'left']: 0,
+  };
 }
 
 export default function FloatingBookingChip({ therapist }) {
   const customUrl = therapist?.custom_url;
   const bookingUrl = customUrl ? `${window.location.origin}/book/${customUrl}` : null;
 
-  const [corner, setCorner] = useState(() => loadCorner(therapist?.id));
-  const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [dragging, setDragging] = useState(false);
-  const [dragPos, setDragPos] = useState(null);  // { x, y } during drag
   const [isMobile, setIsMobile] = useState(() => {
     return typeof window !== 'undefined' && window.innerWidth < 768;
   });
+  const [pos, setPos] = useState(() => loadPos(therapist?.id, isMobile));
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [dragging, setDragging] = useState(false);
 
   const longPressTimer = useRef(null);
   const containerRef = useRef(null);
   const dragStartRef = useRef(null);
+  const moveRef = useRef(false);
 
-  // Update mobile detection on resize so the chip moves when the user
-  // rotates an iPad or resizes a desktop window into mobile width.
+  // Update mobile detection on resize so default position recomputes.
+  // Also re-clamp current position so the chip stays in view after
+  // rotation or window resize.
   useEffect(() => {
-    const onResize = () => setIsMobile(window.innerWidth < 768);
+    const onResize = () => {
+      setIsMobile(window.innerWidth < 768);
+      setPos(p => clampToViewport(p.x, p.y));
+    };
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
-  // Re-load corner when therapist id changes (rare but happens on
-  // dev/demo account switching).
+  // Re-load position when therapist id changes.
   useEffect(() => {
-    setCorner(loadCorner(therapist?.id));
+    setPos(loadPos(therapist?.id, isMobile));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [therapist?.id]);
 
   // Close popover when clicking anywhere outside the chip.
@@ -149,17 +153,17 @@ export default function FloatingBookingChip({ therapist }) {
     };
   }, [open]);
 
-  // ── Drag mechanics ───────────────────────────────────────────────
+  // ── Drag mechanics ────────────────────────────────────────────────
   // Long-press starts drag. While dragging, follow the pointer.
-  // Release snaps to the nearest corner.
+  // Release leaves the chip wherever the user let go (free position).
 
   const startLongPress = useCallback((clientX, clientY) => {
     if (longPressTimer.current) clearTimeout(longPressTimer.current);
     dragStartRef.current = { x: clientX, y: clientY };
+    moveRef.current = false;
     longPressTimer.current = setTimeout(() => {
       setDragging(true);
-      setDragPos({ x: clientX, y: clientY });
-      // Haptic feedback on supported devices to confirm drag mode.
+      setPos({ x: clientX - CHIP_SIZE / 2, y: clientY - CHIP_SIZE / 2 });
       try { navigator.vibrate?.(15); } catch (_) {}
     }, LONG_PRESS_MS);
   }, []);
@@ -171,22 +175,25 @@ export default function FloatingBookingChip({ therapist }) {
     }
   }, []);
 
-  // Track pointer while dragging. Mouse and touch unified handlers.
+  // Track pointer while dragging. Mouse + touch unified.
   useEffect(() => {
     if (!dragging) return;
     const onMove = (e) => {
       const t = e.touches?.[0] || e;
-      setDragPos({ x: t.clientX, y: t.clientY });
-      // Prevent page scroll on touch while dragging.
+      setPos(clampToViewport(t.clientX - CHIP_SIZE / 2, t.clientY - CHIP_SIZE / 2));
+      moveRef.current = true;
       if (e.touches) e.preventDefault();
     };
-    const onUp = (e) => {
-      const t = e.changedTouches?.[0] || e;
-      const newCorner = snapCorner(t.clientX, t.clientY);
-      setCorner(newCorner);
-      saveCorner(therapist?.id, newCorner);
+    const onUp = () => {
       setDragging(false);
-      setDragPos(null);
+      // Save the final position. Use a small timeout so the latest
+      // setPos from the last mousemove has settled into state.
+      setTimeout(() => {
+        setPos(p => {
+          savePos(therapist?.id, p.x, p.y);
+          return p;
+        });
+      }, 0);
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -200,18 +207,19 @@ export default function FloatingBookingChip({ therapist }) {
     };
   }, [dragging, therapist?.id]);
 
-  // Don't render if there's no booking link to share.
   if (!bookingUrl) return null;
 
   const handleChipClick = (e) => {
-    // If we were dragging, the up handler already finished. Don't
-    // also open the popover on the same gesture.
-    if (dragging) return;
+    // If we just finished a drag, swallow the click so the popover
+    // doesn't open on release.
+    if (dragging || moveRef.current) {
+      moveRef.current = false;
+      return;
+    }
     if (dragStartRef.current) {
       const dx = Math.abs((e.clientX || 0) - dragStartRef.current.x);
       const dy = Math.abs((e.clientY || 0) - dragStartRef.current.y);
       if (dx > 4 || dy > 4) {
-        // Treat as a small drift; ignore.
         dragStartRef.current = null;
         return;
       }
@@ -230,7 +238,6 @@ export default function FloatingBookingChip({ therapist }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1800);
     } catch (_) {
-      // Clipboard API unavailable; fall back to selection trick.
       const ta = document.createElement('textarea');
       ta.value = bookingUrl;
       document.body.appendChild(ta);
@@ -240,34 +247,29 @@ export default function FloatingBookingChip({ therapist }) {
     }
   };
 
-  // Compute the chip's position: either snapped corner OR pointer
-  // location during drag.
-  const positionStyle = dragging && dragPos
-    ? { left: dragPos.x - 24, top: dragPos.y - 24, right: 'auto', bottom: 'auto', transition: 'none' }
-    : { ...cornerStyle(corner, isMobile), transition: 'top 0.18s ease, left 0.18s ease, right 0.18s ease, bottom 0.18s ease' };
-
   return (
     <div
       ref={containerRef}
       style={{
         position: 'fixed',
-        zIndex: 950,        // Below modals (1000+) and slide-overs but above page content
-        ...positionStyle,
+        left: pos.x,
+        top: pos.y,
+        zIndex: 950,
+        transition: dragging ? 'none' : 'left 0.18s ease, top 0.18s ease',
       }}
     >
-      {/* Popover */}
       {open && !dragging && (
         <div
           role="menu"
           style={{
             position: 'absolute',
-            ...popoverStyle(corner),
+            ...popoverStyle(pos.x, pos.y),
             background: '#fff',
             borderRadius: 14,
             border: '1px solid #E5E0D5',
             boxShadow: '0 8px 28px rgba(28,43,34,0.12), 0 2px 6px rgba(28,43,34,0.06)',
             padding: 8,
-            minWidth: 200,
+            minWidth: 220,
             fontFamily: 'inherit',
           }}
         >
@@ -297,7 +299,7 @@ export default function FloatingBookingChip({ therapist }) {
             onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F6F2'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            <span style={{ fontSize: 16 }}>↗</span>
+            <span style={{ fontSize: 16, color: '#2A5741' }}>↗</span>
             Open booking page
           </button>
           <button
@@ -319,7 +321,7 @@ export default function FloatingBookingChip({ therapist }) {
             onMouseEnter={(e) => { e.currentTarget.style.background = '#F4F6F2'; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
           >
-            <span style={{ fontSize: 16 }}>{copied ? '✓' : '⧉'}</span>
+            <span style={{ fontSize: 16, color: '#2A5741' }}>{copied ? '✓' : '⧉'}</span>
             {copied ? 'Copied' : 'Copy link'}
           </button>
           <div style={{
@@ -329,12 +331,14 @@ export default function FloatingBookingChip({ therapist }) {
             borderTop: '1px solid #F3F0E8',
             marginTop: 4,
           }}>
-            Hold to drag to another corner.
+            Hold to drag anywhere.
           </div>
         </div>
       )}
 
-      {/* Chip */}
+      {/* Chip body. Sage-only gradient (no near-black anchor) so the
+          surface reads as a tool, not a hole. Brightens visibly when
+          dragging so HK can confirm the long-press registered. */}
       <button
         type="button"
         aria-label="Booking link tools"
@@ -350,30 +354,31 @@ export default function FloatingBookingChip({ therapist }) {
         onTouchEnd={cancelLongPress}
         onTouchCancel={cancelLongPress}
         style={{
-          width: 48, height: 48,
+          width: CHIP_SIZE, height: CHIP_SIZE,
           borderRadius: '50%',
           background: dragging
-            ? 'linear-gradient(135deg, #4A6B54 0%, #2A5741 100%)'
-            : 'linear-gradient(135deg, #2A5741 0%, #1C2B22 100%)',
+            ? 'linear-gradient(135deg, #8BB89A 0%, #6B9E80 100%)'
+            : 'linear-gradient(135deg, #6B9E80 0%, #4A7A5C 100%)',
           color: '#fff',
-          border: 'none',
+          border: dragging ? '2px solid rgba(255,255,255,0.6)' : '2px solid rgba(255,255,255,0.35)',
           cursor: dragging ? 'grabbing' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 20,
           boxShadow: dragging
-            ? '0 8px 24px rgba(28,43,34,0.35), 0 0 0 6px rgba(74,107,84,0.18)'
-            : '0 4px 12px rgba(28,43,34,0.22), 0 1px 3px rgba(28,43,34,0.10)',
-          transition: 'box-shadow 0.18s ease, background 0.18s ease, transform 0.12s ease',
-          transform: dragging ? 'scale(1.08)' : 'scale(1)',
+            ? '0 12px 32px rgba(74,122,92,0.45), 0 0 0 8px rgba(139,184,154,0.22)'
+            : '0 4px 14px rgba(74,122,92,0.32), 0 1px 3px rgba(28,43,34,0.10)',
+          transition: 'box-shadow 0.18s ease, background 0.18s ease, transform 0.12s ease, border 0.18s ease',
+          transform: dragging ? 'scale(1.12)' : 'scale(1)',
           fontFamily: 'inherit',
-          touchAction: 'none',  // Prevent scroll while interacting with chip
+          touchAction: 'none',
           WebkitTapHighlightColor: 'transparent',
+          padding: 0,
         }}
       >
-        🔗
+        <BMLogo size={26} variant="white" showWordmark={false} />
       </button>
     </div>
   );
 }
+
