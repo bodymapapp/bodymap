@@ -9,6 +9,7 @@ import CheckoutModal from './CheckoutModal';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
+import DocumentJourney from './DocumentJourney';
 import BodyDiagram from './BodyDiagram';
 import { zoneLabel, zonesToBodyDiagram, pressureLabel, goalLabel, preferenceLabel } from '../lib/bodyZones';
 
@@ -665,12 +666,22 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <span>Your private summary</span>
         <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
       </div>
-      <div style={{
-        fontSize: 11, fontWeight: 700, color: '#6B7280',
-        letterSpacing: '0.06em', textTransform: 'uppercase',
-        marginBottom: 4, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      }}>
-        <span>Private notes (a quick summary for yourself)</span>
+      {/* HK May 25 2026 (Phase 24c): label and Draft button were
+          previously crammed into a single row on a 360px slide-over
+          and read as cluttered. Now stacked: label sits on its own
+          line, then a generous flex row with the textarea label on
+          the left and the Draft button on the right at proper
+          touch-target size. */}
+      <div style={{ marginBottom: 8 }}>
+        <Label>Private notes</Label>
+        <div style={{
+          fontSize: 12,
+          color: SO.inkMute,
+          marginBottom: 10,
+          lineHeight: 1.5,
+        }}>
+          A quick summary for yourself. Use the button on the right to have the practice assistant draft one from your SOAP notes above.
+        </div>
         {therapist?.ai_enabled !== false && (
           <button
             type="button"
@@ -678,19 +689,21 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
             disabled={drafting}
             style={{
               background: drafting ? '#E5DDD2' : '#fff',
-              border: '1px solid #D6E0D4',
+              border: '1.5px solid #D6E0D4',
               borderRadius: 999,
-              padding: '4px 10px',
-              fontSize: 11,
+              padding: '8px 14px',
+              fontSize: 12,
               fontWeight: 600,
-              color: '#2A5741',
+              color: SO.forest,
               cursor: drafting ? 'wait' : 'pointer',
               fontFamily: 'inherit',
-              textTransform: 'none',
-              letterSpacing: 0,
+              marginBottom: 10,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
             }}
           >
-            {drafting ? 'Drafting...' : '✨ Draft from SOAP'}
+            {drafting ? 'Drafting…' : '✨ Draft from SOAP above'}
           </button>
         )}
       </div>
@@ -1420,14 +1433,13 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   return (
     <>
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
-      {/* HK May 25 2026 (Phase 23): scroll fix. The outer container
-          is position:fixed with explicit top/bottom and overflowY:auto.
-          Children flow naturally without flex:1. The previous setup
-          gave body 'flex:1' which fought the parent's overflow boundary
-          when the cockpit panels grew tall, causing the scroll to die
-          past the checkout button. paddingBottom adds breathing room
-          below the last action so nothing sits flush against
-          home-indicator on iOS. Design principle #23 below. */}
+      {/* HK May 25 2026 (Phase 24c): definitive scroll fix.
+          The previous fix put paddingBottom on the OUTER scroll
+          container. WebKit has a long-standing bug where padding
+          on a scroll container doesn't reserve scrollable space at
+          the bottom (content can scroll past the padding). Real
+          fix: NO padding on the outer container, paddingBottom on
+          the inner content area where last action sits. */}
       <div style={{
         position:'fixed',
         top:0, right:0, bottom:0,
@@ -1438,7 +1450,6 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         WebkitOverflowScrolling: 'touch',
         boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',
         paddingTop:'env(safe-area-inset-top, 0px)',
-        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 40px)',
       }}>
         <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
           {/* Top row: avatar + name + close. displayAppt is used so
@@ -1607,18 +1618,60 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
             </div>
           )}
 
-          {/* HK May 25 2026 (Phase 24): DocumentJourney removed from
-              slide-over. Reason: the 4 panels (Brief, Record, Recap,
-              and the Medical/Last-Session/Patterns context cards)
-              already communicate session progression through their
-              open/closed state, subtitles, and content. A separate
-              4-dot timeline competed visually rather than helping,
-              and the desktop-designed component had to be scaled
-              with a CSS transform hack to fit a 360px slide-over.
-              SessionDetail page still uses DocumentJourney where it
-              belongs (a full-width page context). */}
+          {/* HK May 25 2026 (Phase 24c): DocumentJourney restored.
+              Core competency: the four-dot visual is how we show
+              the whole client journey at a glance. Rendered here at
+              its natural width (no transform scale hack); the
+              component was always responsive, the prior scale was
+              over-engineering. Sits between status pills and the
+              first panel, with generous vertical breathing room. */}
+          {!appt.preview && (
+            <div style={{
+              marginTop: 16,
+              padding: '14px 4px 6px',
+              background: 'linear-gradient(180deg, transparent 0%, #FAF7F0 100%)',
+              borderRadius: 12,
+            }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: SO.inkSoft,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                marginBottom: 10,
+                paddingLeft: 6,
+              }}>
+                Session journey
+              </div>
+              <DocumentJourney
+                session={currentSession}
+                aiEnabled={therapist?.ai_enabled !== false}
+                onSelect={(dotNum) => {
+                  const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';
+                  setOpenSections(prev => ({ ...prev, [sectionKey]: true }));
+                  setTimeout(() => {
+                    const el = document.querySelector(`[data-cockpit-section="${sectionKey}"]`);
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }}
+                onSoapClick={() => {
+                  setOpenSections(prev => ({ ...prev, record: true }));
+                  setTimeout(() => {
+                    const el = document.querySelector('[data-cockpit-section="record"]');
+                    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }, 80);
+                }}
+              />
+            </div>
+          )}
         </div>
-        <div style={{padding:20,display:'flex',flexDirection:'column',gap:14}}>
+        <div style={{
+          padding: 20,
+          paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 60px)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 14,
+        }}>
           {/* HK May 25 2026 (Phase 20.1): cleaner status pills. Replaces
               the prior verbose 'Reminder sent / pending' line which
               read as if intake was pending. Now uses paid + reminder
@@ -1659,7 +1712,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               auto-scroll + auto-expand the matching panel.
               ══════════════════════════════════════════════════════════ */}
 
-          {!appt.preview && currentSession && (
+          {/* HK May 25 2026 (Phase 24c): cockpit panels are NO LONGER
+              gated on currentSession. Previously: when intake wasn't
+              filled, the whole cockpit was invisible and the user
+              saw a blank slide-over. Now: panels render and handle
+              their own empty/locked states. Brief shows the
+              EmptyStateCard with intake link. Medical, Last Session,
+              Patterns only render if they have data. Record + Recap
+              lock until session date passes (or override). */}
+          {!appt.preview && (
             <>
               {/* ─── Brief panel (intake summary) ─── */}
               <CockpitSection
@@ -1852,7 +1913,15 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 isOpen={openSections.record}
                 onToggle={() => toggleSection('record')}
               >
-                {isFutureSession && !recordOverride && !hasSoapContent ? (
+                {!currentSession ? (
+                  /* No session yet: intake not submitted. Show
+                     EmptyStateCard so the panel exists and explains
+                     what unlocks it. */
+                  <EmptyStateCard
+                    icon="✍️"
+                    body="The SOAP record unlocks once your client fills out their intake. You can capture session notes here right after the appointment."
+                  />
+                ) : isFutureSession && !recordOverride && !hasSoapContent ? (
                   <LockedFutureSessionPanel
                     apptDate={appt.date}
                     kind="record"
@@ -2137,21 +2206,47 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </button>
             )}
             {!appt.preview && !confirmCancel && (
-              <div style={{display:'flex',gap:8,marginTop:4,paddingTop:14,borderTop:`1px solid ${SO.border}`}}>
-                <button onClick={() => onReschedule(appt)}
-                  style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-                  <span style={{fontSize:12}}>📅</span> Reschedule
-                </button>
-                {canMarkNoShow && (
-                  <button onClick={() => openCancelFlow({ isNoShow: true })}
-                    style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, color:SO.warn, borderColor:SO.warnBorder, display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-                    <span style={{fontSize:12}}>🚫</span> No-show
+              <div style={{marginTop:4,paddingTop:14,borderTop:`1px solid ${SO.border}`}}>
+                <div style={{display:'flex',gap:8}}>
+                  <button onClick={() => onReschedule(appt)}
+                    style={{...btnSecondary, flex:1, display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                    <span>📅</span> Reschedule
                   </button>
-                )}
-                <button onClick={() => openCancelFlow()}
-                  style={{...btnSecondary, flex:1, padding:'9px 8px', fontSize:12, color:SO.inkMute, borderColor:'#E5E7EB', display:'flex',alignItems:'center',justifyContent:'center',gap:4}}>
-                  <span style={{fontSize:12}}>✕</span> Cancel
-                </button>
+                  {canMarkNoShow && (
+                    <button onClick={() => openCancelFlow({ isNoShow: true })}
+                      style={{...btnSecondary, flex:1, color:SO.warn, borderColor:SO.warnBorder, display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+                      <span>🚫</span> No-show
+                    </button>
+                  )}
+                </div>
+                {/* HK May 25 2026 (Phase 24c): Cancel demoted to a
+                    quiet text link below the action buttons. The
+                    previous tiny ✕ Cancel button competed for visual
+                    weight with Reschedule and reads as a 'small bad
+                    option.' Cancelation is destructive, but it's
+                    also infrequent: a confident link with a clear
+                    destructive color is the right affordance, not a
+                    button that whispers. */}
+                <div style={{marginTop:12,textAlign:'center'}}>
+                  <button onClick={() => openCancelFlow()}
+                    style={{
+                      background:'transparent',
+                      color:'#B91C1C',
+                      border:'none',
+                      borderRadius:6,
+                      padding:'8px 12px',
+                      fontSize:13,
+                      fontWeight:600,
+                      cursor:'pointer',
+                      fontFamily:'inherit',
+                      textDecoration:'underline',
+                      textUnderlineOffset:'3px',
+                      textDecorationColor:'#FCA5A5',
+                      textDecorationThickness:'1.5px',
+                    }}>
+                    Cancel this appointment
+                  </button>
+                </div>
               </div>
             )}
             {!appt.preview && confirmCancel && (
@@ -2730,7 +2825,12 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
                         <div style={{fontSize:11,fontWeight:700,color:appt.preview?'#C4C4C4':'#1F2937'}}>{appt.time}</div>
                         <div style={{fontSize:10,color:'#9CA3AF'}}>{appt.duration}m</div>
                         {!appt.preview&&appt.reminder_sent&&<div style={{fontSize:9,color:'#16A34A',fontWeight:700,marginTop:1}}>📧 Sent</div>}
-                        {!appt.preview&&!appt.reminder_sent&&<div style={{fontSize:9,color:'#9CA3AF',marginTop:1}}>📧 Pending</div>}
+                        {/* HK May 25 2026: removed misleading "📧 Pending"
+                            indicator. It read as if the SESSION was
+                            pending, not just the reminder email which
+                            fires 24h before. The status pill below
+                            already communicates session state. The
+                            reminder schedule is implicit. */}
                       </div>
                     </div>
                     {bh>52&&<div style={{fontSize:11,color:appt.preview?'#C4C4C4':st.color,marginLeft:30}}>
