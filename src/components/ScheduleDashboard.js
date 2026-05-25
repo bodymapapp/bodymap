@@ -2265,6 +2265,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                 )}
                 <DocumentJourney
                   session={currentSession}
+                  intakeWaivedAt={intakeWaivedLocal}
                   aiEnabled={therapist?.ai_enabled !== false}
                   onSelect={(dotNum) => {
                     const sectionKey = dotNum === 1 ? 'brief' : dotNum === 2 ? 'brief' : dotNum === 3 ? 'record' : 'recap';

@@ -142,6 +142,19 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
   // brief buttons when AI is turned off in Settings.
   const [aiEnabled, setAiEnabled] = useState(true);
   const [therapistMeta, setTherapistMeta] = useState(null);
+  // HK May 25 2026 round 11: read the booking's intake_waived_at so
+  // the DocumentJourney can show 'Waived' on dot 1 when the therapist
+  // marked intake as waived from the cockpit. Without this, dot 1
+  // stayed orange even after the waiver was applied because the
+  // session row itself looks identical to an auto-created draft.
+  const [intakeWaivedAt, setIntakeWaivedAt] = useState(null);
+  useEffect(() => {
+    if (!session?.booking_id) return;
+    supabase.from('bookings').select('intake_waived_at').eq('id', session.booking_id).maybeSingle()
+      .then(({ data }) => {
+        if (data?.intake_waived_at) setIntakeWaivedAt(data.intake_waived_at);
+      });
+  }, [session?.booking_id]);
   useEffect(() => {
     if (!session?.therapist_id) return;
     supabase.from("therapists").select("ai_enabled, full_name, business_name, phone, custom_url").eq("id", session.therapist_id).maybeSingle()
@@ -666,6 +679,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
         </div>
         <DocumentJourney
           session={session}
+          intakeWaivedAt={intakeWaivedAt}
           aiEnabled={aiEnabled}
           onSoapClick={!session.completed ? jumpToSoap : null}
           onSelect={(n) => setDrawerDoc(n)}

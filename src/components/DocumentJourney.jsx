@@ -158,6 +158,11 @@ function JourneyDot({ n, label, status, statusText, onClick, sub, pressed }) {
             color: statusColor, fontWeight: 600,
             textTransform: 'uppercase', letterSpacing: '0.7px',
             marginTop: 1,
+            // HK May 25 2026 round 11: prevent multi-word status text
+            // from wrapping into ugly stacks like 'TAP / TO / WRITE'.
+            // Status text is kept short (one or two short words) and
+            // nowrap so the column width drives readability.
+            whiteSpace: 'nowrap',
           }}>{statusText}</div>
         )}
       </div>
@@ -189,7 +194,7 @@ function Connector({ leftDone, rightDone }) {
 }
 
 // ─── Main component ───
-export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null, onSelect = null }) {
+export default function DocumentJourney({ session, aiEnabled = true, onSoapClick = null, onSelect = null, intakeWaivedAt = null }) {
   const [pressedDot, setPressedDot] = React.useState(null);
 
   // HK May 25 2026 (Phase 24d): when there's no session yet (intake
@@ -201,10 +206,10 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
   // pending. Same visual rhythm regardless of state.
   if (!session) {
     const placeholderStates = [
-      { n: 1, label: 'Intake',         status: 'current', statusText: 'Awaiting client' },
-      { n: 2, label: 'Pre-Session',    status: 'waiting', statusText: 'Unlocks after intake' },
-      { n: 3, label: 'Post-Session',   status: 'waiting', statusText: 'After your session' },
-      { n: 4, label: 'Client Recap',   status: 'waiting', statusText: 'After your session' },
+      { n: 1, label: 'Intake',  status: 'current', statusText: 'Not yet' },
+      { n: 2, label: 'Brief',   status: 'waiting', statusText: 'Waiting' },
+      { n: 3, label: 'Record',  status: 'waiting', statusText: 'Waiting' },
+      { n: 4, label: 'Recap',   status: 'waiting', statusText: 'Waiting' },
     ];
     return (
       <div style={{ position: 'relative' }}>
@@ -248,12 +253,21 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
   // 'Current' is the first dot that needs therapist action. Earlier dots
   // are 'done', later dots are 'waiting'.
 
-  const intakeDone = !!(
+  // HK May 25 2026 round 11: distinguish three intake states cleanly.
+  // Previously intakeDone was true if session.pressure existed, but
+  // auto-created session rows now default pressure to 3, so this
+  // marked every session as 'intake filled' even when the client
+  // never submitted. The fix: check the focus arrays (client must
+  // pick at least one zone to submit the intake form) and the
+  // explicit waiver flag from the booking. Defaults like
+  // pressure=3 / goal='relax' no longer count as 'filled'.
+  const intakeFilledByClient = !!(
     (session.front_focus && session.front_focus.length) ||
     (session.back_focus && session.back_focus.length) ||
-    session.client_notes ||
-    session.pressure
+    session.client_notes
   );
+  const intakeWaivedByTherapist = !!intakeWaivedAt;
+  const intakeDone = intakeFilledByClient || intakeWaivedByTherapist;
 
   // Parse SOAP from therapist_notes to know if record/recap have content
   let soap = { S: '', O: '', A: '', P: '', noteToClient: '' };
@@ -290,25 +304,25 @@ export default function DocumentJourney({ session, aiEnabled = true, onSoapClick
     {
       n: 1, label: 'Intake',
       status: computeStatus(1, intakeDone),
-      statusText: intakeDone ? 'Filled by client' : 'Awaiting client',
+      statusText: intakeFilledByClient ? 'Filled' : intakeWaivedByTherapist ? 'Waived' : 'Not yet',
       url: `/brief/intake/${sessionId}`,
     },
     {
-      n: 2, label: 'Pre-Session',
+      n: 2, label: 'Brief',
       status: computeStatus(2, preDone),
-      statusText: preDone ? 'Ready to read' : 'Waiting',
+      statusText: preDone ? 'Ready' : 'Waiting',
       url: `/brief/pre/${sessionId}`,
     },
     {
       n: 3, label: 'Record',
       status: computeStatus(3, recordDone),
-      statusText: recordDone ? 'Saved by you' : 'Tap to write',
+      statusText: recordDone ? 'Saved' : 'Write',
       url: `/brief/post/${sessionId}`,
     },
     {
       n: 4, label: 'Recap',
       status: computeStatus(4, recapDone),
-      statusText: recapDone ? 'Sent to client' : (recordDone ? 'Send to client' : 'Waiting'),
+      statusText: recapDone ? 'Sent' : (recordDone ? 'Send' : 'Waiting'),
       url: `/recap/${sessionId}`,
     },
   ];
