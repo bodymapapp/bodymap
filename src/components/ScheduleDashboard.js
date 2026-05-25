@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, db } from '../lib/supabase';
 import BookingModal from './BookingModal';
 import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
@@ -1603,19 +1603,27 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         });
         return;
       }
+      // HK May 25 2026 round 10: use the SAME db.createSession helper
+      // and the SAME field set that ClientIntake uses for green
+      // sessions. The orange-vs-green difference is only 'did the
+      // client fill the intake or not', not 'which insert path was
+      // used'. Both states get a session row created by the same
+      // function with the same shape; orange just has empty arrays
+      // and default preferences. HK's call after 9 rounds of
+      // inventing parallel insert paths.
       console.log('[auto-session] creating draft for booking', appt.id);
-      const { data: created, error: sErr } = await supabase
-        .from('sessions')
-        .insert({
+      let created;
+      try {
+        created = await db.createSession({
           therapist_id: therapist.id,
           client_id: appt.clientId,
           booking_id: appt.id,
           front_focus: [],
-          back_focus: [],
           front_avoid: [],
+          back_focus: [],
           back_avoid: [],
-          pressure: null,
-          goal: null,
+          pressure: 3,
+          goal: 'relax',
           table_temp: 'warm',
           room_temp: 'comfortable',
           music: 'soft',
@@ -1626,25 +1634,28 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           med_flag: 'none',
           med_note: null,
           client_notes: null,
+          medical_conditions: null,
+          custom_intake_answers: null,
+          front_pct: null,
+          top_pct: null,
+          middle_pct: null,
+          bottom_pct: null,
           completed: false,
-        })
-        .select('*')
-        .single();
-      if (!alive) return;
-      if (sErr) {
-        // Verbose inline logging so HK can read the actual constraint
-        // name/message in the console without expanding objects. The
-        // previous version printed {error: {...}} and the collapsed
-        // shape hid the diagnostic info.
+        });
+      } catch (sErr) {
+        if (!alive) return;
         console.error('[auto-session] insert FAILED:');
-        console.error('  code:', sErr.code);
-        console.error('  message:', sErr.message);
-        console.error('  details:', sErr.details);
-        console.error('  hint:', sErr.hint);
+        console.error('  code:', sErr?.code);
+        console.error('  message:', sErr?.message);
+        console.error('  details:', sErr?.details);
+        console.error('  hint:', sErr?.hint);
         console.error('  booking_id:', appt.id);
         console.error('  client_id:', appt.clientId);
         console.error('  therapist_id:', therapist.id);
-      } else if (created) {
+        return;
+      }
+      if (!alive) return;
+      if (created) {
         console.log('[auto-session] created', created.id);
         setCurrentSession(created);
       }
