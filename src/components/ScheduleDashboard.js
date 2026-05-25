@@ -165,6 +165,23 @@ function EmptyStateCard({ icon, title, body, cta, ctaLabel }) {
   );
 }
 
+// Small uppercase eyebrow label used throughout the cockpit. Replaces
+// 17+ inline copies of the same style. Pulls from SO design tokens.
+function Label({ children, color }) {
+  return (
+    <div style={{
+      fontSize: SO.labelSize,
+      fontWeight: SO.labelWeight,
+      color: color || SO.inkMute,
+      letterSpacing: SO.labelTracking,
+      textTransform: 'uppercase',
+      marginBottom: 6,
+    }}>
+      {children}
+    </div>
+  );
+}
+
 // SVG chevron used in CockpitSection. Stroke-weighted, rotates
 // smoothly on open. Replaces the prior ▾ unicode triangle which
 // was thin and read as a decorative glyph rather than a control.
@@ -418,7 +435,7 @@ function LastSessionContent({ session }) {
     <div>
       {focusZones.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Focused on</div>
+          <Label>Focused on</Label>
           <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.55 }}>
             {focusZones.map(z => zoneLabel(z)).join(', ')}
           </div>
@@ -426,7 +443,7 @@ function LastSessionContent({ session }) {
       )}
       {hasSoap && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your notes (Plan)</div>
+          <Label>Your notes (Plan)</Label>
           <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, fontStyle: 'italic' }}>
             {soap.P || soap.A || soap.O || soap.S || ''}
           </div>
@@ -434,7 +451,7 @@ function LastSessionContent({ session }) {
       )}
       {isLegacy && session.therapist_notes && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your notes</div>
+          <Label>Your notes</Label>
           <div style={{ fontSize: 13, color: '#374151', lineHeight: 1.6, fontStyle: 'italic' }}>
             {session.therapist_notes}
           </div>
@@ -626,13 +643,13 @@ function RecordEditor({ session, parsedSoap, onSaved, therapist, allSessions }) 
         <span style={{ height: 1, background: '#E5DDD2', flex: 1 }} />
       </div>
 
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>S, Subjective</div>
+      <Label>S, Subjective</Label>
       <textarea value={S} onChange={e => setS(e.target.value)} placeholder="What the client reports: pain, history, what they want" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>O, Objective</div>
+      <Label>O, Objective</Label>
       <textarea value={O} onChange={e => setO(e.target.value)} placeholder="What you observed: range of motion, tissue, posture" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>A, Assessment</div>
+      <Label>A, Assessment</Label>
       <textarea value={A} onChange={e => setA(e.target.value)} placeholder="Your professional read on the situation" style={fieldStyle} />
-      <div style={{ fontSize: 11, fontWeight: 700, color: '#6B7280', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 4 }}>P, Plan</div>
+      <Label>P, Plan</Label>
       <textarea value={P} onChange={e => setP(e.target.value)} placeholder="What you did this session and what comes next" style={fieldStyle} />
 
       {/* Therapist's private notes - SUMMARY of the SOAP work above.
@@ -1664,7 +1681,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Focus zones */}
                     {((currentSession.front_focus || []).length > 0 || (currentSession.back_focus || []).length > 0) && (
                       <div style={{marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Focus areas</div>
+                        <Label>Focus areas</Label>
                         <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                           {(currentSession.front_focus || []).map((z, i) => (
                             <span key={`ff-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#DCFCE7', color:'#15803D', fontSize:12, fontWeight:600, border:'1px solid #BBF7D0'}}>
@@ -1683,7 +1700,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Avoid zones */}
                     {((currentSession.front_avoid || []).length > 0 || (currentSession.back_avoid || []).length > 0) && (
                       <div style={{marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Avoid</div>
+                        <Label>Avoid</Label>
                         <div style={{display:'flex', flexWrap:'wrap', gap:6}}>
                           {(currentSession.front_avoid || []).map((z, i) => (
                             <span key={`fa-${i}`} style={{display:'inline-block', padding:'4px 10px', borderRadius:999, background:'#FEF2F2', color:'#991B1B', fontSize:12, fontWeight:600, border:'1px solid #FECACA'}}>
@@ -1702,7 +1719,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Pressure */}
                     {currentSession.pressure && (
                       <div style={{marginBottom:14, display:'flex', alignItems:'center', gap:10}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, minWidth:80}}>Pressure</div>
+                        <Label>Pressure</Label>
                         <div style={{display:'flex', alignItems:'center', gap:4}}>
                           {[1,2,3,4,5].map(n => (
                             <span key={n} style={{
@@ -1721,7 +1738,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Goal */}
                     {currentSession.goal && (
                       <div style={{marginBottom:14, display:'flex', alignItems:'flex-start', gap:10}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', flexShrink:0, minWidth:80, paddingTop:2}}>Goal</div>
+                        <Label>Goal</Label>
                         <div style={{fontSize:13, color:'#374151', flex:1, lineHeight:1.5}}>{goalLabel(currentSession.goal)}</div>
                       </div>
                     )}
@@ -1729,7 +1746,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Preferences (compact line) */}
                     {(currentSession.room_temp || currentSession.music || currentSession.conversation || currentSession.draping) && (
                       <div style={{marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Preferences</div>
+                        <Label>Preferences</Label>
                         <div style={{fontSize:13, color:'#374151', lineHeight:1.6}}>
                           {[
                             currentSession.room_temp && preferenceLabel('room_temp', currentSession.room_temp),
@@ -1746,7 +1763,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     {/* Client notes */}
                     {currentSession.client_notes && (
                       <div style={{marginBottom:14}}>
-                        <div style={{fontSize:11, fontWeight:700, color:'#6B7280', letterSpacing:'0.06em', textTransform:'uppercase', marginBottom:6}}>Notes from client</div>
+                        <Label>Notes from client</Label>
                         <div style={{fontSize:13, color:'#374151', lineHeight:1.6, fontStyle:'italic', background:'#FAFAFA', padding:'10px 12px', borderRadius:8, border:'1px solid #F3F4F6'}}>
                           "{currentSession.client_notes}"
                         </div>
