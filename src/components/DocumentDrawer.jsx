@@ -84,6 +84,13 @@ function Icon({ name, size = 14, color = 'currentColor' }) {
 export default function DocumentDrawer({ open, onClose, docNumber, docName, docTotalParts = 4, fullPageUrl, client, therapist, children }) {
   const [busy, setBusy] = useState(null);
   const [toast, setToast] = useState(null);
+  // Banner shown when therapist taps SMS for the Recap but the client
+  // doesn't have a phone number on file. HK May 25 2026: previously the
+  // SMS button hid itself when no phone was set, so the therapist
+  // couldn't even tell that SMS existed for the doc. Now the button is
+  // always visible for doc 4 and explains what's needed if there's no
+  // phone yet, instead of silently failing.
+  const [phoneNeeded, setPhoneNeeded] = useState(false);
   const drawerRef = useRef(null);
   const bodyRef = useRef(null);
   const printContainerRef = useRef(null);
@@ -317,9 +324,45 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
   };
 
   const handleSms = () => {
-    if (!client?.phone) return;
+    if (!client?.phone) {
+      setPhoneNeeded(true);
+      setTimeout(() => setPhoneNeeded(false), 6000);
+      return;
+    }
+    setPhoneNeeded(false);
     const body = `Your post-session summary from ${therapistName}: ${fullPageUrl}`;
     window.location.href = `sms:${client.phone}?&body=${encodeURIComponent(body)}`;
+  };
+
+  // Native browser print. HK May 25 2026: the existing handlePrint goes
+  // through html2canvas to render A4 pages, which is great for
+  // generating a PDF for email/save but slow when the therapist just
+  // wants paper. This handler attaches a one-off print stylesheet that
+  // hides everything except the doc body, then triggers the OS print
+  // dialog. From there the user can print to paper or save as PDF.
+  const handleNativePrint = () => {
+    const id = 'bm-native-print-style';
+    document.getElementById(id)?.remove();
+    const styleTag = document.createElement('style');
+    styleTag.id = id;
+    styleTag.textContent = `
+      @media print {
+        body * { visibility: hidden !important; }
+        .bm-doc-body, .bm-doc-body * { visibility: visible !important; }
+        .bm-doc-body {
+          position: absolute !important;
+          left: 0; top: 0;
+          width: 100% !important;
+          padding: 24px !important;
+          background: white !important;
+        }
+      }
+    `;
+    document.head.appendChild(styleTag);
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => styleTag.remove(), 800);
+    }, 30);
   };
 
   // Render the doc to a PNG via the off-screen print stage.
@@ -568,6 +611,21 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           flexShrink: 0,
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}>
+          {phoneNeeded && (
+            <div style={{
+              background: '#FFFBEB',
+              color: '#92400E',
+              border: '1px solid #FDE68A',
+              borderRadius: 8,
+              padding: '8px 12px',
+              fontSize: 12,
+              fontWeight: 600,
+              lineHeight: 1.45,
+              marginBottom: 8,
+            }}>
+              Add a phone number on this client's profile to text the recap.
+            </div>
+          )}
           <div className="bm-action-bar">
 
             {/* Group 1: Send as link */}
@@ -578,8 +636,13 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
               <button onClick={handleEmail} className="bm-action-btn" title="Email a link to this document">
                 <Icon name="email" /> Email
               </button>
-              {docNumber === 4 && client?.phone && (
-                <button onClick={handleSms} className="bm-action-btn" title="Text a link to the client">
+              {docNumber === 4 && (
+                <button
+                  onClick={handleSms}
+                  className="bm-action-btn"
+                  title={client?.phone ? "Text a link to the client" : "Add a phone number on the client's profile to text the recap"}
+                  style={!client?.phone ? { opacity: 0.55 } : undefined}
+                >
                   <Icon name="sms" /> SMS
                 </button>
               )}
@@ -598,8 +661,14 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
               </button>
             </div>
 
-            {/* Group 3: Save as PDF (primary) */}
-            <button onClick={handlePrint} disabled={busy === 'pdf'} className="bm-action-btn bm-action-btn-primary" title="Save the document as a PDF">
+            {/* Group 3: Print + Save as PDF. Print uses the native system
+                dialog (instant, prints paper or save-as-PDF in one step).
+                Save PDF uses html2canvas to render consistent A4 pages
+                (slower but cleaner output for emailing). */}
+            <button onClick={handleNativePrint} className="bm-action-btn" title="Open the system print dialog">
+              <Icon name="pdf" /> Print
+            </button>
+            <button onClick={handlePrint} disabled={busy === 'pdf'} className="bm-action-btn bm-action-btn-primary" title="Save the document as a PDF (A4 pages via html2canvas)">
               <Icon name="pdf" /> {busy === 'pdf' ? 'Preparing...' : 'Save PDF'}
             </button>
           </div>
@@ -612,7 +681,7 @@ export default function DocumentDrawer({ open, onClose, docNumber, docName, docT
           background: C.cream,
           WebkitOverflowScrolling: 'touch',
         }}>
-          <div ref={bodyRef}>
+          <div ref={bodyRef} className="bm-doc-body">
             {children}
           </div>
           {/* Inline Back button at the end of the doc, OUTSIDE bodyRef
