@@ -40,7 +40,20 @@ const makeSample = (today) => [
 ];
 
 function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
-  const st = STATUS[appt.status]||STATUS['pending-intake'];
+  // HK May 24 2026 (Phase 13.12b): the appt prop is owned by the
+  // parent timeline. When the user picks a client via the inline
+  // ClientPicker inside CheckoutModal, the database row updates but
+  // the appt prop does NOT refresh until the timeline refetches.
+  // displayAppt is a local mirror of appt that we patch immediately
+  // when a client is linked, so the slide-over header re-renders
+  // with the picked client's name without waiting for a parent
+  // refresh. The parent schedule grid still shows the old name
+  // until its own refetch fires, but that surface refreshes
+  // naturally on the next interaction.
+  const [displayAppt, setDisplayAppt] = useState(appt);
+  useEffect(() => { setDisplayAppt(appt); }, [appt]);
+
+  const st = STATUS[displayAppt.status]||STATUS['pending-intake'];
   const intakeUrl = `${window.location.origin}/${therapist?.custom_url}`;
   const [copied,setCopied] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -260,13 +273,16 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
       <div onClick={onClose} style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.3)',zIndex:300,backdropFilter:'blur(2px)'}}/>
       <div style={{position:'fixed',top:0,right:0,bottom:0,width:360,maxWidth:'100vw',background:'#fff',zIndex:301,overflowY:'auto',boxShadow:'-8px 0 40px rgba(0,0,0,0.15)',display:'flex',flexDirection:'column',paddingTop:'env(safe-area-inset-top, 0px)'}}>
         <div style={{padding:'14px 16px 14px',borderBottom:'1px solid #F3F4F6'}}>
-          {/* Top row: avatar + name + close */}
+          {/* Top row: avatar + name + close. displayAppt is used so
+              if the user links a client via the ClientPicker inside
+              CheckoutModal, the name updates immediately without
+              waiting for a parent refresh. */}
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
-            <div style={{width:42,height:42,borderRadius:'50%',background:ac(appt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(appt.client)}</div>
+            <div style={{width:42,height:42,borderRadius:'50%',background:ac(displayAppt.client),color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:700,flexShrink:0}}>{initials(displayAppt.client)}</div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{appt.client}</div>
-              {appt.is_couples && appt.partner_name && (
-                <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {appt.partner_name}</div>
+              <div style={{fontSize:16,fontWeight:700,color:'#1F2937',fontFamily:'Georgia,serif',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{displayAppt.client}</div>
+              {displayAppt.is_couples && displayAppt.partner_name && (
+                <div style={{fontSize:12,color:'#6B9E80',fontWeight:600}}>💑 with {displayAppt.partner_name}</div>
               )}
               <div style={{fontSize:12,color:'#6B7280'}}>{appt.sessions>0?`${appt.sessions} sessions`:appt.preview?'Preview client':'New client'}</div>
             </div>
@@ -592,12 +608,28 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
       )}
       {showCheckout && (
         <CheckoutModal
-          appt={appt}
+          appt={displayAppt}
           therapist={therapist}
           client={clientRow}
           defaultAmountCents={defaultAmountCents}
           onClose={() => setShowCheckout(false)}
           onPaid={() => { refreshPayments(); }}
+          onClientLinked={(picked) => {
+            // HK May 24 2026 (Phase 13.12b): the inline ClientPicker
+            // updated bookings.client_id + client_name + client_email
+            // + client_phone in the DB. Patch our local displayAppt
+            // so the slide-over header re-renders with the picked
+            // client's name immediately. The schedule grid still has
+            // the old name cached in its dayAppts state; it refreshes
+            // on the next interaction or full reload.
+            setDisplayAppt(prev => ({
+              ...prev,
+              clientId: picked.id,
+              client: picked.name || prev.client,
+              email: picked.email || prev.email,
+              phone: picked.phone || prev.phone,
+            }));
+          }}
         />
       )}
       {refundTarget && (

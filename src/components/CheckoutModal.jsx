@@ -73,6 +73,7 @@ export default function CheckoutModal({
   renewal,              // NEW Phase 19: an optional member_subscription_renewals row to link this payment to
   packagePurchase,      // NEW May 24 2026: { name, sessions, price, expiresAt, planId, oneoffPlanData } when adding/charging a package
   onPackageCreated,     // NEW May 24 2026: called with the created package_purchase row on success
+  onClientLinked,       // NEW May 24 2026 (Phase 13.12b): called with the picked/created client when the inline ClientPicker links a previously orphan booking. Parents use this to patch their own local state (e.g. slide-over header) so the picked client's name renders immediately without waiting for a schedule refetch.
   therapist,
   client: clientProp,
   defaultAmountCents,
@@ -941,7 +942,7 @@ export default function CheckoutModal({
                   Payment
                 </div>
                 <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {appt?.client || client?.name}
+                  {client?.name || appt?.client}
                 </div>
               </div>
               <CloseButton onClick={onClose} label="Done" />
@@ -1007,7 +1008,7 @@ export default function CheckoutModal({
                   Checkout
                 </div>
                 <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {appt?.client || client?.name} · {
+                  {client?.name || appt?.client} · {
                     isPackage ? `${packagePurchase.name} (${packagePurchase.sessions} sessions)` :
                     isSubscription ? (subscription.membership?.name || 'Membership') :
                     (appt?.service || 'Session')
@@ -1051,14 +1052,16 @@ export default function CheckoutModal({
                         .eq('id', appt.id);
                     }
                     setClient(picked);
+                    // Tell the parent (slide-over) so it can patch
+                    // its own appt mirror state, making the header
+                    // re-render with the picked client's name
+                    // immediately, without waiting for a schedule
+                    // refetch. Phase 13.12b, HK May 24 2026.
+                    if (typeof onClientLinked === 'function') onClientLinked(picked);
                     // Fire onPaid to nudge the parent slide-over to
                     // refresh its payment list (existing wiring). This
                     // also triggers the schedule grid refresh on its
-                    // next render cycle. The therapist may also need
-                    // to close the slide-over and re-open to see the
-                    // updated name in the header, depending on how
-                    // the parent caches appt prop; the underlying DB
-                    // row is now correct either way.
+                    // next render cycle.
                     if (typeof onPaid === 'function') onPaid();
                     setStep('method');
                   }}
