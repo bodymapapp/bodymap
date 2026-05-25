@@ -112,14 +112,18 @@ function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, w
 function BodyMapPreview({ session }) {
   const [showMap, setShowMap] = useState(false);
   if (!session) return null;
-  const hasZones = (session.front_focus || []).length || (session.back_focus || []).length || (session.front_avoid || []).length || (session.back_avoid || []).length;
+  const focusZones = [...(session.front_focus || []), ...(session.back_focus || [])];
+  const avoidZones = [...(session.front_avoid || []), ...(session.back_avoid || [])];
+  const hasZones = focusZones.length || avoidZones.length;
   if (!hasZones) return null;
-  const diagramData = zonesToBodyDiagram({
-    front_focus: session.front_focus || [],
-    back_focus: session.back_focus || [],
-    front_avoid: session.front_avoid || [],
-    back_avoid: session.back_avoid || [],
-  });
+  // zonesToBodyDiagram returns { frontIds, backIds } - the diagram-
+  // shaped IDs. BodyDiagram takes a flat focusAreas + avoidAreas
+  // (BodyDiagram itself handles which side an ID belongs to via the
+  // 'f-' / 'b-' prefix). So we just pass the combined ids.
+  const focusMapped = zonesToBodyDiagram(focusZones);
+  const avoidMapped = zonesToBodyDiagram(avoidZones);
+  const focusAreas = [...focusMapped.frontIds, ...focusMapped.backIds];
+  const avoidAreas = [...avoidMapped.frontIds, ...avoidMapped.backIds];
   return (
     <div style={{ borderTop: '1px solid #F3F4F6', marginTop: 10, paddingTop: 12 }}>
       <button
@@ -135,7 +139,7 @@ function BodyMapPreview({ session }) {
       </button>
       {showMap && (
         <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center' }}>
-          <BodyDiagram {...diagramData} size={160} />
+          <BodyDiagram focusAreas={focusAreas} avoidAreas={avoidAreas} size="md" />
         </div>
       )}
     </div>
