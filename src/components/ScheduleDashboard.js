@@ -1908,18 +1908,21 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                   <div style={{fontSize:15,fontWeight:700,color:'#1F2937'}}>{appt.time} · {appt.duration} min</div>
                   {!appt.preview && (
                     <button onClick={()=>setEditTime(v=>!v)}
+                      title={editTime ? 'Cancel time edit' : 'Edit time'}
+                      aria-label={editTime ? 'Cancel time edit' : 'Edit time'}
                       style={{
                         background:'transparent',
                         border:'1px solid #D1D5DB',
                         borderRadius:8,
-                        padding:'3px 8px',
-                        fontSize:11,
-                        fontWeight:600,
+                        padding:'3px 7px',
+                        fontSize:12,
+                        lineHeight:1,
                         color:'#6B7280',
                         cursor:'pointer',
                         fontFamily:'inherit',
+                        flexShrink:0,
                       }}>
-                      {editTime ? 'Cancel' : '✏️ Edit time'}
+                      {editTime ? '✕' : '✏️'}
                     </button>
                   )}
                 </div>
