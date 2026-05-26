@@ -44,7 +44,7 @@ import PaymentRouting from '../components/PaymentRouting';
 import { useMobile } from '../hooks/useMobile';
 import usePushNotifications from '../hooks/usePushNotifications';
 import WaiverCard from '../components/WaiverCard';
-import NotificationPrefsCard from '../components/NotificationPrefsCard';
+import NotificationSettingsTable from '../components/NotificationSettingsTable';
 import QRCodesCard from '../components/QRCodesCard';
 import CancellationPolicy from '../components/CancellationPolicy';
 import BookingPolicies from '../components/BookingPolicies';
@@ -4376,7 +4376,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><path d="M5 5h14v10H7l-2 4z"/></svg>}
         isOpen={openRow === 'notifs'}
         onToggle={toggleRow}
-      ><div className="bm-section-bare"><NotificationPrefsCard therapist={therapist} C2={C2} /></div></CollapsibleSection>
+      ><div className="bm-section-bare"><NotificationSettingsTable therapist={therapist} /></div></CollapsibleSection>
       </>)}
       {matchesSearch('Lapsed client threshold', '', '3.5') && (<>
       <CollapsibleSection
