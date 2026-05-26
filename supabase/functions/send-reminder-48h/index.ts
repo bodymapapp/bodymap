@@ -113,11 +113,11 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
 
   const bodyHtml = `
     ${eyebrow('48 hours to go', 'sage')}
-    <h1>Your session is coming up</h1>
+    <h1>Looking forward to seeing you</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>A friendly heads-up that your session with ${therapistName} is two days away.</p>
+    <p>A gentle reminder that your time with ${therapistName} is two days away. Hopefully you've already started looking forward to it.</p>
     ${factBox(facts)}
-    <p>If anything has changed and you need to reschedule, the link below pulls up your booking. The sooner the better so the time can go to someone else.</p>
+    <p>If life has shifted and the timing no longer works, you can move things around from the link below. No worries either way.</p>
     <p style="text-align:center;margin:18px 0 8px;">
       <a href="${rescheduleUrl}" style="display:inline-block;color:#2A5741;text-decoration:underline;font-size:14px;font-weight:600;">Need to reschedule? →</a>
     </p>

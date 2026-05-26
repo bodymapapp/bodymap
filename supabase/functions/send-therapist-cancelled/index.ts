@@ -63,15 +63,15 @@ serve(async (req) => {
     ${eyebrow('Session cancelled', 'rose')}
     <h1>${therapistName} had to cancel</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>I'm sorry to send this. Something came up and I won't be able to see you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>.</p>
+    <p>I'm so sorry to send this. Something came up and I won't be able to see you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. I know rearranging your day for this is not nothing, and I appreciate your patience with me.</p>
     ${reasonBlock}
-    <p>If you'd like to rebook, you can pick a new time below. The sooner the better as my schedule fills up.</p>
-    ${ctaButton('Pick a new time →', bookingUrl)}
-    <p>Thank you for your patience. Reply to this email if you have any questions.</p>
+    <p>Whenever you're ready, the link below shows my open times. No rush.</p>
+    ${ctaButton('Find a new time →', bookingUrl)}
+    <p>Thank you for understanding. Reply to this email if you have any questions, and I'll get back to you personally.</p>
     <p class="muted" style="font-size:13px;margin-top:24px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your session on ${apptWhen} was cancelled. Pick a new time when you're ready.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your session on ${apptWhen} can't happen. Here's how to find a new time.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

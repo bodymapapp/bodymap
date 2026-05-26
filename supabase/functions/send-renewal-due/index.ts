@@ -123,10 +123,10 @@ async function sendForMembership(supabase: any, RESEND_KEY: string, membershipId
   const bodyHtml = `
     ${eyebrow('Renewal coming up', 'gold')}
     <h1>${clientName}'s membership renews in 7 days</h1>
-    <p>Heads up so you have time to confirm payment details, update plan, or have a check-in conversation before the auto-charge.</p>
+    <p>Heads up so you have time to confirm payment details, update the plan, or have a check-in conversation before the auto-charge.</p>
     ${factBox(facts)}
     ${ctaButton('Review in your dashboard', dashboardUrl)}
-    <p class="muted" style="font-size:12px;">If you've changed how membership renewals work, update the membership directly. The charge fires automatically on the renewal date.</p>
+    <p class="muted" style="font-size:12px;">No action needed if everything is in order. The renewal charge will fire automatically on ${renewalWhen}. If anything needs to change before then, open the membership in your dashboard.</p>
   `;
 
   const html = emailWrapper({ subject, bodyHtml, preheader: `${clientName} renews their ${membership.plan_name || 'membership'} on ${renewalWhen}.` });

@@ -129,9 +129,9 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
     <h1>Your intake takes 2 minutes</h1>
     <p>Hi ${clientFirstName},</p>
     <p>Looking forward to seeing you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
-    <p>It tells ${therapistName} where you'd like to focus, what to avoid, and anything they should know going in. It takes about 2 minutes and makes a real difference to your session.</p>
+    <p>It tells ${therapistName} where you'd like to focus, what to avoid, and anything they should know going in. It takes about 2 minutes and helps your time on the table go further.</p>
     ${ctaButton('Fill out my intake →', intakeUrl)}
-    ${tipBox('Why this matters', `${therapistName} reads every intake before your session so they can prepare for what you need, not waste your time asking the same questions on the table.`)}
+    ${tipBox('Why this matters', `${therapistName} reads every intake before your session so they're already thinking about what you need before you arrive. The more they know going in, the more attuned your session can be.`)}
     <p class="muted" style="font-size:12px;">Questions? Reply to this email or contact ${therapistName} directly.</p>
   `;
 
