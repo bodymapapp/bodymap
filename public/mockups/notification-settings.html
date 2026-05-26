@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notification Settings: Mockups</title>
+<style>
+  :root {
+    --forest: #2A5741;
+    --forest-deep: #1F4030;
+    --sage: #6B9E80;
+    --sage-deep: #4A7A5C;
+    --sage-pale: #EEF3EE;
+    --cream: #F9F5EE;
+    --cream-card: #FAFAF7;
+    --cream-deep: #F3EEE2;
+    --gold: #C9A84C;
+    --gold-pale: #FAF3DC;
+    --gold-ink: #92660E;
+    --rose: #9F1239;
+    --rose-pale: #FDF2F2;
+    --ink: #3D4F43;
+    --ink-soft: #6B7F72;
+    --ink-mute: #9CA3AF;
+    --line: #E8E0D0;
+    --line-mute: #D6D1C2;
+    --white: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--cream); color: var(--ink); -webkit-font-smoothing: antialiased; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 14px; line-height: 1.55; }
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 20px 80px; }
+
+  /* Top nav */
+  .gallery-nav { background: var(--white); border-bottom: 1px solid var(--line); padding: 12px 20px; position: sticky; top: 0; z-index: 20; }
+  .gallery-nav-inner { max-width: 900px; margin: 0 auto; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .gallery-nav-inner .title { font-family: Georgia, serif; font-size: 16px; font-weight: 700; color: var(--forest-deep); margin-right: 12px; }
+  .gallery-nav-inner a { font-size: 13px; color: var(--forest); text-decoration: none; padding: 6px 12px; border-radius: 8px; background: var(--cream); }
+  .gallery-nav-inner a.active { background: var(--forest); color: var(--white); }
+
+  /* Section markers */
+  .mockup-section { margin-bottom: 60px; }
+  .mockup-label { background: var(--gold-pale); color: var(--gold-ink); padding: 10px 16px; border-radius: 10px; margin-bottom: 4px; }
+  .mockup-label .num { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; }
+  .mockup-label .name { font-size: 18px; font-weight: 700; font-family: Georgia, serif; }
+  .mockup-label .summary { font-size: 13px; margin-top: 4px; line-height: 1.55; }
+  .mockup-tag { display: inline-block; background: var(--white); color: var(--ink-soft); padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-right: 4px; margin-top: 6px; }
+
+  /* Shared mockup styling */
+  .mockup { background: var(--cream); padding: 20px; border: 1px solid var(--line); border-radius: 12px; margin-top: 16px; }
+  .mockup h2 { font-family: Georgia, serif; font-size: 22px; font-weight: 700; color: var(--forest-deep); margin: 0 0 4px; letter-spacing: -0.3px; }
+  .mockup .subtitle { font-size: 13px; color: var(--ink-soft); margin: 0 0 18px; line-height: 1.5; }
+
+  /* Toggle component */
+  .toggle { position: relative; display: inline-block; width: 36px; height: 20px; cursor: pointer; flex-shrink: 0; }
+  .toggle.disabled { opacity: 0.3; cursor: not-allowed; }
+  .toggle-track { position: absolute; inset: 0; background: var(--line-mute); border-radius: 20px; transition: background 0.15s; }
+  .toggle.on .toggle-track { background: var(--sage-deep); }
+  .toggle-knob { position: absolute; left: 2px; top: 2px; width: 16px; height: 16px; background: var(--white); border-radius: 50%; box-shadow: 0 1px 2px rgba(0,0,0,0.2); transition: left 0.15s; }
+  .toggle.on .toggle-knob { left: 18px; }
+
+  /* Pills */
+  .pill { display: inline-block; background: var(--sage-pale); color: var(--forest); padding: 2px 8px; border-radius: 12px; font-size: 10px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; }
+  .pill.client { background: var(--sage-pale); color: var(--forest); }
+  .pill.therapist { background: var(--cream-deep); color: var(--ink-soft); }
+  .pill.coming { background: var(--cream-card); color: var(--ink-mute); }
+
+  /* ─────────────────────────────────────────── */
+  /* MOCKUP A: Expanded-by-default with quick filter */
+  /* ─────────────────────────────────────────── */
+
+  .a-header { background: var(--white); border-radius: 14px; padding: 18px 20px; border: 1px solid var(--line); margin-bottom: 16px; }
+  .a-header-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .a-stats { font-size: 13px; color: var(--ink); }
+  .a-stats strong { color: var(--forest); font-size: 16px; font-family: Georgia, serif; }
+  .a-actions { display: flex; gap: 8px; }
+  .a-btn { background: var(--white); border: 1px solid var(--line-mute); color: var(--ink); padding: 7px 13px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+  .a-btn.danger { background: var(--rose); color: var(--white); border-color: var(--rose); }
+  .a-filter { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--line); }
+  .a-chip { padding: 6px 11px; border: 1px solid var(--line); border-radius: 16px; font-size: 12px; font-weight: 600; color: var(--ink-soft); cursor: pointer; background: var(--white); }
+  .a-chip.active { background: var(--forest); color: var(--white); border-color: var(--forest); }
+  .a-chip .count { opacity: 0.6; margin-left: 4px; font-weight: 500; }
+
+  .a-stage { background: var(--white); border-radius: 14px; padding: 16px 18px; border: 1px solid var(--line); margin-bottom: 12px; }
+  .a-stage-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .a-stage-num { width: 24px; height: 24px; background: var(--sage); color: var(--white); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; font-family: Georgia, serif; flex-shrink: 0; }
+  .a-stage-title { font-family: Georgia, serif; font-size: 17px; font-weight: 700; color: var(--forest-deep); }
+  .a-stage-sub { font-size: 11px; color: var(--ink-mute); margin-left: 4px; }
+  .a-stage-status { margin-left: auto; font-size: 11px; color: var(--ink-soft); }
+  .a-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .a-row:first-of-type { border-top: 1px solid var(--line); }
+  .a-row-text { flex: 1; }
+  .a-row-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .a-row-when { font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+  .a-row-channels { display: flex; gap: 4px; }
+
+  .a-master-block { background: var(--sage-pale); border: 1px solid var(--sage); border-radius: 12px; padding: 14px 18px; margin-bottom: 12px; }
+  .a-master-row { display: flex; align-items: flex-start; gap: 12px; }
+  .a-master-text { flex: 1; }
+  .a-master-title { font-size: 13px; font-weight: 700; color: var(--forest); margin-bottom: 2px; }
+  .a-master-note { font-size: 11px; color: var(--ink-soft); line-height: 1.5; }
+
+  /* ─────────────────────────────────────────── */
+  /* MOCKUP B: Dense single table */
+  /* ─────────────────────────────────────────── */
+
+  .b-header { background: var(--white); border-radius: 14px; padding: 18px 20px; border: 1px solid var(--line); margin-bottom: 16px; }
+  .b-meta { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+  .b-stat { display: flex; flex-direction: column; }
+  .b-stat .num { font-size: 22px; font-weight: 700; font-family: Georgia, serif; color: var(--forest); line-height: 1.1; }
+  .b-stat .label { font-size: 11px; color: var(--ink-mute); letter-spacing: 0.6px; text-transform: uppercase; margin-top: 2px; }
+
+  .b-table-wrap { background: var(--white); border-radius: 14px; border: 1px solid var(--line); overflow: hidden; }
+  .b-table { width: 100%; border-collapse: collapse; }
+  .b-table th { background: var(--cream-deep); padding: 10px 14px; text-align: left; font-size: 10px; font-weight: 700; color: var(--ink-mute); letter-spacing: 0.8px; text-transform: uppercase; }
+  .b-table th.center { text-align: center; }
+  .b-table td { padding: 11px 14px; border-top: 1px solid var(--line); vertical-align: middle; font-size: 13px; }
+  .b-table td.center { text-align: center; }
+  .b-table tr.stage-header td { background: var(--cream-deep); padding: 8px 14px; font-family: Georgia, serif; font-weight: 700; color: var(--forest-deep); font-size: 14px; border-top: none; }
+  .b-table tr.stage-header .stage-sub { font-family: -apple-system, sans-serif; font-weight: 400; color: var(--ink-soft); font-size: 11px; margin-left: 8px; }
+  .b-row-title { font-weight: 600; color: var(--ink); }
+  .b-row-when { font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+
+  /* ─────────────────────────────────────────── */
+  /* MOCKUP C: Two-column with sidebar */
+  /* ─────────────────────────────────────────── */
+
+  .c-split { display: grid; grid-template-columns: 240px 1fr; gap: 18px; }
+  @media (max-width: 720px) { .c-split { grid-template-columns: 1fr; } }
+  .c-sidebar { background: var(--white); border-radius: 14px; border: 1px solid var(--line); padding: 14px; height: fit-content; position: sticky; top: 80px; }
+  .c-side-stat { padding: 10px 12px; background: var(--cream-deep); border-radius: 10px; margin-bottom: 12px; }
+  .c-side-stat .num { font-size: 24px; font-weight: 700; font-family: Georgia, serif; color: var(--forest); line-height: 1; }
+  .c-side-stat .label { font-size: 11px; color: var(--ink-soft); margin-top: 2px; }
+  .c-side-nav { display: flex; flex-direction: column; gap: 2px; }
+  .c-side-link { padding: 9px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--ink); display: flex; align-items: center; gap: 10px; border: none; background: transparent; text-align: left; font-family: inherit; width: 100%; }
+  .c-side-link.active { background: var(--sage-pale); color: var(--forest); font-weight: 600; }
+  .c-side-link .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--sage); flex-shrink: 0; }
+  .c-side-link .count { margin-left: auto; font-size: 11px; color: var(--ink-mute); }
+  .c-pause { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .c-pause-btn { width: 100%; padding: 8px 12px; background: var(--cream); border: 1px solid var(--line-mute); color: var(--ink); border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+
+  .c-content { background: var(--white); border-radius: 14px; border: 1px solid var(--line); padding: 22px 24px; }
+  .c-section-title { font-family: Georgia, serif; font-size: 20px; font-weight: 700; color: var(--forest-deep); margin: 0 0 4px; }
+  .c-section-sub { font-size: 13px; color: var(--ink-soft); margin: 0 0 16px; line-height: 1.55; }
+  .c-master { background: var(--sage-pale); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; align-items: flex-start; }
+  .c-master-text { flex: 1; }
+  .c-master-title { font-size: 13px; font-weight: 700; color: var(--forest); margin-bottom: 2px; }
+  .c-master-note { font-size: 11px; color: var(--ink-soft); line-height: 1.45; }
+  .c-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .c-row:first-of-type { border-top: none; }
+  .c-row-text { flex: 1; }
+  .c-row-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .c-row-when { font-size: 11px; color: var(--ink-mute); margin-top: 2px; }
+  .c-channels { display: flex; gap: 4px; }
+
+</style>
+</head>
+<body>
+
+<div class="gallery-nav">
+  <div class="gallery-nav-inner">
+    <span class="title">3 mockups</span>
+    <a href="#a" class="active">A: Expanded + filter</a>
+    <a href="#b">B: One table</a>
+    <a href="#c">C: Sidebar nav</a>
+  </div>
+</div>
+
+<div class="container">
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- MOCKUP A -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section class="mockup-section" id="a">
+  <div class="mockup-label">
+    <div class="num">Mockup A</div>
+    <div class="name">Expanded by default + journey filter chips</div>
+    <div class="summary">All 6 stages expanded so you see everything in one scroll. Filter chips at top let you narrow to "Show me only off-ramps" or "Show me only what's off". Best for: power users who want full visibility.</div>
+    <span class="mockup-tag">All 30 visible at once</span>
+    <span class="mockup-tag">Filter chips for narrowing</span>
+    <span class="mockup-tag">No collapse needed</span>
+  </div>
+
+  <div class="mockup">
+    <h2>Your notifications</h2>
+    <p class="subtitle">Built around the journey clients take with you, from first contact to lifetime relationship.</p>
+
+    <div class="a-header">
+      <div class="a-header-top">
+        <div class="a-stats"><strong>22</strong> of 30 active · all sending normally</div>
+        <div class="a-actions">
+          <button class="a-btn">Pause all</button>
+        </div>
+      </div>
+      <div class="a-filter">
+        <button class="a-chip active">All <span class="count">30</span></button>
+        <button class="a-chip">Off <span class="count">8</span></button>
+        <button class="a-chip">Needs setup <span class="count">3</span></button>
+        <button class="a-chip">Client-facing <span class="count">15</span></button>
+        <button class="a-chip">For you <span class="count">15</span></button>
+      </div>
+    </div>
+
+    <div class="a-stage">
+      <div class="a-stage-head">
+        <div class="a-stage-num">1</div>
+        <div class="a-stage-title">First contact</div>
+        <div class="a-stage-sub">Booking through confirmation</div>
+        <div class="a-stage-status">6 of 6 active</div>
+      </div>
+      <div class="a-row">
+        <div class="a-row-text">
+          <div class="a-row-title">New client welcome + booking confirmation</div>
+          <div class="a-row-when">Right after first booking · Client</div>
+        </div>
+        <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+      <div class="a-row">
+        <div class="a-row-text">
+          <div class="a-row-title">Returning client booking confirmation</div>
+          <div class="a-row-when">Every booking after first · Client</div>
+        </div>
+        <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+      <div class="a-row">
+        <div class="a-row-text">
+          <div class="a-row-title">New booking notification</div>
+          <div class="a-row-when">When a client books · You</div>
+        </div>
+        <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+
+    <div class="a-stage">
+      <div class="a-stage-head">
+        <div class="a-stage-num" style="background: var(--forest);">2</div>
+        <div class="a-stage-title">First session</div>
+        <div class="a-stage-sub">48h before, during, after</div>
+        <div class="a-stage-status">3 of 3 active</div>
+      </div>
+      <div class="a-row">
+        <div class="a-row-text">
+          <div class="a-row-title">48 hour reminder</div>
+          <div class="a-row-when">2 days before session · Client</div>
+        </div>
+        <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+      <div class="a-row">
+        <div class="a-row-text">
+          <div class="a-row-title">Post-session warmth</div>
+          <div class="a-row-when">24 hours after session · Client</div>
+        </div>
+        <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+
+    <div class="a-master-block">
+      <div class="a-master-row">
+        <div class="toggle"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+        <div class="a-master-text">
+          <div class="a-master-title">Intake reminders, currently off</div>
+          <div class="a-master-note">Turn this on and clients with pending intakes get a gentle nudge 24h after booking. Only applies to bookings made after you turn this on.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="a-stage">
+      <div class="a-stage-head">
+        <div class="a-stage-num" style="background: var(--gold); color: var(--forest-deep);">3</div>
+        <div class="a-stage-title">Becoming a regular</div>
+        <div class="a-stage-sub">Sessions 2 through 5</div>
+        <div class="a-stage-status">0 of 3 · master off</div>
+      </div>
+      <div class="a-row" style="opacity: 0.5;">
+        <div class="a-row-text">
+          <div class="a-row-title">Intake reminder (client)</div>
+          <div class="a-row-when">+24h if intake pending</div>
+        </div>
+        <div class="toggle disabled"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+      </div>
+    </div>
+
+    <p style="margin-top: 20px; font-size: 12px; color: var(--ink-mute); text-align: center;">[Stages 4, 5, 6 continue below in the same pattern...]</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- MOCKUP B -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section class="mockup-section" id="b">
+  <div class="mockup-label">
+    <div class="num">Mockup B</div>
+    <div class="name">One unified table, stage rows as dividers</div>
+    <div class="summary">All 30 touchpoints in a single scannable table. Stages become subtle row dividers, not separate cards. Reads like a spreadsheet. Best for: therapists who want to see and toggle everything in one place fast.</div>
+    <span class="mockup-tag">Single table, no nesting</span>
+    <span class="mockup-tag">Easiest to scan</span>
+    <span class="mockup-tag">Power-user feel</span>
+  </div>
+
+  <div class="mockup">
+    <h2>Your notifications</h2>
+    <p class="subtitle">Built around the journey clients take with you, from first contact to lifetime relationship.</p>
+
+    <div class="b-header">
+      <div class="b-meta">
+        <div class="b-stat">
+          <div class="num">22 / 30</div>
+          <div class="label">Active</div>
+        </div>
+        <div class="b-stat">
+          <div class="num">15</div>
+          <div class="label">Client-facing</div>
+        </div>
+        <div class="b-stat">
+          <div class="num">3</div>
+          <div class="label">Master toggles off</div>
+        </div>
+        <div style="margin-left: auto; display: flex; gap: 8px;">
+          <button class="a-btn">Master toggles</button>
+          <button class="a-btn">Pause all</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="b-table-wrap">
+      <table class="b-table">
+        <thead>
+          <tr>
+            <th>Touchpoint</th>
+            <th class="center">Audience</th>
+            <th class="center">Email</th>
+            <th class="center">SMS</th>
+            <th class="center">Push</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="stage-header"><td colspan="5">1. First contact <span class="stage-sub">Booking through confirmation · 6 of 6 active</span></td></tr>
+          <tr>
+            <td><div class="b-row-title">New client welcome</div><div class="b-row-when">Right after first booking</div></td>
+            <td class="center"><span class="pill client">Client</span></td>
+            <td class="center"><div class="toggle on" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="b-row-title">Returning client confirmation</div><div class="b-row-when">Every booking after first</div></td>
+            <td class="center"><span class="pill client">Client</span></td>
+            <td class="center"><div class="toggle on" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="b-row-title">New booking alert</div><div class="b-row-when">When a client books</div></td>
+            <td class="center"><span class="pill therapist">You</span></td>
+            <td class="center"><div class="toggle on" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+
+          <tr class="stage-header"><td colspan="5">2. First session <span class="stage-sub">48h before, during, after · 3 of 3 active</span></td></tr>
+          <tr>
+            <td><div class="b-row-title">48 hour reminder</div><div class="b-row-when">2 days before session</div></td>
+            <td class="center"><span class="pill client">Client</span></td>
+            <td class="center"><div class="toggle on" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+          <tr>
+            <td><div class="b-row-title">Post-session warmth</div><div class="b-row-when">24 hours after session</div></td>
+            <td class="center"><span class="pill client">Client</span></td>
+            <td class="center"><div class="toggle on" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+
+          <tr class="stage-header"><td colspan="5">3. Becoming a regular <span class="stage-sub">Sessions 2 through 5 · master toggle off, 0 of 3</span></td></tr>
+          <tr style="opacity: 0.55;">
+            <td><div class="b-row-title">Intake reminder</div><div class="b-row-when">24h after booking if intake pending</div></td>
+            <td class="center"><span class="pill client">Client</span></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+            <td class="center"><div class="toggle disabled" style="margin: 0 auto;"><div class="toggle-track"></div><div class="toggle-knob"></div></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin-top: 16px; font-size: 12px; color: var(--ink-mute); text-align: center;">[Rest of stages continue below as more rows in the same table...]</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- MOCKUP C -->
+<!-- ═══════════════════════════════════════════ -->
+
+<section class="mockup-section" id="c">
+  <div class="mockup-label">
+    <div class="num">Mockup C</div>
+    <div class="name">Sidebar nav, one stage at a time</div>
+    <div class="summary">Stages live in a sticky sidebar on the left. Click a stage, see ONLY its touchpoints in the main panel. Like Mac System Settings. Best for: focused therapists who want zero clutter and to only see what they're editing.</div>
+    <span class="mockup-tag">Sticky sidebar nav</span>
+    <span class="mockup-tag">One stage at a time</span>
+    <span class="mockup-tag">No scrolling between stages</span>
+    <span class="mockup-tag">iOS Settings feel</span>
+  </div>
+
+  <div class="mockup">
+    <h2>Your notifications</h2>
+    <p class="subtitle">Built around the journey clients take with you, from first contact to lifetime relationship.</p>
+
+    <div class="c-split">
+      <div class="c-sidebar">
+        <div class="c-side-stat">
+          <div class="num">22/30</div>
+          <div class="label">Touchpoints active</div>
+        </div>
+        <div class="c-side-nav">
+          <button class="c-side-link"><span class="dot" style="background: var(--sage);"></span>First contact <span class="count">6/6</span></button>
+          <button class="c-side-link active"><span class="dot" style="background: var(--forest);"></span>First session <span class="count">3/3</span></button>
+          <button class="c-side-link"><span class="dot" style="background: var(--gold);"></span>Becoming a regular <span class="count">0/3</span></button>
+          <button class="c-side-link"><span class="dot" style="background: var(--sage);"></span>Lifetime client <span class="count">0/3</span></button>
+          <button class="c-side-link"><span class="dot" style="background: var(--rose);"></span>Off-ramps <span class="count">11/12</span></button>
+          <button class="c-side-link"><span class="dot" style="background: var(--forest);"></span>Lapse and return <span class="count">0/3</span></button>
+        </div>
+        <div class="c-pause">
+          <button class="c-pause-btn">Pause all notifications</button>
+        </div>
+      </div>
+
+      <div class="c-content">
+        <h3 class="c-section-title">First session</h3>
+        <p class="c-section-sub">48 hours before, during, and after the first session. The most important window in the entire relationship.</p>
+
+        <div class="c-row">
+          <div class="c-row-text">
+            <div class="c-row-title">48 hour reminder</div>
+            <div class="c-row-when">2 days before session · sent to client</div>
+          </div>
+          <div class="c-channels">
+            <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+        <div class="c-row">
+          <div class="c-row-text">
+            <div class="c-row-title">2 hour reminder</div>
+            <div class="c-row-when">Day of, 2 hours before · SMS only when ready</div>
+          </div>
+          <div class="c-channels">
+            <div class="toggle disabled"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+        <div class="c-row">
+          <div class="c-row-text">
+            <div class="c-row-title">Post-session warmth</div>
+            <div class="c-row-when">24h after the session · sent to client</div>
+          </div>
+          <div class="c-channels">
+            <div class="toggle on"><div class="toggle-track"></div><div class="toggle-knob"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script>
+// Simple anchor highlight on nav scroll
+document.querySelectorAll('.gallery-nav-inner a').forEach(a => {
+  a.addEventListener('click', e => {
+    document.querySelectorAll('.gallery-nav-inner a').forEach(x => x.classList.remove('active'));
+    a.classList.add('active');
+  });
+});
+</script>
+
+</body>
+</html>
