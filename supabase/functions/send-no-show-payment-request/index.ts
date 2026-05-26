@@ -49,23 +49,25 @@ serve(async (req) => {
   const fee = `$${(fee_amount_cents / 100).toFixed(2)}`;
   const payUrl = payment_link_url || `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `Payment needed for missed session, ${clientFirstName}`;
+  const subject = `A note about your session today`;
 
   const bodyHtml = `
-    ${eyebrow('Payment needed', 'gold')}
-    <h1>A small follow-up on your missed session</h1>
+    ${eyebrow('A small note', 'gold')}
+    <h1>About the session you missed</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Per ${therapistName}'s policy, missed sessions carry a <strong>${fee}</strong> fee. We tried to charge it but the payment didn't go through, so we're sending a payment link instead.</p>
+    <p>I held your time today and was looking forward to seeing you. When you weren't able to make it, a cancellation fee applies per my policy, but the payment didn't go through on the card I had on file.</p>
+    <p>No worries, here's a link to take care of it whenever you have a moment:</p>
     ${factBox([
       { label: 'For',         value: apptWhen },
       { label: 'Session',     value: booking.service_name || 'Massage session' },
-      { label: 'Amount due',  value: fee },
+      { label: 'Amount',  value: fee },
     ])}
-    ${ctaButton(`Pay ${fee} now`, payUrl)}
-    <p class="muted" style="font-size:13px;line-height:1.55;">If you'd like to update your card on file or if there's a reason for the miss we should know about, reply to this email and ${therapistName} will get back to you.</p>
+    ${ctaButton(`Take care of the ${fee} →`, payUrl)}
+    <p>If something came up that you'd like to share, or if the card on file needs updating, just reply to this email and I'll help sort it out.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Please complete the ${fee} payment for your missed session.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `A quick payment link for the session today.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

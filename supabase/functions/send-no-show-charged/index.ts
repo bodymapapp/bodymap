@@ -49,7 +49,7 @@ serve(async (req) => {
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const fee = `$${(fee_amount_cents / 100).toFixed(2)}`;
 
-  const subject = `Receipt: no-show fee from ${therapistName}`;
+  const subject = `A note about your session today`;
 
   const facts = [
     { label: 'For',         value: apptWhen },
@@ -59,17 +59,18 @@ serve(async (req) => {
   if (charge_id) facts.push({ label: 'Reference', value: charge_id });
 
   const bodyHtml = `
-    ${eyebrow('Receipt', 'gold')}
-    <h1>A no-show fee was charged to your card</h1>
+    ${eyebrow('A small note', 'gold')}
+    <h1>About the session you missed</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Per ${therapistName}'s policy, a fee was charged when the scheduled session was missed without notice.</p>
+    <p>I held your time today and was looking forward to seeing you. When you weren't able to make it, a cancellation fee was applied to your card on file. I'm sharing this so you have the receipt.</p>
     ${factBox(facts)}
-    <p>If you'd still like to book, the link below opens ${therapistName}'s booking page.</p>
-    ${ctaButton('Book a new session', bookingUrl)}
-    <p class="muted" style="font-size:12px;">If something prevented you from making it, reply to this email and ${therapistName} will get back to you.</p>
+    <p>If something came up that you'd like to share, I'd love to hear from you. And whenever you're ready to book another session, the link below has my open times.</p>
+    ${ctaButton('Find a time that works', bookingUrl)}
+    <p>Take care of yourself.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `${fee} no-show fee charged. Receipt inside.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: 'A receipt for the session today, and a warm hello.' });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

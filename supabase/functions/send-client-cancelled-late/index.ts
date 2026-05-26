@@ -51,34 +51,36 @@ serve(async (req) => {
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const fee = fee_amount_cents ? `$${(fee_amount_cents / 100).toFixed(2)}` : null;
 
-  const subject = `Your cancellation is confirmed`;
+  const subject = `About your session on ${apptWhen.split(' at ')[0]}`;
 
   let feeBlock = '';
   if (fee && fee_charged) {
     feeBlock = tipBox(
-      `Cancellation fee: ${fee}`,
-      `Per ${therapistName}'s policy, late cancellations carry a fee that's been charged to your card on file. This helps protect the time slot that's now hard to fill on short notice.`,
+      `A small note about the fee`,
+      `Because this cancellation came in close to the appointment time, a cancellation fee of ${fee} was applied to your card on file. This is part of how I'm able to hold time exclusively for clients in advance. I appreciate you understanding.`,
       'gold',
     );
   } else if (fee && !fee_charged) {
     feeBlock = tipBox(
-      `Cancellation fee: ${fee} (pending)`,
-      `Per ${therapistName}'s policy, late cancellations carry a fee. ${therapistName} will reach out separately to collect.`,
+      `A small note about the fee`,
+      `Because this cancellation came in close to the appointment time, a ${fee} cancellation fee applies. I'll reach out separately about how to take care of it.`,
       'gold',
     );
   }
 
   const bodyHtml = `
-    ${eyebrow('Cancellation confirmed', 'gold')}
-    <h1>Got it, ${clientFirstName}</h1>
-    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> with ${therapistName} has been cancelled.</p>
+    ${eyebrow('Cancellation received', 'gold')}
+    <h1>I'll see you another time</h1>
+    <p>Hi ${clientFirstName},</p>
+    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. I hope everything is okay on your end.</p>
     ${feeBlock}
-    <p>When you're ready to book again, pick a new time below.</p>
-    ${ctaButton('Book a new session', bookingUrl)}
-    <p class="muted" style="font-size:12px;">Questions about the fee or policy? Reply to this email and ${therapistName} will get back to you.</p>
+    <p>Whenever the timing works again, I'd love to see you. My open times are below.</p>
+    ${ctaButton('Find a time that works', bookingUrl)}
+    <p>Take care.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'Your cancellation is confirmed.' });
+  const html = emailWrapper({ subject, bodyHtml, preheader: 'Cancelled and confirmed.' });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

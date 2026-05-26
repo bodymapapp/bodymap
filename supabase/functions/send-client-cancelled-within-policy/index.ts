@@ -47,18 +47,20 @@ serve(async (req) => {
   const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
 
-  const subject = `Your cancellation is confirmed`;
+  const subject = `About your session on ${apptWhen.split(' at ')[0]}`;
 
   const bodyHtml = `
-    ${eyebrow('Cancellation confirmed', 'sage')}
-    <h1>Got it, ${clientFirstName}</h1>
-    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> with ${therapistName} has been cancelled. No charge.</p>
-    <p>Life happens. When you're ready to book again, pick a time that works.</p>
-    ${ctaButton('Book a new session', bookingUrl)}
-    <p class="muted" style="font-size:12px;">Questions? Reply to this email and ${therapistName} will get back to you.</p>
+    ${eyebrow('Cancellation received', 'sage')}
+    <h1>I'll see you another time</h1>
+    <p>Hi ${clientFirstName},</p>
+    <p>Your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong> has been cancelled. No charge, no need to explain.</p>
+    <p>Life is full and things shift. Whenever the timing works for you again, I'd love to see you. The link below has my open times.</p>
+    ${ctaButton('Find a time that works', bookingUrl)}
+    <p>Take care of yourself.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: 'No charge, and we hope to see you again soon.' });
+  const html = emailWrapper({ subject, bodyHtml, preheader: 'Cancelled and confirmed. I hope to see you again soon.' });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

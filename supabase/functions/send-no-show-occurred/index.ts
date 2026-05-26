@@ -42,37 +42,56 @@ serve(async (req) => {
   if (!therapist?.email) return jsonErr('no therapist email', 200, { skipped: 'no_therapist_email' });
 
   const clientName = client?.name || 'A client';
+  const clientFirstName = clientName.split(' ')[0];
   const apptDate = new Date(`${booking.start_date}T${booking.start_time}`);
   const apptWhen = apptDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) + ' at ' + apptDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
   const fee = fee_amount_cents ? `$${(fee_amount_cents / 100).toFixed(2)}` : null;
-  const feeStatus = fee && fee_charged === true ? `${fee} charged successfully`
-    : fee && fee_charged === false ? `${fee} fee NOT charged (card declined or none on file). The client got a payment link.`
-    : 'No fee applied per your policy.';
+
+  // Build the fee status block: separate visual treatment depending
+  // on outcome so the therapist sees at a glance what happened with
+  // the money.
+  let feeStatusHtml = '';
+  if (fee && fee_charged === true) {
+    feeStatusHtml = `
+      <div style="background:#EEF3EE;border-radius:10px;padding:12px 16px;margin:14px 0;border-left:3px solid #6B9E80;">
+        <div style="font-size:11px;font-weight:700;color:#2A5741;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Fee captured</div>
+        <div style="font-size:15px;color:#1F2937;font-weight:600;">${fee} charged to ${clientFirstName}'s card on file</div>
+        <div style="font-size:12px;color:#6B7F72;margin-top:4px;">${clientFirstName} got a receipt and a warm note from you.</div>
+      </div>`;
+  } else if (fee && fee_charged === false) {
+    feeStatusHtml = `
+      <div style="background:#FAF3DC;border-radius:10px;padding:12px 16px;margin:14px 0;border-left:3px solid #C9A84C;">
+        <div style="font-size:11px;font-weight:700;color:#92660E;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">Payment pending</div>
+        <div style="font-size:15px;color:#1F2937;font-weight:600;">${fee} could not be charged automatically</div>
+        <div style="font-size:12px;color:#6B7F72;margin-top:4px;">We sent ${clientFirstName} a payment link, and a warm note from you with it.</div>
+      </div>`;
+  } else {
+    feeStatusHtml = `
+      <div style="background:#FAFAF7;border-radius:10px;padding:12px 16px;margin:14px 0;border-left:3px solid #6B7F72;">
+        <div style="font-size:11px;font-weight:700;color:#6B7F72;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;">No fee applied</div>
+        <div style="font-size:15px;color:#1F2937;font-weight:600;">Your policy did not charge for this no-show</div>
+        <div style="font-size:12px;color:#6B7F72;margin-top:4px;">${clientFirstName} did not receive a charge or payment request.</div>
+      </div>`;
+  }
 
   const clientLink = client?.id
     ? `https://mybodymap.app/dashboard/clients/${client.id}`
     : `https://mybodymap.app/dashboard?tab=schedule`;
 
-  const subject = `${clientName} was a no-show today`;
-
-  const facts = [
-    { label: 'Client',       value: clientName },
-    { label: 'When',         value: apptWhen },
-    { label: 'Session',      value: booking.service_name || 'Massage session' },
-    { label: 'Fee status',   value: feeStatus },
-  ];
+  const subject = `${clientName} did not make it today`;
 
   const bodyHtml = `
-    ${eyebrow('No-show recorded', 'rose')}
+    ${eyebrow('No-show', 'rose')}
     <h1>${clientName} did not show up</h1>
-    <p>Just a quick alert so you can follow up if you'd like to.</p>
-    ${factBox(facts)}
-    ${ctaButton(`Open ${clientName}'s profile`, clientLink)}
-    <p class="muted" style="font-size:12px;">You can adjust how the platform handles no-shows in Settings > Cancellation Policy.</p>
+    <p>Their <strong>${booking.service_name || 'session'}</strong> was scheduled for <strong>${apptWhen}</strong>.</p>
+    ${feeStatusHtml}
+    <p>If you'd like to reach out personally, here's their profile:</p>
+    ${ctaButton(`Open ${clientFirstName}'s profile`, clientLink)}
+    <p class="muted" style="font-size:12px;">You can change how the platform handles no-shows in Settings, Cancellation Policy.</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `${clientName} did not show up for ${booking.service_name || 'their session'}.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `${clientName} did not show up for ${booking.service_name || 'their session'}. Fee status inside.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
