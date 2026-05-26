@@ -89,8 +89,13 @@ export default function NotificationCompliance() {
         .maybeSingle();
       if (!cancelled) setTherapist(data || null);
 
-      // Also load the canonical Joy Client row (one with phone set)
-      const { data: c } = await supabase
+      // Also load the canonical Joy Client row. Prefer one with a
+      // phone set (for SMS testing), fall back to any row by email
+      // so the button is never blocked when the phoned version is
+      // missing. HK May 26 2026: previously this returned null when
+      // no row had a phone, which silently disabled the fire button.
+      let c = null;
+      const { data: withPhone } = await supabase
         .from('clients')
         .select('id, name, email, phone')
         .eq('email', 'bodymap01@gmail.com')
@@ -98,6 +103,18 @@ export default function NotificationCompliance() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+      if (withPhone) {
+        c = withPhone;
+      } else {
+        const { data: anyJoy } = await supabase
+          .from('clients')
+          .select('id, name, email, phone')
+          .eq('email', 'bodymap01@gmail.com')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        c = anyJoy;
+      }
       if (!cancelled) setClient(c || null);
     }
     load();
@@ -446,6 +463,24 @@ export default function NotificationCompliance() {
 
           {/* Auto-fire CTAs */}
           <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Load-state indicator so HK can see immediately if button is disabled
+                because therapist or client didn't load */}
+            {(!therapist || !client) && (
+              <div style={{
+                width: '100%',
+                fontSize: 12,
+                color: '#92400E',
+                background: '#FEF3C7',
+                border: '1px solid #C9A84C',
+                borderRadius: 8,
+                padding: '8px 12px',
+                marginBottom: 8,
+              }}>
+                {!therapist && !client && 'Therapist + client not loaded. Try refreshing.'}
+                {therapist && !client && 'Joy therapist OK, but Joy client (bodymap01@gmail.com) row missing. Cannot fire.'}
+                {!therapist && client && 'Joy client OK, but Joy therapist (bodymapdemo@gmail.com) row missing. Cannot fire.'}
+              </div>
+            )}
             <button
               type="button"
               onClick={fireMay26Batch}
