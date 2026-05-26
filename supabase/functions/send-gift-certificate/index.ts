@@ -199,6 +199,21 @@ serve(async (req) => {
           }).join('');
         },
       },
+      'teacher': {
+        eyebrow: '🍎 FOR A WONDERFUL TEACHER',
+        greeting: (r: string) => r ? `Dear ${r},` : 'For an amazing teacher,',
+        closingLine: 'Thank you for everything you do for our kids.',
+        decorationHtml: (a: string, ad: string) => {
+          const seeds = [
+            { top: 10, left: 12 }, { top: 14, left: 84 },
+            { top: 50, left: 6 },  { top: 84, left: 18 },
+            { top: 88, left: 78 },
+          ];
+          return seeds.map(s =>
+            `<div style="position:absolute;top:${s.top}%;left:${s.left}%;width:5px;height:5px;background:${a};border-radius:50%;opacity:0.5;"></div>`
+          ).join('');
+        },
+      },
     };
     const design = DESIGNS[designKey] || DESIGNS['just-because'];
 
