@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { applyCycleFilter, phaseFromDate } from '../lib/cycleScheduling';
 import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
@@ -695,6 +695,15 @@ function SquareCardSetupForm({ clientSecret, mandateAgreed, onSuccess, onError, 
 
 export default function BookingPage() {
   const {slug}=useParams();
+  const navigate = useNavigate();
+  // HK May 26 2026: when arriving from the floating chip inside the
+  // therapist's standalone iOS PWA, the URL carries ?from=pwa. We
+  // surface an in-app Back affordance so the therapist can return to
+  // their dashboard without losing their place. iOS swipe-back also
+  // works because openExternal navigates via window.location.href
+  // (which pushes to the history stack).
+  const fromPwa = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).get('from') === 'pwa';
   const [therapist,setTherapist]=useState(null);
   const [services,setServices]=useState([]);
   // Multi-location (HK May 18 2026): therapist's locations + the one
@@ -2245,7 +2254,38 @@ export default function BookingPage() {
 
   return (
     <div style={{minHeight:'100vh',background:C.beige,fontFamily:'system-ui,sans-serif'}}>
-      <div style={{background:C.white,borderBottom:`1px solid ${C.light}`,padding:'max(14px, env(safe-area-inset-top, 14px)) 20px 14px',position:'sticky',top:0,zIndex:10}}>
+      {fromPwa && (
+        <div style={{
+          background:C.forest, color:'#fff',
+          padding:'max(10px, env(safe-area-inset-top, 10px)) 16px 10px',
+          fontSize:13, fontWeight:600,
+          display:'flex', alignItems:'center', justifyContent:'space-between',
+          position:'sticky', top:0, zIndex:20,
+        }}>
+          <button
+            type="button"
+            onClick={() => {
+              // Try history.back first (preserves dashboard state)
+              if (window.history.length > 1) {
+                window.history.back();
+              } else {
+                navigate('/dashboard');
+              }
+            }}
+            style={{
+              background:'transparent', border:'none', color:'#fff',
+              fontSize:14, fontWeight:600, cursor:'pointer',
+              padding:'6px 10px', borderRadius:6,
+              display:'flex', alignItems:'center', gap:6,
+              fontFamily:'inherit',
+            }}
+          >
+            ← Back to dashboard
+          </button>
+          <span style={{ fontSize:11, opacity:0.85 }}>Preview</span>
+        </div>
+      )}
+      <div style={{background:C.white,borderBottom:`1px solid ${C.light}`,padding:'max(14px, env(safe-area-inset-top, 14px)) 20px 14px',position:'sticky',top:fromPwa?42:0,zIndex:10}}>
         <div style={{maxWidth:560,margin:'0 auto',display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
           <div style={{display:'flex',alignItems:'center',gap:12}}>
             {therapist.photo_url

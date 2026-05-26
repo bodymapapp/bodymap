@@ -1,41 +1,48 @@
 // openExternal.js
 //
-// Opens a URL in a new browser tab/window across desktop browsers,
-// mobile Safari, and iOS PWAs added to the iOS home screen.
+// Opens a URL across desktop browsers, mobile Safari, and iOS PWAs.
 //
 // THE iOS-PWA PROBLEM (HK reported multiple times May 24-26 2026):
-// In a standalone iOS PWA, window.open(url, '_blank', ...) does NOT
-// reliably escape the PWA shell. iOS treats the call as in-app
-// navigation, evicting the page the user was on and replacing it
-// with the booking page. The user loses their place in the dashboard.
-// Symptom: 'I tap Open booking page, the dashboard disappears.'
+// In a standalone iOS PWA, NEITHER window.open(url, '_blank') NOR a
+// synthesized anchor click with target='_blank' reliably hands the
+// URL off to Safari. iOS hijacks the navigation, kills the dashboard
+// page the therapist was on, and replaces it with the booking page
+// inside the same PWA shell. The user has no way back.
 //
-// THE FIX (working approach that survives PWA shell):
-// Synthesize a real anchor element with target='_blank' and rel set
-// for popup safety, then programmatically click it. iOS treats a real
-// anchor click as an explicit user-initiated external navigation and
-// hands it off to Safari proper, leaving the PWA shell intact.
+// THE FIX (May 26 2026 round 3, after the anchor-click trick also
+// failed to escape on HK's iPhone):
+// Detect standalone PWA mode and use IN-APP navigation instead of
+// attempting to escape to Safari. iOS users expect back-gesture or
+// in-app back navigation; respecting that pattern preserves the
+// therapist's place because the dashboard sits in the history stack.
 //
-// This is the same trick libraries like FileSaver.js use to get
-// downloads to escape PWAs reliably.
-//
-// HK May 26 2026: window.open approach failed despite the round 2
-// hotfix. Switching to the anchor-click approach.
+// In a regular browser tab, keep the new-tab behavior because users
+// there expect a separate tab they can return to via tab switcher.
 
-function clickAnchor(url) {
-  // Build an anchor that simulates a deliberate user click. The
-  // element is detached after click so it does not litter the DOM.
+function isStandalonePwa() {
+  // iOS Safari sets navigator.standalone when added to home screen.
+  // Modern browsers expose the display-mode media query.
+  try {
+    if (typeof navigator !== 'undefined' && navigator.standalone === true) return true;
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      if (window.matchMedia('(display-mode: standalone)').matches) return true;
+      if (window.matchMedia('(display-mode: fullscreen)').matches) return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+function clickAnchorBlank(url) {
+  // For non-PWA: build an anchor with target='_blank' and click it.
+  // Browsers honor this as a new-tab request. The anchor is detached
+  // after click so it does not litter the DOM.
   const a = document.createElement('a');
   a.href = url;
   a.target = '_blank';
   a.rel = 'noopener noreferrer';
-  // Some iOS Safari versions only treat the click as user-initiated
-  // when the anchor is in the document. Attach, click, then remove.
   a.style.display = 'none';
   document.body.appendChild(a);
   a.click();
-  // Defer the remove so iOS finishes processing the click. Immediate
-  // remove can race the navigation handoff on older WebKit.
   setTimeout(() => {
     if (a.parentNode) a.parentNode.removeChild(a);
   }, 100);
@@ -43,11 +50,27 @@ function clickAnchor(url) {
 
 export function openExternal(url) {
   if (!url) return;
+
+  if (isStandalonePwa()) {
+    // In-PWA navigation. Pushes to the history stack so the iOS back
+    // gesture or any in-page Back button returns the therapist to
+    // their previous page (the dashboard). This is the iOS-native
+    // pattern and the only path that reliably preserves the user's
+    // place in a standalone PWA.
+    //
+    // The query param `from=pwa` lets the destination page render an
+    // in-app Back affordance if it wants to.
+    const sep = url.includes('?') ? '&' : '?';
+    window.location.href = `${url}${sep}from=pwa`;
+    return;
+  }
+
+  // Regular browser: open in a new tab. Anchor click trick is more
+  // reliable than window.open across browsers and respects popup
+  // blockers correctly when called from a real user gesture.
   try {
-    clickAnchor(url);
+    clickAnchorBlank(url);
   } catch (_) {
-    // Last-resort fallback only if synthesized anchor click throws.
-    // Better to navigate the current tab than to do nothing.
     try {
       window.open(url, '_blank', 'noopener,noreferrer');
     } catch (__) {
@@ -56,12 +79,6 @@ export function openExternal(url) {
   }
 }
 
-// Inline onClick handler factory for anchors. Use as:
-//   <a href={url} target="_blank" rel="noopener noreferrer"
-//      onClick={openExternalClick(url)}>...
-// The href + target attributes stay as a non-JS fallback. The
-// onClick takes priority and uses the anchor-click trick for
-// reliable PWA behavior.
 export function openExternalClick(url) {
   return (event) => {
     event.preventDefault();
