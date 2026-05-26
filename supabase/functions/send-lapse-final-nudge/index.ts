@@ -108,7 +108,7 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
     .from('clients')
     .select(`
       id, name, email, therapist_id, unsubscribed_at,
-      therapists(id, full_name, business_name, custom_url, email, notification_prefs)
+      therapists(id, full_name, business_name, custom_url, email, notification_prefs, lapse_checkins_enabled_at)
     `)
     .eq('id', clientId)
     .single();
@@ -118,6 +118,15 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
   if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
 
   const therapist = client.therapists;
+
+  // Safety gate: only fire if therapist opted in and the lapse
+  // started after opt-in. Same pattern as C14. Inherits the C14
+  // history check already in findFinalLapseClients() so if C14 was
+  // never sent (because gate blocked it), C15 also will not.
+  if (!therapist?.lapse_checkins_enabled_at) {
+    return { status: 'skipped', reason: 'lapse_checkins_not_enabled' };
+  }
+
   if (therapist?.notification_prefs?.client?.lapse_final_nudge?.email === false) {
     return { status: 'skipped', reason: 'therapist_opted_out' };
   }

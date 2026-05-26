@@ -79,8 +79,8 @@ async function sendForMembership(supabase: any, RESEND_KEY: string, membershipId
   const { data: membership } = await supabase
     .from('memberships')
     .select(`
-      id, renewal_at, price_cents, plan_name, status,
-      therapists(id, full_name, business_name, custom_url, email),
+      id, renewal_at, price_cents, plan_name, status, created_at,
+      therapists(id, full_name, business_name, custom_url, email, renewal_alerts_enabled_at),
       clients(id, name, email, phone)
     `)
     .eq('id', membershipId)
@@ -92,6 +92,17 @@ async function sendForMembership(supabase: any, RESEND_KEY: string, membershipId
   const therapist = membership.therapists;
   const client = membership.clients;
   if (!therapist?.email) return { status: 'skipped', reason: 'no_therapist_email' };
+
+  // HK May 26 2026 safety gate: don't fire renewal alerts for
+  // memberships that existed before therapist opted in.
+  if (!therapist.renewal_alerts_enabled_at) {
+    return { status: 'skipped', reason: 'renewal_alerts_not_enabled' };
+  }
+  const enabledAt = new Date(therapist.renewal_alerts_enabled_at).getTime();
+  const membershipCreatedAt = membership.created_at ? new Date(membership.created_at).getTime() : 0;
+  if (membershipCreatedAt < enabledAt) {
+    return { status: 'skipped', reason: 'membership_predates_optin' };
+  }
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'You';
   const clientName = client?.name || 'A client';

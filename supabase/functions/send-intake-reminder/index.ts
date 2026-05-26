@@ -89,8 +89,8 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const { data: booking } = await supabase
     .from('bookings')
     .select(`
-      id, client_id, start_date, start_time, service_name, status,
-      therapists(id, full_name, business_name, custom_url, email, notification_prefs),
+      id, client_id, start_date, start_time, service_name, status, created_at,
+      therapists(id, full_name, business_name, custom_url, email, notification_prefs, intake_reminders_enabled_at),
       clients(id, name, email, phone, sms_opted_in, unsubscribed_at)
     `)
     .eq('id', bookingId)
@@ -103,6 +103,19 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const client = booking.clients;
   if (!client?.email) return { status: 'skipped', reason: 'no_client_email' };
   if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
+
+  // HK May 26 2026 safety gate: only fire for bookings created AFTER
+  // therapist opted in to intake reminders. Without this, the first
+  // hourly cron after deploy would sweep every booking with a pending
+  // intake across all existing therapists' client bases.
+  if (!therapist?.intake_reminders_enabled_at) {
+    return { status: 'skipped', reason: 'intake_reminders_not_enabled' };
+  }
+  const bookingCreatedAt = new Date(booking.created_at || booking.start_date).getTime();
+  const enabledAt = new Date(therapist.intake_reminders_enabled_at).getTime();
+  if (bookingCreatedAt < enabledAt) {
+    return { status: 'skipped', reason: 'booking_predates_optin' };
+  }
 
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';

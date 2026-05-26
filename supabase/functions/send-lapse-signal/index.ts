@@ -83,11 +83,19 @@ async function findTherapistsWithNewlyLapsedClients(supabase: any): Promise<stri
 async function sendForTherapist(supabase: any, RESEND_KEY: string, therapistId: string) {
   const { data: therapist } = await supabase
     .from('therapists')
-    .select('id, full_name, business_name, email, notification_prefs')
+    .select('id, full_name, business_name, email, notification_prefs, lapse_checkins_enabled_at')
     .eq('id', therapistId)
     .single();
 
   if (!therapist?.email) return { status: 'skipped', reason: 'no_therapist_email' };
+
+  // Safety gate: T10 only fires when the therapist explicitly enabled
+  // lapse check-ins. Otherwise T10 would surface 'we sent X clients
+  // a warm nudge' for sends that never actually happened (C14 had
+  // the same gate). Quietly skip.
+  if (!therapist.lapse_checkins_enabled_at) {
+    return { status: 'skipped', reason: 'lapse_checkins_not_enabled' };
+  }
   if (therapist?.notification_prefs?.therapist?.lapse_signal?.email === false) {
     return { status: 'skipped', reason: 'therapist_opted_out' };
   }

@@ -106,7 +106,7 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
     .from('clients')
     .select(`
       id, name, email, therapist_id, unsubscribed_at,
-      therapists(id, full_name, business_name, custom_url, email, notification_prefs)
+      therapists(id, full_name, business_name, custom_url, email, notification_prefs, lapse_checkins_enabled_at)
     `)
     .eq('id', clientId)
     .single();
@@ -116,7 +116,41 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
   if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
 
   const therapist = client.therapists;
-  // Respect therapist opt-out. Default is ON, so only skip if explicitly off.
+
+  // HK May 26 2026: SAFETY GATE so this never sweeps retroactive
+  // emails into existing therapists' client bases. The lapse cron
+  // ONLY fires when:
+  //   1. therapist.lapse_checkins_enabled_at is non-null (therapist
+  //      explicitly turned this on in Settings)
+  //   2. The client's last booking was AFTER that enabled timestamp
+  //      (so we only fire on lapses that happened AFTER opt-in,
+  //      never on historical lapses)
+  // Without this check, the first cron run after deployment would
+  // blast every lapsed client across Terra/Candice/Jacquie/Joy with
+  // a 'thinking of you' email they did not opt in to receive.
+  if (!therapist?.lapse_checkins_enabled_at) {
+    return { status: 'skipped', reason: 'lapse_checkins_not_enabled' };
+  }
+  // Find the client's most recent booking to compare against the
+  // enabled-at gate.
+  const { data: lastBooking } = await supabase
+    .from('bookings')
+    .select('start_date')
+    .eq('client_id', clientId)
+    .not('status', 'eq', 'cancelled')
+    .not('status', 'eq', 'declined')
+    .order('start_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (lastBooking?.start_date) {
+    const lastBookingTs = new Date(`${lastBooking.start_date}T00:00:00Z`).getTime();
+    const enabledTs = new Date(therapist.lapse_checkins_enabled_at).getTime();
+    if (lastBookingTs < enabledTs) {
+      return { status: 'skipped', reason: 'last_booking_predates_optin' };
+    }
+  }
+
+  // Respect therapist opt-out. Default is ON once enabled, only skip if explicitly off.
   if (therapist?.notification_prefs?.client?.lapse_nudge?.email === false) {
     return { status: 'skipped', reason: 'therapist_opted_out' };
   }
