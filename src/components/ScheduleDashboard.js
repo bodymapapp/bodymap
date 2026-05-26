@@ -1794,7 +1794,38 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     if (newStartTime) updates.start_time = newStartTime;
     if (newEndTime) updates.end_time = newEndTime;
     if (Object.keys(updates).length) {
+      // Capture prev values BEFORE the update so we can pass them
+      // to the reschedule confirmation email (C10).
+      const prevDate = appt.date instanceof Date
+        ? appt.date.toISOString().slice(0, 10)
+        : (appt.start_date || null);
+      const prevTime = appt.start_time_raw || null;
       await supabase.from('bookings').update(updates).eq('id', appt.id);
+
+      // HK May 26 2026: notify-booking-event with event_type='reschedule'
+      // fires the C10 reschedule confirmation email to the client.
+      // Only fires when start_time actually changed (saveEndTime can
+      // also fire from just end_time changes which are not a real
+      // reschedule). Non-blocking.
+      if (newStartTime && newStartTime !== prevTime) {
+        try {
+          const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+          const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+          fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
+              'apikey': anonKey,
+            },
+            body: JSON.stringify({
+              booking_id: appt.id,
+              event_type: 'reschedule',
+              reschedule_prev: { prev_date: prevDate, prev_time: prevTime },
+            }),
+          }).catch(() => { /* non-blocking */ });
+        } catch (_) { /* non-blocking */ }
+      }
     }
     setSavingTime(false);
     setEditTime(false);
@@ -1818,7 +1849,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           'Authorization': `Bearer ${anonKey}`,
           'apikey': anonKey,
         },
-        body: JSON.stringify({ booking_id: appt.id, event_type: 'booking_cancelled' }),
+        body: JSON.stringify({ booking_id: appt.id, event_type: 'booking_cancelled', initiated_by: 'therapist' }),
       }).catch(() => { /* non-blocking */ });
     } catch (_notifyErr) { /* non-blocking */ }
 

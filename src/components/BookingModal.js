@@ -272,12 +272,37 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
         if (locations.length >= 2 && locationId) {
           updatePayload.location_id = locationId;
         }
+        // Capture prev values BEFORE update so the C10 email can
+        // include 'previously: <old time>' context.
+        const prevDate = existingBooking?.booking_date || existingBooking?.start_date || null;
+        const prevTime = existingBooking?.start_time || null;
         const { error: e } = await supabase.from('bookings')
           .update(updatePayload)
           .eq('id', existingBooking.id);
         if (e) throw e;
         bookingId = existingBooking.id;
         eventType = 'booking_rescheduled';
+
+        // HK May 26 2026: fire the C10 reschedule confirmation email
+        // (notify-booking-event with event_type='reschedule' routes to
+        // send-reschedule-confirmation in the fan-out). Non-blocking.
+        try {
+          const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+          const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+          fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
+              'apikey': anonKey,
+            },
+            body: JSON.stringify({
+              booking_id: bookingId,
+              event_type: 'reschedule',
+              reschedule_prev: { prev_date: prevDate, prev_time: prevTime },
+            }),
+          }).catch(() => { /* non-blocking */ });
+        } catch (_) { /* non-blocking */ }
       } else {
         // Insert new booking
         const svc = services.find(s => s.id === serviceId);

@@ -258,6 +258,31 @@ export default function CancellationChargeModal({
       // 'no_show' as a separate status.
       const newStatus = isNoShow ? 'no_show' : 'cancelled';
       await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+
+      // HK May 26 2026: notify-booking-event fires the fan-out for
+      // the client-facing emails (C9 late cancel with fee charged
+      // OR C11 no-show receipt). Non-blocking, same pattern as the
+      // skip-fee path below.
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: booking.id,
+            event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
+            initiated_by: 'therapist',
+            fee_amount_cents: fee.amount_cents || 0,
+            fee_charged: true,
+          }),
+        }).catch(() => { /* non-blocking */ });
+      } catch (_) { /* non-blocking */ }
+
       setChargeResult(data);
       setStep('done');
       setBusy(false);
@@ -310,6 +335,30 @@ export default function CancellationChargeModal({
       // reality immediately.
       const newStatus = isNoShow ? 'no_show' : 'cancelled';
       await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
+
+      // HK May 26 2026: fan out the C12 no-show payment request email
+      // (or C9 client late cancel email if cancellation rather than
+      // no-show) with the payment link so the client can pay.
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: booking.id,
+            event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
+            initiated_by: 'therapist',
+            fee_amount_cents: fee.amount_cents || 0,
+            fee_charged: false,
+            payment_link_url: data.payment_link_url,
+          }),
+        }).catch(() => { /* non-blocking */ });
+      } catch (_) { /* non-blocking */ }
 
       setPaymentLinkUrl(data.payment_link_url);
       setStep('link_sent');
@@ -429,6 +478,27 @@ export default function CancellationChargeModal({
       const newStatus = isNoShow ? 'no_show' : 'cancelled';
       await supabase.from('bookings').update({ status: newStatus }).eq('id', booking.id);
 
+      // HK May 26 2026: fan out for C9 client late cancel with fee
+      // charged, or C11 no-show charged receipt, plus T12 therapist
+      // alert. Non-blocking.
+      try {
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: booking.id,
+            event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
+            initiated_by: 'therapist',
+            fee_amount_cents: effectiveFeeCents,
+            fee_charged: true,
+          }),
+        }).catch(() => { /* non-blocking */ });
+      } catch (_) { /* non-blocking */ }
+
       setChargeResult(chargeData);
       setStep('done');
       setBusy(false);
@@ -460,6 +530,7 @@ export default function CancellationChargeModal({
           body: JSON.stringify({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
+            initiated_by: 'therapist',
           }),
         }).catch(() => { /* non-blocking */ });
       } catch (_notifyErr) { /* non-blocking */ }

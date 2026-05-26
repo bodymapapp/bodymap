@@ -33,10 +33,18 @@ serve(async (req) => {
   });
 
   try {
-    const { booking_id, event_type } = await req.json();
+    const { booking_id, event_type, fee_amount_cents, fee_charged, payment_link_url, initiated_by, reschedule_prev } = await req.json();
     if (!booking_id) return respond({ error: 'booking_id required' }, 400);
-    if (event_type !== 'booking_cancelled' && event_type !== 'no_show_recorded') {
-      return respond({ error: 'event_type must be booking_cancelled or no_show_recorded' }, 400);
+    // Accepted event_types (expanded May 26 2026 for notification batch):
+    //   booking_cancelled  - any path that flips status to cancelled
+    //   no_show_recorded   - any path that flips status to no_show
+    //   reschedule         - booking date/time changed but still active
+    // fee_amount_cents + fee_charged together describe the fee outcome
+    // payment_link_url is the Stripe-hosted link for the C12 path
+    // initiated_by is 'therapist' or 'client'; gates whether C7 or C8/C9 fires
+    // reschedule_prev is { prev_date, prev_time } for the C10 path
+    if (event_type !== 'booking_cancelled' && event_type !== 'no_show_recorded' && event_type !== 'reschedule') {
+      return respond({ error: 'event_type must be booking_cancelled, no_show_recorded, or reschedule' }, 400);
     }
 
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || '';
@@ -193,15 +201,24 @@ serve(async (req) => {
       });
     }
 
-    // HK May 26 2026: fan out the new client-facing emails (C7, T12)
-    // after the legacy therapist notification path completes. Non-
-    // blocking, no error bubbles up if downstream fails.
+    // HK May 26 2026: fan out the new client-facing emails after the
+    // legacy therapist notification path completes. Non-blocking, no
+    // error bubbles up if downstream fails. Routing logic inside the
+    // helper picks which of the 7 inline-eligible touchpoints fire
+    // based on event_type + payload.
     try {
       await fireDownstreamForBookingEvent(
         SUPABASE_URL,
         SUPABASE_SERVICE_KEY,
         event_type,
         booking_id,
+        {
+          initiatedBy: initiated_by,
+          feeAmountCents: fee_amount_cents,
+          feeCharged: fee_charged,
+          paymentLinkUrl: payment_link_url,
+          reschedulePrev: reschedule_prev,
+        },
       );
     } catch (e) {
       console.warn('[notify-booking-event] downstream fan-out warning:', e?.message || e);
@@ -214,14 +231,20 @@ serve(async (req) => {
   }
 });
 
-// HK May 26 2026: fan-out helper to fire the new Tier 1+2+3
-// client-facing emails when therapist cancels or marks no-show.
-// Called inline after therapistResult so a failed downstream send
-// doesn't block the therapist notification. All non-blocking.
+// HK May 26 2026: fan-out helper expanded for the 13-touchpoint
+// notification batch. Now handles 7 of the 13 inline (the rest are
+// cron-driven). Called inline after therapistResult so a failed
+// downstream send does not block the legacy therapist notification.
+// All non-blocking; failures logged but never thrown.
 //
-// Mapping:
-//   booking_cancelled  -> C7 send-therapist-cancelled (client email)
-//   no_show_recorded   -> T12 send-no-show-occurred (richer therapist email)
+// Mapping (event_type + payload -> downstream function):
+//   booking_cancelled (initiated_by=therapist) -> send-therapist-cancelled (C7)
+//   booking_cancelled (initiated_by=client, no fee) -> send-client-cancelled-within-policy (C8)
+//   booking_cancelled (initiated_by=client, with fee) -> send-client-cancelled-late (C9)
+//   no_show_recorded -> send-no-show-occurred (T12)
+//   no_show_recorded (with fee_charged=true) -> send-no-show-charged (C11) ALSO fires to client
+//   no_show_recorded (with fee_charged=false + payment_link_url) -> send-no-show-payment-request (C12) ALSO fires
+//   reschedule -> send-reschedule-confirmation (C10)
 //
 // The downstream functions handle their own deduplication via
 // notification_log so re-fires are safe.
@@ -230,7 +253,14 @@ async function fireDownstreamForBookingEvent(
   serviceKey: string,
   eventType: string,
   bookingId: string,
-  reason?: string,
+  options: {
+    initiatedBy?: 'therapist' | 'client',
+    feeAmountCents?: number,
+    feeCharged?: boolean,
+    paymentLinkUrl?: string,
+    reschedulePrev?: { prev_date?: string, prev_time?: string },
+    reason?: string,
+  } = {},
 ) {
   const headers = {
     'Content-Type': 'application/json',
@@ -238,11 +268,73 @@ async function fireDownstreamForBookingEvent(
     'apikey': serviceKey,
   };
   const targets: Array<{ fn: string, payload: any }> = [];
+
   if (eventType === 'booking_cancelled') {
-    targets.push({ fn: 'send-therapist-cancelled', payload: { booking_id: bookingId, reason } });
+    if (options.initiatedBy === 'client') {
+      if (options.feeAmountCents && options.feeAmountCents > 0) {
+        targets.push({
+          fn: 'send-client-cancelled-late',
+          payload: {
+            booking_id: bookingId,
+            fee_amount_cents: options.feeAmountCents,
+            fee_charged: options.feeCharged === true,
+          },
+        });
+      } else {
+        targets.push({
+          fn: 'send-client-cancelled-within-policy',
+          payload: { booking_id: bookingId },
+        });
+      }
+    } else {
+      // Therapist initiated: client gets the apologetic C7
+      targets.push({
+        fn: 'send-therapist-cancelled',
+        payload: { booking_id: bookingId, reason: options.reason },
+      });
+    }
   } else if (eventType === 'no_show_recorded') {
-    targets.push({ fn: 'send-no-show-occurred', payload: { booking_id: bookingId } });
+    // Always fire T12 (therapist alert) with fee context
+    targets.push({
+      fn: 'send-no-show-occurred',
+      payload: {
+        booking_id: bookingId,
+        fee_charged: options.feeCharged,
+        fee_amount_cents: options.feeAmountCents,
+      },
+    });
+    // If fee was charged successfully, send C11 receipt to client
+    if (options.feeAmountCents && options.feeCharged === true) {
+      targets.push({
+        fn: 'send-no-show-charged',
+        payload: {
+          booking_id: bookingId,
+          fee_amount_cents: options.feeAmountCents,
+        },
+      });
+    }
+    // If fee was attempted but failed (or payment link issued), send C12
+    if (options.feeAmountCents && options.feeCharged === false && options.paymentLinkUrl) {
+      targets.push({
+        fn: 'send-no-show-payment-request',
+        payload: {
+          booking_id: bookingId,
+          fee_amount_cents: options.feeAmountCents,
+          payment_link_url: options.paymentLinkUrl,
+        },
+      });
+    }
+  } else if (eventType === 'reschedule') {
+    targets.push({
+      fn: 'send-reschedule-confirmation',
+      payload: {
+        booking_id: bookingId,
+        prev_date: options.reschedulePrev?.prev_date,
+        prev_time: options.reschedulePrev?.prev_time,
+      },
+    });
   }
+
   await Promise.allSettled(targets.map(t =>
     fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
       method: 'POST',
