@@ -122,17 +122,18 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const apptWhen = formatApptDateTime(booking.start_date, booking.start_time);
   const intakeUrl = `https://mybodymap.app/intake/${therapist.custom_url}?b=${booking.id}`;
 
-  const subject = `Quick favor before your session, ${clientFirstName}`;
+  const subject = `A short intake before we meet, ${clientFirstName}`;
 
   const bodyHtml = `
-    ${eyebrow('Heads up', 'sage')}
-    <h1>Your intake takes 2 minutes</h1>
+    ${eyebrow('Before our session', 'sage')}
+    <h1>Two minutes makes a real difference</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Looking forward to seeing you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
-    <p>It tells ${therapistName} where you'd like to focus, what to avoid, and anything they should know going in. It takes about 2 minutes and helps your time on the table go further.</p>
+    <p>I'm looking forward to seeing you for your <strong>${booking.service_name || 'session'}</strong> on <strong>${apptWhen}</strong>. Before then, would you fill out a short intake?</p>
+    <p>It lets me know where you'd like to focus, what to avoid, and anything I should know going in. About two minutes, and it helps your time on the table go further.</p>
     ${ctaButton('Fill out my intake →', intakeUrl)}
-    ${tipBox('Why this matters', `${therapistName} reads every intake before your session so they're already thinking about what you need before you arrive. The more they know going in, the more attuned your session can be.`)}
-    <p class="muted" style="font-size:12px;">Questions? Reply to this email or contact ${therapistName} directly.</p>
+    ${tipBox('Why this matters', `I read every intake before our session so I'm already thinking about what you need before you arrive. The more I know going in, the more attuned the session can be.`)}
+    <p>If anything comes up, just reply to this email.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
   const html = emailWrapper({ subject, bodyHtml, preheader: 'Two minutes now means more focused time on the table.' });

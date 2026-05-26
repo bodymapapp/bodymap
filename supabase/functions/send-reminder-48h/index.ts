@@ -102,7 +102,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const bookingUrl = `https://mybodymap.app/book/${therapist.custom_url}`;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
-  const subject = `See you in two days, ${clientFirstName}`;
+  const subject = `Looking forward to seeing you, ${clientFirstName}`;
 
   const facts = [
     { label: 'When',     value: apptWhen },
@@ -112,19 +112,20 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   if (booking.location_address) facts.push({ label: 'Where', value: booking.location_address });
 
   const bodyHtml = `
-    ${eyebrow('48 hours to go', 'sage')}
-    <h1>Looking forward to seeing you</h1>
+    ${eyebrow('Two days to go', 'sage')}
+    <h1>I'm looking forward to seeing you</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>A gentle reminder that your time with ${therapistName} is two days away. Hopefully you've already started looking forward to it.</p>
+    <p>A gentle reminder that we have time together coming up in two days. Hopefully you've already started looking forward to it as much as I have.</p>
     ${factBox(facts)}
     <p>If life has shifted and the timing no longer works, you can move things around from the link below. No worries either way.</p>
     <p style="text-align:center;margin:18px 0 8px;">
       <a href="${rescheduleUrl}" style="display:inline-block;color:#2A5741;text-decoration:underline;font-size:14px;font-weight:600;">Need to reschedule? →</a>
     </p>
-    <p class="muted" style="font-size:12px;margin-top:24px;">Questions? Reply to this email and ${therapistName} will get back to you.</p>
+    <p>See you soon.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${booking.service_name || 'session'} with ${therapistName} is two days away.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your ${booking.service_name || 'session'} is two days away.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',

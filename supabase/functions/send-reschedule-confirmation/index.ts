@@ -57,7 +57,7 @@ serve(async (req) => {
   const prevWhen = (prev_date && prev_time) ? formatApptDateTime(prev_date, prev_time) : null;
   const rescheduleUrl = `https://mybodymap.app/book/${therapist.custom_url}?reschedule=${booking.id}`;
 
-  const subject = `Your session is rescheduled, ${clientFirstName}`;
+  const subject = `New time for your session, ${clientFirstName}`;
 
   const facts = [
     { label: 'New time', value: newWhen },
@@ -71,16 +71,17 @@ serve(async (req) => {
     ${eyebrow('Rescheduled', 'gold')}
     <h1>Your session has a new time</h1>
     <p>Hi ${clientFirstName},</p>
-    <p>Confirming your session with ${therapistName} has been moved. Here are the new details:</p>
+    <p>Confirming that we've moved your session to a new time. Here are the new details:</p>
     ${factBox(facts)}
-    <p>You'll get a reminder 48 hours before. If this new time doesn't work, you can reschedule again from the link below.</p>
+    <p>I'll send a reminder 48 hours before. If this new time doesn't quite work either, you can move it again from the link below.</p>
     <p style="text-align:center;margin:18px 0 8px;">
       <a href="${rescheduleUrl}" style="display:inline-block;color:#2A5741;text-decoration:underline;font-size:14px;font-weight:600;">Need to change it again? →</a>
     </p>
-    <p class="muted" style="font-size:12px;margin-top:24px;">Questions? Reply to this email and ${therapistName} will get back to you.</p>
+    <p>See you soon.</p>
+    <p class="muted" style="font-size:13px;margin-top:18px;">- ${therapist?.full_name || therapistName}</p>
   `;
 
-  const html = emailWrapper({ subject, bodyHtml, preheader: `Your session with ${therapistName} is now ${newWhen}.` });
+  const html = emailWrapper({ subject, bodyHtml, preheader: `Your session is now ${newWhen}.` });
 
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
