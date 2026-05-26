@@ -172,7 +172,12 @@ export default function NotificationCompliance() {
       alert('Therapist or client account not loaded. Cannot run auto-fire.');
       return;
     }
-    if (!window.confirm(`Fire all ${NOTIFICATION_SPEC.length} test notifications for ${therapist.full_name} to ${client.name}? You'll receive a flood of test messages on every channel.`)) {
+    // HK May 26 2026: was window.confirm, now uses inline confirm pattern
+    // via state. First tap arms; second tap fires. State resets on
+    // anything else.
+    if (firing !== 'arm_full') {
+      setFiring('arm_full');
+      setFireResult(null);
       return;
     }
     setFiring(true);
@@ -214,6 +219,108 @@ export default function NotificationCompliance() {
     } finally {
       setFiring(false);
     }
+  }
+
+  // HK May 26 2026: dedicated firing for the May 26 batch (12 new
+  // edge functions with real warm templates, not the synthetic
+  // notifyTherapist/notifyClient helpers from fireAll). Calls each
+  // new function directly with realistic payload, shows per-fire
+  // pass/fail inline. Email-only until SMS infra ships.
+  async function fireMay26Batch() {
+    if (!therapist?.id || !client?.id) {
+      alert('Therapist or client account not loaded. Cannot run.');
+      return;
+    }
+    if (firing !== 'arm_may26') {
+      setFiring('arm_may26');
+      setFireResult(null);
+      return;
+    }
+    setFiring(true);
+    setFireResult(null);
+
+    const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || '';
+    const { data: { session } } = await supabase.auth.getSession();
+    const accessToken = session?.access_token;
+    if (!accessToken) {
+      alert('No auth token. Re-login and retry.');
+      setFiring(false);
+      return;
+    }
+    const headers = {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    };
+
+    // Find the latest Joy demo booking. Most event-driven functions
+    // need a real booking_id with the right therapist+client linkage.
+    const { data: latest } = await supabase
+      .from('bookings')
+      .select('id, booking_date, start_time, status')
+      .eq('therapist_id', therapist.id)
+      .eq('client_id', client.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const bookingId = latest?.id;
+    if (!bookingId) {
+      setFireResult({ batch: 'may26', error: 'No Joy demo booking found. Create one first.', results: [] });
+      setFiring(false);
+      return;
+    }
+
+    const tests = [
+      { id: 'C3',  fn: 'send-intake-reminder',                payload: { booking_id: bookingId },                                                                                          label: 'C3 Intake reminder' },
+      { id: 'C4',  fn: 'send-reminder-48h',                    payload: { booking_id: bookingId },                                                                                          label: 'C4 48h reminder' },
+      { id: 'C7',  fn: 'send-therapist-cancelled',             payload: { booking_id: bookingId, reason: 'Test fire from compliance dashboard. I caught a cold and need to reschedule.' }, label: 'C7 Therapist cancelled' },
+      { id: 'C8',  fn: 'send-client-cancelled-within-policy',  payload: { booking_id: bookingId },                                                                                          label: 'C8 Client cancelled (no fee)' },
+      { id: 'C9',  fn: 'send-client-cancelled-late',           payload: { booking_id: bookingId, fee_amount_cents: 5000, fee_charged: true },                                              label: 'C9 Client cancelled late (fee charged)' },
+      { id: 'C10', fn: 'send-reschedule-confirmation',         payload: { booking_id: bookingId, prev_date: '2026-05-20', prev_time: '10:00:00' },                                          label: 'C10 Reschedule confirmation' },
+      { id: 'C11', fn: 'send-no-show-charged',                 payload: { booking_id: bookingId, fee_amount_cents: 7500, charge_id: 'ch_test_compliance' },                                 label: 'C11 No-show charged' },
+      { id: 'C12', fn: 'send-no-show-payment-request',         payload: { booking_id: bookingId, fee_amount_cents: 7500, payment_link_url: 'https://buy.stripe.com/test_compliance_link' }, label: 'C12 No-show payment request' },
+      { id: 'T12', fn: 'send-no-show-occurred',                payload: { booking_id: bookingId, fee_charged: true, fee_amount_cents: 7500 },                                              label: 'T12 No-show alert to therapist' },
+      { id: 'C14', fn: 'send-lapse-nudge',                     payload: { client_id: client.id },                                                                                           label: 'C14 Lapse nudge (gated)' },
+      { id: 'C15', fn: 'send-lapse-final-nudge',               payload: { client_id: client.id },                                                                                           label: 'C15 Lapse final nudge (gated)' },
+      { id: 'T10', fn: 'send-lapse-signal',                    payload: { therapist_id: therapist.id },                                                                                     label: 'T10 Lapse signal (gated)' },
+    ];
+
+    const results = [];
+    for (const t of tests) {
+      try {
+        const res = await fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(t.payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        results.push({
+          id: t.id,
+          label: t.label,
+          fn: t.fn,
+          http: res.status,
+          status: data.status || (res.ok ? 'sent' : 'failed'),
+          reason: data.reason || data.error || null,
+          ok: res.ok,
+        });
+      } catch (e) {
+        results.push({
+          id: t.id,
+          label: t.label,
+          fn: t.fn,
+          http: 0,
+          status: 'error',
+          reason: String(e?.message || e),
+          ok: false,
+        });
+      }
+      // 400ms throttle to be polite to Resend (5 req/sec limit)
+      await new Promise(r => setTimeout(r, 400));
+    }
+
+    setFireResult({ batch: 'may26', results, booking_id: bookingId });
+    setFiring(false);
+    await refreshLogs();
   }
 
   // ─── Bulk-confirm all yellow cells in a column ─────────────────
@@ -337,14 +444,16 @@ export default function NotificationCompliance() {
             </div>
           )}
 
-          {/* Auto-fire CTA */}
+          {/* Auto-fire CTAs */}
           <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={fireAll}
-              disabled={firing || !therapist || !client}
+              onClick={fireMay26Batch}
+              disabled={firing === true || !therapist || !client}
               style={{
-                background: firing ? COLORS.inkSoft : (therapist && client ? `linear-gradient(135deg, ${COLORS.forestDeep}, ${COLORS.forest})` : '#D1D5DB'),
+                background: firing === true ? COLORS.inkSoft
+                  : firing === 'arm_may26' ? COLORS.gold
+                  : (therapist && client ? `linear-gradient(135deg, ${COLORS.forestDeep}, ${COLORS.forest})` : '#D1D5DB'),
                 color: '#fff',
                 border: 'none',
                 borderRadius: 999,
@@ -352,12 +461,38 @@ export default function NotificationCompliance() {
                 fontSize: 13,
                 fontWeight: 700,
                 letterSpacing: '0.02em',
-                cursor: (firing || !therapist || !client) ? 'not-allowed' : 'pointer',
-                boxShadow: (therapist && client && !firing) ? '0 2px 8px rgba(42, 87, 65, 0.22)' : 'none',
+                cursor: (firing === true || !therapist || !client) ? 'not-allowed' : 'pointer',
+                boxShadow: (therapist && client && firing !== true) ? '0 2px 8px rgba(42, 87, 65, 0.22)' : 'none',
               }}>
-              {firing ? 'Firing all 28 touchpoints…' : '🧪 Run full compliance test'}
+              {firing === true && 'Firing 12 May 26 emails...'}
+              {firing === 'arm_may26' && 'Tap again to confirm fire'}
+              {!firing && '🧪 Fire May 26 batch (real templates)'}
+              {firing === 'arm_full' && '🧪 Fire May 26 batch (real templates)'}
             </button>
-            {fireResult && (
+
+            <button
+              type="button"
+              onClick={fireAll}
+              disabled={firing === true || !therapist || !client}
+              style={{
+                background: firing === true ? COLORS.inkSoft
+                  : firing === 'arm_full' ? COLORS.gold
+                  : '#fff',
+                color: firing === 'arm_full' ? '#fff' : COLORS.ink,
+                border: `1px solid ${COLORS.border}`,
+                borderRadius: 999,
+                padding: '10px 18px',
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: (firing === true || !therapist || !client) ? 'not-allowed' : 'pointer',
+              }}>
+              {firing === true && 'Firing all touchpoints...'}
+              {firing === 'arm_full' && 'Tap again to confirm full sweep'}
+              {!firing && 'Full compliance sweep (legacy, all 28)'}
+              {firing === 'arm_may26' && 'Full compliance sweep (legacy, all 28)'}
+            </button>
+
+            {fireResult && fireResult.batch !== 'may26' && (
               <div style={{
                 fontSize: 12,
                 color: COLORS.ink,
@@ -372,6 +507,74 @@ export default function NotificationCompliance() {
               </div>
             )}
           </div>
+
+          {/* May 26 batch results panel */}
+          {fireResult && fireResult.batch === 'may26' && (
+            <div style={{
+              marginTop: 14,
+              background: '#fff',
+              border: `1px solid ${COLORS.border}`,
+              borderRadius: 12,
+              padding: 14,
+            }}>
+              <div style={{
+                fontSize: 11, fontWeight: 700, color: COLORS.inkSoft,
+                letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10,
+              }}>
+                May 26 batch results
+                {fireResult.booking_id && (
+                  <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, marginLeft: 8, fontStyle: 'italic' }}>
+                    booking: {fireResult.booking_id.slice(0, 8)}...
+                  </span>
+                )}
+              </div>
+              {fireResult.error && (
+                <div style={{ color: '#991B1B', fontSize: 13, padding: 8, background: '#FEF2F2', borderRadius: 8 }}>
+                  {fireResult.error}
+                </div>
+              )}
+              {fireResult.results && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  {fireResult.results.map(r => {
+                    const sent = r.status === 'sent' && r.ok;
+                    const skipped = r.status === 'skipped';
+                    const failed = !sent && !skipped;
+                    const dotColor = sent ? '#16A34A' : skipped ? '#D97706' : '#DC2626';
+                    return (
+                      <div key={r.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '6px 8px', borderRadius: 6,
+                        fontSize: 12,
+                      }}>
+                        <span style={{
+                          width: 10, height: 10, borderRadius: '50%',
+                          background: dotColor, flexShrink: 0,
+                        }} />
+                        <span style={{ fontWeight: 700, color: COLORS.forestDeep, minWidth: 36 }}>{r.id}</span>
+                        <span style={{ color: COLORS.ink, flex: 1, minWidth: 0 }}>{r.label}</span>
+                        <span style={{
+                          color: sent ? '#166534' : skipped ? '#92400E' : '#991B1B',
+                          fontWeight: 600,
+                          fontSize: 11,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.4px',
+                        }}>{r.status}</span>
+                        {r.reason && (
+                          <span style={{ color: COLORS.inkSoft, fontSize: 11, fontStyle: 'italic' }}>{r.reason}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <div style={{
+                marginTop: 10, padding: '8px 10px', background: COLORS.cream,
+                borderRadius: 6, fontSize: 11, color: COLORS.inkSoft, lineHeight: 1.55,
+              }}>
+                Check inboxes: <strong>{client?.email}</strong> for C-series, <strong>{therapist?.email}</strong> for T12. Lapse rows (C14, C15, T10) will show 'skipped' unless Joy has lapse_checkins_enabled_at set in the therapists table.
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Legend */}
