@@ -1,43 +1,58 @@
 // openExternal.js
 //
 // Opens a URL in a new browser tab/window across desktop browsers,
-// mobile Safari, and PWAs added to the iOS home screen.
+// mobile Safari, and iOS PWAs added to the iOS home screen.
 //
-// Why this exists: iOS PWAs (added to home screen) hijack anchor tags
-// with target="_blank" and open them in the same PWA window, breaking
-// the user's flow when they tap "Open booking page" to see the public
-// page and can't get back to their Dashboard. window.open() with the
-// '_blank' target forces iOS to delegate to the system browser (Safari)
-// which opens a fresh window the user can switch between via the OS
-// app switcher.
+// THE iOS-PWA PROBLEM (HK reported multiple times May 24-26 2026):
+// In a standalone iOS PWA, window.open(url, '_blank', ...) does NOT
+// reliably escape the PWA shell. iOS treats the call as in-app
+// navigation, evicting the page the user was on and replacing it
+// with the booking page. The user loses their place in the dashboard.
+// Symptom: 'I tap Open booking page, the dashboard disappears.'
 //
-// Use this helper anywhere you'd previously have used
-// <a target="_blank" rel="noopener noreferrer">. Call it from an
-// onClick handler and call event.preventDefault() so the default
-// anchor navigation does not also fire.
+// THE FIX (working approach that survives PWA shell):
+// Synthesize a real anchor element with target='_blank' and rel set
+// for popup safety, then programmatically click it. iOS treats a real
+// anchor click as an explicit user-initiated external navigation and
+// hands it off to Safari proper, leaving the PWA shell intact.
 //
-// HK May 25 2026: PWA confirmed as HK's iPhone access pattern.
-// 'Everyone has PWA downloaded as far as clients are concerned' so
-// the bug applies to therapists AND their clients in the PWA shell.
+// This is the same trick libraries like FileSaver.js use to get
+// downloads to escape PWAs reliably.
+//
+// HK May 26 2026: window.open approach failed despite the round 2
+// hotfix. Switching to the anchor-click approach.
+
+function clickAnchor(url) {
+  // Build an anchor that simulates a deliberate user click. The
+  // element is detached after click so it does not litter the DOM.
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  // Some iOS Safari versions only treat the click as user-initiated
+  // when the anchor is in the document. Attach, click, then remove.
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  // Defer the remove so iOS finishes processing the click. Immediate
+  // remove can race the navigation handoff on older WebKit.
+  setTimeout(() => {
+    if (a.parentNode) a.parentNode.removeChild(a);
+  }, 100);
+}
 
 export function openExternal(url) {
   if (!url) return;
-  // window.open with `noopener` in features always returns null per
-  // spec, even when the new window opens successfully. The earlier
-  // version of this helper used the return value as a success check
-  // and fell back to window.location.href when it was null, which
-  // caused the CURRENT tab to also navigate. Symptom HK reported May
-  // 25 2026: tapping the floating chip's 'Open booking page' opened
-  // the booking page in a new tab AND navigated the dashboard tab to
-  // the booking page, losing the therapist's place.
-  //
-  // Correct behavior: try/catch on the open call. If it throws (rare),
-  // fall back to location.href so the user still reaches the page.
-  // Never use the return value as a signal.
   try {
-    window.open(url, '_blank', 'noopener,noreferrer');
+    clickAnchor(url);
   } catch (_) {
-    window.location.href = url;
+    // Last-resort fallback only if synthesized anchor click throws.
+    // Better to navigate the current tab than to do nothing.
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (__) {
+      window.location.href = url;
+    }
   }
 }
 
@@ -45,8 +60,8 @@ export function openExternal(url) {
 //   <a href={url} target="_blank" rel="noopener noreferrer"
 //      onClick={openExternalClick(url)}>...
 // The href + target attributes stay as a non-JS fallback. The
-// onClick takes priority and uses window.open for reliable PWA
-// behavior.
+// onClick takes priority and uses the anchor-click trick for
+// reliable PWA behavior.
 export function openExternalClick(url) {
   return (event) => {
     event.preventDefault();
