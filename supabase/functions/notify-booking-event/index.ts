@@ -193,9 +193,61 @@ serve(async (req) => {
       });
     }
 
+    // HK May 26 2026: fan out the new client-facing emails (C7, T12)
+    // after the legacy therapist notification path completes. Non-
+    // blocking, no error bubbles up if downstream fails.
+    try {
+      await fireDownstreamForBookingEvent(
+        SUPABASE_URL,
+        SUPABASE_SERVICE_KEY,
+        event_type,
+        booking_id,
+      );
+    } catch (e) {
+      console.warn('[notify-booking-event] downstream fan-out warning:', e?.message || e);
+    }
+
     return respond({ ok: true, therapist: therapistResult, client: clientResult });
   } catch (e) {
     console.error('[notify-booking-event] error', e);
     return respond({ error: String(e?.message || e) }, 500);
   }
 });
+
+// HK May 26 2026: fan-out helper to fire the new Tier 1+2+3
+// client-facing emails when therapist cancels or marks no-show.
+// Called inline after therapistResult so a failed downstream send
+// doesn't block the therapist notification. All non-blocking.
+//
+// Mapping:
+//   booking_cancelled  -> C7 send-therapist-cancelled (client email)
+//   no_show_recorded   -> T12 send-no-show-occurred (richer therapist email)
+//
+// The downstream functions handle their own deduplication via
+// notification_log so re-fires are safe.
+async function fireDownstreamForBookingEvent(
+  supabaseUrl: string,
+  serviceKey: string,
+  eventType: string,
+  bookingId: string,
+  reason?: string,
+) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${serviceKey}`,
+    'apikey': serviceKey,
+  };
+  const targets: Array<{ fn: string, payload: any }> = [];
+  if (eventType === 'booking_cancelled') {
+    targets.push({ fn: 'send-therapist-cancelled', payload: { booking_id: bookingId, reason } });
+  } else if (eventType === 'no_show_recorded') {
+    targets.push({ fn: 'send-no-show-occurred', payload: { booking_id: bookingId } });
+  }
+  await Promise.allSettled(targets.map(t =>
+    fetch(`${supabaseUrl}/functions/v1/${t.fn}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(t.payload),
+    })
+  ));
+}
