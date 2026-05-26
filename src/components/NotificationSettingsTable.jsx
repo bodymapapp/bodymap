@@ -363,6 +363,11 @@ export default function NotificationSettingsTable({ therapist }) {
                               <Pill tone={spec.audience === 'client' ? 'sage' : 'mute'}>
                                 {spec.audience === 'client' ? 'Client' : 'You'}
                               </Pill>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, color: spec.series === 'C' ? C.sage : C.forestSoft,
+                                fontFamily: 'Georgia, serif', fontStyle: 'italic',
+                                letterSpacing: '0.4px',
+                              }}>{spec.id}</span>
                               <span style={{ fontSize: 13, fontWeight: 600, color: C.forestDark }}>{spec.title}</span>
                             </div>
                             {spec.when && (
@@ -467,8 +472,15 @@ export default function NotificationSettingsTable({ therapist }) {
                           opacity: masterOff ? 0.55 : 1,
                         }}>
                           <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
-                            <div style={{ fontSize: 13, fontWeight: 600, color: C.forestDark, marginBottom: 2 }}>
-                              {spec.title}
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 2 }}>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, color: spec.series === 'C' ? C.sage : C.forestSoft,
+                                fontFamily: 'Georgia, serif', fontStyle: 'italic',
+                                letterSpacing: '0.4px',
+                              }}>{spec.id}</span>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.forestDark }}>
+                                {spec.title}
+                              </span>
                             </div>
                             {spec.when && (
                               <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 4 }}>{spec.when}</div>
