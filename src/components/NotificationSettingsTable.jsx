@@ -1,21 +1,22 @@
 // src/components/NotificationSettingsTable.jsx
 //
-// World-class notification settings UI, grouped by the 6 stages from
-// the Client Lifetime Journey playbook. Replaces NotificationPrefsCard.
+// Mockup B production build (HK chose May 26 2026): unified single
+// table, stage rows as dividers, with a brief 'why' line under each
+// touchpoint so the therapist understands why each notification
+// exists for client or therapist wellbeing.
+//
+// Replaces the prior collapsible-card version. Faster scan, no
+// click-to-discover, all 30 touchpoints visible in one table.
 //
 // Design principles:
-// - 6 collapsed stage groups, expand to reveal touchpoints
-// - SMS and Push columns visible but grayed with 'Coming soon' so
-//   therapists see the roadmap
-// - Master toggles for the 3 gated features (Intake reminders, Lapse
-//   check-ins, Renewal alerts) prominent at the top
-// - Pause All button for vacation mode
-// - Each row: optimistic toggle with save indicator
-// - Mobile-responsive: columns collapse to vertical card on phone
+// - Single table, stages as gray-band rows
+// - Each touchpoint: title + when + why (3 lines)
+// - Email toggle per row (live), SMS + Push grayed with Coming Soon
+// - Master toggles + Pause All in a quick controls strip above
+// - Mobile: rows stack as cards
 //
-// HK May 26 2026 sign-off: aligned with the published article at
-// /docs/CLIENT_LIFETIME_JOURNEY.html so the UI is a continuation of
-// the philosophy, not a separate operational thing.
+// HK May 26 2026: 'we have to talk briefly about why that notification
+// is needed for either therapist or client growth and well being'
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
@@ -49,32 +50,34 @@ const C = {
   roseBg: '#FDF2F2',
 };
 
-// ── Helpers ─────────────────────────────────────────────────────
+// ── Reusable bits ─────────────────────────────────────────────
 
 function Pill({ children, tone = 'sage' }) {
   const bg = tone === 'gold' ? C.goldBg : tone === 'rose' ? C.roseBg : tone === 'mute' ? C.creamAlt : C.sageBg;
-  const fg = tone === 'gold' ? C.goldInk : tone === 'rose' ? C.rose : tone === 'mute' ? C.inkMute : C.forestSoft;
+  const fg = tone === 'gold' ? C.goldInk : tone === 'rose' ? C.rose : tone === 'mute' ? C.inkSoft : C.forestSoft;
   return (
     <span style={{
       display: 'inline-block',
       background: bg, color: fg,
-      padding: '3px 9px', borderRadius: 20,
+      padding: '2px 8px', borderRadius: 12,
       fontSize: 10, fontWeight: 700,
       letterSpacing: '0.6px', textTransform: 'uppercase',
+      whiteSpace: 'nowrap',
     }}>{children}</span>
   );
 }
 
-function Toggle({ on, onChange, disabled, dimReason }) {
-  // iOS-style toggle. Dim + tooltip when disabled.
+function Toggle({ on, onChange, disabled, size = 'normal' }) {
+  const w = size === 'sm' ? 32 : 38;
+  const h = size === 'sm' ? 18 : 22;
+  const knob = size === 'sm' ? 14 : 18;
   return (
     <label
-      title={disabled ? (dimReason || 'Unavailable') : (on ? 'On' : 'Off')}
       style={{
         position: 'relative', display: 'inline-block',
-        width: 38, height: 22,
+        width: w, height: h,
         cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.35 : 1,
+        opacity: disabled ? 0.3 : 1,
       }}>
       <input
         type="checkbox"
@@ -84,15 +87,15 @@ function Toggle({ on, onChange, disabled, dimReason }) {
         style={{ opacity: 0, width: 0, height: 0 }}
       />
       <span style={{
-        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+        position: 'absolute', inset: 0,
         background: on ? C.sageDeep : C.lineMute,
         borderRadius: 22,
         transition: 'background 0.15s ease',
       }}>
         <span style={{
           position: 'absolute',
-          left: on ? 18 : 2, top: 2,
-          width: 18, height: 18,
+          left: on ? w - knob - 2 : 2, top: 2,
+          width: knob, height: knob,
           background: C.white, borderRadius: '50%',
           boxShadow: '0 1px 3px rgba(0,0,0,0.18)',
           transition: 'left 0.15s ease',
@@ -102,9 +105,9 @@ function Toggle({ on, onChange, disabled, dimReason }) {
   );
 }
 
-// ── Master toggle row ─────────────────────────────────────────
+// ── Quick controls strip ─────────────────────────────────────
 
-function MasterToggleRow({ label, note, enabledAt, onChange, saving }) {
+function MasterToggle({ label, note, enabledAt, onChange, saving }) {
   const isOn = !!enabledAt;
   const dateLabel = enabledAt ? new Date(enabledAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
 
@@ -112,16 +115,16 @@ function MasterToggleRow({ label, note, enabledAt, onChange, saving }) {
     <div style={{
       background: isOn ? C.sageBg : C.creamAlt,
       border: `1px solid ${isOn ? C.sage : C.lineFaint}`,
-      borderRadius: 12, padding: '14px 16px',
+      borderRadius: 10, padding: '12px 14px',
       display: 'flex', gap: 12, alignItems: 'flex-start',
     }}>
       <div style={{ paddingTop: 1 }}>
         <Toggle on={isOn} onChange={onChange} disabled={saving} />
       </div>
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 14, fontWeight: 700, color: C.forestSoft,
-          marginBottom: 3, display: 'flex', alignItems: 'center', gap: 8,
+          fontSize: 13, fontWeight: 700, color: C.forestSoft,
+          marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
         }}>
           {label}
           {isOn && dateLabel && (
@@ -132,7 +135,7 @@ function MasterToggleRow({ label, note, enabledAt, onChange, saving }) {
           )}
         </div>
         <div style={{
-          fontSize: 12, color: C.inkSoft, lineHeight: 1.5,
+          fontSize: 11, color: C.inkSoft, lineHeight: 1.5,
         }}>
           {note}
         </div>
@@ -141,192 +144,7 @@ function MasterToggleRow({ label, note, enabledAt, onChange, saving }) {
   );
 }
 
-// ── Row ─────────────────────────────────────────────────────
-
-function TouchpointRow({ spec, prefs, onTogglePref, masterToggleOff, isMobile }) {
-  const tpPrefs = prefs?.[spec.audience]?.[spec.id] || defaultPrefsForTouchpoint(spec.id);
-  const emailOn = tpPrefs.email !== false;
-  const isSmsExpected = spec.channels?.includes('sms');
-  const isPushExpected = spec.channels?.includes('push');
-
-  // Audience badge
-  const audiencePill = spec.audience === 'client'
-    ? <Pill tone="sage">Client</Pill>
-    : <Pill tone="mute">You</Pill>;
-
-  if (isMobile) {
-    return (
-      <div style={{
-        padding: '14px 0',
-        borderBottom: `1px solid ${C.lineFaint}`,
-      }}>
-        <div style={{
-          display: 'flex', justifyContent: 'space-between',
-          alignItems: 'flex-start', gap: 12,
-        }}>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              {audiencePill}
-              <span style={{ fontSize: 14, fontWeight: 600, color: C.forestDark }}>{spec.title}</span>
-            </div>
-            {spec.when && (
-              <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.45 }}>{spec.when}</div>
-            )}
-          </div>
-          <div style={{ paddingTop: 2 }}>
-            <Toggle
-              on={emailOn && !masterToggleOff}
-              onChange={(v) => onTogglePref(spec, 'email', v)}
-              disabled={masterToggleOff}
-              dimReason="Enable the master toggle above"
-            />
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <Pill tone="mute">📧 Email {emailOn && !masterToggleOff ? 'on' : 'off'}</Pill>
-          {isSmsExpected && <Pill tone="mute">💬 SMS coming soon</Pill>}
-          {isPushExpected && <Pill tone="mute">🔔 Push coming soon</Pill>}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <tr style={{ borderBottom: `1px solid ${C.lineFaint}` }}>
-      <td style={{ padding: '14px 12px', verticalAlign: 'top' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-          {audiencePill}
-          <span style={{ fontSize: 14, fontWeight: 600, color: C.forestDark }}>{spec.title}</span>
-        </div>
-        {spec.when && (
-          <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5 }}>{spec.when}</div>
-        )}
-      </td>
-      <td style={{ padding: '14px 8px', verticalAlign: 'middle', textAlign: 'center', width: 70 }}>
-        <Toggle
-          on={emailOn && !masterToggleOff}
-          onChange={(v) => onTogglePref(spec, 'email', v)}
-          disabled={masterToggleOff}
-          dimReason="Enable the master toggle above"
-        />
-      </td>
-      <td style={{ padding: '14px 8px', verticalAlign: 'middle', textAlign: 'center', width: 90 }}>
-        {isSmsExpected ? (
-          <Toggle on={false} disabled dimReason="SMS coming soon" />
-        ) : (
-          <span style={{ fontSize: 11, color: C.inkMute }}>-</span>
-        )}
-      </td>
-      <td style={{ padding: '14px 8px', verticalAlign: 'middle', textAlign: 'center', width: 90 }}>
-        {isPushExpected ? (
-          <Toggle on={false} disabled dimReason="Push coming soon" />
-        ) : (
-          <span style={{ fontSize: 11, color: C.inkMute }}>-</span>
-        )}
-      </td>
-    </tr>
-  );
-}
-
-// ── Stage group ─────────────────────────────────────────────
-
-function StageGroup({ stage, touchpoints, prefs, expanded, onToggle, onTogglePref, masterToggleOff, isMobile }) {
-  const activeCount = useMemo(() => touchpoints.filter(t => {
-    const tpPrefs = prefs?.[t.audience]?.[t.id] || defaultPrefsForTouchpoint(t.id);
-    return tpPrefs.email !== false;
-  }).length, [touchpoints, prefs]);
-
-  return (
-    <div style={{
-      background: C.white,
-      border: `1px solid ${C.lineFaint}`,
-      borderRadius: 14,
-      marginBottom: 12,
-      overflow: 'hidden',
-    }}>
-      <button
-        type="button"
-        onClick={onToggle}
-        style={{
-          width: '100%',
-          background: 'transparent',
-          border: 'none',
-          padding: '18px 20px',
-          textAlign: 'left',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 14,
-          fontFamily: 'inherit',
-        }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
-            <h3 style={{
-              margin: 0, fontFamily: "Georgia, serif",
-              fontSize: 18, fontWeight: 700, color: C.forest,
-              letterSpacing: '-0.2px',
-            }}>{stage.label}</h3>
-            <span style={{ fontSize: 12, color: C.inkSoft }}>
-              · {stage.eyebrow}
-            </span>
-          </div>
-          {!expanded && (
-            <div style={{ fontSize: 12, color: C.inkSoft }}>
-              {activeCount} of {touchpoints.length} active
-              {masterToggleOff && ` · master toggle off`}
-            </div>
-          )}
-          {expanded && (
-            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>
-              {stage.description}
-            </div>
-          )}
-        </div>
-        <div style={{
-          fontSize: 18, color: C.sage,
-          transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.15s ease',
-        }}>⌄</div>
-      </button>
-
-      {expanded && (
-        <div style={{ padding: isMobile ? '0 16px 16px' : '0 8px 8px' }}>
-          {isMobile ? (
-            <div>{touchpoints.map(t => (
-              <TouchpointRow key={t.id} spec={t} prefs={prefs} onTogglePref={onTogglePref} masterToggleOff={masterToggleOff} isMobile />
-            ))}</div>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '10px 12px', textAlign: 'left', fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.8px', textTransform: 'uppercase' }}>Touchpoint</th>
-                  <th style={{ padding: '10px 8px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.8px', textTransform: 'uppercase', width: 70 }}>Email</th>
-                  <th style={{ padding: '10px 8px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.8px', textTransform: 'uppercase', width: 90 }}>SMS</th>
-                  <th style={{ padding: '10px 8px', textAlign: 'center', fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.8px', textTransform: 'uppercase', width: 90 }}>Push</th>
-                </tr>
-              </thead>
-              <tbody>
-                {touchpoints.map(t => (
-                  <TouchpointRow key={t.id} spec={t} prefs={prefs} onTogglePref={onTogglePref} masterToggleOff={masterToggleOff} />
-                ))}
-              </tbody>
-            </table>
-          )}
-          {!isMobile && (
-            <div style={{
-              fontSize: 11, color: C.inkMute, padding: '10px 12px 4px',
-              fontStyle: 'italic',
-            }}>
-              SMS and Push delivery for client notifications is coming soon, after the client portal ships.
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ── Main ─────────────────────────────────────────────────────
+// ── Main component ────────────────────────────────────────────
 
 export default function NotificationSettingsTable({ therapist }) {
   const [prefs, setPrefs] = useState({});
@@ -338,10 +156,8 @@ export default function NotificationSettingsTable({ therapist }) {
   const [paused, setPaused] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [expanded, setExpanded] = useState({ first_contact: false, first_session: false, becoming_regular: false, lifetime_client: false, off_ramps: false, lapse_return: false });
   const [isMobile, setIsMobile] = useState(false);
 
-  // Track viewport
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -350,7 +166,6 @@ export default function NotificationSettingsTable({ therapist }) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // Load prefs + opt-in timestamps
   useEffect(() => {
     if (!therapist?.id) return;
     let alive = true;
@@ -374,7 +189,6 @@ export default function NotificationSettingsTable({ therapist }) {
   }, [therapist?.id]);
 
   const togglePref = useCallback(async (spec, channel, value) => {
-    // Optimistic update
     const next = JSON.parse(JSON.stringify(prefs || {}));
     if (!next[spec.audience]) next[spec.audience] = {};
     if (!next[spec.audience][spec.id]) next[spec.audience][spec.id] = defaultPrefsForTouchpoint(spec.id);
@@ -399,6 +213,16 @@ export default function NotificationSettingsTable({ therapist }) {
     setSaving(false);
   }, [paused, therapist?.id]);
 
+  // Group touchpoints by stage in the journey order, then build a
+  // flat list of [stage_header, ...touchpoints, stage_header, ...]
+  // for the single unified table.
+  const groupedTouchpoints = useMemo(() => {
+    return JOURNEY_STAGES.map(stage => {
+      const items = NOTIFICATION_SPEC.filter(t => (TOUCHPOINT_TO_STAGE[t.id] || 'off_ramps') === stage.key);
+      return { stage, items };
+    }).filter(g => g.items.length > 0);
+  }, []);
+
   const totalActive = useMemo(() => {
     let count = 0;
     for (const tp of NOTIFICATION_SPEC) {
@@ -408,33 +232,39 @@ export default function NotificationSettingsTable({ therapist }) {
     return count;
   }, [prefs]);
 
+  const isStageMasterOff = (stage) => {
+    return stage.masterToggleKey && !enabledAts[stage.masterToggleKey];
+  };
+
   if (loading) {
     return <div style={{ padding: 24, color: C.inkSoft, fontSize: 14 }}>Loading your notification preferences...</div>;
   }
 
+  // ── Render ───────────────────────────────────────────────────
+
   return (
     <div style={{ paddingBottom: 40 }}>
       {/* Hero */}
-      <div style={{ marginBottom: 22 }}>
+      <div style={{ marginBottom: 18 }}>
         <h2 style={{
-          fontFamily: "Georgia, serif", fontSize: 24, fontWeight: 700,
-          color: C.forest, letterSpacing: '-0.3px', margin: '0 0 6px',
+          fontFamily: "Georgia, serif", fontSize: 22, fontWeight: 700,
+          color: C.forest, letterSpacing: '-0.2px', margin: '0 0 4px',
         }}>Your notifications</h2>
         <p style={{ fontSize: 13, color: C.inkSoft, margin: 0, lineHeight: 1.55 }}>
-          Built around the journey clients take with you, from first contact to lifetime relationship. Read the full playbook at <a href="/docs/CLIENT_LIFETIME_JOURNEY.html" style={{ color: C.forestSoft }}>Journey →</a>
+          Every message your clients and you receive, in one table. Read the philosophy at <a href="/docs/CLIENT_LIFETIME_JOURNEY.html" style={{ color: C.forestSoft }}>Journey →</a>
         </p>
       </div>
 
-      {/* Pause All banner */}
+      {/* Pause All banner (when paused) */}
       {paused && (
         <div style={{
           background: C.roseBg, border: `1px solid ${C.rose}`,
-          borderRadius: 12, padding: '14px 16px', marginBottom: 16,
+          borderRadius: 10, padding: '12px 14px', marginBottom: 14,
           display: 'flex', alignItems: 'center', gap: 12,
         }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: C.rose, marginBottom: 2 }}>All notifications paused</div>
-            <div style={{ fontSize: 12, color: C.inkSoft }}>No emails will go out to clients or to you until you resume.</div>
+            <div style={{ fontSize: 11, color: C.inkSoft }}>No emails will go out to clients or to you until you resume.</div>
           </div>
           <button
             type="button"
@@ -442,25 +272,25 @@ export default function NotificationSettingsTable({ therapist }) {
             disabled={saving}
             style={{
               background: C.rose, color: C.white, border: 'none',
-              padding: '8px 14px', borderRadius: 8,
+              padding: '7px 13px', borderRadius: 8,
               fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
             }}>Resume</button>
         </div>
       )}
 
-      {/* Summary + master controls */}
+      {/* Quick controls strip: stats + Pause All + master toggles */}
       <div style={{
-        background: C.creamCard, borderRadius: 14, padding: 20, marginBottom: 22,
+        background: C.creamCard, borderRadius: 12, padding: 16, marginBottom: 18,
         border: `1px solid ${C.lineFaint}`,
       }}>
         <div style={{
           display: 'flex', justifyContent: 'space-between',
-          alignItems: 'center', marginBottom: 14, gap: 10, flexWrap: 'wrap',
+          alignItems: 'center', marginBottom: 12, gap: 10, flexWrap: 'wrap',
         }}>
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: C.inkMute, letterSpacing: '1.2px', textTransform: 'uppercase', marginBottom: 4 }}>Quick controls</div>
-            <div style={{ fontSize: 13, color: C.ink }}>
-              <strong style={{ color: C.forestSoft }}>{totalActive}</strong> of {NOTIFICATION_SPEC.length} touchpoints active
+          <div style={{ display: 'flex', gap: 18, alignItems: 'baseline' }}>
+            <div>
+              <span style={{ fontSize: 20, fontWeight: 700, fontFamily: 'Georgia, serif', color: C.forestSoft }}>{totalActive}</span>
+              <span style={{ fontSize: 13, color: C.inkSoft, marginLeft: 4 }}>of {NOTIFICATION_SPEC.length} active</span>
             </div>
           </div>
           {!paused && (
@@ -471,15 +301,15 @@ export default function NotificationSettingsTable({ therapist }) {
               title="Pause all notifications, useful when you're on vacation"
               style={{
                 background: C.white, border: `1px solid ${C.lineMute}`,
-                color: C.ink, padding: '8px 14px', borderRadius: 8,
+                color: C.ink, padding: '7px 13px', borderRadius: 8,
                 fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
               }}>Pause all</button>
           )}
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {JOURNEY_STAGES.filter(s => s.masterToggleKey).map(stage => (
-            <MasterToggleRow
+            <MasterToggle
               key={stage.masterToggleKey}
               label={stage.masterToggleLabel}
               note={stage.masterToggleNote}
@@ -488,7 +318,7 @@ export default function NotificationSettingsTable({ therapist }) {
               saving={saving}
             />
           ))}
-          <MasterToggleRow
+          <MasterToggle
             label="Renewal alerts for memberships"
             note="When ON, you get a heads-up email 7 days before a membership auto-renews. Only applies to memberships created after you turn this on, never retroactive."
             enabledAt={enabledAts.renewal_alerts_enabled_at}
@@ -498,33 +328,205 @@ export default function NotificationSettingsTable({ therapist }) {
         </div>
       </div>
 
-      {/* Stage groups */}
-      {JOURNEY_STAGES.map(stage => {
-        const stageTouchpoints = NOTIFICATION_SPEC.filter(t => (TOUCHPOINT_TO_STAGE[t.id] || 'off_ramps') === stage.key);
-        if (stageTouchpoints.length === 0) return null;
-        const masterToggleOff = stage.masterToggleKey && !enabledAts[stage.masterToggleKey];
-        return (
-          <StageGroup
-            key={stage.key}
-            stage={stage}
-            touchpoints={stageTouchpoints}
-            prefs={prefs}
-            expanded={!!expanded[stage.key]}
-            onToggle={() => setExpanded(prev => ({ ...prev, [stage.key]: !prev[stage.key] }))}
-            onTogglePref={togglePref}
-            masterToggleOff={masterToggleOff}
-            isMobile={isMobile}
-          />
-        );
-      })}
+      {/* THE TABLE */}
+      {isMobile ? (
+        // Mobile: stacked row cards with stage dividers
+        <div>
+          {groupedTouchpoints.map(({ stage, items }) => {
+            const masterOff = isStageMasterOff(stage);
+            return (
+              <div key={stage.key}>
+                <div style={{
+                  background: C.creamCard, padding: '10px 14px',
+                  borderRadius: '10px 10px 0 0', marginTop: 14,
+                  fontFamily: 'Georgia, serif', fontWeight: 700,
+                  fontSize: 14, color: C.forestDark,
+                }}>
+                  {stage.label}
+                  <span style={{ fontFamily: '-apple-system, sans-serif', fontWeight: 400, fontSize: 11, color: C.inkSoft, marginLeft: 8 }}>
+                    {stage.eyebrow}
+                  </span>
+                </div>
+                <div style={{ background: C.white, border: `1px solid ${C.lineFaint}`, borderTop: 'none', borderRadius: '0 0 10px 10px' }}>
+                  {items.map((spec, idx) => {
+                    const tpPrefs = prefs?.[spec.audience]?.[spec.id] || defaultPrefsForTouchpoint(spec.id);
+                    const emailOn = tpPrefs.email !== false;
+                    return (
+                      <div key={spec.id} style={{
+                        padding: '12px 14px',
+                        borderTop: idx > 0 ? `1px solid ${C.lineFaint}` : 'none',
+                        opacity: masterOff ? 0.55 : 1,
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3, flexWrap: 'wrap' }}>
+                              <Pill tone={spec.audience === 'client' ? 'sage' : 'mute'}>
+                                {spec.audience === 'client' ? 'Client' : 'You'}
+                              </Pill>
+                              <span style={{ fontSize: 13, fontWeight: 600, color: C.forestDark }}>{spec.title}</span>
+                            </div>
+                            {spec.when && (
+                              <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 4 }}>{spec.when}</div>
+                            )}
+                            {spec.why && (
+                              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5, fontStyle: 'italic' }}>{spec.why}</div>
+                            )}
+                          </div>
+                          <div style={{ paddingTop: 2 }}>
+                            <Toggle
+                              on={emailOn && !masterOff}
+                              onChange={(v) => togglePref(spec, 'email', v)}
+                              disabled={masterOff}
+                              size="sm"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        // Desktop: unified table
+        <div style={{
+          background: C.white, border: `1px solid ${C.lineFaint}`,
+          borderRadius: 12, overflow: 'hidden',
+        }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: C.creamCard }}>
+                <th style={{
+                  padding: '10px 16px', textAlign: 'left',
+                  fontSize: 10, fontWeight: 700, color: C.inkMute,
+                  letterSpacing: '0.8px', textTransform: 'uppercase',
+                }}>Touchpoint</th>
+                <th style={{
+                  padding: '10px 8px', textAlign: 'center',
+                  fontSize: 10, fontWeight: 700, color: C.inkMute,
+                  letterSpacing: '0.8px', textTransform: 'uppercase', width: 70,
+                }}>Audience</th>
+                <th style={{
+                  padding: '10px 8px', textAlign: 'center',
+                  fontSize: 10, fontWeight: 700, color: C.inkMute,
+                  letterSpacing: '0.8px', textTransform: 'uppercase', width: 70,
+                }}>Email</th>
+                <th style={{
+                  padding: '10px 8px', textAlign: 'center',
+                  fontSize: 10, fontWeight: 700, color: C.inkMute,
+                  letterSpacing: '0.8px', textTransform: 'uppercase', width: 90,
+                }}>SMS</th>
+                <th style={{
+                  padding: '10px 8px', textAlign: 'center',
+                  fontSize: 10, fontWeight: 700, color: C.inkMute,
+                  letterSpacing: '0.8px', textTransform: 'uppercase', width: 90,
+                }}>Push</th>
+              </tr>
+            </thead>
+            <tbody>
+              {groupedTouchpoints.map(({ stage, items }) => {
+                const masterOff = isStageMasterOff(stage);
+                const activeCount = items.filter(t => {
+                  if (masterOff) return false;
+                  const tpPrefs = prefs?.[t.audience]?.[t.id] || defaultPrefsForTouchpoint(t.id);
+                  return tpPrefs.email !== false;
+                }).length;
+                return (
+                  <React.Fragment key={stage.key}>
+                    <tr>
+                      <td colSpan={5} style={{
+                        background: C.creamCard,
+                        padding: '10px 16px',
+                        fontFamily: 'Georgia, serif',
+                        fontWeight: 700,
+                        color: C.forestDark,
+                        fontSize: 14,
+                        borderTop: `1px solid ${C.lineFaint}`,
+                      }}>
+                        {stage.label}
+                        <span style={{
+                          fontFamily: '-apple-system, sans-serif',
+                          fontWeight: 400, color: C.inkSoft, fontSize: 11,
+                          marginLeft: 10,
+                        }}>
+                          {stage.eyebrow} · {activeCount} of {items.length} active
+                          {masterOff && ` · master toggle off`}
+                        </span>
+                      </td>
+                    </tr>
+                    {items.map(spec => {
+                      const tpPrefs = prefs?.[spec.audience]?.[spec.id] || defaultPrefsForTouchpoint(spec.id);
+                      const emailOn = tpPrefs.email !== false;
+                      const showsSms = spec.channels?.includes('sms');
+                      const showsPush = spec.channels?.includes('push');
+                      return (
+                        <tr key={spec.id} style={{
+                          borderTop: `1px solid ${C.lineFaint}`,
+                          opacity: masterOff ? 0.55 : 1,
+                        }}>
+                          <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: C.forestDark, marginBottom: 2 }}>
+                              {spec.title}
+                            </div>
+                            {spec.when && (
+                              <div style={{ fontSize: 11, color: C.inkMute, marginBottom: 4 }}>{spec.when}</div>
+                            )}
+                            {spec.why && (
+                              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.5, fontStyle: 'italic', maxWidth: 480 }}>
+                                {spec.why}
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 8px', textAlign: 'center', verticalAlign: 'top' }}>
+                            <Pill tone={spec.audience === 'client' ? 'sage' : 'mute'}>
+                              {spec.audience === 'client' ? 'Client' : 'You'}
+                            </Pill>
+                          </td>
+                          <td style={{ padding: '12px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            <Toggle
+                              on={emailOn && !masterOff}
+                              onChange={(v) => togglePref(spec, 'email', v)}
+                              disabled={masterOff}
+                            />
+                          </td>
+                          <td style={{ padding: '12px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            {showsSms ? (
+                              <div title="SMS coming soon">
+                                <Toggle on={false} disabled />
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: 11, color: C.inkMute }}>-</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '12px 8px', textAlign: 'center', verticalAlign: 'middle' }}>
+                            {showsPush ? (
+                              <div title="Push coming soon">
+                                <Toggle on={false} disabled />
+                              </div>
+                            ) : (
+                              <span style={{ fontSize: 11, color: C.inkMute }}>-</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
-      {/* Foot note */}
+      {/* Foot: how this is different */}
       <div style={{
         marginTop: 18, padding: '14px 16px',
         background: C.sageBg, border: `1px solid ${C.sage}`,
         borderRadius: 10, fontSize: 12, color: C.forestSoft, lineHeight: 1.55,
       }}>
-        <strong>How this is different.</strong> Most platforms hand you a flat list of toggles. We organize around the journey your clients actually take with you, with safety gates so turning anything on never sweeps your existing client history. You decide when each piece of the relationship starts.
+        <strong>How this is different.</strong> Most platforms hand you a flat list of toggles with no explanation. We show you what each notification does for your client's wellbeing or your practice, so you can choose with intent. Master toggles include safety gates so turning anything on never sweeps your existing client history.
       </div>
     </div>
   );
