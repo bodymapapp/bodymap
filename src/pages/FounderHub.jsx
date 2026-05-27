@@ -152,6 +152,16 @@ const SECTIONS = [
     backupKey: "05-taxonomy",
   },
   {
+    id: "competitive-watchlist",
+    number: 5.1,
+    title: "Competitive Features Watchlist",
+    subtitle: "Every feature meaningful competitors offer (Vagaro, MassageBook, Acuity, Cal.com, Calendly, GlossGenius, Mindbody, ClinicSense). What we have, what we are missing, what we intentionally are not building. Read before deciding what to build next.",
+    status: "live",
+    type: "markdown",
+    path: "docs/COMPETITIVE_FEATURES_WATCHLIST.md",
+    backupKey: "05a-competitive-watchlist",
+  },
+  {
     id: "founder-dashboard",
     number: 6,
     title: "Founder Dashboard",
