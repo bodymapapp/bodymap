@@ -1410,6 +1410,18 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   //   used_count, this_session_number, expires_at, linked }
   // Or null when no active package matches.
   const [activePackage, setActivePackage] = useState(null);
+  // HK May 27 2026: ALL candidate packages for this client. Used by
+  // the manage-link panel so therapist can pick a different package
+  // (or unlink) when more than one is active. Each entry has the
+  // same shape as activePackage above so the UI can render uniformly.
+  const [availablePackages, setAvailablePackages] = useState([]);
+  // Pending edit to the package linkage. null when no change in
+  // flight. When the therapist taps 'Link to package' or 'Unlink',
+  // we run the supabase write and refresh.
+  const [packageLinkBusy, setPackageLinkBusy] = useState(false);
+  // Inline manage-link expander toggle. Hidden by default; shows
+  // candidate package radios + Unlink + Save when expanded.
+  const [showPackageLinkPanel, setShowPackageLinkPanel] = useState(false);
   // HK May 27 2026 Phase Pkg-C: detect the active package this
   // booking is part of. Resolution order:
   //   1. If booking has explicit package_purchase_id, use it.
@@ -1429,94 +1441,138 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
         const email = (appt.email || '').toLowerCase().trim();
         if (!email && !appt.package_purchase_id) {
           setActivePackage(null);
+          setAvailablePackages([]);
           return;
         }
 
-        let purchases = [];
-
-        if (appt.package_purchase_id) {
-          // Explicit linkage path. Trust the FK.
-          const { data: p } = await supabase
-            .from('package_purchases')
-            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, client_email, package:packages(id, name, applicable_service_ids)')
-            .eq('id', appt.package_purchase_id)
-            .maybeSingle();
-          if (p) purchases = [p];
-        } else if (email) {
-          // Implicit linkage: any active package for this email
-          // that applies to this service (or any service).
+        // Load ALL active packages for this client (not just the
+        // single best match). The manage-link panel needs the full
+        // list so therapist can pick a different one or see why a
+        // particular one was auto-suggested.
+        let allPurchases = [];
+        if (email) {
           const { data: ps } = await supabase
             .from('package_purchases')
             .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, client_email, package:packages(id, name, applicable_service_ids)')
             .eq('therapist_id', therapist.id)
             .ilike('client_email', email)
-            .eq('status', 'active')
+            .in('status', ['active', 'exhausted'])
             .order('purchased_at', { ascending: false });
-          purchases = ps || [];
+          allPurchases = ps || [];
         }
 
-        if (!alive || purchases.length === 0) {
+        // If the booking has an explicit FK to a package not in the
+        // active+exhausted list above (e.g. expired or refunded),
+        // fetch it separately so it can still display.
+        if (appt.package_purchase_id && !allPurchases.find(p => p.id === appt.package_purchase_id)) {
+          const { data: p } = await supabase
+            .from('package_purchases')
+            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, client_email, package:packages(id, name, applicable_service_ids)')
+            .eq('id', appt.package_purchase_id)
+            .maybeSingle();
+          if (p) allPurchases.unshift(p);
+        }
+
+        if (!alive) return;
+
+        if (allPurchases.length === 0) {
           setActivePackage(null);
+          setAvailablePackages([]);
           return;
         }
 
-        // Pick the package whose applicable_service_ids includes this
-        // booking's service_id, OR has no restriction. Most-recent
-        // purchase wins.
-        const match = purchases.find(p => {
-          const apply = p.package?.applicable_service_ids;
-          if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
-          if (Array.isArray(apply)) return apply.includes(appt.service_id);
-          return false;
-        });
-        if (!match) { setActivePackage(null); return; }
+        // For each purchase, compute session count + this-session-number
+        // by fetching bookings on or after purchase date for this email.
+        // One bookings query covers all packages since they share the
+        // same client email.
+        const earliestPurchase = allPurchases.reduce((min, p) => {
+          const d = p.purchased_at ? new Date(p.purchased_at).toISOString().split('T')[0] : '1970-01-01';
+          return d < min ? d : min;
+        }, '9999-12-31');
 
-        // Compute "this is session N of M" by counting completed +
-        // confirmed bookings for this client+therapist that fall on
-        // or after the package purchase date, ordered chronologically.
-        // This booking's position = its rank in that ordered list.
-        const purchasedDate = match.purchased_at
-          ? new Date(match.purchased_at).toISOString().split('T')[0]
-          : '1970-01-01';
-        const { data: pkgBookings } = await supabase
+        const { data: clientBookings } = await supabase
           .from('bookings')
-          .select('id, booking_date, start_time, status')
+          .select('id, booking_date, start_time, status, service_id, package_purchase_id')
           .eq('therapist_id', therapist.id)
           .ilike('client_email', email)
           .neq('status', 'cancelled')
-          .gte('booking_date', purchasedDate)
+          .gte('booking_date', earliestPurchase)
           .order('booking_date', { ascending: true })
           .order('start_time', { ascending: true });
 
         if (!alive) return;
 
-        let thisSessionNumber = 1;
-        let usedCount = 0;
-        for (let i = 0; i < (pkgBookings || []).length; i++) {
-          const b = pkgBookings[i];
-          if (b.id === appt.id) {
-            thisSessionNumber = i + 1;
+        // Enrich each purchase with session position info FOR THIS
+        // BOOKING and used-count overall. For session_number, we
+        // count bookings ordered chronologically that are either:
+        //   - explicitly linked to this package (package_purchase_id match), OR
+        //   - inferred-match (no FK, but date >= purchased_at and
+        //     service is covered by this package)
+        // 'this_session_number' = this booking's index in that list,
+        // or null if this booking would not be in this package.
+        const enriched = allPurchases.map(p => {
+          const purchasedDate = p.purchased_at
+            ? new Date(p.purchased_at).toISOString().split('T')[0]
+            : '1970-01-01';
+          const apply = p.package?.applicable_service_ids;
+          const serviceCovered = (svcId) => {
+            if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
+            if (Array.isArray(apply)) return apply.includes(svcId);
+            return false;
+          };
+          const isInPack = (b) => {
+            if (b.package_purchase_id === p.id) return true;
+            if (b.package_purchase_id && b.package_purchase_id !== p.id) return false;
+            // Unlinked candidate: belongs if date+service cover
+            if (b.booking_date < purchasedDate) return false;
+            return serviceCovered(b.service_id);
+          };
+          const packBookings = (clientBookings || []).filter(isInPack);
+          let thisSessionNumber = null;
+          let usedCount = 0;
+          for (let i = 0; i < packBookings.length; i++) {
+            const b = packBookings[i];
+            if (b.id === appt.id) thisSessionNumber = i + 1;
+            if (b.status === 'completed') usedCount += 1;
           }
-          if (b.status === 'completed') usedCount += 1;
-        }
+          // Is this booking eligible to attach to this package?
+          // (date >= purchased AND service covered, OR already linked)
+          const eligible = appt.package_purchase_id === p.id
+            || (appt.booking_date >= purchasedDate && serviceCovered(appt.service_id));
 
-        setActivePackage({
-          id: match.id,
-          name: match.package?.name || 'Package',
-          sessions_purchased: match.sessions_purchased,
-          sessions_remaining: match.sessions_remaining,
-          used_count: usedCount,
-          this_session_number: thisSessionNumber,
-          expires_at: match.expires_at,
-          linked: !!appt.package_purchase_id,
+          return {
+            id: p.id,
+            name: p.package?.name || 'Package',
+            sessions_purchased: p.sessions_purchased,
+            sessions_remaining: p.sessions_remaining,
+            used_count: usedCount,
+            this_session_number: thisSessionNumber,
+            expires_at: p.expires_at,
+            status: p.status,
+            purchased_at: p.purchased_at,
+            linked: appt.package_purchase_id === p.id,
+            eligible,
+          };
         });
+
+        setAvailablePackages(enriched);
+
+        // Pick the active one for the badge. Priority:
+        //   1. Linked (explicit FK)
+        //   2. Most-recent purchase that is eligible
+        const linked = enriched.find(p => p.linked);
+        const bestSuggestion = enriched.find(p => p.eligible && p.status === 'active');
+        setActivePackage(linked || bestSuggestion || null);
       } catch (err) {
         console.warn('[package detect] failed:', err);
-        if (alive) setActivePackage(null);
+        if (alive) {
+          setActivePackage(null);
+          setAvailablePackages([]);
+        }
       }
     })();
     return () => { alive = false; };
-  }, [appt?.id, appt?.email, appt?.service_id, appt?.package_purchase_id, therapist?.id, appt?.preview]);
+  }, [appt?.id, appt?.email, appt?.service_id, appt?.package_purchase_id, appt?.booking_date, therapist?.id, appt?.preview]);
   // Phase 12: Checkout modal. Phase 19 (May 18 2026) folded MarkAsPaid
   // into the same modal so there is now just one charge modal.
   const [showCheckout, setShowCheckout] = useState(false);
@@ -2236,6 +2292,143 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     onCancelled?.();
   }
 
+  // HK May 27 2026 Phase Pkg-C manual flow: link this booking to a
+  // specific package. Used for past/existing bookings where the
+  // automated link did not fire. The therapist picks which package
+  // (radio button in the manage-link panel) and confirms.
+  // Side effects:
+  //   - Sets bookings.package_purchase_id
+  //   - Writes a package_redemptions row (audit)
+  //   - Decrements package_purchases.sessions_remaining (so the
+  //     counter matches reality)
+  //   - If a session_payments row already exists for this booking
+  //     with amount_cents > 0 and a non-package method, we DO NOT
+  //     touch it. The therapist might still want to refund + redeem
+  //     separately; that is a separate workflow. We just record the
+  //     audit link here.
+  async function linkBookingToPackage(packagePurchaseId) {
+    if (!packagePurchaseId || !appt?.id) return;
+    setPackageLinkBusy(true);
+    try {
+      // Re-read the package to get current sessions_remaining
+      const { data: pkg, error: pkgErr } = await supabase
+        .from('package_purchases')
+        .select('id, sessions_remaining, status')
+        .eq('id', packagePurchaseId)
+        .maybeSingle();
+      if (pkgErr) throw new Error(pkgErr.message);
+      if (!pkg) throw new Error('Package not found.');
+
+      // Update booking FK
+      const { error: bkErr } = await supabase
+        .from('bookings')
+        .update({ package_purchase_id: packagePurchaseId })
+        .eq('id', appt.id);
+      if (bkErr) throw new Error(bkErr.message);
+
+      // Audit: redemption row
+      await supabase.from('package_redemptions').insert({
+        package_purchase_id: packagePurchaseId,
+        booking_id: appt.id,
+        notes: `Linked retroactively by therapist on ${new Date().toISOString().split('T')[0]}.`,
+      });
+
+      // Decrement remaining counter (floor at 0)
+      const newRemaining = Math.max(0, (pkg.sessions_remaining || 0) - 1);
+      const pkgUpdate = { sessions_remaining: newRemaining };
+      if (newRemaining === 0 && pkg.status === 'active') pkgUpdate.status = 'exhausted';
+      await supabase.from('package_purchases').update(pkgUpdate).eq('id', packagePurchaseId);
+
+      // Audit booking_history (non-blocking)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('booking_history').insert({
+          booking_id: appt.id,
+          therapist_id: therapist.id,
+          change_type: 'package_link',
+          before_snapshot: { package_purchase_id: appt.package_purchase_id || null },
+          after_snapshot: { package_purchase_id: packagePurchaseId },
+          changed_by_user_id: user?.id || null,
+        });
+      } catch (auditErr) {
+        console.warn('booking_history insert failed:', auditErr);
+      }
+
+      setShowPackageLinkPanel(false);
+      onCancelled?.();
+    } catch (err) {
+      console.error('linkBookingToPackage failed:', err);
+      // Reuse the serviceEditError surface for now since both errors
+      // are in the same DetailPanel region.
+      setServiceEditError(err.message || 'Could not link package. Try again.');
+    } finally {
+      setPackageLinkBusy(false);
+    }
+  }
+
+  // Unlink this booking from its current package. Restores the
+  // sessions_remaining counter and removes the redemption row(s).
+  // Used when the therapist realizes the auto-link was wrong, or
+  // wants to charge separately instead.
+  async function unlinkBookingFromPackage() {
+    if (!appt?.package_purchase_id || !appt?.id) return;
+    const oldPkgId = appt.package_purchase_id;
+    setPackageLinkBusy(true);
+    try {
+      // Remove the booking FK first
+      const { error: bkErr } = await supabase
+        .from('bookings')
+        .update({ package_purchase_id: null })
+        .eq('id', appt.id);
+      if (bkErr) throw new Error(bkErr.message);
+
+      // Remove any redemption rows for this booking + package
+      await supabase
+        .from('package_redemptions')
+        .delete()
+        .eq('booking_id', appt.id)
+        .eq('package_purchase_id', oldPkgId);
+
+      // Restore the package counter (capped at sessions_purchased)
+      const { data: pkg } = await supabase
+        .from('package_purchases')
+        .select('sessions_purchased, sessions_remaining, status')
+        .eq('id', oldPkgId)
+        .maybeSingle();
+      if (pkg) {
+        const restored = Math.min(pkg.sessions_purchased || 0, (pkg.sessions_remaining || 0) + 1);
+        const pkgUpdate = { sessions_remaining: restored };
+        // If the package was 'exhausted' purely because of this
+        // session, flip it back to active.
+        if (pkg.status === 'exhausted' && restored > 0) pkgUpdate.status = 'active';
+        await supabase.from('package_purchases').update(pkgUpdate).eq('id', oldPkgId);
+      }
+
+      // Audit booking_history (non-blocking)
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from('booking_history').insert({
+          booking_id: appt.id,
+          therapist_id: therapist.id,
+          change_type: 'package_unlink',
+          before_snapshot: { package_purchase_id: oldPkgId },
+          after_snapshot: { package_purchase_id: null },
+          changed_by_user_id: user?.id || null,
+        });
+      } catch (auditErr) {
+        console.warn('booking_history insert failed:', auditErr);
+      }
+
+      setShowPackageLinkPanel(false);
+      onCancelled?.();
+    } catch (err) {
+      console.error('unlinkBookingFromPackage failed:', err);
+      setServiceEditError(err.message || 'Could not unlink package. Try again.');
+    } finally {
+      setPackageLinkBusy(false);
+    }
+  }
+
   async function cancelAppointment() {
     setCancelling(true);
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', appt.id);
@@ -2550,47 +2743,277 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               charge." */}
           {!appt.preview && activePackage && (
             <div style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              gap: 10,
               marginTop: 10,
               padding: '12px 14px',
               borderRadius: 10,
               background: '#EEF3EE',
               border: '1.5px solid #9DBEA1',
             }}>
-              <span style={{ fontSize: 18, lineHeight: 1.2 }}>📦</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: '#1F4030',
-                  lineHeight: 1.3,
-                  marginBottom: 2,
-                }}>
-                  Session {activePackage.this_session_number} of {activePackage.sessions_purchased} in <span style={{fontStyle:'italic'}}>{activePackage.name}</span>
-                </div>
-                <div style={{
-                  fontSize: 12,
-                  color: '#2A5741',
-                  lineHeight: 1.5,
-                }}>
-                  {activePackage.sessions_purchased - activePackage.used_count} session{activePackage.sessions_purchased - activePackage.used_count === 1 ? '' : 's'} left in this package. This session draws from that balance, not a new charge.
-                  {!activePackage.linked && (
-                    <span style={{
-                      display: 'block',
-                      marginTop: 4,
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 18, lineHeight: 1.2 }}>📦</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: '#1F4030',
+                    lineHeight: 1.3,
+                    marginBottom: 2,
+                  }}>
+                    Session {activePackage.this_session_number || '?'} of {activePackage.sessions_purchased} in <span style={{fontStyle:'italic'}}>{activePackage.name}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 12,
+                    color: '#2A5741',
+                    lineHeight: 1.5,
+                  }}>
+                    {activePackage.sessions_purchased - activePackage.used_count} session{activePackage.sessions_purchased - activePackage.used_count === 1 ? '' : 's'} left in this package. This session draws from that balance, not a new charge.
+                    {!activePackage.linked && (
+                      <span style={{
+                        display: 'block',
+                        marginTop: 4,
+                        fontSize: 11,
+                        color: '#6B7280',
+                        fontStyle: 'italic',
+                      }}>
+                        Suggested match. Tap Manage to confirm or change.
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setShowPackageLinkPanel(v => !v)}
+                    style={{
+                      marginTop: 8,
+                      background: 'transparent',
+                      border: '1px solid #2A5741',
+                      color: '#2A5741',
+                      borderRadius: 999,
+                      padding: '4px 12px',
                       fontSize: 11,
-                      color: '#6B7280',
-                      fontStyle: 'italic',
-                    }}>
-                      Matched by client email and purchase date.
-                    </span>
-                  )}
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {showPackageLinkPanel ? 'Hide options' : 'Manage package link'}
+                  </button>
                 </div>
               </div>
+
+              {/* Manage-link panel. HK May 27 2026 round 5: 'let the
+                  therapist decide for existing bookings.' Therapist
+                  sees all candidate packages (radio list), can pick
+                  one to link, or pick None to unlink. Future bookings
+                  are still auto-linked by the service editor; this
+                  panel only matters when the auto-link missed or got
+                  it wrong. */}
+              {showPackageLinkPanel && (
+                <div style={{
+                  marginTop: 12,
+                  paddingTop: 12,
+                  borderTop: '1px dashed #9DBEA1',
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: '#1F4030',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                    marginBottom: 8,
+                  }}>
+                    Which package is this session part of?
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {availablePackages.map(p => {
+                      const isCurrent = activePackage?.id === p.id && p.linked;
+                      const remaining = p.sessions_purchased - p.used_count;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          disabled={packageLinkBusy || (!p.eligible && !p.linked)}
+                          onClick={() => {
+                            if (p.linked) return;
+                            linkBookingToPackage(p.id);
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: 10,
+                            padding: '10px 12px',
+                            background: isCurrent ? '#2A5741' : '#fff',
+                            border: `1.5px solid ${isCurrent ? '#2A5741' : '#9DBEA1'}`,
+                            borderRadius: 10,
+                            cursor: (packageLinkBusy || (!p.eligible && !p.linked)) ? 'not-allowed' : 'pointer',
+                            textAlign: 'left',
+                            fontFamily: 'inherit',
+                            opacity: (!p.eligible && !p.linked) ? 0.5 : 1,
+                            width: '100%',
+                          }}>
+                          <span style={{ fontSize: 16, lineHeight: 1.2 }}>
+                            {isCurrent ? '✓' : '○'}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: 13,
+                              fontWeight: 700,
+                              color: isCurrent ? '#fff' : '#1F4030',
+                              marginBottom: 2,
+                            }}>
+                              {p.name}
+                            </div>
+                            <div style={{
+                              fontSize: 11,
+                              color: isCurrent ? '#D6E0D4' : '#2A5741',
+                              lineHeight: 1.4,
+                            }}>
+                              {remaining} of {p.sessions_purchased} left
+                              {p.status === 'exhausted' ? ' · fully used' : ''}
+                              {!p.eligible && !p.linked ? ' · service not covered' : ''}
+                              {p.purchased_at ? ` · purchased ${new Date(p.purchased_at).toLocaleDateString()}` : ''}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+
+                    {activePackage?.linked && (
+                      <button
+                        type="button"
+                        disabled={packageLinkBusy}
+                        onClick={unlinkBookingFromPackage}
+                        style={{
+                          marginTop: 4,
+                          padding: '9px 12px',
+                          background: '#fff',
+                          border: '1.5px solid #B0746B',
+                          color: '#7A3A2E',
+                          borderRadius: 10,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          cursor: packageLinkBusy ? 'wait' : 'pointer',
+                          fontFamily: 'inherit',
+                        }}
+                      >
+                        {packageLinkBusy ? 'Working...' : 'Unlink this session from the package'}
+                      </button>
+                    )}
+                  </div>
+                  {serviceEditError && (
+                    <div style={{
+                      marginTop: 10,
+                      padding: '8px 10px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FCA5A5',
+                      color: '#991B1B',
+                      borderRadius: 8,
+                      fontSize: 11.5,
+                    }}>
+                      {serviceEditError}
+                    </div>
+                  )}
+                  <div style={{
+                    marginTop: 10,
+                    fontSize: 10.5,
+                    color: '#6B7280',
+                    lineHeight: 1.5,
+                    fontStyle: 'italic',
+                  }}>
+                    New bookings link to the right package automatically. Use this when an older session needs to be matched up by hand.
+                  </div>
+                </div>
+              )}
             </div>
           )}
+
+          {/* Client has active packages but none auto-match this booking
+              (different service, before purchase date, etc). Surface a
+              quiet affordance so the therapist can still link by hand
+              if they want to. */}
+          {!appt.preview && !activePackage && availablePackages.length > 0 && (
+            <div style={{
+              marginTop: 10,
+              padding: '10px 12px',
+              borderRadius: 10,
+              background: '#FAF7F1',
+              border: '1px dashed #C8B89A',
+            }}>
+              <div style={{
+                fontSize: 12,
+                color: '#7A6232',
+                lineHeight: 1.5,
+                marginBottom: 6,
+              }}>
+                <strong>{displayAppt.client?.split(' ')[0] || 'This client'}</strong> has {availablePackages.length} package{availablePackages.length === 1 ? '' : 's'} on file, but none match this booking automatically.
+              </div>
+              <button
+                onClick={() => setShowPackageLinkPanel(v => !v)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid #7A6232',
+                  color: '#7A6232',
+                  borderRadius: 999,
+                  padding: '4px 12px',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {showPackageLinkPanel ? 'Hide options' : 'Link to a package'}
+              </button>
+              {showPackageLinkPanel && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {availablePackages.map(p => {
+                    const remaining = p.sessions_purchased - p.used_count;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        disabled={packageLinkBusy}
+                        onClick={() => linkBookingToPackage(p.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: 10,
+                          padding: '10px 12px',
+                          background: '#fff',
+                          border: '1.5px solid #C8B89A',
+                          borderRadius: 10,
+                          cursor: packageLinkBusy ? 'wait' : 'pointer',
+                          textAlign: 'left',
+                          fontFamily: 'inherit',
+                          width: '100%',
+                        }}>
+                        <span style={{ fontSize: 16 }}>○</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: '#7A6232', marginBottom: 2 }}>{p.name}</div>
+                          <div style={{ fontSize: 11, color: '#7A6232', lineHeight: 1.4 }}>
+                            {remaining} of {p.sessions_purchased} left
+                            {p.status === 'exhausted' ? ' · fully used' : ''}
+                            {p.purchased_at ? ` · purchased ${new Date(p.purchased_at).toLocaleDateString()}` : ''}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                  {serviceEditError && (
+                    <div style={{
+                      marginTop: 4,
+                      padding: '8px 10px',
+                      background: '#FEF2F2',
+                      border: '1px solid #FCA5A5',
+                      color: '#991B1B',
+                      borderRadius: 8,
+                      fontSize: 11.5,
+                    }}>
+                      {serviceEditError}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
 
           {/* HK May 25 2026 (Phase 20.1): single highest-priority
               insight line under the status row. Surfaces medical
