@@ -1159,7 +1159,7 @@ export default function BookingPage() {
       console.warn('[MyBodyMap] schema log failed', e);
     }
 
-    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs}]=await Promise.all([
+    const [{data:s},{data:a},{data:bd},{data:addons},pkgRes,memRes,{data:locs},{data:rb},{data:re}]=await Promise.all([
       supabase.from('services').select('*').eq('therapist_id',t.id).eq('active',true).is('archived_at', null).neq('visibility','private').order('sort_order', { ascending: true }).order('price', { ascending: true }),
       supabase.from('availability').select('*').eq('therapist_id',t.id).eq('active',true),
       // Phase 9.1 (May 16 2026): fetch start_time and end_time so we
@@ -1168,19 +1168,15 @@ export default function BookingPage() {
       // behavior). Rows with both set are partial blocks and feed
       // a separate map keyed by date.
       supabase.from('blocked_days').select('date, start_time, end_time').eq('therapist_id',t.id),
-      // Service add-ons. May fail silently with empty array if the schema
-      // has not been applied yet — that is intentional, the booking flow
-      // continues to work without add-ons.
       supabase.from('service_addons').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
-      // Packages and memberships. Same fault-tolerance: empty array if
-      // tables not yet present, public-readable per RLS policy on
-      // active=true rows.
       supabase.from('packages').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
       supabase.from('memberships').select('*').eq('therapist_id',t.id).eq('active',true).order('display_order').order('created_at'),
-      // Locations (HK May 18 2026): active only, sorted so primary
-      // surfaces first. Empty array means therapist hasn't set up
-      // multi-location; the picker stays hidden in that case.
       supabase.from('therapist_locations').select('*').eq('therapist_id',t.id).eq('active',true).order('sort_order',{ascending:true}),
+      // Calendar v2 (HK May 27 2026): recurring weekly blocks + exceptions.
+      // Tables may not exist yet on environments where the migration
+      // hasn't run, so we tolerate empty data gracefully.
+      supabase.from('recurring_blocks').select('*').eq('therapist_id',t.id),
+      supabase.from('recurring_block_exceptions').select('*').eq('therapist_id',t.id),
     ]);
     setServices(s||[]);
     setAvailability(a||[]);
@@ -1201,6 +1197,38 @@ export default function BookingPage() {
     }
     setBlockedDates(new Set(fullDayBlocks));
     setPartialBlocksByDate(partialByDate);
+
+    // Calendar v2: expand recurring rules into specific blocked dates
+    // for the next 180 days, then drop any date that has an exception.
+    // The result merges into blockedDates so the public booking page
+    // disables those dates without changes elsewhere.
+    if (rb && rb.length > 0) {
+      const recurringBlocked = new Set();
+      const exceptionDates = new Set((re || []).map(x => x.exception_date));
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const horizon = new Date(now);
+      horizon.setDate(horizon.getDate() + 180);
+      for (let d = new Date(now); d <= horizon; d.setDate(d.getDate() + 1)) {
+        const dow = d.getDay();
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        for (const rule of rb) {
+          if (!rule.weekly_days?.includes(dow)) continue;
+          if (rule.start_date && rule.start_date > dateStr) continue;
+          if (rule.end_date && rule.end_date < dateStr) continue;
+          // Check exception
+          const exceptionMatch = (re || []).find(x => x.recurring_block_id === rule.id && x.exception_date === dateStr);
+          if (exceptionMatch) continue;
+          recurringBlocked.add(dateStr);
+          break;
+        }
+      }
+      setBlockedDates(prev => {
+        const merged = new Set(prev);
+        recurringBlocked.forEach(d => merged.add(d));
+        return merged;
+      });
+    }
     setAvailableAddons(addons||[]);
     // Memberships render for therapists with EITHER processor connected.
     // Stripe is fully supported. Square is supported for the first month

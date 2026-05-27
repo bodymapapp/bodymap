@@ -2329,6 +2329,25 @@ function ServicesAndAvailability({ therapist }) {
             Default Sunday. Affects how your calendar grids lay out across Schedule and Settings. There is also a quick toggle in the Schedule tab.
           </div>
         </div>
+
+        {/* Pointer to Schedule tab for time off blocking (HK May 27 2026).
+            Therapists were looking in Settings for the Time off button.
+            We chose not to duplicate the calendar grid here (it belongs
+            in Schedule where day-to-day actions happen). This note
+            keeps Settings discoverable for the next therapist who
+            looks here first. */}
+        <div style={{
+          marginTop: 14,
+          padding: '12px 14px',
+          background: '#EEF3EE',
+          border: '1px solid #9DBEA1',
+          borderRadius: 10,
+          fontSize: 12,
+          color: '#1F4030',
+          lineHeight: 1.5,
+        }}>
+          <strong>Looking for Time off?</strong> The visual calendar for blocking days, setting recurring rules (every Saturday, every holiday), and overriding individual dates lives in the <em>Schedule</em> tab. Tap the 🌿 Time off button there.
+        </div>
       </DisclosureRow>
 
       {/* Efficient Scheduling (Lindsey #7, May 10 2026).
