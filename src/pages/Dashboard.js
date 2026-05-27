@@ -1061,6 +1061,7 @@ function ServicesAndAvailability({ therapist }) {
           Opens by default since this is the daily-edit setting. */}
       <DisclosureRow
         icon="🧾"
+        taxonomyId="2.1.1"
         title="Services"
         summary={`${services.filter(s => s.active).length} active${services.length > services.filter(s => s.active).length ? `, ${services.length - services.filter(s => s.active).length} off` : ''}`}
         open={openSubRow === 'services'}
@@ -1972,6 +1973,7 @@ function ServicesAndAvailability({ therapist }) {
           Services when 2+ locations exist). */}
       <DisclosureRow
         icon="📍"
+        taxonomyId="2.1.2"
         title="Locations"
         summary={
           locations.length === 0
@@ -2065,6 +2067,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Deposit Settings. Disclosure row pattern. */}
       <DisclosureRow
         icon="💳"
+        taxonomyId="2.1.3"
         title="New client deposit"
         summary={depositEnabled ? `On · ${depositPercent}% required from new clients` : 'Off · clients pay at session'}
         open={openSubRow === 'deposit'}
@@ -2124,6 +2127,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Buffer Time Between Sessions. Disclosure row pattern. */}
       <DisclosureRow
         icon="⏱️"
+        taxonomyId="2.1.4"
         title="Buffer between sessions"
         summary={bufferEnabled ? `${bufferMinutes} min after each session` : 'Off'}
         open={openSubRow === 'buffer'}
@@ -2169,6 +2173,7 @@ function ServicesAndAvailability({ therapist }) {
           Disclosure row pattern (HK May 10 2026). */}
       <DisclosureRow
         icon="📆"
+        taxonomyId="2.1.5"
         title="Booking window"
         summary={
           (minLeadHours > 0 || maxAdvanceDays > 0)
@@ -2239,16 +2244,34 @@ function ServicesAndAvailability({ therapist }) {
             Common: 60-90 days. Set 0 for no limit.
           </div>
         </div>
+      </DisclosureRow>
 
-        {/* Daily hands-on hours cap (HK May 27 2026, Jacquie's ask).
-            MassageBook has this; we did not. Limits how many minutes
-            of session time the booking page will offer per day. The
-            therapist can still book past the cap from her own
-            dashboard; this only restricts the public booking page.
-            Default 0 = no cap, behaves exactly as before. */}
+      {/* Daily hands-on hours cap (HK May 27 2026, Jacquie's ask).
+          MassageBook has this; we did not. Limits how many minutes
+          of session time the booking page will offer per day. The
+          therapist can still book past the cap from her own
+          dashboard; this only restricts the public booking page.
+          Default 0 = no cap, behaves exactly as before. Promoted to
+          its own disclosure 2.1.6 May 27 2026 after HK noted that
+          2.1 had become too crowded and lacked numbering. */}
+      <DisclosureRow
+        icon="💪"
+        taxonomyId="2.1.6"
+        title="Daily hands-on cap"
+        summary={
+          maxHandsOnMinutes > 0
+            ? `Up to ${maxHandsOnMinutes} minutes (${(maxHandsOnMinutes / 60).toFixed(1)}h) bookable per day`
+            : 'No cap, full working day available'
+        }
+        open={openSubRow === 'hands-on-cap'}
+        onToggle={() => setOpenSubRow(openSubRow === 'hands-on-cap' ? null : 'hands-on-cap')}
+      >
+        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
+          Limit how many minutes of bookable session time the booking page offers per day. Once today's bookings hit this many minutes, your booking page shows 'Fully booked today'. You can still book past the cap from your own dashboard.
+        </p>
         <div>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
-            Daily hands-on cap
+            Cap in minutes
           </label>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <InlineSaveNumberInput
@@ -2264,60 +2287,10 @@ function ServicesAndAvailability({ therapist }) {
               max={1440}
               width={80}
             />
-            <span style={{ fontSize:12, color:C2.gray }}>of bookable session time per day</span>
+            <span style={{ fontSize:12, color:C2.gray }}>per day</span>
           </div>
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            Once today's bookings hit this many minutes, the booking page shows 'Fully booked today'. You can still book past it from your own dashboard. 330 minutes = 5.5 hours. Set 0 for no cap.
-          </div>
-        </div>
-
-        {/* Week start preference (HK May 27 2026, Jacquie's ask).
-            0 = Sunday (default), 1 = Monday. Affects calendar grid
-            layout in Schedule and Settings tabs. */}
-        <div>
-          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
-            Week starts on
-          </label>
-          <div style={{
-            display:'inline-flex',
-            background:'#F3F4F6',
-            borderRadius:999,
-            padding:3,
-            gap:3,
-          }}>
-            <button
-              type="button"
-              onClick={async () => {
-                setWeekStartsOn(0);
-                await supabase.from('therapists').update({ week_starts_on: 0 }).eq('id', therapist.id);
-              }}
-              style={{
-                background: weekStartsOn === 0 ? '#fff' : 'transparent',
-                color: weekStartsOn === 0 ? '#1F4030' : '#6B7280',
-                border:'none', borderRadius:999,
-                padding:'7px 16px',
-                fontSize:13, fontWeight:700, cursor:'pointer',
-                boxShadow: weekStartsOn === 0 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                fontFamily:'inherit',
-              }}>Sunday</button>
-            <button
-              type="button"
-              onClick={async () => {
-                setWeekStartsOn(1);
-                await supabase.from('therapists').update({ week_starts_on: 1 }).eq('id', therapist.id);
-              }}
-              style={{
-                background: weekStartsOn === 1 ? '#fff' : 'transparent',
-                color: weekStartsOn === 1 ? '#1F4030' : '#6B7280',
-                border:'none', borderRadius:999,
-                padding:'7px 16px',
-                fontSize:13, fontWeight:700, cursor:'pointer',
-                boxShadow: weekStartsOn === 1 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-                fontFamily:'inherit',
-              }}>Monday</button>
-          </div>
-          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            Default Sunday. Affects how your calendar grid lays out across the Schedule and Settings tabs.
+            Common: 330 (5.5 hours) or 360 (6 hours). Set 0 for no cap.
           </div>
         </div>
       </DisclosureRow>
@@ -2327,6 +2300,7 @@ function ServicesAndAvailability({ therapist }) {
           Disclosure row pattern (HK May 10 2026). */}
       <DisclosureRow
         icon="📐"
+        taxonomyId="2.1.7"
         title="Smart scheduling"
         summary={
           schedulingMode === 'normal'
@@ -2410,6 +2384,7 @@ function ServicesAndAvailability({ therapist }) {
                each independently. */}
       <DisclosureRow
         icon="💝"
+        taxonomyId="2.1.8"
         title="Tips and pay-in-full"
         summary={`Tips ${acceptTips ? 'on' : 'off'}${acceptTips ? ` · ${tipPreset1}/${tipPreset2}/${tipPreset3}%` : ''} · Full payment ${payInFullEnabled ? 'on' : 'off'}`}
         open={openSubRow === 'tips'}
@@ -2544,6 +2519,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Working Hours - Time Blocks. Disclosure row pattern. */}
       <DisclosureRow
         icon="🕐"
+        taxonomyId="2.1.9"
         title="Working hours"
         summary={(() => {
           const activeDays = (availability || []).filter(a => !a.service_id && a.active);
@@ -2671,6 +2647,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Cycle-aligned scheduling. Disclosure row pattern. */}
       <DisclosureRow
         icon="🌙"
+        taxonomyId="2.1.10"
         title="Cycle-aligned scheduling"
         summary={therapist?.cycle_scheduling_enabled ? 'On · per-phase service filtering' : 'Off · all services any phase'}
         open={openSubRow === 'cycle'}

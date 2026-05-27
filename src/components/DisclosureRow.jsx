@@ -36,6 +36,7 @@ export default function DisclosureRow({
   children,        // editor body, rendered when open
   defaultOpen,     // starting state (when row should be open by default; rare)
   highlight,       // when true, draws the row in forest border to draw attention
+  taxonomyId,      // optional, e.g. "2.1.6", shown as a small italic Georgia tag before the icon
 }) {
   return (
     <div style={{
@@ -63,6 +64,22 @@ export default function DisclosureRow({
           borderBottom: open ? `0.5px solid ${C.divider}` : 'none',
         }}
       >
+        {taxonomyId && (
+          <span style={{
+            fontFamily: 'Georgia, serif',
+            fontStyle: 'italic',
+            fontSize: 10,
+            fontWeight: 600,
+            color: C.gray,
+            letterSpacing: '0.4px',
+            minWidth: 26,
+            display: 'inline-block',
+            textAlign: 'right',
+            flexShrink: 0,
+          }}>
+            {taxonomyId}
+          </span>
+        )}
         {icon && (
           <span style={{
             fontSize: 16, color: C.forest, flexShrink: 0,
