@@ -3910,15 +3910,29 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
 
 function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
   const APPTS=appointments||[];
+  const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
   const [selected,setSelected]=useState(null);
   const [showLegend,setShowLegend]=useState(false);
   const isMobile=window.innerWidth<640;
-  const getMonday=d=>{const x=new Date(d);const day=x.getDay();x.setDate(x.getDate()+(day===0?-6:1-day));x.setHours(0,0,0,0);return x;};
-  const weekStart=addDays(getMonday(today),weekOffset*7);
+  // Get start of week respecting weekStartsOn. If Sunday-first, week
+  // starts on Sun; if Monday-first, week starts on Mon.
+  const getWeekStart=d=>{
+    const x=new Date(d);
+    const day=x.getDay();
+    const diff=(day - weekStartsOn + 7) % 7;
+    x.setDate(x.getDate() - diff);
+    x.setHours(0,0,0,0);
+    return x;
+  };
+  const weekStart=addDays(getWeekStart(today),weekOffset*7);
   const weekDays=[0,1,2,3,4,5,6].map(n=>addDays(weekStart,n));
-  const DAY_NAMES=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-  const DAY_NAMES_FULL=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+  const DAY_NAMES = weekStartsOn === 1
+    ? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+    : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const DAY_NAMES_FULL = weekStartsOn === 1
+    ? ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+    : ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   const weekAppts=APPTS.filter(a=>a.date>=weekStart&&a.date<addDays(weekStart,7));
   const realWeek=weekAppts.filter(a=>!a.preview);
 
@@ -4517,13 +4531,16 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
 
 function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
   const APPTS=appointments||[];
+  const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
   const [monthOffset,setMonthOffset]=useState(0);
   const [selDate,setSelDate]=useState(today);
   const [selected,setSelected]=useState(null);
   const viewMonth=new Date(today.getFullYear(),today.getMonth()+monthOffset,1);
   const daysInMonth=new Date(viewMonth.getFullYear(),viewMonth.getMonth()+1,0).getDate();
   const firstDay=new Date(viewMonth.getFullYear(),viewMonth.getMonth(),1).getDay();
-  const offset=firstDay===0?6:firstDay-1;
+  // Offset depends on week start: if Sunday-first, blank = firstDay;
+  // if Monday-first, blank = (firstDay+6)%7
+  const offset = (firstDay - weekStartsOn + 7) % 7;
   const calDays=[...Array(offset).fill(null),...Array.from({length:daysInMonth},(_,i)=>new Date(viewMonth.getFullYear(),viewMonth.getMonth(),i+1))];
   const selAppts=APPTS.filter(a=>sameDay(a.date,selDate));
 
@@ -4598,7 +4615,10 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
       })()}
 
       <div className="bm-monthly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:4}}>
-        {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',padding:'4px 0'}}>{d}</div>)}
+        {(weekStartsOn === 1
+          ? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
+          : ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
+        ).map(d=><div key={d} style={{textAlign:'center',fontSize:10,fontWeight:700,color:'#9CA3AF',textTransform:'uppercase',padding:'4px 0'}}>{d}</div>)}
       </div>
       <div className="bm-monthly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:20}}>
         {calDays.map((d,i)=>{
@@ -4670,6 +4690,7 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
 }
 
 function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
+  const weekStartsOn = therapist?.week_starts_on ?? 0;
   // 12-month at-a-glance heatmap. Each month is a mini-grid of day
   // cells colored by booking density. Time-off days show an amber
   // dot. Below the grid: 'busiest months' and 'quietest months'
@@ -4744,7 +4765,9 @@ function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
   }
 
   const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const DAY_LETTERS = ['M','T','W','T','F','S','S'];
+  const DAY_LETTERS = weekStartsOn === 1
+    ? ['M','T','W','T','F','S','S']
+    : ['S','M','T','W','T','F','S'];
 
   return (
     <div>
@@ -4796,7 +4819,7 @@ function YearlyView({ therapist, appointments, today, blockedDays = [] }) {
           const monthDate = new Date(viewYear, mIdx, 1);
           const daysInMonth = new Date(viewYear, mIdx+1, 0).getDate();
           const firstDay = new Date(viewYear, mIdx, 1).getDay();
-          const offset = firstDay === 0 ? 6 : firstDay - 1;
+          const offset = (firstDay - weekStartsOn + 7) % 7;
           const cells = [
             ...Array(offset).fill(null),
             ...Array.from({length: daysInMonth}, (_, i) => i+1),

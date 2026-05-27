@@ -216,6 +216,7 @@ function ServicesAndAvailability({ therapist }) {
   // HK, matches most US calendars), 1 = Monday. Affects calendar
   // grid layout in Schedule and Settings tabs.
   const [weekStartsOn, setWeekStartsOn] = React.useState(therapist?.week_starts_on ?? 0);
+  const [weekStartConfirm, setWeekStartConfirm] = React.useState(null);
   // Efficient scheduling (Lindsey #7, May 10 2026). Two-level toggle:
   //   schedulingMode: 'normal' | 'efficient'
   //   efficientStrictness: 'soft' | 'hard' (only used when efficient)
@@ -2283,7 +2284,10 @@ function ServicesAndAvailability({ therapist }) {
         {/* Week start preference (HK May 27 2026, Jacquie's ask).
             0 = Sunday default, 1 = Monday. Lives here as the
             authoritative setting; Schedule tab also has a quick
-            toggle that writes to the same column. */}
+            toggle that writes to the same column.
+            HK May 27 2026 round 4: added inline saved confirmation
+            ("Saved. Sunday is your week start now.") that fades
+            after 3s so therapist knows the change took effect. */}
         <div>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
             Week starts on
@@ -2300,6 +2304,8 @@ function ServicesAndAvailability({ therapist }) {
               onClick={async () => {
                 setWeekStartsOn(0);
                 await supabase.from('therapists').update({ week_starts_on: 0 }).eq('id', therapist.id);
+                setWeekStartConfirm('Saved. Sunday is your week start now.');
+                setTimeout(() => setWeekStartConfirm(null), 3000);
               }}
               style={{
                 background: weekStartsOn === 0 ? '#fff' : 'transparent',
@@ -2315,6 +2321,8 @@ function ServicesAndAvailability({ therapist }) {
               onClick={async () => {
                 setWeekStartsOn(1);
                 await supabase.from('therapists').update({ week_starts_on: 1 }).eq('id', therapist.id);
+                setWeekStartConfirm('Saved. Monday is your week start now.');
+                setTimeout(() => setWeekStartConfirm(null), 3000);
               }}
               style={{
                 background: weekStartsOn === 1 ? '#fff' : 'transparent',
@@ -2326,8 +2334,23 @@ function ServicesAndAvailability({ therapist }) {
                 fontFamily:'inherit',
               }}>Monday</button>
           </div>
+          {weekStartConfirm && (
+            <div style={{
+              display:'inline-block',
+              marginLeft: 10,
+              padding: '6px 12px',
+              background: '#EEF3EE',
+              border: '1px solid #9DBEA1',
+              borderRadius: 999,
+              fontSize: 12, fontWeight: 500,
+              color: '#1F4030',
+              verticalAlign: 'middle',
+            }}>
+              ✓ {weekStartConfirm}
+            </div>
+          )}
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            Default Sunday. Affects how your calendar grids lay out across Schedule and Settings. There is also a quick toggle in the Schedule tab.
+            Affects how your calendar grids lay out across Schedule and Settings.
           </div>
         </div>
 
