@@ -113,15 +113,17 @@ export default function DisclosureRow({
             </span>
           )}
         </span>
-        <span style={{
-          fontSize: 14, color: C.gray, flexShrink: 0,
-          transition: 'transform 0.2s',
-          transform: open ? 'rotate(180deg)' : 'none',
-          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          width: 18, height: 18,
-        }}>
-          ⌄
-        </span>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke={C.gray} strokeWidth="2.5"
+          strokeLinecap="round" strokeLinejoin="round"
+          style={{
+            flexShrink: 0,
+            transition: 'transform 0.2s ease',
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+          }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
       </button>
       {open && (
         <div style={{ padding: '12px 14px' }}>

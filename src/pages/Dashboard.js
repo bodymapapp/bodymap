@@ -260,10 +260,12 @@ function ServicesAndAvailability({ therapist }) {
   // not a modal or window.confirm (per house rules + 70yo persona).
   const [pendingDeleteId, setPendingDeleteId] = React.useState(null);
   // Disclosure-row pattern for the "What I offer -> Services & hours"
-  // panel (HK May 10 2026). Only one sub-row open at a time keeps the
-  // Settings page short. Default 'services' since that's the daily-edit
-  // setting; null collapses everything.
-  const [openSubRow, setOpenSubRow] = React.useState('services');
+  // panel. Only one sub-row open at a time keeps the Settings page
+  // short. HK May 27 2026: default changed from 'services' to null so
+  // that opening 2.1 shows all sub-rows collapsed; the therapist
+  // picks which one to expand. Previously 2.1.1 auto-opened which
+  // hid the rest of the list behind it.
+  const [openSubRow, setOpenSubRow] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [saved, setSaved] = React.useState(null);
