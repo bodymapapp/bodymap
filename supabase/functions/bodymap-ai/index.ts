@@ -283,7 +283,7 @@ serve(async (req) => {
       if (currentDraftCount >= MONTHLY_DRAFT_LIMIT) {
         return new Response(JSON.stringify({
           error: "monthly_limit_reached",
-          message: `You have reached this month's limit of ${MONTHLY_DRAFT_LIMIT} AI drafts. Resets on the 1st.`,
+          message: `You have reached this month's limit of ${MONTHLY_DRAFT_LIMIT} PracticeIQ drafts. Resets on the 1st.`,
           drafts_used: currentDraftCount,
           drafts_limit: MONTHLY_DRAFT_LIMIT,
         }), {

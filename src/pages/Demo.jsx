@@ -1736,7 +1736,7 @@ const AIBrief = ({ clientInfo, bodyMap, prefs, notes, sessions }) => {
   };
   return (
     <AIC>
-      <AIB label="AI Session Brief" />
+      <AIB label="PracticeIQ Session Brief" />
       <p
         style={{
           fontFamily: F.body,
@@ -1745,7 +1745,7 @@ const AIBrief = ({ clientInfo, bodyMap, prefs, notes, sessions }) => {
           marginBottom: 14,
         }}
       >
-        AI-generated overview from intake & session history
+        PracticeIQ overview from intake & session history
       </p>
       {!done && !loading && (
         <button
@@ -1873,7 +1873,7 @@ const Insights = ({ sessions, clientName }) => {
           marginBottom: 14,
         }}
       >
-        AI observations from your {sessions.length} sessions - not medical
+        PracticeIQ observations from your {sessions.length} sessions - not medical
         advice
       </p>
       {!done && !loading && (

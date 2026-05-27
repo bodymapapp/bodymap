@@ -1879,7 +1879,7 @@ export default function Features() {
                 A Platform That Knows Your Clients.<br/>Not Just Massage in General.
               </h2>
               <p style={{ fontSize:17, color:C.gray, maxWidth:620, margin:"0 auto" }}>
-                GlossGenius has an AI. Mindbody has AI predictions. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. The PracticeIQ does.
+                GlossGenius and Mindbody both offer prediction features for their users. But neither knows that Sarah's left shoulder has been worsening for 7 sessions, or that Monica just broke her 8-month monthly pattern. PracticeIQ does.
               </p>
             </div>
           </FadeIn>

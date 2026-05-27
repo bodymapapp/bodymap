@@ -793,6 +793,69 @@ now visually consistent.
 
 ---
 
+## 28. Never use "AI" in customer-facing copy. Use PracticeIQ.
+
+**Rule.** The string "AI" (acronym, not part of another word) does
+not appear in any text the user sees: buttons, labels, badges,
+toasts, banners, modals, help articles, marketing pages, email
+subject lines, error messages, settings labels, anywhere. If a
+feature is powered by language models or machine learning, it is
+called **PracticeIQ** or described by what it does ("draft note",
+"summary", "campaign suggestion") without invoking AI as a label.
+
+Internal: variable names, code comments, edge function identifiers,
+type names, and database column names CAN keep `ai` or `aiEnabled`
+since they are not user-visible. The rule is about user-facing
+strings.
+
+**Why this matters.** Two reasons.
+
+1. **Therapists are skeptical of AI.** Most massage therapists view
+   their work as deeply human, relational, and embodied. Branding
+   product features as "AI" creates resistance: 'AI is going to
+   replace me / get my notes wrong / break my client trust.' Same
+   feature branded as "PracticeIQ" lands as 'a smart tool that
+   helps with the busywork.'
+
+2. **Clients are wary of AI in healthcare.** Massage clients are
+   especially wary of automated systems handling their health
+   information. Saying "PracticeIQ summary" reassures; "AI summary"
+   alarms.
+
+This is positioning, not deception. We are transparent about
+HOW the platform works on the dedicated PracticeIQ help article
+("what does PracticeIQ do," "is my data trained," "can I turn it
+off"). The brand name just doesn't lead with the technology that
+the user is wary of.
+
+**Incident: May 27 2026, calendar growth moment text.**
+HK: "Its against our design principle to use 'AI' word in the
+website. Just say PracticeIQ suggests this and that to get that
+positioned for future. Therapists and clients don't like AI in
+general."
+
+Audit found AI references in:
+- Calendar growth moment popover
+- Help article titles and bodies (5 of them)
+- WhyBodyMap competitor copy
+- SessionDetail "Draft with AI" buttons (4 places)
+- SessionDetail "AI helps you" badge
+- Founder AiCostCard labels (5 strings)
+- Terms of Service privacy disclosure
+- Atlas page label
+- Demo page label
+- Edge function rate-limit error message
+
+All user-visible strings replaced with PracticeIQ. Code comments
+and variable names left intact since they are not visible to users
+and renaming them is a bigger refactor.
+
+**Test before shipping any new feature.** Grep for `\bAI\b` in any
+JSX content, button label, alert string, toast message, help text,
+or email template. If it's there and it's user-visible, replace it.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.

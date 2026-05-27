@@ -875,7 +875,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
             <div style={{ fontSize: 13, fontWeight: 500, color: C.goldDeep, marginBottom: 4 }}>{growthMoment.name}</div>
             <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>{growthMoment.why}</div>
             <div style={{ fontSize: 11, color: C.inkMute, fontStyle: 'italic', lineHeight: 1.5 }}>
-              Coming soon: AI-suggested campaigns based on your client base.
+              Coming soon: PracticeIQ-suggested campaigns based on your client base.
             </div>
           </div>
         )}

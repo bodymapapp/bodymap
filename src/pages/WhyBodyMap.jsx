@@ -171,7 +171,7 @@ const ONLY_MBM = [
     body:
       "Ask anything in plain English. \"Which clients haven't booked in 60 days?\" \"Draft a re-engagement message to my Tuesday morning regulars.\" Answers in seconds, trained only on your practice, never shared across therapists.",
     proof:
-      "Noterro has voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a Platform-style chat over your full client history. SimplePractice charges $35/mo extra for AI notes alone.",
+      "Noterro has voice-to-chart documentation. None of the other booking platforms (MassageBook, Vagaro, GlossGenius, Acuity, ClinicSense, Jane, SimplePractice) offer a Platform-style chat over your full client history. SimplePractice charges $35/mo extra for automated note drafting alone.",
     photoId: "3.3",
   },
   {

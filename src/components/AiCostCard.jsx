@@ -82,7 +82,7 @@ export default function AiCostCard() {
       ]);
 
       if (e1 || e2 || e3 || e4) {
-        const m = (e1 || e2 || e3 || e4)?.message || "Failed to load AI cost data.";
+        const m = (e1 || e2 || e3 || e4)?.message || "Failed to load PracticeIQ cost data.";
         setErr(m);
         setLoading(false);
         return;
@@ -111,7 +111,7 @@ export default function AiCostCard() {
         last_call_at: lastRow?.created_at || null,
       });
     } catch (e) {
-      setErr(e.message || "Failed to load AI cost data.");
+      setErr(e.message || "Failed to load PracticeIQ cost data.");
     } finally {
       setLoading(false);
     }
@@ -151,7 +151,7 @@ export default function AiCostCard() {
             textTransform: "uppercase",
             marginBottom: 2,
           }}>
-            AI cost meter
+            PracticeIQ cost meter
           </div>
           <div style={{ fontSize: 12, color: C.gray }}>
             Anthropic API calls made by the platform. Updated every 30 seconds.
@@ -176,7 +176,7 @@ export default function AiCostCard() {
 
       {loading && (
         <div style={{ fontSize: 12, color: C.muted, fontStyle: "italic" }}>
-          Loading AI usage...
+          Loading PracticeIQ usage...
         </div>
       )}
 
@@ -227,7 +227,7 @@ export default function AiCostCard() {
               fontStyle: "italic",
               textAlign: "center",
             }}>
-              No AI calls this month yet. The counter will start populating as therapists use the PracticeIQ or other AI features.
+              No PracticeIQ calls this month yet. The counter will start populating as therapists use the PracticeIQ or other intelligence features.
             </div>
           )}
 

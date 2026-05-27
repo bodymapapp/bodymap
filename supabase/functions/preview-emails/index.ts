@@ -319,7 +319,7 @@ function e25FirstSession(n: string) {
     lines: [
       `Hi ${n},`, ``,
       `MyBodyMap Team here. You just logged your first session on MyBodyMap. That's the hardest part.`, ``,
-      `Every session after this gets easier. Your AI pre-session brief gets smarter. Your client starts seeing patterns.`, ``,
+      `Every session after this gets easier. Your PracticeIQ pre-session brief gets smarter. Your client starts seeing patterns.`, ``,
       `Anything trip you up on that first one? Reply and tell us. We iterate weekly.`, ``,
       `Cheers!`, `MyBodyMap Team`,
     ],

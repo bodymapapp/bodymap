@@ -56,7 +56,7 @@ const CATEGORIES = [
     subs: [
       { id: '3.1', name: 'Longitudinal heatmaps' },
       { id: '3.2', name: 'Full session history' },
-      { id: '3.3', name: 'MyBodyMap AI chat' },
+      { id: '3.3', name: 'MyBodyMap PracticeIQ chat' },
       { id: '3.4', name: 'Pattern detection' },
       { id: '3.5', name: 'Practice Pulse' },
     ],

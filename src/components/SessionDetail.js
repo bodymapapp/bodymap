@@ -231,8 +231,8 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
     if (currentValue && currentValue.trim().length > 0) {
       const ok = window.confirm(
         kind === "private"
-          ? "This will replace your existing private notes with an AI draft. You can edit before saving. Continue?"
-          : "This will replace your existing message to the client with an AI draft. You can edit before saving. Continue?"
+          ? "This will replace your existing private notes with a PracticeIQ draft. You can edit before saving. Continue?"
+          : "This will replace your existing message to the client with a PracticeIQ draft. You can edit before saving. Continue?"
       );
       if (!ok) return;
     }
@@ -1045,7 +1045,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                   letterSpacing: "0.3px",
                   whiteSpace: "nowrap",
                   lineHeight: 1.2,
-                }}>AI helps you</span>
+                }}>PracticeIQ helps</span>
               )}
             </button>
           ))}
@@ -1165,7 +1165,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
                 <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
                   🔒 Private, only visible to you, never shared with clients.
-                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with AI" button on the right to auto-generate from today's session.</span>}
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with PracticeIQ" button on the right to auto-generate from today's session.</span>}
                 </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("private")} disabled={!!draftingKind}
@@ -1180,7 +1180,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                       display: "flex", alignItems: "center", gap: 6,
                     }}>
                     {draftingKind === "private" ? "✨ Drafting..." : (
-                      <>✨ Draft with AI{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
+                      <>✨ Draft with PracticeIQ{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
                     )}
                   </button>
                 )}
@@ -1214,7 +1214,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px", gap: 8, flexWrap: "wrap" }}>
                 <p style={{ fontSize: "12px", color: C.gray, margin: 0, flex: 1, minWidth: 180 }}>
                   💌 Appears on the Post-Session Brief you share with your client.
-                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with AI" button on the right to auto-generate a warm note.</span>}
+                  {aiEnabled && <span style={{ display: 'block', marginTop: 3, color: '#6D28D9', fontWeight: 600 }}>Use the purple "Draft with PracticeIQ" button on the right to auto-generate a warm note.</span>}
                 </p>
                 {aiEnabled && (
                   <button onClick={() => draftWithAI("client")} disabled={!!draftingKind}
@@ -1229,7 +1229,7 @@ export default function SessionDetail({ session, client, onBack, onUpdate }) {
                       display: "flex", alignItems: "center", gap: 6,
                     }}>
                     {draftingKind === "client" ? "✨ Drafting..." : (
-                      <>✨ Draft with AI{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
+                      <>✨ Draft with PracticeIQ{draftsRemaining != null ? ` · ${draftsRemaining} left` : ""}</>
                     )}
                   </button>
                 )}
