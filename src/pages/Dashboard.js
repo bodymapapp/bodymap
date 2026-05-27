@@ -18,6 +18,7 @@ import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import PackagesCard from '../components/PackagesCard';
 import MembershipsCard from '../components/MembershipsCard';
 import EventsCard from '../components/EventsCard';
+import YearlyPlanner from '../components/YearlyPlanner';
 import SettingsHero from '../components/SettingsHero';
 import SettingsSectionHeader from '../components/SettingsSectionHeader';
 import InlineSaveNumberInput from '../components/InlineSaveNumberInput';
@@ -3469,7 +3470,7 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
     }
     const groups = {
       practice:    [['Your info','','1.1'],['Import existing clients','Bring your list from CSV. Vagaro, MassageBook, Square','1.2'],['Booking & intake links','Share your link or QR codes for clients','1.3'],['Booking page setup','Approval and intake gates, embed','1.4'],['Time off','','1.5']],
-      offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Waiver text','','2.6']],
+      offer:       [['Services & hours','Your menu, weekly hours, deposits, buffer','2.1'],['Add-ons','Hot stones, aromatherapy, hot towels…','2.2'],['Packages','Multi-session bundles','2.3'],['Memberships','Recurring monthly plans','2.4'],['Classes & events','Workshops, group sessions','2.5'],['Plan your year','Vacations, holidays, time off blocks per month','2.6']],
       restEasier:  [['Platform features','','3.1'],['Practice Pulse','','3.2'],['Push notifications','On-device alerts for new bookings','3.3'],['Notification preferences','Email alerts for events','3.4'],['Lapsed client threshold','','3.5']],
       plugIn:      [['Cal.com sync','','4.1'],['Google Calendar sync','Two-way sync with Google Calendar','4.1.5'],['Payments','','4.2'],['Custom SMS sender (Twilio)','','4.3'],['Referrals','','4.4']],
       membership:  [['Your plan','','5.1'],['Change password','Set a new password','5.2']],
@@ -4386,6 +4387,19 @@ function SettingsPanel({ therapist, lapsedDays, setLapsedDays }) {
         isOpen={openRow === 'events'}
         onToggle={toggleRow}
       ><div className="bm-section-bare"><EventsCard therapist={therapist} /></div></CollapsibleSection>
+      </>)}
+      {matchesSearch('Plan your year', 'Vacations, holidays, time off blocks for the whole year', '2.6') && (<>
+      <CollapsibleSection
+        id="yearly-planner"
+        taxonomy="2.6"
+        timeBadge="~5m"
+        label="Plan your year"
+        summary="Vacations, holidays, time off blocks per month"
+        status="todo"
+        icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg>}
+        isOpen={openRow === 'yearly-planner'}
+        onToggle={toggleRow}
+      ><div className="bm-section-bare"><YearlyPlanner therapist={therapist} /></div></CollapsibleSection>
       </>)}
       {/* Waiver text moved into the consolidated "Client agreements"
           section at 4.3 below. HK May 14 2026: Alison G. asked for a
