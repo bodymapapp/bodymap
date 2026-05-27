@@ -76,6 +76,43 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 
 15. **Future consideration: replay any product update sends that failed** — depends on outcome of fire #14. If specific dormant signups did not receive the product update due to quota exhaustion, queue a re-send tomorrow with same content. Do NOT re-send to those who did receive (would be a duplicate spammy email).
 
+16. **AI-suggested growth moments based on client demographics (HIGH-VALUE)** HK May 27 2026: "We notice 40% of your clients are women 35-55. Mother's Day is May 10. Want to send them a 20% gift card discount?" This is the canonical example of where calendar moments, client intelligence, and outreach intersect. The seed ships in Commit 2 (May 27 calendar build): the calendar marks ~20 known growth moments per year (Mother's Day, Father's Day, Valentine's, graduation week, back-to-school, marathon weekends in major cities, Black Friday, summer solstice, etc.) with a small star icon and a placeholder popover "Coming soon: AI-suggested campaigns based on your client base."
+
+   **What needs to be built (estimate: 8-12 hours, multiple sub-features):**
+
+   a. **Client profile enrichment.** Extract demographic signals from existing data:
+      - Age bracket from intake form (already collected)
+      - Gender from intake form (already collected)
+      - Children mentioned in intake or SOAP notes (keyword detection)
+      - Profession mentioned (parent, teacher, runner, student, etc.)
+      - Location (zip code → city → known event proximity like NYC Marathon)
+      - Session pattern (frequent regular vs. occasional)
+
+   b. **Growth-moments calendar.** Static array of ~20-30 dates with:
+      - Date
+      - Audience filter ('mothers', 'fathers', 'parents-with-school-age', 'runners-nearby', 'graduating-students', 'all')
+      - Suggested campaign template
+      - Suggested timing window (e.g. "send 3 weeks before")
+
+   c. **AI nudge generator.** Background job runs weekly per therapist:
+      - For each upcoming growth moment in next 30 days, compute filtered client list
+      - If filtered list size > N (configurable threshold, default 5), generate a nudge
+      - Surface nudge in Insights panel: "Mother's Day in 3 weeks. 47 women aged 30-55 in your client list. Tap to draft a gift card promo."
+      - Pre-fill outreach composer with template + audience
+
+   d. **Outreach composer integration.** When therapist taps "draft this", outreach modal opens with audience filter pre-applied, template loaded, send button ready.
+
+   e. **Tracking.** Did the therapist act? Did the campaign generate bookings? Loop closed → smarter future suggestions.
+
+   **Dependencies before this can ship:**
+   - Client tagging system OR keyword detection on SOAP notes (we have session intelligence already, so option 2 is faster)
+   - Outreach composer template system (we have outreach already)
+   - Insights panel surface (we have Schedule cockpit rail already)
+
+   **Why this is a strategic moat:** competitors send generic broadcast emails. We send precisely-targeted promos based on actual client intelligence the therapist already collected. No other platform combines longitudinal body intelligence + demographic enrichment + holiday calendar in this way. This is the "MyBodyMap thinks for you" promise made concrete.
+
+   **Status May 27 2026:** seed UI shipping in Commit 2 (calendar marks the dates, popover says "coming soon"). Full feature parked here until distribution traction warrants the build.
+
 ## TIER S — DISTRIBUTION (do this week, not products)
 
 **Context:** Distribution is the unsolved problem, not product. The May 1-2 FB Massage Therapists Community thread surfaced an active shopping conversation where therapists are LITERALLY asking "MassageBook vs Vagaro vs Noterro" right now. Pricing pain is dominant ("MassageBook just raised prices, very disappointing"). Free Bronze tier is the answer to a question they're asking out loud. These items are about being present in those conversations, not building more product.
