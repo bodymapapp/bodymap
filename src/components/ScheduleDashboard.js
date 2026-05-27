@@ -6202,19 +6202,39 @@ export default function ScheduleDashboard({ therapist }) {
           boxShadow: '0 1px 3px rgba(31, 41, 55, 0.04)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            marginBottom: 14, gap: 12, flexWrap: 'wrap',
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+            marginBottom: 14, gap: 12,
           }}>
             <div style={{
               fontFamily: 'Georgia, serif',
               fontSize: 17,
-              fontWeight: 400,
+              fontWeight: 500,
               color: '#1F4030',
               letterSpacing: '-0.005em',
+              flex: 1,
             }}>
               Manage your calendar and time off
             </div>
-            <CloseButton onClick={() => setShowBlockPanel(false)} label="Close calendar" />
+            <button
+              type="button"
+              onClick={() => setShowBlockPanel(false)}
+              aria-label="Close calendar"
+              style={{
+                background: '#FFFFFF',
+                border: '1.5px solid #6B7280',
+                borderRadius: '50%',
+                width: 36, height: 36,
+                padding: 0,
+                cursor: 'pointer',
+                color: '#1F2937',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: 18,
+                fontWeight: 500,
+                lineHeight: 1,
+                flexShrink: 0,
+              }}>×</button>
           </div>
           <CalendarGrid therapist={therapist} embedded firstOpen={!hasSeenCalendarCoaching} onCoachingSeen={markCalendarCoachingSeen} />
         </div>
