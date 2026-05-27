@@ -4614,6 +4614,25 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
         return null;
       })()}
 
+      {/* View-only context note (HK May 27 2026). This monthly grid is
+          a read-only view of bookings. Tapping a day filters the list
+          below to that day's appointments. To block off time, manage
+          recurring rules, or block holidays, use the Manage your
+          calendar panel above. */}
+      <div style={{
+        fontSize: 11.5,
+        color: '#6B7280',
+        background: '#F9FAFB',
+        border: '1px solid #E5E7EB',
+        borderRadius: 8,
+        padding: '8px 12px',
+        marginBottom: 12,
+        lineHeight: 1.5,
+        fontStyle: 'italic',
+      }}>
+        This view shows your bookings. Tap a day to see its appointments below. To block time off or set recurring rules, use Manage your calendar above.
+      </div>
+
       <div className="bm-monthly-grid" style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:3,marginBottom:4}}>
         {(weekStartsOn === 1
           ? ['Mon','Tue','Wed','Thu','Fri','Sat','Sun']
@@ -4627,9 +4646,15 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           const ra=da.filter(a=>!a.preview);
           const isToday=sameDay(d,today),isSel=sameDay(d,selDate);
           const block = blockedFor(d);
-          // Background priority: selected > today > full-block > partial-block > default
-          // Border priority: selected > today > full-block > partial-block > default
-          const cellBg = isSel ? '#2A5741'
+          // HK May 27 2026: selection state visually softened. Tapping
+          // a day on this view FILTERS appointments below (the selection
+          // is functional, not destructive). The old forest-green fill
+          // made it look like the therapist had managed/edited the day,
+          // which confused users who expected management to happen in
+          // the "Manage your calendar" panel. Now selection shows a sage
+          // border + subtle tint instead, preserving the filter
+          // behavior without the "I just changed something" visual.
+          const cellBg = isSel ? '#EEF3EE'
             : isToday ? '#F0FDF4'
             : block.fullDay ? '#FEF3C7'
             : '#fff';
@@ -4638,25 +4663,26 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
             : block.fullDay ? '#FBBF24'
             : block.partial ? '#B5D4BE'
             : '#F3F4F6';
-          const dateColor = isSel ? '#fff'
+          const cellBorderWidth = isSel ? 2 : 1.5;
+          const dateColor = isSel ? '#1F4030'
             : isToday ? '#16A34A'
             : block.fullDay ? '#92400E'
             : '#6B7280';
           return (
             <div key={i} onClick={()=>setSelDate(d)}
-              style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:cellBg,border:`1.5px solid ${cellBorder}`,transition:'all 0.1s',position:'relative'}}>
-              <div style={{fontSize:11,fontWeight:600,color:dateColor,marginBottom:2}}>{d.getDate()}</div>
-              {block.fullDay && !isSel && (
+              style={{minHeight:48,padding:5,borderRadius:8,cursor:'pointer',background:cellBg,border:`${cellBorderWidth}px solid ${cellBorder}`,transition:'all 0.1s',position:'relative'}}>
+              <div style={{fontSize:11,fontWeight:isSel?700:600,color:dateColor,marginBottom:2}}>{d.getDate()}</div>
+              {block.fullDay && (
                 <div style={{position:'absolute',top:3,right:3,fontSize:9,lineHeight:1}} title="Day blocked off">🌿</div>
               )}
-              {ra.length>0&&<div style={{fontSize:11,fontWeight:700,color:isSel?'#fff':'#1F2937'}}>{window.innerWidth<640?`${ra.length}×`:`${ra.length} appt${ra.length>1?'s':''}`}</div>}
-              {ra.length===0 && block.fullDay && !isSel && (
+              {ra.length>0&&<div style={{fontSize:11,fontWeight:700,color:'#1F2937'}}>{window.innerWidth<640?`${ra.length}×`:`${ra.length} appt${ra.length>1?'s':''}`}</div>}
+              {ra.length===0 && block.fullDay && (
                 <div style={{fontSize:10,fontWeight:600,color:'#92400E',marginTop:2}}>Off</div>
               )}
               <div style={{display:'flex',gap:2,marginTop:2}}>
-                {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
-                {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&!isSel&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
-                {block.partial && !block.fullDay && !isSel && <div style={{width:5,height:5,borderRadius:'50%',background:'#6B9E80'}} title="Partial block"/>}
+                {da.filter(a=>!a.preview&&a.status==='intake-done').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#16A34A'}}/>}
+                {da.filter(a=>!a.preview&&a.status==='pending-intake').length>0&&<div style={{width:5,height:5,borderRadius:'50%',background:'#F59E0B'}}/>}
+                {block.partial && !block.fullDay && <div style={{width:5,height:5,borderRadius:'50%',background:'#6B9E80'}} title="Partial block"/>}
               </div>
             </div>
           );

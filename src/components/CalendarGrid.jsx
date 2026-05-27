@@ -164,7 +164,6 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [popover, setPopover] = useState(null);
   const [showRangeModal, setShowRangeModal] = useState(false);
   const [showAddRecurring, setShowAddRecurring] = useState(false);
   const [selectedDays, setSelectedDays] = useState([]);
@@ -173,6 +172,13 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
   const [pending, setPending] = useState(false);
   const [showHolidayPicker, setShowHolidayPicker] = useState(false);
   const [toast, setToast] = useState(null); // {message, type}
+
+  // HK May 27 2026: replaced floating popover with inline detail panel.
+  // The popover on tap was covering neighboring cells and blocking the
+  // user's next tap. Now we just track the selected date and render
+  // the detail card BELOW the calendar grid. Calendar stays fully
+  // tappable; tapping a different cell just updates selectedDate.
+  const [selectedDate, setSelectedDate] = useState(null);
 
   // Drag state
   const [dragStart, setDragStart] = useState(null);
@@ -407,41 +413,17 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     const status = isDateBlocked(dateStr);
     const growthMoment = growthMomentsByDate[dateStr];
 
+    // HK May 27 2026: floating popover removed. For growth moments
+    // and recurring-blocked days, we set selectedDate so the inline
+    // detail panel below the calendar shows context + actions. The
+    // popover was blocking taps on neighboring dates.
     if (growthMoment || status?.type === 'recurring') {
-      const cell = document.querySelector(`[data-date="${dateStr}"]`);
-      if (cell) {
-        showPopoverAt(cell, { dateStr, status, growthMoment });
-      }
+      setSelectedDate(dateStr);
       return;
     }
+    // For everything else (available days, holidays, one-off blocks),
+    // just toggle. No detail panel needed.
     toggleOneOffBlock(dateStr);
-  }
-
-  // Popover positioning with viewport clamping
-  function showPopoverAt(anchorEl, payload) {
-    const rect = anchorEl.getBoundingClientRect();
-    const W = window.innerWidth;
-    const H = window.innerHeight;
-    const POPOVER_W = Math.min(280, W - 24);
-    const POPOVER_H_EST = 220; // estimate, used for flip decision
-
-    // Default position below the cell, centered
-    let x = rect.left + rect.width / 2 - POPOVER_W / 2;
-    let y = rect.bottom + 8;
-    let placement = 'below';
-
-    // Clamp horizontal so popover stays on screen with 12px margin
-    x = Math.max(12, Math.min(x, W - POPOVER_W - 12));
-
-    // Flip vertical if not enough room below
-    if (rect.bottom + POPOVER_H_EST + 12 > H && rect.top - POPOVER_H_EST - 12 > 0) {
-      y = rect.top - POPOVER_H_EST - 8;
-      placement = 'above';
-    }
-    // Final clamp so it never goes negative or off-bottom
-    y = Math.max(12, Math.min(y, H - POPOVER_H_EST - 12));
-
-    setPopover({ ...payload, x, y, w: POPOVER_W, placement });
   }
 
   function isInDragRange(dateStr) {
@@ -782,6 +764,15 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
               borderWidth = 2;
             }
 
+            // Selected date for detail panel: shows a forest ring so user
+            // can see which day they tapped while the detail card displays
+            // below the calendar.
+            const isSelected = selectedDate === dateStr;
+            if (isSelected) {
+              borderColor = C.forest;
+              borderWidth = 2;
+            }
+
             const tip = blockStatus?.type === 'recurring' ? 'Blocked by recurring rule'
               : blockStatus?.type === 'one-off' ? 'Blocked'
               : growthMoment ? `${growthMoment.name} (opportunity)`
@@ -831,77 +822,80 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
 
   // ─── Popover (viewport-clamped) ─────────────────────────────────
 
-  function Popover() {
-    if (!popover) return null;
-    const { status, growthMoment, dateStr, x, y, w } = popover;
-    const dateLabel = parseLocalDate(dateStr).toLocaleDateString('en-US', {
+  function DetailPanel() {
+    if (!selectedDate) return null;
+    const status = isDateBlocked(selectedDate);
+    const growthMoment = growthMomentsByDate[selectedDate];
+    const holiday = holidaysByDate[selectedDate];
+    const dateLabel = parseLocalDate(selectedDate).toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric',
     });
 
     return (
-      <>
-        <div onClick={() => setPopover(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+      <div style={{
+        background: C.white,
+        border: `1px solid ${C.line}`,
+        borderRadius: 12,
+        padding: 16,
+        marginTop: 12,
+        boxShadow: '0 2px 6px rgba(28, 43, 34, 0.06)',
+      }}>
         <div style={{
-          position: 'fixed',
-          left: x, top: y,
-          zIndex: 51,
-          background: C.white,
-          border: `1px solid ${C.line}`,
-          borderRadius: 12,
-          padding: 16,
-          boxShadow: '0 8px 24px rgba(28, 43, 34, 0.18)',
-          width: w,
-          maxWidth: 'calc(100vw - 24px)',
-          boxSizing: 'border-box',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 10, gap: 10,
         }}>
           <div style={{
             fontSize: 12, fontWeight: 500, color: C.inkMute,
-            textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 8,
+            textTransform: 'uppercase', letterSpacing: '0.04em',
           }}>{dateLabel}</div>
+          <button type="button" onClick={() => setSelectedDate(null)}
+            aria-label="Close detail"
+            style={{
+              background: C.creamSoft, color: C.inkMute,
+              border: 'none', borderRadius: '50%',
+              width: 26, height: 26, padding: 0, cursor: 'pointer',
+              fontSize: 14, lineHeight: 1, fontFamily: 'inherit',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              flexShrink: 0,
+            }}>×</button>
+        </div>
 
-          {growthMoment && (
-            <div style={{
-              background: C.goldSoft,
-              border: `1px solid ${C.growthBorder}`,
-              borderRadius: 8, padding: 12, marginBottom: 12,
-            }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: C.goldDeep, marginBottom: 4 }}>{growthMoment.name}</div>
-              <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>{growthMoment.why}</div>
-              <div style={{ fontSize: 11, color: C.inkMute, fontStyle: 'italic', lineHeight: 1.5 }}>
-                Coming soon: AI-suggested campaigns based on your client base.
-              </div>
+        {holiday && !growthMoment && (
+          <div style={{ fontSize: 13, fontWeight: 500, color: C.holidayText, marginBottom: 10 }}>
+            {holiday.name}
+          </div>
+        )}
+
+        {growthMoment && (
+          <div style={{
+            background: C.goldSoft,
+            border: `1px solid ${C.growthBorder}`,
+            borderRadius: 8, padding: 12, marginBottom: 12,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 500, color: C.goldDeep, marginBottom: 4 }}>{growthMoment.name}</div>
+            <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>{growthMoment.why}</div>
+            <div style={{ fontSize: 11, color: C.inkMute, fontStyle: 'italic', lineHeight: 1.5 }}>
+              Coming soon: AI-suggested campaigns based on your client base.
             </div>
-          )}
+          </div>
+        )}
 
-          {status?.type === 'recurring' && (
-            <div>
-              <div style={{ fontSize: 13, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
-                Blocked by recurring rule (every {status.source.weekly_days.map(d => DAY_LABELS[d]).join(', ')}).
-              </div>
-              <button type="button"
-                onClick={async () => { await addRecurringException(status.source.id, dateStr); setPopover(null); }}
-                style={{
-                  background: C.forest, color: C.white, border: 'none',
-                  borderRadius: 8, padding: '10px 14px',
-                  fontSize: 13, fontWeight: 500, cursor: 'pointer',
-                  fontFamily: 'inherit', width: '100%',
-                }}>Unblock just this day</button>
+        {status?.type === 'recurring' && (
+          <div>
+            <div style={{ fontSize: 13, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
+              Blocked by recurring rule (every {status.source.weekly_days.map(d => DAY_LABELS[d]).join(', ')}).
             </div>
-          )}
-
-          {!status?.type && (
-            <button type="button" onClick={() => setPopover(null)}
+            <button type="button"
+              onClick={async () => { await addRecurringException(status.source.id, selectedDate); setSelectedDate(null); }}
               style={{
-                background: C.creamSoft, color: C.ink,
-                border: `1px solid ${C.line}`,
+                background: C.forest, color: C.white, border: 'none',
                 borderRadius: 8, padding: '10px 14px',
                 fontSize: 13, fontWeight: 500, cursor: 'pointer',
                 fontFamily: 'inherit', width: '100%',
-              }}>Got it</button>
-          )}
-        </div>
-      </>
+              }}>Unblock just this day</button>
+          </div>
+        )}
+      </div>
     );
   }
 
@@ -1163,7 +1157,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
         {monthsToRender.map((m, i) => <MonthGrid key={i} monthDate={m} />)}
       </div>
 
-      <Popover />
+      <DetailPanel />
       <RangeModal />
       <HolidayPickerModal />
       {Toast}
