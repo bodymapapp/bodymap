@@ -2169,28 +2169,33 @@ function ServicesAndAvailability({ therapist }) {
         )}
       </DisclosureRow>
 
-      {/* Booking window: lead time + max advance.
-          Disclosure row pattern (HK May 10 2026). */}
+      {/* Booking window: lead time, max advance, hands-on cap,
+          week start. Disclosure row pattern (HK May 10 2026).
+          HK May 27 2026: hands-on cap and week-start tucked in
+          here (not promoted to own rows) because section 2.1 was
+          getting too crowded. Goal: 'we will keep on adding more
+          and more settings' is the failure mode to avoid. */}
       <DisclosureRow
         icon="📆"
         taxonomyId="2.1.5"
         title="Booking window"
         summary={
-          (minLeadHours > 0 || maxAdvanceDays > 0)
-            ? `${minLeadHours > 0 ? `${minLeadHours}h ahead` : 'No minimum'}${maxAdvanceDays > 0 ? `, up to ${maxAdvanceDays} days out` : ''}`
-            : 'Anytime, no limits'
+          (() => {
+            const parts = [];
+            if (minLeadHours > 0) parts.push(`${minLeadHours}h ahead`);
+            if (maxAdvanceDays > 0) parts.push(`up to ${maxAdvanceDays} days out`);
+            if (maxHandsOnMinutes > 0) parts.push(`${(maxHandsOnMinutes / 60).toFixed(1)}h cap/day`);
+            return parts.length === 0 ? 'Anytime, no limits' : parts.join(', ');
+          })()
         }
         open={openSubRow === 'booking-window'}
         onToggle={() => setOpenSubRow(openSubRow === 'booking-window' ? null : 'booking-window')}
       >
         <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
-          Control how soon and how far ahead clients can book. Helps protect prep time and keep the calendar tidy.
+          Control how soon clients can book, how far ahead they can plan, and how many hours of hands-on you offer per day.
         </p>
 
-        {/* Minimum advance notice
-            Default placeholder 24 (industry-standard for spa/massage,
-            matches Acuity and Vagaro defaults). 0 means "no minimum,
-            client can book the next slot." Range 0 to 8760 (1 year). */}
+        {/* Minimum advance notice */}
         <div style={{ marginBottom:14 }}>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
             Minimum advance notice
@@ -2216,11 +2221,8 @@ function ServicesAndAvailability({ therapist }) {
           </div>
         </div>
 
-        {/* Maximum advance window
-            Default placeholder 90 (matches Acuity default; 60-90 days
-            is the spa industry norm). 0 means "no maximum, clients
-            can book any future date." Range 0 to 730 (2 years). */}
-        <div>
+        {/* Maximum advance window */}
+        <div style={{ marginBottom:14 }}>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
             Maximum advance window
           </label>
@@ -2244,34 +2246,15 @@ function ServicesAndAvailability({ therapist }) {
             Common: 60-90 days. Set 0 for no limit.
           </div>
         </div>
-      </DisclosureRow>
 
-      {/* Daily hands-on hours cap (HK May 27 2026, Jacquie's ask).
-          MassageBook has this; we did not. Limits how many minutes
-          of session time the booking page will offer per day. The
-          therapist can still book past the cap from her own
-          dashboard; this only restricts the public booking page.
-          Default 0 = no cap, behaves exactly as before. Promoted to
-          its own disclosure 2.1.6 May 27 2026 after HK noted that
-          2.1 had become too crowded and lacked numbering. */}
-      <DisclosureRow
-        icon="💪"
-        taxonomyId="2.1.6"
-        title="Daily hands-on cap"
-        summary={
-          maxHandsOnMinutes > 0
-            ? `Up to ${maxHandsOnMinutes} minutes (${(maxHandsOnMinutes / 60).toFixed(1)}h) bookable per day`
-            : 'No cap, full working day available'
-        }
-        open={openSubRow === 'hands-on-cap'}
-        onToggle={() => setOpenSubRow(openSubRow === 'hands-on-cap' ? null : 'hands-on-cap')}
-      >
-        <p style={{ fontSize:'12px', color:C2.gray, margin:'0 0 14px', lineHeight:1.5 }}>
-          Limit how many minutes of bookable session time the booking page offers per day. Once today's bookings hit this many minutes, your booking page shows 'Fully booked today'. You can still book past the cap from your own dashboard.
-        </p>
-        <div>
+        {/* Daily hands-on hours cap (HK May 27 2026, Jacquie's ask).
+            MassageBook has this; we did not. Counts only booked
+            session minutes, not buffer. Therapist can override from
+            her own dashboard; this only restricts the public booking
+            page. Default 0 = no cap. */}
+        <div style={{ marginBottom:14 }}>
           <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
-            Cap in minutes
+            Daily hands-on cap
           </label>
           <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
             <InlineSaveNumberInput
@@ -2287,10 +2270,61 @@ function ServicesAndAvailability({ therapist }) {
               max={1440}
               width={80}
             />
-            <span style={{ fontSize:12, color:C2.gray }}>per day</span>
+            <span style={{ fontSize:12, color:C2.gray }}>of bookable session time per day</span>
           </div>
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
-            Common: 330 (5.5 hours) or 360 (6 hours). Set 0 for no cap.
+            Once today's bookings hit this many minutes, your booking page shows 'Fully booked today'. You can still book past it from your own dashboard. 330 minutes = 5.5 hours. Set 0 for no cap.
+          </div>
+        </div>
+
+        {/* Week start preference (HK May 27 2026, Jacquie's ask).
+            0 = Sunday default, 1 = Monday. Lives here as the
+            authoritative setting; Schedule tab also has a quick
+            toggle that writes to the same column. */}
+        <div>
+          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
+            Week starts on
+          </label>
+          <div style={{
+            display:'inline-flex',
+            background:'#F3F4F6',
+            borderRadius:999,
+            padding:3,
+            gap:3,
+          }}>
+            <button
+              type="button"
+              onClick={async () => {
+                setWeekStartsOn(0);
+                await supabase.from('therapists').update({ week_starts_on: 0 }).eq('id', therapist.id);
+              }}
+              style={{
+                background: weekStartsOn === 0 ? '#fff' : 'transparent',
+                color: weekStartsOn === 0 ? '#1F4030' : '#6B7280',
+                border:'none', borderRadius:999,
+                padding:'7px 16px',
+                fontSize:13, fontWeight:700, cursor:'pointer',
+                boxShadow: weekStartsOn === 0 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                fontFamily:'inherit',
+              }}>Sunday</button>
+            <button
+              type="button"
+              onClick={async () => {
+                setWeekStartsOn(1);
+                await supabase.from('therapists').update({ week_starts_on: 1 }).eq('id', therapist.id);
+              }}
+              style={{
+                background: weekStartsOn === 1 ? '#fff' : 'transparent',
+                color: weekStartsOn === 1 ? '#1F4030' : '#6B7280',
+                border:'none', borderRadius:999,
+                padding:'7px 16px',
+                fontSize:13, fontWeight:700, cursor:'pointer',
+                boxShadow: weekStartsOn === 1 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                fontFamily:'inherit',
+              }}>Monday</button>
+          </div>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
+            Default Sunday. Affects how your calendar grids lay out across Schedule and Settings. There is also a quick toggle in the Schedule tab.
           </div>
         </div>
       </DisclosureRow>
@@ -2300,7 +2334,7 @@ function ServicesAndAvailability({ therapist }) {
           Disclosure row pattern (HK May 10 2026). */}
       <DisclosureRow
         icon="📐"
-        taxonomyId="2.1.7"
+        taxonomyId="2.1.6"
         title="Smart scheduling"
         summary={
           schedulingMode === 'normal'
@@ -2384,7 +2418,7 @@ function ServicesAndAvailability({ therapist }) {
                each independently. */}
       <DisclosureRow
         icon="💝"
-        taxonomyId="2.1.8"
+        taxonomyId="2.1.7"
         title="Tips and pay-in-full"
         summary={`Tips ${acceptTips ? 'on' : 'off'}${acceptTips ? ` · ${tipPreset1}/${tipPreset2}/${tipPreset3}%` : ''} · Full payment ${payInFullEnabled ? 'on' : 'off'}`}
         open={openSubRow === 'tips'}
@@ -2519,7 +2553,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Working Hours - Time Blocks. Disclosure row pattern. */}
       <DisclosureRow
         icon="🕐"
-        taxonomyId="2.1.9"
+        taxonomyId="2.1.8"
         title="Working hours"
         summary={(() => {
           const activeDays = (availability || []).filter(a => !a.service_id && a.active);
@@ -2647,7 +2681,7 @@ function ServicesAndAvailability({ therapist }) {
       {/* Cycle-aligned scheduling. Disclosure row pattern. */}
       <DisclosureRow
         icon="🌙"
-        taxonomyId="2.1.10"
+        taxonomyId="2.1.9"
         title="Cycle-aligned scheduling"
         summary={therapist?.cycle_scheduling_enabled ? 'On · per-phase service filtering' : 'Off · all services any phase'}
         open={openSubRow === 'cycle'}

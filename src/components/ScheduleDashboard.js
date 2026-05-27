@@ -5564,6 +5564,29 @@ export default function ScheduleDashboard({ therapist }) {
     }
   }
 
+  // Week start preference (HK May 27 2026, Jacquie's ask).
+  // 0 = Sunday default, 1 = Monday. Authoritative copy lives in
+  // Settings 2.1.5; Schedule tab has a quick pill toggle for fast
+  // access. State follows the same pattern as showPreviewData:
+  // initial read from props, instant local update on tap, persist
+  // to db non-blocking with revert on failure.
+  const [weekStartsOn, setWeekStartsOn] = useState(therapist?.week_starts_on ?? 0);
+  useEffect(() => {
+    if (therapist?.id && therapist?.week_starts_on !== undefined) {
+      setWeekStartsOn(therapist.week_starts_on ?? 0);
+    }
+  }, [therapist?.id, therapist?.week_starts_on]);
+
+  async function toggleWeekStart() {
+    const next = weekStartsOn === 0 ? 1 : 0;
+    setWeekStartsOn(next);
+    try {
+      await supabase.from('therapists').update({ week_starts_on: next }).eq('id', therapist.id);
+    } catch (e) {
+      setWeekStartsOn(weekStartsOn);
+    }
+  }
+
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
   const [showBlockPanel, setShowBlockPanel] = useState(false);
@@ -6877,6 +6900,25 @@ export default function ScheduleDashboard({ therapist }) {
           {blockedDays.length > 0 && (
             <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'2px 7px',fontSize:11,fontWeight:700,lineHeight:1}}>{blockedDays.length}</span>
           )}
+        </button>
+
+        {/* Week start quick toggle (HK May 27 2026). The authoritative
+            setting lives in Settings 2.1.5 Booking window; this pill
+            is the fast-access copy in Schedule. Both write to the
+            same therapists.week_starts_on column. */}
+        <button
+          onClick={toggleWeekStart}
+          title={weekStartsOn === 0 ? 'Week starts Sunday. Tap to switch to Monday.' : 'Week starts Monday. Tap to switch to Sunday.'}
+          style={{
+            display:'inline-flex',alignItems:'center',gap:6,
+            background:'#fff',border:'1.5px solid #E5E7EB',
+            borderRadius:22,padding:'10px 14px',fontSize:12,
+            color:'#4B5563',fontWeight:700,whiteSpace:'nowrap',
+            height:40,lineHeight:1,cursor:'pointer',
+            WebkitTapHighlightColor:'transparent',
+          }}>
+          <span>📅</span>
+          <span>Week: {weekStartsOn === 0 ? 'Sun' : 'Mon'}</span>
         </button>
       </div>
 
