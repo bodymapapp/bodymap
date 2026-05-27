@@ -672,6 +672,47 @@ silently overwrite real work.
 
 ---
 
+## 25. Collapse and expand controls use the standardized ChevronButton. Never a small inline SVG or unicode character.
+
+**Rule.** Any UI surface that collapses or expands uses the
+`ChevronButton` from `src/components/ChevronIcon.jsx`. The button is
+a 34x34 round target, forest-filled (`#2A5741`) when open with a
+white chevron, sage-cream tinted (`#EEF3EE`) when closed with a
+forest chevron, with a smooth 180-degree rotation animation. No
+inline SVG glyphs. No unicode characters like `⌄` or `▾`. No tiny
+14px chevrons that demand precision.
+
+**Why a circle button and not a small SVG.** Our 70-year-old massage
+therapist persona has lower fine-motor precision and reduced contrast
+sensitivity. A small inline chevron reads as decoration, not as a
+control. The round filled button reads unambiguously as a tap target,
+and the open/closed color contrast (forest vs. sage cream) makes
+section state readable at a glance without parsing the chevron
+rotation. This is accessibility, not aesthetics.
+
+**Incident: May 27 2026, Settings 2.1 chevron.**
+DisclosureRow was rendering a unicode `⌄` character as the chevron.
+HK pointed to the Session Journey panel's round forest chevron
+button as the pattern that already existed elsewhere in the product:
+"See the chevron example in the snapshot. Will be easier for our
+persona of 70 year old to use those. Standardize them across the
+website and add to the design principles." The pattern was already
+implemented in `CockpitSection` for the Schedule tab cockpit cards.
+It just had not been promoted into a shared component.
+
+**Cost.** Same-day fix: extracted `ChevronIcon` and `ChevronButton`
+into `src/components/ChevronIcon.jsx`. Updated `DisclosureRow` to
+import it. Refactored `ScheduleDashboard.js` to use the shared
+component instead of its local copy. New surfaces must import from
+the shared module.
+
+**Test before shipping any collapsible UI.** "Is this using
+`ChevronButton`? Did I import it?" If you wrote a `<svg>` or a
+`⌄` character anywhere for an expand or collapse control, replace
+it with `ChevronButton`.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.

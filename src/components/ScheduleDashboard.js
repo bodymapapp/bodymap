@@ -10,6 +10,7 @@ import CheckoutModal from './CheckoutModal';
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
 import DocumentJourney from './DocumentJourney';
+import { ChevronIcon as SharedChevronIcon } from './ChevronIcon';
 import DocumentDrawer from './DocumentDrawer';
 import DocErrorBoundary from './DocErrorBoundary';
 import BodyDiagram from './BodyDiagram';
@@ -309,27 +310,10 @@ function Label({ children, color }) {
 // SVG chevron used in CockpitSection. Stroke-weighted, rotates
 // smoothly on open. Replaces the prior ▾ unicode triangle which
 // was thin and read as a decorative glyph rather than a control.
-function ChevronIcon({ open, color = '#fff' }) {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 14 14"
-      fill="none"
-      stroke={color}
-      strokeWidth="2.4"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{
-        transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-        transition: 'transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1)',
-      }}
-      aria-hidden="true"
-    >
-      <polyline points="3 5 7 9 11 5" />
-    </svg>
-  );
-}
+// ChevronIcon centralized in src/components/ChevronIcon.jsx as of HK
+// May 27 2026 (standardized site-wide chevrons). Local alias kept so
+// CockpitSection's existing call site does not have to change.
+const ChevronIcon = SharedChevronIcon;
 
 function CockpitSection({ sectionKey, icon, title, subtitle, isOpen, onToggle, warn = false, children }) {
   // HK May 25 2026 (Phase 22): visual upgrade for collapsibles.

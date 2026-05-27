@@ -16,6 +16,7 @@
 // iOS Settings pattern, well-understood by therapists.
 
 import React from 'react';
+import { ChevronButton } from './ChevronIcon';
 
 const C = {
   forest: '#2A5741',
@@ -113,17 +114,7 @@ export default function DisclosureRow({
             </span>
           )}
         </span>
-        <svg
-          width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke={C.gray} strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{
-            flexShrink: 0,
-            transition: 'transform 0.2s ease',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}>
-          <polyline points="6 9 12 15 18 9" />
-        </svg>
+        <ChevronButton open={open} />
       </button>
       {open && (
         <div style={{ padding: '12px 14px' }}>
