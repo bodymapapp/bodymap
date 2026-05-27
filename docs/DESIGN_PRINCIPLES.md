@@ -750,6 +750,49 @@ CloseButton.
 
 ---
 
+## 27. Circular controls use the standardized RoundIconButton. Close, help, navigation, add, all circular affordances share one shape.
+
+**Rule.** Every circular control across the product uses
+`RoundIconButton` from `src/components/ChevronIcon.jsx`. That
+includes close (×), help (?), prev/next navigation (‹ ›), inline
+add (+), and any other single-glyph button rendered as a circle.
+
+The button is 36×36 by default (smaller variants pass `size`),
+sage-cream background with forest content (tone='neutral' default),
+generous tap target, consistent visual weight. Sister component to
+ChevronButton (rule #25).
+
+**Why one component for all of these.** Before this rule the product
+had at least four different circular button styles in flight: the
+old gray-bordered close X, the help button with forest border, year
+navigator arrows in white circles, plus the chevron buttons. None
+matched. The 70-year-old persona reads these as random decorations
+rather than as the same kind of control. Standardizing means a
+trained eye instantly recognizes "this is a tappable thing of this
+shape."
+
+**Incident: May 27 2026, calendar v4 audit.**
+HK: "Those little circles look 1990s and we should have something
+modern across the website similar to the decision we made on
+expanding chevrons."
+
+The yearly planner used 32×32 white circles with 1.5px gray border.
+The calendar panel close button was a separate 36×36 white circle
+with 1.5px gray border. The help button was forest-bordered. Three
+different styles for the same pattern.
+
+**Cost.** Same-day refactor: added `RoundIconButton` to
+ChevronIcon.jsx as a sister export. Replaced four ad-hoc circle
+patterns: panel close, calendar help, year prev/next in planner,
+and the month navigators in CalendarGrid. Every circular control is
+now visually consistent.
+
+**Test before shipping any circular button.** "Is this using
+`RoundIconButton`? Did I import it?" If you wrote a custom div with
+`borderRadius: 50%` anywhere, it should be replaced.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.

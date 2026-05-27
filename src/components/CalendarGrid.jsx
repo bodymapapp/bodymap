@@ -1,29 +1,30 @@
 // src/components/CalendarGrid.jsx
 //
-// HK May 27 2026: comprehensive rebuild per feedback round 3.
+// HK May 27 2026 round 4. Comprehensive audit fixes.
 //
-// Three primary actions in one row:
-//   - Block a date range (filled green button, opens modal)
-//   - Block specific weekdays (opens weekday picker)
-//   - Block all US holidays (one tap blocks all 11 federal holidays)
-//
-// Day cell color system (no letters or stars inside cells):
-//   - Available      cream
-//   - Blocked        mid gray with white text
-//   - Holiday        green tint with dark green text (informational only)
-//   - Growth op      gold tint with amber text
-//   - Today          cream with 2px forest border
-//   - Past           pale, not interactive
-//
-// Priority when states overlap: Blocked > Growth > Holiday > Today border.
-//
-// Interactions: tap to toggle block. Drag across days for range. Drag
-// uses pointer events so it works on mobile + desktop unified. Past
-// dates disabled. Holidays display green but tapping still toggles
-// block, in which case they go gray.
+// Fixes in this round:
+// - Close + help buttons use standardized RoundIconButton (matches
+//   chevron pattern site-wide, no more 1990s circles).
+// - Both buttons inline in panel header (close on right edge, help
+//   beside it). No vertical stack of small circles.
+// - Popover positioning fixed: clamps to viewport with margin so it
+//   never overflows off-screen. Direction flips automatically if
+//   there isn't room below.
+// - Drag now toggles. Drag over a range that's ALREADY blocked
+//   unblocks it; drag over an unblocked range blocks it. Detected
+//   by checking the starting cell's state.
+// - Drag hint banner moved ABOVE the calendar grid (was below).
+// - 'Block specific weekdays' renamed to 'Block specific days'.
+// - 'Block all US holidays' opens a modal with CHECKBOXES per
+//   holiday. Therapist can uncheck any they don't want blocked.
+//   Confirmation toast after action.
+// - Toast component for bulk action feedback.
+// - Modal widths use min(440px, 92vw) consistently, button text
+//   sized to fit at mobile widths.
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { RoundIconButton } from './ChevronIcon';
 
 const C = {
   cream: '#FBF8F1',
@@ -79,6 +80,8 @@ function computeHolidays(year) {
     { key: 'new-years',     name: "New Year's Day",   date: fmt(new Date(year, 0, 1)) },
     { key: 'mlk',           name: 'MLK Day',          date: fmt(nthWeekday(year, 0, 3, 1)) },
     { key: 'presidents',    name: "Presidents' Day",  date: fmt(nthWeekday(year, 1, 3, 1)) },
+    { key: 'good-friday',   name: 'Good Friday',      date: fmt(goodFriday) },
+    { key: 'easter',        name: 'Easter Sunday',    date: fmt(easterDate) },
     { key: 'memorial',      name: 'Memorial Day',     date: fmt(lastWeekday(year, 4, 1)) },
     { key: 'juneteenth',    name: 'Juneteenth',       date: fmt(new Date(year, 5, 19)) },
     { key: 'july-4',        name: 'Independence Day', date: fmt(new Date(year, 6, 4)) },
@@ -86,10 +89,8 @@ function computeHolidays(year) {
     { key: 'columbus',      name: 'Columbus Day',     date: fmt(nthWeekday(year, 9, 2, 1)) },
     { key: 'veterans',      name: 'Veterans Day',     date: fmt(new Date(year, 10, 11)) },
     { key: 'thanksgiving',  name: 'Thanksgiving',     date: fmt(nthWeekday(year, 10, 4, 4)) },
-    { key: 'christmas',     name: 'Christmas Day',    date: fmt(new Date(year, 11, 25)) },
-    { key: 'good-friday',   name: 'Good Friday',      date: fmt(goodFriday) },
-    { key: 'easter',        name: 'Easter Sunday',    date: fmt(easterDate) },
     { key: 'christmas-eve', name: 'Christmas Eve',    date: fmt(new Date(year, 11, 24)) },
+    { key: 'christmas',     name: 'Christmas Day',    date: fmt(new Date(year, 11, 25)) },
     { key: 'new-years-eve', name: "New Year's Eve",   date: fmt(new Date(year, 11, 31)) },
   ];
 }
@@ -103,15 +104,15 @@ function computeGrowthMoments(year) {
   };
   const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   return [
-    { key: 'valentines',     name: "Valentine's Day",         date: fmt(new Date(year, 1, 14)),  audience: 'all',     why: 'Couples massage and gift cards' },
-    { key: 'mothers-day',    name: "Mother's Day",            date: fmt(nthWeekday(year, 4, 2, 0)), audience: 'mothers', why: 'Gift cards for moms' },
-    { key: 'fathers-day',    name: "Father's Day",            date: fmt(nthWeekday(year, 5, 3, 0)), audience: 'fathers', why: 'Gift cards for dads' },
-    { key: 'summer-start',   name: 'Summer break starts',     date: fmt(new Date(year, 5, 21)),  audience: 'parents', why: 'Self-care kickoff' },
-    { key: 'back-to-school', name: 'Back to school week',     date: fmt(new Date(year, 7, 19)),  audience: 'parents', why: 'First session of the school year' },
-    { key: 'halloween',      name: 'Halloween week',          date: fmt(new Date(year, 9, 31)),  audience: 'all',     why: 'Promo opportunity' },
-    { key: 'black-friday',   name: 'Black Friday',            date: fmt(nthWeekday(year, 10, 4, 5)), audience: 'all', why: 'Gift card promotion' },
-    { key: 'holiday-gift',   name: 'Holiday gift season',     date: fmt(new Date(year, 11, 1)),  audience: 'all',     why: 'Gift cards peak season' },
-    { key: 'new-year-resolutions', name: 'New Year resolutions', date: fmt(new Date(year, 0, 8)), audience: 'all',  why: 'Self-care goals are top of mind' },
+    { key: 'valentines',     name: "Valentine's Day",         date: fmt(new Date(year, 1, 14)),  why: 'Couples massage and gift cards' },
+    { key: 'mothers-day',    name: "Mother's Day",            date: fmt(nthWeekday(year, 4, 2, 0)), why: 'Gift cards for moms' },
+    { key: 'fathers-day',    name: "Father's Day",            date: fmt(nthWeekday(year, 5, 3, 0)), why: 'Gift cards for dads' },
+    { key: 'summer-start',   name: 'Summer break starts',     date: fmt(new Date(year, 5, 21)),  why: 'Self-care kickoff' },
+    { key: 'back-to-school', name: 'Back to school week',     date: fmt(new Date(year, 7, 19)),  why: 'First session of the school year' },
+    { key: 'halloween',      name: 'Halloween week',          date: fmt(new Date(year, 9, 31)),  why: 'Promo opportunity' },
+    { key: 'black-friday',   name: 'Black Friday',            date: fmt(nthWeekday(year, 10, 4, 5)), why: 'Gift card promotion' },
+    { key: 'holiday-gift',   name: 'Holiday gift season',     date: fmt(new Date(year, 11, 1)),  why: 'Gift cards peak season' },
+    { key: 'new-year-resolutions', name: 'New Year resolutions', date: fmt(new Date(year, 0, 8)), why: 'Self-care goals top of mind' },
   ];
 }
 
@@ -170,15 +171,14 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
   const [rangeStart, setRangeStart] = useState('');
   const [rangeEnd, setRangeEnd] = useState('');
   const [pending, setPending] = useState(false);
-  const [confirmHolidays, setConfirmHolidays] = useState(false);
+  const [showHolidayPicker, setShowHolidayPicker] = useState(false);
+  const [toast, setToast] = useState(null); // {message, type}
 
-  // Drag interaction state. dragStart is a date string; dragOver is
-  // the currently-hovered date string during drag. dragMoved becomes
-  // true if the pointer moves to a different day than start, which
-  // distinguishes a drag from a tap on release.
+  // Drag state
   const [dragStart, setDragStart] = useState(null);
   const [dragOver, setDragOver] = useState(null);
   const dragMovedRef = useRef(false);
+  const dragModeRef = useRef('block'); // 'block' or 'unblock'
 
   const holidaysByDate = useMemo(() => {
     const map = {};
@@ -240,6 +240,11 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     return map;
   }, [bookings]);
 
+  function showToast(message, type = 'success') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3200);
+  }
+
   async function toggleOneOffBlock(dateStr) {
     setPending(true);
     const existing = blockedDays.find(b => b.date === dateStr && !b.start_time && !b.end_time);
@@ -271,17 +276,41 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       const { data } = await supabase.from('blocked_days')
         .insert(datesToBlock.map(date => ({ therapist_id: therapist.id, date, block_type: 'off' })))
         .select();
-      if (data) setBlockedDays(prev => [...prev, ...data]);
+      if (data) {
+        setBlockedDays(prev => [...prev, ...data]);
+        showToast(`Blocked ${datesToBlock.length} day${datesToBlock.length === 1 ? '' : 's'}`);
+      }
+    } else {
+      showToast('Days already blocked', 'info');
     }
     setPending(false);
   }
 
-  async function blockAllUSHolidays() {
+  async function unblockRange(fromStr, toStr) {
+    const lo = fromStr < toStr ? fromStr : toStr;
+    const hi = fromStr < toStr ? toStr : fromStr;
+    setPending(true);
+    const idsToDelete = [];
+    for (let d = parseLocalDate(lo); d <= parseLocalDate(hi); d.setDate(d.getDate() + 1)) {
+      const dateStr = fmtLocalDate(d);
+      const existing = blockedDays.find(b => b.date === dateStr && !b.start_time && !b.end_time);
+      if (existing) idsToDelete.push(existing.id);
+    }
+    if (idsToDelete.length > 0) {
+      await supabase.from('blocked_days').delete().in('id', idsToDelete);
+      setBlockedDays(prev => prev.filter(b => !idsToDelete.includes(b.id)));
+      showToast(`Unblocked ${idsToDelete.length} day${idsToDelete.length === 1 ? '' : 's'}`);
+    }
+    setPending(false);
+  }
+
+  async function blockSelectedHolidays(selectedKeys) {
     setPending(true);
     const year = anchorMonth.getFullYear();
     const allHolidays = [...computeHolidays(year), ...computeHolidays(year + 1)];
+    const selected = allHolidays.filter(h => selectedKeys.has(h.key));
     const datesToBlock = [];
-    for (const h of allHolidays) {
+    for (const h of selected) {
       const hd = parseLocalDate(h.date);
       if (hd < today) continue;
       const existing = blockedDays.find(b => b.date === h.date && !b.start_time && !b.end_time);
@@ -291,9 +320,14 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       const { data } = await supabase.from('blocked_days')
         .insert(datesToBlock.map(date => ({ therapist_id: therapist.id, date, block_type: 'off' })))
         .select();
-      if (data) setBlockedDays(prev => [...prev, ...data]);
+      if (data) {
+        setBlockedDays(prev => [...prev, ...data]);
+        showToast(`Blocked ${datesToBlock.length} holiday${datesToBlock.length === 1 ? '' : 's'}`);
+      }
+    } else {
+      showToast('No new holidays to block', 'info');
     }
-    setConfirmHolidays(false);
+    setShowHolidayPicker(false);
     setPending(false);
   }
 
@@ -304,13 +338,17 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       .insert({ therapist_id: therapist.id, weekly_days: weeklyDays, start_date: fmtLocalDate(today) })
       .select()
       .single();
-    if (data) setRecurringBlocks(prev => [...prev, data]);
+    if (data) {
+      setRecurringBlocks(prev => [...prev, data]);
+      showToast(`Rule saved: every ${weeklyDays.map(d => DAY_LABELS[d]).join(', ')}`);
+    }
   }
 
   async function removeRecurringRule(ruleId) {
     await supabase.from('recurring_blocks').delete().eq('id', ruleId);
     setRecurringBlocks(prev => prev.filter(r => r.id !== ruleId));
     setRecurringExceptions(prev => prev.filter(e => e.recurring_block_id !== ruleId));
+    showToast('Rule removed');
   }
 
   async function addRecurringException(ruleId, dateStr) {
@@ -319,19 +357,25 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       .insert({ therapist_id: therapist.id, recurring_block_id: ruleId, exception_date: dateStr })
       .select()
       .single();
-    if (data) setRecurringExceptions(prev => [...prev, data]);
+    if (data) {
+      setRecurringExceptions(prev => [...prev, data]);
+      showToast('Unblocked just this day');
+    }
   }
 
-  // ─── Drag handlers (pointer events, work on mobile + desktop) ───
+  // ─── Drag handlers ──────────────────────────────────────────────
 
   function onDayPointerDown(dateStr, e) {
     if (pending) return;
     const d = parseLocalDate(dateStr);
     if (d < today) return;
+    const wasBlocked = isDateBlocked(dateStr);
+    // If the starting cell is blocked, drag-mode = unblock; otherwise block
+    dragModeRef.current = wasBlocked?.type === 'one-off' ? 'unblock' : 'block';
     setDragStart(dateStr);
     setDragOver(dateStr);
     dragMovedRef.current = false;
-    e.currentTarget.setPointerCapture?.(e.pointerId);
+    try { e.currentTarget.setPointerCapture?.(e.pointerId); } catch (_) {}
   }
 
   function onDayPointerEnter(dateStr) {
@@ -343,7 +387,11 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
   async function onPointerUp() {
     if (!dragStart) return;
     if (dragMovedRef.current && dragOver && dragOver !== dragStart) {
-      await blockRange(dragStart, dragOver);
+      if (dragModeRef.current === 'unblock') {
+        await unblockRange(dragStart, dragOver);
+      } else {
+        await blockRange(dragStart, dragOver);
+      }
     } else if (dragStart) {
       handleDayTap(dragStart);
     }
@@ -362,18 +410,38 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     if (growthMoment || status?.type === 'recurring') {
       const cell = document.querySelector(`[data-date="${dateStr}"]`);
       if (cell) {
-        const rect = cell.getBoundingClientRect();
-        setPopover({
-          dateStr,
-          x: rect.left + rect.width / 2,
-          y: rect.bottom + 8,
-          status,
-          growthMoment,
-        });
+        showPopoverAt(cell, { dateStr, status, growthMoment });
       }
       return;
     }
     toggleOneOffBlock(dateStr);
+  }
+
+  // Popover positioning with viewport clamping
+  function showPopoverAt(anchorEl, payload) {
+    const rect = anchorEl.getBoundingClientRect();
+    const W = window.innerWidth;
+    const H = window.innerHeight;
+    const POPOVER_W = Math.min(280, W - 24);
+    const POPOVER_H_EST = 220; // estimate, used for flip decision
+
+    // Default position below the cell, centered
+    let x = rect.left + rect.width / 2 - POPOVER_W / 2;
+    let y = rect.bottom + 8;
+    let placement = 'below';
+
+    // Clamp horizontal so popover stays on screen with 12px margin
+    x = Math.max(12, Math.min(x, W - POPOVER_W - 12));
+
+    // Flip vertical if not enough room below
+    if (rect.bottom + POPOVER_H_EST + 12 > H && rect.top - POPOVER_H_EST - 12 > 0) {
+      y = rect.top - POPOVER_H_EST - 8;
+      placement = 'above';
+    }
+    // Final clamp so it never goes negative or off-bottom
+    y = Math.max(12, Math.min(y, H - POPOVER_H_EST - 12));
+
+    setPopover({ ...payload, x, y, w: POPOVER_W, placement });
   }
 
   function isInDragRange(dateStr) {
@@ -406,36 +474,18 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     monthsToRender.push(m);
   }
 
-  // ─── Top bar: tagline + small help button ────────────────────────
+  // ─── Top tagline (inline help icon moved to panel header) ────────
 
-  const TopBar = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
-      <div style={{
-        fontFamily: 'Georgia, serif',
-        fontSize: 13,
-        fontStyle: 'italic',
-        color: C.inkMute,
-        flex: 1,
-      }}>
-        Tap to block. Tap again to unblock. Drag for a range.
-      </div>
-      <button
-        type="button"
-        aria-label={showCoaching ? 'Hide help' : 'Show help'}
-        onClick={() => setShowCoaching(v => !v)}
-        style={{
-          background: showCoaching ? C.forest : C.white,
-          color: showCoaching ? C.white : C.forest,
-          border: `1.5px solid ${C.forest}`,
-          borderRadius: '50%',
-          width: 30, height: 30,
-          padding: 0,
-          cursor: 'pointer',
-          fontWeight: 500,
-          fontSize: 15,
-          fontFamily: 'inherit',
-          flexShrink: 0,
-        }}>?</button>
+  const TopTagline = (
+    <div style={{
+      fontFamily: 'Georgia, serif',
+      fontSize: 13,
+      fontStyle: 'italic',
+      color: C.inkMute,
+      marginBottom: 14,
+      lineHeight: 1.5,
+    }}>
+      Tap to block. Tap again to unblock. Drag for a range.
     </div>
   );
 
@@ -451,24 +501,21 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     }}>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
         <div style={{ fontSize: 20, flexShrink: 0, lineHeight: 1 }}>👋</div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
             fontFamily: 'Georgia, serif',
             fontSize: 14,
             fontWeight: 500,
             color: C.goldDeep,
             marginBottom: 6,
-          }}>
-            What you can do here:
-          </div>
+          }}>What you can do here:</div>
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: 13, color: C.ink, lineHeight: 1.65 }}>
-            <li><strong>Tap a day</strong> to block it. Tap again to unblock.</li>
-            <li><strong>Drag</strong> across days to block a range fast.</li>
-            <li><strong>Block a date range</strong> button opens a form for precise dates.</li>
-            <li><strong>Block specific weekdays</strong> sets a recurring rule (every Saturday, etc.).</li>
-            <li><strong>Block all US holidays</strong> blocks every federal holiday for the next 12 months.</li>
-            <li><strong>Green days</strong> are upcoming US holidays (informational).</li>
-            <li><strong>Gold days</strong> are growth opportunities (Mother's Day, etc.). Tap to learn more.</li>
+            <li><strong>Tap a day</strong> to block. Tap again to unblock.</li>
+            <li><strong>Drag</strong> across days to block a range. Drag on already-blocked days to unblock.</li>
+            <li><strong>Block a date range</strong> opens a precise form.</li>
+            <li><strong>Block specific days</strong> sets a recurring rule.</li>
+            <li><strong>Block all US holidays</strong> opens a checklist of holidays.</li>
+            <li><strong>Green</strong> = upcoming US holiday. <strong>Gold</strong> = growth opportunity. Tap to learn more.</li>
           </ul>
           <button
             type="button"
@@ -477,25 +524,17 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
               if (onCoachingSeen) onCoachingSeen();
             }}
             style={{
-              background: C.growthBorder,
-              color: C.white,
-              border: 'none',
-              borderRadius: 8,
-              padding: '7px 14px',
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              marginTop: 10,
-            }}>
-            Got it
-          </button>
+              background: C.growthBorder, color: C.white,
+              border: 'none', borderRadius: 8,
+              padding: '7px 14px', fontSize: 13, fontWeight: 500,
+              cursor: 'pointer', fontFamily: 'inherit', marginTop: 10,
+            }}>Got it</button>
         </div>
       </div>
     </div>
   );
 
-  // ─── Action bar: three primary actions ───────────────────────────
+  // ─── Action bar: three primary buttons ───────────────────────────
 
   const ActionBar = (
     <div style={{
@@ -504,48 +543,30 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       gap: 10,
       marginBottom: 14,
     }}>
-      <button
-        type="button"
-        onClick={() => setShowRangeModal(true)}
+      <button type="button" onClick={() => setShowRangeModal(true)}
         style={{
-          background: C.forest,
-          color: C.white,
-          border: 'none',
-          borderRadius: 10,
-          padding: '12px 14px',
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
+          background: C.forest, color: C.white, border: 'none',
+          borderRadius: 10, padding: '12px 14px',
+          fontSize: 13, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit',
         }}>📅 Block a date range</button>
-      <button
-        type="button"
-        onClick={() => setShowAddRecurring(v => !v)}
+      <button type="button" onClick={() => setShowAddRecurring(v => !v)}
         style={{
           background: showAddRecurring ? C.forest : C.white,
           color: showAddRecurring ? C.white : C.forestDeep,
           border: `1.5px solid ${C.forest}`,
-          borderRadius: 10,
-          padding: '12px 14px',
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
+          borderRadius: 10, padding: '12px 14px',
+          fontSize: 13, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit',
-        }}>🔁 Block specific weekdays</button>
-      <button
-        type="button"
-        onClick={() => setConfirmHolidays(true)}
+        }}>🔁 Block specific days</button>
+      <button type="button" onClick={() => setShowHolidayPicker(true)}
         style={{
-          background: C.white,
-          color: C.forestDeep,
+          background: C.white, color: C.forestDeep,
           border: `1.5px solid ${C.forest}`,
-          borderRadius: 10,
-          padding: '12px 14px',
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: 'pointer',
+          borderRadius: 10, padding: '12px 14px',
+          fontSize: 13, fontWeight: 500, cursor: 'pointer',
           fontFamily: 'inherit',
-        }}>🎉 Block all US holidays</button>
+        }}>🎉 Block US holidays</button>
     </div>
   );
 
@@ -559,37 +580,28 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
       padding: 14,
       marginBottom: 14,
     }}>
-      <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 3 }}>
-        Block every:
-      </div>
+      <div style={{ fontSize: 13, color: C.ink, fontWeight: 500, marginBottom: 3 }}>Block every:</div>
       <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 12, lineHeight: 1.5 }}>
-        Pick one or more weekdays. They will be blocked going forward, every week.
+        Pick one or more days. They will be blocked going forward, every week.
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         {DAY_LABELS.map((label, i) => {
           const isSelected = selectedDays.includes(i);
           return (
-            <button
-              key={i}
-              type="button"
+            <button key={i} type="button"
               onClick={() => setSelectedDays(prev => prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i])}
               style={{
                 background: isSelected ? C.forest : C.white,
                 color: isSelected ? C.white : C.forestDeep,
                 border: `1.5px solid ${isSelected ? C.forest : C.line}`,
-                borderRadius: 999,
-                padding: '8px 14px',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-                minWidth: 60,
+                borderRadius: 999, padding: '8px 14px',
+                fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                fontFamily: 'inherit', minWidth: 56,
               }}>{label}</button>
           );
         })}
       </div>
-      <button
-        type="button"
+      <button type="button"
         onClick={async () => {
           await addRecurringRule(selectedDays);
           setSelectedDays([]);
@@ -598,21 +610,15 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
         disabled={selectedDays.length === 0}
         style={{
           background: selectedDays.length === 0 ? C.line : C.forest,
-          color: C.white,
-          border: 'none',
-          borderRadius: 8,
-          padding: '9px 16px',
-          fontSize: 13,
-          fontWeight: 500,
+          color: C.white, border: 'none', borderRadius: 8,
+          padding: '9px 16px', fontSize: 13, fontWeight: 500,
           cursor: selectedDays.length === 0 ? 'not-allowed' : 'pointer',
           fontFamily: 'inherit',
-        }}>
-        Save recurring rule
-      </button>
+        }}>Save recurring rule</button>
     </div>
   );
 
-  // ─── Recurring rule pills ────────────────────────────────────────
+  // ─── Recurring pills ─────────────────────────────────────────────
 
   const RecurringPills = recurringBlocks.length > 0 && (
     <div style={{ marginBottom: 14 }}>
@@ -629,14 +635,10 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
             fontSize: 12, fontWeight: 500,
           }}>
             Every {rule.weekly_days.map(d => DAY_LABELS[d]).join(', ')}
-            <button
-              type="button"
-              onClick={() => removeRecurringRule(rule.id)}
-              aria-label="Remove rule"
+            <button type="button" onClick={() => removeRecurringRule(rule.id)} aria-label="Remove rule"
               style={{
                 background: 'rgba(255,255,255,0.25)', color: C.white,
-                border: 'none', borderRadius: '50%',
-                width: 20, height: 20,
+                border: 'none', borderRadius: '50%', width: 20, height: 20,
                 cursor: 'pointer', fontSize: 13, lineHeight: 1, padding: 0,
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               }}>×</button>
@@ -650,31 +652,42 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
 
   const Legend = (
     <div style={{
-      display: 'flex', flexWrap: 'wrap', gap: 14,
+      display: 'flex', flexWrap: 'wrap', gap: 12,
       padding: '10px 14px', marginBottom: 14,
       background: C.white, border: `1px solid ${C.line}`, borderRadius: 10,
-      fontSize: 12, color: C.inkMute, alignItems: 'center',
+      fontSize: 11.5, color: C.inkMute, alignItems: 'center',
     }}>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 18, height: 18, background: C.cream, border: `1px solid ${C.line}`, borderRadius: 4 }} />
-        Available
+        <span style={{ width: 16, height: 16, background: C.cream, border: `1px solid ${C.line}`, borderRadius: 4 }} />Available
       </span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 18, height: 18, background: C.blockedBg, borderRadius: 4 }} />
-        Blocked
+        <span style={{ width: 16, height: 16, background: C.blockedBg, borderRadius: 4 }} />Blocked
       </span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 18, height: 18, background: C.holidayBg, border: `1px solid ${C.holidayBorder}`, borderRadius: 4 }} />
-        Holiday
+        <span style={{ width: 16, height: 16, background: C.holidayBg, border: `1px solid ${C.holidayBorder}`, borderRadius: 4 }} />Holiday
       </span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 18, height: 18, background: C.growthBg, border: `1px solid ${C.growthBorder}`, borderRadius: 4 }} />
-        Growth opportunity
+        <span style={{ width: 16, height: 16, background: C.growthBg, border: `1px solid ${C.growthBorder}`, borderRadius: 4 }} />Growth opportunity
       </span>
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ width: 18, height: 18, background: C.cream, border: `2px solid ${C.forest}`, borderRadius: 4 }} />
-        Today
+        <span style={{ width: 16, height: 16, background: C.cream, border: `2px solid ${C.forest}`, borderRadius: 4 }} />Today
       </span>
+    </div>
+  );
+
+  // ─── Drag preview banner (ABOVE the calendar grid) ──────────────
+
+  const DragBanner = dragMovedRef.current && dragStart && dragOver && (
+    <div style={{
+      padding: '10px 14px',
+      background: C.creamSoft,
+      border: `1px solid ${C.forest}`,
+      borderRadius: 10, marginBottom: 10,
+      fontSize: 12.5, color: C.ink,
+    }}>
+      <strong>{dragModeRef.current === 'unblock' ? 'Unblock' : 'Block'}</strong>{' '}
+      {dragStart === dragOver ? dragStart : `${dragStart < dragOver ? dragStart : dragOver} to ${dragStart < dragOver ? dragOver : dragStart}`}.
+      Release to confirm.
     </div>
   );
 
@@ -709,9 +722,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
           color: C.forest,
           marginBottom: 10,
           textAlign: 'center',
-        }}>
-          {MONTH_NAMES[month]} {year}
-        </div>
+        }}>{MONTH_NAMES[month]} {year}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 3, marginBottom: 4 }}>
           {weekdayLabels.map((label, i) => (
             <div key={i} style={{
@@ -738,15 +749,21 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
             let borderColor = 'transparent';
             let borderWidth = 1;
 
-            // Priority: past → blocked/drag → growth → holiday → today
             if (isPast) {
               bg = C.creamSoft;
               textColor = C.inkDim;
             } else if (inDragRange) {
-              bg = C.blockedBg;
-              textColor = C.white;
-              borderColor = C.forest;
-              borderWidth = 2;
+              if (dragModeRef.current === 'unblock') {
+                bg = C.cream;
+                textColor = C.ink;
+                borderColor = C.forest;
+                borderWidth = 2;
+              } else {
+                bg = C.blockedBg;
+                textColor = C.white;
+                borderColor = C.forest;
+                borderWidth = 2;
+              }
             } else if (blockStatus) {
               bg = C.blockedBg;
               textColor = C.white;
@@ -797,7 +814,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
                   alignItems: 'center',
                   justifyContent: 'center',
                   padding: 0,
-                  minHeight: 36,
+                  minHeight: 34,
                   touchAction: 'none',
                   userSelect: 'none',
                   WebkitUserSelect: 'none',
@@ -812,29 +829,31 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     );
   }
 
-  // ─── Popover ──────────────────────────────────────────────────────
+  // ─── Popover (viewport-clamped) ─────────────────────────────────
 
   function Popover() {
     if (!popover) return null;
-    const { status, growthMoment, dateStr } = popover;
+    const { status, growthMoment, dateStr, x, y, w } = popover;
     const dateLabel = parseLocalDate(dateStr).toLocaleDateString('en-US', {
       weekday: 'long', month: 'long', day: 'numeric',
     });
 
     return (
       <>
-        <div onClick={() => setPopover(null)} style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
+        <div onClick={() => setPopover(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 50 }} />
         <div style={{
           position: 'fixed',
-          left: Math.min(popover.x - 140, window.innerWidth - 290),
-          top: popover.y,
+          left: x, top: y,
           zIndex: 51,
           background: C.white,
           border: `1px solid ${C.line}`,
           borderRadius: 12,
           padding: 16,
-          boxShadow: '0 8px 24px rgba(28, 43, 34, 0.12)',
-          width: 280,
+          boxShadow: '0 8px 24px rgba(28, 43, 34, 0.18)',
+          width: w,
+          maxWidth: 'calc(100vw - 24px)',
+          boxSizing: 'border-box',
         }}>
           <div style={{
             fontSize: 12, fontWeight: 500, color: C.inkMute,
@@ -845,16 +864,10 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
             <div style={{
               background: C.goldSoft,
               border: `1px solid ${C.growthBorder}`,
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 12,
+              borderRadius: 8, padding: 12, marginBottom: 12,
             }}>
-              <div style={{ fontSize: 13, fontWeight: 500, color: C.goldDeep, marginBottom: 4 }}>
-                {growthMoment.name}
-              </div>
-              <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>
-                {growthMoment.why}
-              </div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: C.goldDeep, marginBottom: 4 }}>{growthMoment.name}</div>
+              <div style={{ fontSize: 12, color: C.ink, lineHeight: 1.5, marginBottom: 8 }}>{growthMoment.why}</div>
               <div style={{ fontSize: 11, color: C.inkMute, fontStyle: 'italic', lineHeight: 1.5 }}>
                 Coming soon: AI-suggested campaigns based on your client base.
               </div>
@@ -866,12 +879,8 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
               <div style={{ fontSize: 13, color: C.ink, marginBottom: 10, lineHeight: 1.5 }}>
                 Blocked by recurring rule (every {status.source.weekly_days.map(d => DAY_LABELS[d]).join(', ')}).
               </div>
-              <button
-                type="button"
-                onClick={async () => {
-                  await addRecurringException(status.source.id, dateStr);
-                  setPopover(null);
-                }}
+              <button type="button"
+                onClick={async () => { await addRecurringException(status.source.id, dateStr); setPopover(null); }}
                 style={{
                   background: C.forest, color: C.white, border: 'none',
                   borderRadius: 8, padding: '10px 14px',
@@ -882,9 +891,7 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
           )}
 
           {!status?.type && (
-            <button
-              type="button"
-              onClick={() => setPopover(null)}
+            <button type="button" onClick={() => setPopover(null)}
               style={{
                 background: C.creamSoft, color: C.ink,
                 border: `1px solid ${C.line}`,
@@ -905,14 +912,14 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     const todayStr = fmtLocalDate(today);
     return (
       <>
-        <div onClick={() => setShowRangeModal(false)} style={{
-          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.4)',
-        }} />
+        <div onClick={() => setShowRangeModal(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.5)' }} />
         <div style={{
           position: 'fixed', left: '50%', top: '50%',
           transform: 'translate(-50%, -50%)', zIndex: 101,
           background: C.white, borderRadius: 14, padding: 20,
           width: 'min(420px, 92vw)',
+          boxSizing: 'border-box',
           boxShadow: '0 12px 40px rgba(15, 23, 42, 0.25)',
         }}>
           <div style={{
@@ -925,12 +932,22 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
           <div style={{ marginBottom: 12 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.inkMute, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>From</label>
             <input type="date" value={rangeStart} min={todayStr} onChange={e => setRangeStart(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: `1.5px solid ${C.line}`, borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: 14,
+                border: `1.5px solid ${C.line}`, borderRadius: 8,
+                fontFamily: 'inherit', boxSizing: 'border-box',
+                color: rangeStart ? C.ink : C.inkMute,
+              }} />
           </div>
           <div style={{ marginBottom: 18 }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.inkMute, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>To</label>
             <input type="date" value={rangeEnd} min={rangeStart || todayStr} onChange={e => setRangeEnd(e.target.value)}
-              style={{ width: '100%', padding: '10px 12px', fontSize: 14, border: `1.5px solid ${C.line}`, borderRadius: 8, fontFamily: 'inherit', boxSizing: 'border-box' }} />
+              style={{
+                width: '100%', padding: '10px 12px', fontSize: 14,
+                border: `1.5px solid ${C.line}`, borderRadius: 8,
+                fontFamily: 'inherit', boxSizing: 'border-box',
+                color: rangeEnd ? C.ink : C.inkMute,
+              }} />
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button type="button" onClick={() => { setShowRangeModal(false); setRangeStart(''); setRangeEnd(''); }}
@@ -943,7 +960,8 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
               }}
               disabled={!rangeStart || !rangeEnd || pending}
               style={{
-                flex: 2, background: (!rangeStart || !rangeEnd || pending) ? C.line : C.forest,
+                flex: 2,
+                background: (!rangeStart || !rangeEnd || pending) ? C.line : C.forest,
                 color: C.white, border: 'none', borderRadius: 10, padding: '11px 14px',
                 fontSize: 14, fontWeight: 500,
                 cursor: (!rangeStart || !rangeEnd || pending) ? 'not-allowed' : 'pointer',
@@ -955,88 +973,186 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
     );
   }
 
-  // ─── US holidays bulk confirmation modal ─────────────────────────
+  // ─── Holiday picker modal (checkboxes) ──────────────────────────
 
-  function HolidayConfirmModal() {
-    if (!confirmHolidays) return null;
+  function HolidayPickerModal() {
+    const [selected, setSelected] = useState(() => new Set());
     const year = anchorMonth.getFullYear();
     const allHolidays = [...computeHolidays(year), ...computeHolidays(year + 1)]
       .filter(h => parseLocalDate(h.date) >= today)
       .slice(0, 15);
 
+    // On open, default all selected (matches old bulk behavior)
+    useEffect(() => {
+      if (showHolidayPicker) {
+        const initial = new Set();
+        for (const h of allHolidays) {
+          const existing = blockedDays.find(b => b.date === h.date && !b.start_time && !b.end_time);
+          if (!existing) initial.add(h.key);
+        }
+        setSelected(initial);
+      }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showHolidayPicker]);
+
+    if (!showHolidayPicker) return null;
+
+    function toggle(key) {
+      setSelected(prev => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    }
+
+    function selectAll() {
+      setSelected(new Set(allHolidays.map(h => h.key)));
+    }
+    function selectNone() {
+      setSelected(new Set());
+    }
+
     return (
       <>
-        <div onClick={() => setConfirmHolidays(false)} style={{
-          position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.4)',
-        }} />
+        <div onClick={() => setShowHolidayPicker(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.5)' }} />
         <div style={{
           position: 'fixed', left: '50%', top: '50%',
           transform: 'translate(-50%, -50%)', zIndex: 101,
           background: C.white, borderRadius: 14, padding: 20,
-          width: 'min(480px, 92vw)',
-          maxHeight: '85vh', overflowY: 'auto',
+          width: 'min(440px, 92vw)',
+          maxHeight: '88vh',
+          display: 'flex', flexDirection: 'column',
+          boxSizing: 'border-box',
           boxShadow: '0 12px 40px rgba(15, 23, 42, 0.25)',
         }}>
           <div style={{
             fontFamily: 'Georgia, serif', fontSize: 17, fontWeight: 500,
-            color: C.forestDeep, marginBottom: 8,
-          }}>Block all US holidays?</div>
-          <div style={{ fontSize: 13, color: C.inkMute, marginBottom: 14, lineHeight: 1.5 }}>
-            This will block every US federal holiday and observed religious holiday for the next 12 months. You can unblock any single one afterward by tapping it.
+            color: C.forestDeep, marginBottom: 6,
+          }}>Block US holidays</div>
+          <div style={{ fontSize: 13, color: C.inkMute, marginBottom: 12, lineHeight: 1.5 }}>
+            Check the holidays you want blocked. Already-blocked holidays show as checked but unmodifiable.
           </div>
+
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            <button type="button" onClick={selectAll}
+              style={{ background: C.creamSoft, color: C.forestDeep, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Select all</button>
+            <button type="button" onClick={selectNone}
+              style={{ background: C.white, color: C.inkMute, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: '4px 12px', fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Select none</button>
+          </div>
+
           <div style={{
-            background: C.creamSoft, borderRadius: 10, padding: 12, marginBottom: 18,
-            fontSize: 12, color: C.ink, lineHeight: 1.7,
-            maxHeight: 200, overflowY: 'auto',
+            flex: 1, overflowY: 'auto',
+            background: C.creamSoft, borderRadius: 10, padding: 8,
+            marginBottom: 16,
           }}>
             {allHolidays.map(h => {
-              const dateStr = parseLocalDate(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              const dateStr = parseLocalDate(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+              const isChecked = selected.has(h.key);
+              const existing = blockedDays.find(b => b.date === h.date && !b.start_time && !b.end_time);
+              const alreadyBlocked = !!existing;
               return (
-                <div key={h.key} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span>{h.name}</span>
-                  <span style={{ color: C.inkMute }}>{dateStr}</span>
-                </div>
+                <label key={h.key} style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '10px 10px',
+                  cursor: alreadyBlocked ? 'default' : 'pointer',
+                  borderRadius: 8,
+                  background: isChecked ? C.holidayBg : 'transparent',
+                  border: `1px solid ${isChecked ? C.holidayBorder : 'transparent'}`,
+                  marginBottom: 4,
+                  opacity: alreadyBlocked ? 0.7 : 1,
+                  transition: 'background 0.12s, border 0.12s',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={isChecked || alreadyBlocked}
+                    onChange={() => !alreadyBlocked && toggle(h.key)}
+                    disabled={alreadyBlocked}
+                    style={{ width: 18, height: 18, accentColor: C.forest, cursor: alreadyBlocked ? 'default' : 'pointer' }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0, display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 500,
+                      color: isChecked ? C.holidayText : C.ink,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}>{h.name}{alreadyBlocked ? ' (already blocked)' : ''}</span>
+                    <span style={{
+                      fontSize: 12, color: isChecked ? C.holidayText : C.inkMute,
+                      flexShrink: 0,
+                    }}>{dateStr}</span>
+                  </div>
+                </label>
               );
             })}
           </div>
+
           <div style={{ display: 'flex', gap: 10 }}>
-            <button type="button" onClick={() => setConfirmHolidays(false)}
+            <button type="button" onClick={() => setShowHolidayPicker(false)}
               style={{ flex: 1, background: C.white, color: C.inkMute, border: `1.5px solid ${C.line}`, borderRadius: 10, padding: '11px 14px', fontSize: 14, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-            <button type="button" onClick={blockAllUSHolidays} disabled={pending}
+            <button type="button" onClick={() => blockSelectedHolidays(selected)}
+              disabled={selected.size === 0 || pending}
               style={{
-                flex: 2, background: pending ? C.line : C.forest,
+                flex: 2,
+                background: (selected.size === 0 || pending) ? C.line : C.forest,
                 color: C.white, border: 'none', borderRadius: 10, padding: '11px 14px',
                 fontSize: 14, fontWeight: 500,
-                cursor: pending ? 'not-allowed' : 'pointer',
+                cursor: (selected.size === 0 || pending) ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit',
-              }}>{pending ? 'Blocking...' : 'Block all'}</button>
+              }}>{pending ? 'Blocking...' : `Block ${selected.size} holiday${selected.size === 1 ? '' : 's'}`}</button>
           </div>
         </div>
       </>
     );
   }
 
-  // ─── Top-level render ─────────────────────────────────────────────
+  // ─── Toast ───────────────────────────────────────────────────────
+
+  const Toast = toast && (
+    <div style={{
+      position: 'fixed',
+      bottom: 24,
+      left: '50%',
+      transform: 'translateX(-50%)',
+      zIndex: 200,
+      background: toast.type === 'info' ? C.creamSoft : C.forest,
+      color: toast.type === 'info' ? C.ink : C.white,
+      border: toast.type === 'info' ? `1px solid ${C.line}` : 'none',
+      borderRadius: 999,
+      padding: '10px 18px',
+      fontSize: 13, fontWeight: 500,
+      boxShadow: '0 6px 20px rgba(15, 23, 42, 0.18)',
+      maxWidth: 'calc(100vw - 32px)',
+      textAlign: 'center',
+    }}>{toast.message}</div>
+  );
+
+  // ─── Top-level render ────────────────────────────────────────────
 
   return (
     <div onPointerUp={onPointerUp} onPointerCancel={onPointerUp} style={{ userSelect: 'none' }}>
-      {TopBar}
+      {TopTagline}
       {Coaching}
       {ActionBar}
       {AddRecurringForm}
       {RecurringPills}
       {Legend}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <button type="button" onClick={() => navigateMonths(-1)}
-          style={{ background: C.white, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: C.forestDeep, cursor: 'pointer', fontFamily: 'inherit' }}>‹ Prev</button>
-        <button type="button" onClick={() => {
-          const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
-          setAnchorMonth(d);
-        }}
-          style={{ background: C.white, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: C.forestDeep, cursor: 'pointer', fontFamily: 'inherit' }}>Today</button>
-        <button type="button" onClick={() => navigateMonths(1)}
-          style={{ background: C.white, border: `1.5px solid ${C.line}`, borderRadius: 999, padding: '7px 14px', fontSize: 13, fontWeight: 500, color: C.forestDeep, cursor: 'pointer', fontFamily: 'inherit' }}>Next ›</button>
+      {DragBanner}
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 6 }}>
+        <RoundIconButton ariaLabel="Previous month" onClick={() => navigateMonths(-1)}>‹</RoundIconButton>
+        <button type="button"
+          onClick={() => {
+            const d = new Date(); d.setDate(1); d.setHours(0,0,0,0);
+            setAnchorMonth(d);
+          }}
+          style={{
+            background: C.white, border: `1.5px solid ${C.line}`,
+            borderRadius: 999, padding: '8px 16px', fontSize: 13, fontWeight: 500,
+            color: C.forestDeep, cursor: 'pointer', fontFamily: 'inherit',
+          }}>Today</button>
+        <RoundIconButton ariaLabel="Next month" onClick={() => navigateMonths(1)}>›</RoundIconButton>
       </div>
 
       <div style={{
@@ -1049,7 +1165,21 @@ export default function CalendarGrid({ therapist, embedded = false, firstOpen = 
 
       <Popover />
       <RangeModal />
-      <HolidayConfirmModal />
+      <HolidayPickerModal />
+      {Toast}
     </div>
+  );
+}
+
+// Expose a helper for the parent to toggle coaching/help via the
+// panel header. Used by ScheduleDashboard to render the help button
+// alongside the close button rather than stacked vertically.
+export function CalendarHelpButton({ onToggle, isOpen }) {
+  return (
+    <RoundIconButton
+      ariaLabel={isOpen ? 'Hide help' : 'Show help'}
+      onClick={onToggle}
+      tone={isOpen ? 'filled' : 'neutral'}
+    >?</RoundIconButton>
   );
 }

@@ -86,4 +86,67 @@ export function ChevronButton({
   );
 }
 
+/**
+ * RoundIconButton: standardized circular button for any single-glyph
+ * affordance: close (×), help (?), navigation (‹ ›), add (+), etc.
+ *
+ * HK May 27 2026 design principle 25 extension: every circular control
+ * across the product uses this same sage-cream tint with forest
+ * content. Sister to ChevronButton.
+ *
+ * Variants:
+ *   - tone='neutral' (default): sage-cream bg, forest content
+ *   - tone='filled': forest bg, white content (for primary actions)
+ *   - tone='outline': white bg, forest content with forest border
+ */
+export function RoundIconButton({
+  onClick,
+  children,
+  ariaLabel,
+  size = 36,
+  tone = 'neutral',
+  fontSize = 18,
+  disabled = false,
+}) {
+  let bg = '#EEF3EE';
+  let color = '#2A5741';
+  let border = 'none';
+  if (tone === 'filled') {
+    bg = '#2A5741';
+    color = '#FFFFFF';
+  } else if (tone === 'outline') {
+    bg = '#FFFFFF';
+    color = '#2A5741';
+    border = '1.5px solid #2A5741';
+  }
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      style={{
+        width: size, height: size, borderRadius: '50%',
+        background: bg,
+        color: color,
+        border: border,
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        padding: 0,
+        fontFamily: 'inherit',
+        fontSize: fontSize,
+        fontWeight: 500,
+        lineHeight: 1,
+        transition: 'background 0.18s ease, box-shadow 0.18s ease',
+        boxShadow: tone === 'filled' ? '0 2px 6px rgba(42,87,65,0.18)' : 'none',
+        WebkitTapHighlightColor: 'transparent',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default ChevronButton;

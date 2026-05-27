@@ -10,8 +10,8 @@ import CheckoutModal from './CheckoutModal';
 // folded into CheckoutModal's offline payment path. See commit history.
 import RefundModal from './RefundModal';
 import DocumentJourney from './DocumentJourney';
-import { ChevronIcon as SharedChevronIcon } from './ChevronIcon';
-import CalendarGrid from './CalendarGrid';
+import { ChevronIcon as SharedChevronIcon, RoundIconButton } from './ChevronIcon';
+import CalendarGrid, { CalendarHelpButton } from './CalendarGrid';
 import DocumentDrawer from './DocumentDrawer';
 import DocErrorBoundary from './DocErrorBoundary';
 import BodyDiagram from './BodyDiagram';
@@ -5575,6 +5575,7 @@ export default function ScheduleDashboard({ therapist }) {
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
   const [showBlockPanel, setShowBlockPanel] = useState(false);
+  const [panelHelpOpen, setPanelHelpOpen] = useState(false);
   // Calendar coaching: show the first-open "What you can do here" intro
   // until the therapist dismisses it. localStorage persists across
   // sessions so the coaching doesn't return after every reload.
@@ -6202,7 +6203,7 @@ export default function ScheduleDashboard({ therapist }) {
           boxShadow: '0 1px 3px rgba(31, 41, 55, 0.04)',
         }}>
           <div style={{
-            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             marginBottom: 14, gap: 12,
           }}>
             <div style={{
@@ -6212,31 +6213,26 @@ export default function ScheduleDashboard({ therapist }) {
               color: '#1F4030',
               letterSpacing: '-0.005em',
               flex: 1,
+              minWidth: 0,
             }}>
               Manage your calendar and time off
             </div>
-            <button
-              type="button"
-              onClick={() => setShowBlockPanel(false)}
-              aria-label="Close calendar"
-              style={{
-                background: '#FFFFFF',
-                border: '1.5px solid #6B7280',
-                borderRadius: '50%',
-                width: 36, height: 36,
-                padding: 0,
-                cursor: 'pointer',
-                color: '#1F2937',
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 18,
-                fontWeight: 500,
-                lineHeight: 1,
-                flexShrink: 0,
-              }}>×</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <CalendarHelpButton
+                isOpen={panelHelpOpen}
+                onToggle={() => setPanelHelpOpen(v => !v)}
+              />
+              <RoundIconButton ariaLabel="Close calendar" onClick={() => setShowBlockPanel(false)}>
+                ×
+              </RoundIconButton>
+            </div>
           </div>
-          <CalendarGrid therapist={therapist} embedded firstOpen={!hasSeenCalendarCoaching} onCoachingSeen={markCalendarCoachingSeen} />
+          <CalendarGrid
+            therapist={therapist}
+            embedded
+            firstOpen={panelHelpOpen || !hasSeenCalendarCoaching}
+            onCoachingSeen={() => { markCalendarCoachingSeen(); setPanelHelpOpen(false); }}
+          />
         </div>
       )}
 
