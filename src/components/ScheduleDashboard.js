@@ -5614,10 +5614,13 @@ export default function ScheduleDashboard({ therapist }) {
   useEffect(()=>{if(therapist?.id){ fetchBookings(); loadBlockedDays(); }},[therapist?.id]);
 
   async function loadBlockedDays() {
+    const tStart = performance.now();
     const { data } = await supabase.from('blocked_days').select('*')
       .eq('therapist_id', therapist.id)
       .gte('date', new Date().toISOString().slice(0,10))
       .order('date');
+    // eslint-disable-next-line no-console
+    console.log(`[SCHED-PERF] loadBlockedDays: ${(performance.now() - tStart).toFixed(0)}ms · rows=${data?.length || 0}`);
     setBlockedDays(data || []);
   }
 
@@ -5869,8 +5872,23 @@ export default function ScheduleDashboard({ therapist }) {
 
   async function fetchBookings() {
     setLoading(true);
+    // Performance instrumentation (HK May 27 2026). Therapists report
+    // Schedule load taking minutes on WiFi. This logs each query's
+    // wall time so we can see exactly where the latency lives. Open
+    // browser DevTools console after clicking into Schedule to see
+    // [SCHED-PERF] logs.
+    const perfStart = performance.now();
+    const perfLog = (label, startedAt, extra) => {
+      const ms = (performance.now() - startedAt).toFixed(0);
+      const totalMs = (performance.now() - perfStart).toFixed(0);
+      const extraStr = extra ? ` · ${extra}` : '';
+      // eslint-disable-next-line no-console
+      console.log(`[SCHED-PERF] ${label}: ${ms}ms (total ${totalMs}ms)${extraStr}`);
+    };
     try {
+      const tAuth = performance.now();
       const { data: { user } } = await supabase.auth.getUser();
+      perfLog('auth.getUser', tAuth);
       if (!user) { setLoading(false); return; }
 
       const toDateStr = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -5886,6 +5904,7 @@ export default function ScheduleDashboard({ therapist }) {
       // (raised from 2000 May 21 2026 evening per HK).
       const future = new Date(today); future.setDate(today.getDate() + 365);
 
+      const tBookings = performance.now();
       const { data: bookings, error } = await supabase
         .from('bookings')
         .select('*, services(name, duration, price, is_couples), location:therapist_locations(name), reminder_sent_at, deposit_required, deposit_paid, deposit_amount, partner_name, partner_email')
@@ -5896,6 +5915,7 @@ export default function ScheduleDashboard({ therapist }) {
         .order('booking_date')
         .order('start_time')
         .limit(5000);
+      perfLog('bookings query', tBookings, `rows=${bookings?.length || 0}`);
 
       if (error || !bookings?.length) { setRealBookings([]); setPendingApprovalBookings([]); setLoading(false); return; }
 
@@ -5928,22 +5948,26 @@ export default function ScheduleDashboard({ therapist }) {
       // exists with booking_id = this booking's id. ClientIntake now always
       // resolves booking_id at save time, so this is the only check needed.
       const bookingIds = bookingsForSchedule.map(b => b.id);
+      const tSessions = performance.now();
       const { data: sessions } = await supabase
         .from('sessions')
         .select('id, booking_id, client_id')
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
+      perfLog('sessions query', tSessions, `rows=${sessions?.length || 0}, in=${bookingIds.length} ids`);
 
       // Phase 14.3j (HK May 17 2026 late): also fetch session_payments to
       // know which bookings have been paid. Without this, the timeline
       // can't visually distinguish paid bookings (real money received)
       // from unpaid confirmed bookings. Both rendered identical yellow
       // cards before this fix.
+      const tPayments = performance.now();
       const { data: bookingPayments } = await supabase
         .from('session_payments')
         .select('booking_id, status, amount_cents, tip_cents')
         .eq('therapist_id', therapist.id)
         .in('booking_id', bookingIds);
+      perfLog('session_payments query', tPayments, `rows=${bookingPayments?.length || 0}`);
       const paidMap = {};
       (bookingPayments || []).forEach(p => {
         if (!p.booking_id) return;
@@ -6030,6 +6054,7 @@ export default function ScheduleDashboard({ therapist }) {
       try {
         const extFrom = new Date(today); extFrom.setDate(today.getDate() - 90);
         const extTo = new Date(today); extTo.setDate(today.getDate() + 60);
+        const tExt = performance.now();
         const { data: extRows } = await supabase
           .from('external_calendar_events')
           .select('id, summary, start_at, end_at, is_all_day, source')
@@ -6038,6 +6063,7 @@ export default function ScheduleDashboard({ therapist }) {
           .gte('start_at', extFrom.toISOString())
           .lte('end_at', extTo.toISOString())
           .order('start_at');
+        perfLog('external_calendar_events query', tExt, `rows=${extRows?.length || 0}`);
         extEvents = (extRows || []).map(e => {
           const startD = new Date(e.start_at);
           const endD = new Date(e.end_at);
@@ -6082,6 +6108,7 @@ export default function ScheduleDashboard({ therapist }) {
       }
 
       setRealBookings([...mapped, ...extEvents]);
+      perfLog('fetchBookings TOTAL', perfStart, `mapped=${mapped.length}, ext=${extEvents.length}`);
     } catch(err) {
       console.error('fetchBookings error:', err);
       setRealBookings([]);
