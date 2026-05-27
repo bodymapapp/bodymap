@@ -756,6 +756,10 @@ export default function BookingPage() {
   const [existingBooked,setExistingBooked]=useState([]);
   const [slot,setSlot]=useState(null);
   const [loadingSlots,setLoadingSlots]=useState(false);
+  // Track whether today's empty-slots reason is 'hands-on cap reached'
+  // rather than 'therapist not working today' so the empty state can
+  // say 'Fully booked' instead of 'No availability'.
+  const [capHitToday,setCapHitToday]=useState(false);
   const [form,setForm]=useState(() => {
     // Prefill from URL params after intake-before-booking redirect.
     const sp = new URLSearchParams(window.location.search);
@@ -1231,7 +1235,7 @@ export default function BookingPage() {
   }
 
   async function loadSlots() {
-    setLoadingSlots(true); setSlots([]); setSlot(null);
+    setLoadingSlots(true); setSlots([]); setSlot(null); setCapHitToday(false);
     const dow=new Date(date+'T12:00:00').getDay();
     // Per-service availability (Lindsey #4, May 10 2026).
     // Three-step lookup:
@@ -1388,6 +1392,37 @@ export default function BookingPage() {
         const atBlockEnd = blockEnd !== null && slotEnd === blockEnd;
         return fitsAfter || fitsBefore || atBlockStart || atBlockEnd;
       });
+    }
+
+    // Hands-on hours cap (HK May 27 2026, Jacquie's ask).
+    // Therapist sets max_hands_on_minutes_per_day in Settings (NULL =
+    // no cap). The cap counts ONLY booked session duration, NOT
+    // buffer time. Once today's existing bookings already hit the
+    // cap, no new slots are offered on the public booking page.
+    // Therapist can still book past the cap from her own dashboard
+    // (this filter only runs in the public booking page slot
+    // generator). Existing therapists with cap = NULL are unaffected.
+    const handsOnCapMinutes = Number(therapist.max_hands_on_minutes_per_day) || 0;
+    if (handsOnCapMinutes > 0) {
+      // Count minutes already booked TODAY (only real bookings, not
+      // external calendar events or partial blocks; those are not
+      // hands-on time).
+      const alreadyBookedMinutes = (existing || []).reduce((sum, b) => {
+        if (!b.start_time || !b.end_time) return sum;
+        const [sh, sm] = b.start_time.split(':').map(Number);
+        const [eh, em] = b.end_time.split(':').map(Number);
+        const startMin = sh * 60 + sm;
+        const endMin = eh * 60 + em;
+        return sum + Math.max(0, endMin - startMin);
+      }, 0);
+      const remainingMinutes = handsOnCapMinutes - alreadyBookedMinutes;
+      if (remainingMinutes < effectiveDuration) {
+        // Cap hit: no slots offered. The booking page UI surfaces
+        // this with a 'Fully booked today' message rather than an
+        // empty list, so the client understands why.
+        raw = [];
+        setCapHitToday(true);
+      }
     }
 
     setSlots(scoreSlots(raw, booked, effectiveDuration, schedulingMode, efficientStrictness));
@@ -2967,7 +3002,11 @@ export default function BookingPage() {
                 {loadingSlots
                   ?<div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>Finding best times for you...</div>
                   :slots.length===0
-                    ?<div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>No availability on this day. Try another date.</div>
+                    ?<div style={{textAlign:'center',padding:'20px 0',color:C.gray,fontSize:13}}>
+                      {capHitToday
+                        ? 'Fully booked today. Try another date.'
+                        : 'No availability on this day. Try another date.'}
+                    </div>
                     :<div>
                       {slots.some(s=>s.recommended)&&(
                         <div style={{marginBottom:12}}>

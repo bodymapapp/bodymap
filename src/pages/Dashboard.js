@@ -205,6 +205,16 @@ function ServicesAndAvailability({ therapist }) {
   // Maximum advance window: how far in the future the client can
   // book. 0 = unlimited. Common values: 30, 60, 90 days.
   const [maxAdvanceDays, setMaxAdvanceDays] = React.useState(therapist?.maximum_advance_days ?? 0);
+  // Daily hands-on minutes cap (HK May 27 2026, Jacquie's ask).
+  // Limits how many minutes of bookable session time the public
+  // booking page will offer per day. 0 = no cap. Independent of
+  // working hours. Therapist can still book past the cap from her
+  // own dashboard; the cap only restricts the public booking page.
+  const [maxHandsOnMinutes, setMaxHandsOnMinutes] = React.useState(therapist?.max_hands_on_minutes_per_day ?? 0);
+  // Week start preference (HK May 27 2026). 0 = Sunday (default per
+  // HK, matches most US calendars), 1 = Monday. Affects calendar
+  // grid layout in Schedule and Settings tabs.
+  const [weekStartsOn, setWeekStartsOn] = React.useState(therapist?.week_starts_on ?? 0);
   // Efficient scheduling (Lindsey #7, May 10 2026). Two-level toggle:
   //   schedulingMode: 'normal' | 'efficient'
   //   efficientStrictness: 'soft' | 'hard' (only used when efficient)
@@ -264,6 +274,8 @@ function ServicesAndAvailability({ therapist }) {
     setDepositPercent(therapist?.deposit_percent || 20);
     setMinLeadHours(therapist?.minimum_advance_hours ?? 0);
     setMaxAdvanceDays(therapist?.maximum_advance_days ?? 0);
+    setMaxHandsOnMinutes(therapist?.max_hands_on_minutes_per_day ?? 0);
+    setWeekStartsOn(therapist?.week_starts_on ?? 0);
     setSchedulingMode(therapist?.scheduling_mode || 'normal');
     setEfficientStrictness(therapist?.efficient_strictness || 'soft');
     setAcceptTips(therapist?.accept_tips ?? true);
@@ -2225,6 +2237,87 @@ function ServicesAndAvailability({ therapist }) {
           </div>
           <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
             Common: 60-90 days. Set 0 for no limit.
+          </div>
+        </div>
+
+        {/* Daily hands-on hours cap (HK May 27 2026, Jacquie's ask).
+            MassageBook has this; we did not. Limits how many minutes
+            of session time the booking page will offer per day. The
+            therapist can still book past the cap from her own
+            dashboard; this only restricts the public booking page.
+            Default 0 = no cap, behaves exactly as before. */}
+        <div>
+          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
+            Daily hands-on cap
+          </label>
+          <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+            <InlineSaveNumberInput
+              value={maxHandsOnMinutes}
+              defaultValue={330}
+              placeholder="330"
+              onChange={setMaxHandsOnMinutes}
+              onSave={async (v) => {
+                await supabase.from('therapists').update({ max_hands_on_minutes_per_day: v || null }).eq('id', therapist.id);
+              }}
+              suffix="minutes"
+              min={0}
+              max={1440}
+              width={80}
+            />
+            <span style={{ fontSize:12, color:C2.gray }}>of bookable session time per day</span>
+          </div>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
+            Once today's bookings hit this many minutes, the booking page shows 'Fully booked today'. You can still book past it from your own dashboard. 330 minutes = 5.5 hours. Set 0 for no cap.
+          </div>
+        </div>
+
+        {/* Week start preference (HK May 27 2026, Jacquie's ask).
+            0 = Sunday (default), 1 = Monday. Affects calendar grid
+            layout in Schedule and Settings tabs. */}
+        <div>
+          <label style={{ display:'block', fontSize:13, fontWeight:600, color:C2.darkGray, marginBottom:6 }}>
+            Week starts on
+          </label>
+          <div style={{
+            display:'inline-flex',
+            background:'#F3F4F6',
+            borderRadius:999,
+            padding:3,
+            gap:3,
+          }}>
+            <button
+              type="button"
+              onClick={async () => {
+                setWeekStartsOn(0);
+                await supabase.from('therapists').update({ week_starts_on: 0 }).eq('id', therapist.id);
+              }}
+              style={{
+                background: weekStartsOn === 0 ? '#fff' : 'transparent',
+                color: weekStartsOn === 0 ? '#1F4030' : '#6B7280',
+                border:'none', borderRadius:999,
+                padding:'7px 16px',
+                fontSize:13, fontWeight:700, cursor:'pointer',
+                boxShadow: weekStartsOn === 0 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                fontFamily:'inherit',
+              }}>Sunday</button>
+            <button
+              type="button"
+              onClick={async () => {
+                setWeekStartsOn(1);
+                await supabase.from('therapists').update({ week_starts_on: 1 }).eq('id', therapist.id);
+              }}
+              style={{
+                background: weekStartsOn === 1 ? '#fff' : 'transparent',
+                color: weekStartsOn === 1 ? '#1F4030' : '#6B7280',
+                border:'none', borderRadius:999,
+                padding:'7px 16px',
+                fontSize:13, fontWeight:700, cursor:'pointer',
+                boxShadow: weekStartsOn === 1 ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+                fontFamily:'inherit',
+              }}>Monday</button>
+          </div>
+          <div style={{ fontSize:11, color:C2.gray, marginTop:6, lineHeight:1.5 }}>
+            Default Sunday. Affects how your calendar grid lays out across the Schedule and Settings tabs.
           </div>
         </div>
       </DisclosureRow>
