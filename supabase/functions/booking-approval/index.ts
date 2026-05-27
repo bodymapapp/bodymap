@@ -30,6 +30,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logNotification } from "../_shared/notifications.ts";
 
 const cors = {
   'Access-Control-Allow-Origin': '*',
@@ -46,7 +47,7 @@ function formatDateAndTime(booking: any) {
 
 async function sendResendEmail(apiKey: string, payload: Record<string, any>) {
   try {
-    await fetch('https://api.resend.com/emails', {
+    const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -54,8 +55,11 @@ async function sendResendEmail(apiKey: string, payload: Record<string, any>) {
       },
       body: JSON.stringify(payload),
     });
-  } catch (e) {
+    const data = await res.json().catch(() => ({}));
+    return { ok: res.ok, id: data.id, error: res.ok ? null : (data.message || JSON.stringify(data)) };
+  } catch (e: any) {
     console.warn('[booking-approval] resend send failed', e);
+    return { ok: false, id: null, error: String(e?.message || e) };
   }
 }
 
@@ -392,13 +396,35 @@ serve(async (req) => {
 </div></body></html>`;
       }
 
-      await sendResendEmail(RESEND_API_KEY, {
+      const clientEmailResult = await sendResendEmail(RESEND_API_KEY, {
         from: 'MyBodyMap <sessions@mybodymap.app>',
         to: [booking.client_email],
         bcc: ['bodymapdemo@gmail.com'],
         subject,
         html,
       });
+      // HK May 26 2026: previously this send fired without logging
+      // to notification_log, so the compliance dashboard and audit
+      // trail were blind to the approval-path emails. Now logged.
+      try {
+        await logNotification(supabase, {
+          therapist_id: booking.therapist_id || therapist?.id,
+          client_id: booking.client_id || null,
+          booking_id: booking.id,
+          notification_type: action === 'approve'
+            ? (chargeOutcome === 'succeeded' ? 'approval_confirmed_paid'
+              : chargeOutcome === 'failed' ? 'approval_confirmed_charge_failed'
+              : 'approval_confirmed_no_deposit')
+            : 'approval_declined',
+          audience: 'client',
+          channel: 'email',
+          recipient: booking.client_email,
+          status: clientEmailResult?.ok ? 'sent' : 'failed',
+          provider_id: clientEmailResult?.id || null,
+          error_message: clientEmailResult?.ok ? null : (clientEmailResult?.error || 'unknown'),
+          subject,
+        });
+      } catch (_) { /* non-blocking */ }
     }
 
     // ─── Email the therapist when a deposit was collected or failed ───
@@ -423,12 +449,27 @@ serve(async (req) => {
   <p style="font-size:13px;color:#6B7280;line-height:1.6;margin:14px 0 0;">No action needed from you.</p>
 </div>
 </div></body></html>`;
-        await sendResendEmail(RESEND_API_KEY, {
+        const therapistEmailResult = await sendResendEmail(RESEND_API_KEY, {
           from: 'MyBodyMap <hello@mybodymap.app>',
           to: [therapist.email],
           subject,
           html,
         });
+        try {
+          await logNotification(supabase, {
+            therapist_id: booking.therapist_id || therapist?.id,
+            client_id: booking.client_id || null,
+            booking_id: booking.id,
+            notification_type: 'deposit_collected',
+            audience: 'therapist',
+            channel: 'email',
+            recipient: therapist.email,
+            status: therapistEmailResult?.ok ? 'sent' : 'failed',
+            provider_id: therapistEmailResult?.id || null,
+            error_message: therapistEmailResult?.ok ? null : (therapistEmailResult?.error || 'unknown'),
+            subject,
+          });
+        } catch (_) { /* non-blocking */ }
       } else if (chargeOutcome === 'failed') {
         const subject = `Approved, but deposit charge failed for ${booking.client_name || 'client'}`;
         const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;font-family:system-ui,-apple-system,sans-serif;background:#F5F0E8;">
@@ -444,12 +485,27 @@ serve(async (req) => {
   <p style="font-size:12px;color:#6B7280;line-height:1.6;margin:14px 0 0;">Stripe error: ${(chargeError || 'Unknown').slice(0, 240)}</p>
 </div>
 </div></body></html>`;
-        await sendResendEmail(RESEND_API_KEY, {
+        const therapistFailResult = await sendResendEmail(RESEND_API_KEY, {
           from: 'MyBodyMap <hello@mybodymap.app>',
           to: [therapist.email],
           subject,
           html,
         });
+        try {
+          await logNotification(supabase, {
+            therapist_id: booking.therapist_id || therapist?.id,
+            client_id: booking.client_id || null,
+            booking_id: booking.id,
+            notification_type: 'deposit_charge_failed',
+            audience: 'therapist',
+            channel: 'email',
+            recipient: therapist.email,
+            status: therapistFailResult?.ok ? 'sent' : 'failed',
+            provider_id: therapistFailResult?.id || null,
+            error_message: therapistFailResult?.ok ? null : (therapistFailResult?.error || 'unknown'),
+            subject,
+          });
+        } catch (_) { /* non-blocking */ }
       }
     }
 
