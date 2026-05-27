@@ -1406,6 +1406,117 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [newPartnerEmail, setNewPartnerEmail] = useState(appt.partner_email || '');
   const [savingService, setSavingService] = useState(false);
   const [serviceEditError, setServiceEditError] = useState(null);
+  // Shape: { id, name, sessions_purchased, sessions_remaining,
+  //   used_count, this_session_number, expires_at, linked }
+  // Or null when no active package matches.
+  const [activePackage, setActivePackage] = useState(null);
+  // HK May 27 2026 Phase Pkg-C: detect the active package this
+  // booking is part of. Resolution order:
+  //   1. If booking has explicit package_purchase_id, use it.
+  //   2. Otherwise, find the most-recent active package_purchase for
+  //      this client_email that is applicable to this booking's
+  //      service_id (or applies to any service). The booking's
+  //      position in the package (1, 2, 3...) is computed from
+  //      bookings with the same client_email + therapist that fall
+  //      on or after purchased_at, ordered by booking_date.
+  // Same email-based linkage logic ClientPackageBalance uses, kept
+  // consistent so both surfaces show the same numbers.
+  useEffect(() => {
+    if (!appt?.id || !therapist?.id || appt.preview) return;
+    let alive = true;
+    (async () => {
+      try {
+        const email = (appt.email || '').toLowerCase().trim();
+        if (!email && !appt.package_purchase_id) {
+          setActivePackage(null);
+          return;
+        }
+
+        let purchases = [];
+
+        if (appt.package_purchase_id) {
+          // Explicit linkage path. Trust the FK.
+          const { data: p } = await supabase
+            .from('package_purchases')
+            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, client_email, package:packages(id, name, applicable_service_ids)')
+            .eq('id', appt.package_purchase_id)
+            .maybeSingle();
+          if (p) purchases = [p];
+        } else if (email) {
+          // Implicit linkage: any active package for this email
+          // that applies to this service (or any service).
+          const { data: ps } = await supabase
+            .from('package_purchases')
+            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, client_email, package:packages(id, name, applicable_service_ids)')
+            .eq('therapist_id', therapist.id)
+            .ilike('client_email', email)
+            .eq('status', 'active')
+            .order('purchased_at', { ascending: false });
+          purchases = ps || [];
+        }
+
+        if (!alive || purchases.length === 0) {
+          setActivePackage(null);
+          return;
+        }
+
+        // Pick the package whose applicable_service_ids includes this
+        // booking's service_id, OR has no restriction. Most-recent
+        // purchase wins.
+        const match = purchases.find(p => {
+          const apply = p.package?.applicable_service_ids;
+          if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
+          if (Array.isArray(apply)) return apply.includes(appt.service_id);
+          return false;
+        });
+        if (!match) { setActivePackage(null); return; }
+
+        // Compute "this is session N of M" by counting completed +
+        // confirmed bookings for this client+therapist that fall on
+        // or after the package purchase date, ordered chronologically.
+        // This booking's position = its rank in that ordered list.
+        const purchasedDate = match.purchased_at
+          ? new Date(match.purchased_at).toISOString().split('T')[0]
+          : '1970-01-01';
+        const { data: pkgBookings } = await supabase
+          .from('bookings')
+          .select('id, booking_date, start_time, status')
+          .eq('therapist_id', therapist.id)
+          .ilike('client_email', email)
+          .neq('status', 'cancelled')
+          .gte('booking_date', purchasedDate)
+          .order('booking_date', { ascending: true })
+          .order('start_time', { ascending: true });
+
+        if (!alive) return;
+
+        let thisSessionNumber = 1;
+        let usedCount = 0;
+        for (let i = 0; i < (pkgBookings || []).length; i++) {
+          const b = pkgBookings[i];
+          if (b.id === appt.id) {
+            thisSessionNumber = i + 1;
+          }
+          if (b.status === 'completed') usedCount += 1;
+        }
+
+        setActivePackage({
+          id: match.id,
+          name: match.package?.name || 'Package',
+          sessions_purchased: match.sessions_purchased,
+          sessions_remaining: match.sessions_remaining,
+          used_count: usedCount,
+          this_session_number: thisSessionNumber,
+          expires_at: match.expires_at,
+          linked: !!appt.package_purchase_id,
+        });
+      } catch (err) {
+        console.warn('[package detect] failed:', err);
+        if (alive) setActivePackage(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [appt?.id, appt?.email, appt?.service_id, appt?.package_purchase_id, therapist?.id, appt?.preview]);
   // Phase 12: Checkout modal. Phase 19 (May 18 2026) folded MarkAsPaid
   // into the same modal so there is now just one charge modal.
   const [showCheckout, setShowCheckout] = useState(false);
@@ -2037,6 +2148,41 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
       partner_email: isCouples ? newPartnerEmail.trim() : null,
     };
 
+    // HK May 27 2026 Phase Pkg-C: if the new service has an active
+    // package_purchase that covers it for this client, link the
+    // booking to that package explicitly. This makes the linkage
+    // durable (not inferred) so future surfaces (Stripe receipts,
+    // client portal, audit log) can show "session 3 of pack X" with
+    // confidence. If serviceChanged and activePackage already exists
+    // and matches the new service, just keep the linkage. If the
+    // service changed to one not covered, clear the FK.
+    if (serviceChanged) {
+      if (activePackage && activePackage.id) {
+        // activePackage detection runs on appt.service_id changes
+        // (above useEffect). For an edit that switches services, we
+        // need to re-check whether the NEW service is in the
+        // package's applicable_service_ids. Cheapest: re-query.
+        try {
+          const { data: pkg } = await supabase
+            .from('package_purchases')
+            .select('id, package:packages(applicable_service_ids)')
+            .eq('id', activePackage.id)
+            .maybeSingle();
+          const apply = pkg?.package?.applicable_service_ids;
+          const covered = !apply
+            || (Array.isArray(apply) && apply.length === 0)
+            || (Array.isArray(apply) && apply.includes(newServiceId));
+          updates.package_purchase_id = covered ? activePackage.id : null;
+        } catch (_) {
+          // Non-blocking; leave FK as-is on error.
+        }
+      } else if (appt.package_purchase_id) {
+        // Service changed to one not covered by any active package.
+        // Clear the existing FK so we don't leave a stale link.
+        updates.package_purchase_id = null;
+      }
+    }
+
     const { error: updateErr } = await supabase.from('bookings').update(updates).eq('id', appt.id);
     if (updateErr) {
       console.error('saveServiceEdit update error:', updateErr);
@@ -2393,6 +2539,58 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </div>
             </div>
           </div>
+
+          {/* HK May 27 2026 Phase Pkg-C: prominent package badge.
+              70yo persona = big text, sage palette, plain English.
+              Jacquie's concern: "This was session 3 or 4 in a
+              package, not a new $300 package, and the same with
+              Sandy's." Solution: surface the package linkage
+              loudly on the booking so the therapist can see at a
+              glance "this is part of an existing pack, not a new
+              charge." */}
+          {!appt.preview && activePackage && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 10,
+              marginTop: 10,
+              padding: '12px 14px',
+              borderRadius: 10,
+              background: '#EEF3EE',
+              border: '1.5px solid #9DBEA1',
+            }}>
+              <span style={{ fontSize: 18, lineHeight: 1.2 }}>📦</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: '#1F4030',
+                  lineHeight: 1.3,
+                  marginBottom: 2,
+                }}>
+                  Session {activePackage.this_session_number} of {activePackage.sessions_purchased} in <span style={{fontStyle:'italic'}}>{activePackage.name}</span>
+                </div>
+                <div style={{
+                  fontSize: 12,
+                  color: '#2A5741',
+                  lineHeight: 1.5,
+                }}>
+                  {activePackage.sessions_purchased - activePackage.used_count} session{activePackage.sessions_purchased - activePackage.used_count === 1 ? '' : 's'} left in this package. This session draws from that balance, not a new charge.
+                  {!activePackage.linked && (
+                    <span style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 11,
+                      color: '#6B7280',
+                      fontStyle: 'italic',
+                    }}>
+                      Matched by client email and purchase date.
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* HK May 25 2026 (Phase 20.1): single highest-priority
               insight line under the status row. Surfaces medical

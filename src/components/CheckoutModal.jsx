@@ -126,6 +126,142 @@ export default function CheckoutModal({
   const [linkDelivery, setLinkDelivery] = useState('sms'); // 'sms' | 'email' | 'both'
   const [linkUrl, setLinkUrl] = useState(null);
 
+  // HK May 27 2026 Phase Pkg-C: redeem-from-package detection for
+  // booking charges. Shape: { id, name, sessions_purchased,
+  // sessions_remaining, used_count, this_session_number, expires_at }
+  // Or null when not in booking context, or no active package
+  // covers this booking's service. Same email + service_id
+  // matching logic DetailPanel uses for the badge.
+  const [redeemablePackage, setRedeemablePackage] = useState(null);
+  const [redeeming, setRedeeming] = useState(false);
+  useEffect(() => {
+    // Only relevant for booking charges, not new package/subscription.
+    if (!appt?.id || isSubscription || isPackage) {
+      setRedeemablePackage(null);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      try {
+        const email = (appt.email || appt.client_email || '').toLowerCase().trim();
+        if (!email && !appt.package_purchase_id) {
+          setRedeemablePackage(null);
+          return;
+        }
+        let candidates = [];
+        if (appt.package_purchase_id) {
+          const { data: p } = await supabase
+            .from('package_purchases')
+            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, package:packages(id, name, applicable_service_ids)')
+            .eq('id', appt.package_purchase_id)
+            .maybeSingle();
+          if (p) candidates = [p];
+        } else if (email) {
+          const { data: ps } = await supabase
+            .from('package_purchases')
+            .select('id, sessions_purchased, sessions_remaining, status, purchased_at, expires_at, package:packages(id, name, applicable_service_ids)')
+            .eq('therapist_id', therapist.id)
+            .ilike('client_email', email)
+            .eq('status', 'active')
+            .order('purchased_at', { ascending: false });
+          candidates = ps || [];
+        }
+        const match = candidates.find(p => {
+          if (p.sessions_remaining <= 0) return false;
+          const apply = p.package?.applicable_service_ids;
+          if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
+          if (Array.isArray(apply)) return apply.includes(appt.service_id);
+          return false;
+        });
+        if (!alive) return;
+        if (match) {
+          setRedeemablePackage({
+            id: match.id,
+            name: match.package?.name || 'Package',
+            sessions_purchased: match.sessions_purchased,
+            sessions_remaining: match.sessions_remaining,
+            expires_at: match.expires_at,
+          });
+        } else {
+          setRedeemablePackage(null);
+        }
+      } catch (err) {
+        console.warn('[checkout package detect] failed:', err);
+        if (alive) setRedeemablePackage(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [appt?.id, appt?.email, appt?.client_email, appt?.service_id, appt?.package_purchase_id, therapist?.id, isSubscription, isPackage]);
+
+  // Redeem one credit from the matched package for this booking.
+  // Writes:
+  //   - session_payments row at $0 with package_purchase_id set
+  //     (so the booking renders as 'paid' in the schedule)
+  //   - package_redemptions row (audit of which package + booking)
+  //   - bookings.package_purchase_id (explicit linkage going forward)
+  //   - decrements package_purchases.sessions_remaining
+  // Last-write-wins on sessions_remaining is acceptable here since
+  // the therapist is the only writer for this row in practice.
+  async function chargeFromPackage() {
+    if (!client?.id || !redeemablePackage?.id) return;
+    setRedeeming(true);
+    setErrorMsg(null);
+    try {
+      const { data: insertedPayment, error: payErr } = await supabase
+        .from('session_payments')
+        .insert({
+          booking_id: appt.id,
+          member_subscription_id: null,
+          member_subscription_renewal_id: null,
+          package_purchase_id: redeemablePackage.id,
+          therapist_id: therapist.id,
+          client_id: client.id,
+          amount_cents: 0,
+          tip_cents: 0,
+          payment_method: 'package_redemption',
+          payment_method_detail: redeemablePackage.name,
+          status: 'succeeded',
+          paid_at: new Date().toISOString(),
+          created_by_therapist_id: therapist.id,
+        })
+        .select('id')
+        .single();
+      if (payErr) throw new Error(payErr.message);
+
+      // Redemption audit row
+      await supabase.from('package_redemptions').insert({
+        package_purchase_id: redeemablePackage.id,
+        booking_id: appt.id,
+        notes: `Session redeemed: ${appt.service || 'Session'}`,
+      });
+
+      // Decrement remaining counter. If it hits 0, mark exhausted.
+      const newRemaining = Math.max(0, (redeemablePackage.sessions_remaining || 0) - 1);
+      const pkgUpdate = { sessions_remaining: newRemaining };
+      if (newRemaining === 0) pkgUpdate.status = 'exhausted';
+      await supabase.from('package_purchases').update(pkgUpdate).eq('id', redeemablePackage.id);
+
+      // Link booking to the package explicitly if not already
+      if (!appt.package_purchase_id) {
+        await supabase.from('bookings').update({ package_purchase_id: redeemablePackage.id }).eq('id', appt.id);
+      }
+
+      setSuccessDetail({
+        method: 'Redeemed from package',
+        amount: 0,
+        package_name: redeemablePackage.name,
+        sessions_left: newRemaining,
+      });
+      setStep('success');
+      if (typeof onPaid === 'function') onPaid();
+    } catch (err) {
+      console.error('chargeFromPackage error:', err);
+      setErrorMsg(err.message || 'Could not redeem the package. Try again.');
+    } finally {
+      setRedeeming(false);
+    }
+  }
+
   // Load card on file
   useEffect(() => {
     if (!client?.id) return;
@@ -1076,6 +1212,9 @@ export default function CheckoutModal({
                   onCardNew={() => setStep('card_new')}
                   onSendLink={() => setStep('send_link')}
                   onMarkPaid={() => setStep('offline')}
+                  redeemablePackage={redeemablePackage}
+                  onRedeemPackage={chargeFromPackage}
+                  redeeming={redeeming}
                   isSubscription={isSubscription}
                   isPackage={isPackage}
                   validAmount={validAmount}
@@ -1363,7 +1502,7 @@ function Field({ label, value, setValue, prefix, inputRef }) {
   );
 }
 
-function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, isSubscription, isPackage, validAmount, stripeConnected, squareConnected, onClose }) {
+function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkPaid, redeemablePackage, onRedeemPackage, redeeming, isSubscription, isPackage, validAmount, stripeConnected, squareConnected, onClose }) {
   // Either processor unlocks the card-based methods. HK May 22 2026:
   // we support Stripe AND Square as equally first-class processors;
   // the therapist picks whichever they already use, or connects both
@@ -1377,6 +1516,22 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
         How is the client paying?
       </div>
 
+      {/* HK May 27 2026 Phase Pkg-C: redeem from existing package.
+          Shown FIRST so it lands as the default expected action.
+          Jacquie's case: session 3 of a 4-pack should be one tap
+          'use existing package', not 'enter $300 again'.
+          70yo persona: sage green primary, plain English, prominent. */}
+      {redeemablePackage && (
+        <MethodButton
+          onClick={onRedeemPackage}
+          disabled={redeeming || redeemablePackage.sessions_remaining <= 0}
+          icon="📦"
+          title={redeeming ? 'Redeeming...' : `Use existing package · ${redeemablePackage.sessions_remaining} left`}
+          subtitle={`${redeemablePackage.name}. This session draws from the pack, no new charge.`}
+          primary
+        />
+      )}
+
       {/* Mark as paid: always available. Cash, check, Venmo, Zelle,
           trade, or paid-before-switching-over scenarios. This is the
           critical path for therapists who don't take card payments,
@@ -1388,7 +1543,7 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
         icon="💵"
         title="Mark as paid"
         subtitle="Cash, check, Venmo, Zelle, trade, or other offline payment"
-        primary={!hasProcessor || (isSubscription && !cardOnFile)}
+        primary={!redeemablePackage && (!hasProcessor || (isSubscription && !cardOnFile))}
       />
 
       {/* Card-based methods: shown only when EITHER Stripe or Square
@@ -1405,7 +1560,7 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
               icon="💳"
               title="Card on file"
               subtitle={`${cardOnFile.brand} ending in ${cardOnFile.last4}`}
-              primary
+              primary={!redeemablePackage}
             />
           )}
           {/* HK May 24 2026: removed !isSubscription gate. All three
@@ -1420,7 +1575,7 @@ function MethodPicker({ cardOnFile, onCardOnFile, onCardNew, onSendLink, onMarkP
             icon="🪪"
             title="Enter new card"
             subtitle="Type card number now"
-            primary={!cardOnFile}
+            primary={!cardOnFile && !redeemablePackage}
           />
           {/* Send pay link (Phase 19.4): supports bookings AND
               subscriptions. For packages, the create-payment-link
@@ -1687,11 +1842,17 @@ function SuccessView({ detail, onClose, linkUrl, linkDelivery, clientPhone, clie
   //   - Session: 'Charged $X' / 'Session recorded as paid'
   //   - Membership: '[Plan name] paid for June 2026' or similar
   //   - Package: '[Plan name] active' + '[N] sessions ready to use'
+  //   - Package redemption (HK May 27 2026 Phase Pkg-C): one credit
+  //     drawn from existing package, no charge.
   let headline;
   let subline;
+  const isPackageRedemption = detail?.method === 'Redeemed from package';
   if (isLink) {
     headline = 'Payment link ready';
     subline = 'Send it to your client through their preferred channel.';
+  } else if (isPackageRedemption) {
+    headline = 'Session drawn from package';
+    subline = `${detail?.package_name || 'Package'}. ${detail?.sessions_left} session${detail?.sessions_left === 1 ? '' : 's'} left in this package.`;
   } else if (isPackage) {
     headline = `${contextName || 'Package'} active`;
     subline = `${detail?.method} · ${(detail?.detail ? detail.detail + ' · ' : '')}${contextDetail || 'Sessions ready to use'}.`;
