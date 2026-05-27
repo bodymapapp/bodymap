@@ -113,6 +113,32 @@ Last refreshed: 2026-05-02 — after Tier A0 smart defaults shipped + Comparison
 
    **Status May 27 2026:** seed UI shipping in Commit 2 (calendar marks the dates, popover says "coming soon"). Full feature parked here until distribution traction warrants the build.
 
+17. **Schedule load perf (instrumented May 27 2026).** HK reported Schedule taking minutes on multiple connections. Real numbers from one therapist (Joy demo, 595 bookings, 234 sessions, 2 blocked days):
+
+    ```
+    auth.getUser: 463ms
+    bookings query: 502ms (595 rows)
+    sessions query: 1250ms (234 rows, IN with 595 ids) LARGEST
+    session_payments query: 312ms (6 rows)
+    external_calendar_events query: 129ms (0 rows)
+    fetchBookings TOTAL: 2.7s
+    loadBlockedDays: 622ms (2 rows) HIGH FOR ROW COUNT
+    ```
+
+    Findings:
+    - The `.in('booking_id', [...595 ids])` sessions query is the largest bite (1.25s). Switching to a subquery or therapist_id-scoped fetch may be cleaner.
+    - loadBlockedDays takes 622ms for 2 rows. Pure network round-trip. RLS may be evaluating policies per-row.
+    - Total of 2.7s is real but not "minutes" as initially reported. Possible the user-perceived "minutes" includes JS bundle parse, initial route hydration, or an earlier slow render path no longer present.
+
+    Fixes to evaluate (in order of likely impact):
+    a. Replace `sessions.in('booking_id', [ids])` with `sessions.eq('therapist_id', t.id).gte('booking_date', past).lte('booking_date', future)` and join client-side.
+    b. Parallelize sessions + session_payments + external_calendar_events instead of awaiting sequentially.
+    c. Add composite Postgres index `(therapist_id, booking_date)` on bookings if not already present.
+    d. Investigate loadBlockedDays 622ms for 2 rows: index check on `(therapist_id, date)`.
+    e. Move all schedule data fetches to a single RPC that returns shaped data so the client makes one round trip instead of 4.
+
+    Out of scope today. HK to confirm whether the perceived "minutes" still happens after deploy or whether 2.7s matches reality.
+
 ## TIER S — DISTRIBUTION (do this week, not products)
 
 **Context:** Distribution is the unsolved problem, not product. The May 1-2 FB Massage Therapists Community thread surfaced an active shopping conversation where therapists are LITERALLY asking "MassageBook vs Vagaro vs Noterro" right now. Pricing pain is dominant ("MassageBook just raised prices, very disappointing"). Free Bronze tier is the answer to a question they're asking out loud. These items are about being present in those conversations, not building more product.

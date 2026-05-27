@@ -6212,21 +6212,9 @@ export default function ScheduleDashboard({ therapist }) {
               color: '#1F4030',
               letterSpacing: '-0.005em',
             }}>
-              Block off time
+              Manage your calendar and time off
             </div>
-            <button
-              type="button"
-              onClick={() => setShowBlockPanel(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#6B7280',
-                cursor: 'pointer',
-                fontSize: 18,
-                lineHeight: 1,
-                padding: 4,
-              }}
-              aria-label="Close panel">×</button>
+            <CloseButton onClick={() => setShowBlockPanel(false)} label="Close calendar" />
           </div>
           <CalendarGrid therapist={therapist} embedded firstOpen={!hasSeenCalendarCoaching} onCoachingSeen={markCalendarCoachingSeen} />
         </div>

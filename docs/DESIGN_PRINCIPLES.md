@@ -713,6 +713,43 @@ it with `ChevronButton`.
 
 ---
 
+## 26. Close affordances use the standardized CloseButton. Never a bare × glyph.
+
+**Rule.** Any modal, sheet, drawer, or expandable panel that can be
+closed uses the `CloseButton` component from
+`src/components/CloseButton.jsx`. A labeled pill with adequate tap
+target (44px min height), readable text ("Close", "Done", "Cancel"),
+neutral styling. No bare `×` glyphs in panel headers, no tiny SVG
+crosses, no unicode characters.
+
+**Why a labeled pill, not a bare ×.** Same accessibility reasoning
+as ChevronButton (rule #25). The 70-year-old persona does not
+reliably read `×` as "close." Some try to type into it. Some see it
+as "delete" and worry they're erasing data. The bare × is also
+usually the smallest tap target on a screen, which fails for thumbs.
+A labeled pill with adequate hit area solves both problems.
+
+**Incident: May 27 2026, calendar panel close affordance.**
+The Manage Your Calendar panel header was rendering a bare `×`
+glyph. HK: "The top cross on top right is almost invisible. We need
+to standardize how to close windows just like we did for expanding
+chevrons."
+
+CloseButton already existed (May 16 2026 from a previous similar
+incident) but the calendar panel was not using it.
+
+**Cost.** Same-day fix: replaced bare × with `<CloseButton
+onClick={...} label="Close calendar" />`. Net gain: instantly
+visible, instantly understood. Future panels must use CloseButton
+from the start.
+
+**Test before shipping any panel/modal/sheet UI.** "Is this using
+`CloseButton`? Did I import it?" If you wrote a bare × or a small
+SVG cross anywhere as a close affordance, replace it with
+CloseButton.
+
+---
+
 ## How to use this document
 
 - **Before opening a new file or section:** check rule #1.
