@@ -1389,6 +1389,23 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
   const [newStartTime, setNewStartTime] = useState(appt.startTime || '');
   const [newEndTime, setNewEndTime] = useState(appt.endTime || '');
   const [savingTime, setSavingTime] = useState(false);
+  // HK May 27 2026: service editing state. Lets therapist change
+  // service type, duration, location, addons, and partner info on
+  // an existing booking. Locked if a payment has been recorded
+  // (Option C: refund-then-rebook for paid bookings).
+  const [editService, setEditService] = useState(false);
+  const [serviceCatalog, setServiceCatalog] = useState([]);
+  const [locationCatalog, setLocationCatalog] = useState([]);
+  const [addonCatalog, setAddonCatalog] = useState([]);
+  const [serviceCatalogLoaded, setServiceCatalogLoaded] = useState(false);
+  const [newServiceId, setNewServiceId] = useState(appt.service_id || null);
+  const [newDuration, setNewDuration] = useState(appt.duration || 60);
+  const [newLocationId, setNewLocationId] = useState(appt.location_id || null);
+  const [newAddonIds, setNewAddonIds] = useState(appt.addon_ids || []);
+  const [newPartnerName, setNewPartnerName] = useState(appt.partner_name || '');
+  const [newPartnerEmail, setNewPartnerEmail] = useState(appt.partner_email || '');
+  const [savingService, setSavingService] = useState(false);
+  const [serviceEditError, setServiceEditError] = useState(null);
   // Phase 12: Checkout modal. Phase 19 (May 18 2026) folded MarkAsPaid
   // into the same modal so there is now just one charge modal.
   const [showCheckout, setShowCheckout] = useState(false);
@@ -1817,6 +1834,262 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
     onCancelled?.();
   }
 
+  // HK May 27 2026: lazy-load the service / location / addon catalogs
+  // the first time the therapist taps the service edit pencil. Avoids
+  // unnecessary fetches on every DetailPanel open (the catalogs are
+  // only needed if the therapist actually wants to edit). Same query
+  // shape as BookingModal so we get a consistent view of "what is
+  // bookable right now."
+  async function loadServiceCatalog() {
+    if (serviceCatalogLoaded) return;
+    try {
+      const [{ data: svcs }, { data: locs }, { data: addons }] = await Promise.all([
+        supabase.from('services')
+          .select('id, name, duration, price, is_couples, location_ids')
+          .eq('therapist_id', therapist.id)
+          .eq('active', true)
+          .is('archived_at', null)
+          .order('sort_order', { ascending: true }),
+        supabase.from('therapist_locations')
+          .select('id, name')
+          .eq('therapist_id', therapist.id)
+          .eq('active', true)
+          .order('sort_order', { ascending: true }),
+        supabase.from('service_addons')
+          .select('id, name, price, extra_minutes, applicable_service_ids')
+          .eq('therapist_id', therapist.id)
+          .eq('active', true)
+          .order('display_order'),
+      ]);
+      setServiceCatalog(svcs || []);
+      setLocationCatalog(locs || []);
+      setAddonCatalog(addons || []);
+      setServiceCatalogLoaded(true);
+    } catch (err) {
+      console.error('loadServiceCatalog error:', err);
+      setServiceEditError('Could not load services. Try again.');
+    }
+  }
+
+  // Toggle the service editor. On open, ensure the catalog is loaded
+  // and seed the form fields from the current booking. On close,
+  // discard any unsaved edits.
+  async function toggleServiceEditor() {
+    const opening = !editService;
+    if (opening) {
+      await loadServiceCatalog();
+      setNewServiceId(appt.service_id || null);
+      setNewDuration(appt.duration || 60);
+      setNewLocationId(appt.location_id || null);
+      setNewAddonIds(appt.addon_ids || []);
+      setNewPartnerName(appt.partner_name || '');
+      setNewPartnerEmail(appt.partner_email || '');
+      setServiceEditError(null);
+    }
+    setEditService(opening);
+  }
+
+  // HK May 27 2026: save the edited service / duration / location /
+  // addons / partner to the bookings row. Steps:
+  //   1. Option C payment guard: if there is paid money on this
+  //      booking, BLOCK service+duration changes. Show the refund
+  //      banner instead. Addons + location + partner still editable
+  //      since those usually do not change the price recorded as paid.
+  //   2. Compute new end_time from new duration (start_time stays).
+  //   3. Conflict detection: query other bookings on same date that
+  //      overlap [start, new_end) excluding self. If any, block save
+  //      and show specific conflict.
+  //   4. Update bookings row with all changed fields.
+  //   5. Write booking_history row with before/after JSONB.
+  //   6. Fire notify-booking-event reschedule notice if duration
+  //      changed.
+  //   7. Refresh parent on success.
+  async function saveServiceEdit() {
+    setSavingService(true);
+    setServiceEditError(null);
+
+    const isPaid = (appt.paid_cents || 0) > 0;
+    const serviceChanged = newServiceId !== (appt.service_id || null);
+    const durationChanged = newDuration !== (appt.duration || 60);
+
+    // Payment guard (Option C)
+    if (isPaid && (serviceChanged || durationChanged)) {
+      setServiceEditError(
+        `This session has $${((appt.paid_cents || 0) / 100).toFixed(2)} already paid. Refund the payment before changing the service or duration. You can change location, add-ons, or partner info without refunding.`
+      );
+      setSavingService(false);
+      return;
+    }
+
+    // Couples partner validation
+    const newService = serviceCatalog.find(s => s.id === newServiceId);
+    const isCouples = !!(newService?.is_couples);
+    if (isCouples && !newPartnerName.trim()) {
+      setServiceEditError('Couples service: partner name is required.');
+      setSavingService(false);
+      return;
+    }
+
+    // Compute new end_time from new duration. Booking start_time is
+    // canonical; we just shift the end. addon_extra_minutes is folded
+    // into the duration the therapist sees (newDuration already
+    // reflects what the picker shows), so end_time math is direct.
+    const startTimeStr = appt.startTime || (appt.time ? null : null);
+    if (!startTimeStr) {
+      setServiceEditError('Could not read this booking\'s start time. Refresh and try again.');
+      setSavingService(false);
+      return;
+    }
+    const [sh, sm] = startTimeStr.split(':').map(Number);
+    const startMin = sh * 60 + sm;
+    const endMin = startMin + newDuration;
+    const newEndH = String(Math.floor(endMin / 60) % 24).padStart(2, '0');
+    const newEndM = String(endMin % 60).padStart(2, '0');
+    const newEndStr = `${newEndH}:${newEndM}:00`;
+
+    // Conflict detection: query bookings on the same date that
+    // overlap the proposed time window. Excludes self and cancelled.
+    if (durationChanged) {
+      const { data: dayBookings, error: conflictErr } = await supabase
+        .from('bookings')
+        .select('id, start_time, end_time, client_name')
+        .eq('therapist_id', therapist.id)
+        .eq('booking_date', appt.booking_date)
+        .neq('status', 'cancelled')
+        .neq('id', appt.id);
+      if (conflictErr) {
+        setServiceEditError('Could not check for conflicts. Try again.');
+        setSavingService(false);
+        return;
+      }
+      const newStartFull = `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}:00`;
+      const conflict = (dayBookings || []).find(b => {
+        // overlap: not (this.end <= other.start OR this.start >= other.end)
+        return !(newEndStr <= b.start_time || newStartFull >= b.end_time);
+      });
+      if (conflict) {
+        const t12 = (timeStr) => {
+          const [h, m] = timeStr.split(':').map(Number);
+          const ampm = h >= 12 ? 'PM' : 'AM';
+          const h12 = h % 12 === 0 ? 12 : h % 12;
+          return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+        };
+        setServiceEditError(
+          `This duration would overlap with ${conflict.client_name || 'another booking'} at ${t12(conflict.start_time.slice(0, 5))}. Pick a shorter duration or reschedule that booking first.`
+        );
+        setSavingService(false);
+        return;
+      }
+    }
+
+    // Recompute addon totals from selected addon ids
+    const selectedAddons = (addonCatalog || []).filter(a => (newAddonIds || []).includes(a.id));
+    const addonTotalPrice = selectedAddons.reduce((sum, a) => sum + Number(a.price || 0), 0);
+    const addonExtraMinutes = selectedAddons.reduce((sum, a) => sum + Number(a.extra_minutes || 0), 0);
+
+    // Capture before snapshot for audit
+    const beforeSnapshot = {
+      service_id: appt.service_id,
+      service_name: appt.service,
+      duration: appt.duration,
+      location_id: appt.location_id,
+      location_name: appt.locationName,
+      addon_ids: appt.addon_ids,
+      partner_name: appt.partner_name,
+      partner_email: appt.partner_email,
+      end_time: appt.endTime,
+    };
+    const afterSnapshot = {
+      service_id: newServiceId,
+      service_name: newService?.name || null,
+      duration: newDuration,
+      location_id: newLocationId,
+      location_name: (locationCatalog.find(l => l.id === newLocationId) || {}).name || null,
+      addon_ids: newAddonIds,
+      partner_name: isCouples ? newPartnerName.trim() : null,
+      partner_email: isCouples ? newPartnerEmail.trim() : null,
+      end_time: `${newEndH}:${newEndM}`,
+    };
+
+    // Determine change_type for the audit row
+    const changes = [];
+    if (serviceChanged) changes.push('service');
+    if (durationChanged) changes.push('duration');
+    if (newLocationId !== (appt.location_id || null)) changes.push('location');
+    if (JSON.stringify(newAddonIds.sort()) !== JSON.stringify((appt.addon_ids || []).slice().sort())) changes.push('addons');
+    if (newPartnerName.trim() !== (appt.partner_name || '') || newPartnerEmail.trim() !== (appt.partner_email || '')) changes.push('partner');
+    if (changes.length === 0) {
+      setServiceEditError('No changes to save.');
+      setSavingService(false);
+      return;
+    }
+    const changeType = changes.length === 1 ? changes[0] : 'multiple';
+
+    // Build updates payload
+    const updates = {
+      service_id: newServiceId,
+      location_id: newLocationId,
+      addon_ids: newAddonIds,
+      addon_total_price: addonTotalPrice,
+      addon_extra_minutes: addonExtraMinutes,
+      end_time: newEndStr,
+      partner_name: isCouples ? newPartnerName.trim() : null,
+      partner_email: isCouples ? newPartnerEmail.trim() : null,
+    };
+
+    const { error: updateErr } = await supabase.from('bookings').update(updates).eq('id', appt.id);
+    if (updateErr) {
+      console.error('saveServiceEdit update error:', updateErr);
+      setServiceEditError('Could not save the change. Try again.');
+      setSavingService(false);
+      return;
+    }
+
+    // Audit row. Non-blocking: if this fails the booking is still
+    // updated correctly; the missing audit row is a known degradation
+    // but not a user-facing failure.
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from('booking_history').insert({
+        booking_id: appt.id,
+        therapist_id: therapist.id,
+        change_type: changeType,
+        before_snapshot: beforeSnapshot,
+        after_snapshot: afterSnapshot,
+        changed_by_user_id: user?.id || null,
+      });
+    } catch (auditErr) {
+      console.warn('booking_history insert failed:', auditErr);
+    }
+
+    // Notify reschedule if duration changed (same as time-edit path).
+    // Service-only changes do not fire the C10 reschedule email
+    // because the client's calendar entry doesn't shift.
+    if (durationChanged) {
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        fetch(`${supabaseUrl}/functions/v1/notify-booking-event`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${anonKey}`,
+            'apikey': anonKey,
+          },
+          body: JSON.stringify({
+            booking_id: appt.id,
+            event_type: 'reschedule',
+            reschedule_prev: { prev_date: appt.booking_date, prev_time: startTimeStr },
+          }),
+        }).catch(() => {});
+      } catch (_) {}
+    }
+
+    setSavingService(false);
+    setEditService(false);
+    onCancelled?.();
+  }
+
   async function cancelAppointment() {
     setCancelling(true);
     await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', appt.id);
@@ -2092,7 +2365,28 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
                     </button>
                   )}
                 </div>
-                <div style={{fontSize:12,color:'#6B7280',marginTop:2}}>{appt.service||'Session'}</div>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                  <div style={{fontSize:12,color:'#6B7280'}}>{appt.service||'Session'}</div>
+                  {!appt.preview && (
+                    <button onClick={toggleServiceEditor}
+                      title={editService ? 'Cancel service edit' : 'Edit service, duration, location, add-ons'}
+                      aria-label={editService ? 'Cancel service edit' : 'Edit service'}
+                      style={{
+                        background:'transparent',
+                        border:'1px solid #D1D5DB',
+                        borderRadius:8,
+                        padding:'2px 6px',
+                        fontSize:10,
+                        lineHeight:1,
+                        color:'#6B7280',
+                        cursor:'pointer',
+                        fontFamily:'inherit',
+                        flexShrink:0,
+                      }}>
+                      {editService ? '✕' : '✏️'}
+                    </button>
+                  )}
+                </div>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
                 <div style={{background:st.bg,color:st.color,borderRadius:20,padding:'4px 10px',fontSize:11,fontWeight:700}}>{st.icon} {st.label}</div>
@@ -2151,6 +2445,211 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
               </button>
             </div>
           )}
+
+          {editService && !appt.preview && (() => {
+            const isPaid = (appt.paid_cents || 0) > 0;
+            const selectedService = serviceCatalog.find(s => s.id === newServiceId);
+            const isCouplesService = !!(selectedService?.is_couples);
+            const applicableAddons = (addonCatalog || []).filter(a => {
+              const apply = a.applicable_service_ids;
+              if (!apply || (Array.isArray(apply) && apply.length === 0)) return true;
+              if (Array.isArray(apply)) return apply.includes(newServiceId);
+              return true;
+            });
+            // Duration options: the selected service's default + a few
+            // common neighbors (30, 60, 75, 90, 120). Therapist can also
+            // pick the original duration on this booking even if it
+            // doesn't match the new service's default.
+            const baseDurations = [30, 45, 60, 75, 90, 120];
+            const durationOptions = Array.from(new Set([
+              selectedService?.duration || 60,
+              appt.duration || 60,
+              ...baseDurations,
+            ])).sort((a, b) => a - b);
+
+            return (
+              <div style={{background:'#FFF7ED',border:'1.5px solid #FED7AA',borderRadius:10,padding:'14px 16px'}}>
+                <div style={{fontSize:12,fontWeight:700,color:'#9A3412',marginBottom:10}}>Edit service</div>
+
+                {isPaid && (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#991B1B',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    fontSize: 12,
+                    marginBottom: 12,
+                    lineHeight: 1.5,
+                  }}>
+                    💚 <strong>${((appt.paid_cents || 0) / 100).toFixed(2)} already paid.</strong> Service and duration cannot be changed on a paid booking. Refund the payment first, then re-edit. Location, add-ons, and partner info can still be changed.
+                  </div>
+                )}
+
+                {/* Service picker */}
+                <div style={{marginBottom:12}}>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Service</label>
+                  <select
+                    value={newServiceId || ''}
+                    onChange={e => {
+                      const val = e.target.value || null;
+                      setNewServiceId(val);
+                      const svc = serviceCatalog.find(s => s.id === val);
+                      if (svc?.duration) setNewDuration(svc.duration);
+                    }}
+                    disabled={isPaid}
+                    style={{
+                      width:'100%',
+                      padding:'9px 10px',
+                      border:'1.5px solid #D1D5DB',
+                      borderRadius:8,
+                      fontSize:14,
+                      outline:'none',
+                      boxSizing:'border-box',
+                      background: isPaid ? '#F3F4F6' : '#fff',
+                      color: isPaid ? '#9CA3AF' : '#1F2937',
+                      fontFamily:'inherit',
+                    }}>
+                    {serviceCatalog.length === 0 && <option>Loading...</option>}
+                    {serviceCatalog.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}{s.is_couples ? ' (couples)' : ''} · {s.duration}min · ${Number(s.price).toFixed(0)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Duration picker */}
+                <div style={{marginBottom:12}}>
+                  <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Duration</label>
+                  <select
+                    value={newDuration}
+                    onChange={e => setNewDuration(Number(e.target.value))}
+                    disabled={isPaid}
+                    style={{
+                      width:'100%',
+                      padding:'9px 10px',
+                      border:'1.5px solid #D1D5DB',
+                      borderRadius:8,
+                      fontSize:14,
+                      outline:'none',
+                      boxSizing:'border-box',
+                      background: isPaid ? '#F3F4F6' : '#fff',
+                      color: isPaid ? '#9CA3AF' : '#1F2937',
+                      fontFamily:'inherit',
+                    }}>
+                    {durationOptions.map(d => (
+                      <option key={d} value={d}>{d} min</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Location picker (only if multi-location) */}
+                {locationCatalog.length > 1 && (
+                  <div style={{marginBottom:12}}>
+                    <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:4,textTransform:'uppercase',letterSpacing:'0.06em'}}>Location</label>
+                    <select
+                      value={newLocationId || ''}
+                      onChange={e => setNewLocationId(e.target.value || null)}
+                      style={{
+                        width:'100%',
+                        padding:'9px 10px',
+                        border:'1.5px solid #D1D5DB',
+                        borderRadius:8,
+                        fontSize:14,
+                        outline:'none',
+                        boxSizing:'border-box',
+                        background:'#fff',
+                        color:'#1F2937',
+                        fontFamily:'inherit',
+                      }}>
+                      <option value="">None</option>
+                      {locationCatalog.map(l => (
+                        <option key={l.id} value={l.id}>{l.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Addons */}
+                {applicableAddons.length > 0 && (
+                  <div style={{marginBottom:12}}>
+                    <label style={{fontSize:11,fontWeight:700,color:'#6B7280',display:'block',marginBottom:6,textTransform:'uppercase',letterSpacing:'0.06em'}}>Add-ons</label>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                      {applicableAddons.map(a => {
+                        const isSel = (newAddonIds || []).includes(a.id);
+                        return (
+                          <button key={a.id} type="button"
+                            onClick={() => {
+                              setNewAddonIds(prev => isSel
+                                ? prev.filter(x => x !== a.id)
+                                : [...(prev || []), a.id]
+                              );
+                            }}
+                            style={{
+                              background: isSel ? '#9A3412' : '#fff',
+                              color: isSel ? '#fff' : '#9A3412',
+                              border: `1.5px solid ${isSel ? '#9A3412' : '#FED7AA'}`,
+                              borderRadius: 999,
+                              padding: '5px 11px',
+                              fontSize: 11.5,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              fontFamily: 'inherit',
+                            }}>
+                            {a.name}{Number(a.price) > 0 ? ` +$${Number(a.price).toFixed(0)}` : ''}{Number(a.extra_minutes) > 0 ? ` +${a.extra_minutes}m` : ''}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Partner info if couples */}
+                {isCouplesService && (
+                  <div style={{marginBottom:12,padding:'10px 12px',background:'#fff',border:'1px dashed #FED7AA',borderRadius:8}}>
+                    <div style={{fontSize:11,fontWeight:700,color:'#9A3412',marginBottom:8,textTransform:'uppercase',letterSpacing:'0.06em'}}>💑 Partner details</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8}}>
+                      <input
+                        type="text"
+                        placeholder="Partner name"
+                        value={newPartnerName}
+                        onChange={e => setNewPartnerName(e.target.value)}
+                        style={{width:'100%',padding:'8px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box',fontFamily:'inherit'}}
+                      />
+                      <input
+                        type="email"
+                        placeholder="Partner email (optional)"
+                        value={newPartnerEmail}
+                        onChange={e => setNewPartnerEmail(e.target.value)}
+                        style={{width:'100%',padding:'8px 10px',border:'1.5px solid #D1D5DB',borderRadius:8,fontSize:13,outline:'none',boxSizing:'border-box',fontFamily:'inherit'}}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {serviceEditError && (
+                  <div style={{
+                    background: '#FEF2F2',
+                    border: '1px solid #FCA5A5',
+                    color: '#991B1B',
+                    borderRadius: 8,
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    marginBottom: 12,
+                    lineHeight: 1.5,
+                  }}>
+                    {serviceEditError}
+                  </div>
+                )}
+
+                <button onClick={saveServiceEdit} disabled={savingService}
+                  style={{width:'100%',padding:'10px 0',background:'#9A3412',color:'#fff',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:savingService?'wait':'pointer',opacity:savingService?0.6:1,fontFamily:'inherit'}}>
+                  {savingService ? 'Saving...' : 'Save changes'}
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Phase 24d: Session journey moved into the cockpit section
               list below, as its own collapsible. HK feedback: should be
@@ -6079,6 +6578,17 @@ export default function ScheduleDashboard({ therapist }) {
           partner_email: b.partner_email || null,
           endTime: (b.end_time || '').slice(0,5),
           startTime: (b.start_time || '').slice(0,5),
+          // HK May 27 2026: expose FK ids so DetailPanel can render
+          // the service editor (change service / duration / location
+          // / addons / partner on an existing booking). Without these
+          // the editor would have to re-fetch each row, which adds
+          // latency for no benefit since we already JOIN them.
+          service_id: b.service_id || null,
+          location_id: b.location_id || null,
+          addon_ids: b.addon_ids || [],
+          addon_total_price: b.addon_total_price || 0,
+          addon_extra_minutes: b.addon_extra_minutes || 0,
+          booking_date: b.booking_date,
           // Phase 14.3j: paid flag derived from session_payments rows.
           // Used by the timeline card style to color paid bookings.
           paid: (paidMap[b.id] || 0) > 0,
