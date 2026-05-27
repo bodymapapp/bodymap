@@ -1,6 +1,6 @@
 # Other Notes
 
-**Last updated:** May 16, 2026
+**Last updated:** May 26, 2026
 **Purpose:** Catch-all for documentation that does not fit the other ten sections of the Founder Hub. Anything that needs to be written down but does not yet have a permanent home.
 
 When something here grows past a few paragraphs, promote it to its own document and link from here.
@@ -61,6 +61,14 @@ Capture themes here as they come in. When a theme repeats three times, promote i
 - Built Founder Hub at `/founder` for HK only.
 - Cream demo frame is a design principle, never tuned per-demo.
 - May 15-16 2026: Standard Connect added alongside Express. Daya Gupta and Candice connections fixed via the new architecture. Disconnect button removed from Settings (replaced with "Manage in Stripe" link).
+
+### Therapist autonomy on financial decisions
+
+A principle and two specific applications. The principle: HK explicitly does NOT want to be the one making "when does your money arrive" or "how much do you pay for this" decisions on behalf of therapists. Those are between the therapist and their financial provider. MyBodyMap provides the connection and stays out of the choice.
+
+**Stripe payout schedule (May 26 2026):** Candice asked "did I get paid?" after approving Caleb's $25.50 deposit. The $25.50 charged successfully to her connected Stripe account. Stripe holds funds for ~2 business days by default for new Connect accounts, then ACH adds another 1-3 days for bank settlement, so end-to-end is roughly 3-5 business days. This is Stripe's default policy, not a MyBodyMap configuration. We verified the stripe-connect account creation code passes only type/country/capabilities/email/business_name. No `settings[payouts][schedule]` parameter anywhere. Each therapist gets Stripe's default and can change it themselves at connect.stripe.com/express_login → Settings → Payouts. Options include daily, weekly, monthly, manual, or Instant Payouts for a 1% pass-through fee. **We do not touch this. Ever.** If a therapist asks, point them at their Express dashboard.
+
+**Twilio cost per therapist (May 26 2026):** Today we track Twilio messaging cost as a single monthly line on the income statement. Going forward we want per-therapist cost attribution so we can determine pricing strategy (per-session-complete vs. flat per-month). This is a Phase 2 buildout, not urgent until we have 20+ therapists sending real SMS volume. Architecture sketch: tag every send-sms call with therapist_id, query Twilio Pricing API (or hardcode known rates per country code), append a daily cost row to a `twilio_usage_by_therapist` table, surface in the income-statement panel as a per-therapist breakdown. Decision deferred until SMS volume is non-trivial.
 
 ### Friday-Saturday May 15-16 2026: Stripe marathon session
 
