@@ -5575,6 +5575,19 @@ export default function ScheduleDashboard({ therapist }) {
   // Blocked days state
   const [blockedDays, setBlockedDays] = useState([]);
   const [showBlockPanel, setShowBlockPanel] = useState(false);
+  // Calendar coaching: show the first-open "What you can do here" intro
+  // until the therapist dismisses it. localStorage persists across
+  // sessions so the coaching doesn't return after every reload.
+  const COACHING_KEY = `mbm_calendar_coaching_seen_${therapist?.id || 'anon'}`;
+  const [hasSeenCalendarCoaching, setHasSeenCalendarCoaching] = useState(
+    typeof window !== 'undefined' && window.localStorage
+      ? window.localStorage.getItem(COACHING_KEY) === '1'
+      : false
+  );
+  const markCalendarCoachingSeen = () => {
+    setHasSeenCalendarCoaching(true);
+    try { window.localStorage.setItem(COACHING_KEY, '1'); } catch (e) {}
+  };
   const [blockDate, setBlockDate] = useState('');
   // Multi-day block support (HK May 21 2026 from Jackie request).
   // She works 3 weeks on, 10 days off. Single-day blocks were too
@@ -6188,8 +6201,90 @@ export default function ScheduleDashboard({ therapist }) {
               }}
               aria-label="Close panel">×</button>
           </div>
-          <CalendarGrid therapist={therapist} embedded />
+          <CalendarGrid therapist={therapist} embedded firstOpen={!hasSeenCalendarCoaching} onCoachingSeen={markCalendarCoachingSeen} />
         </div>
+      )}
+
+      {/* Prominent "Manage your calendar" card (HK May 27 2026, A plan).
+          Replaces the small "Time off" chip that was buried among other
+          action chips. Sits in primetime real estate above stats so
+          the 70-year-old persona's eye lands on it. Subtitle shows
+          current state ("Blocking N days · X recurring rules") so it
+          reads as a status card, not just a button. Hidden when the
+          calendar panel is open since the open panel IS the surface. */}
+      {!showBlockPanel && (
+        <button
+          type="button"
+          onClick={() => setShowBlockPanel(true)}
+          style={{
+            width: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 14,
+            background: 'linear-gradient(135deg, #EEF3EE 0%, #F5EFE2 100%)',
+            border: '1.5px solid #9DBEA1',
+            borderRadius: 14,
+            padding: '16px 18px',
+            marginBottom: 14,
+            cursor: 'pointer',
+            textAlign: 'left',
+            fontFamily: 'inherit',
+            transition: 'box-shadow 0.18s ease, transform 0.12s ease',
+            boxShadow: '0 1px 3px rgba(31, 65, 49, 0.08)',
+            WebkitTapHighlightColor: 'transparent',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = '0 3px 10px rgba(31, 65, 49, 0.12)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = '0 1px 3px rgba(31, 65, 49, 0.08)';
+          }}>
+          <div style={{
+            width: 48, height: 48, borderRadius: 12,
+            background: '#2A5741',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, flexShrink: 0,
+          }}>
+            <span style={{ filter: 'brightness(0) invert(1)' }}>📅</span>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontFamily: 'Georgia, serif',
+              fontSize: 16,
+              fontWeight: 700,
+              color: '#1F4030',
+              marginBottom: 3,
+            }}>
+              Manage your calendar and time off
+            </div>
+            <div style={{
+              fontSize: 12.5,
+              color: '#4B5563',
+              lineHeight: 1.4,
+            }}>
+              {(() => {
+                const blockedCount = blockedDays.filter(b => !b.start_time && !b.end_time).length;
+                const ruleCount = (window.__recurringRulesCount ?? 0);
+                if (blockedCount === 0 && ruleCount === 0) {
+                  return 'Block days, set recurring rules, mark holidays. Tap to open.';
+                }
+                const parts = [];
+                if (blockedCount > 0) parts.push(`${blockedCount} day${blockedCount === 1 ? '' : 's'} blocked`);
+                if (ruleCount > 0) parts.push(`${ruleCount} recurring rule${ruleCount === 1 ? '' : 's'}`);
+                return parts.join(' · ') + '. Tap to open.';
+              })()}
+            </div>
+          </div>
+          <div style={{
+            width: 34, height: 34, borderRadius: '50%',
+            background: '#fff',
+            border: '1.5px solid #9DBEA1',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: '#2A5741',
+            flexShrink: 0,
+            fontSize: 16, fontWeight: 700,
+          }}>›</div>
+        </button>
       )}
 
       {/* Pending booking requests, only shown when therapist has approval
@@ -6331,33 +6426,11 @@ export default function ScheduleDashboard({ therapist }) {
           <span>Previews: {showPreviewData ? 'ON' : 'OFF'}</span>
         </button>
 
-        <button onClick={()=>setShowBlockPanel(v=>!v)}
-          style={{display:'inline-flex',alignItems:'center',gap:6,background:showBlockPanel?'#F3F4F6':'#fff',border:'1.5px solid #E5E7EB',borderRadius:22,padding:'10px 14px',fontSize:12,fontWeight:700,color:'#4B5563',cursor:'pointer',whiteSpace:'nowrap',height:40,lineHeight:1,WebkitTapHighlightColor:'transparent'}}>
-          <span>🌿</span>
-          <span>Time off</span>
-          {blockedDays.length > 0 && (
-            <span style={{background:'#FEE2E2',color:'#DC2626',borderRadius:20,padding:'2px 7px',fontSize:11,fontWeight:700,lineHeight:1}}>{blockedDays.length}</span>
-          )}
-        </button>
+        {/* Time off button moved out of the action chip row May 27 2026.
+            It now lives as a prominent card directly below the action
+            row (see "Manage your calendar" card). The chip-among-chips
+            placement was too easy to miss for the 70-year-old persona. */}
 
-        {/* Week start quick toggle (HK May 27 2026). The authoritative
-            setting lives in Settings 2.1.5 Booking window; this pill
-            is the fast-access copy in Schedule. Both write to the
-            same therapists.week_starts_on column. */}
-        <button
-          onClick={toggleWeekStart}
-          title={weekStartsOn === 0 ? 'Week starts Sunday. Tap to switch to Monday.' : 'Week starts Monday. Tap to switch to Sunday.'}
-          style={{
-            display:'inline-flex',alignItems:'center',gap:6,
-            background:'#fff',border:'1.5px solid #E5E7EB',
-            borderRadius:22,padding:'10px 14px',fontSize:12,
-            color:'#4B5563',fontWeight:700,whiteSpace:'nowrap',
-            height:40,lineHeight:1,cursor:'pointer',
-            WebkitTapHighlightColor:'transparent',
-          }}>
-          <span>📅</span>
-          <span>Week: {weekStartsOn === 0 ? 'Sun' : 'Mon'}</span>
-        </button>
       </div>
 
       {loading

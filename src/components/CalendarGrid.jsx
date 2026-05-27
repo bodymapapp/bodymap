@@ -150,7 +150,7 @@ function sameDate(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-export default function CalendarGrid({ therapist, embedded = false }) {
+export default function CalendarGrid({ therapist, embedded = false, firstOpen = false, onCoachingSeen }) {
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const today = useMemo(() => {
     const d = new Date();
@@ -996,6 +996,62 @@ export default function CalendarGrid({ therapist, embedded = false }) {
 
   return (
     <div onMouseUp={handleDayMouseUp} onMouseLeave={handleDayMouseUp} style={{ userSelect: 'none' }}>
+      {/* First-open coaching card (HK May 27 2026, C plan).
+          Shows the first time a therapist opens the calendar so they
+          know what they can do here. Dismissible. Persists across
+          reloads via localStorage in the parent. */}
+      {firstOpen && (
+        <div style={{
+          background: '#FAF3DC',
+          border: `1px solid ${C.gold}`,
+          borderRadius: 12,
+          padding: '16px 18px',
+          marginBottom: 16,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ fontSize: 22, flexShrink: 0, lineHeight: 1 }}>👋</div>
+            <div style={{ flex: 1 }}>
+              <div style={{
+                fontFamily: 'Georgia, serif',
+                fontSize: 15,
+                fontWeight: 700,
+                color: C.goldDeep,
+                marginBottom: 8,
+              }}>
+                Welcome to your calendar. Here's what you can do:
+              </div>
+              <ul style={{
+                margin: 0, padding: 0, listStyle: 'none',
+                fontSize: 13, color: C.ink, lineHeight: 1.7,
+              }}>
+                <li><strong>Tap any day</strong> to block it (tap again to unblock).</li>
+                <li><strong>Click and drag</strong> across multiple days to block a range.</li>
+                <li><strong>Tap "+ Add rule"</strong> below to block every Saturday (or any weekday) going forward.</li>
+                <li><strong>Tap a holiday pill</strong> to block a specific holiday like Thanksgiving.</li>
+                <li><strong>Gold ★ days</strong> mark growth opportunities like Mother's Day. Tap to learn more.</li>
+              </ul>
+              <button
+                type="button"
+                onClick={onCoachingSeen}
+                style={{
+                  background: C.gold,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 8,
+                  padding: '8px 16px',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  marginTop: 12,
+                }}>
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <RecurringPills />
       <AddRecurringForm />
       <HolidayQuickPick />
