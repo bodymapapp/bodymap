@@ -136,6 +136,16 @@ export default function ProfileHeader({
   onBack,
   onEdit,
   onArchive,
+  // HK May 27 2026 Ship 1: hoist the four primary client actions up
+  // from SessionList ('Sessions and SOAP notes' panel) into the
+  // header so the 70yo persona doesn't have to scroll past 4-5
+  // cards to find Edit/Book/Merge. Each prop opens the same modal
+  // SessionList already owns (no duplicate UI; ClientProfile/index
+  // wires the buttons to the existing trigger state).
+  onEditClick,
+  onBookClick,
+  onMergeClick,
+  onArchiveClick,
 }) {
   if (!client) return null;
 
@@ -347,6 +357,92 @@ export default function ProfileHeader({
               </div>
             )}
           </div>
+        </div>
+
+        {/* HK May 27 2026 Ship 1: primary client actions, hoisted up
+            from the Sessions and SOAP notes panel. 70yo persona is
+            tired of scrolling past 4-5 cards to find these. Order
+            matches existing convention from SessionList: Edit / Book /
+            Merge / Archive. Book is the primary (forest), the rest
+            are quiet outline buttons. Wraps on narrow screens. */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 8,
+          marginTop: 16,
+        }}>
+          {onEditClick && (
+            <button
+              onClick={onEditClick}
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                color: '#1F4030',
+                border: '1.5px solid rgba(28,43,34,0.14)',
+                borderRadius: 999,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: F.sans,
+                whiteSpace: 'nowrap',
+              }}>
+              Edit details
+            </button>
+          )}
+          {onBookClick && !archived && (
+            <button
+              onClick={onBookClick}
+              style={{
+                background: '#1C2B22',
+                color: '#FFFFFF',
+                border: '1.5px solid #1C2B22',
+                borderRadius: 999,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: F.sans,
+                whiteSpace: 'nowrap',
+              }}>
+              📅 Book next
+            </button>
+          )}
+          {onMergeClick && (
+            <button
+              onClick={onMergeClick}
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                color: '#1F4030',
+                border: '1.5px solid rgba(28,43,34,0.14)',
+                borderRadius: 999,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: F.sans,
+                whiteSpace: 'nowrap',
+              }}>
+              Merge
+            </button>
+          )}
+          {onArchiveClick && (
+            <button
+              onClick={onArchiveClick}
+              style={{
+                background: 'rgba(255,255,255,0.7)',
+                color: '#6B7280',
+                border: '1.5px solid rgba(28,43,34,0.14)',
+                borderRadius: 999,
+                padding: '8px 16px',
+                fontSize: 13,
+                fontWeight: 700,
+                cursor: 'pointer',
+                fontFamily: F.sans,
+                whiteSpace: 'nowrap',
+              }}>
+              {archived ? 'Restore' : 'Archive'}
+            </button>
+          )}
         </div>
       </div>
     </div>

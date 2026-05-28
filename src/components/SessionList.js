@@ -12,7 +12,7 @@ const C = {
   white: "#FFFFFF", gold: "#C9A84C"
 };
 
-export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null, externalShowEdit = null, onExternalEditClose = null, externalShowArchive = null, onExternalArchiveClose = null, onEditClient = null }) {
+export default function SessionList({ client, therapistId, therapist, onBack, onSelectSession, compact = false, previewSessions = null, externalShowEdit = null, onExternalEditClose = null, externalShowArchive = null, onExternalArchiveClose = null, externalShowRebook = null, onExternalRebookClose = null, externalShowMerge = null, onExternalMergeClose = null, onEditClient = null }) {
   const [sessions, setSessions] = useState(previewSessions || []);
   // Bookings = the actual appointment records this client has had.
   // Distinct from `sessions` (SOAP-note records). The header count
@@ -193,6 +193,27 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
       onExternalArchiveClose?.();
     }
   }, [showArchiveMenu]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // HK May 27 2026 Ship 1: rebook + merge bridges. ProfileHeader now
+  // hosts the four primary action buttons; this lets it trigger the
+  // existing modals SessionList already owns.
+  useEffect(() => {
+    if (externalShowRebook) setShowRebook(true);
+  }, [externalShowRebook]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showRebook && externalShowRebook) {
+      onExternalRebookClose?.();
+    }
+  }, [showRebook]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (externalShowMerge) setShowMerge(true);
+  }, [externalShowMerge]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showMerge && externalShowMerge) {
+      onExternalMergeClose?.();
+    }
+  }, [showMerge]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveClient() {
     if (!editName.trim()) { setEditMsg("Name is required."); return; }
@@ -396,7 +417,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             backdropFilter: "blur(2px)",
             WebkitBackdropFilter: "blur(2px)",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "center",
             zIndex: 3000,
             padding: "max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))",
@@ -407,7 +428,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             borderRadius: 16,
             width: "100%",
             maxWidth: 480,
-            maxHeight: "calc(100vh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
+            maxHeight: "calc(100dvh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
             boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
             display: "flex",
             flexDirection: "column",
@@ -585,7 +606,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             backdropFilter: "blur(2px)",
             WebkitBackdropFilter: "blur(2px)",
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "center",
             zIndex: 2000,
             padding: "max(20px, env(safe-area-inset-top, 20px)) 16px calc(20px + env(safe-area-inset-bottom, 0px))",
@@ -596,7 +617,7 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
             borderRadius: 16,
             width: "100%",
             maxWidth: 480,
-            maxHeight: "calc(100vh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
+            maxHeight: "calc(100dvh - max(40px, env(safe-area-inset-top, 40px)) - env(safe-area-inset-bottom, 20px))",
             boxShadow: "0 24px 64px rgba(0,0,0,0.28)",
             display: "flex",
             flexDirection: "column",

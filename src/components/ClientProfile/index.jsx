@@ -65,6 +65,13 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
   // uses the legacy SessionList modal flow (separate UI cleanup).
   const [aboutPulse, setAboutPulse] = useState(0);
   const [archiveTrigger, setArchiveTrigger] = useState(false);
+  // HK May 27 2026 Ship 1: triggers for hoisted action buttons in
+  // ProfileHeader (Edit, Book, Merge). Each flips a boolean that
+  // SessionList watches via its external-show prop pair, so the
+  // existing modal code stays the single source of truth.
+  const [editTrigger, setEditTrigger] = useState(false);
+  const [rebookTrigger, setRebookTrigger] = useState(false);
+  const [mergeTrigger, setMergeTrigger] = useState(false);
 
   // When the hero pencil fires (aboutPulse increments), force the
   // Client info section open so the inline editor is reachable
@@ -163,6 +170,10 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
         onBack={onBack}
         onEdit={() => setAboutPulse(n => n + 1)}
         onArchive={() => setArchiveTrigger(true)}
+        onEditClick={() => setEditTrigger(true)}
+        onBookClick={() => setRebookTrigger(true)}
+        onMergeClick={() => setMergeTrigger(true)}
+        onArchiveClick={() => setArchiveTrigger(true)}
       />
 
       {loading && (
@@ -276,8 +287,14 @@ export default function ClientProfile({ client, therapistId, therapist, onBack, 
               onSelectSession={onSelectSession}
               compact={true}
               previewSessions={previewProfile ? profile.sessions : null}
+              externalShowEdit={editTrigger}
+              onExternalEditClose={() => setEditTrigger(false)}
               externalShowArchive={archiveTrigger}
               onExternalArchiveClose={() => setArchiveTrigger(false)}
+              externalShowRebook={rebookTrigger}
+              onExternalRebookClose={() => setRebookTrigger(false)}
+              externalShowMerge={mergeTrigger}
+              onExternalMergeClose={() => setMergeTrigger(false)}
               onEditClient={() => setAboutPulse(n => n + 1)}
             />
           </ProfileSection>
