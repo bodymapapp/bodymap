@@ -194,9 +194,10 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
     }
   }, [showArchiveMenu]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // HK May 27 2026 Ship 1: rebook + merge bridges. ProfileHeader now
-  // hosts the four primary action buttons; this lets it trigger the
-  // existing modals SessionList already owns.
+  // HK May 27 2026 Ship 1: rebook bridge. ProfileHeader now hosts
+  // the four primary action buttons; this lets it trigger the
+  // existing modals SessionList already owns. (Merge bridge moved
+  // below showMerge declaration to avoid temporal dead zone.)
   useEffect(() => {
     if (externalShowRebook) setShowRebook(true);
   }, [externalShowRebook]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -205,15 +206,6 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
       onExternalRebookClose?.();
     }
   }, [showRebook]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => {
-    if (externalShowMerge) setShowMerge(true);
-  }, [externalShowMerge]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!showMerge && externalShowMerge) {
-      onExternalMergeClose?.();
-    }
-  }, [showMerge]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function saveClient() {
     if (!editName.trim()) { setEditMsg("Name is required."); return; }
@@ -243,6 +235,19 @@ export default function SessionList({ client, therapistId, therapist, onBack, on
   const [mergeTarget, setMergeTarget] = useState(null); // the duplicate to absorb
   const [mergeSaving, setMergeSaving] = useState(false);
   const [mergeError, setMergeError] = useState("");
+
+  // HK May 27 2026 Ship 1: merge bridge from ProfileHeader. Sits
+  // after showMerge declaration because referencing showMerge in a
+  // useEffect dep array before useState declares it is a temporal
+  // dead zone error and crashes the page on render.
+  useEffect(() => {
+    if (externalShowMerge) setShowMerge(true);
+  }, [externalShowMerge]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!showMerge && externalShowMerge) {
+      onExternalMergeClose?.();
+    }
+  }, [showMerge]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const DNR_REASONS = [
     "Do not rebook",
