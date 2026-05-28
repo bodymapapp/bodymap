@@ -201,6 +201,30 @@ export default function ClientIntake() {
         } catch (e) { /* non-blocking */ }
       }
 
+      // HK May 28 2026: fire T03 intake_filled notification to the
+      // therapist. This was the missing fire site that left T03 dead.
+      // Fire-and-forget; never blocks the redirect, never breaks intake
+      // if the function is down.
+      try {
+        const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+        const anonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+        if (supabaseUrl && anonKey) {
+          fetch(`${supabaseUrl}/functions/v1/notify-intake-filled`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${anonKey}`,
+            },
+            body: JSON.stringify({
+              therapist_id: therapist.id,
+              booking_id: resolvedBookingId || null,
+              session_id: newSession?.id || null,
+              client_name: intakeData.clientName || null,
+            }),
+          }).catch(() => {});
+        }
+      } catch (_e) { /* never block intake on a missing notification */ }
+
       // Step 5: Redirect to thank you page (or back to booking if the
       // intake was triggered by the intake-before-booking gate).
       if (returnToBookSlug) {

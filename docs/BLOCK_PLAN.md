@@ -1274,3 +1274,25 @@ Real client cancellations happen via the public booking link, not the therapist 
 
 ### Joy Client has a real Stripe Amex card (pm_1TY9jEQvokGFD9FYMgj4OPPf, last4 2001)
 Tests that "Charge fee" or "Charge no-show" on this client risk posting a real Amex charge to that card. For testing fee paths, either use the offline-only branch, use a low-value service like the existing $1 Test Service, or use a separate test client with no card on file. Documented for HK awareness, not a code change.
+
+---
+
+## C08/C09 client-cancel: build in-app client cancel path (May 28 2026)
+
+HK: "we need some way for client to cancel outside the SMS or email on our website." Today the only way a client can cancel a booking is through the SMS reply or an email link (which is what the SMS/email goes to anyway). There's no public booking-site UX where a client can pull up their booking and tap Cancel.
+
+Build a public booking-management page at /book/<slug>/manage?booking=<uuid>&token=<hmac> (or similar) where the client can: see their upcoming booking, hit Cancel (within fee window or outside), hit Reschedule. The token is a short-lived signed hash of booking_id + client_email so anyone with the URL but not the email cannot cancel someone else's. Email/SMS reminders link to this page.
+
+This is the only legitimate way to test C08/C09 end-to-end. ~3 hrs (page + token verification + state transitions).
+
+## Membership / Package notification gap (May 28 2026)
+
+Audit found three real gaps that mean memberships and packages are largely invisible in the notification matrix:
+
+1. confirm-membership-purchase fires NO notification. Membership purchase succeeds, therapist is never alerted. Should fire payment_received (T4) the same way confirm-package-purchase does (already shipped). 15 min add.
+
+2. send-renewal-due is built against the wrong table (queries memberships instead of member_subscriptions) and likely never fires. Documented in earlier BLOCK_PLAN entry. Membership renewals coming up in 7 days do not alert.
+
+3. No dedicated event for "package redeemed" (a session booked against a prepaid package). $0 redemptions intentionally do not fire payment_received (no money moved), but the THERAPIST gets the normal T1 new_booking when a session is scheduled against the package, which is fine. No new event needed; verify the booking confirmation reflects "from package, prepaid" so the therapist sees context.
+
+Net: there is no dedicated membership_purchased or package_purchased event type in the spec; both purchases fold into T4 payment_received. That's a deliberate choice that keeps the matrix clean. The fix is just to actually fire T4 from the membership purchase confirm function too.
