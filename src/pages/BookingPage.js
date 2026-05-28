@@ -4205,14 +4205,23 @@ export default function BookingPage() {
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20, zIndex: 9999,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: 20,
+            paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+            zIndex: 9999,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}>
           <div
             style={{
               background: '#fff', borderRadius: 18,
               maxWidth: 440, width: '100%',
-              padding: 24,
+              maxHeight: 'calc(100dvh - 40px)',
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
@@ -4223,71 +4232,87 @@ export default function BookingPage() {
               <CloseButton onClick={() => !offerLoading && setOfferModal(null)} label="Close" disabled={offerLoading} />
             </div>
 
-            <div style={{ marginBottom: 16, paddingRight: 36 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-                {offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
+            <div style={{
+              padding: 24,
+              paddingBottom: 8,
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              <div style={{ marginBottom: 16, paddingRight: 36 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                  {offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
+                </div>
+                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                  {offerModal.item.name}
+                </div>
+                <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
+                  {offerModal.type === 'package'
+                    ? <>${Number(offerModal.item.price).toFixed(0)} for {offerModal.item.session_count} sessions{offerModal.item.expires_in_days ? ` (use within ${offerModal.item.expires_in_days} days)` : ''}</>
+                    : <>${Number(offerModal.item.monthly_price).toFixed(0)} per month, {offerModal.item.monthly_session_credits} session{offerModal.item.monthly_session_credits !== 1 ? 's' : ''} included</>
+                  }
+                </div>
               </div>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                {offerModal.item.name}
-              </div>
-              <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
-                {offerModal.type === 'package'
-                  ? <>${Number(offerModal.item.price).toFixed(0)} for {offerModal.item.session_count} sessions{offerModal.item.expires_in_days ? ` (use within ${offerModal.item.expires_in_days} days)` : ''}</>
-                  : <>${Number(offerModal.item.monthly_price).toFixed(0)} per month, {offerModal.item.monthly_session_credits} session{offerModal.item.monthly_session_credits !== 1 ? 's' : ''} included</>
-                }
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input
+                  placeholder="Your name"
+                  value={offerForm.name}
+                  onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
+                <input
+                  placeholder="Email"
+                  type="email"
+                  value={offerForm.email}
+                  onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
+                <input
+                  placeholder="Phone (optional)"
+                  value={offerForm.phone}
+                  onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-              <input
-                placeholder="Your name"
-                value={offerForm.name}
-                onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-              <input
-                placeholder="Email"
-                type="email"
-                value={offerForm.email}
-                onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-              <input
-                placeholder="Phone (optional)"
-                value={offerForm.phone}
-                onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-            </div>
+            {/* Sticky footer with action buttons. Always reachable
+                regardless of body scroll position. Design Principle 29. */}
+            <div style={{
+              padding: '14px 24px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+              borderTop: `1px solid ${C.light}`,
+              background: '#fff',
+              flexShrink: 0,
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
+            }}>
+              {offerError && (
+                <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
+                  ⚠️ {offerError}
+                </div>
+              )}
 
-            {offerError && (
-              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 14, lineHeight: 1.5 }}>
-                ⚠️ {offerError}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setOfferModal(null)}
+                  disabled={offerLoading}
+                  style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: offerLoading ? 'default' : 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={buyOffer}
+                  disabled={offerLoading}
+                  style={{ flex: 2, background: offerLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: offerLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
+                  {offerLoading ? 'Opening checkout...' : 'Continue to payment'}
+                </button>
               </div>
-            )}
-
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setOfferModal(null)}
-                disabled={offerLoading}
-                style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: offerLoading ? 'default' : 'pointer' }}>
-                Cancel
-              </button>
-              <button
-                onClick={buyOffer}
-                disabled={offerLoading}
-                style={{ flex: 2, background: offerLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: offerLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
-                {offerLoading ? 'Opening checkout…' : 'Continue to payment'}
-              </button>
+              <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.5 }}>
+                You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card and complete the purchase.
+              </p>
             </div>
-            <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
-              {/* Processor name derived to match purchase-membership/
-                  purchase-package edge-function routing: prefer Stripe
-                  when both are connected, fall back to Square when only
-                  Square is. HK May 22 2026: membership branch updated
-                  from 'Stripe-only' to match the actual backend logic. */}
-              You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card and complete the purchase.
-            </p>
           </div>
         </div>
       )}
@@ -4336,15 +4361,24 @@ export default function BookingPage() {
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20, zIndex: 9995,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: 20,
+            paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+            zIndex: 9995,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}>
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               background: '#fff', borderRadius: 18,
-              maxWidth: 480, width: '100%', maxHeight: '85vh', overflowY: 'auto',
-              padding: 24,
+              maxWidth: 480, width: '100%',
+              maxHeight: 'calc(100dvh - 40px)',
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
@@ -4352,22 +4386,30 @@ export default function BookingPage() {
               <CloseButton onClick={() => setCartOpen(false)} label="Close" />
             </div>
 
-            <div style={{ marginBottom: 16, paddingRight: 36 }}>
-              <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: '0 0 4px' }}>
-                🛒 Your cart
-              </h3>
-              <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
-                {cart.length} package{cart.length !== 1 ? 's' : ''} ready to check out.
-              </p>
-            </div>
+            <div style={{
+              padding: 24,
+              paddingBottom: 8,
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              <div style={{ marginBottom: 16, paddingRight: 36 }}>
+                <h3 style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, margin: '0 0 4px' }}>
+                  🛒 Your cart
+                </h3>
+                <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
+                  {cart.length} package{cart.length !== 1 ? 's' : ''} ready to check out.
+                </p>
+              </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {cart.map((p, idx) => (
-                <div key={`${p.id}-${idx}`} style={{
-                  background: '#FAF5EE',
-                  border: `1.5px solid ${C.beige || '#E8DCC4'}`,
-                  borderRadius: 12,
-                  padding: '10px 12px',
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {cart.map((p, idx) => (
+                  <div key={`${p.id}-${idx}`} style={{
+                    background: '#FAF5EE',
+                    border: `1.5px solid ${C.beige || '#E8DCC4'}`,
+                    borderRadius: 12,
+                    padding: '10px 12px',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 10,
@@ -4391,57 +4433,69 @@ export default function BookingPage() {
                     onMouseLeave={(e)=>{e.currentTarget.style.background='transparent';e.currentTarget.style.borderColor='transparent';}}>Remove</button>
                 </div>
               ))}
+              </div>
             </div>
 
+            {/* Sticky footer: total + checkout actions. Design Principle 29. */}
             <div style={{
-              borderTop: `1.5px solid ${C.light}`,
-              paddingTop: 14,
-              marginBottom: 16,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
+              padding: '14px 24px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+              borderTop: `1px solid ${C.light}`,
+              background: '#fff',
+              flexShrink: 0,
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
             }}>
-              <span style={{ fontSize: 14, color: C.gray }}>Total</span>
-              <span style={{ fontSize: 22, fontWeight: 700, color: C.forest }}>
-                ${(cartTotalCents() / 100).toFixed(0)}
-              </span>
-            </div>
+              <div style={{
+                paddingBottom: 12,
+                marginBottom: 12,
+                borderBottom: `1px dashed ${C.light}`,
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+              }}>
+                <span style={{ fontSize: 14, color: C.gray }}>Total</span>
+                <span style={{ fontSize: 22, fontWeight: 700, color: C.forest }}>
+                  ${(cartTotalCents() / 100).toFixed(0)}
+                </span>
+              </div>
 
-            <button
-              onClick={() => {
-                setCartOpen(false);
-                openCartCheckout();
-              }}
-              style={{
-                width: '100%',
-                background: C.forest,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 12,
-                padding: '14px',
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 4px 14px rgba(42,87,65,0.25)',
-                marginBottom: 8,
-              }}>
-              Continue to checkout →
-            </button>
-            <button
-              onClick={() => setCartOpen(false)}
-              style={{
-                width: '100%',
-                background: '#fff',
-                color: C.gray,
-                border: `1.5px solid ${C.light}`,
-                borderRadius: 12,
-                padding: '12px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}>
-              Keep browsing
-            </button>
+              <button
+                onClick={() => {
+                  setCartOpen(false);
+                  openCartCheckout();
+                }}
+                style={{
+                  width: '100%',
+                  background: C.forest,
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 12,
+                  padding: '14px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(42,87,65,0.25)',
+                  marginBottom: 8,
+                }}>
+                Continue to checkout →
+              </button>
+              <button
+                onClick={() => setCartOpen(false)}
+                style={{
+                  width: '100%',
+                  background: '#fff',
+                  color: C.gray,
+                  border: `1.5px solid ${C.light}`,
+                  borderRadius: 12,
+                  padding: '12px',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}>
+                Keep browsing
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -4456,74 +4510,105 @@ export default function BookingPage() {
           style={{
             position: 'fixed', inset: 0,
             background: 'rgba(0,0,0,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            padding: 20, zIndex: 9999,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            padding: 20,
+            paddingTop: 'max(20px, env(safe-area-inset-top, 0px))',
+            paddingBottom: 'max(20px, env(safe-area-inset-bottom, 0px))',
+            zIndex: 9999,
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}>
           <div
             style={{
               background: '#fff', borderRadius: 18,
               maxWidth: 440, width: '100%',
-              padding: 24,
+              maxHeight: 'calc(100dvh - 40px)',
+              display: 'flex',
+              flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
             <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
               <CloseButton onClick={() => !cartCheckoutLoading && setCartCheckoutModal(false)} label="Cancel" disabled={cartCheckoutLoading} />
             </div>
-            <div style={{ marginBottom: 16, paddingRight: 36 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-                Checkout
+
+            <div style={{
+              padding: 24,
+              paddingBottom: 8,
+              flex: 1,
+              minHeight: 0,
+              overflowY: 'auto',
+              WebkitOverflowScrolling: 'touch',
+            }}>
+              <div style={{ marginBottom: 16, paddingRight: 36 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
+                  Checkout
+                </div>
+                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
+                  {cart.length} package{cart.length !== 1 ? 's' : ''} · ${(cartTotalCents() / 100).toFixed(0)}
+                </div>
+                <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
+                  Tell us who you are, then we'll send you to checkout.
+                </div>
               </div>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                {cart.length} package{cart.length !== 1 ? 's' : ''} · ${(cartTotalCents() / 100).toFixed(0)}
-              </div>
-              <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
-                Tell us who you are, then we'll send you to checkout.
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input
+                  placeholder="Your name"
+                  value={offerForm.name}
+                  onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
+                <input
+                  placeholder="Email"
+                  type="email"
+                  value={offerForm.email}
+                  onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
+                <input
+                  placeholder="Phone (optional)"
+                  value={offerForm.phone}
+                  onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
+                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
+                />
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
-              <input
-                placeholder="Your name"
-                value={offerForm.name}
-                onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-              <input
-                placeholder="Email"
-                type="email"
-                value={offerForm.email}
-                onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-              <input
-                placeholder="Phone (optional)"
-                value={offerForm.phone}
-                onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
-                style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%' }}
-              />
-            </div>
-            {cartCheckoutError && (
-              <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 14, lineHeight: 1.5 }}>
-                ⚠️ {cartCheckoutError}
+
+            {/* Sticky footer. Design Principle 29. */}
+            <div style={{
+              padding: '14px 24px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+              borderTop: `1px solid ${C.light}`,
+              background: '#fff',
+              flexShrink: 0,
+              borderBottomLeftRadius: 18,
+              borderBottomRightRadius: 18,
+            }}>
+              {cartCheckoutError && (
+                <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
+                  ⚠️ {cartCheckoutError}
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  onClick={() => setCartCheckoutModal(false)}
+                  disabled={cartCheckoutLoading}
+                  style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: cartCheckoutLoading ? 'default' : 'pointer' }}>
+                  Cancel
+                </button>
+                <button
+                  onClick={checkoutCart}
+                  disabled={cartCheckoutLoading}
+                  style={{ flex: 2, background: cartCheckoutLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: cartCheckoutLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
+                  {cartCheckoutLoading ? 'Opening checkout...' : `Pay $${(cartTotalCents() / 100).toFixed(0)}`}
+                </button>
               </div>
-            )}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => setCartCheckoutModal(false)}
-                disabled={cartCheckoutLoading}
-                style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: cartCheckoutLoading ? 'default' : 'pointer' }}>
-                Cancel
-              </button>
-              <button
-                onClick={checkoutCart}
-                disabled={cartCheckoutLoading}
-                style={{ flex: 2, background: cartCheckoutLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: cartCheckoutLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
-                {cartCheckoutLoading ? 'Opening checkout…' : `Pay $${(cartTotalCents() / 100).toFixed(0)}`}
-              </button>
+              <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.5 }}>
+                You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card.
+              </p>
             </div>
-            <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '12px 0 0', lineHeight: 1.5 }}>
-              You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card.
-            </p>
           </div>
         </div>
       )}
