@@ -665,6 +665,12 @@ export default function NotificationCompliance() {
           </button>
         </div>
 
+        {/* SIMPLE MATRIX (HK May 28 2026): one row per touchpoint with a
+            quick visual on email/SMS/push status from the last 7 days of
+            notification_log. Above the detailed compliance matrix below,
+            which can still be used for deep inspection. */}
+        <SimpleNotificationMatrix logsByKey={logsByKey} loading={loading} />
+
         {/* Matrix */}
         <div style={{
           background: '#fff',
@@ -1066,6 +1072,135 @@ function KV({ k, v, mono = false }) {
         fontSize: mono ? 12 : 13,
         wordBreak: 'break-word',
       }}>{v}</div>
+    </div>
+  );
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// SimpleNotificationMatrix
+// ───────────────────────────────────────────────────────────────────────────
+// HK May 28 2026: the full compliance matrix above is dense and never quite
+// gave HK a clean PASS/FAIL read while testing. This simple view sits at the
+// top of /founder/notifications: one row per touchpoint, three columns
+// (Email / SMS / Push), color-coded by the latest notification_log status.
+// HK confirms PASS manually by inbox after each test; the cell colors are
+// just to show whether the function fired AT ALL.
+//
+// Cell key:
+//   sent       -> green, with timestamp tooltip
+//   skipped    -> gray (gated by pref, quiet hours, no_subscription, etc)
+//   failed     -> red, with error tooltip
+//   no log row -> white "untested"
+//
+// In-app bell (app_alert) is not shown here; the goal is the three channels
+// HK actually verifies in inboxes/phone.
+
+function SimpleNotificationMatrix({ logsByKey, loading }) {
+  const CHANNELS = ['email', 'sms', 'push'];
+  const PALETTE = {
+    sent:     { bg: '#DCFCE7', border: '#86EFAC', fg: '#14532D', label: '✓' },
+    skipped:  { bg: '#F3F4F6', border: '#D1D5DB', fg: '#4B5563', label: '–' },
+    failed:   { bg: '#FEE2E2', border: '#FCA5A5', fg: '#7F1D1D', label: '✕' },
+    untested: { bg: '#FFFFFF', border: '#E5E7EB', fg: '#9CA3AF', label: '·' },
+  };
+
+  function cellFor(spec, channel) {
+    if (!spec.channels.includes(channel)) {
+      return { state: 'untested', tone: PALETTE.untested, hint: 'Not used for this touchpoint' };
+    }
+    const key = `${spec.eventType}__${spec.audience}__${channel}`;
+    const log = logsByKey?.[key];
+    if (!log) return { state: 'untested', tone: PALETTE.untested, hint: 'No log row yet' };
+    const tone = PALETTE[log.status] || PALETTE.untested;
+    const when = log.sent_at ? new Date(log.sent_at).toLocaleString() : '';
+    const hint = `${log.status}${log.error_message ? ' — ' + log.error_message : ''}${when ? '\nLast: ' + when : ''}`;
+    return { state: log.status, tone, hint };
+  }
+
+  function Cell({ spec, channel }) {
+    const c = cellFor(spec, channel);
+    return (
+      <td title={c.hint} style={{
+        padding: '6px 8px',
+        textAlign: 'center',
+        borderBottom: `1px solid ${COLORS.border}`,
+      }}>
+        <span style={{
+          display: 'inline-block',
+          minWidth: 30,
+          padding: '4px 8px',
+          background: c.tone.bg,
+          border: `1px solid ${c.tone.border}`,
+          color: c.tone.fg,
+          borderRadius: 6,
+          fontSize: 13,
+          fontWeight: 700,
+        }}>{c.tone.label}</span>
+      </td>
+    );
+  }
+
+  return (
+    <div style={{
+      background: '#fff',
+      border: `1px solid ${COLORS.border}`,
+      borderRadius: 14,
+      padding: '0',
+      marginBottom: 14,
+      overflowX: 'auto',
+    }}>
+      <div style={{
+        padding: '14px 18px 10px',
+        borderBottom: `1px solid ${COLORS.border}`,
+      }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.ink, marginBottom: 4 }}>
+          Quick status (last 7 days)
+        </div>
+        <div style={{ fontSize: 12.5, color: COLORS.inkSoft, lineHeight: 1.5 }}>
+          One row per touchpoint. ✓ fired at least once, – skipped (pref off / quiet hours / no subscription), ✕ failed, · never fired. Confirm in the actual inbox.
+        </div>
+      </div>
+      <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13 }}>
+        <thead>
+          <tr>
+            <th style={{ textAlign: 'left', padding: '10px 16px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft }}>
+              Touchpoint
+            </th>
+            <th style={{ textAlign: 'left', padding: '10px 12px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft }}>
+              For
+            </th>
+            {CHANNELS.map(ch => (
+              <th key={ch} style={{ textAlign: 'center', padding: '10px 8px', borderBottom: `2px solid ${COLORS.border}`, background: COLORS.cream, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: COLORS.inkSoft, width: 70 }}>
+                {ch}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {NOTIFICATION_SPEC.map(spec => (
+            <tr key={spec.id}>
+              <td style={{ padding: '8px 16px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 13 }}>
+                <div style={{ fontWeight: 600, color: COLORS.ink }}>
+                  <span style={{ color: COLORS.inkSoft, fontWeight: 500, marginRight: 6 }}>{spec.id}</span>
+                  {spec.title}
+                </div>
+                <div style={{ fontSize: 11.5, color: COLORS.inkSoft, marginTop: 2 }}>{spec.when}</div>
+              </td>
+              <td style={{ padding: '8px 12px', borderBottom: `1px solid ${COLORS.border}`, fontSize: 11.5, color: COLORS.inkSoft, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                {spec.audience}
+              </td>
+              {CHANNELS.map(ch => (
+                <Cell key={ch} spec={spec} channel={ch} />
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {loading && (
+        <div style={{ padding: '8px 18px', fontSize: 12, color: COLORS.inkSoft, borderTop: `1px solid ${COLORS.border}` }}>
+          Refreshing…
+        </div>
+      )}
     </div>
   );
 }
