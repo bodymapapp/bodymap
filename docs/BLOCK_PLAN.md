@@ -1234,3 +1234,17 @@ wizard once.
 - No em dashes in any new text.
 
 **Estimate.** 75 minutes including the verification above. HK confirmed during deferral.
+
+---
+
+## Security audit (queued, dedicated pass, May 28 2026)
+
+HK sequence after notifications: SECURITY, then customer data backup, then SMS. Security is a multi-part audit and must not be rushed at the tail of a session. Three pillars:
+
+1. RLS live-state. A prior hardening script exists at supabase/migrations/rls_audit.sql with therapist_id = auth.uid() policies for therapists/clients/sessions/bookings/gift_certificates and more (87 policies across all migrations). BUT it is a manual run-in-editor script, not an auto-applied migration, so live-state is unconfirmed, AND newer tables (package_purchases, session_payments, package_redemptions, member_subscriptions, notification_log, in_app_notifications, push_subscriptions, etc.) may have therapist_id but no policy. Diagnostic read query (run in rmnqfrljoknmellbnpiy) to list every public table with rls_enabled + num_policies + has_therapist_id; any row with has_therapist_id=1 AND (rls_enabled=false OR num_policies=0) is an exposure. Claude drafts ALTER TABLE ENABLE RLS + CREATE POLICY for HK to run (write = goes through HK).
+
+2. Money-handling edge functions. charge-cancellation-fee, refund-session-payment, square-charge-card, square-create-deposit, capture-saved-card all accept therapist_id and/or amount_cents from the request body. Audit each: does it verify the caller owns the therapist/booking, and does it trust a body-supplied amount (financial exploit risk) vs recomputing server-side from the booking/policy? Highest-risk items first.
+
+3. Public / --no-verify-jwt edge functions. ~30 functions accept therapist_id from body. Confirm each only acts on rows the caller could already see (e.g. by deriving therapist from a verified Stripe/Square session or a row lookup), never trusting arbitrary body input to act on another therapist's data.
+
+Then: customer data backup mechanism (export/retention for therapists' client data; export-therapist-data edge function already exists, verify it covers all tables + is restorable). Then: SMS production (A2P 10DLC Macro #11, STOP/HELP Macro #12, status callbacks Macro #13, BYO-Twilio onboarding).
