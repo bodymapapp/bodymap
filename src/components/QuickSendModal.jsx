@@ -151,14 +151,25 @@ export default function QuickSendModal({ template, therapist, recipients: passed
   return (
     <div onClick={handleClose} style={{
       position:'fixed', inset:0, background:'rgba(15,23,42,0.55)', zIndex:9999,
-      display:'flex', alignItems:'center', justifyContent:'center', padding:16,
+      display:'flex',
+      alignItems:'flex-start',
+      justifyContent:'center',
+      padding:16,
+      paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
     }}>
       {/* Modal body. Backdrop click does NOT close (input fields
           present), explicit X required. Per existing modal pattern
           in this codebase. */}
       <div onClick={e => e.stopPropagation()} style={{
         background:C.white, borderRadius:16, padding:'20px 22px 22px',
-        maxWidth:640, width:'100%', maxHeight:'90vh', overflowY:'auto',
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 22px)',
+        maxWidth:640, width:'100%',
+        maxHeight: 'calc(100dvh - 32px)',
+        overflowY:'auto',
+        WebkitOverflowScrolling: 'touch',
         boxShadow:'0 12px 40px rgba(0,0,0,0.25)',
       }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>

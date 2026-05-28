@@ -160,11 +160,21 @@ export default function CustomQuickSendModal({ therapist, onClose, onSent }) {
   return (
     <div onClick={handleClose} style={{
       position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 9999,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      padding: 16,
+      paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
     }}>
       <div onClick={e => e.stopPropagation()} style={{
         background: '#fff', borderRadius: 16, maxWidth: 640, width: '100%',
-        maxHeight: '90vh', overflow: 'auto', boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+        maxHeight: 'calc(100dvh - 32px)', overflow: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        boxShadow: '0 25px 50px rgba(0,0,0,0.25)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}>
         {/* Header */}
         <div style={{

@@ -2839,8 +2839,14 @@ const PrefScreen = ({
             position: 'fixed', inset: 0, zIndex: 9999,
             background: 'rgba(13, 31, 23, 0.72)',
             backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
             padding: 16,
+            paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <div
@@ -2849,19 +2855,28 @@ const PrefScreen = ({
               background: '#fff',
               borderRadius: 16,
               maxWidth: 540, width: '100%',
-              maxHeight: '85vh',
+              maxHeight: 'calc(100dvh - 32px)',
               display: 'flex', flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
             }}
           >
-            <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #E8E4DC' }}>
+            <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #E8E4DC', flexShrink: 0 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: '#6B9E80', letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 4 }}>Client Agreement</div>
               <div style={{ fontSize: 18, fontWeight: 700, color: '#1A3A28', fontFamily: 'Georgia, serif' }}>{businessName || therapistName || 'Your therapist'}</div>
             </div>
-            <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1, fontSize: 14, color: '#374151', lineHeight: 1.7, fontFamily: 'Georgia, serif' }}>
+            <div style={{ padding: '18px 22px', overflowY: 'auto', flex: 1, minHeight: 0, WebkitOverflowScrolling: 'touch', fontSize: 14, color: '#374151', lineHeight: 1.7, fontFamily: 'Georgia, serif' }}>
               <AgreementRenderer text={waiverText} />
             </div>
-            <div style={{ padding: '14px 22px', borderTop: '1px solid #E8E4DC', textAlign: 'right' }}>
+            <div style={{
+              padding: '14px 22px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
+              borderTop: '1px solid #E8E4DC',
+              textAlign: 'right',
+              flexShrink: 0,
+              background: '#fff',
+              borderBottomLeftRadius: 16,
+              borderBottomRightRadius: 16,
+            }}>
               <button
                 onClick={() => setShowWaiver(false)}
                 style={{ background: '#2A5741', color: '#fff', border: 'none', padding: '10px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'system-ui' }}

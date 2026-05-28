@@ -583,13 +583,24 @@ function AddQuestionModal({ open, onClose, onPick }) {
     <div style={{
       position: 'fixed', inset: 0,
       background: 'rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      zIndex: 1000, padding: 16,
+      display: 'flex',
+      alignItems: 'flex-start',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: 16,
+      paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+      paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
     }} onClick={onClose}>
       <div onClick={(e) => e.stopPropagation()} style={{
         background: '#fff', borderRadius: 16,
-        maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto',
+        maxWidth: 480, width: '100%',
+        maxHeight: 'calc(100dvh - 32px)',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         padding: 24,
+        paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, margin: 0 }}>Add a question</h3>

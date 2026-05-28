@@ -697,9 +697,29 @@ export default function Outreach({ therapist: therapistProp, lapsedDays = 60 }) 
       {/* Platform starter modal */}
       {aiStarterOpen && (
         <div onClick={() => !aiDrafting && setAiStarterOpen(false)}
-          style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+          style={{
+            position:'fixed', inset:0,
+            background:'rgba(0,0,0,0.45)',
+            zIndex:1000,
+            display:'flex',
+            alignItems:'flex-start',
+            justifyContent:'center',
+            padding:16,
+            paddingTop: 'max(16px, env(safe-area-inset-top, 0px))',
+            paddingBottom: 'max(16px, env(safe-area-inset-bottom, 0px))',
+            overflowY: 'auto',
+            WebkitOverflowScrolling: 'touch',
+          }}>
           <div onClick={e => e.stopPropagation()}
-            style={{ background:'#fff', borderRadius:18, padding:24, maxWidth:520, width:'100%', maxHeight:'90vh', overflow:'auto', boxShadow:'0 12px 40px rgba(0,0,0,0.2)' }}>
+            style={{
+              background:'#fff', borderRadius:18, padding:24,
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
+              maxWidth:520, width:'100%',
+              maxHeight: 'calc(100dvh - 32px)',
+              overflow:'auto',
+              WebkitOverflowScrolling: 'touch',
+              boxShadow:'0 12px 40px rgba(0,0,0,0.2)',
+            }}>
             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:14 }}>
               <div>
                 <h3 style={{ fontFamily:'Georgia,serif', fontSize:20, fontWeight:700, color:C.dark, margin:'0 0 4px' }}>✨ Campaign starter</h3>
