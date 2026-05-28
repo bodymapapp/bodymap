@@ -376,6 +376,85 @@ function SubmitButton({ label, onClick, disabled, blockedLabel, blocked, submitt
 }
 
 // ─────────────────────────────────────────────────────────────────
+// Client info section. For package / membership purchases where the
+// client is anonymous until checkout. For service bookings the
+// client name/email/phone are collected in earlier steps so this
+// section is omitted.
+// ─────────────────────────────────────────────────────────────────
+function ClientInfoCard({ form, onChange }) {
+  return (
+    <div style={{
+      marginBottom: 14,
+      background: C.white,
+      borderRadius: 16,
+      padding: 18,
+    }}>
+      <div style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: C.gray,
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        marginBottom: 10,
+      }}>
+        Your info
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <input
+          placeholder="Your name"
+          value={form.name || ''}
+          onChange={(e) => onChange({ ...form, name: e.target.value })}
+          style={{
+            background: '#FAFAF7',
+            border: `1.5px solid ${C.light}`,
+            borderRadius: 10,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            width: '100%',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+          }}
+        />
+        <input
+          placeholder="Email"
+          type="email"
+          value={form.email || ''}
+          onChange={(e) => onChange({ ...form, email: e.target.value })}
+          style={{
+            background: '#FAFAF7',
+            border: `1.5px solid ${C.light}`,
+            borderRadius: 10,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            width: '100%',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+          }}
+        />
+        <input
+          placeholder="Phone (optional)"
+          value={form.phone || ''}
+          onChange={(e) => onChange({ ...form, phone: e.target.value })}
+          style={{
+            background: '#FAFAF7',
+            border: `1.5px solid ${C.light}`,
+            borderRadius: 10,
+            padding: '12px 14px',
+            fontSize: 15,
+            outline: 'none',
+            width: '100%',
+            boxSizing: 'border-box',
+            fontFamily: 'inherit',
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────
 // Main shell. Composes all the sub-sections in the right order.
 // Caller provides:
 //   summaryRows         - [[label, value], ...]
@@ -398,6 +477,7 @@ export default function PublicCheckout({
   subheading,
   onBack,
   summaryRows,
+  clientInfoContext,
   approvalContext,
   depositContext,
   paymentModeContext,
@@ -439,6 +519,10 @@ export default function PublicCheckout({
       )}
 
       {summaryRows && summaryRows.length > 0 && <SummaryTable rows={summaryRows} />}
+
+      {clientInfoContext && (
+        <ClientInfoCard form={clientInfoContext.form} onChange={clientInfoContext.onChange} />
+      )}
 
       {approvalContext && <ApprovalBanner therapistFirstName={approvalContext.firstName} />}
 

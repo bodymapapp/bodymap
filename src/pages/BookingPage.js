@@ -6,6 +6,7 @@ import { isTestMode, getStripePublishableKey } from '../lib/paymentMode';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from '../components/CloseButton';
 import { PolicyDisplay } from '../components/BookingPolicies';
+import PublicCheckout from '../components/PublicCheckout';
 // ClientPushCTA removed May 17 2026: client push tabled until client
 // login exists. The component file stays in tree as dormant code,
 // ready to re-import when BLOCK_PLAN Macro #2 (client portal) ships.
@@ -4218,100 +4219,63 @@ export default function BookingPage() {
           <div
             style={{
               background: '#fff', borderRadius: 18,
-              maxWidth: 440, width: '100%',
+              maxWidth: 520, width: '100%',
               maxHeight: 'calc(100dvh - 40px)',
               display: 'flex',
               flexDirection: 'column',
               boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
               position: 'relative',
             }}>
-            {/* Explicit close button. Sits in the top-right corner.
-                Disabled while the request is in flight to prevent
-                race conditions. */}
+            {/* Explicit close button. */}
             <div style={{ position: 'absolute', top: 14, right: 14, zIndex: 2 }}>
               <CloseButton onClick={() => !offerLoading && setOfferModal(null)} label="Close" disabled={offerLoading} />
             </div>
 
             <div style={{
-              padding: 24,
-              paddingBottom: 8,
+              padding: '40px 24px 24px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}>
-              <div style={{ marginBottom: 16, paddingRight: 36 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-                  {offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
-                </div>
-                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                  {offerModal.item.name}
-                </div>
-                <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
-                  {offerModal.type === 'package'
-                    ? <>${Number(offerModal.item.price).toFixed(0)} for {offerModal.item.session_count} sessions{offerModal.item.expires_in_days ? ` (use within ${offerModal.item.expires_in_days} days)` : ''}</>
-                    : <>${Number(offerModal.item.monthly_price).toFixed(0)} per month, {offerModal.item.monthly_session_credits} session{offerModal.item.monthly_session_credits !== 1 ? 's' : ''} included</>
-                  }
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input
-                  placeholder="Your name"
-                  value={offerForm.name}
-                  onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-                <input
-                  placeholder="Email"
-                  type="email"
-                  value={offerForm.email}
-                  onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-                <input
-                  placeholder="Phone (optional)"
-                  value={offerForm.phone}
-                  onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Sticky footer with action buttons. Always reachable
-                regardless of body scroll position. Design Principle 29. */}
-            <div style={{
-              padding: '14px 24px',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
-              borderTop: `1px solid ${C.light}`,
-              background: '#fff',
-              flexShrink: 0,
-              borderBottomLeftRadius: 18,
-              borderBottomRightRadius: 18,
-            }}>
-              {offerError && (
-                <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
-                  ⚠️ {offerError}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setOfferModal(null)}
-                  disabled={offerLoading}
-                  style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: offerLoading ? 'default' : 'pointer' }}>
-                  Cancel
-                </button>
-                <button
-                  onClick={buyOffer}
-                  disabled={offerLoading}
-                  style={{ flex: 2, background: offerLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: offerLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
-                  {offerLoading ? 'Opening checkout...' : 'Continue to payment'}
-                </button>
-              </div>
-              <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.5 }}>
-                You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card and complete the purchase.
-              </p>
+              {/* HK May 27 2026 Ship 2: PublicCheckout shell replaces
+                  the old tiny 3-input form. Same UX language as the
+                  service-booking step 4 layout: summary table, client
+                  info, payment notice, submit. Packages and memberships
+                  are always full pay (no deposit mode card). */}
+              <PublicCheckout
+                heading={offerModal.type === 'package' ? 'Buy a package' : 'Start a membership'}
+                subheading={offerModal.type === 'package'
+                  ? `${offerModal.item.session_count} sessions${offerModal.item.expires_in_days ? `, use within ${offerModal.item.expires_in_days} days` : ''}. Pay upfront, book sessions whenever you want.`
+                  : `${offerModal.item.monthly_session_credits} session${offerModal.item.monthly_session_credits !== 1 ? 's' : ''} per month, billed monthly. Cancel anytime.`}
+                summaryRows={offerModal.type === 'package' ? [
+                  ['Package', offerModal.item.name],
+                  ['Sessions', String(offerModal.item.session_count)],
+                  ...(offerModal.item.expires_in_days ? [['Use within', `${offerModal.item.expires_in_days} days`]] : []),
+                  ['Price', `$${Number(offerModal.item.price).toFixed(0)} upfront`],
+                  ['Therapist', therapist.business_name || therapist.full_name],
+                ] : [
+                  ['Plan', offerModal.item.name],
+                  ['Sessions per month', String(offerModal.item.monthly_session_credits)],
+                  ['Price', `$${Number(offerModal.item.monthly_price).toFixed(0)} per month`],
+                  ['Therapist', therapist.business_name || therapist.full_name],
+                ]}
+                clientInfoContext={{
+                  form: offerForm,
+                  onChange: setOfferForm,
+                }}
+                submit={{
+                  label: offerModal.type === 'package'
+                    ? `Pay $${Number(offerModal.item.price).toFixed(0)}`
+                    : `Start at $${Number(offerModal.item.monthly_price).toFixed(0)} per month`,
+                  onClick: buyOffer,
+                  disabled: offerLoading || !offerForm.name?.trim() || !offerForm.email?.trim(),
+                  submitting: offerLoading,
+                }}
+                footerNote={`You'll be sent to a secure ${therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card and complete the purchase.`}
+                error={offerError}
+              />
             </div>
           </div>
         </div>
@@ -4523,7 +4487,7 @@ export default function BookingPage() {
           <div
             style={{
               background: '#fff', borderRadius: 18,
-              maxWidth: 440, width: '100%',
+              maxWidth: 520, width: '100%',
               maxHeight: 'calc(100dvh - 40px)',
               display: 'flex',
               flexDirection: 'column',
@@ -4535,79 +4499,40 @@ export default function BookingPage() {
             </div>
 
             <div style={{
-              padding: 24,
-              paddingBottom: 8,
+              padding: '40px 24px 24px',
+              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 24px)',
               flex: 1,
               minHeight: 0,
               overflowY: 'auto',
               WebkitOverflowScrolling: 'touch',
             }}>
-              <div style={{ marginBottom: 16, paddingRight: 36 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>
-                  Checkout
-                </div>
-                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: C.dark, marginBottom: 4 }}>
-                  {cart.length} package{cart.length !== 1 ? 's' : ''} · ${(cartTotalCents() / 100).toFixed(0)}
-                </div>
-                <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.5 }}>
-                  Tell us who you are, then we'll send you to checkout.
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <input
-                  placeholder="Your name"
-                  value={offerForm.name}
-                  onChange={(e) => setOfferForm({ ...offerForm, name: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-                <input
-                  placeholder="Email"
-                  type="email"
-                  value={offerForm.email}
-                  onChange={(e) => setOfferForm({ ...offerForm, email: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-                <input
-                  placeholder="Phone (optional)"
-                  value={offerForm.phone}
-                  onChange={(e) => setOfferForm({ ...offerForm, phone: e.target.value })}
-                  style={{ background: '#FAFAF7', border: `1.5px solid ${C.light}`, borderRadius: 10, padding: '12px 14px', fontSize: 15, outline: 'none', width: '100%', boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Sticky footer. Design Principle 29. */}
-            <div style={{
-              padding: '14px 24px',
-              paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 14px)',
-              borderTop: `1px solid ${C.light}`,
-              background: '#fff',
-              flexShrink: 0,
-              borderBottomLeftRadius: 18,
-              borderBottomRightRadius: 18,
-            }}>
-              {cartCheckoutError && (
-                <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 10, padding: '10px 12px', fontSize: 13, color: '#991B1B', marginBottom: 12, lineHeight: 1.5 }}>
-                  ⚠️ {cartCheckoutError}
-                </div>
-              )}
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button
-                  onClick={() => setCartCheckoutModal(false)}
-                  disabled={cartCheckoutLoading}
-                  style={{ flex: 1, background: '#fff', border: `1.5px solid ${C.light}`, borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 600, color: C.gray, cursor: cartCheckoutLoading ? 'default' : 'pointer' }}>
-                  Cancel
-                </button>
-                <button
-                  onClick={checkoutCart}
-                  disabled={cartCheckoutLoading}
-                  style={{ flex: 2, background: cartCheckoutLoading ? C.sage : C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px', fontSize: 14, fontWeight: 700, cursor: cartCheckoutLoading ? 'default' : 'pointer', boxShadow: '0 4px 14px rgba(42,87,65,0.25)' }}>
-                  {cartCheckoutLoading ? 'Opening checkout...' : `Pay $${(cartTotalCents() / 100).toFixed(0)}`}
-                </button>
-              </div>
-              <p style={{ fontSize: 11, color: C.gray, textAlign: 'center', margin: '10px 0 0', lineHeight: 1.5 }}>
-                You'll be sent to a secure {therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card.
-              </p>
+              {/* HK May 27 2026 Ship 2: cart checkout uses the same
+                  PublicCheckout shell as single-package purchase and
+                  service booking. Same UX, same fields, same look. */}
+              <PublicCheckout
+                heading="Checkout"
+                subheading={`${cart.length} package${cart.length !== 1 ? 's' : ''} ready to purchase. Tell us who you are, then we'll send you to checkout.`}
+                summaryRows={[
+                  ...cart.map(p => [
+                    p.name,
+                    `${p.session_count} sessions · $${Number(p.price).toFixed(0)}`,
+                  ]),
+                  ['Total', `$${(cartTotalCents() / 100).toFixed(0)}`],
+                  ['Therapist', therapist.business_name || therapist.full_name],
+                ]}
+                clientInfoContext={{
+                  form: offerForm,
+                  onChange: setOfferForm,
+                }}
+                submit={{
+                  label: `Pay $${(cartTotalCents() / 100).toFixed(0)}`,
+                  onClick: checkoutCart,
+                  disabled: cartCheckoutLoading || !offerForm.name?.trim() || !offerForm.email?.trim(),
+                  submitting: cartCheckoutLoading,
+                }}
+                footerNote={`You'll be sent to a secure ${therapist?.stripe_account_id ? 'Stripe' : 'Square'} checkout to enter your card.`}
+                error={cartCheckoutError}
+              />
             </div>
           </div>
         </div>
