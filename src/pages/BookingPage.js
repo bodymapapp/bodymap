@@ -921,6 +921,47 @@ export default function BookingPage() {
 
   useEffect(()=>{load();},[slug]);
 
+  // HK May 27 2026 Ship 3 (Q4=a): returning-client package auto-detect.
+  // When the booking page has a known email (returning-client link
+  // prefill, or after the client types their email) AND that client
+  // has an active package with sessions remaining, surface an offer
+  // to redeem from it. Skipped if already in a redeem flow or if the
+  // client just bought a package (purchaseSuccess handles that path).
+  const [detectedPackage, setDetectedPackage] = useState(null);
+  useEffect(() => {
+    const email = (form.email || '').trim().toLowerCase();
+    if (!email || !email.includes('@') || !therapist?.id) { setDetectedPackage(null); return; }
+    if (redeemContext || purchaseSuccess) return; // already handled
+    let alive = true;
+    (async () => {
+      try {
+        const { data: pkgs } = await supabase
+          .from('package_purchases')
+          .select('id, sessions_remaining, expires_at, status, package:packages(name)')
+          .eq('therapist_id', therapist.id)
+          .eq('client_email', email)
+          .eq('status', 'active')
+          .gt('sessions_remaining', 0);
+        if (!alive) return;
+        const valid = (pkgs || []).filter(p => !p.expires_at || new Date(p.expires_at) > new Date());
+        if (valid.length > 0) {
+          const p = valid[0];
+          setDetectedPackage({
+            purchaseId: p.id,
+            sessionsRemaining: p.sessions_remaining,
+            packageName: p.package?.name || 'Package',
+          });
+        } else {
+          setDetectedPackage(null);
+        }
+      } catch (e) {
+        if (alive) setDetectedPackage(null);
+      }
+    })();
+    return () => { alive = false; };
+  }, [form.email, therapist?.id, redeemContext, purchaseSuccess]);
+
+
   // Redirect handlers for payment flows. Three distinct return paths:
   //
   //   1) Square deposit: ?deposit_complete=1&booking_id=...
@@ -2436,6 +2477,63 @@ export default function BookingPage() {
       </div>
 
       <div style={{maxWidth:560,margin:'0 auto',padding:'24px 16px calc(100px + env(safe-area-inset-bottom, 0px))'}}>
+
+        {/* HK May 27 2026 Ship 3 (Q4=a): returning-client package offer.
+            Shows at the top when a known client with an active package
+            balance is detected by email, and they are not already in a
+            redeem flow. Tapping it enters redeem mode (no payment). */}
+        {detectedPackage && !redeemContext && !bulkDone && step <= 2 && (
+          <div style={{
+            background: '#F0FDF4', border: '1.5px solid #86EFAC',
+            borderRadius: 14, padding: '16px 18px', marginBottom: 18,
+            display: 'flex', gap: 12, alignItems: 'flex-start',
+          }}>
+            <span style={{ fontSize: 22, flexShrink: 0 }}>🎟️</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#14532D', marginBottom: 3 }}>
+                You have {detectedPackage.sessionsRemaining} session{detectedPackage.sessionsRemaining !== 1 ? 's' : ''} left
+              </div>
+              <div style={{ fontSize: 12.5, color: '#166534', lineHeight: 1.5, marginBottom: 10 }}>
+                Your {detectedPackage.packageName} covers this booking. Redeem a session: no payment needed.
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={() => {
+                    setRedeemContext({
+                      purchaseId: detectedPackage.purchaseId,
+                      sessionsRemaining: detectedPackage.sessionsRemaining,
+                      packageName: detectedPackage.packageName,
+                      clientEmail: form.email,
+                      clientName: form.name,
+                      clientId: null,
+                    });
+                    window.scrollTo(0, 0);
+                  }}
+                  style={{ background: C.forest, color: '#fff', border: 'none', borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                  Redeem a session
+                </button>
+                {detectedPackage.sessionsRemaining > 1 && (
+                  <button
+                    onClick={() => {
+                      setRedeemContext({
+                        purchaseId: detectedPackage.purchaseId,
+                        sessionsRemaining: detectedPackage.sessionsRemaining,
+                        packageName: detectedPackage.packageName,
+                        clientEmail: form.email,
+                        clientName: form.name,
+                        clientId: null,
+                        scheduleAll: true,
+                      });
+                      window.scrollTo(0, 0);
+                    }}
+                    style={{ background: '#fff', color: C.forest, border: `1.5px solid ${C.forest}`, borderRadius: 10, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                    Schedule all {detectedPackage.sessionsRemaining}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* HK May 27 2026 Ship 3: bulk session scheduler. Shows when
             the client tapped 'Schedule all N sessions' after buying a
