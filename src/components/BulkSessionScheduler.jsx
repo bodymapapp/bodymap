@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
+import MonthCalendar from './MonthCalendar';
 
 const C = { forest: '#2A5741', sage: '#6B9E80', beige: '#F5F0E8', white: '#FFFFFF', dark: '#1A1A2E', gray: '#6B7280', light: '#E8E4DC' };
 
@@ -77,13 +78,45 @@ export default function BulkSessionScheduler({
   // (HK May 27 2026: 'doesn't allow different service by session').
   const defaultServiceId = eligibleServices[0]?.id || null;
 
-  // One row per session: { serviceId, date, time, pickerOpen }.
+  // One row per session: { serviceId, date, time, pickerOpen, dateOpen }.
   // serviceId defaults to the first eligible service; the row's
   // compact service picker (no dropdown, per house rules) lets the
-  // client change it per session.
-  const [rows, setRows] = useState(() =>
-    Array.from({ length: maxRows }, () => ({ serviceId: defaultServiceId, date: '', time: '', pickerOpen: false }))
-  );
+  // client change it per session. dateOpen toggles the month calendar.
+  //
+  // HK May 27 2026: save progress. Rows are persisted to sessionStorage
+  // keyed by the package purchase id, so if the client (or therapist)
+  // accidentally closes the modal mid-scheduling, reopening restores
+  // their picks instead of starting over. Cleared on successful submit.
+  const draftKey = `bulk_sched_draft_${redeemContext?.purchaseId || 'none'}`;
+  const [rows, setRows] = useState(() => {
+    try {
+      const saved = typeof window !== 'undefined' && window.sessionStorage.getItem(draftKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Re-normalise length to maxRows and ensure transient flags reset.
+          return Array.from({ length: maxRows }, (_, i) => ({
+            serviceId: parsed[i]?.serviceId || defaultServiceId,
+            date: parsed[i]?.date || '',
+            time: parsed[i]?.time || '',
+            pickerOpen: false,
+            dateOpen: false,
+          }));
+        }
+      }
+    } catch (e) { /* ignore corrupt draft */ }
+    return Array.from({ length: maxRows }, () => ({ serviceId: defaultServiceId, date: '', time: '', pickerOpen: false, dateOpen: false }));
+  });
+
+  // Persist the draft (serviceId/date/time only, not transient UI flags)
+  // whenever rows change. Wrapped in try/catch since sessionStorage can
+  // throw in private mode.
+  useEffect(() => {
+    try {
+      const slim = rows.map(r => ({ serviceId: r.serviceId, date: r.date, time: r.time }));
+      window.sessionStorage.setItem(draftKey, JSON.stringify(slim));
+    } catch (e) { /* ignore */ }
+  }, [rows, draftKey]);
   // Slots keyed by `${iso}|${duration}` since different services have
   // different durations and therefore different open slots.
   const [slotsByKey, setSlotsByKey] = useState({});
@@ -99,18 +132,9 @@ export default function BulkSessionScheduler({
   }, [eligibleServices]);
   const slotKey = (iso, dur) => `${iso}|${dur}`;
 
-  // Build the list of pickable dates: next 60 days that fall on an
-  // available weekday.
-  const availableDows = useMemo(() => new Set((availability || []).map(a => a.day_of_week)), [availability]);
-  const pickableDates = useMemo(() => {
-    const out = [];
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    for (let i = 1; i <= 60 && out.length < 45; i++) {
-      const d = new Date(today); d.setDate(today.getDate() + i);
-      if (availableDows.has(d.getDay())) out.push(isoDate(d));
-    }
-    return out;
-  }, [availableDows]);
+  // MonthCalendar handles which dates are pickable (it greys out
+  // weekdays the therapist is not available and past dates), so the
+  // old precomputed pickableDates list is no longer needed.
 
   // Fetch availability + existing bookings for a date, compute open
   // slots for a given duration. Keyed by date+duration. Also subtract
@@ -158,11 +182,15 @@ export default function BulkSessionScheduler({
     if (row?.date && !slotsByKey[slotKey(row.date, dur)]) loadSlotsForDate(row.date, dur, idx);
   }
   function toggleRowPicker(idx) {
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, pickerOpen: !r.pickerOpen } : r));
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, pickerOpen: !r.pickerOpen, dateOpen: false } : r));
+  }
+  function toggleRowDate(idx) {
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, dateOpen: !r.dateOpen, pickerOpen: false } : r));
   }
   function setRowDate(idx, iso) {
     const dur = svcById[rows[idx]?.serviceId]?.duration || 60;
-    setRows(prev => prev.map((r, i) => i === idx ? { ...r, date: iso, time: '' } : r));
+    // Close the calendar once a date is picked so the time chips show.
+    setRows(prev => prev.map((r, i) => i === idx ? { ...r, date: iso, time: '', dateOpen: false } : r));
     if (iso && !slotsByKey[slotKey(iso, dur)]) loadSlotsForDate(iso, dur, idx);
   }
   function setRowTime(idx, time) {
@@ -255,6 +283,10 @@ export default function BulkSessionScheduler({
       if (newRemaining === 0) pkgUpdate.status = 'exhausted';
       await supabase.from('package_purchases').update(pkgUpdate).eq('id', redeemContext.purchaseId);
 
+      // Scheduling succeeded: clear the saved draft so a future visit
+      // starts fresh.
+      try { window.sessionStorage.removeItem(draftKey); } catch (e) { /* ignore */ }
+
       onComplete?.(created);
     } catch (e) {
       console.error('[bulk] submitAll failed:', e);
@@ -346,24 +378,39 @@ export default function BulkSessionScheduler({
               </div>
             )}
 
-            {/* Date chips */}
+            {/* Date: compact pill that expands a monthly calendar.
+                HK May 27 2026: replaced the horizontal scrolling date
+                strip (bad experience) with the same monthly grid the
+                rest of the booking flow uses. */}
             <div style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Date</div>
-            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 6, marginBottom: row.date ? 12 : 0, WebkitOverflowScrolling: 'touch' }}>
-              {pickableDates.slice(0, 14).map(iso => (
-                <button key={iso}
-                  onClick={() => setRowDate(idx, iso)}
-                  style={{
-                    flexShrink: 0,
-                    padding: '8px 12px',
-                    border: `1.5px solid ${row.date === iso ? C.forest : C.light}`,
-                    background: row.date === iso ? '#F0FDF4' : '#fff',
-                    color: row.date === iso ? C.forest : C.dark,
-                    borderRadius: 10, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                  }}>
-                  {fmtDateLabel(iso)}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={() => toggleRowDate(idx)}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                padding: '11px 14px',
+                border: `1.5px solid ${C.light}`,
+                background: '#FAFAF7',
+                borderRadius: 10,
+                fontSize: 14, fontWeight: 600, color: row.date ? C.dark : C.gray,
+                cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left',
+                marginBottom: row.dateOpen || row.date ? 10 : 0,
+              }}>
+              <span>{row.date ? fmtDateLabel(row.date) : 'Pick a date'}</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.forest, whiteSpace: 'nowrap' }}>
+                {row.dateOpen ? 'Close' : (row.date ? 'Change' : 'Choose')}
+              </span>
+            </button>
+            {row.dateOpen && (
+              <div style={{ border: `1px solid ${C.light}`, borderRadius: 12, padding: 14, marginBottom: 12, background: '#fff' }}>
+                <MonthCalendar
+                  availability={availability}
+                  service={rowSvc}
+                  selected={row.date}
+                  onSelect={(iso) => setRowDate(idx, iso)}
+                />
+              </div>
+            )}
 
             {/* Time chips for selected date */}
             {row.date && (
