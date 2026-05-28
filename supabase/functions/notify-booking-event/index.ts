@@ -257,6 +257,7 @@ serve(async (req) => {
           feeCharged: fee_charged,
           paymentLinkUrl: payment_link_url,
           reschedulePrev: reschedule_prev,
+          reason: reason,
         },
       );
     } catch (e) {

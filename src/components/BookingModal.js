@@ -352,12 +352,17 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
       }
 
       // Fire-and-forget: notify client and therapist. Never blocks UI.
-      // send-booking-confirmation handles channel fan-out via
-      // notification_log + notification_prefs. For reschedules we still
-      // call the same function with event_type so the matrix can group;
-      // the function reads booking_date + start_time fresh so the email
-      // reflects the NEW time, not the old.
-      if (bookingId) fireBookingConfirmation(bookingId, eventType);
+      // HK May 28 2026: for RESCHEDULES, notify-booking-event already
+      // fired above with event_type='reschedule', which routes to
+      // send-reschedule-confirmation (client C13) + the therapist
+      // reschedule alert. Calling send-booking-confirmation here too
+      // produced duplicate noise: an extra therapist 'new_booking' AND
+      // a CLIENT 'booking_confirmation' (a brand-new-booking email)
+      // instead of the proper reschedule email. So fire only on new
+      // bookings, not on reschedules. The notify-booking-event call
+      // above is the single source of truth for reschedule
+      // notifications.
+      if (bookingId && !isReschedule) fireBookingConfirmation(bookingId, eventType);
 
       onSuccess?.();
       onClose();

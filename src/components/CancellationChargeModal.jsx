@@ -107,6 +107,11 @@ export default function CancellationChargeModal({
   const [error, setError] = useState(null);
   // step: 'confirm' | 'charging' | 'done' | 'enter_card' | 'link_sent'
   const [step, setStep] = useState('confirm');
+  // HK May 28 2026: optional free-text reason therapist can include.
+  // Flows to notify-booking-event so the enriched therapist email and
+  // client apology can show "why" the session was cancelled. Empty is
+  // fine, the email gracefully omits the row.
+  const [reason, setReasonText] = useState('');
   const [chargeResult, setChargeResult] = useState(null);
   // Phase 13.6 (HK May 17 2026): payment link state when therapist
   // chooses "Send payment link" instead of charging on card or skipping.
@@ -276,7 +281,7 @@ export default function CancellationChargeModal({
           body: JSON.stringify({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
-            initiated_by: 'therapist',
+            initiated_by: 'therapist', reason: reason || null,
             fee_amount_cents: fee.amount_cents || 0,
             fee_charged: true,
           }),
@@ -352,7 +357,7 @@ export default function CancellationChargeModal({
           body: JSON.stringify({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
-            initiated_by: 'therapist',
+            initiated_by: 'therapist', reason: reason || null,
             fee_amount_cents: fee.amount_cents || 0,
             fee_charged: false,
             payment_link_url: data.payment_link_url,
@@ -492,7 +497,7 @@ export default function CancellationChargeModal({
           body: JSON.stringify({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
-            initiated_by: 'therapist',
+            initiated_by: 'therapist', reason: reason || null,
             fee_amount_cents: effectiveFeeCents,
             fee_charged: true,
           }),
@@ -530,7 +535,7 @@ export default function CancellationChargeModal({
           body: JSON.stringify({
             booking_id: booking.id,
             event_type: isNoShow ? 'no_show_recorded' : 'booking_cancelled',
-            initiated_by: 'therapist',
+            initiated_by: 'therapist', reason: reason || null,
           }),
         }).catch(() => { /* non-blocking */ });
       } catch (_notifyErr) { /* non-blocking */ }
@@ -675,6 +680,28 @@ export default function CancellationChargeModal({
                   {error}
                 </div>
               )}
+
+              {/* Optional reason (HK May 28 2026): therapist can briefly
+                  say why. Flows into the enriched cancellation email
+                  AND the client apology. Blank is fine. */}
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ fontSize: 11, fontWeight: 700, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 6 }}>
+                  Reason (optional)
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={e => setReasonText(e.target.value)}
+                  placeholder={isNoShow ? 'Optional note for your records' : 'Optional: a brief reason. Shared with the client in the cancellation email.'}
+                  rows={2}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    border: `1.5px solid ${C.light}`, borderRadius: 10,
+                    padding: '10px 12px', fontSize: 13.5, color: C.text,
+                    fontFamily: 'inherit', resize: 'vertical', minHeight: 56,
+                    outline: 'none', background: '#FAFAF7',
+                  }}
+                />
+              </div>
 
               {/* Action buttons. Phase 13.6 (HK May 17 2026): three
                   charge paths now. When card-on-file: existing charge

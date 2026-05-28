@@ -54,4 +54,16 @@ Recent code fixes that should have un-broken many of these:
 
 ## Test batches
 
-Batch 1 (in progress): C12, C13, C7, C8, C4 (the just-fixed cancel/reschedule/reminder family, highest value, easiest to trigger from Schedule)
+Batch 1 (in progress): C12, C13, C7, C8, C4
+
+May 28 ~16:16-16:20 test results (from notification_log):
+- C12 therapist_cancelled (client email): NOT in log. Therapist booking_cancelled fired all channels. Client apology email did not fire/log. Likely deploy timing (a9052ac7 unsubscribed_at fix may not have deployed yet at test time). Code now verified correct vs live schema. RETEST after 795f1ca2 deploys.
+- C13 reschedule (client email): NOT in log. Therapist reschedule email fired. Client reschedule email did not. Same likely cause. RETEST.
+- Therapist cancellation EMAIL was bland: FIXED 795f1ca2 (detail box added). Reason row needs cancel-modal reason field (queued).
+- Toast confirmation on cancel/no-show: ADDED 795f1ca2.
+- Client got therapist-cancel SMS but not email: SMS path works (therapist BYO/platform Twilio); the missing piece is the client EMAIL, same C12 fire issue above.
+
+QUEUED follow-ups from batch 1:
+- Cancel modal: add optional Reason field, pass through to notify-booking-event so the enriched email + client apology can show it.
+- Reschedule success toast (reschedule completes in BookingModal, not DetailPanel, so needs a toast there).
+- Retest C12 + C13 client emails after 795f1ca2 deploy.
