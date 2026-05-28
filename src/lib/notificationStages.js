@@ -75,10 +75,10 @@ export const TOUCHPOINT_TO_STAGE = {
   // First contact: arrival -> confirmation -> intake invitation
   'C1': 'first_contact',  // new client welcome + booking confirmation
   'C2': 'first_contact',  // returning client booking confirmation
-  'T1': 'first_contact',  // therapist alert for new booking
-  'T2': 'first_contact',  // therapist alert for new client signup
-  'T13': 'first_contact', // booking approval request to therapist
-  'T3': 'first_contact',  // payment received notification to therapist
+  'T1': 'first_contact',  // new_booking: therapist alert for new booking
+  'T2': 'first_contact',  // new_client_signup: therapist alert
+  'T13': 'first_contact', // system_failure (kept here historically)
+  'T4': 'first_contact',  // payment_received: money in is a first-contact moment (HK May 27 2026: moved here from becoming_regular; package + session payments fire this)
 
   // First session: 48h before through warmth after
   'C4': 'first_session',  // 48h early reminder
@@ -87,7 +87,7 @@ export const TOUCHPOINT_TO_STAGE = {
 
   // Becoming a regular: intake nudges, returning rhythm
   'C3': 'becoming_regular',  // intake reminder (gated)
-  'T4': 'becoming_regular',  // intake submitted alert
+  'T3': 'becoming_regular',  // intake_filled: intake submitted alert
   'C13': 'becoming_regular', // refund issued to client (when it happens during this phase)
 
   // Lifetime client: minimal touch, milestone signals

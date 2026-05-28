@@ -49,6 +49,11 @@ serve(async (req) => {
   const results = [];
 
   for (const booking of bookings || []) {
+    // HK May 27 2026: throttle to stay under Resend's 5 req/sec limit.
+    // send-reminder-48h already does this; send-reminders did not, so a
+    // busy day could trip 429s and silently drop reminders. 250ms gives
+    // ~4 req/sec with headroom.
+    await new Promise(r => setTimeout(r, 250));
     const therapist = booking.therapists;
     const service = booking.services;
     const firstName = booking.client_name?.split(' ')[0] || 'there';

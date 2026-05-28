@@ -109,31 +109,35 @@ serve(async (req) => {
     }
 
     // HK May 27 2026: notify the therapist that a package was bought.
-    // Previously package purchases fired no therapist notification at
-    // all, so the therapist had no idea a client prepaid. Uses the
-    // shared notifyTherapist helper (email + in-app + log, prefs-gated).
-    // Fire-and-forget; never block the purchase confirmation on it.
+    // Previously package purchases fired no notification at all. We fire
+    // the EXISTING payment_received event (T4 in the notification spec)
+    // rather than a new event type, so it lands in the matrix cell that
+    // already exists, reuses the therapist's existing prefs + Settings
+    // toggle, and shows on the compliance dashboard with no new column.
+    // The $0 package REDEMPTIONS (when sessions are later booked) fire
+    // nothing here on purpose: no money moves, so a 'payment received'
+    // alert would be noise. Fire-and-forget; never block the purchase.
     try {
       const dollars = (amountCents / 100).toFixed(0);
       const who = client_name || verifiedEmail || 'A client';
-      const tSubject = `${who} bought your ${pkg.name} package`;
+      const tSubject = `Payment received: ${who} bought your ${pkg.name} package`;
       const tHtml = `<!DOCTYPE html><html><body style="margin:0;background:#FAFAF7;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
   <div style="max-width:520px;margin:0 auto;padding:28px 22px;">
     <div style="background:#fff;border:1px solid #ECE7DC;border-radius:16px;padding:24px;">
-      <h2 style="font-family:Georgia,serif;color:#1A2E22;margin:0 0 6px;font-size:21px;">New package purchase</h2>
-      <p style="font-size:14px;color:#6B7280;margin:0 0 16px;line-height:1.6;">${escapeHtmlLocal(who)} just bought your <strong>${escapeHtmlLocal(pkg.name)}</strong> package (${pkg.session_count} session${pkg.session_count !== 1 ? 's' : ''}) for $${dollars}. They can now book those sessions against the package, and each booking will draw from the prepaid balance.</p>
-      <a href="https://mybodymap.app/dashboard/clients" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open clients</a>
-      <div style="font-size:11px;color:#6B7280;margin-top:22px;line-height:1.6;">You are getting this because package and payment notifications are on in your settings.</div>
+      <h2 style="font-family:Georgia,serif;color:#1A2E22;margin:0 0 6px;font-size:21px;">Payment received: $${dollars}</h2>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 16px;line-height:1.6;">${escapeHtmlLocal(who)} bought your <strong>${escapeHtmlLocal(pkg.name)}</strong> package (${pkg.session_count} session${pkg.session_count !== 1 ? 's' : ''}) for $${dollars}. They can now book those sessions against the package, and each booking draws from the prepaid balance at no extra charge.</p>
+      <a href="https://mybodymap.app/dashboard/billing" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open billing</a>
+      <div style="font-size:11px;color:#6B7280;margin-top:22px;line-height:1.6;">You are getting this because "Payment received" is on in your notification settings.</div>
     </div>
   </div>
 </body></html>`;
       await notifyTherapist({
         supabase,
         therapist,
-        eventType: 'package_purchased',
+        eventType: 'payment_received',
         title: tSubject,
         body: `${who} bought ${pkg.name} ($${dollars}).`,
-        linkUrl: '/dashboard/clients',
+        linkUrl: '/dashboard/billing',
         emailSubject: tSubject,
         emailHtml: tHtml,
         smsText: null,

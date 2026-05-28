@@ -50,11 +50,36 @@ export async function sendSmsViaTwilio(therapist, toPhone, message) {
 }
 
 // Read notification pref with sensible default
+// HK May 27 2026: default-ON for the in-production channels (email,
+// in-app bell) when a pref is missing, to match the Settings UI (which
+// shows these on by default) and send-booking-confirmation (also
+// defaults on). The previous behaviour defaulted everything OFF, so a
+// therapist who never opened notification settings silently received
+// nothing. That was the root cause of 'I got no notifications despite
+// all the activity today'.
+//
+// SMS and push stay OFF by default on purpose: SMS is not in production
+// (A2P 10DLC + BYO-Twilio blockers) and client push has no device yet.
+// Defaulting those on could trigger sends on channels that are not
+// ready. They send only when a therapist has EXPLICITLY turned them on.
+//
+// Rules per channel:
+//   email / app_alert : explicit boolean wins, else default ON
+//   sms / push        : explicit boolean wins, else default OFF
 export function shouldSend(therapist, audience, type, channel) {
   try {
-    return !!therapist?.notification_prefs?.[audience]?.[type]?.[channel];
+    const defaultOn = (channel === 'email' || channel === 'app_alert');
+    if (audience === 'client' && channel === 'push') return false;
+    const prefs = therapist?.notification_prefs;
+    if (!prefs || typeof prefs !== 'object') return defaultOn;
+    const a = prefs[audience];
+    if (!a || typeof a !== 'object') return defaultOn;
+    const t = a[type];
+    if (!t || typeof t !== 'object') return defaultOn;
+    if (typeof t[channel] !== 'boolean') return defaultOn;
+    return t[channel];
   } catch (e) {
-    return false;
+    return (channel === 'email' || channel === 'app_alert');
   }
 }
 
