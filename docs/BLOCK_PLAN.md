@@ -1261,3 +1261,16 @@ Found during the notification column audit. send-renewal-due (the "membership re
 - dedup query reads notification_log.reference_id + created_at; real cols are `sent_at` and there is no reference_id (verify actual dedup column, likely booking_id is null here so needs a membership/subscription ref column or a different dedup strategy)
 
 FIX (queued, needs care not a rename): rewrite sendForMembership + findMembershipsDueIn7Days to query member_subscriptions (cols: client_id, client_name, client_email, monthly_price, current_period_end, current_period_start, renewal_day_of_month, membership_id, status, started_at, therapist_id), join memberships(name) for the plan name and therapists(...) for the recipient. Recompute the "due in 7 days" window against current_period_end. Fix the dedup to use a real notification_log column (sent_at; and a subscription reference, since reference_id does not exist). Verify against live schema before shipping. This is why renewal-due alerts have never fired.
+
+---
+
+## Notification testing gaps found May 28 2026 (queued)
+
+### intake_filled (T3) likely has no fire site
+The notification is declared in NOTIFICATION_SPEC and NotificationPrefsCard but a grep of supabase/functions/ for `eventType: 'intake_filled'` or `notification_type: 'intake_filled'` returned ONLY the founder fire-all helper and the spec/prefs files. The intake submission path (likely an edge function called when a client submits intake via /<custom_url>?booking_id=...) does not appear to fire intake_filled. Action: find the intake submission handler (likely save-intake or similar), add a notifyTherapist call for intake_filled with the appropriate detail box (which sections were completed, red flags, etc.). ~30 min.
+
+### No in-app client-cancel UI for testing C08 / C09
+Real client cancellations happen via the public booking link, not the therapist dashboard. There is no way for HK to simulate "the client cancelled this booking" from his Schedule. For test purposes, options: (a) add a `?cancel=<booking_id>` query handler on the booking page that triggers the client-cancel flow when set; (b) add a founder-only "Simulate client cancel" button on test bookings; (c) keep the manual notify-booking-event invocation path that the founder-fire-all-notifications dashboard already uses, and route HK there for these tests. Action: extend the founder-fire helper to support a "fire as if client cancelled this specific booking" variant, or build (b). ~45 min.
+
+### Joy Client has a real Stripe Amex card (pm_1TY9jEQvokGFD9FYMgj4OPPf, last4 2001)
+Tests that "Charge fee" or "Charge no-show" on this client risk posting a real Amex charge to that card. For testing fee paths, either use the offline-only branch, use a low-value service like the existing $1 Test Service, or use a separate test client with no card on file. Documented for HK awareness, not a code change.
