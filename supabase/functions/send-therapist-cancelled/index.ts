@@ -37,7 +37,7 @@ serve(async (req) => {
       id, client_id, booking_date, start_time, service_id,
       services(name),
       therapists(id, full_name, business_name, custom_url, email, phone, notification_prefs),
-      clients(id, name, email, phone, unsubscribed_at)
+      clients(id, name, email, phone, outreach_unsubscribed_at)
     `)
     .eq('id', booking_id)
     .single();
@@ -47,7 +47,7 @@ serve(async (req) => {
   const therapist = booking.therapists;
   const client = booking.clients;
   if (!client?.email) return jsonErr('no client email', 200, { skipped: 'no_client_email' });
-  if (client.unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
+  if (client.outreach_unsubscribed_at) return jsonErr('unsubscribed', 200, { skipped: 'unsubscribed' });
 
   const serviceName = booking.services?.name || 'session';
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';

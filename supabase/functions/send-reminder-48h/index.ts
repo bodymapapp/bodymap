@@ -85,7 +85,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
       services(name, duration),
       location:therapist_locations(name, address),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs),
-      clients(id, name, email, phone, unsubscribed_at)
+      clients(id, name, email, phone, outreach_unsubscribed_at)
     `)
     .eq('id', bookingId)
     .single();
@@ -96,7 +96,7 @@ async function sendForBooking(supabase: any, RESEND_KEY: string, bookingId: stri
   const therapist = booking.therapists;
   const client = booking.clients;
   if (!client?.email) return { status: 'skipped', reason: 'no_client_email' };
-  if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
+  if (client.outreach_unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
 
   const serviceName = booking.services?.name || 'Massage session';
   const serviceDuration = booking.services?.duration || null;

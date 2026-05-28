@@ -107,7 +107,7 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
   const { data: client } = await supabase
     .from('clients')
     .select(`
-      id, name, email, therapist_id, unsubscribed_at,
+      id, name, email, therapist_id, outreach_unsubscribed_at,
       therapists(id, full_name, business_name, custom_url, email, notification_prefs, lapse_checkins_enabled_at)
     `)
     .eq('id', clientId)
@@ -115,7 +115,7 @@ async function sendForClient(supabase: any, RESEND_KEY: string, clientId: string
 
   if (!client) return { status: 'skipped', reason: 'client_not_found' };
   if (!client.email) return { status: 'skipped', reason: 'no_client_email' };
-  if (client.unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
+  if (client.outreach_unsubscribed_at) return { status: 'skipped', reason: 'unsubscribed' };
 
   const therapist = client.therapists;
 
