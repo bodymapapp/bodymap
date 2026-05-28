@@ -4776,7 +4776,7 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {!purchaseSuccess.error && (
+            {!purchaseSuccess.error && !bulkDone && (
             <div style={{
               background: '#fff', borderRadius: 16, padding: 22,
               boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
@@ -4785,80 +4785,46 @@ export default function BookingPage() {
                 Schedule your sessions
               </h2>
               <p style={{ fontSize: 13.5, color: C.gray, margin: '0 0 18px', lineHeight: 1.5 }}>
-                Book them now while you are here, or come back later. Your sessions stay in your package until you use them.
+                Pick a date and time for as many sessions as you like now. Book just one or all of them: any you skip stay in your package for later. No more payment needed.
               </p>
 
-              <button
-                onClick={() => {
-                  // Attach the package to the booking flow, prefill the
-                  // client, jump to service selection. The flow will
-                  // charge $0 and decrement the package.
-                  setRedeemContext({
-                    purchaseId: purchaseSuccess.purchaseId,
-                    sessionsRemaining: purchaseSuccess.sessionsRemaining,
-                    packageName: purchaseSuccess.packageName,
-                    clientEmail: purchaseSuccess.clientEmail,
-                    clientName: purchaseSuccess.clientName,
-                    clientId: purchaseSuccess.clientId,
-                  });
-                  setForm(f => ({
-                    ...f,
-                    name: purchaseSuccess.clientName || f.name,
-                    email: purchaseSuccess.clientEmail || f.email,
-                  }));
-                  setPurchaseSuccess(null);
-                  setStep(1);
-                  window.scrollTo(0, 0);
+              <BulkSessionScheduler
+                therapist={therapist}
+                services={services}
+                availability={availability}
+                redeemContext={{
+                  purchaseId: purchaseSuccess.purchaseId,
+                  sessionsRemaining: purchaseSuccess.sessionsRemaining,
+                  packageName: purchaseSuccess.packageName,
+                  clientEmail: purchaseSuccess.clientEmail,
+                  clientName: purchaseSuccess.clientName,
+                  clientId: purchaseSuccess.clientId,
                 }}
-                style={{
-                  width: '100%', background: C.forest, color: '#fff',
-                  border: 'none', borderRadius: 14, padding: '16px',
-                  fontSize: 15, fontWeight: 700, cursor: 'pointer',
-                  boxShadow: '0 4px 16px rgba(42,87,65,0.25)', marginBottom: 10,
-                }}>
-                Book your first session now
-              </button>
+                applicableServiceIds={null}
+                onComplete={(count) => { setBulkDone({ count }); window.scrollTo(0, 0); }}
+                onCancel={() => setPurchaseSuccess(null)}
+              />
+            </div>
+            )}
 
-              {purchaseSuccess.sessionsRemaining > 1 && (
-                <button
-                  onClick={() => {
-                    // Same as above but signals intent to schedule all.
-                    // The bulk picker reads redeemContext.sessionsRemaining.
-                    setRedeemContext({
-                      purchaseId: purchaseSuccess.purchaseId,
-                      sessionsRemaining: purchaseSuccess.sessionsRemaining,
-                      packageName: purchaseSuccess.packageName,
-                      clientEmail: purchaseSuccess.clientEmail,
-                      clientName: purchaseSuccess.clientName,
-                      clientId: purchaseSuccess.clientId,
-                      scheduleAll: true,
-                    });
-                    setForm(f => ({
-                      ...f,
-                      name: purchaseSuccess.clientName || f.name,
-                      email: purchaseSuccess.clientEmail || f.email,
-                    }));
-                    setPurchaseSuccess(null);
-                    setStep(1);
-                    window.scrollTo(0, 0);
-                  }}
-                  style={{
-                    width: '100%', background: '#fff', color: C.forest,
-                    border: `1.5px solid ${C.forest}`, borderRadius: 14, padding: '15px',
-                    fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 10,
-                  }}>
-                  Schedule all {purchaseSuccess.sessionsRemaining} sessions
-                </button>
-              )}
-
+            {/* Confirmation after the client books from the post-purchase
+                scheduler. Replaces the scheduler in place. */}
+            {!purchaseSuccess.error && bulkDone && (
+            <div style={{
+              background: '#fff', borderRadius: 16, padding: '32px 22px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.06)', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 700, color: C.dark, margin: '0 0 8px' }}>
+                {bulkDone.count} session{bulkDone.count !== 1 ? 's' : ''} booked
+              </h2>
+              <p style={{ fontSize: 14, color: C.gray, margin: '0 0 24px', lineHeight: 1.5, maxWidth: 380, marginLeft: 'auto', marginRight: 'auto' }}>
+                You will get a confirmation for each. Your therapist sees them all on their schedule. See you soon.
+              </p>
               <button
-                onClick={() => setPurchaseSuccess(null)}
-                style={{
-                  width: '100%', background: 'transparent', color: C.gray,
-                  border: 'none', borderRadius: 12, padding: '12px',
-                  fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                }}>
-                I will book later
+                onClick={() => { setBulkDone(null); setPurchaseSuccess(null); setStep(1); }}
+                style={{ background: C.forest, color: '#fff', border: 'none', borderRadius: 12, padding: '14px 28px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                Done
               </button>
             </div>
             )}
