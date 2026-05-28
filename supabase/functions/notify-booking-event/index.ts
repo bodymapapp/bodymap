@@ -54,9 +54,18 @@ serve(async (req) => {
     }
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+    // HK May 28 2026: this select previously requested services(name,
+    // price_cents) and start_at. The services column is `price` not
+    // `price_cents`, and bookings has no start_at (it uses booking_date
+    // + start_time). A single bad column makes the whole select fail,
+    // so `booking` came back null, the function returned booking_not_
+    // found (404) BEFORE any logging or sending, and the fire-and-
+    // forget caller swallowed it. Net effect: cancelling a booking sent
+    // no email to anyone and logged nothing. Columns now match the
+    // known-good select in send-booking-confirmation.
     const { data: booking } = await supabase
       .from('bookings')
-      .select('id, therapist_id, client_id, client_name, client_email, client_phone, start_at, booking_date, start_time, status, service_id, services(name, price_cents)')
+      .select('id, therapist_id, client_id, client_name, client_email, client_phone, booking_date, start_time, status, service_id, services(name, price)')
       .eq('id', booking_id)
       .maybeSingle();
 
@@ -75,11 +84,7 @@ serve(async (req) => {
     const firstName = clientName.split(' ')[0];
 
     let whenStr = '';
-    if (booking.start_at) {
-      whenStr = new Date(booking.start_at).toLocaleString('en-US', {
-        weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-      });
-    } else if (booking.booking_date && booking.start_time) {
+    if (booking.booking_date && booking.start_time) {
       const dt = new Date(`${booking.booking_date}T${booking.start_time}`);
       whenStr = isNaN(dt.getTime())
         ? `${booking.booking_date} ${booking.start_time}`
