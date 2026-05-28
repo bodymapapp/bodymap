@@ -22,6 +22,7 @@
 //   </SidePanel>
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function SidePanel({
   open,
@@ -52,7 +53,14 @@ export default function SidePanel({
 
   if (!open) return null;
 
-  return (
+  // HK May 27 2026: render through a portal to document.body. Without
+  // this, position:fixed is relative to the nearest ancestor that has
+  // a transform/animation/filter (ProfileSection's bm-cp-rise animation
+  // creates exactly such a containing block), so the panel got trapped
+  // INSIDE the Sessions and SOAP notes section instead of covering the
+  // viewport. Portal escapes that. See also CheckoutModal which hit the
+  // same issue.
+  return createPortal((
     <>
       {/* Dimmed backdrop. Tap to close. */}
       <div
@@ -169,5 +177,5 @@ export default function SidePanel({
         )}
       </div>
     </>
-  );
+  ), document.body);
 }

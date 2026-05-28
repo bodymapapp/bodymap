@@ -2,6 +2,7 @@
 // Used for: Create Booking, Reschedule, and Rebook (in-session)
 // mode: 'create' | 'reschedule' | 'rebook'
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabase';
 import { findOrCreateClient } from '../lib/findOrCreateClient';
 import CloseButton from './CloseButton';
@@ -420,7 +421,7 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
     if (avDows.includes(d.getDay()) && !blockedDates.has(ds)) availDates.push(ds);
   }
 
-  return (
+  return createPortal((
     <div style={{
       position: 'fixed',
       inset: 0,
@@ -818,5 +819,5 @@ export default function BookingModal({ therapist, mode = 'create', existingBooki
 
       </div>
     </div>
-  );
+  ), document.body);
 }

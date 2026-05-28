@@ -744,6 +744,15 @@ export default function BookingPage() {
   // post-purchase 'book now' button OR from returning-client
   // auto-detection by email.
   const [redeemContext,setRedeemContext]=useState(null); // { purchaseId, sessionsRemaining, packageName, clientEmail, clientName, clientId }
+  // HK May 27 2026 Ship 3: while confirm-package-purchase runs after the
+  // Stripe redirect, show a full-screen 'Activating your package' loader
+  // so the client never sees the bare booking page (which could bounce
+  // them toward intake). Set true the instant we detect purchase_complete
+  // =1, cleared when the success screen renders or on error.
+  const [purchaseProcessing,setPurchaseProcessing]=useState(
+    typeof window !== 'undefined' &&
+    new URLSearchParams(window.location.search).get('purchase_complete') === '1'
+  );
   // HK May 27 2026 Ship 3: when the bulk scheduler finishes, show a
   // confirmation count instead of the picker.
   const [bulkDone,setBulkDone]=useState(null); // { count } or null
@@ -1076,7 +1085,17 @@ export default function BookingPage() {
             clientName: data.client_name,
             clientId: data.client_id,
           });
+        } else {
+          // Confirm failed. Surface it instead of silently dropping the
+          // client onto the bare booking page (which bounced to intake).
+          console.error('[BookingPage] confirm-package-purchase failed:', data);
+          setPurchaseSuccess({
+            kind: 'package',
+            error: data.error || 'We could not confirm your package automatically. Your payment went through. Please contact your therapist to activate it.',
+            sessionsRemaining: 0,
+          });
         }
+        setPurchaseProcessing(false);
         window.history.replaceState({}, '', window.location.pathname);
       })();
       return;
@@ -2355,6 +2374,18 @@ export default function BookingPage() {
   }
 
   if(loading) return <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'system-ui'}}><div style={{color:C.gray,fontSize:14}}>Loading...</div></div>;
+  // HK May 27 2026 Ship 3: while the package purchase is being confirmed
+  // server-side, show a dedicated loader. Prevents the bare booking page
+  // (which can bounce to intake) from flashing during the async confirm.
+  if(purchaseProcessing && !purchaseSuccess) return (
+    <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'system-ui',padding:24}}>
+      <div style={{textAlign:'center',maxWidth:360}}>
+        <div style={{fontSize:44,marginBottom:16}}>🎁</div>
+        <h2 style={{fontFamily:'Georgia,serif',color:C.dark,margin:'0 0 8px',fontSize:22}}>Activating your package</h2>
+        <p style={{color:C.gray,fontSize:14,lineHeight:1.5}}>One moment while we confirm your payment and load your sessions...</p>
+      </div>
+    </div>
+  );
   if(notFound) return (
     <div style={{minHeight:'100vh',background:C.beige,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'system-ui'}}>
       <div style={{textAlign:'center'}}><div style={{fontSize:48,marginBottom:16}}>🌿</div><h2 style={{fontFamily:'Georgia,serif',color:C.dark,margin:'0 0 8px'}}>Page not found</h2><p style={{color:C.gray}}>This booking link doesn't exist.</p></div>
@@ -4810,22 +4841,25 @@ export default function BookingPage() {
         }}>
           <div style={{ maxWidth: 560, margin: '0 auto' }}>
             <div style={{
-              background: '#F0FDF4', border: '1.5px solid #86EFAC',
+              background: purchaseSuccess.error ? '#FEF2F2' : '#F0FDF4',
+              border: `1.5px solid ${purchaseSuccess.error ? '#FCA5A5' : '#86EFAC'}`,
               borderRadius: 16, padding: '20px 22px', marginBottom: 16,
               display: 'flex', gap: 12, alignItems: 'flex-start',
             }}>
-              <span style={{ fontSize: 26, flexShrink: 0 }}>🎉</span>
+              <span style={{ fontSize: 26, flexShrink: 0 }}>{purchaseSuccess.error ? '⚠️' : '🎉'}</span>
               <div>
-                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: '#14532D', marginBottom: 4 }}>
-                  Package activated
+                <div style={{ fontFamily: 'Georgia,serif', fontSize: 20, fontWeight: 700, color: purchaseSuccess.error ? '#991B1B' : '#14532D', marginBottom: 4 }}>
+                  {purchaseSuccess.error ? 'Payment received' : 'Package activated'}
                 </div>
-                <div style={{ fontSize: 13.5, color: '#166534', lineHeight: 1.5 }}>
-                  {purchaseSuccess.packageName ? `${purchaseSuccess.packageName}: ` : ''}
-                  {purchaseSuccess.sessionsRemaining} session{purchaseSuccess.sessionsRemaining !== 1 ? 's' : ''} ready to book. No more payment needed: each booking draws from your package.
+                <div style={{ fontSize: 13.5, color: purchaseSuccess.error ? '#7A3A2E' : '#166534', lineHeight: 1.5 }}>
+                  {purchaseSuccess.error
+                    ? purchaseSuccess.error
+                    : `${purchaseSuccess.packageName ? `${purchaseSuccess.packageName}: ` : ''}${purchaseSuccess.sessionsRemaining} session${purchaseSuccess.sessionsRemaining !== 1 ? 's' : ''} ready to book. No more payment needed: each booking draws from your package.`}
                 </div>
               </div>
             </div>
 
+            {!purchaseSuccess.error && (
             <div style={{
               background: '#fff', borderRadius: 16, padding: 22,
               boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
@@ -4910,6 +4944,19 @@ export default function BookingPage() {
                 I will book later
               </button>
             </div>
+            )}
+
+            {purchaseSuccess.error && (
+              <button
+                onClick={() => setPurchaseSuccess(null)}
+                style={{
+                  width: '100%', background: C.forest, color: '#fff',
+                  border: 'none', borderRadius: 14, padding: '15px',
+                  fontSize: 14, fontWeight: 700, cursor: 'pointer',
+                }}>
+                Back to booking
+              </button>
+            )}
           </div>
         </div>
       )}
