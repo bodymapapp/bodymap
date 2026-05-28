@@ -6,6 +6,7 @@ import CancellationChargeModal from './CancellationChargeModal';
 import SmartBookingRail from './schedule/SmartBookingRail';
 import InlineTimeInput from './InlineTimeInput';
 import CloseButton from './CloseButton';
+import { useToast } from './Toast';
 import CheckoutModal from './CheckoutModal';
 // MarkAsPaidModal deleted in Phase 19 (May 18 2026). Functionality
 // folded into CheckoutModal's offline payment path. See commit history.
@@ -1339,7 +1340,8 @@ function RecapEditor({ session, parsedSoap, therapist, allSessions, onSaved, onR
   );
 }
 
-function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
+function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled, showToast }) {
+  const notify = showToast || (() => {});
   // Mobile detection for paddingBottom that clears the mobile bottom nav
   // (74px) so the Cancel button doesn't get cut off. HK reported May 25
   // 2026 that the cancel link was sitting behind the bottom nav on
@@ -4252,6 +4254,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
           onClose={() => setShowChargeModal(false)}
           onCancelled={() => {
             setShowChargeModal(false);
+            notify(chargeContext?.isNoShow ? 'Marked as no-show' : 'Appointment cancelled');
             onCancelled?.();
             onClose();
           }}
@@ -4348,6 +4351,7 @@ function DetailPanel({ appt, therapist, onClose, onReschedule, onCancelled }) {
 }
 
 function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onReschedule, onRefresh, blockedDays = [], onCreateBlock, onScheduleAtTime }) {
+  const { toast: tlToast, showToast: tlShowToast } = useToast();
   const [selected,setSelected] = useState(null);
   const [showLegend,setShowLegend] = useState(false);
   // Phase 9.2 long-press → create block. Tracking the active press and
@@ -5029,12 +5033,14 @@ function TimelineView({ therapist, allAppts, dayOffset, setDayOffset, today, onR
         </>
       )}
 
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={tlShowToast}/>}
+      {tlToast}
     </div>
   );
 }
 
 function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
+  const { toast: wkToast, showToast: wkShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0;
   const [weekOffset,setWeekOffset]=useState(0);
@@ -5650,12 +5656,14 @@ function WeeklyView({ therapist, appointments, today, onReschedule, onRefresh, b
           );
         })()
       )}
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
+      {wkToast}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={wkShowToast}/>}
     </div>
   );
 }
 
 function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, blockedDays = [] }) {
+  const { toast: moToast, showToast: moShowToast } = useToast();
   const APPTS=appointments||[];
   const weekStartsOn = therapist?.week_starts_on ?? 0; // 0 = Sunday, 1 = Monday
   const [monthOffset,setMonthOffset]=useState(0);
@@ -5836,7 +5844,8 @@ function MonthlyView({ therapist, appointments, today, onReschedule, onRefresh, 
           ))}
         </div>
       }
-      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}}/>}
+      {selected&&<DetailPanel appt={selected} therapist={therapist} onClose={()=>setSelected(null)} onReschedule={a=>{setSelected(null);onReschedule&&onReschedule(a);}} onCancelled={()=>{setSelected(null);if(typeof onRefresh==='function')onRefresh();}} showToast={moShowToast}/>}
+      {moToast}
     </div>
   );
 }

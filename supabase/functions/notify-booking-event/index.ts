@@ -33,7 +33,7 @@ serve(async (req) => {
   });
 
   try {
-    const { booking_id, event_type, fee_amount_cents, fee_charged, payment_link_url, initiated_by, reschedule_prev } = await req.json();
+    const { booking_id, event_type, fee_amount_cents, fee_charged, payment_link_url, initiated_by, reschedule_prev, reason } = await req.json();
     if (!booking_id) return respond({ error: 'booking_id required' }, 400);
     // Accepted event_types (expanded May 26 2026 for notification batch):
     //   booking_cancelled  - any path that flips status to cancelled
@@ -93,10 +93,43 @@ serve(async (req) => {
 
     const title = isNoShow
       ? `${firstName} marked no-show`
-      : `${firstName} cancelled`;
+      : `${firstName}'s session was cancelled`;
+
+    // HK May 28 2026: the old email was one bland summary line. Build an
+    // informational detail box: who, what service, when the session was,
+    // who cancelled, the reason if given, the fee outcome, and a
+    // cancelled-at timestamp so the therapist has the full picture.
+    const serviceName = (booking as any).services?.name || 'Session';
+    const feeCents = typeof fee_amount_cents === 'number' ? fee_amount_cents : 0;
+    const feeLine = isNoShow
+      ? (fee_charged && feeCents > 0 ? `$${(feeCents / 100).toFixed(2)} no-show fee charged` : 'No fee charged')
+      : (fee_charged && feeCents > 0 ? `$${(feeCents / 100).toFixed(2)} cancellation fee charged` : 'No fee charged');
+    const whoCancelled = initiated_by === 'client' ? clientName : 'You (the therapist)';
+    const cancelledAtStr = new Date().toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+    const reasonClean = (reason && String(reason).trim()) ? String(reason).trim() : null;
+
     const summary = isNoShow
-      ? `${clientName} did not show up${whenStr ? ' for ' + whenStr : ''}. No fee was charged.`
-      : `${clientName}'s session${whenStr ? ' for ' + whenStr : ''} was cancelled. No fee was charged.`;
+      ? `${clientName} did not show up${whenStr ? ' for their ' + whenStr + ' session' : ''}.`
+      : `${clientName}'s session${whenStr ? ' on ' + whenStr : ''} was cancelled.`;
+
+    const detailRows = [
+      ['Client', clientName],
+      ['Service', serviceName],
+      whenStr ? ['Session was', whenStr] : null,
+      [isNoShow ? 'Recorded by' : 'Cancelled by', whoCancelled],
+      reasonClean ? ['Reason', reasonClean] : null,
+      ['Fee', feeLine],
+      [isNoShow ? 'Recorded at' : 'Cancelled at', cancelledAtStr],
+    ].filter(Boolean) as Array<[string, string]>;
+
+    const detailBoxHtml = `
+      <table style="width:100%;border-collapse:collapse;margin:18px 0;background:#FAFAF7;border:1px solid #ECE7DC;border-radius:10px;overflow:hidden;">
+        ${detailRows.map(([label, value], i) => `
+          <tr style="${i < detailRows.length - 1 ? 'border-bottom:1px solid #ECE7DC;' : ''}">
+            <td style="padding:10px 14px;font-size:12px;font-weight:700;color:#6B7280;text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap;vertical-align:top;">${label}</td>
+            <td style="padding:10px 14px;font-size:14px;color:#1A2E22;text-align:right;">${String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</td>
+          </tr>`).join('')}
+      </table>`;
 
     const emailHtml = `
 <!DOCTYPE html>
@@ -106,8 +139,9 @@ serve(async (req) => {
     <div style="background:#fff;border-radius:16px;padding:32px 28px;box-shadow:0 4px 20px rgba(0,0,0,0.06);">
       <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:${isNoShow ? '#92400E' : '#DC2626'};margin-bottom:8px;">${isNoShow ? '🚫 No-show recorded' : '🗑 Booking cancelled'}</div>
       <h1 style="font-family:Georgia,serif;font-size:22px;font-weight:700;color:#2A5741;margin:0 0 6px;">${title}</h1>
-      <p style="font-size:14px;color:#6B7280;margin:0 0 18px;line-height:1.6;">${summary}</p>
-      <a href="https://mybodymap.app/dashboard" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open Dashboard</a>
+      <p style="font-size:14px;color:#6B7280;margin:0 0 4px;line-height:1.6;">${summary}</p>
+      ${detailBoxHtml}
+      <a href="https://mybodymap.app/dashboard/schedule" style="display:inline-block;background:#2A5741;color:#fff;text-decoration:none;padding:11px 20px;border-radius:8px;font-size:13px;font-weight:700;">Open schedule</a>
       <div style="font-size:11px;color:#9CA3AF;margin-top:24px;line-height:1.6;">
         You are getting this because "${isNoShow ? 'No-show recorded' : 'Booking cancelled'}" is on in your notification settings.
       </div>
