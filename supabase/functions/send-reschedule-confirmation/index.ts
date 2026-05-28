@@ -39,7 +39,7 @@ serve(async (req) => {
     .select(`
       id, client_id, booking_date, start_time, service_id,
       services(name, duration),
-      location:therapist_locations(name, address),
+      location:therapist_locations(name, street1, street2, city, state, postal_code),
       therapists(id, full_name, business_name, custom_url, email, notification_prefs),
       clients(id, name, email, phone, outreach_unsubscribed_at)
     `)
@@ -55,7 +55,7 @@ serve(async (req) => {
 
   const serviceName = booking.services?.name || 'Massage session';
   const serviceDuration = booking.services?.duration || null;
-  const locationAddr = booking.location?.address || null;
+  const loc = booking.location; const locationAddr = loc ? [loc.street1, loc.street2, [loc.city, loc.state].filter(Boolean).join(", "), loc.postal_code].filter(Boolean).join(", ") : null;
   const therapistName = therapist?.business_name || therapist?.full_name || 'Your therapist';
   const clientFirstName = client.name?.split(' ')[0] || 'there';
   const newWhen = formatApptDateTime(booking.booking_date, booking.start_time);

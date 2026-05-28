@@ -1248,3 +1248,16 @@ HK sequence after notifications: SECURITY, then customer data backup, then SMS. 
 3. Public / --no-verify-jwt edge functions. ~30 functions accept therapist_id from body. Confirm each only acts on rows the caller could already see (e.g. by deriving therapist from a verified Stripe/Square session or a row lookup), never trusting arbitrary body input to act on another therapist's data.
 
 Then: customer data backup mechanism (export/retention for therapists' client data; export-therapist-data edge function already exists, verify it covers all tables + is restorable). Then: SMS production (A2P 10DLC Macro #11, STOP/HELP Macro #12, status callbacks Macro #13, BYO-Twilio onboarding).
+
+---
+
+## send-renewal-due is built against the wrong table + columns (queued, ~1 hr, May 28 2026)
+
+Found during the notification column audit. send-renewal-due (the "membership renews in 7 days" therapist alert, C/renewal_due) queries the `memberships` table (the PLAN template) when it should query `member_subscriptions` (the per-client subscription). Wrong table means wrong/missing columns throughout:
+- selects `renewal_at` (memberships has none; member_subscriptions uses `current_period_end`)
+- selects `price_cents` (real col is `monthly_price` on member_subscriptions)
+- selects `plan_name` (real col is `name` on the joined memberships row via `membership_id`)
+- `findMembershipsDueIn7Days` filters `memberships.renewal_at` (does not exist) so returns nothing: function never fires
+- dedup query reads notification_log.reference_id + created_at; real cols are `sent_at` and there is no reference_id (verify actual dedup column, likely booking_id is null here so needs a membership/subscription ref column or a different dedup strategy)
+
+FIX (queued, needs care not a rename): rewrite sendForMembership + findMembershipsDueIn7Days to query member_subscriptions (cols: client_id, client_name, client_email, monthly_price, current_period_end, current_period_start, renewal_day_of_month, membership_id, status, started_at, therapist_id), join memberships(name) for the plan name and therapists(...) for the recipient. Recompute the "due in 7 days" window against current_period_end. Fix the dedup to use a real notification_log column (sent_at; and a subscription reference, since reference_id does not exist). Verify against live schema before shipping. This is why renewal-due alerts have never fired.
